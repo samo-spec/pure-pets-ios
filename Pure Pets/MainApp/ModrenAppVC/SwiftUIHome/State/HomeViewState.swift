@@ -10,6 +10,15 @@ enum HomeScreenPhase: Equatable {
     case partial
     case empty
     case failed(message: String)
+
+    var isLoading: Bool {
+        switch self {
+        case .coldLoading, .warmLoading, .refreshing:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 enum HomeConnectivityState: Equatable {
@@ -173,7 +182,7 @@ struct HomeConfigModel {
     var cameFromCache: Bool
 
     static let fallback = HomeConfigModel(
-        orderedSectionIDs: [15, 17, 16, 0, 9, 1, 5, 2, 7, 18, 19, 6, 4, 10, 12, 8, 11, 13, 14],
+        orderedSectionIDs: [15, 17, 16, 0, 5, 9, 1, 2, 7, 18, 19, 6, 4, 10, 12, 11, 13, 14, 8],
         visibleSectionIDs: Set(0 ... 19),
         titleViewMode: "location",
         premiumCareVisible: true,

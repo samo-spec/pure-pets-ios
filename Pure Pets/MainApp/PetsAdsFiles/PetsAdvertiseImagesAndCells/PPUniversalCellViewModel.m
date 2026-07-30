@@ -411,6 +411,9 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         _price = @(MAX(service.price, 0.0));
         _finalPrice = _price;
         _currencyCode = service.currency.length > 0 ? service.currency : _currencyCode;
+        if (!_currencyCode.length || [_currencyCode.uppercaseString containsString:@"QAR"] || [_currencyCode.uppercaseString containsString:@"RIAL"] || [_currencyCode containsString:@"ر.ق"] || [_currencyCode containsString:@"ريال"]) {
+            _currencyCode = PPUniversalLocalizedString(@"Rials", @"QAR");
+        }
         _priceText = [GM formatPrice:_finalPrice currencyCode:_currencyCode] ?: @"";
         _availabilityText = service.localizedAvailabilityStatus.length > 0
             ? service.localizedAvailabilityStatus

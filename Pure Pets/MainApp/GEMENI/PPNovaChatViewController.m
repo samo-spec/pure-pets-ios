@@ -8815,7 +8815,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             
             [PPHUD dismiss];
             if (success) {
-                [PPHUD showSuccess:kLang(@"nova_added_to_cart")];
+                [PPAddToCartSuccessToast showWithTitle:kLang(@"nova_added_to_cart")];
                 self.pendingCartProduct = nil; // Clear after adding
                 [self pp_sendNovaCartConfirmationFollowUpForProduct:product];
             } else {

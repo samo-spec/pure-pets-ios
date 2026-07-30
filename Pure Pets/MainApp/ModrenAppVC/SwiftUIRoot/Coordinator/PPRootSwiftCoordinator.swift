@@ -204,36 +204,6 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
         hostingController.view.backgroundColor = .clear
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         
-        hostingController.isInteractivePoint = { [weak self] point in
-            guard let self = self, let host = self.hostController else { return false }
-            let totalHeight = host.view.bounds.height
-            let totalWidth = host.view.bounds.width
-            
-            let tabBarHeight = host.tabBar.frame.height > 0 ? host.tabBar.frame.height : (49.0 + host.view.safeAreaInsets.bottom)
-            if point.y >= (totalHeight - tabBarHeight) {
-                return false
-            }
-            
-            if self.store.shouldShowCartBar {
-                let cartBottom = totalHeight - tabBarHeight
-                let cartTop = cartBottom - 64.0
-                if point.y >= cartTop && point.y <= cartBottom {
-                    return true
-                }
-            }
-            
-            if self.store.shouldShowNovaButton {
-                let novaBottom = totalHeight - tabBarHeight
-                let novaTop = novaBottom - 64.0
-                let novaLeft = totalWidth - 80.0
-                if point.y >= novaTop && point.y <= novaBottom && point.x >= novaLeft {
-                    return true
-                }
-            }
-            
-            return false
-        }
-        
         host.addChild(hostingController)
         host.view.addSubview(hostingController.view)
         

@@ -6,6 +6,8 @@ private enum HomePresentationFlags {
     static let showsLocationContextPill = false
 }
 
+@available(iOS 16.0, *)
+@available(iOS 16.0, *)
 struct HomeView: View {
     @ObservedObject var store: HomeStore
 
@@ -175,6 +177,14 @@ struct HomeView: View {
             )
             .onAppear(perform: startLoadedEntranceIfNeeded)
 
+            if !store.state.categories.isEmpty {
+                HomeCategoryRail(
+                    categories: store.state.categories,
+                    selectedID: store.state.selectedMainKindID,
+                    onSelect: store.selectCategory
+                )
+            }
+
             if !store.state.pets.isEmpty {
                 HomePetSwitcher(
                     pets: store.state.pets,
@@ -184,7 +194,7 @@ struct HomeView: View {
                 )
                 .homeEntrance(
                     isVisible: loadedEntranceVisible,
-                    delay: 0.10,
+                    delay: 0.08,
                     reduceMotion: reduceMotion
                 )
             }
@@ -196,7 +206,7 @@ struct HomeView: View {
             .padding(.horizontal, PPSpace.screenMargin)
             .homeEntrance(
                 isVisible: loadedEntranceVisible,
-                delay: 0.12,
+                delay: 0.10,
                 reduceMotion: reduceMotion
             )
 
@@ -211,18 +221,24 @@ struct HomeView: View {
                 .padding(.horizontal, PPSpace.screenMargin)
             }
 
-            if !store.state.categories.isEmpty {
-                HomeCategoryRail(
-                    categories: store.state.categories,
-                    selectedID: store.state.selectedMainKindID,
-                    onSelect: store.selectCategory
-                )
-            }
-
             ForEach(store.state.sections) { section in
                 HomeFeedSection(section: section, store: store)
                     .id(section.id)
             }
+
+            HomeMyPetProfileCard(
+                pets: store.state.pets,
+                selectedID: store.state.selectedPetID,
+                isLoading: store.state.phase.isLoading,
+                errorMessage: nil,
+                action: store.openPetProfiles
+            )
+            .padding(.horizontal, PPSpace.screenMargin)
+            .homeEntrance(
+                isVisible: loadedEntranceVisible,
+                delay: 0.18,
+                reduceMotion: reduceMotion
+            )
         }
     }
 

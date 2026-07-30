@@ -91,6 +91,7 @@ struct PPPetAdHeroGallery: View {
             PPPetAdHeroImageView(
                 urlString: item.imageURL,
                 blurHash: item.blurHash,
+                cacheKey: item.id,
                 interactionState: interactionState,
                 accessibilityLabel: mediaAccessibilityLabel(index: index),
                 onImageLoaded: index == 0 ? onFirstImageLoaded : nil
@@ -203,7 +204,8 @@ struct PPPetAdHeroGallery: View {
                                 blurHash: item.blurHash,
                                 contentMode: .fill,
                                 accessibilityLabel:
-                                    mediaAccessibilityLabel(index: index)
+                                    mediaAccessibilityLabel(index: index),
+                                cacheKey: item.id
                             )
                             .frame(width: thumbnailSize, height: thumbnailSize)
                             .clipShape(
@@ -416,22 +418,26 @@ private struct PPPetAdHeroAtmosphere: View {
 private struct PPPetAdHeroImageView: View {
     let urlString: String?
     let blurHash: String?
+    let cacheKey: String?
     @ObservedObject var interactionState: PPPetAdViewerInteractionState
     let accessibilityLabel: String
     var onImageLoaded: ((UIImage) -> Void)? = nil
 
-    @StateObject private var loader = PPPetAdImageLoader()
+    @State private var loadedImage: UIImage?
+    @State private var blurHashImage: UIImage?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         urlString: String?,
         blurHash: String?,
+        cacheKey: String? = nil,
         interactionState: PPPetAdViewerInteractionState,
         accessibilityLabel: String,
         onImageLoaded: ((UIImage) -> Void)? = nil
     ) {
         self.urlString = urlString
         self.blurHash = blurHash
+        self.cacheKey = cacheKey
         _interactionState = ObservedObject(wrappedValue: interactionState)
         self.accessibilityLabel = accessibilityLabel
         self.onImageLoaded = onImageLoaded
@@ -441,46 +447,50 @@ private struct PPPetAdHeroImageView: View {
         ZStack(alignment: .top) {
             heroPlaceholder
 
-            switch loader.state {
-            case .idle:
-                EmptyView()
-            case let .loading(image):
-                if let image {
-                    rendered(image)
+            AppRemoteImage(
+                urlString: urlString,
+                cacheKey: cacheKey,
+                contentMode: .fill,
+                onImageLoaded: { image in
+                    loadedImage = image
+                    onImageLoaded?(image)
                 }
-                ProgressView()
-                    .tint(.white)
-                    .accessibilityLabel(
-                        PPPetAdLocalization.text(
-                            "loading_images",
-                            fallback: "Loading image"
+            ) {
+                ZStack(alignment: .top) {
+                    heroPlaceholder
+                    if let blurHashImage {
+                        Image(uiImage: blurHashImage)
+                            .resizable()
+                            .scaledToFill()
+                    }
+                    ProgressView()
+                        .tint(.white)
+                        .accessibilityLabel(
+                            PPPetAdLocalization.text(
+                                "loading_images",
+                                fallback: "Loading image"
+                            )
                         )
-                    )
-            case let .loaded(image):
-                rendered(image)
-            case .failed:
-                retryView
+                }
+            } failurePlaceholder: {
+                retryLabel
+            }
+            .opacity(loadedImage == nil ? 1 : 0)
+
+            if let loadedImage {
+                rendered(loadedImage)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .clipped()
-        .animation(
-            reduceMotion ? nil : Animation.easeOut(duration: 0.24),
-            value: imageStateIdentity
-        )
         .onAppear {
-            loader.load(urlString: urlString, blurHash: blurHash)
+            decodeBlurHashIfNeeded()
         }
-        .onChange(of: urlString) { value in
-            loader.load(urlString: value, blurHash: blurHash)
+        .onChange(of: urlString) { _ in
+            loadedImage = nil
         }
-        .onChange(of: imageStateIdentity) { _ in
-            if case let .loaded(image) = loader.state {
-                onImageLoaded?(image)
-            }
-        }
-        .onDisappear {
-            loader.cancel()
+        .onChange(of: blurHash) { _ in
+            decodeBlurHashIfNeeded()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -503,31 +513,42 @@ private struct PPPetAdHeroImageView: View {
         .transition(.opacity)
     }
 
-    private var retryView: some View {
-        Button {
-            loader.retry(blurHash: blurHash)
-        } label: {
-            Label(
-                PPPetAdLocalization.text("Retry", fallback: "Retry"),
-                systemImage: "arrow.clockwise"
-            )
-            .font(PPPetAdTypography.calloutBold)
-            .foregroundStyle(.white)
-            .padding(.horizontal, PPSpace.lg)
-            .frame(minHeight: 46)
-            .ppGlassSurface(
-                in: Capsule(),
-                tint: Color.black.opacity(0.16),
-                fallback: Color.black.opacity(0.84)
-            )
-        }
-        .buttonStyle(PPPetAdPressButtonStyle())
-        .accessibilityHint(
-            PPPetAdLocalization.text(
-                "load_error_retry",
-                fallback: "Double-tap to retry loading this image."
-            )
+    private var retryLabel: some View {
+        Label(
+            PPPetAdLocalization.text("Retry", fallback: "Retry"),
+            systemImage: "arrow.clockwise"
         )
+        .font(PPPetAdTypography.calloutBold)
+        .foregroundStyle(.white)
+        .padding(.horizontal, PPSpace.lg)
+        .frame(minHeight: 46)
+        .ppGlassSurface(
+            in: Capsule(),
+            tint: Color.black.opacity(0.16),
+            fallback: Color.black.opacity(0.84)
+        )
+    }
+
+    private func decodeBlurHashIfNeeded() {
+        let normalizedHash = blurHash?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard let normalizedHash, !normalizedHash.isEmpty else {
+            blurHashImage = nil
+            return
+        }
+        PPBlurHashBridge.image(
+            from: normalizedHash,
+            size: CGSize(width: 40, height: 40),
+            punch: 1
+        ) { image in
+            guard normalizedHash == blurHash?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ) else {
+                return
+            }
+            blurHashImage = image
+        }
     }
 
     private var heroPlaceholder: some View {
@@ -550,14 +571,6 @@ private struct PPPetAdHeroImageView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    private var imageStateIdentity: Int {
-        switch loader.state {
-        case .idle: return 0
-        case .loading: return 1
-        case .loaded: return 2
-        case .failed: return 3
-        }
-    }
 }
 
 // MARK: - Vision Pet Face Focal Detector

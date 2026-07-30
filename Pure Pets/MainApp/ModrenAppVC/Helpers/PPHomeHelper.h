@@ -6,10 +6,6 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "PPCarouselContainerCell.h"
-
-
-#import "PPCarouselItem.h"
 #import "PPUniversalCellViewModel.h"
 #import "PetAd.h"
 #import "PPCollectionLayoutManager.h"

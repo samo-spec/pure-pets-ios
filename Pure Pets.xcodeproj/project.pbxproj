@@ -37,21 +37,16 @@
 		997CC0FBDBA146DCBC65C0AB /* PPInAppChatNotificationPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 6027D32F8BFF42DE85792BE5 /* PPInAppChatNotificationPresenter.m */; };
 		9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */; };
 		A11CE0022FEA000000000002 /* Profile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = A11CE0012FEA000000000001 /* Profile.lottie */; };
-		A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */; };
-		A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */; };
-		A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */; };
-		A11CE2502FEB500000000003 /* PPHomeProviderUnifiedCategoryCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */; };
 		A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */; };
 		A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */; };
-		A17E26000200000000000002 /* PPHomeOrderStatusSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E100012FF1000100A5E001 /* PPHeroApex.swift */; };
 		A5E100042FF1000100A5E004 /* PPBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */; };
 		A5E200022FF2000100A5E002 /* PPHeroApexMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */; };
 		A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */; };
-		F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
+		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
@@ -131,7 +126,6 @@
 		F213021F2F0C6573006E71AB /* PPSearchViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F213021E2F0C655F006E71AB /* PPSearchViewController.m */; };
 		F21302222F0C6638006E71AB /* BBNavigationBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302212F0C6629006E71AB /* BBNavigationBar.m */; };
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
-		F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
 		F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843AA2E8B9EE500D8BF46 /* PPCollection.m */; };
@@ -249,7 +243,6 @@
 		F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */; };
 		F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */; };
 		F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */; };
-		F233B43B300C4F4600D55489 /* PPHomeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B43A300C4F4600D55489 /* PPHomeItem.m */; };
 		F233B444300C557F00D55489 /* PPBannerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B443300C557F00D55489 /* PPBannerCell.m */; };
 		F233B446300C72D900D55489 /* ModernSegmentedControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = F233B445300C72D900D55489 /* ModernSegmentedControl.swift */; };
 		F233B449300C7F2200D55489 /* ModernSegmentedControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F233B448300C7F2200D55489 /* ModernSegmentedControlBridge.swift */; };
@@ -309,8 +302,6 @@
 		F25100952F73C2D8008F6AFE /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = F25100942F73C2D8008F6AFE /* FirebaseRemoteConfig */; };
 		F25100972F73C2D8008F6AFE /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F25100962F73C2D8008F6AFE /* FirebaseStorage */; };
 		F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */; };
-		F253FA692F07708A00323CB4 /* PPHomeLayoutManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */; };
-		F253FA6D2F082F2F00323CB4 /* PPCategoryCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA6C2F082F1900323CB4 /* PPCategoryCardCell.m */; };
 		F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */; };
 		F25971AE2D1BEF3F00708763 /* ArchiveManagerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */; };
 		F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F259DDDC2D29622E005524F8 /* XLFormButtonCell.m */; };
@@ -327,13 +318,7 @@
 		F25D68D02F829B4900700694 /* PPHomeCartNavButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */; };
 		F25DC3092EDDE93300C48787 /* XLFormPhoneCodeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */; };
 		F25DF8A72D60A79F0051EAFF /* NSString+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DF8A62D60A79F0051EAFF /* NSString+Ex.m */; };
-		F25E7FF22EFF2B970089F659 /* PPHomeModels.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E7FF12EFF2B970089F659 /* PPHomeModels.m */; };
 		F25E7FF72EFF84A90089F659 /* PPHomeHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E7FF62EFF84A90089F659 /* PPHomeHelper.m */; };
-		F25E80062F0049120089F659 /* PPCarouselItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E80052F0049120089F659 /* PPCarouselItem.m */; };
-		F25E80092F00495A0089F659 /* PPCarouselCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E80082F0049490089F659 /* PPCarouselCollectionCell.m */; };
-		F25E800C2F0049840089F659 /* PPCarouselView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E800B2F0049740089F659 /* PPCarouselView.m */; };
-		F25E800F2F004C180089F659 /* PPCarouselContainerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E800E2F004C080089F659 /* PPCarouselContainerCell.m */; };
-		A17E27000200000000000002 /* PPSectionHeaderSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17E27000100000000000001 /* PPSectionHeaderSwiftUI.swift */; };
 		F26024862EB60BA5006534B4 /* PPCartTableCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F26024852EB60B95006534B4 /* PPCartTableCell.m */; };
 		F26045382CB6EC7500FB7FBC /* selectArchiveVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F26045372CB6EC7500FB7FBC /* selectArchiveVC.m */; };
 		F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F260D31E2C7B36EF0098C8F0 /* blank_button@2x.png */; };
@@ -467,6 +452,17 @@
 		F27FAEAE2D2F363200EA6B56 /* JPVideoPlayerManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FAE882D2F363200EA6B56 /* JPVideoPlayerManager.m */; };
 		F27FAEAF2D2F363200EA6B56 /* JPVideoPlayer.bundle in Resources */ = {isa = PBXBuildFile; fileRef = F27FAE762D2F363200EA6B56 /* JPVideoPlayer.bundle */; };
 		F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FC16F2C52F63B007B855C /* selectTableViewCell.m */; };
+		F281B40E301A5AB600040E59 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B40C301A5AB600040E59 /* HomeView.swift */; };
+		F281B40F301A5AB600040E59 /* PPHomeDataBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B3FD301A5AB600040E59 /* PPHomeDataBridge.m */; };
+		F281B410301A5AB600040E59 /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B409301A5AB600040E59 /* HomeComponents.swift */; };
+		F281B411301A5AB600040E59 /* HomeUniversalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */; };
+		F281B412301A5AB600040E59 /* HomeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B400301A5AB600040E59 /* HomeRepository.swift */; };
+		F281B413301A5AB600040E59 /* HomeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B406301A5AB600040E59 /* HomeStore.swift */; };
+		F281B414301A5AB600040E59 /* PPHomeHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B402301A5AB600040E59 /* PPHomeHostingController.swift */; };
+		F281B415301A5AB600040E59 /* HomeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B404301A5AB600040E59 /* HomeRouter.swift */; };
+		F281B416301A5AB600040E59 /* HomeHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B40A301A5AB600040E59 /* HomeHeroView.swift */; };
+		F281B417301A5AB600040E59 /* HomeViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B407301A5AB600040E59 /* HomeViewState.swift */; };
+		F281B418301A5AB600040E59 /* HomeModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B3FF301A5AB600040E59 /* HomeModelAdapter.swift */; };
 		F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */; };
 		F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46A2FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m */; };
 		F281B4812FCB6735009118F2 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4752FCB6735009118F2 /* PPRatingView.m */; };
@@ -513,7 +509,6 @@
 		F28CBB682D30298C002993F0 /* JPCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F28CBB672D30298C002993F0 /* JPCell.xib */; };
 		F28CBB6C2D3077F0002993F0 /* SettingVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB6B2D3077F0002993F0 /* SettingVC.m */; };
 		F28D58402E1958F00055DAED /* OrderItemCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28D583F2E1958F00055DAED /* OrderItemCell.m */; };
-		F28DD58D2F0195B900FF2671 /* PPHomeServiceItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD58C2F0195B900FF2671 /* PPHomeServiceItem.m */; };
 		F28DD5902F04323500FF2671 /* HJCarouselViewLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD58F2F04323500FF2671 /* HJCarouselViewLayout.m */; };
 		F28DD5A22F049C2A00FF2671 /* PPDataViewVM.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A12F049C0E00FF2671 /* PPDataViewVM.m */; };
 		F28DD5A62F04CC6500FF2671 /* PPDataViewInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */; };
@@ -531,7 +526,6 @@
 		F294A774301232EE005EFBC7 /* PPPetAdMediaViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */; };
 		F294A775301232EE005EFBC7 /* PPHero.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A775301232FF005EFBC7 /* PPHero.swift */; };
 		F294A799301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */; };
-		F294A79A301232DD005EFBC7 /* PPPetAdImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */; };
 		F294A79B301232DD005EFBC7 /* PPPetAdViewerBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */; };
 		F294A79C301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77A301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift */; };
 		F294A79D301232DD005EFBC7 /* PPPetAdViewerMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */; };
@@ -630,7 +624,6 @@
 		F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */; };
 		F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */; };
 		F2A9034F2F9E98230097485B /* PPHomeInsetLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */; };
-		F2A9E80E2FB3570200B2729F /* PPHomePremiumSearchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */; };
 		F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */; };
 		F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB487F2C72CF3C00D88603 /* JGProgressHUD.m */; };
 		F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48802C72CF3C00D88603 /* JGProgressHUDAnimation.m */; };
@@ -669,6 +662,12 @@
 		F2AC11053020000100BEE001 /* PPAccessoryViewerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */; };
 		F2AC11063020000100BEE001 /* PPAccessoryViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */; };
 		F2AC11073020000100BEE001 /* PPAccessoryViewerHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */; };
+		F2ACA9F8301A93C000F55032 /* PetMedicine.json in Resources */ = {isa = PBXBuildFile; fileRef = F2ACA9F6301A93C000F55032 /* PetMedicine.json */; };
+		F2ACA9F9301A93C000F55032 /* NovaLoader.json in Resources */ = {isa = PBXBuildFile; fileRef = F2ACA9F5301A93C000F55032 /* NovaLoader.json */; };
+		F2ACA9FA301A93C000F55032 /* thinking.json in Resources */ = {isa = PBXBuildFile; fileRef = F2ACA9F7301A93C000F55032 /* thinking.json */; };
+		F2ACA9FC301ABCDB00F55032 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */; };
+		F2ACA9FF301ACF4A00F55032 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = F2ACA9FE301ACF4A00F55032 /* Kingfisher */; };
+		F2ACAA01301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */; };
 		F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */; };
 		F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */; };
 		F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1462D6E6AB400B55427 /* MainController.m */; };
@@ -726,7 +725,6 @@
 		F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */; };
 		F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */; };
 		F2BC30D62E43E385003F603D /* UIScreen.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC30D52E43E385003F603D /* UIScreen.m */; };
-		F2BC865C2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
 		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
 		F2C0BA4B2FF09FCB009D1C33 /* PPProviderCompanyCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */; };
@@ -734,7 +732,6 @@
 		F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C158342E2100D100EFDC91 /* EmptyStateView.m */; };
 		F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C16F8E2D6B63DC00B2887E /* ImagePicker.m */; };
 		F2C1A1112F00111100C1A111 /* StateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C1A1132F00111100C1A113 /* StateModel.m */; };
-		F2C223C62F061DD4006DB76A /* PPHomeFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223C52F061DD4006DB76A /* PPHomeFunc.m */; };
 		F2C223CC2F061EFD006DB76A /* PPUniversalCellViewModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */; };
 		F2C5F76E2CA00D3300D7897A /* AAMultiSelectViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7682CA00D3300D7897A /* AAMultiSelectViewController.m */; };
 		F2C5F76F2CA00D3300D7897A /* AAPopupView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F76B2CA00D3300D7897A /* AAPopupView.m */; };
@@ -777,10 +774,9 @@
 		F2D100962C7B131B00F5EAE7 /* NewCageVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D100952C7B131B00F5EAE7 /* NewCageVC.m */; };
 		F2D2BC682EB7182B000A13D1 /* PPSelectPaymentVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2BC672EB71813000A13D1 /* PPSelectPaymentVC.m */; };
 		F2D3FD993016601F003279B3 /* AnimatedAddToCartButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */; };
+		F2D3FD9B3016601F003279B3 /* PPAddToCartSuccessToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D3FD9A3016601F003279B3 /* PPAddToCartSuccessToast.swift */; };
 		F2D44D202F3D611200999337 /* map_dark_style.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D44D1F2F3D611200999337 /* map_dark_style.json */; };
 		F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */; };
-		F2D5A7B62F95C0A1009B6001 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */; };
-		F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */; };
 		F2D5A8E22F970001009B6001 /* FullScreenImageViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A8E12F970001009B6001 /* FullScreenImageViewerController.m */; };
 		F2D5A8E42F970001009B6001 /* PPMediaPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A8E32F970001009B6001 /* PPMediaPreviewView.swift */; };
 		F2D639712ECB4E2500FEBCBB /* PPUserSigningManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */; };
@@ -792,20 +788,6 @@
 		F2DF5DD02EFC8E8F009C7B6F /* PPRootTabBarController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DCF2EFC8E80009C7B6F /* PPRootTabBarController.m */; };
 		F2DF5DD12EFC8EAA009C7B6F /* NewAppVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DCD2EFC8E70009C7B6F /* NewAppVC.m */; };
 		F2DF5DD42EFC9196009C7B6F /* PPHomeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DD32EFC917F009C7B6F /* PPHomeViewController.m */; };
-		F31000000000000000000001 /* PPHomeDataBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* PPHomeDataBridge.m */; };
-		F31000000000000000000002 /* HomeViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000003 /* HomeViewState.swift */; };
-		F31000000000000000000003 /* HomeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000004 /* HomeStore.swift */; };
-		F31000000000000000000004 /* HomeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000005 /* HomeRepository.swift */; };
-		F31000000000000000000005 /* HomeModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000006 /* HomeModelAdapter.swift */; };
-		F31000000000000000000006 /* HomeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000007 /* HomeRouter.swift */; };
-		F31000000000000000000007 /* PPHomeHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000008 /* PPHomeHostingController.swift */; };
-		F31000000000000000000008 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000009 /* HomeView.swift */; };
-		F31000000000000000000009 /* HomeHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3000000000000000000000A /* HomeHeroView.swift */; };
-		F3100000000000000000000A /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3000000000000000000000B /* HomeComponents.swift */; };
-		F3100000000000000000000B /* HomeUniversalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3000000000000000000000C /* HomeUniversalCard.swift */; };
-		F33000000000000000000001 /* HomePetPulse.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000001 /* HomePetPulse.json */; };
-		F33000000000000000000002 /* HomeCareReminder.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000002 /* HomeCareReminder.json */; };
-		F33000000000000000000003 /* HomePromotionSpark.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000003 /* HomePromotionSpark.json */; };
 		F2DF5DD72EFC92DF009C7B6F /* PPOverlayCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */; };
 		F2E0E8712E7A16D400F0C084 /* UIViewController+PPNavBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */; };
 		F2E0E8742E7A3A3E00F0C084 /* UserModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8732E7A3A3E00F0C084 /* UserModel.m */; };
@@ -873,9 +855,6 @@
 		F2F33FFB2D7912AC00BDBD25 /* ChildsDataManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F33FFA2D7912AC00BDBD25 /* ChildsDataManager.m */; };
 		F2F38FAE2EA68288004B148A /* PPUniversalCellHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */; settings = {COMPILER_FLAGS = "-w"; }; };
 		F2F44A122FA7014000D19D01 /* PPHomeLocationTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F44A112FA7014000D19D01 /* PPHomeLocationTitleView.m */; };
-		F2F465F22F3B8CCB00E5FB60 /* PPHomeHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */; };
-		F2F548B5301866ED00323EC4 /* TempGlassRootTabHostingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09603B47A72C47BFB31BFF32 /* TempGlassRootTabHostingView.swift */; };
-		F2F548B6301866ED00323EC4 /* TempCartLineHostingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24B8F4540D724EF68603A0F1 /* TempCartLineHostingView.swift */; };
 		F2F548B8301868C100323EC4 /* GlassRootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548B7301868C100323EC4 /* GlassRootTabView.swift */; };
 		F2F548BE30186C4A00323EC4 /* PPServiceViewerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548B930186C4A00323EC4 /* PPServiceViewerComponents.swift */; };
 		F2F548BF30186C4A00323EC4 /* PPServiceViewerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548BC30186C4A00323EC4 /* PPServiceViewerStore.swift */; };
@@ -917,6 +896,10 @@
 		F2FFDA1D2FCDCFC00025B5A9 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA1C2FCDCFC00025B5A9 /* FirebaseStorage */; };
 		F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */; };
 		F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = F2HXCOMPAT0002 /* HXCompatibilityCategories.m */; };
+		F33000000000000000000001 /* HomePetPulse.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000001 /* HomePetPulse.json */; };
+		F33000000000000000000002 /* HomeCareReminder.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000002 /* HomeCareReminder.json */; };
+		F33000000000000000000003 /* HomePromotionSpark.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000003 /* HomePromotionSpark.json */; };
+		F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
 /* End PBXBuildFile section */
 
@@ -965,7 +948,6 @@
 		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
 		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
-		09603B47A72C47BFB31BFF32 /* TempGlassRootTabHostingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TempGlassRootTabHostingView.swift; sourceTree = "<group>"; };
 		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
 		116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantCoordinator.swift; sourceTree = "<group>"; };
 		12AC9DB60A8A6C4966591D47 /* NovaVoiceService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceService.swift; sourceTree = "<group>"; };
@@ -975,7 +957,6 @@
 		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
-		24B8F4540D724EF68603A0F1 /* TempCartLineHostingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TempCartLineHostingView.swift; sourceTree = "<group>"; };
 		34EB94CDEF4BA97E5841D65E /* PPPetProfileManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPPetProfileManager.h; sourceTree = "<group>"; };
 		3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaAudioSessionController.swift; sourceTree = "<group>"; };
 		38C7E48EFD674EB395BE62DA /* PPAgentClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentClient.h; sourceTree = "<group>"; };
@@ -1002,26 +983,17 @@
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
 		9FE65F0A7481B0C8FFB5169D /* NovaVoiceConfiguration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceConfiguration.swift; sourceTree = "<group>"; };
 		A11CE0012FEA000000000001 /* Profile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = Profile.lottie; sourceTree = "<group>"; };
-		A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimPetCareCell.h; sourceTree = "<group>"; };
-		A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimPetCareCell.m; sourceTree = "<group>"; };
-		A11CE2302FEB200000000001 /* PPHomeUltraPremuimProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimProviderCategoryPillCell.h; sourceTree = "<group>"; };
-		A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimProviderCategoryPillCell.m; sourceTree = "<group>"; };
-		A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeMarketplaceHeroCell.h; sourceTree = "<group>"; };
-		A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeMarketplaceHeroCell.m; sourceTree = "<group>"; };
-		A11CE2502FEB500000000001 /* PPHomeProviderUnifiedCategoryCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeProviderUnifiedCategoryCardCell.h; sourceTree = "<group>"; };
-		A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeProviderUnifiedCategoryCardCell.m; sourceTree = "<group>"; };
 		A11D00022FFD100000000002 /* PPBottomSurfaceCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBottomSurfaceCoordinator.h; sourceTree = "<group>"; };
 		A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomSurfaceCoordinator.m; sourceTree = "<group>"; };
 		A11D00052FFD100000000005 /* UIViewController+PPBottomSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPBottomSurface.h"; sourceTree = "<group>"; };
 		A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPBottomSurface.m"; sourceTree = "<group>"; };
-		A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeOrderStatusSwiftUI.swift; sourceTree = "<group>"; };
 		A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaSpeechSpeaker.swift; sourceTree = "<group>"; };
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A5E100012FF1000100A5E001 /* PPHeroApex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApex.swift; sourceTree = "<group>"; };
 		A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBackgroundViewApexBridge.m; sourceTree = "<group>"; };
 		A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotion.swift; sourceTree = "<group>"; };
 		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
-		F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeSwiftUIMigrationTests.swift; sourceTree = "<group>"; };
+		A6B710003020000100000001 /* AppRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRemoteImage.swift; sourceTree = "<group>"; };
 		A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceMessageSending.swift; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
@@ -1169,8 +1141,6 @@
 		F21302202F0C6619006E71AB /* BBNavigationBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBNavigationBar.h; sourceTree = "<group>"; };
 		F21302212F0C6629006E71AB /* BBNavigationBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBNavigationBar.m; sourceTree = "<group>"; };
 		F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavBarTitleView.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.m"; sourceTree = SOURCE_ROOT; };
-		F2137EC12FECAE410021FFD5 /* PPHomeProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeProviderCategoryPillCell.h; sourceTree = "<group>"; };
-		F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeProviderCategoryPillCell.m; sourceTree = "<group>"; };
 		F21391D12D8BC16200B59E5B /* UIButton+PressAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIButton+PressAnimation.h"; sourceTree = "<group>"; };
 		F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIButton+PressAnimation.m"; sourceTree = "<group>"; };
 		F21770792EEBA63E0078C590 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPMenuHelper.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.m"; sourceTree = SOURCE_ROOT; };
@@ -1400,8 +1370,6 @@
 		F22ED2472FAA101F72C2B /* PPNovaFloatingInputBarView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaFloatingInputBarView.h; sourceTree = "<group>"; };
 		F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaFloatingInputBarView.m; sourceTree = "<group>"; };
 		F22F1B472F79947A00328BF3 /* GoogleMapsCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GoogleMapsCore.xcframework; path = Pods/GoogleMaps/Maps/Frameworks/GoogleMapsCore.xcframework; sourceTree = "<group>"; };
-		F233B439300C4F4600D55489 /* PPHomeItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeItem.h; sourceTree = "<group>"; };
-		F233B43A300C4F4600D55489 /* PPHomeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeItem.m; sourceTree = "<group>"; };
 		F233B442300C557F00D55489 /* PPBannerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannerCell.h; sourceTree = "<group>"; };
 		F233B443300C557F00D55489 /* PPBannerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBannerCell.m; sourceTree = "<group>"; };
 		F233B445300C72D900D55489 /* ModernSegmentedControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernSegmentedControl.swift; sourceTree = "<group>"; };
@@ -1492,10 +1460,6 @@
 		F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavigationController.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.m"; sourceTree = SOURCE_ROOT; };
 		F25373D52E32E3B400CD93E7 /* LeaveFeedbackViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LeaveFeedbackViewController.h; sourceTree = "<group>"; };
 		F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LeaveFeedbackViewController.m; sourceTree = "<group>"; };
-		F253FA672F07708100323CB4 /* PPHomeLayoutManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeLayoutManager.h; sourceTree = "<group>"; };
-		F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeLayoutManager.m; sourceTree = "<group>"; };
-		F253FA6B2F082EF800323CB4 /* PPCategoryCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCategoryCardCell.h; sourceTree = "<group>"; };
-		F253FA6C2F082F1900323CB4 /* PPCategoryCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCategoryCardCell.m; sourceTree = "<group>"; };
 		F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserMenuViewController.h; sourceTree = "<group>"; };
 		F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserMenuViewController.m; sourceTree = "<group>"; };
 		F25971AC2D1BEF3F00708763 /* ArchiveManagerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchiveManagerVC.h; sourceTree = "<group>"; };
@@ -1524,19 +1488,8 @@
 		F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormPhoneCodeItem.m; sourceTree = "<group>"; };
 		F25DF8A52D60A79F0051EAFF /* NSString+Ex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSString+Ex.h"; sourceTree = "<group>"; };
 		F25DF8A62D60A79F0051EAFF /* NSString+Ex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSString+Ex.m"; sourceTree = "<group>"; };
-		F25E7FF02EFF2B680089F659 /* PPHomeModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeModels.h; sourceTree = "<group>"; };
-		F25E7FF12EFF2B970089F659 /* PPHomeModels.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeModels.m; sourceTree = "<group>"; };
 		F25E7FF52EFF84A90089F659 /* PPHomeHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeHelper.h; sourceTree = "<group>"; };
 		F25E7FF62EFF84A90089F659 /* PPHomeHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeHelper.m; sourceTree = "<group>"; };
-		F25E80042F0048F90089F659 /* PPCarouselItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCarouselItem.h; sourceTree = "<group>"; };
-		F25E80052F0049120089F659 /* PPCarouselItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCarouselItem.m; sourceTree = "<group>"; };
-		F25E80072F0049220089F659 /* PPCarouselCollectionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCarouselCollectionCell.h; sourceTree = "<group>"; };
-		F25E80082F0049490089F659 /* PPCarouselCollectionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCarouselCollectionCell.m; sourceTree = "<group>"; };
-		F25E800A2F0049690089F659 /* PPCarouselView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCarouselView.h; sourceTree = "<group>"; };
-		F25E800B2F0049740089F659 /* PPCarouselView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCarouselView.m; sourceTree = "<group>"; };
-		F25E800D2F004BF70089F659 /* PPCarouselContainerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCarouselContainerCell.h; sourceTree = "<group>"; };
-		F25E800E2F004C080089F659 /* PPCarouselContainerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCarouselContainerCell.m; sourceTree = "<group>"; };
-		A17E27000100000000000001 /* PPSectionHeaderSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSectionHeaderSwiftUI.swift; sourceTree = "<group>"; };
 		F26024842EB60B75006534B4 /* PPCartTableCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartTableCell.h; sourceTree = "<group>"; };
 		F26024852EB60B95006534B4 /* PPCartTableCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartTableCell.m; sourceTree = "<group>"; };
 		F26045362CB6EC7500FB7FBC /* selectArchiveVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = selectArchiveVC.h; sourceTree = "<group>"; };
@@ -1801,6 +1754,18 @@
 		F27FAE992D2F363200EA6B56 /* UIView+WebVideoCache.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+WebVideoCache.m"; sourceTree = "<group>"; };
 		F27FC16E2C52F63B007B855C /* selectTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = selectTableViewCell.h; sourceTree = "<group>"; };
 		F27FC16F2C52F63B007B855C /* selectTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = selectTableViewCell.m; sourceTree = "<group>"; };
+		F281B3FC301A5AB600040E59 /* PPHomeDataBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeDataBridge.h; sourceTree = "<group>"; };
+		F281B3FD301A5AB600040E59 /* PPHomeDataBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeDataBridge.m; sourceTree = "<group>"; };
+		F281B3FF301A5AB600040E59 /* HomeModelAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeModelAdapter.swift; sourceTree = "<group>"; };
+		F281B400301A5AB600040E59 /* HomeRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeRepository.swift; sourceTree = "<group>"; };
+		F281B402301A5AB600040E59 /* PPHomeHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeHostingController.swift; sourceTree = "<group>"; };
+		F281B404301A5AB600040E59 /* HomeRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeRouter.swift; sourceTree = "<group>"; };
+		F281B406301A5AB600040E59 /* HomeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeStore.swift; sourceTree = "<group>"; };
+		F281B407301A5AB600040E59 /* HomeViewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewState.swift; sourceTree = "<group>"; };
+		F281B409301A5AB600040E59 /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeComponents.swift; sourceTree = "<group>"; };
+		F281B40A301A5AB600040E59 /* HomeHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeroView.swift; sourceTree = "<group>"; };
+		F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeUniversalCard.swift; sourceTree = "<group>"; };
+		F281B40C301A5AB600040E59 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F281B4692FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormRowFullWidthTextFieldCell.h; sourceTree = "<group>"; };
 		F281B46A2FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormRowFullWidthTextFieldCell.m; sourceTree = "<group>"; };
 		F281B46C2FCB6735009118F2 /* PPDiscountBadge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDiscountBadge.h; sourceTree = "<group>"; };
@@ -1890,8 +1855,6 @@
 		F28CBB6B2D3077F0002993F0 /* SettingVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SettingVC.m; sourceTree = "<group>"; };
 		F28D583E2E1958F00055DAED /* OrderCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderCell.h; sourceTree = "<group>"; };
 		F28D583F2E1958F00055DAED /* OrderItemCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderItemCell.m; sourceTree = "<group>"; };
-		F28DD58B2F0195AA00FF2671 /* PPHomeServiceItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeServiceItem.h; sourceTree = "<group>"; };
-		F28DD58C2F0195B900FF2671 /* PPHomeServiceItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeServiceItem.m; sourceTree = "<group>"; };
 		F28DD58E2F04323500FF2671 /* HJCarouselViewLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HJCarouselViewLayout.h; sourceTree = "<group>"; };
 		F28DD58F2F04323500FF2671 /* HJCarouselViewLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HJCarouselViewLayout.m; sourceTree = "<group>"; };
 		F28DD5A02F049BFE00FF2671 /* PPDataViewVM.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDataViewVM.h; sourceTree = "<group>"; };
@@ -1918,7 +1881,6 @@
 		F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatHeaderView.m; sourceTree = "<group>"; };
 		F294A769301232DD005EFBC7 /* PPLegacyPetAdViewerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPLegacyPetAdViewerRepository.swift; sourceTree = "<group>"; };
 		F294A76D301232DD005EFBC7 /* PPPetAdHeroGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdHeroGallery.swift; sourceTree = "<group>"; };
-		F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdImageLoader.swift; sourceTree = "<group>"; };
 		F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdImageLoadState.swift; sourceTree = "<group>"; };
 		F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInlineStateView.swift; sourceTree = "<group>"; };
 		F294A773301232DD005EFBC7 /* PPPetAdLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdLocalization.swift; sourceTree = "<group>"; };
@@ -2086,8 +2048,6 @@
 		F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareVetViewrVC.m; sourceTree = "<group>"; };
 		F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeInsetLabel.h; sourceTree = "<group>"; };
 		F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeInsetLabel.m; sourceTree = "<group>"; };
-		F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumSearchCell.h; sourceTree = "<group>"; };
-		F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumSearchCell.m; sourceTree = "<group>"; };
 		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPFactory.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m"; sourceTree = SOURCE_ROOT; };
 		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPAdditions.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m"; sourceTree = SOURCE_ROOT; };
 		F2AB48702C72CF3C00D88603 /* JGProgressHUD-Defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "JGProgressHUD-Defines.h"; sourceTree = "<group>"; };
@@ -2163,6 +2123,11 @@
 		F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerComponents.swift; sourceTree = "<group>"; };
 		F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerScreen.swift; sourceTree = "<group>"; };
 		F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerHostingController.swift; sourceTree = "<group>"; };
+		F2ACA9F5301A93C000F55032 /* NovaLoader.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NovaLoader.json; sourceTree = "<group>"; };
+		F2ACA9F6301A93C000F55032 /* PetMedicine.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PetMedicine.json; sourceTree = "<group>"; };
+		F2ACA9F7301A93C000F55032 /* thinking.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = thinking.json; sourceTree = "<group>"; };
+		F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
+		F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSectionHeaderSwiftUI.swift; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
 		F2AE2DA62CFD485E00D09E90 /* CALayer+TTSpringAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CALayer+TTSpringAnimation.h"; sourceTree = "<group>"; };
 		F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CALayer+TTSpringAnimation.m"; sourceTree = "<group>"; };
@@ -2265,8 +2230,6 @@
 		F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsLayout.m; sourceTree = "<group>"; };
 		F2BC30D42E43E37A003F603D /* UIScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIScreen.h; sourceTree = "<group>"; };
 		F2BC30D52E43E385003F603D /* UIScreen.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIScreen.m; sourceTree = "<group>"; };
-		F2BC865A2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeSmartSearchTitleView.h; sourceTree = "<group>"; };
-		F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeSmartSearchTitleView.m; sourceTree = "<group>"; };
 		F2C085532F935AF8001C27DA /* PPAuditLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuditLogger.h; sourceTree = "<group>"; };
 		F2C085542F935AF8001C27DA /* PPAuditLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuditLogger.m; sourceTree = "<group>"; };
 		F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NovaConfirmationCell.h; sourceTree = "<group>"; };
@@ -2281,8 +2244,6 @@
 		F2C1A1122F00111100C1A112 /* StateModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StateModel.h; sourceTree = "<group>"; };
 		F2C1A1132F00111100C1A113 /* StateModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StateModel.m; sourceTree = "<group>"; };
 		F2C223C22F061B75006DB76A /* EnumValues.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EnumValues.h; sourceTree = "<group>"; };
-		F2C223C42F061DD4006DB76A /* PPHomeFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeFunc.h; sourceTree = "<group>"; };
-		F2C223C52F061DD4006DB76A /* PPHomeFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeFunc.m; sourceTree = "<group>"; };
 		F2C223CA2F061EE4006DB76A /* PPUniversalCellViewModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellViewModel.h; sourceTree = "<group>"; };
 		F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellViewModel.m; sourceTree = "<group>"; };
 		F2C2FE082D44535E00BB8828 /* PrefixHeader.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
@@ -2360,11 +2321,10 @@
 		F2D2BC662EB71802000A13D1 /* PPSelectPaymentVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSelectPaymentVC.h; sourceTree = "<group>"; };
 		F2D2BC672EB71813000A13D1 /* PPSelectPaymentVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSelectPaymentVC.m; sourceTree = "<group>"; };
 		F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedAddToCartButton.swift; sourceTree = "<group>"; };
+		F2D3FD9A3016601F003279B3 /* PPAddToCartSuccessToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAddToCartSuccessToast.swift; sourceTree = "<group>"; };
 		F2D44D1F2F3D611200999337 /* map_dark_style.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = map_dark_style.json; sourceTree = "<group>"; };
 		F2D5A7B42F95C0A1009B6001 /* PPHomePresentationTokens.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePresentationTokens.h; sourceTree = "<group>"; };
 		F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
-		F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModernHomeActionCell.h; sourceTree = "<group>"; };
-		F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModernHomeActionCell.m; sourceTree = "<group>"; };
 		F2D5A8E02F970001009B6001 /* FullScreenImageViewerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FullScreenImageViewerController.h; sourceTree = "<group>"; };
 		F2D5A8E12F970001009B6001 /* FullScreenImageViewerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FullScreenImageViewerController.m; sourceTree = "<group>"; };
 		F2D5A8E32F970001009B6001 /* PPMediaPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMediaPreviewView.swift; sourceTree = "<group>"; };
@@ -2385,21 +2345,6 @@
 		F2DF5DCF2EFC8E80009C7B6F /* PPRootTabBarController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRootTabBarController.m; sourceTree = "<group>"; };
 		F2DF5DD22EFC9145009C7B6F /* PPHomeViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeViewController.h; sourceTree = "<group>"; };
 		F2DF5DD32EFC917F009C7B6F /* PPHomeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeViewController.m; sourceTree = "<group>"; };
-		F30000000000000000000001 /* PPHomeDataBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Bridge/PPHomeDataBridge.h; sourceTree = "<group>"; };
-		F30000000000000000000002 /* PPHomeDataBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Bridge/PPHomeDataBridge.m; sourceTree = "<group>"; };
-		F30000000000000000000003 /* HomeViewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State/HomeViewState.swift; sourceTree = "<group>"; };
-		F30000000000000000000004 /* HomeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State/HomeStore.swift; sourceTree = "<group>"; };
-		F30000000000000000000005 /* HomeRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/HomeRepository.swift; sourceTree = "<group>"; };
-		F30000000000000000000006 /* HomeModelAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/HomeModelAdapter.swift; sourceTree = "<group>"; };
-		F30000000000000000000007 /* HomeRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Routing/HomeRouter.swift; sourceTree = "<group>"; };
-		F30000000000000000000008 /* PPHomeHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hosting/PPHomeHostingController.swift; sourceTree = "<group>"; };
-		F30000000000000000000009 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeView.swift; sourceTree = "<group>"; };
-		F3000000000000000000000A /* HomeHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeHeroView.swift; sourceTree = "<group>"; };
-		F3000000000000000000000B /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeComponents.swift; sourceTree = "<group>"; };
-		F3000000000000000000000C /* HomeUniversalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeUniversalCard.swift; sourceTree = "<group>"; };
-		F34000000000000000000001 /* HomePetPulse.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePetPulse.json; sourceTree = "<group>"; };
-		F34000000000000000000002 /* HomeCareReminder.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomeCareReminder.json; sourceTree = "<group>"; };
-		F34000000000000000000003 /* HomePromotionSpark.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePromotionSpark.json; sourceTree = "<group>"; };
 		F2DF5DD52EFC92BA009C7B6F /* PPOverlayCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOverlayCoordinator.h; sourceTree = "<group>"; };
 		F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOverlayCoordinator.m; sourceTree = "<group>"; };
 		F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIViewController+PPNavBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m"; sourceTree = SOURCE_ROOT; };
@@ -2510,8 +2455,6 @@
 		F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellHelper.m; sourceTree = "<group>"; };
 		F2F44A102FA7014000D19D01 /* PPHomeLocationTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeLocationTitleView.h; sourceTree = "<group>"; };
 		F2F44A112FA7014000D19D01 /* PPHomeLocationTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeLocationTitleView.m; sourceTree = "<group>"; };
-		F2F465F02F3B8C8200E5FB60 /* PPHomeHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeHeroCell.h; sourceTree = "<group>"; };
-		F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeHeroCell.m; sourceTree = "<group>"; };
 		F2F548B7301868C100323EC4 /* GlassRootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassRootTabView.swift; sourceTree = "<group>"; };
 		F2F548B930186C4A00323EC4 /* PPServiceViewerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPServiceViewerComponents.swift; sourceTree = "<group>"; };
 		F2F548BA30186C4A00323EC4 /* PPServiceViewerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPServiceViewerModels.swift; sourceTree = "<group>"; };
@@ -2556,6 +2499,10 @@
 		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
 		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
+		F34000000000000000000001 /* HomePetPulse.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePetPulse.json; sourceTree = "<group>"; };
+		F34000000000000000000002 /* HomeCareReminder.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomeCareReminder.json; sourceTree = "<group>"; };
+		F34000000000000000000003 /* HomePromotionSpark.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePromotionSpark.json; sourceTree = "<group>"; };
+		F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeSwiftUIMigrationTests.swift; sourceTree = "<group>"; };
 		F56AEC9C060B7F98E8DD47E0 /* Speech.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoicePermissionManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -2586,6 +2533,7 @@
 				F2FFDA132FCDCFC00025B5A9 /* FirebaseFunctions in Frameworks */,
 				F2AF383E300AAFD800FBF82D /* PurePetsLayoutKit in Frameworks */,
 				F251008F2F73C2D8008F6AFE /* FirebaseMLModelDownloader in Frameworks */,
+				F2ACA9FF301ACF4A00F55032 /* Kingfisher in Frameworks */,
 				F251008B2F73C2D8008F6AFE /* FirebaseFunctions in Frameworks */,
 				F2AF3841300AB06200FBF82D /* PurePetsLayoutKit in Frameworks */,
 				F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */,
@@ -2662,6 +2610,22 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		A6B710023020000100000001 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A6B710033020000100000001 /* Components */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A6B710033020000100000001 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				A6B710003020000100000001 /* AppRemoteImage.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 		EDC81D5574B271879310488F /* NovaVoiceKit */ = {
 			isa = PBXGroup;
 			children = (
@@ -2683,36 +2647,9 @@
 		F202A0722EFF15B30048D4C2 /* HomeCells */ = {
 			isa = PBXGroup;
 			children = (
-				F2137EC12FECAE410021FFD5 /* PPHomeProviderCategoryPillCell.h */,
-				F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */,
-				A11CE2302FEB200000000001 /* PPHomeUltraPremuimProviderCategoryPillCell.h */,
-				A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */,
-				A11CE2502FEB500000000001 /* PPHomeProviderUnifiedCategoryCardCell.h */,
-				A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */,
-				F2BC865A2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.h */,
-				F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */,
-				A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */,
-				A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */,
+				F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */,
 				F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */,
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
-				A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */,
-				09603B47A72C47BFB31BFF32 /* TempGlassRootTabHostingView.swift */,
-				24B8F4540D724EF68603A0F1 /* TempCartLineHostingView.swift */,
-				F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */,
-				F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */,
-				A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */,
-				A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */,
-				F2F465F02F3B8C8200E5FB60 /* PPHomeHeroCell.h */,
-				F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */,
-				F253FA6B2F082EF800323CB4 /* PPCategoryCardCell.h */,
-				F253FA6C2F082F1900323CB4 /* PPCategoryCardCell.m */,
-				F28DD58B2F0195AA00FF2671 /* PPHomeServiceItem.h */,
-				F28DD58C2F0195B900FF2671 /* PPHomeServiceItem.m */,
-				F25E7FF02EFF2B680089F659 /* PPHomeModels.h */,
-				F25E7FF12EFF2B970089F659 /* PPHomeModels.m */,
-				F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */,
-				F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */,
-				F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */,
 			);
 			path = HomeCells;
 			sourceTree = "<group>";
@@ -3622,8 +3559,6 @@
 		F25E7FF32EFF71FE0089F659 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
-				F233B439300C4F4600D55489 /* PPHomeItem.h */,
-				F233B43A300C4F4600D55489 /* PPHomeItem.m */,
 				F20956772F8567B6007C4ABA /* PPNotificationsHubViewController.h */,
 				F20956782F8567C2007C4ABA /* PPNotificationsHubViewController.m */,
 				F25D68CE2F829B2800700694 /* PPHomeCartNavButton.h */,
@@ -3632,32 +3567,12 @@
 				F2F44A112FA7014000D19D01 /* PPHomeLocationTitleView.m */,
 				F207D0B22F14988500BA6214 /* PPImageLoaderManager.h */,
 				F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */,
-				F253FA672F07708100323CB4 /* PPHomeLayoutManager.h */,
-				F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */,
-				A17E27000100000000000001 /* PPSectionHeaderSwiftUI.swift */,
 				F25E7FF52EFF84A90089F659 /* PPHomeHelper.h */,
 				F25E7FF62EFF84A90089F659 /* PPHomeHelper.m */,
-				F2C223C42F061DD4006DB76A /* PPHomeFunc.h */,
-				F2C223C52F061DD4006DB76A /* PPHomeFunc.m */,
 				F2D5A7B42F95C0A1009B6001 /* PPHomePresentationTokens.h */,
 				F2B641B82F4A95290092C2BF /* Stories */,
 			);
 			path = Helpers;
-			sourceTree = "<group>";
-		};
-		F25E80032F0048440089F659 /* PPCarsoul */ = {
-			isa = PBXGroup;
-			children = (
-				F25E800D2F004BF70089F659 /* PPCarouselContainerCell.h */,
-				F25E800E2F004C080089F659 /* PPCarouselContainerCell.m */,
-				F25E800A2F0049690089F659 /* PPCarouselView.h */,
-				F25E800B2F0049740089F659 /* PPCarouselView.m */,
-				F25E80072F0049220089F659 /* PPCarouselCollectionCell.h */,
-				F25E80082F0049490089F659 /* PPCarouselCollectionCell.m */,
-				F25E80052F0049120089F659 /* PPCarouselItem.m */,
-				F25E80042F0048F90089F659 /* PPCarouselItem.h */,
-			);
-			path = PPCarsoul;
 			sourceTree = "<group>";
 		};
 		F260D3202C7B36EF0098C8F0 /* Assets */ = {
@@ -4182,6 +4097,61 @@
 			path = JPVideoPlayer;
 			sourceTree = "<group>";
 		};
+		F281B3FE301A5AB600040E59 /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				F281B3FC301A5AB600040E59 /* PPHomeDataBridge.h */,
+				F281B3FD301A5AB600040E59 /* PPHomeDataBridge.m */,
+			);
+			path = Bridge;
+			sourceTree = "<group>";
+		};
+		F281B401301A5AB600040E59 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				F281B3FF301A5AB600040E59 /* HomeModelAdapter.swift */,
+				F281B400301A5AB600040E59 /* HomeRepository.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		F281B403301A5AB600040E59 /* Hosting */ = {
+			isa = PBXGroup;
+			children = (
+				F281B402301A5AB600040E59 /* PPHomeHostingController.swift */,
+			);
+			path = Hosting;
+			sourceTree = "<group>";
+		};
+		F281B405301A5AB600040E59 /* Routing */ = {
+			isa = PBXGroup;
+			children = (
+				F281B404301A5AB600040E59 /* HomeRouter.swift */,
+			);
+			path = Routing;
+			sourceTree = "<group>";
+		};
+		F281B408301A5AB600040E59 /* State */ = {
+			isa = PBXGroup;
+			children = (
+				F281B406301A5AB600040E59 /* HomeStore.swift */,
+				F281B407301A5AB600040E59 /* HomeViewState.swift */,
+			);
+			path = State;
+			sourceTree = "<group>";
+		};
+		F281B40D301A5AB600040E59 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */,
+				F281B409301A5AB600040E59 /* HomeComponents.swift */,
+				F281B40A301A5AB600040E59 /* HomeHeroView.swift */,
+				F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */,
+				F281B40C301A5AB600040E59 /* HomeView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		F281B46B2FCB6735009118F2 /* PPLeftRight */ = {
 			isa = PBXGroup;
 			children = (
@@ -4197,6 +4167,7 @@
 				F2F548B7301868C100323EC4 /* GlassRootTabView.swift */,
 				F223898F3017C8CA001E5DBB /* CartLineController.swift */,
 				F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */,
+				F2D3FD9A3016601F003279B3 /* PPAddToCartSuccessToast.swift */,
 				F281B46B2FCB6735009118F2 /* PPLeftRight */,
 				F281B46C2FCB6735009118F2 /* PPDiscountBadge.h */,
 				F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */,
@@ -4392,7 +4363,6 @@
 				F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */,
 				F294A7D1301232DD005EFBC7 /* PPPetAdHeaderCard.swift */,
 				F294A76D301232DD005EFBC7 /* PPPetAdHeroGallery.swift */,
-				F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */,
 				F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */,
 				F294A7D2301232DD005EFBC7 /* PPPetAdInfoGrid.swift */,
 				F294A7D3301232DD005EFBC7 /* PPPetAdInfoPillView.swift */,
@@ -4841,6 +4811,7 @@
 				5567B37190496A6732104BBC /* PPRatingView.m */,
 				EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */,
 				F56AEC9C060B7F98E8DD47E0 /* Speech.framework */,
+				F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";
@@ -5190,6 +5161,7 @@
 		F2D0C5D72C4BE1B80023CE53 /* Pure Pets */ = {
 			isa = PBXGroup;
 			children = (
+				A6B710023020000100000001 /* Shared */,
 				F28A0A0B2EEA3BFD00EE5055 /* FireData */,
 				F27A48272EE07C930044040E /* Bridges */,
 				F28F03922D95E384008F962A /* Pure Pets.entitlements */,
@@ -5349,7 +5321,6 @@
 				F213021C2F0C6546006E71AB /* Search */,
 				F28DD5992F049B7900FF2671 /* PPDataView */,
 				3378F680D53C80BADF309B7D /* PetCare */,
-				F25E80032F0048440089F659 /* PPCarsoul */,
 				F25E7FF32EFF71FE0089F659 /* Helpers */,
 				F202A0722EFF15B30048D4C2 /* HomeCells */,
 				F2DF5DD52EFC92BA009C7B6F /* PPOverlayCoordinator.h */,
@@ -5362,25 +5333,6 @@
 				F2DF5DCD2EFC8E70009C7B6F /* NewAppVC.m */,
 			);
 			path = ModrenAppVC;
-			sourceTree = "<group>";
-		};
-		F32000000000000000000001 /* SwiftUIHome */ = {
-			isa = PBXGroup;
-			children = (
-				F30000000000000000000001 /* PPHomeDataBridge.h */,
-				F30000000000000000000002 /* PPHomeDataBridge.m */,
-				F30000000000000000000003 /* HomeViewState.swift */,
-				F30000000000000000000004 /* HomeStore.swift */,
-				F30000000000000000000005 /* HomeRepository.swift */,
-				F30000000000000000000006 /* HomeModelAdapter.swift */,
-				F30000000000000000000007 /* HomeRouter.swift */,
-				F30000000000000000000008 /* PPHomeHostingController.swift */,
-				F30000000000000000000009 /* HomeView.swift */,
-				F3000000000000000000000A /* HomeHeroView.swift */,
-				F3000000000000000000000B /* HomeComponents.swift */,
-				F3000000000000000000000C /* HomeUniversalCard.swift */,
-			);
-			path = SwiftUIHome;
 			sourceTree = "<group>";
 		};
 		F2E1345A2DDC6CBD006770E5 /* Accessories */ = {
@@ -5637,6 +5589,9 @@
 		F2FE42C42D06EEE00082D346 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				F2ACA9F5301A93C000F55032 /* NovaLoader.json */,
+				F2ACA9F6301A93C000F55032 /* PetMedicine.json */,
+				F2ACA9F7301A93C000F55032 /* thinking.json */,
 				F34000000000000000000001 /* HomePetPulse.json */,
 				F34000000000000000000002 /* HomeCareReminder.json */,
 				F34000000000000000000003 /* HomePromotionSpark.json */,
@@ -5653,6 +5608,19 @@
 				F2F630882F7BC98A00CC2E61 /* Beiruti-Black.ttf */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		F32000000000000000000001 /* SwiftUIHome */ = {
+			isa = PBXGroup;
+			children = (
+				F281B3FE301A5AB600040E59 /* Bridge */,
+				F281B401301A5AB600040E59 /* Data */,
+				F281B403301A5AB600040E59 /* Hosting */,
+				F281B405301A5AB600040E59 /* Routing */,
+				F281B408301A5AB600040E59 /* State */,
+				F281B40D301A5AB600040E59 /* Views */,
+			);
+			path = SwiftUIHome;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -5754,6 +5722,7 @@
 				F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */,
 				F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */,
+				F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
@@ -5775,6 +5744,9 @@
 				F33000000000000000000002 /* HomeCareReminder.json in Resources */,
 				F33000000000000000000003 /* HomePromotionSpark.json in Resources */,
 				F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */,
+				F2ACA9F8301A93C000F55032 /* PetMedicine.json in Resources */,
+				F2ACA9F9301A93C000F55032 /* NovaLoader.json in Resources */,
+				F2ACA9FA301A93C000F55032 /* thinking.json in Resources */,
 				F278DA612F9DCB0E00FEFA94 /* GoogleService-Info.plist in Resources */,
 				F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */,
 				F20E9D6E2CF3193B00B810EB /* button_background_icloud_normal@2x.png in Resources */,
@@ -5940,6 +5912,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A6B710013020000100000001 /* AppRemoteImage.swift in Sources */,
 				F2E900000000000000000066 /* PPRootLegacyAdapter.m in Sources */,
 				F2E900000000000000000068 /* PPRootNavigationDelegateProxy.swift in Sources */,
 				F2E90000000000000000006A /* PPRootObjCAdapter.swift in Sources */,
@@ -5975,7 +5948,6 @@
 				F25D68CC2F82773300700694 /* PPFirestoreErrorNotifier.m in Sources */,
 				F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */,
 				F2977D602E4ABB6B003A7005 /* AppSearchHelper.m in Sources */,
-				A17E27000200000000000002 /* PPSectionHeaderSwiftUI.swift in Sources */,
 				F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */,
 				F2D5A8E22F970001009B6001 /* FullScreenImageViewerController.m in Sources */,
 				F2D5A8E42F970001009B6001 /* PPMediaPreviewView.swift in Sources */,
@@ -5989,11 +5961,21 @@
 				F2449C432D0DD4FD00DB6BBC /* MainKindsModel.m in Sources */,
 				F2AB48932C72CF3C00D88603 /* JGProgressHUDIndicatorView.m in Sources */,
 				F2AB48CD2C72D43D00D88603 /* KafkaHeadRefreshControl.m in Sources */,
-				F25E7FF22EFF2B970089F659 /* PPHomeModels.m in Sources */,
 				F2CDB0B02DCCD1030009E210 /* PetAdManager.m in Sources */,
 				F299525C2F2C3CA100F50031 /* PPPlaybackWaveformView.m in Sources */,
 				F2AB488F2C72CF3C00D88603 /* JGProgressHUDFadeAnimation.m in Sources */,
 				F20F315A2D17717F001D1D57 /* NSDate+MinimalTimeAgo.m in Sources */,
+				F281B40E301A5AB600040E59 /* HomeView.swift in Sources */,
+				F281B40F301A5AB600040E59 /* PPHomeDataBridge.m in Sources */,
+				F281B410301A5AB600040E59 /* HomeComponents.swift in Sources */,
+				F281B411301A5AB600040E59 /* HomeUniversalCard.swift in Sources */,
+				F281B412301A5AB600040E59 /* HomeRepository.swift in Sources */,
+				F281B413301A5AB600040E59 /* HomeStore.swift in Sources */,
+				F281B414301A5AB600040E59 /* PPHomeHostingController.swift in Sources */,
+				F281B415301A5AB600040E59 /* HomeRouter.swift in Sources */,
+				F281B416301A5AB600040E59 /* HomeHeroView.swift in Sources */,
+				F281B417301A5AB600040E59 /* HomeViewState.swift in Sources */,
+				F281B418301A5AB600040E59 /* HomeModelAdapter.swift in Sources */,
 				F20F315B2D17717F001D1D57 /* RelativeDateDescriptor.m in Sources */,
 				F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */,
 				F2AB48D52C72D43D00D88603 /* KafkaRingIndicatorFooter.m in Sources */,
@@ -6028,7 +6010,6 @@
 				F28A0A0A2EE9C96B00EE5055 /* EllipsePageControl.h in Sources */,
 				F273146E2F31169000FFA0B8 /* PPOrder.m in Sources */,
 				F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */,
-				F253FA6D2F082F2F00323CB4 /* PPCategoryCardCell.m in Sources */,
 				F2DF5DD12EFC8EAA009C7B6F /* NewAppVC.m in Sources */,
 				F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */,
 				F2B641BE2F4A95E60092C2BF /* PPStoriesManager.m in Sources */,
@@ -6068,7 +6049,6 @@
 				F271467A2CCE6B5300F7F3BA /* XLFormRowNavigationAccessoryView.m in Sources */,
 				F27714AA2ED775A700B1D062 /* QBAssetsViewController.m in Sources */,
 				F27714AB2ED775A700B1D062 /* QBVideoIndicatorView.m in Sources */,
-				F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */,
 				F27714AC2ED775A700B1D062 /* QBAssetCell.m in Sources */,
 				F27714AD2ED775A700B1D062 /* QBSlomoIconView.m in Sources */,
 				F27714AE2ED775A700B1D062 /* QBAlbumsViewController.m in Sources */,
@@ -6076,34 +6056,18 @@
 				F27714B02ED775A700B1D062 /* QBImagePickerController.m in Sources */,
 				F27714B12ED775A700B1D062 /* QBCheckmarkView.m in Sources */,
 				F27714B22ED775A700B1D062 /* QBVideoIconView.m in Sources */,
-				F233B43B300C4F4600D55489 /* PPHomeItem.m in Sources */,
 				F2E144592EAB3E3E0076C04A /* CollectionViewAnimation.m in Sources */,
 				F271467B2CCE6B5300F7F3BA /* XLFormSegmentedCell.m in Sources */,
 				F271467C2CCE6B5300F7F3BA /* XLFormOptionsObject.m in Sources */,
 				F271467D2CCE6B5300F7F3BA /* XLFormLeftRightSelectorCell.m in Sources */,
-				F2A9E80E2FB3570200B2729F /* PPHomePremiumSearchCell.m in Sources */,
-				A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */,
-				A11CE2502FEB500000000003 /* PPHomeProviderUnifiedCategoryCardCell.m in Sources */,
 				F2F6C8B32E8D7B430092D85D /* SplashViewController.m in Sources */,
 				F271467E2CCE6B5300F7F3BA /* NSObject+XLFormAdditions.m in Sources */,
 				F2F750CB2E7C605E00BACFA8 /* PPS.m in Sources */,
 				F2E134582DDC6C93006770E5 /* PetAccessory.m in Sources */,
 				F271467F2CCE6B5300F7F3BA /* XLFormRegexValidator.m in Sources */,
 				F27146802CCE6B5300F7F3BA /* XLFormTextView.m in Sources */,
-				F28DD58D2F0195B900FF2671 /* PPHomeServiceItem.m in Sources */,
 				F27146812CCE6B5300F7F3BA /* XLFormRowDescriptor.m in Sources */,
 				F2DF5DD42EFC9196009C7B6F /* PPHomeViewController.m in Sources */,
-				F31000000000000000000001 /* PPHomeDataBridge.m in Sources */,
-				F31000000000000000000002 /* HomeViewState.swift in Sources */,
-				F31000000000000000000003 /* HomeStore.swift in Sources */,
-				F31000000000000000000004 /* HomeRepository.swift in Sources */,
-				F31000000000000000000005 /* HomeModelAdapter.swift in Sources */,
-				F31000000000000000000006 /* HomeRouter.swift in Sources */,
-				F31000000000000000000007 /* PPHomeHostingController.swift in Sources */,
-				F31000000000000000000008 /* HomeView.swift in Sources */,
-				F31000000000000000000009 /* HomeHeroView.swift in Sources */,
-				F3100000000000000000000A /* HomeComponents.swift in Sources */,
-				F3100000000000000000000B /* HomeUniversalCard.swift in Sources */,
 				B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */,
 				F283FABC2E542933001EF0BA /* UserContactView.m in Sources */,
 				F2B6F7AA2E37CE3E00AC0DAE /* ChatBubbleView.m in Sources */,
@@ -6118,10 +6082,8 @@
 				F27146862CCE6B5300F7F3BA /* XLFormPickerCell.m in Sources */,
 				F27146872CCE6B5300F7F3BA /* XLFormStepCounterCell.m in Sources */,
 				F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */,
-				A17E26000200000000000002 /* PPHomeOrderStatusSwiftUI.swift in Sources */,
 				F27146882CCE6B5300F7F3BA /* XLFormValidationStatus.m in Sources */,
 				F23DDE632F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m in Sources */,
-				F2C223C62F061DD4006DB76A /* PPHomeFunc.m in Sources */,
 				F27146892CCE6B5300F7F3BA /* XLFormValidator.m in Sources */,
 				F28A1CC92E07186E00D1E187 /* StepperFormCell.m in Sources */,
 				F27314952F319F8B00FFA0B8 /* PPAddressPickerView.m in Sources */,
@@ -6178,7 +6140,6 @@
 				F2F807CD2E8BEBE90034FF2D /* PPBannersManager.m in Sources */,
 				F27314772F3117D800FFA0B8 /* PPOrderManager.m in Sources */,
 				F21D1B5F2E9C72B600220F72 /* PPUniversalCell.m in Sources */,
-				F25E80062F0049120089F659 /* PPCarouselItem.m in Sources */,
 				F28DD5A62F04CC6500FF2671 /* PPDataViewInput.m in Sources */,
 				F2A9034F2F9E98230097485B /* PPHomeInsetLabel.m in Sources */,
 				F2A0BBCD2F203B1E003715F0 /* TypingIndicatorView.m in Sources */,
@@ -6324,11 +6285,8 @@
 				F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */,
 				F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */,
 				F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */,
-				F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */,
-				A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */,
 				F27FA1432CE492B000A9A078 /* NullSafe.m in Sources */,
 				F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */,
-				F25E800F2F004C180089F659 /* PPCarouselContainerCell.m in Sources */,
 				F2E981EF2CBFD2A7005411D0 /* CountryCodeModel.m in Sources */,
 				F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */,
 				F291F51B2D71361E00A2B971 /* LBHamburgerButton.m in Sources */,
@@ -6380,13 +6338,13 @@
 				F2B116B32C51E48E00A77F4A /* selectTableViewController.m in Sources */,
 				F2D99F7A2E2849E400CD4552 /* ServiceViewerViewController.m in Sources */,
 				F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */,
-				A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */,
 				F26EDCEB2F26ECEF00AE10ED /* PPWaveformView.m in Sources */,
 				F2DEF00B2D6FEF2B0015B7FB /* ODRefreshControl.m in Sources */,
 				F2977D5D2E4ABB2E003A7005 /* AppSearchResultsVC.m in Sources */,
 				F25082F52DB647250082FF75 /* ItemModel.m in Sources */,
 				F20E9DAA2CF32E5300B810EB /* selectUserVC.m in Sources */,
 				F2D3FD993016601F003279B3 /* AnimatedAddToCartButton.swift in Sources */,
+				F2D3FD9B3016601F003279B3 /* PPAddToCartSuccessToast.swift in Sources */,
 				F29E72652CBD23CE00CF441B /* SKSplashIcon.m in Sources */,
 				F29E72662CBD23CE00CF441B /* SKSplashView.m in Sources */,
 				F20E9D6C2CF3193B00B810EB /* EmptyDataManager.m in Sources */,
@@ -6404,7 +6362,6 @@
 				F22C078C2EF66C2F00C00EAC /* YYWebImageManager.m in Sources */,
 				F22B21A62FC90A5400071898 /* PPNovaStreamingService.swift in Sources */,
 				F294A799301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift in Sources */,
-				F294A79A301232DD005EFBC7 /* PPPetAdImageLoader.swift in Sources */,
 				F294A79B301232DD005EFBC7 /* PPPetAdViewerBackground.swift in Sources */,
 				F294A775301232EE005EFBC7 /* PPHero.swift in Sources */,
 				F294A79C301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift in Sources */,
@@ -6493,7 +6450,6 @@
 				F22C07A62EF66C2F00C00EAC /* YYMemoryCache.m in Sources */,
 				F22C07A72EF66C2F00C00EAC /* YYThreadSafeDictionary.m in Sources */,
 				F23DDE602F8AB36F0020D4F4 /* PPHomeLocationSheetViewController.m in Sources */,
-				F25E80092F00495A0089F659 /* PPCarouselCollectionCell.m in Sources */,
 				F22C07A82EF66C2F00C00EAC /* NSObject+YYAddForARC.m in Sources */,
 				F29952662F2DB8D300F50031 /* ZYCircleProgressViewConfig.m in Sources */,
 				F29952672F2DB8D300F50031 /* ZYCircleProgressView.m in Sources */,
@@ -6582,6 +6538,8 @@
 				F2BA434B2CCA489D00943394 /* ABCellMenuView.m in Sources */,
 				F2736E9A2E827C0A00902E1C /* PPHUD.m in Sources */,
 				F20F31012D13F986001D1D57 /* ArchiveModel.m in Sources */,
+				F2ACAA01301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift in Sources */,
+				F2ACA9FC301ABCDB00F55032 /* PPMainKindsCell.swift in Sources */,
 				F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */,
 				F24F9BA82EE5D6E4002AAD27 /* MainControllerHelper.m in Sources */,
 				F240BD442D74D237004DDA6A /* BarcodeGenerator.m in Sources */,
@@ -6591,7 +6549,6 @@
 				F20F31022D13F986001D1D57 /* ArchiveDetailsModel.m in Sources */,
 				F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */,
 				F2C5F76F2CA00D3300D7897A /* AAPopupView.m in Sources */,
-				F253FA692F07708A00323CB4 /* PPHomeLayoutManager.m in Sources */,
 				F20DFEDF2EB2CB6D00318A8F /* PPAddressesManager.m in Sources */,
 				F2C223CC2F061EFD006DB76A /* PPUniversalCellViewModel.m in Sources */,
 				F2C5F7702CA00D3300D7897A /* AAMultiSelectTableViewCell.m in Sources */,
@@ -6673,7 +6630,6 @@
 				F27FAE9F2D2F363200EA6B56 /* JPGCDExtensions.m in Sources */,
 				F27FAEA02D2F363200EA6B56 /* JPVideoPlayerControlViews.m in Sources */,
 				F2E1345F2DDC6F40006770E5 /* AddNewAccessory.m in Sources */,
-				F2BC865C2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m in Sources */,
 				F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F27314982F31CE9300FFA0B8 /* CartManager.m in Sources */,
 				F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */,
@@ -6700,12 +6656,10 @@
 				F2AB48CA2C72D43D00D88603 /* KafkaCategories.m in Sources */,
 				F27D662B2E1FD8D90081943A /* BottomOptionsViewController.m in Sources */,
 				F28CB3902E4C68A6009DD547 /* AdoptPetsViewController.m in Sources */,
-				F25E800C2F0049840089F659 /* PPCarouselView.m in Sources */,
 				F2AB48D42C72D43D00D88603 /* KafkaReplicatorFooter.m in Sources */,
 				F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */,
 				F229DCC02D3B0D070015B67D /* FileUploadManager.m in Sources */,
 				F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */,
-				F2D5A7B62F95C0A1009B6001 /* PPMainKindsCell.swift in Sources */,
 				F2AB48952C72CF3C00D88603 /* JGProgressHUDRingIndicatorView.m in Sources */,
 				F2D0C5DD2C4BE1B80023CE53 /* SceneDelegate.m in Sources */,
 				F27A50C42EEDF7B0006CBE9D /* TrashCollectionViewCell.m in Sources */,
@@ -6715,7 +6669,6 @@
 				F2EF8EED2F87768700A797B3 /* PPProfileActionCell.m in Sources */,
 				F260D33C2C7C72F80098C8F0 /* selectChildCell.m in Sources */,
 				F241C4682E26A94500CC9BE9 /* VetManager.m in Sources */,
-				F2F465F22F3B8CCB00E5FB60 /* PPHomeHeroCell.m in Sources */,
 				F21A622C2D0AF04100A28792 /* LSLDatePickerDialog.m in Sources */,
 				F20ACAB32EFAF793009B4FA2 /* CityModel.m in Sources */,
 				F2882CB03012EA2800656E2F /* PPPetAdZoomableImageView.swift in Sources */,
@@ -6732,8 +6685,6 @@
 				8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */,
 				4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */,
 				7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */,
-				F2F548B5301866ED00323EC4 /* TempGlassRootTabHostingView.swift in Sources */,
-				F2F548B6301866ED00323EC4 /* TempCartLineHostingView.swift in Sources */,
 				F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */,
 				369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */,
 				BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */,
@@ -7305,6 +7256,14 @@
 				minimumVersion = 12.11.0;
 			};
 		};
+		F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.11.0;
+			};
+		};
 		F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pbalduz/swiftui-hosting-transitions";
@@ -7393,6 +7352,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F251007D2F73C2D8008F6AFE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		F2ACA9FE301ACF4A00F55032 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
 		};
 		F2AF383D300AAFD800FBF82D /* PurePetsLayoutKit */ = {
 			isa = XCSwiftPackageProductDependency;

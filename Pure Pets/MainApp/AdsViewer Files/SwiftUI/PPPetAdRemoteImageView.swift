@@ -7,37 +7,43 @@ struct PPPetAdRemoteImageView: View {
     let contentMode: ContentMode
     let accessibilityLabel: String
     let showsRetryOnFailure: Bool
+    let cacheKey: String?
+    let displaySize: CGSize?
 
-    @StateObject private var loader = PPPetAdImageLoader()
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var blurHashImage: UIImage?
 
     init(
         urlString: String?,
         blurHash: String?,
         contentMode: ContentMode,
         accessibilityLabel: String,
-        showsRetryOnFailure: Bool = true
+        showsRetryOnFailure: Bool = true,
+        cacheKey: String? = nil,
+        displaySize: CGSize? = nil
     ) {
         self.urlString = urlString
         self.blurHash = blurHash
         self.contentMode = contentMode
         self.accessibilityLabel = accessibilityLabel
         self.showsRetryOnFailure = showsRetryOnFailure
+        self.cacheKey = cacheKey
+        self.displaySize = displaySize
     }
 
     var body: some View {
-        ZStack {
-            Color.ppForeground
-
-            switch loader.state {
-            case .idle:
+        AppRemoteImage(
+            urlString: urlString,
+            cacheKey: cacheKey,
+            displaySize: displaySize,
+            contentMode: contentMode,
+            showsRetryAction: showsRetryOnFailure
+        ) {
+            ZStack {
                 placeholder
-            case let .loading(image):
-                if let image {
-                    rendered(image: image)
-                        .transition(.opacity)
-                } else {
-                    placeholder
+                if let blurHashImage {
+                    Image(uiImage: blurHashImage)
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
                 }
                 ProgressView()
                     .tint(Color.ppPrimary)
@@ -47,67 +53,40 @@ struct PPPetAdRemoteImageView: View {
                             fallback: "Loading image"
                         )
                     )
-            case let .loaded(image):
-                rendered(image: image)
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .opacity.combined(
-                                with: .scale(scale: 1.015)
-                            )
-                    )
-            case .failed:
-                if showsRetryOnFailure {
-                    Button {
-                        loader.retry(blurHash: blurHash)
-                    } label: {
-                        VStack(spacing: PPSpace.sm) {
-                            Image(systemName: "photo.badge.exclamationmark")
-                                .font(.system(size: 26, weight: .semibold))
-                            Text(
-                                PPPetAdLocalization.text(
-                                    "Retry",
-                                    fallback: "Retry"
-                                )
-                            )
-                            .font(
-                                .custom(
-                                    "Beiruti-Bold",
-                                    size: 14,
-                                    relativeTo: .callout
-                                )
-                            )
-                        }
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(
+            }
+        } failurePlaceholder: {
+            if showsRetryOnFailure {
+                VStack(spacing: PPSpace.sm) {
+                    Image(systemName: "photo.badge.exclamationmark")
+                        .font(.system(size: 26, weight: .semibold))
+                    Text(
                         PPPetAdLocalization.text(
-                            "load_error_retry",
-                            fallback:
-                                "Double-tap to retry loading this image."
+                            "Retry",
+                            fallback: "Retry"
                         )
                     )
-                } else {
-                    placeholder
+                    .font(
+                        .custom(
+                            "Beiruti-Bold",
+                            size: 14,
+                            relativeTo: .callout
+                        )
+                    )
                 }
+                .foregroundStyle(Color.ppTextSecondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+            } else {
+                placeholder
             }
         }
+        .background(Color.ppForeground)
         .clipped()
-        .animation(
-            reduceMotion ? nil : .easeOut(duration: 0.24),
-            value: imageStateIdentity
-        )
         .onAppear {
-            loader.load(urlString: urlString, blurHash: blurHash)
+            decodeBlurHashIfNeeded()
         }
-        .onChange(of: urlString) { value in
-            loader.load(urlString: value, blurHash: blurHash)
-        }
-        .onDisappear {
-            loader.cancel()
+        .onChange(of: blurHash) { _ in
+            decodeBlurHashIfNeeded()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -131,19 +110,25 @@ struct PPPetAdRemoteImageView: View {
         }
     }
 
-    @ViewBuilder
-    private func rendered(image: UIImage) -> some View {
-        Image(uiImage: image)
-            .resizable()
-            .aspectRatio(contentMode: contentMode)
-    }
-
-    private var imageStateIdentity: Int {
-        switch loader.state {
-        case .idle: return 0
-        case .loading: return 1
-        case .loaded: return 2
-        case .failed: return 3
+    private func decodeBlurHashIfNeeded() {
+        let normalizedHash = blurHash?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard let normalizedHash, !normalizedHash.isEmpty else {
+            blurHashImage = nil
+            return
+        }
+        PPBlurHashBridge.image(
+            from: normalizedHash,
+            size: CGSize(width: 40, height: 40),
+            punch: 1
+        ) { image in
+            guard normalizedHash == blurHash?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ) else {
+                return
+            }
+            blurHashImage = image
         }
     }
 }

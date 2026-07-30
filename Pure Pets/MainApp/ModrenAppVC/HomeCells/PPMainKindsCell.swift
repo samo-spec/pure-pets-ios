@@ -6,7 +6,7 @@ private enum PPMainKindsCellMetrics {
     static let imagePlateSize: CGFloat = 90
     static let compactImagePlateSize: CGFloat = 76
     static let artworkSize: CGFloat = 70
-    static let allArtworkSize: CGFloat = 32
+    static let allArtworkSize: CGFloat = 36
     static let imageToTitleSpacing: CGFloat = 6
     static let indicatorWidth: CGFloat = 26
     static let indicatorHeight: CGFloat = 3
@@ -492,7 +492,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let baseArtworkSize = isAllOption
             ? PPMainKindsCellMetrics.allArtworkSize
             : PPMainKindsCellMetrics.artworkSize
-        let artworkSize = accessibilityText ? min(baseArtworkSize, plateSize - 12) : baseArtworkSize
+        let artworkSize = min(baseArtworkSize, plateSize - (accessibilityText ? 12 : 10))
 
         appliedPlateSize = plateSize
         imagePlateWidthConstraint.constant = plateSize
@@ -588,22 +588,25 @@ public final class PPMainKindsCell: UICollectionViewCell {
     @objc private func handleTap() {
         applyPressed(false)
 
-        let feedback = UIImpactFeedbackGenerator(style: .light)
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
         feedback.prepare()
-        feedback.impactOccurred(intensity: 0.62)
+        feedback.impactOccurred(intensity: 0.88)
 
         let selection = onSelect
         let kind = currentKind
         let isAll = isAllOption
         guard let selection else { return }
 
-        if !reduceMotion {
-            updateMotionLayerPalette()
-            layoutMotionLayers()
-            performHaloBurstMotion()
+        if reduceMotion {
+            selection(kind, isAll)
+            return
         }
 
-        selection(kind, isAll)
+        updateMotionLayerPalette()
+        layoutMotionLayers()
+        performPremiumHaloExplosionAnimation {
+            selection(kind, isAll)
+        }
     }
 
     @objc public func playRestoredSelectionAnimation() {
@@ -995,6 +998,52 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.isPreviewingSelectedGlow = false
             self.applyAppearance(animated: true)
             self.setNeedsLayout()
+        }
+    }
+
+    private func performPremiumHaloExplosionAnimation(completion: @escaping () -> Void) {
+        tapHaloLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.tapHalo)
+        tapHaloLayer.opacity = 0
+
+        let opacity = CAKeyframeAnimation(keyPath: "opacity")
+        opacity.values = [0.0, 0.98, 0.70, 0.0]
+        opacity.keyTimes = [0.0, 0.20, 0.60, 1.0]
+
+        let scale = CAKeyframeAnimation(keyPath: "transform.scale")
+        scale.values = [0.20, 1.45, 2.90, 3.50]
+        scale.keyTimes = [0.0, 0.30, 0.75, 1.0]
+        scale.timingFunctions = [
+            CAMediaTimingFunction(name: .easeOut),
+            CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0),
+            CAMediaTimingFunction(name: .easeOut)
+        ]
+
+        let group = CAAnimationGroup()
+        group.animations = [opacity, scale]
+        group.duration = 0.24
+        group.isRemovedOnCompletion = true
+        tapHaloLayer.add(group, forKey: PPMainKindsCellAnimationKey.tapHalo)
+
+        UIView.animateKeyframes(
+            withDuration: 0.24,
+            delay: 0,
+            options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
+            animations: {
+                UIView.addKeyframe(withRelativeStartTime: 0.0, relativeDuration: 0.40) {
+                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.16, y: 1.16)
+                    self.kindImageView.transform = CGAffineTransform(scaleX: 1.10, y: 1.10)
+                    self.surfaceView.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+                }
+                UIView.addKeyframe(withRelativeStartTime: 0.40, relativeDuration: 0.60) {
+                    self.imagePlateView.transform = .identity
+                    self.kindImageView.transform = .identity
+                    self.surfaceView.transform = .identity
+                }
+            }
+        )
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            completion()
         }
     }
 

@@ -14,6 +14,7 @@
 #import "PPNetworkRetryHelper.h"
 #import "PPAlertHelper.h"
 #import "PPHUD.h"
+#import <Pure_Pets-Swift.h>
 #import "PPFunc.h"
 #import "PPRootTabBarController.h"
 
@@ -1071,7 +1072,9 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
             : kLang(@"ItemAddedToYourCart");
 
         [self.bottomBar performAddToCartSuccessAnimation];
-        [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [PPAddToCartSuccessToast showWithTitle:kLang(@"AddedToCart") subtitle:message];
+        });
         if (safeQuantity == 1) {
             [PPFunc triggerLightHaptic];
         } else {

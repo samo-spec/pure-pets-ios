@@ -1,5 +1,6 @@
 //  PPHUD.m
 #import "PPHUD.h"
+#import <Pure_Pets-Swift.h>
 @class XLFormRowDescriptor;
 #import "Styling.h"
 
@@ -491,6 +492,16 @@ static void PPHUDScheduleDismiss(NSTimeInterval delay)
         }
         PPHUDScheduleDismiss(delay > 0.0 ? delay : 0.9);
     });
+}
+
++ (void)showAddToCartSuccess:(NSString *)title
+{
+    [self showAddToCartSuccess:title subtitle:nil];
+}
+
++ (void)showAddToCartSuccess:(NSString *)title subtitle:(NSString *)subtitle
+{
+    [PPAddToCartSuccessToast showWithTitle:title subtitle:subtitle];
 }
 
 + (void)showError:(NSString *)title

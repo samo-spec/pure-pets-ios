@@ -45,6 +45,7 @@ public struct PPRootBottomOverlayView: View {
                         PPCartFloatingBarView(state: store.cartState) {
                             store.handleCartTapped()
                         }
+                        .passthroughTouches(false)
                         .padding(.horizontal, 16)
                         .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -55,12 +56,13 @@ public struct PPRootBottomOverlayView: View {
                         PPRootNovaButton(state: store.novaState) {
                             store.handleNovaTapped()
                         }
+                        .passthroughTouches(false)
                         .padding(.trailing, 16)
                         .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
                         .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .passthroughTouches(false) // Ensures taps on TabBar/Nova/Cart are captured
+                .passthroughTouches(true)
                 .background(
                     GeometryReader { geo in
                         Color.clear.preference(

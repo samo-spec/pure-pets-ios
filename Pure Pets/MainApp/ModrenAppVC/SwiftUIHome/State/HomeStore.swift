@@ -274,6 +274,10 @@ final class HomeStore: ObservableObject {
         )
     }
 
+    func openPetProfiles() {
+        router.openPetProfiles()
+    }
+
     func editSelectedPet() {
         guard let pet = selectedPet else {
             router.openPetProfiles()

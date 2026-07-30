@@ -237,14 +237,7 @@ final class PPPetAdViewerInteractionState: ObservableObject {
     /// content owner, keeping the grabber-to-facts rhythm compact at the
     /// handoff and expanded states.
     var summaryTopPadding: CGFloat {
-        let collapsedPadding = PPSpace.xl
-        let expandedPadding = PPSpace.sm
-        return collapsedPadding
-            - ((collapsedPadding - expandedPadding)
-                * ramp(
-                    from: Self.mainHeaderCollapseStart,
-                    to: Self.compactSummaryEnd
-                ))
+        PPSpace.md
     }
 
     var galleryLensOpacity: CGFloat {

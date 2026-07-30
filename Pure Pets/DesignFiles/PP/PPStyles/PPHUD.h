@@ -49,6 +49,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)showSuccess:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 + (void)showSuccess:(nullable NSString *)title subtitle:(nullable NSString *)subtitle delay:(NSTimeInterval)delay;
 
+/// Display top safe-area glass toast for add-to-cart success.
++ (void)showAddToCartSuccess:(nullable NSString *)title;
++ (void)showAddToCartSuccess:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
+
 /// Swap to error state and auto-dismiss (default 1.4s).
 + (void)showError:(nullable NSString *)title;
 + (void)showError:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;

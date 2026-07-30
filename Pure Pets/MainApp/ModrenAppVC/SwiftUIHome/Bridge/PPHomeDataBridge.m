@@ -117,6 +117,8 @@
         fallbackSymbol = @"gift.fill";
     } else if ([self.animationName isEqualToString:@"Profile.lottie"]) {
         fallbackSymbol = @"person.crop.circle.fill";
+    } else if ([self.animationName isEqualToString:@"PetMedicine"]) {
+        fallbackSymbol = @"pills.fill";
     }
     UIImage *fallbackImage =
         [UIImage systemImageNamed:fallbackSymbol
@@ -954,9 +956,9 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
         @(PPHomeSectionMarketplaceHero),
         @(PPHomeSectionProviderCategoryNav),
         @(PPHomeSectionHero),
+        @(PPHomeSectionMainKinds),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionQuickActions),
-        @(PPHomeSectionMainKinds),
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionSuggestionAds),
@@ -965,10 +967,10 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
         @(PPHomeSectionCarousel),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionAdsNearBy),
-        @(PPHomeSectionPetProfile),
         @(PPHomeSectionNearbyServices),
         @(PPHomeSectionAdopt),
         @(PPHomeSectionBuyAgain),
+        @(PPHomeSectionPetProfile),
     ];
 }
 

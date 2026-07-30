@@ -175,12 +175,15 @@ static void PPCartCompleteAdd(PPCartAddItemCompletion completion, BOOL success, 
 }
 
 - (NSInteger)quantityForAccessory:(PetAccessory *)accessory {
-    for (CartItem *item in self.cartItems) {
-        if ([item.itemID isEqualToString:accessory.accessoryID]) {
-            return item.quantity;
-        }
+    if (!accessory) return 0;
+    CartItem *existing = nil;
+    if (accessory.accessoryID.length > 0) {
+        existing = [self getCartItemForItemID:accessory.accessoryID];
     }
-    return 0; // Not found in cart
+    if (!existing && accessory.accessoryID.length > 0) {
+        existing = [self getCartItemForItemID:accessory.accessoryID];
+    }
+    return existing ? existing.quantity : 0;
 }
 
 

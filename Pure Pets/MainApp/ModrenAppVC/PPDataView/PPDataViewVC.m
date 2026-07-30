@@ -8390,7 +8390,9 @@ presentingViewController:self
                 }
                 if (safeQuantity == 1) {
                     [PPFunc triggerLightHaptic];
-                    [PPHUD showSuccess:(kLang(@"ItemAddedToCart") ?: @"Item added to cart")];
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        [PPAddToCartSuccessToast showWithTitle:(kLang(@"ItemAddedToCart") ?: @"Item added to cart")];
+                    });
                 } else {
                     [PPFunc triggerMediumHaptic];
                 }

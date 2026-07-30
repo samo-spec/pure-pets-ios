@@ -17,7 +17,8 @@ struct PPPetAdZoomableImageView: View {
                 urlString: item.imageURL,
                 blurHash: item.blurHash,
                 contentMode: .fit,
-                accessibilityLabel: accessibilityLabel
+                accessibilityLabel: accessibilityLabel,
+                cacheKey: item.id
             )
             .scaleEffect(scale)
             .offset(offset)

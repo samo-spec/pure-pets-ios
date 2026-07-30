@@ -1000,12 +1000,13 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     _qtyContainer = [UIButton buttonWithType:UIButtonTypeCustom];
     _qtyContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    _qtyContainer.backgroundColor = PPBBCartControlFillColor();
+    _qtyContainer.backgroundColor = UIColor.clearColor;
     PPApplyContinuousCorners(_qtyContainer, 25.0);
     [_qtyContainer pp_setBorderColor:UIColor.clearColor];
     _qtyContainer.layer.borderWidth = 0.0;
     _qtyContainer.isAccessibilityElement = NO;
     self.qtyGlassBackgroundView = [self pp_makeUltraThinBlurView];
+    self.qtyGlassBackgroundView.hidden = YES;
     [_qtyContainer addSubview:self.qtyGlassBackgroundView];
     [self pp_pinViewToEdges:self.qtyGlassBackgroundView ofView:_qtyContainer];
     [_qtyContainer addSubview:_qtyStack];
@@ -1064,8 +1065,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_applyTypography
 {
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
-    UIFont *quantityBase = [GM boldFontWithSize:(legacyIPadBar ? 15.0 : 16.0)]
-        ?: [UIFont systemFontOfSize:(legacyIPadBar ? 15.0 : 16.0) weight:UIFontWeightSemibold];
+    UIFont *quantityBase = [GM boldFontWithSize:(legacyIPadBar ? 19.0 : 21.0)]
+        ?: [UIFont systemFontOfSize:(legacyIPadBar ? 19.0 : 21.0) weight:UIFontWeightBold];
     UIFont *totalBase = [GM MidFontWithSize:(legacyIPadBar ? 10.0 : 10.5)]
         ?: [UIFont systemFontOfSize:(legacyIPadBar ? 10.0 : 10.5) weight:UIFontWeightMedium];
     UIFont *amountBase = [GM boldFontWithSize:(legacyIPadBar ? 19.0 : 20.0)]
@@ -1073,7 +1074,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     UIFont *currencyBase = [GM MidFontWithSize:(legacyIPadBar ? 10.5 : 11.0)]
         ?: [UIFont systemFontOfSize:(legacyIPadBar ? 10.5 : 11.0) weight:UIFontWeightMedium];
 
-    self.countLabel.font = PPBBCartScaledFont(quantityBase, UIFontTextStyleHeadline, 19.0);
+    self.countLabel.font = PPBBCartScaledFont(quantityBase, UIFontTextStyleHeadline, 24.0);
     self.totalLabel.font = PPBBCartScaledFont(totalBase, UIFontTextStyleCaption1, 12.0);
     self.amountLabel.font = PPBBCartScaledFont(amountBase, UIFontTextStyleTitle3, 22.0);
     self.currencyLabel.font = PPBBCartScaledFont(currencyBase, UIFontTextStyleCaption1, 13.0);

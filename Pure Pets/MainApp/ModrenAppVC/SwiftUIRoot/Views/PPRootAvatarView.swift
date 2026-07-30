@@ -26,82 +26,70 @@ public struct PPRootAvatarView: View {
                 // Real Guest Profile Lottie Animation (Profile.lottie) with dynamic tinting
                 PPRootGuestProfileLottieView(isSelected: isSelected)
             } else {
-                // Logged-in user avatar with dynamic ring
-                let avatarImage = renderAvatarImage()
-                Image(uiImage: avatarImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
+                loggedInAvatar
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(sessionState.effectiveDisplayName)
     }
-    
-    private func renderAvatarImage() -> UIImage {
-        let size: CGFloat = 32.0
+
+    private var loggedInAvatar: some View {
         let avatarSize: CGFloat = isSelected ? 26.0 : 24.0
-        let avatarRect = CGRect(
-            x: (size - avatarSize) * 0.5,
-            y: (size - avatarSize) * 0.5,
-            width: avatarSize,
-            height: avatarSize
-        )
-        
-        var avatarImage: UIImage? = nil
-        let displayName = sessionState.effectiveDisplayName
-        
-        // Typed invocation bridge for PPModernAvatarRenderer when linked via bridging header
-        if let rendererClass = NSClassFromString("PPModernAvatarRenderer") as? NSObject.Type {
-            let sel = NSSelectorFromString("avatarImageForName:size:style:")
-            if rendererClass.responds(to: sel) {
-                // Safe ObjC message dispatch via perform without unsafeBitCast
-                if let unmanaged = rendererClass.perform(sel, with: displayName, with: avatarSize) {
-                    avatarImage = unmanaged.takeUnretainedValue() as? UIImage
-                }
-            }
-        }
-        
-        // SDWebImage memory cache fallback check
-        if let url = sessionState.userImageUrl {
-            if let cacheClass = NSClassFromString("SDImageCache") as? NSObject.Type {
-                let sharedSel = NSSelectorFromString("sharedImageCache")
-                if cacheClass.responds(to: sharedSel),
-                   let cache = cacheClass.perform(sharedSel)?.takeUnretainedValue() as? NSObject {
-                    let key = url.absoluteString
-                    let memSel = NSSelectorFromString("imageFromMemoryCacheForKey:")
-                    if cache.responds(to: memSel),
-                       let img = cache.perform(memSel, with: key)?.takeUnretainedValue() as? UIImage {
-                        avatarImage = img
-                    }
-                }
-            }
-        }
-        
-        let finalAvatar = avatarImage ?? defaultPlaceholderAvatar(displayName: displayName, size: avatarSize)
-        
-        let brandColor = UIColor.systemBlue
-        let ringColor = isSelected ? brandColor : UIColor.secondaryLabel.withAlphaComponent(0.28)
         let ringWidth: CGFloat = isSelected ? 2.0 : 1.0
-        
-        let format = UIGraphicsImageRendererFormat.default()
-        format.opaque = false
-        format.scale = UIScreen.main.scale
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
-        
-        return renderer.image { context in
-            let ctx = context.cgContext
-            ctx.saveGState()
-            let clipPath = UIBezierPath(ovalIn: avatarRect)
-            clipPath.addClip()
-            finalAvatar.draw(in: avatarRect)
-            ctx.restoreGState()
-            
-            let ringPath = UIBezierPath(ovalIn: avatarRect.insetBy(dx: -ringWidth * 0.45, dy: -ringWidth * 0.45))
-            ringPath.lineWidth = ringWidth
-            ringColor.setStroke()
-            ringPath.stroke()
+
+        return AppRemoteImage(
+            url: sessionState.userImageUrl,
+            displaySize: CGSize(width: avatarSize, height: avatarSize),
+            contentMode: .fill,
+            showsRetryAction: false
+        ) {
+            avatarPlaceholder(size: avatarSize)
+        } failurePlaceholder: {
+            avatarPlaceholder(size: avatarSize)
         }
+        .frame(width: avatarSize, height: avatarSize)
+        .clipShape(Circle())
+        .overlay {
+            Circle().strokeBorder(
+                isSelected
+                    ? Color(uiColor: .systemBlue)
+                    : Color(uiColor: .secondaryLabel).opacity(0.28),
+                lineWidth: ringWidth
+            )
+        }
+        .frame(width: 32, height: 32)
+    }
+
+    private func avatarPlaceholder(size: CGFloat) -> some View {
+        Image(uiImage: renderedPlaceholderAvatar(size: size))
+            .resizable()
+            .scaledToFill()
+    }
+
+    private func renderedPlaceholderAvatar(size: CGFloat) -> UIImage {
+        var avatarImage: UIImage?
+        let displayName = sessionState.effectiveDisplayName
+
+        if let rendererClass = NSClassFromString(
+            "PPModernAvatarRenderer"
+        ) as? NSObject.Type {
+            let selector = NSSelectorFromString(
+                "avatarImageForName:size:style:"
+            )
+            if rendererClass.responds(to: selector),
+               let unmanaged = rendererClass.perform(
+                   selector,
+                   with: displayName,
+                   with: size
+               ) {
+                avatarImage = unmanaged.takeUnretainedValue() as? UIImage
+            }
+        }
+
+        return avatarImage ?? defaultPlaceholderAvatar(
+            displayName: displayName,
+            size: size
+        )
     }
     
     private func defaultPlaceholderAvatar(displayName: String, size: CGFloat) -> UIImage {

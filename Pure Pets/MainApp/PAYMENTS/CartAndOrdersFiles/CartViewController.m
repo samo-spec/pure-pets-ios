@@ -18,6 +18,7 @@
 #import "PPCommerceFeedbackManager.h"
 #import "PPChatsFunc.h"
 #import "PPHUD.h"
+#import <Pure_Pets-Swift.h>
 #import "PPBackgroundView.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
@@ -3036,7 +3037,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     }
     [notification notificationOccurred:UINotificationFeedbackTypeSuccess];
     self.savedMoveFeedbackGenerator = nil;
-    [PPHUD showSuccess:kLang(@"moved_to_cart_success")];
+    [PPAddToCartSuccessToast showWithTitle:kLang(@"moved_to_cart_success")];
 }
 
 - (void)pp_finishSavedForLaterArrivalAtRow:(NSInteger)targetRow

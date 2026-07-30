@@ -96,7 +96,7 @@ private struct PPPetAdAdaptiveSummaryLayout: Layout {
         let width = proposal.width ?? sizes.map(\.width).max() ?? 0
         return CGSize(
             width: width,
-            height: (identity.height * clampedExtent) + factsHeight
+            height: identity.height + factsHeight
         )
     }
 
@@ -113,7 +113,6 @@ private struct PPPetAdAdaptiveSummaryLayout: Layout {
         guard let identity = subviews.first,
               let identitySize = sizes.first else { return }
 
-        let visibleIdentityHeight = identitySize.height * clampedExtent
         identity.place(
             at: CGPoint(
                 x: bounds.minX,
@@ -131,7 +130,7 @@ private struct PPPetAdAdaptiveSummaryLayout: Layout {
         facts.place(
             at: CGPoint(
                 x: bounds.minX,
-                y: bounds.minY + visibleIdentityHeight
+                y: bounds.minY + identitySize.height
             ),
             anchor: .topLeading,
             proposal: ProposedViewSize(width: bounds.width, height: nil)

@@ -385,7 +385,9 @@ struct PPAccessoryViewerNavBarSmartPill: View {
                 urlString: firstMedia.imageURL,
                 blurHash: firstMedia.blurHash,
                 contentMode: .fill,
-                accessibilityLabel: displayTitle
+                accessibilityLabel: displayTitle,
+                cacheKey: firstMedia.id,
+                displaySize: CGSize(width: 36, height: 36)
             )
             .frame(width: 36, height: 36)
             .clipShape(Circle())
@@ -634,7 +636,8 @@ struct PPAccessoryShorelineGallery: View {
                     urlString: item.imageURL,
                     blurHash: item.blurHash,
                     contentMode: .fit,
-                    accessibilityLabel: mediaLabel(index)
+                    accessibilityLabel: mediaLabel(index),
+                    cacheKey: item.id
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -771,7 +774,8 @@ struct PPAccessoryShorelineGallery: View {
                             urlString: item.imageURL,
                             blurHash: item.blurHash,
                             contentMode: .fill,
-                            accessibilityLabel: mediaLabel(index)
+                            accessibilityLabel: mediaLabel(index),
+                            cacheKey: item.id
                         )
                         if item.isVideo {
                             Image(systemName: "play.fill")
@@ -1973,7 +1977,7 @@ struct PPAccessorySourceIsland: View {
     private func sellerIdentityText(
         _ owner: PPAccessoryViewerOwner
     ) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+        return VStack(alignment: .leading, spacing: 7) {
             Text(sectionTitle)
                 .font(PPAccessoryTypography.captionBold)
                 .foregroundStyle(PPAccessoryPalette.inkSecondary)
@@ -1999,7 +2003,7 @@ struct PPAccessorySourceIsland: View {
                 }
             }
 
-            return     sellerMeta(owner)
+            sellerMeta(owner)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -2014,7 +2018,7 @@ struct PPAccessorySourceIsland: View {
         )
         let imageSize = sellerAvatarImageSize(for: owner, shellSize: size)
 
-        ZStack(alignment: .bottomTrailing) {
+        return ZStack(alignment: .bottomTrailing) {
             avatarShape
                 .fill(avatarPlateFill)
 

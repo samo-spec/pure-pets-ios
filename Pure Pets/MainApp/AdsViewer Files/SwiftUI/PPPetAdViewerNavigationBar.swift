@@ -248,7 +248,9 @@ struct PPPetAdViewerNavBarSmartPill: View {
                     accessibilityLabel: firstMedia.isVideo
                         ? PPPetAdLocalization.text("Video", fallback: "Video")
                         : PPPetAdLocalization.text("Photo", fallback: "Photo"),
-                    showsRetryOnFailure: false
+                    showsRetryOnFailure: false,
+                    cacheKey: firstMedia.id,
+                    displaySize: CGSize(width: 36, height: 36)
                 )
                 .frame(width: 36, height: 36)
                 .clipShape(Circle())

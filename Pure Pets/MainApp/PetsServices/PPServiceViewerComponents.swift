@@ -6,6 +6,7 @@ import UIKit
 struct PPServiceViewerHeroHeader: View {
     let imageURL: String?
     let blurHash: String?
+    let cacheKey: String?
     let height: CGFloat
     let compact: Bool
     var onImageLoaded: ((UIImage) -> Void)? = nil
@@ -25,6 +26,7 @@ struct PPServiceViewerHeroHeader: View {
                     blurHash: blurHash,
                     contentMode: .fill,
                     accessibilityLabel: PPServiceViewerL10n.text("service_view_details_title", fallback: "Service Details"),
+                    cacheKey: cacheKey,
                     onImageLoaded: onImageLoaded
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -183,7 +185,9 @@ struct PPServiceViewerProviderCard: View {
                     urlString: avatarURL,
                     blurHash: nil,
                     contentMode: .fit,
-                    accessibilityLabel: snapshot.ownerName
+                    accessibilityLabel: snapshot.ownerName,
+                    cacheKey: snapshot.ownerID,
+                    displaySize: CGSize(width: 48, height: 48)
                 )
                 .frame(width: 48, height: 48)
                 .clipShape(Circle())
@@ -349,7 +353,9 @@ struct PPServiceViewerReviewRow: View {
                         urlString: avatar,
                         blurHash: nil,
                         contentMode: .fill,
-                        accessibilityLabel: item.userName
+                        accessibilityLabel: item.userName,
+                        cacheKey: item.id,
+                        displaySize: CGSize(width: 36, height: 36)
                     )
                     .frame(width: 36, height: 36)
                     .clipShape(Circle())
@@ -590,7 +596,9 @@ struct PPServiceViewerNavBarSmartPill: View {
                 blurHash: snapshot.blurHash,
                 contentMode: .fill,
                 accessibilityLabel: displayTitle,
-                isAvatar: true
+                isAvatar: true,
+                cacheKey: snapshot.serviceID,
+                displaySize: CGSize(width: 28, height: 28)
             )
             .frame(width: 28, height: 28)
             .clipShape(Circle())

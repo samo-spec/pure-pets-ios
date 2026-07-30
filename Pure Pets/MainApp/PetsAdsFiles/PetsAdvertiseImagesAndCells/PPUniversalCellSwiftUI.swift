@@ -273,6 +273,19 @@ public struct PPUniversalCardActions {
 @available(iOS 16.0, *)
 public struct PPUniversalCardView: View {
     @StateObject private var store: PPUniversalCardStore
+    private let legacyViewModel: PPUniversalCellViewModel?
+    private let legacyDelegate: PPUniversalCellDelegate?
+    private let legacyContext: PPCellContext?
+    private let legacyLayoutMode: PPManagerCellLayoutMode?
+    private let legacyDiscountMode: PPDiscountStyle?
+    private let legacyImageLoader: PPImageLoader?
+    private let legacyHideTopBadge: Bool
+    private let legacyShowsSubtitle: Bool
+    private let legacyForceShowsOwnerMenuButton: Bool
+    private let legacyDataViewPresentation: Bool
+    private let legacyIsHomePresentation: Bool
+    private let legacyOnTap: (() -> Void)?
+    private let legacyOnQuantityChange: ((Int) -> Void)?
 
     public init(
         model: PPUniversalCardModel,
@@ -292,25 +305,483 @@ public struct PPUniversalCardView: View {
                 actions: actions
             )
         )
+        legacyViewModel = nil
+        legacyDelegate = nil
+        legacyContext = nil
+        legacyLayoutMode = nil
+        legacyDiscountMode = nil
+        legacyImageLoader = nil
+        legacyHideTopBadge = false
+        legacyShowsSubtitle = false
+        legacyForceShowsOwnerMenuButton = false
+        legacyDataViewPresentation = false
+        legacyIsHomePresentation = false
+        legacyOnTap = nil
+        legacyOnQuantityChange = nil
+    }
+
+    init(
+        viewModel: PPUniversalCellViewModel,
+        delegate: PPUniversalCellDelegate?,
+        context: PPCellContext,
+        layoutMode: PPManagerCellLayoutMode,
+        discountMode: PPDiscountStyle = .badge,
+        imageLoader: PPImageLoader? = nil,
+        hideTopBadge: Bool = false,
+        showsSubtitle: Bool = false,
+        forceShowsOwnerMenuButton: Bool = false,
+        dataViewPresentation: Bool = false,
+        isHomePresentation: Bool = false,
+        onTap: (() -> Void)? = nil,
+        onQuantityChange: ((Int) -> Void)? = nil
+    ) {
+        let snapshot = PPUniversalLegacyCardSnapshot(
+            viewModel: viewModel,
+            delegate: delegate,
+            context: context,
+            layoutMode: layoutMode,
+            discountMode: discountMode,
+            hideTopBadge: hideTopBadge,
+            showsSubtitle: showsSubtitle,
+            dataViewPresentation: dataViewPresentation
+        )
+        let initialStore = PPUniversalCardStore(
+            model: snapshot.model,
+            context: snapshot.context,
+            layout: snapshot.layout,
+            discountStyle: snapshot.discountStyle,
+            palette: .purePets,
+            actions: .init()
+        )
+        initialStore.viewModel = viewModel
+        initialStore.delegate = delegate
+        initialStore.imageLoader = imageLoader
+        initialStore.imagePlaceholder = snapshot.imagePlaceholder
+        initialStore.imageSignature = snapshot.imageSignature
+        initialStore.favoriteCollection = snapshot.favoriteCollection
+        initialStore.showsFavorite = snapshot.showsFavorite
+        initialStore.showsSaveForLater = snapshot.showsSaveForLater
+        initialStore.showsOwnerMenu =
+            viewModel.isOwner && forceShowsOwnerMenuButton
+        initialStore.cardTap = onTap
+        initialStore.quantityChange = onQuantityChange
+        initialStore.isSuggestionsAd = snapshot.isSuggestionsAd
+        initialStore.isNearbyAdsSection = snapshot.isNearbyAdsSection
+        initialStore.isHomePresentation = isHomePresentation
+        _store = StateObject(wrappedValue: initialStore)
+        legacyViewModel = viewModel
+        legacyDelegate = delegate
+        legacyContext = context
+        legacyLayoutMode = layoutMode
+        legacyDiscountMode = discountMode
+        legacyImageLoader = imageLoader
+        legacyHideTopBadge = hideTopBadge
+        legacyShowsSubtitle = showsSubtitle
+        legacyForceShowsOwnerMenuButton = forceShowsOwnerMenuButton
+        legacyDataViewPresentation = dataViewPresentation
+        legacyIsHomePresentation = isHomePresentation
+        legacyOnTap = onTap
+        legacyOnQuantityChange = onQuantityChange
     }
 
     public var body: some View {
         PPUniversalCardRenderer(store: store)
             .frame(minHeight: minimumHeight)
+            .onAppear {
+                syncLegacySource()
+            }
+            .onChange(of: legacySourceSignature) { _ in
+                syncLegacySource()
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: Notification.Name("CartUpdated")
+                )
+            ) { _ in
+                store.refreshCartQuantity()
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: Notification.Name("PPSaveForLaterUpdatedNotification")
+                )
+            ) { _ in
+                store.refreshSavedForLaterState()
+            }
     }
 
     private var minimumHeight: CGFloat {
         if store.layout.isHorizontal {
             return 184
         }
+        if store.isHomePresentation {
+            return 328
+        }
         if store.model.isSkeleton && store.context.isCatalogCommerce {
             return 292
         }
         return 340
     }
+
+    private var legacySourceSignature: String {
+        guard let legacyViewModel,
+              let legacyContext,
+              let legacyLayoutMode,
+              let legacyDiscountMode else {
+            return "model"
+        }
+        return [
+            "\(Unmanaged.passUnretained(legacyViewModel).toOpaque())",
+            "\(legacyContext.rawValue)",
+            "\(legacyLayoutMode.rawValue)",
+            "\(legacyDiscountMode.rawValue)",
+            legacyHideTopBadge ? "1" : "0",
+            legacyShowsSubtitle ? "1" : "0",
+            legacyForceShowsOwnerMenuButton ? "1" : "0",
+            legacyDataViewPresentation ? "1" : "0",
+            legacyIsHomePresentation ? "1" : "0",
+            "\(PPUniversalCellSwiftUIBridge.cartQuantity(for: legacyViewModel))"
+        ].joined(separator: "|")
+    }
+
+    private func syncLegacySource() {
+        guard let legacyViewModel,
+              let legacyContext,
+              let legacyLayoutMode,
+              let legacyDiscountMode else {
+            return
+        }
+        store.delegate = legacyDelegate
+        store.cardTap = legacyOnTap
+        store.quantityChange = legacyOnQuantityChange
+        store.configure(
+            viewModel: legacyViewModel,
+            context: legacyContext,
+            layout: legacyLayoutMode,
+            discountStyle: legacyDiscountMode,
+            imageLoader: legacyImageLoader,
+            hideTopBadge: legacyHideTopBadge,
+            showsSubtitle: legacyShowsSubtitle,
+            forceShowsOwnerMenuButton: legacyForceShowsOwnerMenuButton,
+            dataViewPresentation: legacyDataViewPresentation
+        )
+        if legacyIsHomePresentation {
+            store.isHomePresentation = true
+        }
+    }
+}
+
+@available(iOS 16.0, *)
+@MainActor
+private struct PPUniversalLegacyCardSnapshot {
+    let model: PPUniversalCardModel
+    let context: PPUniversalCardContext
+    let layout: PPUniversalCardLayout
+    let discountStyle: PPUniversalCardDiscountStyle
+    let imagePlaceholder: UIImage?
+    let imageSignature: String
+    let favoriteCollection: String
+    let showsFavorite: Bool
+    let showsSaveForLater: Bool
+    let isSuggestionsAd: Bool
+    let isNearbyAdsSection: Bool
+
+    private static let nearbyAdsPPSectionRawValue = 5
+
+    init(
+        viewModel: PPUniversalCellViewModel,
+        delegate: PPUniversalCellDelegate?,
+        context objcContext: PPCellContext,
+        layoutMode objcLayout: PPManagerCellLayoutMode,
+        discountMode objcDiscountStyle: PPDiscountStyle,
+        hideTopBadge: Bool,
+        showsSubtitle: Bool,
+        dataViewPresentation: Bool
+    ) {
+        let resolvedContext = Self.cardContext(objcContext)
+        let isAdLike =
+            PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel)
+        let isSuggestions =
+            PPUniversalCellSwiftUIBridge.isSuggestionsSection(
+                for: viewModel,
+                delegate: delegate
+            )
+        let isSuggestionsAd = isSuggestions && isAdLike
+        let resolvedLayout = Self.resolvedLayout(
+            objcLayout,
+            viewModel: viewModel,
+            dataViewPresentation: dataViewPresentation,
+            isSuggestionsAd: isSuggestionsAd
+        )
+        let horizontal = resolvedLayout.isHorizontal
+        let stableID = viewModel.modelID?.isEmpty == false
+            ? viewModel.modelID!
+            : "model-\(Unmanaged.passUnretained(viewModel).toOpaque())"
+        let usesQuantity =
+            PPUniversalCellSwiftUIBridge.usesQuantityControl(for: viewModel)
+        let stock = usesQuantity
+            ? PPUniversalCellSwiftUIBridge.stockLimit(for: viewModel)
+            : nil
+        let cartQuantity = usesQuantity
+            ? PPUniversalCellSwiftUIBridge.cartQuantity(for: viewModel)
+            : 0
+        let supportsDiscount =
+            PPUniversalCellSwiftUIBridge.showsDiscountPresentation(
+                for: viewModel
+            )
+        let finalPrice =
+            viewModel.finalPrice?.decimalValue ?? viewModel.price?.decimalValue
+        let basePrice = viewModel.price?.decimalValue
+        let originalPrice =
+            supportsDiscount && basePrice != finalPrice ? basePrice : nil
+        let subtitle = PPUniversalCellSwiftUIBridge.displaySubtitle(
+            for: viewModel,
+            context: objcContext,
+            horizontalLayout: horizontal,
+            dataViewPresenter: dataViewPresentation,
+            showsSubtitle: showsSubtitle
+        )
+        var resolvedSubtitle: String? = nil
+        if dataViewPresentation {
+            if isAdLike {
+                let location = viewModel.location.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+                resolvedSubtitle = location.isEmpty
+                    ? PPUniversalCardStore.localized(
+                        "ad_no_location_placeholder",
+                        fallback: "Location not specified"
+                    )
+                    : location
+            } else {
+                resolvedSubtitle = subtitle
+            }
+        }
+        let availabilityText = PPUniversalCellSwiftUIBridge.availabilityText(
+            for: viewModel,
+            context: objcContext,
+            horizontalLayout: horizontal,
+            dataViewPresenter: dataViewPresentation
+        )
+        let metadata = PPUniversalCellSwiftUIBridge.metadataText(for: viewModel)
+        let metadataIcon =
+            PPUniversalCellSwiftUIBridge.metadataSystemImage(for: viewModel)
+        let reason = viewModel.isOwner &&
+            !viewModel.isPubliclyVisible &&
+            !hideTopBadge
+            ? PPUniversalCardStore.localized(
+                "listing_hidden_badge",
+                fallback: "Hidden"
+            )
+            : nil
+        var resolvedMetadata = isAdLike ? nil : metadata
+        var resolvedMetadataIcon = isAdLike ? nil : metadataIcon
+        if objcContext == .forServices {
+            let trimmedRating = resolvedMetadata?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            if trimmedRating?.isEmpty != false ||
+                (Double(trimmedRating ?? "") ?? 0) <= 0 {
+                resolvedMetadata = nil
+                resolvedMetadataIcon = nil
+            } else if resolvedMetadataIcon == nil ||
+                        resolvedMetadataIcon!.isEmpty {
+                resolvedMetadataIcon = "star.fill"
+            }
+        }
+        let hasAvailabilityText = availabilityText?.isEmpty == false
+        let hasMetadata = resolvedMetadata?.isEmpty == false
+        let availability = (hasAvailabilityText || hasMetadata)
+            ? PPUniversalAvailability(
+                text: availabilityText ?? "",
+                tone: Self.availabilityTone(
+                    PPUniversalCellSwiftUIBridge.availabilityTone(
+                        for: viewModel,
+                        context: objcContext
+                    )
+                ),
+                metaText: resolvedMetadata,
+                metaSystemImage: resolvedMetadataIcon
+            )
+            : nil
+        let gender = resolvedContext.isAdvertisement
+            ? Self.cardGender(
+                PPUniversalCellSwiftUIBridge.advertisementGenderValue(
+                    for: viewModel
+                )
+            )
+            : nil
+        let discountText = supportsDiscount && !viewModel.discountText.isEmpty
+            ? viewModel.discountText
+            : nil
+        self.model = PPUniversalCardModel(
+            id: stableID,
+            title: viewModel.title,
+            subtitle: resolvedSubtitle?.isEmpty == false
+                ? resolvedSubtitle
+                : nil,
+            imageURL: viewModel.imageURL.flatMap(URL.init(string:)),
+            videoURL: viewModel.isVideoMedia
+                ? viewModel.videoURL.flatMap(URL.init(string:))
+                : nil,
+            placeholderSystemImage: "pawprint.fill",
+            price: resolvedContext == .adopt ? nil : finalPrice,
+            originalPrice: resolvedContext == .adopt ? nil : originalPrice,
+            priceText: resolvedContext == .adopt || viewModel.priceText.isEmpty
+                ? nil
+                : viewModel.priceText,
+            currencyCode: viewModel.currencyCode.isEmpty
+                ? "QAR"
+                : viewModel.currencyCode,
+            badgeText: nil,
+            reasonText: reason,
+            discountText: discountText,
+            availability: availability,
+            gender: gender,
+            isFavorite: false,
+            isOwner: viewModel.isOwner,
+            isPubliclyVisible: viewModel.isPubliclyVisible,
+            isSkeleton: viewModel.isSkeleton,
+            quantity: cartQuantity,
+            stock: stock,
+            usesQuantityControl: usesQuantity,
+            prefersContainedImage:
+                PPUniversalCellSwiftUIBridge.prefersContainedImage(
+                    for: viewModel
+                ),
+            preferredAspectRatio: {
+                if viewModel.imageSize.width > 0 &&
+                    viewModel.imageSize.height > 0 {
+                    return viewModel.imageSize.height / viewModel.imageSize.width
+                } else if viewModel.preferredAspectRatio > 0 {
+                    return CGFloat(viewModel.preferredAspectRatio)
+                } else {
+                    return 0.82
+                }
+            }()
+        )
+        self.context = resolvedContext
+        self.layout = resolvedLayout
+        self.discountStyle = objcDiscountStyle == .plain ? .inline : .badge
+        self.imagePlaceholder =
+            viewModel.placeholder ?? UIImage(named: "PawPlaceholderCell")
+        self.imageSignature = [
+            stableID,
+            viewModel.imageURL ?? "",
+            viewModel.blurHash
+        ].joined(separator: "|")
+        self.favoriteCollection =
+            PPUniversalCellSwiftUIBridge.favoritesCollection(for: objcContext)
+        let showsLeadingAction = !viewModel.isOwner && !stableID.isEmpty
+        if resolvedContext == .savedForLater {
+            self.showsSaveForLater = false
+            self.showsFavorite = false
+        } else {
+            self.showsSaveForLater =
+                showsLeadingAction && resolvedContext == .market
+            self.showsFavorite =
+                showsLeadingAction && resolvedContext != .market
+        }
+        self.isSuggestionsAd = isSuggestionsAd
+        self.isNearbyAdsSection =
+            viewModel.ppSection.rawValue == Self.nearbyAdsPPSectionRawValue
+    }
+
+    private static func resolvedLayout(
+        _ layout: PPManagerCellLayoutMode,
+        viewModel: PPUniversalCellViewModel,
+        dataViewPresentation: Bool,
+        isSuggestionsAd: Bool
+    ) -> PPUniversalCardLayout {
+        if isSuggestionsAd {
+            return .market
+        }
+        if layout == .cellLayoutModeHorizontalRow && !dataViewPresentation {
+            if PPUniversalCellSwiftUIBridge.isAccessoryViewModel(viewModel) {
+                return .market
+            }
+            if PPUniversalCellSwiftUIBridge.isServiceLike(viewModel) {
+                return .market
+            }
+            if PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel) {
+                return .market
+            }
+        }
+        switch layout {
+        case .cellLayoutModePinterest:
+            return dataViewPresentation ? .pinterest : .market
+        case .cellLayoutModeFullWidth:
+            return .fullWidth
+        case .cellLayoutModeHorizontalRow:
+            return .horizontalRow
+        case .cellLayoutModeVertical:
+            return dataViewPresentation ? .vertical : .market
+        case .cellLayoutModeMarket:
+            return .market
+        default:
+            return .market
+        }
+    }
+
+    private static func cardContext(
+        _ context: PPCellContext
+    ) -> PPUniversalCardContext {
+        switch context {
+        case .forAds:
+            return .ads
+        case .forHomeAds:
+            return .homeAds
+        case .forMarket:
+            return .market
+        case .forContextAccessory:
+            return .accessory
+        case .forFood:
+            return .food
+        case .forServices:
+            return .services
+        case .forVets:
+            return .vets
+        case .forAdopt:
+            return .adopt
+        case .forSavedForLater:
+            return .savedForLater
+        default:
+            return .market
+        }
+    }
+
+    private static func availabilityTone(
+        _ tone: PPUniversalAvailabilityTone
+    ) -> PPUniversalAvailability.Tone {
+        switch tone.rawValue {
+        case 1:
+            return .available
+        case 2:
+            return .limited
+        case 3:
+            return .unavailable
+        case 4:
+            return .used
+        default:
+            return .neutral
+        }
+    }
+
+    private static func cardGender(
+        _ value: String?
+    ) -> PPUniversalCardGender? {
+        guard let value else {
+            return nil
+        }
+        return PPUniversalCardGender(rawValue: value)
+    }
 }
 
 // MARK: - Stable State
+
+private enum PPUniversalAnimatedCartError: Error {
+    case unavailable
+    case mutationRejected
+}
 
 private final class PPUniversalUIKitReferences {
     weak var imageView: UIImageView?
@@ -625,13 +1096,18 @@ private final class PPUniversalCardStore: ObservableObject {
 
     func updatePresentationHost(_ delegate: PPUniversalCellDelegate?) {
         self.delegate = delegate
-        guard let delegate,
-              let object = delegate as? NSObject,
-              let homeClass = NSClassFromString("PPHomeViewController") else {
-            isHomePresentation = false
+        let nextIsHomePresentation: Bool
+        if let delegate,
+           let object = delegate as? NSObject,
+           let homeClass = NSClassFromString("PPHomeViewController") {
+            nextIsHomePresentation = object.isKind(of: homeClass)
+        } else {
+            nextIsHomePresentation = false
+        }
+        guard isHomePresentation != nextIsHomePresentation else {
             return
         }
-        isHomePresentation = object.isKind(of: homeClass)
+        isHomePresentation = nextIsHomePresentation
     }
 
     func refreshCartQuantity() {
@@ -796,6 +1272,37 @@ private final class PPUniversalCardStore: ObservableObject {
         restartCollapseTimer()
     }
 
+    func addFirstQuantityFromAnimatedControl() async throws
+        -> AnimatedAddToCartOutcome {
+        let itemID = model.id
+
+        guard requireAuthentication() else {
+            throw CancellationError()
+        }
+        guard model.usesQuantityControl,
+              !isOutOfStock,
+              quantity == 0,
+              canIncreaseQuantity else {
+            throw PPUniversalAnimatedCartError.unavailable
+        }
+
+        setQuantity(1, animated: true, notifyDelegate: true)
+        await Task.yield()
+        try Task.checkCancellation()
+
+        guard model.id == itemID else {
+            throw CancellationError()
+        }
+        guard quantity > 0 else {
+            throw PPUniversalAnimatedCartError.mutationRejected
+        }
+
+        return AnimatedAddToCartOutcome(
+            cartCount: quantity,
+            addedQuantity: 1
+        )
+    }
+
     func changeQuantity(by delta: Int) {
         guard requireAuthentication() else {
             return
@@ -810,6 +1317,9 @@ private final class PPUniversalCardStore: ObservableObject {
         notifyDelegate: Bool
     ) {
         let clamped = min(max(0, proposedQuantity), model.stock ?? Int.max)
+        guard clamped != quantity else {
+            return
+        }
         let updates = {
             self.quantity = clamped
             if clamped == 0 {
@@ -1201,7 +1711,7 @@ private struct PPUniversalCardRenderer: View {
         let card = Group {
             if store.layout.isHorizontal {
                 HStack(spacing: 11) {
-                    media
+                    cardTapMedia
                         .frame(
                             width: min(
                                 store.layout == .fullWidth ? 148 : 134,
@@ -1215,7 +1725,7 @@ private struct PPUniversalCardRenderer: View {
             } else {
                 let metrics = homeGridMetrics(for: size)
                 VStack(spacing: 0) {
-                    media
+                    cardTapMedia
                         .frame(
                             maxWidth: .infinity,
                             minHeight: store.isHomePresentation && !store.isContextFocused ? metrics.mediaHeight : nil,
@@ -1251,7 +1761,39 @@ private struct PPUniversalCardRenderer: View {
             }
         }
 
-        card
+        decoratedCard(card, size: size)
+    }
+
+    @ViewBuilder
+    private var cardTapMedia: some View {
+        scopedCardNavigationTarget(media)
+    }
+
+    private var usesScopedCardTap: Bool {
+        store.isHomePresentation && store.model.usesQuantityControl
+    }
+
+    @ViewBuilder
+    private func scopedCardNavigationTarget<Content: View>(
+        _ content: Content
+    ) -> some View {
+        if usesScopedCardTap {
+            content
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    store.tapCard()
+                }
+        } else {
+            content
+        }
+    }
+
+    @ViewBuilder
+    private func decoratedCard<Content: View>(
+        _ card: Content,
+        size: CGSize
+    ) -> some View {
+        let decorated = card
             .frame(width: size.width, height: size.height)
             .background(cardBackground)
             .clipShape(cardShape)
@@ -1272,14 +1814,20 @@ private struct PPUniversalCardRenderer: View {
                 value: store.isHighlighted
             )
             .contentShape(cardShape)
-            .onTapGesture {
-                store.tapCard()
-            }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(store.model.title)
             .accessibilityAddTraits(
                 store.isSelected ? [.isSelected] : []
             )
+
+        if usesScopedCardTap {
+            decorated
+        } else {
+            decorated
+                .onTapGesture {
+                    store.tapCard()
+                }
+        }
     }
 
     private var media: some View {
@@ -1291,6 +1839,7 @@ private struct PPUniversalCardRenderer: View {
                     references: store.uiReferences,
                     signature: store.imageSignature,
                     imageURL: store.model.imageURL?.absoluteString,
+                    cacheKey: store.model.id,
                     placeholder: store.imagePlaceholder,
                     placeholderSystemImage: store.model.placeholderSystemImage,
                     topCornerRadius: mediaTopRadius,
@@ -1545,40 +2094,44 @@ private struct PPUniversalCardRenderer: View {
         reservesPriceRow: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            titleContent
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: metrics.titleHeight,
-                    maxHeight: metrics.titleHeight,
-                    alignment: .leading
-                )
+            scopedCardNavigationTarget(
+                VStack(alignment: .leading, spacing: 0) {
+                    titleContent
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: metrics.titleHeight,
+                            maxHeight: metrics.titleHeight,
+                            alignment: .leading
+                        )
 
-            if metrics.subtitleHeight > 0 {
-                subtitleContent
+                    if metrics.subtitleHeight > 0 {
+                        subtitleContent
+                            .frame(
+                                maxWidth: .infinity,
+                                minHeight: metrics.subtitleHeight,
+                                maxHeight: metrics.subtitleHeight,
+                                alignment: .topLeading
+                            )
+                    }
+
+                    Color.clear
+                        .frame(height: metrics.titleToPriceSpacing)
+
+                    Group {
+                        if reservesPriceRow && hasPrice {
+                            priceRow
+                        } else {
+                            Color.clear
+                                .accessibilityHidden(true)
+                        }
+                    }
                     .frame(
                         maxWidth: .infinity,
-                        minHeight: metrics.subtitleHeight,
-                        maxHeight: metrics.subtitleHeight,
+                        minHeight: reservesPriceRow ? metrics.priceHeight : 0,
+                        maxHeight: reservesPriceRow ? metrics.priceHeight : 0,
                         alignment: .topLeading
                     )
-            }
-
-            Color.clear
-                .frame(height: metrics.titleToPriceSpacing)
-
-            Group {
-                if reservesPriceRow && hasPrice {
-                    priceRow
-                } else {
-                    Color.clear
-                        .accessibilityHidden(true)
                 }
-            }
-            .frame(
-                maxWidth: .infinity,
-                minHeight: reservesPriceRow ? metrics.priceHeight : 0,
-                maxHeight: reservesPriceRow ? metrics.priceHeight : 0,
-                alignment: .topLeading
             )
 
             Color.clear
@@ -1601,19 +2154,21 @@ private struct PPUniversalCardRenderer: View {
             Color.clear
                 .frame(height: store.isContextFocused ? 0 : metrics.actionToMetadataSpacing)
 
-            Group {
-                if hasBottomBadges {
-                    bottomBadgesRow
-                } else {
-                    Color.clear
-                        .accessibilityHidden(true)
+            scopedCardNavigationTarget(
+                Group {
+                    if hasBottomBadges {
+                        bottomBadgesRow
+                    } else {
+                        Color.clear
+                            .accessibilityHidden(true)
+                    }
                 }
-            }
-            .frame(
-                maxWidth: .infinity,
-                minHeight: metrics.metadataHeight,
-                maxHeight: metrics.metadataHeight,
-                alignment: .center
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: metrics.metadataHeight,
+                    maxHeight: metrics.metadataHeight,
+                    alignment: .center
+                )
             )
         }
     }
@@ -1980,127 +2535,142 @@ private struct PPUniversalCardRenderer: View {
 
     @ViewBuilder
     private var primaryAction: some View {
-        if store.model.usesQuantityControl &&
-            store.isEditingQuantity &&
-            store.quantity > 0 {
-            quantityStepper
-                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        if store.model.usesQuantityControl && !store.isOutOfStock {
+            animatedCartAction
         } else {
-            Button {
-                PPUniversalHaptics.medium()
-                store.handlePrimaryAction()
-            } label: {
-                HStack(spacing: 7) {
-                    if store.isNotifyInFlight {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(primaryActionForeground)
-                    } else {
-                        Image(systemName: primaryActionIcon)
-                            .font(.system(size: 13, weight: .bold))
-                    }
-                    Text(primaryActionTitle)
-                        .font(
-                            .custom(
-                                "Beiruti-Bold",
-                                size: 14,
-                                relativeTo: .callout
-                            )
-                        )
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.76)
+            standardPrimaryAction
+        }
+    }
+
+    private var animatedCartAction: some View {
+        AnimatedAddToCartButton(
+            cartCount: Binding(
+                get: { store.quantity },
+                set: { _ in }
+            ),
+            title: PPUniversalCardStore.localized(
+                "addToCart",
+                fallback: "Add to cart"
+            ),
+            addingTitle: PPUniversalCardStore.localized(
+                "accessory_view_adding_to_cart",
+                fallback: "Adding…"
+            ),
+            addedTitle: PPUniversalCardStore.localized(
+                "AddedToCart",
+                fallback: "Added"
+            ),
+            retryTitle: PPUniversalCardStore.localized(
+                "Retry",
+                fallback: "Retry"
+            ),
+            tint: store.palette.primary,
+            itemSymbol: "shippingbox.fill",
+            isEnabled: store.canIncreaseQuantity,
+            cornerRadius: 13,
+            quantityMode: .init(
+                quantity: Binding(
+                    get: { store.quantity },
+                    set: { _ in }
+                ),
+                minimumQuantity: 1,
+                maximumQuantity: max(1, store.model.stock ?? Int.max),
+                inCartTitle: PPUniversalCardStore.localized(
+                    "InCart",
+                    fallback: "In cart"
+                ),
+                quantityAccessibilityValue: cartQuantityAccessibilityValue,
+                increaseAccessibilityLabel: PPUniversalCardStore.localized(
+                    "a11y_btn_increase_qty",
+                    fallback: "Increase quantity"
+                ),
+                decreaseAccessibilityLabel: PPUniversalCardStore.localized(
+                    "a11y_btn_decrease_qty",
+                    fallback: "Decrease quantity"
+                ),
+                removeAccessibilityLabel: PPUniversalCardStore.localized(
+                    "a11y_btn_remove_cart_item",
+                    fallback: "Remove item"
+                ),
+                isEnabled: !store.model.isSkeleton,
+                canRemove: true,
+                controlHeight: standardActionHeight,
+                onIncrement: {
+                    PPUniversalHaptics.light()
+                    store.changeQuantity(by: 1)
+                },
+                onDecrement: {
+                    PPUniversalHaptics.light()
+                    store.changeQuantity(by: -1)
+                },
+                onRemove: {
+                    PPUniversalHaptics.light()
+                    store.changeQuantity(by: -1)
                 }
-                .foregroundStyle(primaryActionForeground)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: standardActionHeight)
-                .background(
-                    primaryActionBackground
-                        .clipShape(actionShape)
-                )
-                .overlay(
-                    actionShape.stroke(primaryActionBorder, lineWidth: 0.75)
-                )
-            }
-            .buttonStyle(PPUniversalScaleButtonStyle())
-            .disabled(store.isNotifyInFlight)
-            .accessibilityLabel(primaryActionTitle)
-        }
-    }
-
-    private var quantityStepper: some View {
-        HStack(spacing: 8) {
-            stepperButton(
-                systemName: store.quantity == 1 ? "trash" : "minus",
-                enabled: store.quantity > 0
-            ) {
-                store.changeQuantity(by: -1)
-            }
-
-            Spacer(minLength: 0)
-
-            Text(String(format: "%d", locale: Locale(identifier: "en"), store.quantity))
-                .font(
-                    .custom(
-                        "Beiruti-Black",
-                        size: 18,
-                        relativeTo: .headline
-                    )
-                )
-                .foregroundStyle(store.palette.primary)
-                .monospacedDigit()
-                .accessibilityLabel(
-                    PPUniversalCardStore.localized(
-                        "quantity",
-                        fallback: "Quantity"
-                    )
-                )
-                .accessibilityValue("\(store.quantity)")
-
-            Spacer(minLength: 0)
-
-            stepperButton(
-                systemName: "plus",
-                enabled: store.canIncreaseQuantity
-            ) {
-                store.changeQuantity(by: 1)
-            }
-        }
-        .padding(.horizontal, 4)
-        .frame(minHeight: 42)
-        .background(
-            store.palette.primary.opacity(colorScheme == .dark ? 0.18 : 0.08),
-            in: actionShape
-        )
-        .overlay(
-            actionShape.stroke(
-                store.palette.primary.opacity(0.18),
-                lineWidth: 0.75
             )
-        )
+        ) {
+            PPUniversalHaptics.medium()
+            return try await store.addFirstQuantityFromAnimatedControl()
+        }
+        .id(store.model.id)
     }
 
-    private func stepperButton(
-        systemName: String,
-        enabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
+    private var standardPrimaryAction: some View {
         Button {
-            PPUniversalHaptics.light()
-            action()
+            PPUniversalHaptics.medium()
+            store.handlePrimaryAction()
         } label: {
-            Image(systemName: systemName)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(
-                    systemName == "trash"
-                        ? store.palette.destructive
-                        : store.palette.primary
-                )
-                .frame(width: 42, height: 42)
-                .contentShape(Rectangle())
+            HStack(spacing: 7) {
+                if store.isNotifyInFlight {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(primaryActionForeground)
+                } else {
+                    Image(systemName: primaryActionIcon)
+                        .font(.system(size: 13, weight: .bold))
+                }
+                Text(primaryActionTitle)
+                    .font(
+                        .custom(
+                            "Beiruti-Bold",
+                            size: 14,
+                            relativeTo: .callout
+                        )
+                    )
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+            }
+            .foregroundStyle(primaryActionForeground)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: standardActionHeight)
+            .background(
+                primaryActionBackground
+                    .clipShape(actionShape)
+            )
+            .overlay(
+                actionShape.stroke(primaryActionBorder, lineWidth: 0.75)
+            )
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.32)
+        .disabled(store.isNotifyInFlight)
+        .accessibilityLabel(primaryActionTitle)
+    }
+
+    private func cartQuantityAccessibilityValue(
+        _ quantity: Int
+    ) -> String {
+        let format = PPUniversalCardStore.localized(
+            "a11y_cell_qty_in_cart_format",
+            fallback: "%ld in cart"
+        )
+        let locale = Locale(
+            identifier: store.isRightToLeft ? "ar" : "en"
+        )
+        return String(
+            format: format,
+            locale: locale,
+            quantity
+        )
     }
 
     private var hasBottomBadges: Bool {
@@ -2424,17 +2994,16 @@ private struct PPUniversalCardRenderer: View {
             HStack(spacing: 8) {
                 if let avatarString = ownerAvatarURL,
                    let url = URL(string: avatarString) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        default:
-                            Image(systemName: "person.crop.circle.fill")
-                                .resizable()
-                                .foregroundStyle(.gray.opacity(0.3))
-                        }
+                    AppRemoteImage(
+                        url: url,
+                        cacheKey: ownerID,
+                        displaySize: CGSize(width: 24, height: 24),
+                        contentMode: .fill,
+                        showsRetryAction: false
+                    ) {
+                        ownerAvatarPlaceholder
+                    } failurePlaceholder: {
+                        ownerAvatarPlaceholder
                     }
                     .frame(width: 24, height: 24)
                     .clipShape(Circle())
@@ -2479,6 +3048,12 @@ private struct PPUniversalCardRenderer: View {
             }
             .padding(.vertical, 4)
         }
+    }
+
+    private var ownerAvatarPlaceholder: some View {
+        Image(systemName: "person.crop.circle.fill")
+            .resizable()
+            .foregroundStyle(.gray.opacity(0.3))
     }
 
     private func verticalMediaHeight(for size: CGSize) -> CGFloat {
@@ -2631,19 +3206,19 @@ private struct PPUniversalCardRenderer: View {
 
     private var normalizedCurrency: String {
         let raw = store.model.currencyCode.uppercased()
-        if raw.contains("QAR") || raw.contains("RIAL") {
-            return "QAR"
+        if raw.contains("QAR") || raw.contains("RIAL") || raw.contains("ر.ق") || raw.contains("ريال") {
+            return PPUniversalCardStore.localized("Rials", fallback: "QAR")
         }
-        if raw.contains("EGP") || raw.contains("POUND") {
-            return "EGP"
+        if raw.contains("EGP") || raw.contains("POUND") || raw.contains("ج.م") || raw.contains("جنيه") {
+            return PPUniversalCardStore.localized("EGP", fallback: "EGP")
         }
-        if raw.contains("SAR") {
-            return "SAR"
+        if raw.contains("SAR") || raw.contains("ر.س") {
+            return PPUniversalCardStore.localized("SAR", fallback: "SAR")
         }
-        if raw.contains("AED") {
-            return "AED"
+        if raw.contains("AED") || raw.contains("د.إ") {
+            return PPUniversalCardStore.localized("AED", fallback: "AED")
         }
-        return raw.isEmpty ? "QAR" : raw
+        return raw.isEmpty ? PPUniversalCardStore.localized("Rials", fallback: "QAR") : PPUniversalCardStore.localized(raw, fallback: raw)
     }
 
     private var primaryActionTitle: String {
@@ -2959,6 +3534,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     let references: PPUniversalUIKitReferences
     let signature: String
     let imageURL: String?
+    let cacheKey: String?
     let placeholder: UIImage?
     let placeholderSystemImage: String
     let topCornerRadius: CGFloat
@@ -3085,7 +3661,11 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         }
 
         if let imageURL, !imageURL.isEmpty {
-            PPPetAdViewerLegacyBridge.loadImage(url: imageURL) { image in
+            context.coordinator.task = AppRemoteImagePipeline.load(
+                urlString: imageURL,
+                cacheKey: cacheKey,
+                displaySize: container.bounds.size
+            ) { image in
                 guard context.coordinator.signature == signature, let image else { return }
                 UIView.transition(
                     with: imageView,
@@ -3097,7 +3677,6 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
             }
             return
         }
-        context.coordinator.task?.resume()
     }
 
     static func dismantleUIView(
@@ -3109,7 +3688,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
 
     final class Coordinator {
         var signature: String?
-        var task: URLSessionDataTask?
+        var task: AppRemoteImageTask?
         weak var imageView: UIImageView?
         weak var backgroundImageView: UIImageView?
         weak var washView: UIView?
@@ -3605,6 +4184,10 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
             animated: animated,
             notifyDelegate: false
         )
+    }
+
+    @objc public func refreshCartQuantity() {
+        store.refreshCartQuantity()
     }
 
     @objc public func collapseStepper(_ animated: Bool) {

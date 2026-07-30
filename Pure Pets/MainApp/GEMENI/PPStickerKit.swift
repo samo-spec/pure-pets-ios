@@ -81,9 +81,7 @@ public final class PPStickerStore: NSObject, ObservableObject {
     @Published fileprivate var phase: PPStickerPickerPhase = .idle
     @Published fileprivate var isRefreshing = false
 
-    private let memoryCache = NSCache<NSString, UIImage>()
     private let workQueue = DispatchQueue(label: "com.purepets.chat.stickers.cache", qos: .userInitiated)
-    private var inflightDownloads: [String: [(UIImage?) -> Void]] = [:]
     private var hasLoadedRemoteManifest = false
 
     private lazy var cacheDirectory: URL = {
@@ -207,64 +205,11 @@ public final class PPStickerStore: NSObject, ObservableObject {
         downloadURLString: String,
         completion: @escaping (UIImage?) -> Void
     ) {
-        let key = cacheKey(storagePath: storagePath, downloadURLString: downloadURLString)
-        if let cached = memoryCache.object(forKey: key as NSString) {
-            DispatchQueue.main.async { completion(cached) }
-            return
-        }
-
-        let fileURL = cacheFileURL(storagePath: storagePath, downloadURLString: downloadURLString)
-        workQueue.async {
-            if let data = try? Data(contentsOf: fileURL),
-               let image = UIImage(data: data) {
-                self.memoryCache.setObject(image, forKey: key as NSString)
-                DispatchQueue.main.async { completion(image) }
-                return
-            }
-
-            if self.inflightDownloads[key] != nil {
-                self.inflightDownloads[key]?.append(completion)
-                return
-            }
-
-            self.inflightDownloads[key] = [completion]
-
-            guard let remoteURL = URL(string: downloadURLString) else {
-                self.finishDownload(key: key, image: nil)
-                return
-            }
-
-            URLSession.shared.dataTask(with: remoteURL) { data, _, _ in
-                var image: UIImage?
-                if let data,
-                   let decoded = UIImage(data: data) {
-                    image = decoded
-                    self.memoryCache.setObject(decoded, forKey: key as NSString)
-                    try? data.write(to: fileURL, options: .atomic)
-                }
-                self.finishDownload(key: key, image: image)
-            }.resume()
-        }
-    }
-
-    fileprivate func image(
-        for sticker: PPChatSticker,
-        completion: @escaping (UIImage?) -> Void
-    ) {
-        imageForSticker(
-            storagePath: sticker.storagePath,
-            downloadURLString: sticker.downloadURLString,
+        AppRemoteImagePipeline.load(
+            urlString: downloadURLString,
+            cacheKey: storagePath.isEmpty ? nil : storagePath,
             completion: completion
         )
-    }
-
-    private func finishDownload(key: String, image: UIImage?) {
-        workQueue.async {
-            let completions = self.inflightDownloads.removeValue(forKey: key) ?? []
-            DispatchQueue.main.async {
-                completions.forEach { $0(image) }
-            }
-        }
     }
 
     private func resolveDownloadURLs(for items: [StorageReference]) {
@@ -304,7 +249,10 @@ public final class PPStickerStore: NSObject, ObservableObject {
 
     private func prefetch(_ stickers: [PPChatSticker]) {
         for sticker in stickers {
-            image(for: sticker) { _ in }
+            imageForSticker(
+                storagePath: sticker.storagePath,
+                downloadURLString: sticker.downloadURLString
+            ) { _ in }
         }
     }
 
@@ -372,24 +320,6 @@ public final class PPStickerStore: NSObject, ObservableObject {
         return false
     }
 
-    private func cacheKey(storagePath: String, downloadURLString: String) -> String {
-        storagePath.isEmpty ? downloadURLString : storagePath
-    }
-
-    private func cacheFileURL(storagePath: String, downloadURLString: String) -> URL {
-        let key = cacheKey(storagePath: storagePath, downloadURLString: downloadURLString)
-        let data = Data(key.utf8)
-        var safe = data.base64EncodedString()
-        safe = safe
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "=", with: "")
-
-        let ext = (storagePath as NSString).pathExtension.isEmpty
-            ? "png"
-            : (storagePath as NSString).pathExtension
-        return cacheDirectory.appendingPathComponent("\(safe).\(ext)", isDirectory: false)
-    }
 }
 
 struct PPStickerPickerSheet: View {
@@ -621,14 +551,10 @@ struct PPStickerPickerSheet: View {
 }
 
 private struct PPStickerPickerItem: View {
-    @ObservedObject private var store = PPStickerStore.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let sticker: PPChatSticker
     let onSelect: () -> Void
-
-    @State private var image: UIImage?
-    @State private var isLoading = true
 
     var body: some View {
         Button(action: onSelect) {
@@ -640,43 +566,27 @@ private struct PPStickerPickerItem: View {
                             .fill(Color.ppStickerFieldSurface.opacity(0.66))
                     }
 
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(PPSpace.sm)
-                        .transition(
-                            reduceMotion
-                                ? .opacity
-                                : .opacity.combined(with: .scale(scale: 0.96))
-                        )
-                } else if isLoading {
+                AppRemoteImage(
+                    urlString: sticker.downloadURLString,
+                    cacheKey: sticker.cacheKey,
+                    displaySize: CGSize(width: 96, height: 96),
+                    contentMode: .fit,
+                    showsRetryAction: false
+                ) {
                     ProgressView()
                         .tint(Color.ppStickerAccent)
-                } else {
+                } failurePlaceholder: {
                     Image(systemName: "photo")
                         .font(.system(size: 20.0, weight: .semibold))
                         .foregroundStyle(Color.ppTextSecondary)
                 }
+                .padding(PPSpace.sm)
             }
             .aspectRatio(1.0, contentMode: .fit)
             .contentShape(RoundedRectangle(cornerRadius: 18.0, style: .continuous))
         }
         .buttonStyle(PPStickerItemButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(Text(NSLocalizedString("chat_stickers_send_accessibility", comment: "")))
-        .onAppear {
-            loadImage()
-        }
-    }
-
-    private func loadImage() {
-        isLoading = true
-        store.image(for: sticker) { image in
-            withAnimation(reduceMotion ? .none : .easeOut(duration: 0.16)) {
-                self.image = image
-                self.isLoading = false
-            }
-        }
     }
 }
 

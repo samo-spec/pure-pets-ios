@@ -673,8 +673,14 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
         return;
     }
 
-    CartItem *existing =
-        [cart getCartItemForItemID:accessory.accessoryID];
+    CartItem *existing = nil;
+    if (accessory.accessoryID.length > 0) {
+        existing = [cart getCartItemForItemID:accessory.accessoryID];
+    }
+    if (!existing && accessory.accessoryID.length > 0) {
+        existing = [cart getCartItemForItemID:accessory.accessoryID];
+    }
+
     CartItem *item =
         [[CartItem alloc] initWithAccessory:accessory
                                   quantity:safeQuantity];
@@ -705,9 +711,14 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
             [PPHUD showError:kLang(@"Out of stock")];
             return;
         }
-        safeQuantity == 1
-            ? [PPFunc triggerLightHaptic]
-            : [PPFunc triggerMediumHaptic];
+        if (safeQuantity == 1) {
+            [PPFunc triggerLightHaptic];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [PPAddToCartSuccessToast showWithTitle:(kLang(@"ItemAddedToCart") ?: @"Item added to cart")];
+            });
+        } else {
+            [PPFunc triggerMediumHaptic];
+        }
         [self pp_homePublishCartMutation];
     }];
 }

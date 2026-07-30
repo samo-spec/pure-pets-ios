@@ -7,6 +7,7 @@
 #import "PetAccessoryManager.h"
 #import "PPEmptyStateHelper.h"
 #import "PPHUD.h"
+#import <Pure_Pets-Swift.h>
 #import "PPOrder.h"
 #import "UserManager.h"
 #import <FirebaseAuth/FirebaseAuth.h>
@@ -653,7 +654,9 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
         if (didCancel) { return; }
         if (didAdd) {
             [PPFunc triggerLightHaptic];
-            [PPHUD showSuccess:kLang(@"ItemAddedToCart") ?: kLang(@"purchased_item_added_to_cart") ?: @"Item added to cart"];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [PPAddToCartSuccessToast showWithTitle:kLang(@"ItemAddedToCart") ?: kLang(@"purchased_item_added_to_cart") ?: @"Item added to cart"];
+            });
         } else {
             [PPHUD showError:kLang(@"Out of stock") ?: @"Out of stock"];
         }

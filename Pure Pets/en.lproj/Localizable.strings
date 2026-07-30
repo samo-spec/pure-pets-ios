@@ -3899,6 +3899,17 @@
 "home_pulse_pet_context_title" = "Your pet context";
 "home_pulse_pet_hero_subtitle" = "Care, shop, and discover from one place.";
 "home_pulse_pet_hero_title" = "Today with %@";
+"home_pulse_pet_reminder_active_fmt" = "Reminder: %@";
+"home_pulse_pet_has_reminders" = "Has active care reminders";
+"home_pulse_pet_no_reminders" = "No active reminders";
+"home_hero_vet_eyebrow" = "VETERINARY CARE";
+"home_hero_vet_title" = "Book Vet & Healthcare";
+"home_hero_vet_subtitle" = "Find trusted veterinary clinics, consultations, and expert health checkups.";
+"home_hero_vet_cta" = "Find Vets";
+"home_hero_pharmacy_eyebrow" = "PET PHARMACY";
+"home_hero_pharmacy_title" = "Pet Medicines & Care";
+"home_hero_pharmacy_subtitle" = "Order essential medicines, vitamins, and health treatments delivered fast.";
+"home_hero_pharmacy_cta" = "Browse Pharmacy";
 "home_pulse_pet_selected_a11y" = "%@ selected";
 "home_pulse_priority_add_pet" = "Add pet";
 "home_pulse_priority_market" = "Pets";

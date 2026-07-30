@@ -327,6 +327,7 @@ struct HomeLocationContextButton: View {
     }
 }
 
+@available(iOS 16.0, *)
 struct HomePetSwitcher: View {
     let pets: [HomePetModel]
     let selectedID: String?
@@ -337,7 +338,7 @@ struct HomePetSwitcher: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
-            HomeSectionHeader(
+            PPSectionHeaderSwiftUIRepresentable(
                 title: HomeModelAdapter.localized(
                     "home_pulse_pet_context_title",
                     fallback: "Your pet context"
@@ -350,9 +351,10 @@ struct HomePetSwitcher: View {
                     "Edit",
                     fallback: "Edit"
                 ),
-                action: onEdit
+                action: onEdit,
+                sectionRawValue: 8
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .center, spacing: PPSpace.sm) {
@@ -526,7 +528,12 @@ private struct HomePetIdentityPill: View {
             HomeRemoteImage(
                 urlString: imageURL,
                 placeholder: UIImage(named: "petcare_placeholder"),
-                contentMode: .scaleAspectFill
+                contentMode: .scaleAspectFill,
+                cacheKey: pet.id,
+                displaySize: CGSize(
+                    width: portraitImageDiameter,
+                    height: portraitImageDiameter
+                )
             )
         } else {
             HomeGeneratedPetAvatar(
@@ -728,6 +735,7 @@ struct HomeMyPetProfileCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var isFocused: Bool
 
@@ -748,27 +756,26 @@ struct HomeMyPetProfileCard: View {
         ZStack {
             cardShape
                 .fill(cardGradient)
-                .overlay {
-                    decorativeLayer
-                }
-                .overlay {
-                    cardShape.strokeBorder(
-                        borderColor,
-                        lineWidth: contrast == .increased ? 1.3 : 0.7
-                    )
-                }
-                .shadow(
-                    color: shadowColor,
-                    radius: colorScheme == .dark ? 0 : 24,
-                    x: 0,
-                    y: colorScheme == .dark ? 0 : 18
-                )
+
+            decorativeLayer
+
+            cardShape.strokeBorder(
+                borderColor,
+                lineWidth: contrast == .increased ? 1.4 : 0.8
+            )
 
             contentLayer
+                .padding(PPSpace.lg)
         }
         .frame(maxWidth: .infinity)
-        .frame(minHeight: cardHeight)
+        .frame(minHeight: cardMinHeight)
         .contentShape(cardShape)
+        .shadow(
+            color: PPShadow.card.color,
+            radius: colorScheme == .dark ? 0 : PPShadow.card.radius,
+            x: PPShadow.card.x,
+            y: colorScheme == .dark ? 0 : PPShadow.card.y
+        )
         .overlay {
             if isFocused {
                 cardShape.strokeBorder(
@@ -781,129 +788,135 @@ struct HomeMyPetProfileCard: View {
 
     private var decorativeLayer: some View {
         ZStack {
-            Circle()
-                .fill(orbColor)
-                .frame(width: 108, height: 108)
-                .offset(
-                    x: layoutDirection == .rightToLeft ? -28 : 28,
-                    y: -26
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity,
-                       alignment: .topTrailing)
-
-            Circle()
+            Rectangle()
                 .fill(
-                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.28)
+                    RadialGradient(
+                        colors: [accentGlow, Color.clear],
+                        center: .topTrailing,
+                        startRadius: 0,
+                        endRadius: 170
+                    )
                 )
-                .frame(width: 36, height: 36)
-                .padding(.leading, 18)
-                .padding(.bottom, 24)
+                .clipShape(cardShape)
+
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 86, weight: .black))
+                .foregroundStyle(
+                    Color.ppPrimary.opacity(
+                        colorScheme == .dark ? 0.05 : 0.06
+                    )
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity,
-                       alignment: .bottomLeading)
+                       alignment: .bottomTrailing)
+                .padding(.trailing, PPSpace.sm)
+                .padding(.bottom, PPSpace.sm)
         }
         .accessibilityHidden(true)
     }
 
     private var contentLayer: some View {
-        ZStack(alignment: .topTrailing) {
-            avatar
-                .padding(.top, 18)
-                .padding(.trailing, 18)
-
-            VStack(alignment: .leading, spacing: 0) {
-                topCopy
-                    .padding(.trailing, avatarTextClearance)
-
-                Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 16 : 12)
-
-                metaStack
-
-                ctaView
-                    .padding(.top, dynamicTypeSize.isAccessibilitySize ? 14 : 12)
+        VStack(alignment: .leading, spacing: 0) {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    avatar
+                    copyStack
+                }
+            } else {
+                HStack(alignment: .top, spacing: PPSpace.lg) {
+                    avatar
+                    copyStack
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            .padding(.top, 18)
-            .padding(.leading, 18)
-            .padding(.trailing, 18)
-            .padding(.bottom, 18)
+
+            Spacer(
+                minLength: dynamicTypeSize.isAccessibilitySize
+                    ? PPSpace.md : PPSpace.base
+            )
+
+            metaRow
+
+            ctaView
+                .padding(.top, PPSpace.md)
         }
     }
 
-    private var topCopy: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(eyebrow)
-                .font(HomeFont.bold(11))
-                .foregroundStyle(eyebrowTextColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.84)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 4)
-                .frame(minHeight: 28)
-                .background(
-                    Color.white.opacity(
-                        colorScheme == .dark ? 0.24 : 0.72
-                    ),
-                    in: Capsule()
-                )
-                .padding(.bottom, 6)
+    private var copyStack: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            eyebrowChip
 
             Text(title)
                 .font(HomeFont.bold(24))
-                .foregroundStyle(primaryTextColor)
+                .foregroundStyle(Color.ppTextPrimary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(0.84)
                 .allowsTightening(true)
                 .frame(minHeight: 30, alignment: .leading)
-                .padding(.leading, -6)
-                .padding(.bottom, 8)
+                .padding(.top, PPSpace.xxs)
 
             Text(subtitle)
                 .font(HomeFont.medium(13))
-                .foregroundStyle(subtitleTextColor)
+                .foregroundStyle(Color.ppTextSecondary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
-                .padding(.leading, -6)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var eyebrowChip: some View {
+        HStack(spacing: PPSpace.xxs) {
+            Image(systemName: eyebrowSymbol)
+                .font(.system(size: 9, weight: .bold))
+
+            Text(eyebrow)
+                .font(HomeFont.bold(11))
+        }
+        .foregroundStyle(Color.ppPrimary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.84)
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, 4)
+        .frame(minHeight: 24)
+        .background(
+            Color.ppPrimary.opacity(
+                colorScheme == .dark ? 0.18 : 0.12
+            ),
+            in: Capsule()
+        )
     }
 
     private var avatar: some View {
         ZStack {
             Circle()
                 .fill(
-                    Color.white.opacity(colorScheme == .dark ? 0.12 : 0.18)
+                    Color.ppPrimary.opacity(
+                        colorScheme == .dark ? 0.16 : 0.10
+                    )
                 )
                 .overlay {
-                    Circle().strokeBorder(
-                        Color.white.opacity(
-                            colorScheme == .dark ? 0.10 : 0.24
-                        ),
-                        lineWidth: 1
-                    )
+                    Circle().strokeBorder(borderColor, lineWidth: 1)
                 }
-                .shadow(
-                    color: Color.black.opacity(
-                        colorScheme == .dark ? 0 : 0.10
-                    ),
-                    radius: 20,
-                    x: 0,
-                    y: 10
-                )
-                .frame(width: 82, height: 82)
 
             avatarContent
-                .frame(width: 68, height: 68)
+                .frame(width: 64, height: 64)
                 .background(
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12),
+                    Color.ppSurface.opacity(
+                        colorScheme == .dark ? 0.10 : 0.70
+                    ),
                     in: Circle()
                 )
                 .clipShape(Circle())
                 .overlay {
                     Circle().strokeBorder(
-                        Color.white.opacity(0.35),
+                        Color.white.opacity(
+                            colorScheme == .dark ? 0.10 : 0.55
+                        ),
                         lineWidth: 1.5
                     )
                 }
         }
+        .frame(width: 84, height: 84)
         .accessibilityHidden(true)
     }
 
@@ -915,7 +928,9 @@ struct HomeMyPetProfileCard: View {
             HomeRemoteImage(
                 urlString: imageURL,
                 placeholder: UIImage(named: "petcare_placeholder"),
-                contentMode: .scaleAspectFill
+                contentMode: .scaleAspectFill,
+                cacheKey: pet.id,
+                displaySize: CGSize(width: 68, height: 68)
             )
         } else if let pet = defaultPet {
             HomeGeneratedPetAvatar(
@@ -930,49 +945,54 @@ struct HomeMyPetProfileCard: View {
         }
     }
 
-    private var metaStack: some View {
+    private var metaRow: some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 8) {
-                    metaPill(metaPrimary, emphasized: true)
-                    metaPill(metaSecondary, emphasized: false)
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
+                    metaChip(metaPrimary, symbol: metaPrimarySymbol, emphasized: true)
+                    metaChip(metaSecondary, symbol: metaSecondarySymbol, emphasized: false)
                 }
             } else {
-                HStack(spacing: 8) {
-                    metaPill(metaPrimary, emphasized: true)
-                    metaPill(metaSecondary, emphasized: false)
+                HStack(spacing: PPSpace.sm) {
+                    metaChip(metaPrimary, symbol: metaPrimarySymbol, emphasized: true)
+                    metaChip(metaSecondary, symbol: metaSecondarySymbol, emphasized: false)
                 }
             }
         }
-        .padding(.leading, -6)
     }
 
-    private func metaPill(
+    private func metaChip(
         _ text: String,
+        symbol: String,
         emphasized: Bool
     ) -> some View {
-        Text(text)
-            .font(HomeFont.medium(11))
-            .foregroundStyle(tagTextColor)
-            .lineLimit(1)
-            .minimumScaleFactor(0.82)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(
-                Color.white.opacity(
-                    colorScheme == .dark
-                        ? (emphasized ? 0.16 : 0.14)
-                        : (emphasized ? 0.54 : 0.46)
-                ),
-                in: Capsule()
-            )
+        HStack(spacing: PPSpace.xs) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+
+            Text(text)
+                .font(HomeFont.medium(11))
+        }
+        .foregroundStyle(
+            emphasized ? Color.ppTextPrimary : Color.ppTextSecondary
+        )
+        .lineLimit(1)
+        .minimumScaleFactor(0.82)
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, 6)
+        .background(
+            Color.ppSecondarySurface.opacity(
+                colorScheme == .dark ? 0.50 : 0.70
+            ),
+            in: Capsule()
+        )
     }
 
     private var ctaView: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: PPSpace.sm) {
             Text(ctaTitle)
                 .font(HomeFont.bold(13))
-                .foregroundStyle(primaryTextColor)
+                .foregroundStyle(Color.ppPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
 
@@ -980,27 +1000,26 @@ struct HomeMyPetProfileCard: View {
 
             Image(systemName: forwardSymbol)
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(primaryTextColor)
+                .foregroundStyle(Color.ppPrimary)
                 .accessibilityHidden(true)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, PPSpace.md)
         .frame(
             maxWidth: .infinity,
             minHeight: dynamicTypeSize.isAccessibilitySize ? 52 : 44,
             alignment: .center
         )
         .background(
-            Color.white.opacity(colorScheme == .dark ? 0.16 : 0.26),
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.10),
+            in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
                 .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.12 : 0.24),
+                    Color.ppPrimary.opacity(colorScheme == .dark ? 0.22 : 0.16),
                     lineWidth: 1
                 )
         }
-        .padding(.leading, -6)
     }
 
     private var defaultPet: HomePetModel? {
@@ -1268,30 +1287,21 @@ struct HomeMyPetProfileCard: View {
         layoutDirection == .rightToLeft ? "arrow.left" : "arrow.right"
     }
 
-    private var cardHeight: CGFloat {
+    private var cardMinHeight: CGFloat {
         if dynamicTypeSize.isAccessibilitySize {
-            return 330
+            return 312
         }
-
-        let width = UIScreen.main.bounds.width
-        if width >= 700 { return 258 }
-        if width >= 430 { return 248 }
-        if width < 375 { return 232 }
-        return 240
-    }
-
-    private var avatarTextClearance: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 106 : 98
+        return horizontalSizeClass == .regular ? 248 : 232
     }
 
     private var cardShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
     }
 
     private var cardGradient: LinearGradient {
         LinearGradient(
             colors: gradientColors,
-            startPoint: UnitPoint(x: 0, y: 0.18),
+            startPoint: UnitPoint(x: 0, y: 0),
             endPoint: .bottomTrailing
         )
     }
@@ -1299,97 +1309,64 @@ struct HomeMyPetProfileCard: View {
     private var gradientColors: [Color] {
         if isLoading {
             return colorScheme == .dark
-                ? [
-                    Color(red: 0.14, green: 0.10, blue: 0.08),
-                    Color(red: 0.18, green: 0.13, blue: 0.10),
-                ]
-                : [
-                    Color(red: 0.98, green: 0.92, blue: 0.82),
-                    Color(red: 0.94, green: 0.83, blue: 0.71),
-                ]
+                ? [Color.ppSecondarySurface, Color.ppSurface.opacity(0.92)]
+                : [Color.ppSurface, Color.ppSecondarySurface]
+        }
+
+        if errorMessage != nil {
+            return colorScheme == .dark
+                ? [Color.ppCard, Color.ppError.opacity(0.14)]
+                : [Color.ppSurface, Color.ppError.opacity(0.08)]
         }
 
         if defaultPet != nil {
             return colorScheme == .dark
-                ? [
-                    Color(red: 0.16, green: 0.10, blue: 0.06),
-                    Color(red: 0.22, green: 0.12, blue: 0.06),
-                ]
-                : [
-                    Color(red: 0.99, green: 0.88, blue: 0.76),
-                    Color(red: 0.96, green: 0.65, blue: 0.43),
-                ]
+                ? [Color.ppCard, Color.ppPrimary.opacity(0.18)]
+                : [Color.ppSurface, Color.ppPrimary.opacity(0.10)]
         }
 
         if hasProfilesWithoutDefault {
             return colorScheme == .dark
-                ? [
-                    Color(red: 0.15, green: 0.10, blue: 0.07),
-                    Color(red: 0.20, green: 0.12, blue: 0.08),
-                ]
-                : [
-                    Color(red: 0.99, green: 0.91, blue: 0.82),
-                    Color(red: 0.96, green: 0.75, blue: 0.58),
-                ]
+                ? [Color.ppCard, Color.ppPrimary.opacity(0.14)]
+                : [Color.ppSurface, Color.ppPrimary.opacity(0.07)]
         }
 
         return colorScheme == .dark
-            ? [
-                Color(red: 0.13, green: 0.10, blue: 0.07),
-                Color(red: 0.18, green: 0.13, blue: 0.09),
-            ]
-            : [
-                Color(red: 0.98, green: 0.93, blue: 0.86),
-                Color(red: 0.95, green: 0.80, blue: 0.63),
-            ]
+            ? [Color.ppCard, Color.ppPrimary.opacity(0.12)]
+            : [Color.ppSurface, Color.ppWarmPorcelain]
     }
 
-    private var orbColor: Color {
-        if defaultPet != nil {
-            return Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.24)
-        }
-
-        if hasProfilesWithoutDefault {
-            return Color(red: 0.95, green: 0.52, blue: 0.31)
-                .opacity(colorScheme == .dark ? 0.12 : 0.22)
-        }
-
-        return Color(red: 0.93, green: 0.58, blue: 0.32)
-            .opacity(colorScheme == .dark ? 0.10 : 0.18)
+    private var accentGlow: Color {
+        Color.ppPrimary.opacity(colorScheme == .dark ? 0.18 : 0.14)
     }
 
     private var borderColor: Color {
         contrast == .increased
             ? Color.ppTextPrimary.opacity(0.45)
-            : Color.ppBorder.opacity(0.08)
+            : Color.ppBorder.opacity(0.10)
     }
 
-    private var shadowColor: Color {
-        Color.black.opacity(colorScheme == .dark ? 0 : 0.10)
+    private var eyebrowSymbol: String {
+        if isLoading { return "arrow.triangle.2.circlepath" }
+        if errorMessage != nil { return "exclamationmark.triangle.fill" }
+        if defaultPet?.isDefault == true { return "star.fill" }
+        return "pawprint.fill"
     }
 
-    private var primaryTextColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.95, green: 0.90, blue: 0.86)
-            : Color(red: 0.23, green: 0.13, blue: 0.10)
+    private var metaPrimarySymbol: String {
+        if isLoading { return "arrow.triangle.2.circlepath" }
+        if errorMessage != nil { return "arrow.clockwise" }
+        if defaultPet != nil { return "syringe.fill" }
+        if hasProfilesWithoutDefault { return "pawprint.fill" }
+        return "syringe.fill"
     }
 
-    private var subtitleTextColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.85, green: 0.78, blue: 0.72).opacity(0.90)
-            : Color(red: 0.33, green: 0.22, blue: 0.18).opacity(0.82)
-    }
-
-    private var tagTextColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.88, green: 0.82, blue: 0.76).opacity(0.94)
-            : Color(red: 0.33, green: 0.22, blue: 0.18).opacity(0.94)
-    }
-
-    private var eyebrowTextColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.90, green: 0.82, blue: 0.74)
-            : Color(red: 0.29, green: 0.18, blue: 0.10)
+    private var metaSecondarySymbol: String {
+        if isLoading { return "heart.text.square.fill" }
+        if errorMessage != nil { return "exclamationmark.triangle.fill" }
+        if defaultPet != nil { return "pawprint.fill" }
+        if hasProfilesWithoutDefault { return "hand.tap.fill" }
+        return "bell.badge.fill"
     }
 
     private var accessibilityLabel: String {
@@ -1592,6 +1569,7 @@ private struct HomePriorityPressStyle: ButtonStyle {
     }
 }
 
+@available(iOS 16.0, *)
 struct HomeCategoryRail: View {
     let categories: [HomeCategoryModel]
     let selectedID: Int?
@@ -1601,7 +1579,7 @@ struct HomeCategoryRail: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
-            HomeSectionHeader(
+            PPSectionHeaderSwiftUIRepresentable(
                 title: HomeModelAdapter.localized(
                     "home_pulse_categories_title",
                     fallback: "Explore by pet"
@@ -1611,9 +1589,10 @@ struct HomeCategoryRail: View {
                     fallback: "The selected species shapes relevant results"
                 ),
                 actionTitle: nil,
-                action: nil
+                action: nil,
+                sectionRawValue: 5
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
             HomeMainKindsCollectionRepresentable(
                 categories: categories,
@@ -2119,6 +2098,7 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
     }
 }
 
+@available(iOS 16.0, *)
 struct HomeOrderCard: View {
     let order: HomeOrderModel
     let onTap: () -> Void
@@ -2126,7 +2106,7 @@ struct HomeOrderCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
-            HomeSectionHeader(
+            PPSectionHeaderSwiftUIRepresentable(
                 title: HomeModelAdapter.localized(
                     "home_pulse_current_order_title",
                     fallback: "Current order"
@@ -2136,8 +2116,10 @@ struct HomeOrderCard: View {
                     "home_pulse_orders",
                     fallback: "Orders"
                 ),
-                action: onSeeAll
+                action: onSeeAll,
+                sectionRawValue: 2
             )
+            .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
             Button(action: onTap) {
                 HStack(spacing: PPSpace.md) {
@@ -2218,6 +2200,7 @@ struct HomeOrderCard: View {
     }
 }
 
+@available(iOS 16.0, *)
 struct HomeFeedSection: View {
     let section: HomeSectionModel
     let store: HomeStore
@@ -2232,15 +2215,16 @@ struct HomeFeedSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
-            HomeSectionHeader(
+            PPSectionHeaderSwiftUIRepresentable(
                 title: section.title,
                 subtitle: section.subtitle,
                 actionTitle: section.seeAllTitle,
                 action: section.seeAllTitle == nil
                     ? nil
-                    : { store.seeAll(section.id) }
+                    : { store.seeAll(section.id) },
+                sectionRawValue: section.rawConfigSectionID
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
             switch section.state {
             case .loading:
@@ -2549,35 +2533,42 @@ private struct HomeCardSkeletonRail: View {
     }
 }
 
-struct HomeRemoteImage: UIViewRepresentable {
+struct HomeRemoteImage: View {
     let urlString: String?
     let placeholder: UIImage?
     let contentMode: UIView.ContentMode
+    var cacheKey: String? = nil
+    var displaySize: CGSize? = nil
 
-    func makeUIView(context: Context) -> UIImageView {
-        let imageView = UIImageView()
-        imageView.clipsToBounds = true
-        imageView.backgroundColor = UIColor.ppSecondarySurface
-        imageView.isAccessibilityElement = false
-        return imageView
+    var body: some View {
+        AppRemoteImage(
+            urlString: urlString,
+            cacheKey: cacheKey,
+            displaySize: displaySize,
+            contentMode: swiftUIContentMode
+        ) {
+            placeholderView
+        } failurePlaceholder: {
+            placeholderView
+        }
+        .background(Color(uiColor: .ppSecondarySurface))
+        .clipped()
+        .accessibilityHidden(true)
     }
 
-    func updateUIView(_ imageView: UIImageView, context: Context) {
-        imageView.contentMode = contentMode
-        PPImageLoaderManager.shared().setImage(
-            on: imageView,
-            url: urlString,
-            placeholder: placeholder,
-            transitionStyle: .fade,
-            completion: nil
-        )
+    @ViewBuilder
+    private var placeholderView: some View {
+        if let placeholder {
+            Image(uiImage: placeholder)
+                .resizable()
+                .aspectRatio(contentMode: swiftUIContentMode)
+        } else {
+            Color(uiColor: .ppSecondarySurface)
+        }
     }
 
-    static func dismantleUIView(
-        _ imageView: UIImageView,
-        coordinator: Void
-    ) {
-        PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
+    private var swiftUIContentMode: ContentMode {
+        contentMode == .scaleAspectFit ? .fit : .fill
     }
 }
 

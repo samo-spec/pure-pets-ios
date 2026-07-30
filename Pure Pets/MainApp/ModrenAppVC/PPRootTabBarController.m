@@ -382,14 +382,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.iconOrbView = [[UIView alloc] init];
     self.iconOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     self.iconOrbView.userInteractionEnabled = NO;
-    self.iconOrbView.layer.cornerRadius = 20.0;
-    self.iconOrbView.layer.shadowOpacity = 0.16;
-    self.iconOrbView.layer.shadowRadius = 14.0;
-    self.iconOrbView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.iconOrbView.layer.cornerRadius = 14.0;
+    self.iconOrbView.clipsToBounds = NO;
     [contentView addSubview:self.iconOrbView];
 
-    UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:17.0
-                                                                                              weight:UIImageSymbolWeightSemibold
+    UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:18.0
+                                                                                              weight:UIImageSymbolWeightBold
                                                                                                scale:UIImageSymbolScaleMedium];
     self.iconImageView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"cart.fill" withConfiguration:iconConfig]];
     self.iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -400,8 +398,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.countBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.countBadgeLabel.font = [GM boldFontWithSize:11.0];
     self.countBadgeLabel.textAlignment = NSTextAlignmentCenter;
-    self.countBadgeLabel.layer.cornerRadius = 11.0;
+    self.countBadgeLabel.layer.cornerRadius = 10.0;
     self.countBadgeLabel.layer.masksToBounds = YES;
+    self.countBadgeLabel.layer.borderWidth = 2.0;
     [contentView addSubview:self.countBadgeLabel];
 
     self.titleLabel = [[UILabel alloc] init];
@@ -478,8 +477,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self.iconImageView.centerXAnchor constraintEqualToAnchor:self.iconOrbView.centerXAnchor],
         [self.iconImageView.centerYAnchor constraintEqualToAnchor:self.iconOrbView.centerYAnchor],
 
-        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:26.0],
-        [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:26.0],
+        [self.countBadgeLabel.topAnchor constraintEqualToAnchor:self.iconOrbView.topAnchor constant:-4.0],
+        [self.countBadgeLabel.trailingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:4.0],
+        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:20.0],
+        [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:20.0],
 
         [self.ctaContainerView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
         [self.ctaContainerView.heightAnchor constraintEqualToConstant:38.0],
@@ -494,27 +495,23 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     ]];
 
     self.expandedConstraints = @[
-        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
-        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:10.0],
-        [self.countBadgeLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:10.0],
+        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:12.0],
 
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:12.0],
         [self.titleLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:9.0],
         [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
 
-        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
+        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:12.0],
         [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:3.0],
         [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
         [self.subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor constant:-14.0],
 
-        [self.ctaContainerView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-14.0]
+        [self.ctaContainerView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12.0]
     ];
 
     self.collapsedConstraints = @[
-        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:12.0],
-        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:8.0],
-        [self.countBadgeLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12.0],
-        [self.countBadgeLabel.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor]
+        [self.iconOrbView.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
+        [self.iconOrbView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor]
     ];
 
     [NSLayoutConstraint activateConstraints:self.expandedConstraints];
@@ -600,6 +597,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 }
 
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+{
+    if (self.hidden || self.alpha < 0.01 || !self.userInteractionEnabled) {
+        return nil;
+    }
+    if ([self pointInside:point withEvent:event]) {
+        return self;
+    }
+    return nil;
+}
+
 - (void)pp_applyAppearance
 {
     self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -618,11 +626,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.iconOrbView.backgroundColor = dark
         ? [brandColor colorWithAlphaComponent:0.22]
         : [brandColor colorWithAlphaComponent:0.12];
-    self.iconOrbView.layer.shadowColor = [brandColor colorWithAlphaComponent:0.26].CGColor;
+    self.iconOrbView.layer.cornerRadius = 14.0;
+    self.iconOrbView.layer.borderWidth = 1.0;
+    self.iconOrbView.layer.borderColor = [brandColor colorWithAlphaComponent:dark ? 0.35 : 0.20].CGColor;
     self.iconImageView.tintColor = brandColor;
 
-    self.countBadgeLabel.backgroundColor = [brandColor colorWithAlphaComponent:dark ? 0.20 : 0.14];
-    self.countBadgeLabel.textColor = brandColor;
+    self.countBadgeLabel.backgroundColor = brandColor;
+    self.countBadgeLabel.textColor = UIColor.whiteColor;
+    self.countBadgeLabel.layer.borderColor = (dark ? [UIColor colorWithWhite:0.12 alpha:1.0] : UIColor.whiteColor).CGColor;
 
     self.titleLabel.textColor = titleColor;
     self.subtitleLabel.textColor = subtitleColor;
@@ -888,7 +899,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self.floatingBarView emitTapFeedback];
     if (self.isCollapsed) {
         [self expandFloatingBarAnimated:YES];
-        return;
     }
     if (self.openCartHandler) {
         self.openCartHandler();
@@ -2795,19 +2805,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
 
-    CGSize itemSize = CGSizeMake(itemWidth, tabBarSize.height);
-    CGSize indicatorSize =
-        CGSizeMake(MIN(72.0, MAX(52.0, itemWidth - 12.0)),
-                   MIN(48.0, MAX(44.0, tabBarSize.height - 28.0)));
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
-    UIColor *fillColor = [accent colorWithAlphaComponent:0.08];
-    UIColor *strokeColor = [accent colorWithAlphaComponent:0.12];
-    UIImage *indicatorImage =
-        [self pp_tabBarSelectionIndicatorImageForItemSize:itemSize
-                                            indicatorSize:indicatorSize
-                                                fillColor:fillColor
-                                              strokeColor:strokeColor];
-
     if (@available(iOS 26.0, *)) {
         BOOL geometryAlreadyApplied =
             fabs(self.premiumDockAppliedItemWidth - itemWidth) < 0.5 &&
@@ -2820,8 +2817,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         appearance.stackedItemPositioning = UITabBarItemPositioningCentered;
         appearance.stackedItemWidth = itemWidth;
         appearance.stackedItemSpacing = 0.0;
-        appearance.selectionIndicatorImage =
-            [indicatorImage imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        appearance.selectionIndicatorImage = [UIImage new];
 
         dockTabBar.itemPositioning = UITabBarItemPositioningCentered;
         dockTabBar.itemWidth = itemWidth;
@@ -2832,7 +2828,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
 
-    dockTabBar.selectionIndicatorImage = indicatorImage;
+    dockTabBar.selectionIndicatorImage = [UIImage new];
 }
 
 - (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize

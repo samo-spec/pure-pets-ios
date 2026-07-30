@@ -41,6 +41,7 @@ public struct PPServiceViewerScreen: View {
                                 PPServiceViewerHeroHeader(
                                     imageURL: snapshot.imageURL,
                                     blurHash: snapshot.blurHash,
+                                    cacheKey: snapshot.serviceID,
                                     height: heroHeight,
                                     compact: compact,
                                     onImageLoaded: { img in

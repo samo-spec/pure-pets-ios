@@ -10,7 +10,7 @@ import UIKit
 
 private enum PPSectionHeaderMetrics {
     static let contentVerticalInset: CGFloat = 2
-    static let horizontalInset: CGFloat = 12
+    static let horizontalInset: CGFloat = 6
     static let identityMarkWidth: CGFloat = 24
     static let identityMarkHeight: CGFloat = 8
     static let identityCoreWidth: CGFloat = 8
@@ -21,10 +21,10 @@ private enum PPSectionHeaderMetrics {
     static let titleUnderlineHeight: CGFloat = 3
     static let actionHeight: CGFloat = 36
     static let actionMinWidth: CGFloat = 44
-    static let actionMaxWidth: CGFloat = 144
+    static let actionMaxWidth: CGFloat = 160
     static let actionTitleMinimumScale: CGFloat = 0.76
-    static let mainKindsHorizontalInset: CGFloat = 22
-    static let mainKindsActionMaxWidth: CGFloat = 116
+    static let mainKindsHorizontalInset: CGFloat = 11
+    static let mainKindsActionMaxWidth: CGFloat = 160
     static let mainKindsActionImagePadding: CGFloat = 3
     static let mainKindsActionTitleMinimumScale: CGFloat = 0.68
     static let titleTouchHeight: CGFloat = 44
@@ -170,6 +170,7 @@ private enum PPSectionHeaderHomeSectionRaw {
     static let accessories = 7
 }
 
+@available(iOS 16.0, *)
 @objc(PPSectionHeaderSwiftUI)
 public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRecognizerDelegate {
     @objc public var titleLabel: UILabel { swiftUIHostView.titleLabel }
@@ -716,6 +717,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     }
 }
 
+@available(iOS 16.0, *)
 private final class PPSectionHeaderHostingView: UIView {
     let titleLabel: UILabel = {
         let label = UILabel()
@@ -846,6 +848,7 @@ private final class PPSectionHeaderHostingView: UIView {
     }
 }
 
+@available(iOS 16.0, *)
 private struct PPSectionHeaderRootView: View {
     @ObservedObject var store: PPSectionHeaderStore
     let titleLabel: UILabel
@@ -898,25 +901,11 @@ private struct PPSectionHeaderRootView: View {
                     button: actionButton,
                     minimumScaleFactor: actionTitleMinimumScale
                 )
-                    .fixedSize(horizontal: store.state.usesCirclePresentation, vertical: true)
-                    .frame(
-                        minWidth: store.state.usesCirclePresentation
-                            ? PPSectionHeaderMetrics.actionHeight
-                            : PPSectionHeaderMetrics.actionMinWidth,
-                        idealWidth: store.state.usesCirclePresentation
-                            ? PPSectionHeaderMetrics.actionHeight
-                            : nil,
-                        maxWidth: store.state.usesCirclePresentation
-                            ? PPSectionHeaderMetrics.actionHeight
-                            : actionMaxWidth,
-                        minHeight: PPSectionHeaderMetrics.actionHeight,
-                        idealHeight: PPSectionHeaderMetrics.actionHeight,
-                        maxHeight: PPSectionHeaderMetrics.actionHeight
-                    )
-                    .clipped()
-                    .padding(.vertical, 3)
-                    .transition(.opacity)
-                    .accessibilitySortPriority(1)
+                .layoutPriority(2)
+                .fixedSize(horizontal: true, vertical: true)
+                .padding(.vertical, 3)
+                .transition(.opacity)
+                .accessibilitySortPriority(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: store.state.rightToLeft ? .trailing : .leading)
@@ -1022,6 +1011,7 @@ private struct PPSectionHeaderLabelRepresentable: UIViewRepresentable {
     }
 }
 
+@available(iOS 16.0, *)
 private struct PPSectionHeaderButtonRepresentable: UIViewRepresentable {
     let button: UIButton
     let minimumScaleFactor: CGFloat
@@ -1037,7 +1027,72 @@ private struct PPSectionHeaderButtonRepresentable: UIViewRepresentable {
         uiView.titleLabel?.lineBreakMode = .byTruncatingTail
         uiView.titleLabel?.adjustsFontSizeToFitWidth = true
         uiView.titleLabel?.minimumScaleFactor = minimumScaleFactor
-        uiView.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        uiView.setContentCompressionResistancePriority(.required, for: .horizontal)
         uiView.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
+        let fitting = uiView.systemLayoutSizeFitting(
+            UIView.layoutFittingCompressedSize,
+            withHorizontalFittingPriority: .fittingSizeLevel,
+            verticalFittingPriority: .required
+        )
+        let minW = PPSectionHeaderMetrics.actionMinWidth
+        let maxW = PPSectionHeaderMetrics.actionMaxWidth
+        let width = min(maxW, max(minW, ceil(fitting.width)))
+        return CGSize(width: width, height: PPSectionHeaderMetrics.actionHeight)
+    }
+}
+
+@available(iOS 16.0, *)
+public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
+    public let title: String
+    public let subtitle: String?
+    public let actionTitle: String?
+    public let action: (() -> Void)?
+    public let sectionRawValue: Int
+
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil,
+        sectionRawValue: Int = 7
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.actionTitle = actionTitle
+        self.action = action
+        self.sectionRawValue = sectionRawValue
+    }
+
+    public func makeUIView(context: Context) -> PPSectionHeaderSwiftUI {
+        let view = PPSectionHeaderSwiftUI(frame: .zero)
+        return view
+    }
+
+    public func updateUIView(_ uiView: PPSectionHeaderSwiftUI, context: Context) {
+        let section = PPHomeSection(rawValue: sectionRawValue) ?? .accessories
+        uiView.configure(
+            title: title,
+            subtitle: subtitle,
+            actionTitle: actionTitle,
+            iconName: nil,
+            menu: nil,
+            ppHomeSection: section
+        )
+        uiView.onTap = action
+    }
+
+    @available(iOS 16.0, *)
+    public func sizeThatFits(_ proposal: ProposedViewSize, uiView: PPSectionHeaderSwiftUI, context: Context) -> CGSize? {
+        let targetWidth = proposal.width ?? UIScreen.main.bounds.width
+        let fittingSize = uiView.systemLayoutSizeFitting(
+            CGSize(width: targetWidth, height: UIView.noIntrinsicMetric),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        let height = max(44, fittingSize.height)
+        return CGSize(width: targetWidth, height: height)
     }
 }

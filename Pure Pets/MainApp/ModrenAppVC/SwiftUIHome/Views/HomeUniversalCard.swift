@@ -10,9 +10,10 @@ struct HomeUniversalCard: View {
     var body: some View {
         Group {
             if #available(iOS 16.0, *) {
-                HomeUniversalHostingCard(
+                HomeUniversalDirectCard(
                     card: card,
                     delegate: delegate,
+                    onTap: onTap,
                     onQuantityChange: onQuantityChange
                 )
             } else {
@@ -29,86 +30,25 @@ struct HomeUniversalCard: View {
 }
 
 @available(iOS 16.0, *)
-private struct HomeUniversalHostingCard: UIViewRepresentable {
+private struct HomeUniversalDirectCard: View {
     let card: HomeCardModel
     let delegate: PPUniversalCellDelegate?
+    let onTap: () -> Void
     let onQuantityChange: (Int) -> Void
 
-    final class Coordinator {
-        private var viewModelIdentity: ObjectIdentifier?
-        private var cardID: String?
-        private var contextRawValue: Int?
-
-        func requiresConfiguration(for card: HomeCardModel) -> Bool {
-            let nextViewModelIdentity = ObjectIdentifier(card.viewModel)
-            let nextContextRawValue = card.context.rawValue
-            let inputsChanged =
-                viewModelIdentity != nextViewModelIdentity ||
-                cardID != card.id ||
-                contextRawValue != nextContextRawValue
-
-            guard inputsChanged else {
-                return false
-            }
-
-            viewModelIdentity = nextViewModelIdentity
-            cardID = card.id
-            contextRawValue = nextContextRawValue
-            return true
-        }
-
-        func reset() {
-            viewModelIdentity = nil
-            cardID = nil
-            contextRawValue = nil
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> PPUniversalCardHostingCell {
-        let cell = PPUniversalCardHostingCell(frame: .zero)
-        cell.backgroundColor = .clear
-        cell.contentView.backgroundColor = .clear
-        cell.delegate = delegate
-        cell.showsSubtitle = true
-        cell.userBordersV2 = true
-        return cell
-    }
-
-    func updateUIView(
-        _ cell: PPUniversalCardHostingCell,
-        context: Context
-    ) {
-        cell.delegate = delegate
-        // The hosted universal cell already forwards card taps through its
-        // legacy delegate. Supplying `onTap` as well makes its store invoke
-        // both routes and pushes the same viewer twice.
-        cell.onTap = nil
-        cell.onQuantityChange = onQuantityChange
-        guard context.coordinator.requiresConfiguration(for: card) else {
-            return
-        }
-        cell.applyViewModel(
-            card.viewModel,
+    var body: some View {
+        PPUniversalCardView(
+            viewModel: card.viewModel,
+            delegate: delegate,
             context: card.context,
             layoutMode: .cellLayoutModeVertical,
             discountMode: .badge,
-            imageLoader: nil
+            imageLoader: nil,
+            showsSubtitle: true,
+            isHomePresentation: true,
+            onTap: onTap,
+            onQuantityChange: onQuantityChange
         )
-    }
-
-    static func dismantleUIView(
-        _ cell: PPUniversalCardHostingCell,
-        coordinator: Coordinator
-    ) {
-        coordinator.reset()
-        cell.stopMediaPlayback()
-        cell.delegate = nil
-        cell.onTap = nil
-        cell.onQuantityChange = nil
     }
 }
 
@@ -143,7 +83,9 @@ private struct HomeUniversalCompatibilityCard: View {
                     HomeRemoteImage(
                         urlString: viewModel.imageURL,
                         placeholder: viewModel.image ?? viewModel.placeholder,
-                        contentMode: .scaleAspectFill
+                        contentMode: .scaleAspectFill,
+                        cacheKey: card.id,
+                        displaySize: CGSize(width: 180, height: 166)
                     )
                     .frame(maxWidth: .infinity)
                     .frame(height: 166)

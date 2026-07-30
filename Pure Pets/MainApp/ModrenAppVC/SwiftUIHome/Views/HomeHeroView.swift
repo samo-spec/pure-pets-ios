@@ -449,12 +449,18 @@ struct HomeHeroView: View {
                 hasSelectedCategory = false
             }
             if hasSelectedCategory {
-                let fallbackImage = page.localImage ?? UIImage(named: "pawprint4")
+                let categoryImage = page.localImage
+                let fallbackImage = categoryImage ?? UIImage(named: "pawprint4")
                 return HomeHeroArtworkAsset(
                     animationName: nil,
                     imageName: fallbackImage == nil ? "pawprint4" : nil,
                     localImage: fallbackImage,
-                    remoteImageURL: normalizedHeroImageURL(page.imageURL),
+                    // The category rail and the selected Hero must present the
+                    // same pet identity. Prefer its resolved local artwork;
+                    // use the remote source only when no local artwork exists.
+                    remoteImageURL: categoryImage == nil
+                        ? normalizedHeroImageURL(page.imageURL)
+                        : nil,
                     usesCategoryArtworkTreatment: true,
                     loadsFromFirebase: false,
                     primarySymbol: "bag.fill",
@@ -708,17 +714,26 @@ private struct HomeHeroFloatingPlate: View {
     @ViewBuilder
     private var centralArtwork: some View {
         if let remoteImageURL, usesCategoryArtworkTreatment {
-            HomeHeroPlateCategoryRemoteImage(
+            AppRemoteImage(
                 urlString: remoteImageURL,
-                placeholder: localImage
-            )
+                displaySize: CGSize(
+                    width: categoryArtworkSize,
+                    height: categoryArtworkSize
+                ),
+                contentMode: .fit,
+                fadeDuration: 0
+            ) {
+                categoryArtworkPlaceholder
+            } failurePlaceholder: {
+                categoryArtworkPlaceholder
+            }
             .frame(width: categoryArtworkSize, height: categoryArtworkSize)
             .clipped()
         } else if let remoteImageURL {
             HomeRemoteImage(
                 urlString: remoteImageURL,
                 placeholder: localImage,
-                contentMode: .scaleAspectFit
+                contentMode: .scaleToFill
             )
             .frame(width: 76, height: 76)
             .clipShape(
@@ -767,6 +782,17 @@ private struct HomeHeroFloatingPlate: View {
         70
     }
 
+    @ViewBuilder
+    private var categoryArtworkPlaceholder: some View {
+        if let localImage {
+            Image(uiImage: localImage)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Color.clear
+        }
+    }
+
     private var plateSize: CGFloat {
         100
     }
@@ -810,40 +836,6 @@ private struct HomeHeroFloatingPlate: View {
                 floating = true
             }
         }
-    }
-}
-
-private struct HomeHeroPlateCategoryRemoteImage: UIViewRepresentable {
-    let urlString: String?
-    let placeholder: UIImage?
-
-    func makeUIView(context: Context) -> UIImageView {
-        let imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFit
-        imageView.clipsToBounds = true
-        imageView.backgroundColor = .clear
-        imageView.isAccessibilityElement = false
-        return imageView
-    }
-
-    func updateUIView(_ imageView: UIImageView, context: Context) {
-        imageView.contentMode = .scaleAspectFit
-        imageView.clipsToBounds = true
-        imageView.backgroundColor = .clear
-        PPImageLoaderManager.shared().setImage(
-            on: imageView,
-            url: urlString,
-            placeholder: placeholder,
-            transitionStyle: .none,
-            completion: nil
-        )
-    }
-
-    static func dismantleUIView(
-        _ imageView: UIImageView,
-        coordinator: Void
-    ) {
-        PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
     }
 }
 

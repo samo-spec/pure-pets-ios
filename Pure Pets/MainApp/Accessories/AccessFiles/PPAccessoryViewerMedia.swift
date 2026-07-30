@@ -4,81 +4,6 @@ import Combine
 import SwiftUI
 import UIKit
 
-enum PPAccessoryImageLoadState {
-    case idle
-    case loading(placeholder: UIImage?)
-    case loaded(UIImage)
-    case failed
-}
-
-@MainActor
-final class PPAccessoryImageLoader: ObservableObject {
-    @Published private(set) var state: PPAccessoryImageLoadState = .idle
-
-    private var requestID = UUID()
-    private var currentURL: String?
-
-    func load(urlString: String?, blurHash: String?) {
-        let normalizedURL =
-            urlString?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedHash =
-            blurHash?.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if currentURL == normalizedURL, case .loaded = state {
-            return
-        }
-
-        requestID = UUID()
-        let activeRequestID = requestID
-        currentURL = normalizedURL
-        state = .loading(placeholder: nil)
-
-        if let normalizedHash, !normalizedHash.isEmpty {
-            PPBlurHashBridge.image(
-                from: normalizedHash,
-                size: CGSize(width: 44, height: 44),
-                punch: 1
-            ) { [weak self] placeholder in
-                guard let self,
-                      self.requestID == activeRequestID,
-                      let placeholder else {
-                    return
-                }
-                if normalizedURL?.isEmpty == false {
-                    self.state = .loading(placeholder: placeholder)
-                } else {
-                    self.state = .loaded(placeholder)
-                }
-            }
-        }
-
-        guard let normalizedURL, !normalizedURL.isEmpty else {
-            if normalizedHash?.isEmpty != false {
-                state = .idle
-            }
-            return
-        }
-
-        PPAccessoryViewerLegacyBridge.loadImage(
-            url: normalizedURL
-        ) { [weak self] image in
-            guard let self, self.requestID == activeRequestID else {
-                return
-            }
-            self.state = image.map(PPAccessoryImageLoadState.loaded)
-                ?? .failed
-        }
-    }
-
-    func retry(blurHash: String?) {
-        load(urlString: currentURL, blurHash: blurHash)
-    }
-
-    func cancel() {
-        requestID = UUID()
-    }
-}
-
 struct PPAccessoryRemoteImageView: View {
     let urlString: String?
     let blurHash: String?
@@ -86,10 +11,11 @@ struct PPAccessoryRemoteImageView: View {
     let accessibilityLabel: String
     var isAvatar: Bool = false
     var fallbackInitials: String? = nil
+    var cacheKey: String? = nil
+    var displaySize: CGSize? = nil
     var onImageLoaded: ((UIImage) -> Void)? = nil
 
-    @StateObject private var loader = PPAccessoryImageLoader()
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var blurHashImage: UIImage?
 
     init(
         urlString: String?,
@@ -98,6 +24,8 @@ struct PPAccessoryRemoteImageView: View {
         accessibilityLabel: String,
         isAvatar: Bool = false,
         fallbackInitials: String? = nil,
+        cacheKey: String? = nil,
+        displaySize: CGSize? = nil,
         onImageLoaded: ((UIImage) -> Void)? = nil
     ) {
         self.urlString = urlString
@@ -106,6 +34,8 @@ struct PPAccessoryRemoteImageView: View {
         self.accessibilityLabel = accessibilityLabel
         self.isAvatar = isAvatar
         self.fallbackInitials = fallbackInitials
+        self.cacheKey = cacheKey
+        self.displaySize = displaySize
         self.onImageLoaded = onImageLoaded
     }
 
@@ -117,77 +47,55 @@ struct PPAccessoryRemoteImageView: View {
                 PPAccessorySubviewBackground.mediaFill
             }
 
-            switch loader.state {
-            case .idle:
-                placeholder
-            case let .loading(image):
-                if let image {
-                    rendered(image)
-                } else {
+            AppRemoteImage(
+                urlString: urlString,
+                cacheKey: cacheKey,
+                displaySize: displaySize,
+                contentMode: isAvatar ? .fill : contentMode,
+                showsRetryAction: !isAvatar,
+                onImageLoaded: onImageLoaded
+            ) {
+                ZStack {
                     placeholder
-                }
-                if !isAvatar {
-                    ProgressView()
-                        .tint(PPAccessoryPalette.accent)
-                        .accessibilityLabel(
-                            PPAccessoryViewerL10n.text(
-                                "accessory_view_loading_image"
+                    if let blurHashImage {
+                        Image(uiImage: blurHashImage)
+                            .resizable()
+                            .aspectRatio(
+                                contentMode: isAvatar ? .fill : contentMode
                             )
-                        )
-                }
-            case let .loaded(image):
-                rendered(image)
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .opacity.combined(
-                                with: .scale(scale: 1.012)
+                    }
+                    if !isAvatar {
+                        ProgressView()
+                            .tint(PPAccessoryPalette.accent)
+                            .accessibilityLabel(
+                                PPAccessoryViewerL10n.text(
+                                    "accessory_view_loading_image"
+                                )
                             )
-                    )
-            case .failed:
+                    }
+                }
+            } failurePlaceholder: {
                 if isAvatar {
                     avatarFallback
                 } else {
-                    Button {
-                        loader.retry(blurHash: blurHash)
-                    } label: {
-                        VStack(spacing: 10) {
-                            Image(systemName: "photo.badge.exclamationmark")
-                                .font(.system(size: 26, weight: .semibold))
-                            Text(PPAccessoryViewerL10n.text("Retry"))
-                                .font(PPAccessoryTypography.calloutBold)
-                        }
-                        .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Rectangle())
+                    VStack(spacing: 10) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.system(size: 26, weight: .semibold))
+                        Text(PPAccessoryViewerL10n.text("Retry"))
+                            .font(PPAccessoryTypography.calloutBold)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(
-                        PPAccessoryViewerL10n.text(
-                            "accessory_view_image_retry_hint"
-                        )
-                    )
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
                 }
             }
         }
         .clipped()
-        .animation(
-            reduceMotion ? nil : .easeOut(duration: 0.24),
-            value: stateIdentity
-        )
         .onAppear {
-            loader.load(urlString: urlString, blurHash: blurHash)
+            decodeBlurHashIfNeeded()
         }
-        .onChange(of: urlString) { value in
-            loader.load(urlString: value, blurHash: blurHash)
-        }
-        .onChange(of: stateIdentity) { _ in
-            if case let .loaded(image) = loader.state {
-                onImageLoaded?(image)
-            }
-        }
-        .onDisappear {
-            loader.cancel()
+        .onChange(of: blurHash) { _ in
+            decodeBlurHashIfNeeded()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -240,27 +148,25 @@ struct PPAccessoryRemoteImageView: View {
         return nil
     }
 
-    @ViewBuilder
-    private func rendered(_ image: UIImage) -> some View {
-        if isAvatar {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-        } else {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: contentMode)
+    private func decodeBlurHashIfNeeded() {
+        let normalizedHash = blurHash?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard let normalizedHash, !normalizedHash.isEmpty else {
+            blurHashImage = nil
+            return
         }
-    }
-
-    private var stateIdentity: Int {
-        switch loader.state {
-        case .idle: return 0
-        case .loading: return 1
-        case .loaded: return 2
-        case .failed: return 3
+        PPBlurHashBridge.image(
+            from: normalizedHash,
+            size: CGSize(width: 44, height: 44),
+            punch: 1
+        ) { image in
+            guard normalizedHash == blurHash?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ) else {
+                return
+            }
+            blurHashImage = image
         }
     }
 }
@@ -806,7 +712,8 @@ private struct PPAccessoryZoomableImage: View {
                 urlString: item.imageURL,
                 blurHash: item.blurHash,
                 contentMode: .fit,
-                accessibilityLabel: accessibilityLabel
+                accessibilityLabel: accessibilityLabel,
+                cacheKey: item.id
             )
             .frame(width: proxy.size.width, height: proxy.size.height)
             .scaleEffect(scale)

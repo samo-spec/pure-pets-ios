@@ -646,10 +646,11 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
     _quantityLabel = [[UILabel alloc] init];
     _quantityLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _quantityLabel.textAlignment = NSTextAlignmentCenter;
-    _quantityLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout]
-                           scaledFontForFont:([GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold])];
+    _quantityLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+                           scaledFontForFont:([GM boldFontWithSize:20.0] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightBold])];
     _quantityLabel.adjustsFontForContentSizeCategory = YES;
     _quantityLabel.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    _quantityLabel.backgroundColor = UIColor.clearColor;
     _quantityLabel.text = @"0";
     [_quantityLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_quantityLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];

@@ -8,6 +8,7 @@ import UIKit
 /// `PPHomeViewController` remains the Objective-C runtime compatibility shell;
 /// this controller owns the visible hierarchy and the single authoritative
 /// `HomeStore`.
+@available(iOS 16.0, *)
 @MainActor
 @objc(PPHomeHostingController)
 public final class PPHomeHostingController: UIViewController {

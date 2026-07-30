@@ -208,7 +208,8 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
     if ([self isAccessoryViewModel:viewModel]) {
         quantity = [CartManager.sharedManager
                     quantityForAccessory:(PetAccessory *)viewModel.ModelObject];
-    } else {
+    }
+    if (quantity <= 0) {
         NSString *itemID = PPUniversalSwiftUIItemIdentifier(viewModel);
         if (itemID.length > 0) {
             CartItem *item = [CartManager.sharedManager getCartItemForItemID:itemID];
