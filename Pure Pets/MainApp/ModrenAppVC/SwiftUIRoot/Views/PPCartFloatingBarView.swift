@@ -33,7 +33,7 @@ public struct PPCartFloatingBarView: View {
 
     private var surfaceShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: state.isCollapsed ? 24 : 22,
+            cornerRadius: state.isCollapsed ? 26 : 22,
             style: .continuous
         )
     }
@@ -139,11 +139,22 @@ public struct PPCartFloatingBarView: View {
     }
 
     private var collapsedContent: some View {
-        HStack(spacing: 0) {
-            cartMark
+        HStack(spacing: 8) {
+            Image(systemName: "cart.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(primaryColor)
+
+            Text(state.badgeText)
+                .font(.custom("Beiruti-Bold", size: 13, relativeTo: .caption))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .padding(.horizontal, 7)
+                .frame(minWidth: 24, minHeight: 24)
+                .background(primaryColor, in: Capsule())
         }
-        .padding(6)
-        .frame(width: 56, height: 56)
+        .padding(.horizontal, 13)
+        .frame(minWidth: 76, minHeight: 52)
+        .accessibilityHidden(true)
     }
 
     private var cartMark: some View {
@@ -245,19 +256,33 @@ public struct PPCartFloatingBarView: View {
         surfaceShape
             .fill(.ultraThinMaterial)
             .overlay {
-                surfaceShape.fill(primaryColor.opacity(colorScheme == .dark ? 0.13 : 0.055))
+                surfaceShape.fill(
+                    primaryColor.opacity(
+                        colorScheme == .dark
+                            ? (state.isCollapsed ? 0.08 : 0.13)
+                            : (state.isCollapsed ? 0.025 : 0.055)
+                    )
+                )
             }
             .overlay {
                 surfaceShape.strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.24 : 0.70),
+                    Color.white.opacity(
+                        colorScheme == .dark
+                            ? (state.isCollapsed ? 0.20 : 0.24)
+                            : (state.isCollapsed ? 0.58 : 0.70)
+                    ),
                     lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
                 )
             }
             .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.32 : 0.13),
-                radius: state.isCollapsed ? 12 : 18,
+                color: Color.black.opacity(
+                    colorScheme == .dark
+                        ? (state.isCollapsed ? 0.24 : 0.32)
+                        : (state.isCollapsed ? 0.10 : 0.13)
+                ),
+                radius: state.isCollapsed ? 9 : 18,
                 x: 0,
-                y: state.isCollapsed ? 6 : 9
+                y: state.isCollapsed ? 4 : 9
             )
     }
 

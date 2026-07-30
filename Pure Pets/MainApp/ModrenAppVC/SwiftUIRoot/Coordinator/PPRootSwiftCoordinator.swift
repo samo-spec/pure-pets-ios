@@ -19,6 +19,7 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     
     private var bottomOverlayController: PPRootPassthroughHostingController<PPRootBottomOverlayView>?
     private var blockedAccountController: PPRootPassthroughHostingController<PPBlockedAccountOverlayView>?
+    private var bottomOverlayInteractiveFrames: [CGRect] = []
     
     private var navigationProxies: [ObjectIdentifier: PPRootNavigationDelegateProxy] = [:]
     private var originalNavigationDelegates: [ObjectIdentifier: weak_ref_delegate] = [:]
@@ -77,6 +78,7 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
         bottomOverlayController?.view.removeFromSuperview()
         bottomOverlayController?.removeFromParent()
         bottomOverlayController = nil
+        bottomOverlayInteractiveFrames = []
         
         blockedAccountController?.willMove(toParent: nil)
         blockedAccountController?.view.removeFromSuperview()
@@ -199,10 +201,20 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     // MARK: - Private Installations & Proxying
     
     private func installBottomOverlay(in host: UITabBarController) {
-        let rootView = PPRootBottomOverlayView(store: store)
+        let rootView = PPRootBottomOverlayView(
+            store: store,
+            interactiveFramesDidChange: { [weak self] frames in
+                self?.bottomOverlayInteractiveFrames = frames
+            }
+        )
         let hostingController = PPRootPassthroughHostingController(rootView: rootView)
         hostingController.view.backgroundColor = .clear
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        hostingController.isInteractivePoint = { [weak self] point in
+            self?.bottomOverlayInteractiveFrames.contains {
+                $0.insetBy(dx: -8, dy: -8).contains(point)
+            } ?? false
+        }
         
         host.addChild(hostingController)
         host.view.addSubview(hostingController.view)

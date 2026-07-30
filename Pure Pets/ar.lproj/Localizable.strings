@@ -3909,6 +3909,13 @@
 "home_pulse_refreshing" = "جارٍ تحديث الصفحة";
 "home_pulse_search_a11y" = "ابحث في بيور بتس";
 "home_pulse_search_prompt" = "ابحث عن منتجات وحيوانات وخدمات";
+"home_search_suggestion_cat_food" = "ابحث عن طعام قطط جاف أو رطب";
+"home_search_suggestion_grooming" = "ابحث عن خدمات العناية والتجميل";
+"home_search_suggestion_dog_accessories" = "ابحث عن ألعاب وإكسسوارات للكلاب";
+"home_search_suggestion_veterinary" = "ابحث عن خدمات ورعاية بيطرية";
+"home_search_suggestion_medicine" = "ابحث عن أدوية ومكملات للحيوانات";
+"home_search_suggestion_pet_listings" = "ابحث عن حيوانات متاحة بالقرب منك";
+"home_search_suggestion_cat_hygiene" = "ابحث عن رمل ومستلزمات نظافة القطط";
 "home_pulse_section_accessories" = "احتياجات مميزة";
 "home_pulse_section_accessories_subtitle" = "منتجات متاحة وعروض حقيقية";
 "home_pulse_section_buy_again" = "اشترِ مجددًا";

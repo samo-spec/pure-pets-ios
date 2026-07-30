@@ -280,22 +280,25 @@ struct HomeView: View {
     }
 
     private var background: some View {
-        ZStack {
-            Color.ppBackground
-            if !store.state.config.backgroundGlowsFaded {
-                RadialGradient(
-                    colors: [
-                        Color.ppPrimary.opacity(0.09),
-                        Color.clear,
-                    ],
-                    center: .topTrailing,
-                    startRadius: 10,
-                    endRadius: 320
+        Group {
+            if showsAmbientDecoration {
+                PPHero(
+                    accentStyle: .bbBaseBackground,
+                    useShimmer: false,
+                    useUnderFingerMotion: false
                 )
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
                 .accessibilityHidden(true)
+            } else {
+                Color.ppBackground
+                    .ignoresSafeArea()
             }
         }
-        .ignoresSafeArea()
+    }
+
+    private var showsAmbientDecoration: Bool {
+        !store.state.config.backgroundGlowsFaded
     }
 
     private var novaButton: some View {

@@ -65,12 +65,17 @@ enum HomeFont {
     }
 }
 
+@available(iOS 16.0, *)
 struct HomeCommandBar: View {
     let state: HomeViewState
     let searchAction: () -> Void
     let cartAction: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var searchControlHeight: CGFloat = 54
 
     var body: some View {
         HStack(spacing: PPSpace.sm) {
@@ -93,36 +98,56 @@ struct HomeCommandBar: View {
     private var searchButton: some View {
         Button(action: searchAction) {
             HStack(spacing: PPSpace.sm) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.ppPrimary)
-                Text(
-                    HomeModelAdapter.localized(
-                        "home_pulse_search_prompt",
-                        fallback: "Search products, pets, and services"
-                    )
-                )
-                .font(HomeFont.callout())
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                searchGlyph
+
+                HomeAnimatedSearchSuggestionView(isRTL: state.isRightToLeft)
+                    .layoutPriority(1)
             }
-            .padding(.horizontal, PPSpace.md)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(
-                Color.ppSurface.opacity(contrast == .increased ? 1 : 0.86),
-                in: Capsule()
+            .padding(.horizontal, PPSpace.sm)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: resolvedSearchControlHeight
             )
+            .background(searchSurface)
             .overlay {
-                Capsule().stroke(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+                .stroke(
                     contrast == .increased
-                        ? Color.ppTextPrimary.opacity(0.62)
-                        : Color.ppBorder,
-                    lineWidth: contrast == .increased ? 1.4 : 0.7
+                        ? AnyShapeStyle(Color.ppTextPrimary.opacity(0.66))
+                        : AnyShapeStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color.ppPrimary.opacity(0.20),
+                                    Color.ppBorder,
+                                    Color.white.opacity(
+                                        colorScheme == .dark ? 0.05 : 0.70
+                                    ),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
                 )
             }
+            .shadow(
+                color: contrast == .increased
+                    ? .clear
+                    : Color.black.opacity(colorScheme == .dark ? 0.22 : 0.07),
+                radius: colorScheme == .dark ? 10 : 14,
+                y: colorScheme == .dark ? 4 : 7
+            )
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(
             HomeModelAdapter.localized(
                 "home_pulse_search_a11y",
@@ -130,6 +155,180 @@ struct HomeCommandBar: View {
             )
         )
     }
+
+    private var resolvedSearchControlHeight: CGFloat {
+        let maximum: CGFloat = dynamicTypeSize.isAccessibilitySize ? 68 : 58
+        return min(max(searchControlHeight, 54), maximum)
+    }
+
+    private var searchGlyph: some View {
+        ZStack(alignment: .bottomTrailing) {
+            RoundedRectangle(
+                cornerRadius: PPCorner.small,
+                style: .continuous
+            )
+            .fill(
+                Color.ppSoftRose.opacity(colorScheme == .dark ? 0.34 : 0.72)
+            )
+
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Circle()
+                .fill(Color.ppPrimary)
+                .frame(width: 7, height: 7)
+                .overlay(Circle().stroke(Color.ppElevatedSurface, lineWidth: 2))
+                .offset(x: 2, y: 2)
+        }
+        .frame(width: 38, height: 38)
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.small,
+                style: .continuous
+            )
+            .stroke(Color.ppPrimary.opacity(0.10), lineWidth: 0.7)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var searchSurface: some View {
+        RoundedRectangle(
+            cornerRadius: PPCorner.medium,
+            style: .continuous
+        )
+        .fill(
+            Color.ppElevatedSurface.opacity(
+                contrast == .increased
+                    ? 1
+                    : (colorScheme == .dark ? 0.96 : 0.92)
+            )
+        )
+    }
+
+    private struct HomeSearchButtonStyle: ButtonStyle {
+        let reduceMotion: Bool
+
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .scaleEffect(
+                    configuration.isPressed && !reduceMotion ? 0.986 : 1
+                )
+                .opacity(configuration.isPressed ? 0.88 : 1)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
+        }
+    }
+
+@available(iOS 16.0, *)
+private struct SearchSuggestion: Identifiable {
+    let id: String
+    let text: String
+}
+
+@available(iOS 16.0, *)
+private struct HomeAnimatedSearchSuggestionView: View {
+    let isRTL: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var currentSuggestionID =
+        "home_search_suggestion_cat_food"
+
+    private var suggestions: [SearchSuggestion] {
+        let keys = [
+            "home_search_suggestion_cat_food",
+            "home_search_suggestion_grooming",
+            "home_search_suggestion_dog_accessories",
+            "home_search_suggestion_veterinary",
+            "home_search_suggestion_medicine",
+            "home_search_suggestion_pet_listings",
+            "home_search_suggestion_cat_hygiene",
+        ]
+        let localized = keys.compactMap { key -> SearchSuggestion? in
+            let text = HomeModelAdapter.localized(key, fallback: "")
+            return text.isEmpty ? nil : SearchSuggestion(id: key, text: text)
+        }
+        if !localized.isEmpty {
+            return localized
+        }
+        return [
+            SearchSuggestion(
+                id: "home_pulse_search_prompt",
+                text: HomeModelAdapter.localized(
+                    "home_pulse_search_prompt",
+                    fallback: ""
+                )
+            ),
+        ]
+    }
+
+    private var visibleSuggestionID: String {
+        suggestions.contains(where: { $0.id == currentSuggestionID })
+            ? currentSuggestionID
+            : (suggestions.first?.id ?? "")
+    }
+
+    private var rotationTaskID: String {
+        "\(scenePhase == .active)-\(reduceMotion)-\(isRTL)"
+    }
+
+    var body: some View {
+        ZStack(alignment: isRTL ? .trailing : .leading) {
+            ForEach(suggestions) { item in
+                if item.id == visibleSuggestionID {
+                    Text(item.text)
+                        .font(HomeFont.callout())
+                        .foregroundStyle(Color.ppTextPrimary.opacity(0.76))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .multilineTextAlignment(isRTL ? .trailing : .leading)
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .asymmetric(
+                                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                                    removal: .move(edge: .top).combined(with: .opacity)
+                                )
+                        )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: isRTL ? .trailing : .leading)
+        .frame(height: dynamicTypeSize.isAccessibilitySize ? 30 : 24)
+        .clipped()
+        .accessibilityHidden(true)
+        .task(id: rotationTaskID) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(
+                        nanoseconds: UInt64.random(
+                            in: 3_800_000_000 ... 5_200_000_000
+                        )
+                    )
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled,
+                      let next = suggestions
+                        .filter({ $0.id != visibleSuggestionID })
+                        .randomElement() else {
+                    return
+                }
+                withAnimation(
+                    reduceMotion
+                        ? .easeOut(duration: 0.18)
+                        : .spring(response: 0.42, dampingFraction: 0.86)
+                ) {
+                    currentSuggestionID = next.id
+                }
+            }
+        }
+    }
+}
 
     private var cartButton: some View {
         Button(action: cartAction) {
@@ -1600,7 +1799,7 @@ struct HomeCategoryRail: View {
                 itemSize: itemSize,
                 onSelect: onSelect
             )
-            .frame(height: itemSize.height + PPSpace.sm)
+            .frame(height: itemSize.height + 24)
         }
     }
 
@@ -1638,6 +1837,15 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
     let itemSize: CGSize
     let onSelect: (HomeCategoryModel?) -> Void
 
+    private final class CollectionView: UICollectionView {
+        var didLayout: ((UICollectionView) -> Void)?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            didLayout?(self)
+        }
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -1648,17 +1856,19 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
         layout.minimumLineSpacing = PPSpace.md
         layout.minimumInteritemSpacing = PPSpace.md
         layout.sectionInset = UIEdgeInsets(
-            top: PPSpace.xs,
+            top: 10,
             left: PPSpace.screenMargin,
-            bottom: PPSpace.xs,
+            bottom: 14,
             right: PPSpace.screenMargin
         )
 
-        let collectionView = UICollectionView(
+        let collectionView = CollectionView(
             frame: .zero,
             collectionViewLayout: layout
         )
         collectionView.backgroundColor = .clear
+        collectionView.clipsToBounds = false
+        collectionView.layer.masksToBounds = false
         collectionView.showsHorizontalScrollIndicator = false
         collectionView.alwaysBounceHorizontal = true
         collectionView.contentInsetAdjustmentBehavior = .never
@@ -1671,6 +1881,9 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
             PPMainKindsCell.self,
             forCellWithReuseIdentifier: PPMainKindsCell.reuseIdentifier
         )
+        collectionView.didLayout = { [weak coordinator = context.coordinator] collectionView in
+            coordinator?.collectionViewDidLayout(collectionView)
+        }
         return collectionView
     }
 
@@ -1700,6 +1913,9 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
         private var selectionSignature = Int.min
         private var positioningGeneration = 0
         private var hasEstablishedLoopPosition = false
+        private var hasRestoredInitialSelection = false
+        private var pendingSelectedLogicalIndex: Int?
+        private var positionAttemptScheduled = false
         private weak var collectionView: UICollectionView?
 
         override init() {
@@ -1721,7 +1937,11 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
         }
 
         private var usesInfiniteLoop: Bool {
-            logicalItemCount > 1 && !UIAccessibility.isVoiceOverRunning
+            // Infinite looping disabled by product direction. The rail now
+            // scrolls as a finite horizontal list. All loop machinery
+            // (presentedItemCount, virtualIndex, recenterLoopIfNeeded) is
+            // guarded by this flag and degrades to non-looping behavior.
+            false
         }
 
         private var presentedItemCount: Int {
@@ -1810,7 +2030,8 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
                 withMainKind: category?.raw,
                 isAll: isAll,
                 selected: selected,
-                restoredSelectionAppearance: false
+                restoredSelectionAppearance:
+                    selected && !hasRestoredInitialSelection
             )
             applySelectionScale(
                 to: cell,
@@ -1860,8 +2081,13 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
         private func positionSelectedItem(
             in collectionView: UICollectionView
         ) {
+            // Auto-centering of the selected main kind is disabled by product
+            // direction. The selection highlight (scale + restored animation)
+            // is still applied via applySelectionScale / cell.configure, and
+            // user-initiated tap centering remains. Only the automatic
+            // scroll-to-center on reload/layout/selection-change is suppressed.
+            return;
             positioningGeneration += 1
-            let generation = positioningGeneration
             let selectedLogicalIndex: Int
             if let selectedID,
                let categoryIndex = categories.firstIndex(where: {
@@ -1871,12 +2097,39 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
             } else {
                 selectedLogicalIndex = 0
             }
+            pendingSelectedLogicalIndex = selectedLogicalIndex
+            schedulePendingPosition(in: collectionView)
+        }
 
+        fileprivate func collectionViewDidLayout(
+            _ collectionView: UICollectionView
+        ) {
+            updateEdgeInsets(in: collectionView)
+            schedulePendingPosition(in: collectionView)
+        }
+
+        private func schedulePendingPosition(
+            in collectionView: UICollectionView
+        ) {
+            guard pendingSelectedLogicalIndex != nil,
+                  collectionView.bounds.width > 1,
+                  !positionAttemptScheduled else {
+                return
+            }
+            positionAttemptScheduled = true
+            let generation = positioningGeneration
             DispatchQueue.main.async { [weak self, weak collectionView] in
                 guard let self,
-                      let collectionView,
-                      generation == self.positioningGeneration
-                else {
+                      let collectionView else {
+                    return
+                }
+                self.positionAttemptScheduled = false
+                guard generation == self.positioningGeneration else {
+                    self.schedulePendingPosition(in: collectionView)
+                    return
+                }
+                guard let selectedLogicalIndex =
+                        self.pendingSelectedLogicalIndex else {
                     return
                 }
                 collectionView.layoutIfNeeded()
@@ -1893,6 +2146,19 @@ private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
                     in: collectionView,
                     animated: false
                 )
+                collectionView.layoutIfNeeded()
+                let targetIndexPath = IndexPath(
+                    item: targetIndex,
+                    section: 0
+                )
+                if !self.hasRestoredInitialSelection,
+                   let selectedCell = collectionView.cellForItem(
+                       at: targetIndexPath
+                   ) as? PPMainKindsCell {
+                    selectedCell.playRestoredSelectionAnimation()
+                    self.hasRestoredInitialSelection = true
+                }
+                self.pendingSelectedLogicalIndex = nil
             }
         }
 

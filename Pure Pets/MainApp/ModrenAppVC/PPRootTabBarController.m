@@ -3047,6 +3047,13 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_setupPremiumNovaButton
 {
+    // The root tab-bar Nova circle button was intentionally removed by product
+    // direction. The Nova assistant itself remains reachable from the Home
+    // floating button and the legacy adapter path; only the tab-bar entry
+    // point is suppressed here. All other `premiumNovaButton` references are
+    // nil-safe no-ops, and `premiumNovaVisibleByConfiguration`/defaults are
+    // preserved so the Home-screen Nova button keeps its server-driven config.
+    return;
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;

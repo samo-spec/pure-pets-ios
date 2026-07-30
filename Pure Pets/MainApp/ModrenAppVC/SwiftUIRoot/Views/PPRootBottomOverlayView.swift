@@ -16,15 +16,49 @@ private struct PPRootBottomOverlayHeightKey: PreferenceKey {
     }
 }
 
+private struct PPRootBottomOverlayInteractiveFramesKey: PreferenceKey {
+    static var defaultValue: [CGRect] = []
+
+    static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
+private enum PPRootBottomOverlayCoordinateSpace {
+    static let name = "pp.root.bottom-overlay"
+}
+
+private extension View {
+    func reportsBottomOverlayInteractiveFrame() -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: PPRootBottomOverlayInteractiveFramesKey.self,
+                    value: [
+                        proxy.frame(
+                            in: .named(PPRootBottomOverlayCoordinateSpace.name)
+                        )
+                    ]
+                )
+            }
+        }
+    }
+}
+
 /// Composite bottom overlay view enclosing the native SwiftUI TabBar, Nova AI Action Button, and Floating Cart Bar.
 public struct PPRootBottomOverlayView: View {
     @ObservedObject public var store: PPRootStore
+    private let interactiveFramesDidChange: ([CGRect]) -> Void
     
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.layoutDirection) private var layoutDirection
     
-    public init(store: PPRootStore) {
+    public init(
+        store: PPRootStore,
+        interactiveFramesDidChange: @escaping ([CGRect]) -> Void = { _ in }
+    ) {
         self.store = store
+        self.interactiveFramesDidChange = interactiveFramesDidChange
     }
     
     public var body: some View {
@@ -46,6 +80,7 @@ public struct PPRootBottomOverlayView: View {
                             store.handleCartTapped()
                         }
                         .passthroughTouches(false)
+                        .reportsBottomOverlayInteractiveFrame()
                         .padding(.horizontal, 16)
                         .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -57,6 +92,7 @@ public struct PPRootBottomOverlayView: View {
                             store.handleNovaTapped()
                         }
                         .passthroughTouches(false)
+                        .reportsBottomOverlayInteractiveFrame()
                         .padding(.trailing, 16)
                         .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
                         .transition(.scale.combined(with: .opacity))
@@ -80,5 +116,10 @@ public struct PPRootBottomOverlayView: View {
             }
         }
         .passthroughTouches(true)
+        .coordinateSpace(name: PPRootBottomOverlayCoordinateSpace.name)
+        .onPreferenceChange(
+            PPRootBottomOverlayInteractiveFramesKey.self,
+            perform: interactiveFramesDidChange
+        )
     }
 }

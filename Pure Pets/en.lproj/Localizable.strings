@@ -3930,6 +3930,13 @@
 "home_pulse_refreshing" = "Refreshing Home";
 "home_pulse_search_a11y" = "Search Pure Pets";
 "home_pulse_search_prompt" = "Search products, pets, and services";
+"home_search_suggestion_cat_food" = "Search dry or wet cat food";
+"home_search_suggestion_grooming" = "Search grooming and care services";
+"home_search_suggestion_dog_accessories" = "Search dog toys and accessories";
+"home_search_suggestion_veterinary" = "Search veterinary care services";
+"home_search_suggestion_medicine" = "Search pet medicine and supplements";
+"home_search_suggestion_pet_listings" = "Search pets available nearby";
+"home_search_suggestion_cat_hygiene" = "Search cat litter and hygiene supplies";
 "home_pulse_section_accessories" = "Featured essentials";
 "home_pulse_section_accessories_subtitle" = "Available products and genuine offers";
 "home_pulse_section_buy_again" = "Buy again";
