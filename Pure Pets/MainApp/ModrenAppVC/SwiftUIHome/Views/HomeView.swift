@@ -389,19 +389,7 @@ struct HomeView: View {
     }
 
     private var background: some View {
-        ZStack {
-            Color.homeCanvas
-            if !store.state.config.backgroundGlowsFaded {
-                PPHero(
-                    accentStyle: .bbBaseBackground,
-                    useShimmer: false,
-                    useUnderFingerMotion: false
-                )
-            }
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        WorldGlassBackground()
     }
 
     private func sectionBand(for rawID: Int) -> Color {

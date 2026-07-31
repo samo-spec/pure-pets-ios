@@ -68,17 +68,27 @@ struct PPPetAdHeroGallery: View {
             emptyHero
                 .ignoresSafeArea(edges: .top)
         } else {
-            TabView(selection: $selection) {
-                ForEach(Array(items.enumerated()), id: \.element.id) {
-                    index,
-                    item in
-                    mediaPage(item, index: index)
+            GeometryReader { viewport in
+                let viewportMinX = viewport.frame(in: .global).minX
+                let viewportWidth = max(viewport.size.width, 1)
+
+                TabView(selection: $selection) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) {
+                        index,
+                        item in
+                        PPPetAdGalleryMotionPage(
+                            viewportMinX: viewportMinX,
+                            viewportWidth: viewportWidth
+                        ) {
+                            mediaPage(item, index: index)
+                        }
                         .tag(index)
+                    }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .indexViewStyle(.page(backgroundDisplayMode: .never))
+                .ignoresSafeArea(edges: .top)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .indexViewStyle(.page(backgroundDisplayMode: .never))
-            .ignoresSafeArea(edges: .top)
         }
     }
 
@@ -157,7 +167,7 @@ struct PPPetAdHeroGallery: View {
                     .animation(
                         reduceMotion
                             ? nil
-                            : PPPetAdViewerMotion.expansion,
+                            : PPPetAdViewerMotion.galleryChrome,
                         value: selection
                     )
             }
@@ -194,7 +204,9 @@ struct PPPetAdHeroGallery: View {
                             if reduceMotion {
                                 selection = index
                             } else {
-                                withAnimation(PPPetAdViewerMotion.content) {
+                                withAnimation(
+                                    PPPetAdViewerMotion.gallerySlide
+                                ) {
                                     selection = index
                                 }
                             }
@@ -227,6 +239,17 @@ struct PPPetAdHeroGallery: View {
                                 )
                             }
                             .opacity(index == selection ? 1 : 0.72)
+                            .scaleEffect(
+                                reduceMotion || index == selection
+                                    ? 1
+                                    : 0.94
+                            )
+                            .animation(
+                                reduceMotion
+                                    ? nil
+                                    : PPPetAdViewerMotion.galleryChrome,
+                                value: selection
+                            )
                         }
                         .buttonStyle(
                             PPPetAdPressButtonStyle(pressedScale: 0.92)
@@ -260,7 +283,7 @@ struct PPPetAdHeroGallery: View {
                 if reduceMotion {
                     proxy.scrollTo(value, anchor: .center)
                 } else {
-                    withAnimation(PPPetAdViewerMotion.content) {
+                    withAnimation(PPPetAdViewerMotion.gallerySlide) {
                         proxy.scrollTo(value, anchor: .center)
                     }
                 }
@@ -352,6 +375,52 @@ struct PPPetAdHeroGallery: View {
             return items[value].imageURL
         }
         PPPetAdViewerLegacyBridge.prefetch(urls: urls)
+    }
+}
+
+private struct PPPetAdGalleryMotionPage<Content: View>: View {
+    let viewportMinX: CGFloat
+    let viewportWidth: CGFloat
+    let content: Content
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        viewportMinX: CGFloat,
+        viewportWidth: CGFloat,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.viewportMinX = viewportMinX
+        self.viewportWidth = viewportWidth
+        self.content = content()
+    }
+
+    var body: some View {
+        GeometryReader { page in
+            let distance =
+                abs(page.frame(in: .global).minX - viewportMinX)
+            let progress = min(
+                max(distance / max(viewportWidth, 1), 0),
+                1
+            )
+
+            content
+                .frame(
+                    width: page.size.width,
+                    height: page.size.height
+                )
+                .scaleEffect(
+                    reduceMotion
+                        ? 1
+                        : 1.012 - (0.012 * progress)
+                )
+                .opacity(
+                    reduceMotion
+                        ? 1
+                        : Double(1 - (0.08 * progress))
+                )
+                .clipped()
+        }
     }
 }
 

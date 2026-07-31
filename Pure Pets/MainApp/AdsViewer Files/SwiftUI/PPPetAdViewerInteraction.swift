@@ -289,12 +289,28 @@ final class PPPetAdViewerInteractionState: ObservableObject {
 
 enum PPPetAdViewerMotion {
     static let press = Animation.easeOut(duration: 0.10)
-    static let content = Animation.easeOut(duration: 0.24)
+    static let gallerySlide = Animation.timingCurve(
+        0.20,
+        0.82,
+        0.24,
+        1,
+        duration: 0.32
+    )
+    static let galleryChrome = Animation.easeOut(duration: 0.22)
     static let state = Animation.easeInOut(duration: 0.24)
-    static let entrance = Animation.spring(
-        response: 0.45,
-        dampingFraction: 0.85,
-        blendDuration: 0.08
+    static let heroEntrance = Animation.timingCurve(
+        0.16,
+        1,
+        0.30,
+        1,
+        duration: 0.52
+    )
+    static let entrance = Animation.timingCurve(
+        0.16,
+        1,
+        0.30,
+        1,
+        duration: 0.42
     )
     static let expansion = Animation.spring(
         response: 0.45,
@@ -312,7 +328,7 @@ enum PPPetAdViewerMotion {
         blendDuration: 0.04
     )
     static func entrance(delayIndex: Int) -> Animation {
-        entrance.delay(Double(max(delayIndex, 0)) * 0.038)
+        entrance.delay(Double(max(delayIndex, 0)) * 0.045)
     }
 }
 

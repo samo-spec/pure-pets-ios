@@ -22,7 +22,8 @@ struct PPPetAdViewerScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var interactionState = PPPetAdViewerInteractionState()
+    @StateObject private var interactionState =
+        PPPetAdViewerInteractionState()
     @State private var hasAppeared = false
     @State private var contactDockHeight: CGFloat = 0
 
@@ -156,8 +157,9 @@ struct PPPetAdViewerScreen: View {
         }
         .onAppear {
             store.start()
-            guard !hasAppeared else { return }
-            hasAppeared = true
+        }
+        .task {
+            await presentEntranceIfNeeded()
         }
         .onChange(of: languageCode) { _ in
             store.refreshLocalization()
@@ -246,13 +248,13 @@ struct PPPetAdViewerScreen: View {
             .ignoresSafeArea()
             .opacity(hasAppeared ? 1 : 0)
             .scaleEffect(
-                reduceMotion || hasAppeared ? 1 : 1.012,
+                reduceMotion || hasAppeared ? 1 : 1.024,
                 anchor: UnitPoint.center
             )
             .animation(
                 reduceMotion
                     ? Animation.easeOut(duration: 0.16)
-                    : Animation.easeOut(duration: 0.38),
+                    : PPPetAdViewerMotion.heroEntrance,
                 value: hasAppeared
             )
             .zIndex(0)
@@ -527,6 +529,22 @@ struct PPPetAdViewerScreen: View {
         } else {
             dismiss()
         }
+    }
+
+    @MainActor
+    private func presentEntranceIfNeeded() async {
+        guard !hasAppeared else { return }
+
+        if !reduceMotion {
+            do {
+                try await Task.sleep(nanoseconds: 24_000_000)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+        }
+
+        hasAppeared = true
     }
 
     private var screenStateIdentity: Int {
