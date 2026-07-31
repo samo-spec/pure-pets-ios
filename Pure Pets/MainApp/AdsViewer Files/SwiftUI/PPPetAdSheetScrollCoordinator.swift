@@ -264,6 +264,16 @@ final class PPPetAdHeroScrollViewController<
         updateHero(for: scrollView.contentOffset.y)
     }
 
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        let systemTop = view.safeAreaInsets.top
+            - additionalSafeAreaInsets.top
+        guard systemTop > 0,
+              abs(additionalSafeAreaInsets.top + systemTop) > 0.5
+        else { return }
+        additionalSafeAreaInsets.top = -systemTop
+    }
+
     func update(
         hero: Hero,
         content: Content,

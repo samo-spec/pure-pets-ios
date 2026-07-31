@@ -43,8 +43,7 @@ final class PPPetAdViewerHostingController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor =
-            UIColor(named: "AppBackgroundColor") ?? .systemBackground
+        view.backgroundColor = .clear
         navigationItem.largeTitleDisplayMode = .never
 
         // Keep status bar dark during load transition by setting barStyle to default early
@@ -70,6 +69,16 @@ final class PPPetAdViewerHostingController: UIViewController {
             )
         ])
         contentController.didMove(toParent: self)
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        let systemTop = view.safeAreaInsets.top
+            - additionalSafeAreaInsets.top
+        guard systemTop > 0,
+              abs(additionalSafeAreaInsets.top + systemTop) > 0.5
+        else { return }
+        additionalSafeAreaInsets.top = -systemTop
     }
 
     override func viewWillAppear(_ animated: Bool) {

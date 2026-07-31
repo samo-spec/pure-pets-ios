@@ -24,9 +24,9 @@ struct PPPetAdViewerNavigationRoot: View {
             )
             .navigationBarHidden(true)
             .toolbar(.hidden, for: .navigationBar)
+            .ignoresSafeArea(edges: .top)
         }
         .navigationViewStyle(.stack)
-        .ignoresSafeArea(edges: .top)
         .environment(
             \.layoutDirection,
             isRightToLeft ? .rightToLeft : .leftToRight

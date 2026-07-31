@@ -389,7 +389,9 @@ struct HomeView: View {
     }
 
     private var background: some View {
-        WorldGlassBackground()
+        WorldGlassBackground(
+            isFaded: store.state.config.backgroundGlowsFaded
+        )
     }
 
     private func sectionBand(for rawID: Int) -> Color {

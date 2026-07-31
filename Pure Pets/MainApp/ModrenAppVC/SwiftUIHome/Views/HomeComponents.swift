@@ -2136,7 +2136,7 @@ private struct HomeFeaturedPetCard: View {
             .font(.system(size: 16, weight: .bold))
             .foregroundStyle(Color.homeBrand)
             .frame(width: 38, height: 38)
-            .background(Color.homeRaisedSurface.opacity(0.2), in: Circle())
+            .background(Color.homeRaisedSurface.opacity(0.8), in: Circle())
             .overlay {
                 Circle().stroke(
                     Color.homeBrand.opacity(
