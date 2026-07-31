@@ -13,7 +13,6 @@ struct HomeUniversalCard: View {
                 HomeUniversalDirectCard(
                     card: card,
                     delegate: delegate,
-                    onTap: onTap,
                     onQuantityChange: onQuantityChange
                 )
             } else {
@@ -33,7 +32,6 @@ struct HomeUniversalCard: View {
 private struct HomeUniversalDirectCard: View {
     let card: HomeCardModel
     let delegate: PPUniversalCellDelegate?
-    let onTap: () -> Void
     let onQuantityChange: (Int) -> Void
 
     var body: some View {
@@ -46,7 +44,7 @@ private struct HomeUniversalDirectCard: View {
             imageLoader: nil,
             showsSubtitle: true,
             isHomePresentation: true,
-            onTap: onTap,
+            onTap: nil,
             onQuantityChange: onQuantityChange
         )
     }
@@ -159,11 +157,13 @@ private struct HomeUniversalCompatibilityCard: View {
         .accessibilityAction {
             onTap()
         }
-        .onAppear {
-            quantity = max(
-                0,
-                PPUniversalCellSwiftUIBridge.cartQuantity(for: viewModel)
+        .onAppear(perform: refreshQuantity)
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Notification.Name("CartUpdated")
             )
+        ) { _ in
+            refreshQuantity()
         }
     }
 
@@ -295,6 +295,16 @@ private struct HomeUniversalCompatibilityCard: View {
         let clamped = min(max(0, next), stockLimit)
         quantity = clamped
         onQuantityChange(clamped)
+    }
+
+    private func refreshQuantity() {
+        quantity = min(
+            stockLimit,
+            max(
+                0,
+                PPUniversalCellSwiftUIBridge.cartQuantity(for: viewModel)
+            )
+        )
     }
 
     private var accessibilitySummary: String {

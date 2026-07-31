@@ -48,6 +48,53 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
         XCTAssertTrue(config.cameFromCache)
     }
 
+    func testConfigPreservesFutureSectionMetadataWithoutRenderingItByDefault() {
+        let rows: [[AnyHashable: Any]] = [
+            [
+                "id": NSNumber(value: 27),
+                "visible": NSNumber(value: true),
+                "type": "futureCareSurface",
+                "accent": "CB2654",
+            ],
+        ]
+
+        let config = HomeModelAdapter.config(
+            sections: rows,
+            titleViewMode: "unsupported",
+            premiumCareVisible: true,
+            novaFloatingVisible: true,
+            backgroundGlowsFaded: false,
+            fromCache: false
+        )
+
+        XCTAssertEqual(config.orderedSectionIDs, [27])
+        XCTAssertEqual(config.section(withID: 27)?.type, "futureCareSurface")
+        XCTAssertEqual(
+            config.section(withID: 27)?.metadata["accent"] as? String,
+            "CB2654"
+        )
+        XCTAssertEqual(config.titleViewMode, "location")
+    }
+
+    func testPremiumCareFeatureFlagCannotReenableHiddenSection() {
+        let rows: [[AnyHashable: Any]] = [
+            ["id": NSNumber(value: 9), "visible": NSNumber(value: true)],
+            ["id": NSNumber(value: 10), "visible": NSNumber(value: true)],
+        ]
+
+        let config = HomeModelAdapter.config(
+            sections: rows,
+            titleViewMode: "search",
+            premiumCareVisible: false,
+            novaFloatingVisible: true,
+            backgroundGlowsFaded: true,
+            fromCache: false
+        )
+
+        XCTAssertFalse(config.isVisible(9))
+        XCTAssertTrue(config.isVisible(10))
+    }
+
     func testLocationRequiresBothCoordinateComponents() {
         var location = HomeLocationModel()
         XCTAssertFalse(location.hasCoordinate)

@@ -72,7 +72,7 @@ NS_INLINE PPOrderStatusVisualPhase PPOrderStatusVisualPhaseForKey(NSString * _Nu
     if (PPOrderStatusAppearanceMatchesAny(key, @[@"delivered", @"payment_pending", @"payment_confirmed"])) {
         return PPOrderStatusVisualPhaseDelivered;
     }
-    if (PPOrderStatusAppearanceMatchesAny(key, @[@"picked_up", @"in_transit", @"out_for_delivery", @"shipped", @"shipping", @"handed_over"])) {
+    if (PPOrderStatusAppearanceMatchesAny(key, @[@"picked_up", @"in_transit", @"out_for_delivery", @"on_the_way", @"shipped", @"shipping", @"handed_over"])) {
         return PPOrderStatusVisualPhaseInTransit;
     }
     if (PPOrderStatusAppearanceMatchesAny(key, @[@"delivery_partner_assigned", @"delivery_assigned", @"awaiting_handover", @"accepted_by_company", @"assigned_to_driver"])) {
@@ -112,23 +112,23 @@ NS_INLINE UIColor *PPOrderStatusAccentColorForPhase(PPOrderStatusVisualPhase pha
 {
     switch (phase) {
         case PPOrderStatusVisualPhasePlaced:
-            return PPOrderStatusDynamicColor(0x955407, 0xFFBE6A);
+            return PPOrderStatusDynamicColor(0xA45A00, 0xA45A00);
         case PPOrderStatusVisualPhasePaymentConfirmed:
             return PPOrderStatusDynamicColor(0x00666E, 0x68DDE4);
         case PPOrderStatusVisualPhasePreparing:
-            return PPOrderStatusDynamicColor(0x6E3C9E, 0xD2A6FF);
+            return PPOrderStatusDynamicColor(0x6F3DB4, 0x6F3DB4);
         case PPOrderStatusVisualPhaseReady:
-            return PPOrderStatusDynamicColor(0x00695A, 0x5FE3C6);
+            return PPOrderStatusDynamicColor(0x1769E0, 0x1769E0);
         case PPOrderStatusVisualPhaseAssigned:
-            return PPOrderStatusDynamicColor(0x414EB0, 0xAAB2FF);
+            return PPOrderStatusDynamicColor(0x087A75, 0x087A75);
         case PPOrderStatusVisualPhaseInTransit:
-            return PPOrderStatusDynamicColor(0x005F9F, 0x74C7FF);
+            return PPOrderStatusDynamicColor(0x4D57D8, 0x4D57D8);
         case PPOrderStatusVisualPhaseDelivered:
-            return PPOrderStatusDynamicColor(0x137548, 0x67DCA4);
+            return PPOrderStatusDynamicColor(0x16825D, 0x16825D);
         case PPOrderStatusVisualPhaseCompleted:
-            return PPOrderStatusDynamicColor(0x466B2E, 0xB6DEA0);
+            return PPOrderStatusDynamicColor(0x0B6B4B, 0x0B6B4B);
         case PPOrderStatusVisualPhaseCancelled:
-            return PPOrderStatusDynamicColor(0xAE213A, 0xFF8D9E);
+            return PPOrderStatusDynamicColor(0xC9333E, 0xC9333E);
         case PPOrderStatusVisualPhaseDelayed:
             return PPOrderStatusDynamicColor(0xA8481E, 0xFFAD79);
         case PPOrderStatusVisualPhaseReturned:
@@ -143,23 +143,23 @@ NS_INLINE UIColor *PPOrderStatusShineColorForPhase(PPOrderStatusVisualPhase phas
 {
     switch (phase) {
         case PPOrderStatusVisualPhasePlaced:
-            return PPOrderStatusDynamicColor(0xFFB34F, 0xFFE0A2);
+            return PPOrderStatusDynamicColor(0xFFF2E0, 0xFFF2E0);
         case PPOrderStatusVisualPhasePaymentConfirmed:
             return PPOrderStatusDynamicColor(0x31C6D1, 0xB4F7FA);
         case PPOrderStatusVisualPhasePreparing:
-            return PPOrderStatusDynamicColor(0xB77AF2, 0xEED7FF);
+            return PPOrderStatusDynamicColor(0xF3ECFC, 0xF3ECFC);
         case PPOrderStatusVisualPhaseReady:
-            return PPOrderStatusDynamicColor(0x33CBAE, 0xC1FFF2);
+            return PPOrderStatusDynamicColor(0xEAF2FF, 0xEAF2FF);
         case PPOrderStatusVisualPhaseAssigned:
-            return PPOrderStatusDynamicColor(0x7E89F7, 0xE1E4FF);
+            return PPOrderStatusDynamicColor(0xE6F5F3, 0xE6F5F3);
         case PPOrderStatusVisualPhaseInTransit:
-            return PPOrderStatusDynamicColor(0x3BA8F5, 0xD1EDFF);
+            return PPOrderStatusDynamicColor(0xECEEFE, 0xECEEFE);
         case PPOrderStatusVisualPhaseDelivered:
-            return PPOrderStatusDynamicColor(0x43C785, 0xCEFFE5);
+            return PPOrderStatusDynamicColor(0xE8F5EE, 0xE8F5EE);
         case PPOrderStatusVisualPhaseCompleted:
-            return PPOrderStatusDynamicColor(0xA4C772, 0xF4FFD9);
+            return PPOrderStatusDynamicColor(0xE3F1EB, 0xE3F1EB);
         case PPOrderStatusVisualPhaseCancelled:
-            return PPOrderStatusDynamicColor(0xEF5A72, 0xFFD3DA);
+            return PPOrderStatusDynamicColor(0xFDECEE, 0xFDECEE);
         case PPOrderStatusVisualPhaseDelayed:
             return PPOrderStatusDynamicColor(0xF08049, 0xFFE1CF);
         case PPOrderStatusVisualPhaseReturned:

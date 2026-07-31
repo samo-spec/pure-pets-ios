@@ -76,6 +76,35 @@ struct HomeHeroPage: Identifiable {
     let localImage: UIImage?
     let accentHex: String
     let action: HomeHeroAction
+    let autoScrollInterval: TimeInterval
+
+    init(
+        id: String,
+        kind: HomeHeroKind,
+        eyebrow: String,
+        title: String,
+        subtitle: String,
+        primaryTitle: String,
+        secondaryTitle: String?,
+        imageURL: String?,
+        localImage: UIImage?,
+        accentHex: String,
+        action: HomeHeroAction,
+        autoScrollInterval: TimeInterval = 4.8
+    ) {
+        self.id = id
+        self.kind = kind
+        self.eyebrow = eyebrow
+        self.title = title
+        self.subtitle = subtitle
+        self.primaryTitle = primaryTitle
+        self.secondaryTitle = secondaryTitle
+        self.imageURL = imageURL
+        self.localImage = localImage
+        self.accentHex = accentHex
+        self.action = action
+        self.autoScrollInterval = autoScrollInterval
+    }
 }
 
 struct HomePetModel: Identifiable {
@@ -164,7 +193,8 @@ enum HomeSectionRenderState {
 }
 
 struct HomeSectionModel: Identifiable {
-    let id: HomeSectionID
+    let id: Int
+    let kind: HomeSectionID
     let title: String
     let subtitle: String?
     let seeAllTitle: String?
@@ -172,18 +202,51 @@ struct HomeSectionModel: Identifiable {
     let state: HomeSectionRenderState
 }
 
+struct HomeConfigSection: Identifiable {
+    let id: Int
+    let type: String
+    let isVisible: Bool
+    let metadata: [AnyHashable: Any]
+}
+
 struct HomeConfigModel {
-    var orderedSectionIDs: [Int]
-    var visibleSectionIDs: Set<Int>
+    var sections: [HomeConfigSection]
     var titleViewMode: String
     var premiumCareVisible: Bool
     var novaFloatingVisible: Bool
     var backgroundGlowsFaded: Bool
     var cameFromCache: Bool
 
+    var orderedSectionIDs: [Int] {
+        sections.map(\.id)
+    }
+
+    var visibleSectionIDs: Set<Int> {
+        Set(sections.lazy.filter(\.isVisible).map(\.id))
+    }
+
     static let fallback = HomeConfigModel(
-        orderedSectionIDs: [15, 17, 16, 0, 5, 9, 1, 2, 7, 18, 19, 6, 4, 10, 12, 11, 13, 14, 8],
-        visibleSectionIDs: Set(0 ... 19),
+        sections: [
+            HomeConfigSection(id: 15, type: "PPHomeSectionPremiumSearch", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 17, type: "PPHomeSectionMarketplaceHero", isVisible: false, metadata: [:]),
+            HomeConfigSection(id: 16, type: "PPHomeSectionProviderCategoryNav", isVisible: false, metadata: [:]),
+            HomeConfigSection(id: 0, type: "PPHomeSectionHero", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 5, type: "PPHomeSectionMainKinds", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 9, type: "PPHomeSectionPremiumCare", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 1, type: "PPHomeSectionQuickActions", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 2, type: "PPHomeSectionCurrentOrders", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 7, type: "PPHomeSectionAccessories", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 18, type: "PPHomeSectionSuggestionAds", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 19, type: "PPHomeSectionSuggestionAccessories", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 6, type: "PPHomeSectionSuggestions", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 4, type: "PPHomeSectionCarousel", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 10, type: "PPHomeSectionLastFood", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 12, type: "PPHomeSectionAdsNearBy", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 11, type: "PPHomeSectionNearbyServices", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 13, type: "PPHomeSectionAdopt", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 14, type: "PPHomeSectionBuyAgain", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 8, type: "PPHomeSectionPetProfile", isVisible: true, metadata: [:]),
+        ],
         titleViewMode: "location",
         premiumCareVisible: true,
         novaFloatingVisible: true,
@@ -193,6 +256,10 @@ struct HomeConfigModel {
 
     func isVisible(_ rawSectionID: Int) -> Bool {
         visibleSectionIDs.contains(rawSectionID)
+    }
+
+    func section(withID rawSectionID: Int) -> HomeConfigSection? {
+        sections.first { $0.id == rawSectionID }
     }
 }
 
@@ -207,6 +274,8 @@ struct HomeViewState {
     var location: HomeLocationModel
     var config: HomeConfigModel
     var heroPages: [HomeHeroPage]
+    var promotionPages: [HomeHeroPage]
+    var marketplaceHeroPage: HomeHeroPage?
     var selectedHeroIndex: Int
     var pets: [HomePetModel]
     var categories: [HomeCategoryModel]
@@ -227,6 +296,8 @@ struct HomeViewState {
         location: HomeLocationModel(),
         config: .fallback,
         heroPages: [],
+        promotionPages: [],
+        marketplaceHeroPage: nil,
         selectedHeroIndex: 0,
         pets: [],
         categories: [],

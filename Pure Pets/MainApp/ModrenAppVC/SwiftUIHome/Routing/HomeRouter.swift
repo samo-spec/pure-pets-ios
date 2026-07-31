@@ -4,6 +4,7 @@ import UIKit
 @MainActor
 final class HomeRouter {
     private(set) weak var owner: PPHomeViewController?
+    private var inFlightRoutes = Set<String>()
 
     init(owner: PPHomeViewController) {
         self.owner = owner
@@ -18,16 +19,22 @@ final class HomeRouter {
     }
 
     func openSearch() {
-        owner?.pp_homeOpenSearch()
+        performOnce("search") { [weak self] in
+            self?.owner?.pp_homeOpenSearch()
+        }
     }
 
     func openCart() {
-        owner?.pp_homeOpenCart()
+        performOnce("cart") { [weak self] in
+            self?.owner?.pp_homeOpenCart()
+        }
     }
 
     func openDetails(for card: HomeCardModel) {
         guard let object = card.viewModel.modelObject else { return }
-        owner?.pp_homeOpenObject(object)
+        performOnce("details:\(card.id)") { [weak self] in
+            self?.owner?.pp_homeOpenObject(object)
+        }
     }
 
     func openCategory(_ category: HomeCategoryModel) {
@@ -51,7 +58,9 @@ final class HomeRouter {
     }
 
     func openOrder(_ order: HomeOrderModel) {
-        owner?.pp_homeOpenOrder(order.raw)
+        performOnce("order:\(order.id)") { [weak self] in
+            self?.owner?.pp_homeOpenOrder(order.raw)
+        }
     }
 
     func openOrderHistory() {
@@ -142,22 +151,42 @@ final class HomeRouter {
     }
 
     func presentLocationOptions() {
-        owner?.pp_homePresentLocationOptions()
+        performOnce("location-options") { [weak self] in
+            self?.owner?.pp_homePresentLocationOptions()
+        }
     }
 
     func openLocationPicker() {
-        owner?.pp_homeOpenLocationPicker()
+        performOnce("location-picker") { [weak self] in
+            self?.owner?.pp_homeOpenLocationPicker()
+        }
     }
 
     func openLocationSettings() {
-        owner?.pp_homeOpenLocationSettings()
+        performOnce("location-settings") { [weak self] in
+            self?.owner?.pp_homeOpenLocationSettings()
+        }
     }
 
     func openNova() {
-        owner?.pp_homeOpenNova()
+        performOnce("nova") { [weak self] in
+            self?.owner?.pp_homeOpenNova()
+        }
     }
 
     func refreshOwner() {
         owner?.pp_homeRefresh()
+    }
+
+    private func performOnce(
+        _ key: String,
+        action: () -> Void
+    ) {
+        guard inFlightRoutes.insert(key).inserted else { return }
+        action()
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            self?.inFlightRoutes.remove(key)
+        }
     }
 }

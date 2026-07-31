@@ -725,10 +725,11 @@ UINavigationControllerDelegate>
 
 - (void)setupSearch
 {
-    //UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
+    UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
 
     UIView *container = [UIView new];
     container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.semanticContentAttribute = semanticAttribute;
     container.backgroundColor = UIColor.clearColor;
     container.preservesSuperviewLayoutMargins = YES;
     container.layer.zPosition = 1000.0;
@@ -754,7 +755,7 @@ UINavigationControllerDelegate>
     } else {
         chromeView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.96];
     }
-    //chromeView.semanticContentAttribute = semanticAttribute;
+    chromeView.semanticContentAttribute = semanticAttribute;
     chromeView.layer.cornerRadius = 20.0;
     chromeView.layer.masksToBounds = NO;
     chromeView.layer.borderWidth = 1.0;
@@ -778,17 +779,23 @@ UINavigationControllerDelegate>
     UIImageView *iconView =
         [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:iconConfig]];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.semanticContentAttribute = semanticAttribute;
     iconView.tintColor = [UIColor colorWithWhite:0.38 alpha:1.0];
     iconView.contentMode = UIViewContentModeScaleAspectFit;
 
     UITextField *textField = [UITextField new];
     textField.translatesAutoresizingMaskIntoConstraints = NO;
     textField.delegate = self;
-  // textField.semanticContentAttribute = semanticAttribute;
+    textField.semanticContentAttribute = semanticAttribute;
     textField.textAlignment = NSTextAlignmentNatural;
     textField.textColor = UIColor.labelColor;
     textField.tintColor = AppPrimaryClr;
-    textField.font = [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
+    UIFont *searchBaseFont =
+        [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
+    textField.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+        scaledFontForFont:searchBaseFont
+        maximumPointSize:22.0];
+    textField.adjustsFontForContentSizeCategory = YES;
     textField.borderStyle = UITextBorderStyleNone;
     textField.backgroundColor = UIColor.clearColor;
     textField.clearButtonMode = UITextFieldViewModeWhileEditing;
@@ -806,9 +813,12 @@ UINavigationControllerDelegate>
     UILabel *placeholderLabel = [UILabel new];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
     placeholderLabel.userInteractionEnabled = NO;
-  // placeholderLabel.semanticContentAttribute = semanticAttribute;
+    placeholderLabel.semanticContentAttribute = semanticAttribute;
     placeholderLabel.text = placeholderText;
-    placeholderLabel.font = [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
+    placeholderLabel.font = textField.font;
+    placeholderLabel.adjustsFontForContentSizeCategory = YES;
+    placeholderLabel.numberOfLines = 1;
+    placeholderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     placeholderLabel.textColor = [UIColor colorWithWhite:0.52 alpha:1.0];
     placeholderLabel.textAlignment = NSTextAlignmentNatural;
 
@@ -819,6 +829,7 @@ UINavigationControllerDelegate>
 
     UIButton *cameraButton = [UIButton buttonWithType:UIButtonTypeSystem];
     cameraButton.translatesAutoresizingMaskIntoConstraints = NO;
+    cameraButton.semanticContentAttribute = semanticAttribute;
     UIImageSymbolConfiguration *cameraCfg =
         [self pp_imageSearchCameraSymbolConfigurationWithPointSize:22.0
                                                             weight:UIImageSymbolWeightSemibold];
@@ -844,6 +855,15 @@ UINavigationControllerDelegate>
     [cameraButton addTarget:self action:@selector(pp_imageSearchButtonTouchUp:) forControlEvents:UIControlEventTouchCancel];
     [cameraButton addTarget:self action:@selector(pp_imageSearchButtonTouchUp:) forControlEvents:UIControlEventTouchDragExit];
     [chromeView addSubview:cameraButton];
+
+    [iconView setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                             forAxis:UILayoutConstraintAxisHorizontal];
+    [cameraButton setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                   forAxis:UILayoutConstraintAxisHorizontal];
+    [textField setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                               forAxis:UILayoutConstraintAxisHorizontal];
+    [placeholderLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                      forAxis:UILayoutConstraintAxisHorizontal];
 
     [container addSubview:chromeView];
     [self.view addSubview:container];

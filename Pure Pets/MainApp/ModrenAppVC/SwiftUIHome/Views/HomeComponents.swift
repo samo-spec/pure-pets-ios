@@ -65,11 +65,12 @@ enum HomeFont {
     }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 struct HomeCommandBar: View {
     let state: HomeViewState
     let searchAction: () -> Void
     let cartAction: () -> Void
+    let locationAction: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -79,7 +80,12 @@ struct HomeCommandBar: View {
 
     var body: some View {
         HStack(spacing: PPSpace.sm) {
-            searchButton
+            if state.config.titleViewMode == "location" {
+                locationButton
+                compactSearchButton
+            } else {
+                searchButton
+            }
             cartButton
         }
         .padding(.horizontal, PPSpace.screenMargin)
@@ -95,6 +101,89 @@ struct HomeCommandBar: View {
         )
     }
 
+    private var locationButton: some View {
+        Button(action: locationAction) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.homeBrand)
+                    .frame(width: 38, height: 38)
+                    .background(Color.homeAmbientField, in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    ))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(HomeModelAdapter.localized(
+                        "home_pulse_location_context",
+                        fallback: "Your area"
+                    ))
+                    .font(HomeFont.caption1())
+                    .foregroundStyle(Color.homeTextSecondary)
+                    Text(locationTitle)
+                        .font(HomeFont.headline())
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, PPSpace.sm)
+            .frame(maxWidth: .infinity, minHeight: resolvedSearchControlHeight)
+            .background(Color.homeRaisedSurface, in: RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            ))
+            .overlay {
+                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    .stroke(Color.homeSeparator, lineWidth: contrast == .increased ? 1.5 : 0.8)
+            }
+        }
+        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityLabel(locationTitle)
+    }
+
+    private var compactSearchButton: some View {
+        Button(action: searchAction) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(Color.homeBrand)
+                .frame(width: 48, height: 48)
+                .background(Color.homeRaisedSurface, in: Circle())
+                .overlay(Circle().stroke(Color.homeSeparator, lineWidth: 0.8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(HomeModelAdapter.localized(
+            "home_pulse_search_a11y",
+            fallback: "Search Pure Pets"
+        ))
+    }
+
+    private var locationTitle: String {
+        let area = state.location.areaName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !area.isEmpty {
+            return area
+        }
+        switch state.location.presentation {
+        case .loading:
+            return HomeModelAdapter.localized("Loading...", fallback: "Loading")
+        case .denied, .restricted:
+            return HomeModelAdapter.localized(
+                "Location permission denied",
+                fallback: "Location unavailable"
+            )
+        case .notDetermined, .ready, .failed:
+            return HomeModelAdapter.localized(
+                "Select your location",
+                fallback: "Choose an area"
+            )
+        }
+    }
+
     private var searchButton: some View {
         Button(action: searchAction) {
             HStack(spacing: PPSpace.sm) {
@@ -106,7 +195,8 @@ struct HomeCommandBar: View {
             .padding(.horizontal, PPSpace.sm)
             .frame(
                 maxWidth: .infinity,
-                minHeight: resolvedSearchControlHeight
+                minHeight: resolvedSearchControlHeight,
+                alignment: .leading
             )
             .background(searchSurface)
             .overlay {
@@ -220,14 +310,14 @@ struct HomeCommandBar: View {
         }
     }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 private struct SearchSuggestion: Identifiable {
     let id: String
     let text: String
 }
 
-@available(iOS 16.0, *)
-private struct HomeAnimatedSearchSuggestionView: View {
+@available(iOS 15.0, *)
+struct HomeAnimatedSearchSuggestionView: View {
     let isRTL: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -276,7 +366,7 @@ private struct HomeAnimatedSearchSuggestionView: View {
     }
 
     var body: some View {
-        ZStack(alignment: isRTL ? .trailing : .leading) {
+        ZStack(alignment: .leading) {
             ForEach(suggestions) { item in
                 if item.id == visibleSuggestionID {
                     Text(item.text)
@@ -284,7 +374,7 @@ private struct HomeAnimatedSearchSuggestionView: View {
                         .foregroundStyle(Color.ppTextPrimary.opacity(0.76))
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
-                        .multilineTextAlignment(isRTL ? .trailing : .leading)
+                        .multilineTextAlignment(.leading)
                         .transition(
                             reduceMotion
                                 ? .opacity
@@ -296,7 +386,7 @@ private struct HomeAnimatedSearchSuggestionView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: isRTL ? .trailing : .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: dynamicTypeSize.isAccessibilitySize ? 30 : 24)
         .clipped()
         .accessibilityHidden(true)
@@ -304,24 +394,20 @@ private struct HomeAnimatedSearchSuggestionView: View {
             guard scenePhase == .active else { return }
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(
-                        nanoseconds: UInt64.random(
-                            in: 3_800_000_000 ... 5_200_000_000
-                        )
-                    )
+                    try await Task.sleep(nanoseconds: 3_000_000_000)
                 } catch {
                     return
                 }
-                guard !Task.isCancelled,
-                      let next = suggestions
-                        .filter({ $0.id != visibleSuggestionID })
-                        .randomElement() else {
-                    return
-                }
+                guard !Task.isCancelled, !suggestions.isEmpty else { return }
+
+                let currentIndex = suggestions.firstIndex(where: { $0.id == visibleSuggestionID }) ?? 0
+                let nextIndex = (currentIndex + 1) % suggestions.count
+                let next = suggestions[nextIndex]
+
                 withAnimation(
                     reduceMotion
-                        ? .easeOut(duration: 0.18)
-                        : .spring(response: 0.42, dampingFraction: 0.86)
+                        ? .easeOut(duration: 0.20)
+                        : .spring(response: 0.44, dampingFraction: 0.82)
                 ) {
                     currentSuggestionID = next.id
                 }
@@ -376,29 +462,20 @@ private struct HomeTopFadeBackdrop: View {
     let contrast: ColorSchemeContrast
 
     var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-            LinearGradient(
-                stops: [
-                    .init(
-                        color: Color.ppBackground.opacity(
-                            contrast == .increased ? 0.96 : 0.78
-                        ),
-                        location: 0
+        LinearGradient(
+            stops: [
+                .init(color: Color.homeCanvas, location: 0),
+                .init(
+                    color: Color.homeCanvas.opacity(
+                        contrast == .increased ? 0.98 : 0.90
                     ),
-                    .init(
-                        color: Color.ppBackground.opacity(
-                            contrast == .increased ? 0.82 : 0.42
-                        ),
-                        location: 0.70
-                    ),
-                    .init(color: Color.clear, location: 1),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
+                    location: 0.72
+                ),
+                .init(color: Color.homeCanvas.opacity(0), location: 1),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
         .mask {
             LinearGradient(
                 stops: [
@@ -526,7 +603,7 @@ struct HomeLocationContextButton: View {
     }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 struct HomePetSwitcher: View {
     let pets: [HomePetModel]
     let selectedID: String?
@@ -1656,125 +1733,644 @@ private struct HomeMyPetProfileCardPressStyle: ButtonStyle {
 
 struct HomePriorityGrid: View {
     let actions: [HomePriorityAction]
+    let featuredPet: HomePetModel?
     let onSelect: (HomePriorityAction) -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private var columns: [GridItem] {
-        if dynamicTypeSize.isAccessibilitySize {
-            return [GridItem(.flexible(), spacing: PPSpace.sm)]
+    private enum Layout {
+        static let columnSpacing = PPSpace.md
+        static let cardSpacing = PPSpace.sm
+        static let featuredCircleSize: CGFloat = 108
+        static let featuredCircleTopInset = PPSpace.sm
+        static let featuredCardWidth = featuredCircleSize + 8
+        static let compactCardHeight: CGFloat = 120
+        static let compactSectionHeight =
+            (compactCardHeight * 2) + cardSpacing
+    }
+
+    private var featuredAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "pet" }) ?? actions.first
+    }
+
+    private var secondaryActions: [HomePriorityAction] {
+        let items = actions.filter { $0.id != "pet" }
+        if items.count >= 4 {
+            return Array(items.prefix(4))
         }
-        return [
-            GridItem(.flexible(), spacing: PPSpace.sm),
-            GridItem(.flexible(), spacing: PPSpace.sm),
-            GridItem(.flexible(), spacing: PPSpace.sm),
-        ]
+        return items
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            Text(
-                HomeModelAdapter.localized(
-                    "home_pulse_priority_title",
-                    fallback: "Your next step"
-                )
-            )
-            .font(HomeFont.title2())
-            .foregroundStyle(Color.ppTextPrimary)
-            .accessibilityAddTraits(.isHeader)
+        VStack(spacing: PPSpace.md) {
+            headerView
 
-            LazyVGrid(columns: columns, spacing: PPSpace.sm) {
-                ForEach(actions) { action in
-                    Button {
-                        onSelect(action)
-                    } label: {
-                        if dynamicTypeSize.isAccessibilitySize {
-                            HStack(spacing: PPSpace.md) {
-                                actionIcon(action)
-                                actionCopy(action)
-                                Spacer(minLength: 0)
-                                Image(systemName: "chevron.forward")
-                                    .foregroundStyle(Color.ppTextTertiary)
-                                    .flipsForRightToLeftLayoutDirection(true)
-                            }
-                        } else {
-                            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                                actionIcon(action)
-                                actionCopy(action)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: PPSpace.sm) {
+                    if let featured = featuredAction {
+                        HomeFeaturedPetCard(
+                            action: featured,
+                            pet: featuredPet,
+                            compactHeight: Layout.compactSectionHeight,
+                            regularCircleSize: Layout.featuredCircleSize,
+                            circleInset: Layout.featuredCircleTopInset,
+                            onSelect: onSelect
+                        )
                     }
-                    .buttonStyle(HomePriorityPressStyle())
+                    ForEach(secondaryActions) { action in
+                        HomeSecondaryActionCard(
+                            action: action,
+                            compactHeight: Layout.compactCardHeight,
+                            onSelect: onSelect
+                        )
+                    }
+                }
+            } else {
+                HStack(
+                    alignment: .top,
+                    spacing: Layout.columnSpacing
+                ) {
+                    if let featured = featuredAction {
+                        HomeFeaturedPetCard(
+                            action: featured,
+                            pet: featuredPet,
+                            compactHeight: Layout.compactSectionHeight,
+                            regularCircleSize: Layout.featuredCircleSize,
+                            circleInset: Layout.featuredCircleTopInset,
+                            onSelect: onSelect
+                        )
+                        .frame(width: Layout.featuredCardWidth)
+                    }
+
+                    secondaryGrid
+                        .frame(maxWidth: .infinity)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: Layout.compactSectionHeight)
+            }
+        }
+    }
+
+    private var secondaryGrid: some View {
+        // VStack of HStacks is used instead of LazyVGrid(.flexible()) because a
+        // LazyVGrid inside an HStack can collapse to its content's intrinsic width
+        // rather than expanding to fill the proposed maxWidth, leaving dead space on
+        // the trailing edge and making the secondary cards narrower than intended.
+        // HStacks reliably fill their container and distribute width equally when
+        // every card uses .frame(maxWidth: .infinity).
+        let rows: [[HomePriorityAction]] = {
+            var result: [[HomePriorityAction]] = []
+            var index = 0
+            while index < secondaryActions.count {
+                let end = index + 2
+                let sliceEnd = end <= secondaryActions.count
+                    ? end
+                    : secondaryActions.count
+                result.append(Array(secondaryActions[index..<sliceEnd]))
+                index = end
+            }
+            return result
+        }()
+
+        return VStack(spacing: Layout.cardSpacing) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: Layout.cardSpacing) {
+                    ForEach(row) { action in
+                        HomeSecondaryActionCard(
+                            action: action,
+                            compactHeight: Layout.compactCardHeight,
+                            onSelect: onSelect
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    if row.count == 1 {
+                        Spacer(minLength: 0)
+                    }
                 }
             }
         }
     }
 
-    private func actionIcon(_ action: HomePriorityAction) -> some View {
-        Image(systemName: action.systemImage)
-            .font(.system(size: 19, weight: .semibold))
-            .foregroundStyle(Color(uiColor: action.accent))
-            .frame(width: 42, height: 42)
+    private var headerView: some View {
+        VStack(spacing: PPSpace.xs) {
+            HStack(spacing: PPSpace.sm) {
+                Text(
+                    HomeModelAdapter.localized(
+                        "home_pulse_priority_title",
+                        fallback: "خطوتك التالية"
+                    )
+                )
+                .font(HomeFont.bold(24))
+                .foregroundStyle(Color.homeTextPrimary)
+
+                Image(systemName: "sparkle")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.homeBrand)
+                    .accessibilityHidden(true)
+            }
+
+            Text(
+                HomeModelAdapter.localized(
+                    "home_pulse_priority_subtitle",
+                    fallback: "كل ما يحتاجه حيوانك في مكان واحد"
+                )
+            )
+            .font(HomeFont.subheadline())
+            .foregroundStyle(Color.homeTextSecondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct HomeFeaturedPetCard: View {
+    let action: HomePriorityAction
+    let pet: HomePetModel?
+    let compactHeight: CGFloat
+    let regularCircleSize: CGFloat
+    let circleInset: CGFloat
+    let onSelect: (HomePriorityAction) -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var loadedPetImageIdentity: String?
+
+    private var animationHaloSize: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 132 : regularCircleSize
+    }
+
+    private var animationViewSize: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 204 : 168
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPCorner.hero,
+            style: .continuous
+        )
+    }
+
+    private var petImageURL: String? {
+        let value = pet?.imageURL?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    private var petImageIdentity: String? {
+        guard let pet, let petImageURL else { return nil }
+        return "\(pet.id)|\(petImageURL)"
+    }
+
+    var body: some View {
+        Button {
+            onSelect(action)
+        } label: {
+            VStack(spacing: 0) {
+                animationArea
+                    .padding(.top, circleInset)
+
+                VStack(spacing: PPSpace.xxs) {
+                    Text(action.title)
+                        .font(HomeFont.bold(20))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+
+                    Text(action.subtitle)
+                        .font(HomeFont.caption2())
+                        .foregroundStyle(Color.homeTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                        .minimumScaleFactor(0.86)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, PPSpace.sm)
+
+                Spacer(minLength: PPSpace.xs)
+
+                HStack(spacing: PPSpace.sm) {
+                    Text(
+                        HomeModelAdapter.localized(
+                            "home_pulse_manage_pet_cta",
+                            fallback: "إدارة حيواني"
+                        )
+                    )
+                    .font(HomeFont.bold(14))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 11, weight: .bold))
+                        .flipsForRightToLeftLayoutDirection(true)
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(Color.white)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+                .background(PPGradient.hero, in: Capsule())
+                .shadow(
+                    color: Color.homeBrand.opacity(
+                        colorScheme == .dark ? 0.18 : 0.24
+                    ),
+                    radius: 7,
+                    y: 4
+                )
+                .padding(.horizontal, PPSpace.sm)
+                .padding(.bottom, PPSpace.sm)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(
+                minHeight: dynamicTypeSize.isAccessibilitySize
+                    ? 328
+                    : compactHeight
+            )
+            .frame(
+                height: dynamicTypeSize.isAccessibilitySize
+                    ? nil
+                    : compactHeight
+            )
+            .background(PPGradient.softBrandField, in: cardShape)
+            .overlay {
+                cardShape.stroke(
+                    Color.homeBrand.opacity(
+                        contrast == .increased
+                            ? 0.58
+                            : (colorScheme == .dark ? 0.34 : 0.22)
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+            }
+            .overlay(alignment: .topLeading) {
+                pawBadge
+                    .padding(PPSpace.md)
+            }
+            .shadow(
+                color: Color.homeBrand.opacity(
+                    colorScheme == .dark ? 0.10 : 0.12
+                ),
+                radius: 14,
+                y: 7
+            )
+            .contentShape(cardShape)
+        }
+        .buttonStyle(HomeCardPressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(action.title)
+        .accessibilityHint(action.subtitle)
+    }
+
+    private var animationArea: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    Color.homeBrand.opacity(
+                        colorScheme == .dark ? 0.19 : 0.12
+                    )
+                )
+                .overlay {
+                    Circle().stroke(
+                        Color.homeBrand.opacity(
+                            contrast == .increased ? 0.48 : 0.16
+                        ),
+                        lineWidth: contrast == .increased ? 1.5 : 0.8
+                    )
+                }
+                .frame(
+                    width: animationHaloSize,
+                    height: animationHaloSize
+                )
+
+            if petImageIdentity == nil ||
+                loadedPetImageIdentity != petImageIdentity {
+                fallbackPetArtwork
+            }
+
+            if let petImageURL, let petImageIdentity {
+                petPhoto(
+                    urlString: petImageURL,
+                    identity: petImageIdentity
+                )
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: animationHaloSize)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var fallbackPetArtwork: some View {
+        if reduceMotion {
+            Image("pawprint")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundStyle(Color.homeBrand)
+                .frame(
+                    width: animationHaloSize * 0.56,
+                    height: animationHaloSize * 0.56
+                )
+        } else {
+            HomeHeroLottieRepresentable(
+                animationName: "LottieAnimations/Loader cat.json",
+                loadsFromFirebase: true,
+                playbackEnabled: true
+            )
+            .frame(
+                width: animationViewSize,
+                height: animationViewSize
+            )
+            .clipShape(Circle())
+        }
+    }
+
+    private func petPhoto(
+        urlString: String,
+        identity: String
+    ) -> some View {
+        AppRemoteImage(
+            urlString: urlString,
+            cacheKey: "home-priority-pet|\(identity)",
+            displaySize: CGSize(
+                width: animationHaloSize,
+                height: animationHaloSize
+            ),
+            contentMode: .fill,
+            retryCount: 2,
+            fadeDuration: 0.20,
+            showsRetryAction: false,
+            onImageLoaded: { _ in
+                DispatchQueue.main.async {
+                    loadedPetImageIdentity = identity
+                }
+            }
+        ) {
+            Color.clear
+        } failurePlaceholder: {
+            Color.clear
+        }
+        .frame(
+            width: animationHaloSize,
+            height: animationHaloSize
+        )
+        .clipShape(Circle())
+        .overlay {
+            Circle().stroke(
+                Color.homeRaisedSurface.opacity(
+                    contrast == .increased ? 1 : 0.88
+                ),
+                lineWidth: contrast == .increased ? 2.5 : 2
+            )
+        }
+        .id(identity)
+    }
+
+    private var pawBadge: some View {
+        Image("pawsmall")
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(Color.homeBrand)
+            .frame(width: 38, height: 38)
+            .background(Color.homeRaisedSurface.opacity(0.2), in: Circle())
+            .overlay {
+                Circle().stroke(
+                    Color.homeBrand.opacity(
+                        contrast == .increased ? 0.48 : 0.14
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                )
+            }
+            .shadow(
+                color: Color.homeBrand.opacity(0.12),
+                radius: 6,
+                y: 3
+            )
+            .accessibilityHidden(true)
+    }
+}
+
+private struct HomeSecondaryActionCard: View {
+    let action: HomePriorityAction
+    let compactHeight: CGFloat
+    let onSelect: (HomePriorityAction) -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPCorner.medium,
+            style: .continuous
+        )
+    }
+
+    var body: some View {
+        Button {
+            onSelect(action)
+        } label: {
+            cardContent
+            .frame(maxWidth: .infinity)
+            .frame(
+                minHeight: dynamicTypeSize.isAccessibilitySize
+                    ? 92
+                    : compactHeight
+            )
+            .frame(
+                height: dynamicTypeSize.isAccessibilitySize
+                    ? nil
+                    : compactHeight
+            )
+            .background {
+                ZStack {
+                    cardShape.fill(Color.homeRaisedSurface)
+                    cardShape.fill(
+                        accentColor.opacity(
+                            colorScheme == .dark ? 0.12 : 0.055
+                        )
+                    )
+                }
+            }
+            .overlay {
+                cardShape.stroke(
+                    accentColor.opacity(
+                        contrast == .increased
+                            ? 0.62
+                            : (colorScheme == .dark ? 0.32 : 0.17)
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                )
+            }
+            .shadow(
+                color: Color.black.opacity(
+                    colorScheme == .dark ? 0.16 : 0.045
+                ),
+                radius: 8,
+                y: 4
+            )
+            .contentShape(cardShape)
+        }
+        .buttonStyle(HomeCardPressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(action.title)
+        .accessibilityHint(action.subtitle)
+    }
+
+    @ViewBuilder
+    private var cardContent: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            HStack(spacing: PPSpace.md) {
+                actionIcon(size: 44)
+
+                actionCopy
+
+                Spacer(minLength: PPSpace.xs)
+
+                directionIndicator(size: 32)
+            }
+            .padding(PPSpace.md)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: PPSpace.xs) {
+                    actionIcon(size: 38)
+
+                    Spacer(minLength: 0)
+
+                    directionIndicator(size: 26)
+                }
+
+                Spacer(minLength: PPSpace.xs)
+
+                actionCopy
+            }
+            .padding(.horizontal, PPSpace.sm)
+            .padding(.top, PPSpace.md)
+            .padding(.bottom, PPSpace.md)
+        }
+    }
+
+    private var actionCopy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            Text(action.title)
+                .font(HomeFont.bold(18))
+                .foregroundStyle(Color.homeTextPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .minimumScaleFactor(0.76)
+
+            Text(action.subtitle)
+                .font(HomeFont.caption2())
+                .foregroundStyle(Color.homeTextSecondary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                .minimumScaleFactor(0.78)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func actionIcon(size: CGFloat) -> some View {
+        Image(systemName: resolvedSymbol)
+            .font(
+                .system(
+                    size: dynamicTypeSize.isAccessibilitySize ? 18 : 16,
+                    weight: .bold
+                )
+            )
+            .foregroundStyle(accentColor)
+            .frame(width: size, height: size)
             .background(
-                Color(uiColor: action.accent).opacity(0.12),
+                accentColor.opacity(
+                    colorScheme == .dark ? 0.20 : 0.11
+                ),
                 in: RoundedRectangle(
                     cornerRadius: PPCorner.small,
                     style: .continuous
                 )
             )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+                .stroke(
+                    accentColor.opacity(
+                        contrast == .increased ? 0.56 : 0.12
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.7
+                )
+            }
             .accessibilityHidden(true)
     }
 
-    private func actionCopy(_ action: HomePriorityAction) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            Text(action.title)
-                .font(HomeFont.bold(15))
-                .foregroundStyle(Color.ppTextPrimary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
-            Text(action.subtitle)
-                .font(HomeFont.caption1())
-                .foregroundStyle(Color.ppTextSecondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct HomePriorityPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(PPSpace.md)
-            .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+    private func directionIndicator(size: CGFloat) -> some View {
+        Image(systemName: "chevron.forward")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(accentColor)
+            .flipsForRightToLeftLayoutDirection(true)
+            .frame(width: size, height: size)
             .background(
-                configuration.isPressed
-                    ? Color.ppSecondarySurface
-                    : Color.ppSurface,
-                in: RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
-                )
+                Color.homeRaisedSurface.opacity(
+                    colorScheme == .dark ? 0.72 : 0.90
+                ),
+                in: Circle()
             )
             .overlay {
-                RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
+                Circle().stroke(
+                    accentColor.opacity(
+                        contrast == .increased ? 0.52 : 0.13
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.7
                 )
-                .stroke(Color.ppBorder, lineWidth: 0.6)
             }
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .accessibilityHidden(true)
+    }
+
+    private var resolvedSymbol: String {
+        switch action.id {
+        case "shop": return "bag.fill"
+        case "ads": return "heart.fill"
+        case "pharmacy": return "pills.fill"
+        case "vet": return "cross.case.fill"
+        default: return action.systemImage
+        }
+    }
+
+    private var accentColor: Color {
+        switch action.id {
+        case "shop": return Color(red: 0.84, green: 0.16, blue: 0.38)
+        case "ads": return Color(red: 0.80, green: 0.18, blue: 0.50)
+        case "pharmacy": return Color.homePharmacy
+        case "vet": return Color.homeVeterinary
+        default: return Color(uiColor: action.accent)
+        }
     }
 }
 
-@available(iOS 16.0, *)
+private struct HomeCardPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
+
+@available(iOS 15.0, *)
 struct HomeCategoryRail: View {
     let categories: [HomeCategoryModel]
     let selectedID: Int?
     let onSelect: (HomeCategoryModel?) -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
@@ -1793,14 +2389,87 @@ struct HomeCategoryRail: View {
             )
             .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
-            HomeMainKindsCollectionRepresentable(
-                categories: categories,
-                selectedID: selectedID,
-                itemSize: itemSize,
-                onSelect: onSelect
-            )
-            .frame(height: itemSize.height + 24)
+            GeometryReader { geometry in
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: PPSpace.md) {
+                            categoryCell(nil)
+                                .id(allCategoryScrollID)
+
+                            ForEach(categories) { category in
+                                categoryCell(category)
+                                    .id(scrollID(for: category))
+                            }
+                        }
+                        .padding(.horizontal, PPSpace.screenMargin)
+                        .padding(.vertical, PPSpace.xs)
+                    }
+                    .onAppear {
+                        proxy.scrollTo(
+                            selectedScrollID,
+                            anchor: semanticLeadingAnchor(
+                                viewportWidth: geometry.size.width
+                            )
+                        )
+                    }
+                }
+            }
+            .frame(height: itemSize.height + (PPSpace.xs * 2))
         }
+    }
+
+    private var allCategoryScrollID: String {
+        "home-main-kind-all"
+    }
+
+    private var selectedScrollID: String {
+        guard let selectedID,
+              let category = categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedID
+              }) else {
+            return allCategoryScrollID
+        }
+        return scrollID(for: category)
+    }
+
+    private func semanticLeadingAnchor(
+        viewportWidth: CGFloat
+    ) -> UnitPoint {
+        let availableWidth = max(viewportWidth - itemSize.width, 1)
+        let insetFraction = min(
+            max(PPSpace.screenMargin / availableWidth, 0),
+            0.5
+        )
+        return UnitPoint(
+            x: layoutDirection == .rightToLeft
+                ? 1 - insetFraction
+                : insetFraction,
+            y: 0.5
+        )
+    }
+
+    private func scrollID(for category: HomeCategoryModel) -> String {
+        "home-main-kind-\(category.id)"
+    }
+
+    @ViewBuilder
+    private func categoryCell(
+        _ category: HomeCategoryModel?
+    ) -> some View {
+        let categoryID = category.map {
+            HomeModelAdapter.mainKindID($0.raw)
+        }
+        HomeMainKindCellRepresentable(
+            category: category,
+            selected: category == nil
+                ? selectedID == nil
+                : categoryID == selectedID,
+            size: itemSize,
+            onSelect: {
+                onSelect(category)
+            }
+        )
+        .frame(width: itemSize.width, height: itemSize.height)
     }
 
     private var itemSize: CGSize {
@@ -1831,544 +2500,46 @@ struct HomeCategoryRail: View {
     }
 }
 
-private struct HomeMainKindsCollectionRepresentable: UIViewRepresentable {
-    let categories: [HomeCategoryModel]
-    let selectedID: Int?
-    let itemSize: CGSize
-    let onSelect: (HomeCategoryModel?) -> Void
+private struct HomeMainKindCellRepresentable: UIViewRepresentable {
+    let category: HomeCategoryModel?
+    let selected: Bool
+    let size: CGSize
+    let onSelect: () -> Void
 
-    private final class CollectionView: UICollectionView {
-        var didLayout: ((UICollectionView) -> Void)?
-
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            didLayout?(self)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> UICollectionView {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .horizontal
-        layout.minimumLineSpacing = PPSpace.md
-        layout.minimumInteritemSpacing = PPSpace.md
-        layout.sectionInset = UIEdgeInsets(
-            top: 10,
-            left: PPSpace.screenMargin,
-            bottom: 14,
-            right: PPSpace.screenMargin
-        )
-
-        let collectionView = CollectionView(
-            frame: .zero,
-            collectionViewLayout: layout
-        )
-        collectionView.backgroundColor = .clear
-        collectionView.clipsToBounds = false
-        collectionView.layer.masksToBounds = false
-        collectionView.showsHorizontalScrollIndicator = false
-        collectionView.alwaysBounceHorizontal = true
-        collectionView.contentInsetAdjustmentBehavior = .never
-        collectionView.decelerationRate = .fast
-        collectionView.semanticContentAttribute =
-            Language.semanticAttributeForCurrentLanguage()
-        collectionView.dataSource = context.coordinator
-        collectionView.delegate = context.coordinator
-        collectionView.register(
-            PPMainKindsCell.self,
-            forCellWithReuseIdentifier: PPMainKindsCell.reuseIdentifier
-        )
-        collectionView.didLayout = { [weak coordinator = context.coordinator] collectionView in
-            coordinator?.collectionViewDidLayout(collectionView)
-        }
-        return collectionView
-    }
-
-    func updateUIView(
-        _ collectionView: UICollectionView,
-        context: Context
-    ) {
-        context.coordinator.update(
-            categories: categories,
-            selectedID: selectedID,
-            itemSize: itemSize,
-            onSelect: onSelect,
-            collectionView: collectionView
+    func makeUIView(context: Context) -> PPMainKindsCell {
+        PPMainKindsCell(
+            frame: CGRect(origin: .zero, size: size)
         )
     }
 
-    final class Coordinator: NSObject, UICollectionViewDataSource,
-        UICollectionViewDelegate
-    {
-        private static let loopCycleCount = 101
-
-        private var categories: [HomeCategoryModel] = []
-        private var selectedID: Int?
-        private var onSelect: ((HomeCategoryModel?) -> Void)?
-        private var itemSize: CGSize = .zero
-        private var contentSignature = ""
-        private var selectionSignature = Int.min
-        private var positioningGeneration = 0
-        private var hasEstablishedLoopPosition = false
-        private var hasRestoredInitialSelection = false
-        private var pendingSelectedLogicalIndex: Int?
-        private var positionAttemptScheduled = false
-        private weak var collectionView: UICollectionView?
-
-        override init() {
-            super.init()
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(voiceOverStatusDidChange),
-                name: UIAccessibility.voiceOverStatusDidChangeNotification,
-                object: nil
-            )
+    func updateUIView(_ cell: PPMainKindsCell, context: Context) {
+        if cell.bounds.size != size {
+            cell.bounds = CGRect(origin: .zero, size: size)
         }
-
-        deinit {
-            NotificationCenter.default.removeObserver(self)
+        cell.configure(
+            withMainKind: category?.raw,
+            isAll: category == nil,
+            selected: selected,
+            restoredSelectionAppearance: false
+        )
+        cell.onSelect = { _, _ in
+            onSelect()
         }
+    }
 
-        private var logicalItemCount: Int {
-            categories.count + 1
-        }
-
-        private var usesInfiniteLoop: Bool {
-            // Infinite looping disabled by product direction. The rail now
-            // scrolls as a finite horizontal list. All loop machinery
-            // (presentedItemCount, virtualIndex, recenterLoopIfNeeded) is
-            // guarded by this flag and degrades to non-looping behavior.
-            false
-        }
-
-        private var presentedItemCount: Int {
-            guard usesInfiniteLoop else { return logicalItemCount }
-            return logicalItemCount * Self.loopCycleCount
-        }
-
-        func update(
-            categories: [HomeCategoryModel],
-            selectedID: Int?,
-            itemSize: CGSize,
-            onSelect: @escaping (HomeCategoryModel?) -> Void,
-            collectionView: UICollectionView
-        ) {
-            self.categories = categories
-            self.selectedID = selectedID
-            self.itemSize = itemSize
-            self.onSelect = onSelect
-            self.collectionView = collectionView
-
-            if let layout =
-                collectionView.collectionViewLayout
-                    as? UICollectionViewFlowLayout,
-               layout.itemSize != itemSize {
-                layout.itemSize = itemSize
-                layout.invalidateLayout()
-            }
-            updateEdgeInsets(in: collectionView)
-
-            let nextContentSignature = [
-                categories.map {
-                    [
-                        $0.id,
-                        String(HomeModelAdapter.mainKindID($0.raw)),
-                        $0.title,
-                        $0.imageURL ?? "",
-                    ].joined(separator: "|")
-                }.joined(separator: ";"),
-                "\(itemSize.width)x\(itemSize.height)",
-                UIAccessibility.isVoiceOverRunning ? "voice-over" : "visual",
-            ].joined(separator: "#")
-            let nextSelectionSignature = selectedID ?? -1
-            let contentChanged = nextContentSignature != contentSignature
-            let selectionChanged =
-                nextSelectionSignature != selectionSignature
-
-            guard contentChanged || selectionChanged else { return }
-            if contentChanged {
-                hasEstablishedLoopPosition = false
-            }
-            contentSignature = nextContentSignature
-            selectionSignature = nextSelectionSignature
-            collectionView.reloadData()
-            positionSelectedItem(in: collectionView)
-        }
-
-        func collectionView(
-            _ collectionView: UICollectionView,
-            numberOfItemsInSection section: Int
-        ) -> Int {
-            presentedItemCount
-        }
-
-        func collectionView(
-            _ collectionView: UICollectionView,
-            cellForItemAt indexPath: IndexPath
-        ) -> UICollectionViewCell {
-            guard let cell = collectionView.dequeueReusableCell(
-                withReuseIdentifier: PPMainKindsCell.reuseIdentifier,
-                for: indexPath
-            ) as? PPMainKindsCell else {
-                return UICollectionViewCell()
-            }
-
-            let logicalIndex = logicalIndex(for: indexPath.item)
-            let isAll = logicalIndex == 0
-            let category = isAll ? nil : categories[logicalIndex - 1]
-            let categoryID = category.map {
-                HomeModelAdapter.mainKindID($0.raw)
-            }
-            let selected = isAll
-                ? selectedID == nil
-                : categoryID == selectedID
-
-            cell.configure(
-                withMainKind: category?.raw,
-                isAll: isAll,
-                selected: selected,
-                restoredSelectionAppearance:
-                    selected && !hasRestoredInitialSelection
-            )
-            applySelectionScale(
-                to: cell,
-                selected: selected,
-                animated: cell.window != nil
-            )
-            cell.onSelect = { [weak self, weak collectionView] _, selectedAll in
-                guard let self, let collectionView else { return }
-                self.centerItem(
-                    at: indexPath,
-                    in: collectionView,
-                    animated: !UIAccessibility.isReduceMotionEnabled
-                )
-                self.onSelect?(selectedAll ? nil : category)
-            }
-            return cell
-        }
-
-        private func applySelectionScale(
-            to cell: UICollectionViewCell,
-            selected: Bool,
-            animated: Bool
-        ) {
-            let targetTransform = selected
-                ? CGAffineTransform(scaleX: 1.035, y: 1.035)
-                : .identity
-            cell.layer.zPosition = selected ? 1 : 0
-
-            guard cell.transform != targetTransform else { return }
-            guard animated, !UIAccessibility.isReduceMotionEnabled else {
-                cell.transform = targetTransform
-                return
-            }
-
-            UIView.animate(
-                withDuration: 0.26,
-                delay: 0,
-                usingSpringWithDamping: 0.88,
-                initialSpringVelocity: 0.12,
-                options: [.allowUserInteraction, .beginFromCurrentState],
-                animations: {
-                    cell.transform = targetTransform
-                }
-            )
-        }
-
-        private func positionSelectedItem(
-            in collectionView: UICollectionView
-        ) {
-            // Auto-centering of the selected main kind is disabled by product
-            // direction. The selection highlight (scale + restored animation)
-            // is still applied via applySelectionScale / cell.configure, and
-            // user-initiated tap centering remains. Only the automatic
-            // scroll-to-center on reload/layout/selection-change is suppressed.
-            return;
-            positioningGeneration += 1
-            let selectedLogicalIndex: Int
-            if let selectedID,
-               let categoryIndex = categories.firstIndex(where: {
-                   HomeModelAdapter.mainKindID($0.raw) == selectedID
-               }) {
-                selectedLogicalIndex = categoryIndex + 1
-            } else {
-                selectedLogicalIndex = 0
-            }
-            pendingSelectedLogicalIndex = selectedLogicalIndex
-            schedulePendingPosition(in: collectionView)
-        }
-
-        fileprivate func collectionViewDidLayout(
-            _ collectionView: UICollectionView
-        ) {
-            updateEdgeInsets(in: collectionView)
-            schedulePendingPosition(in: collectionView)
-        }
-
-        private func schedulePendingPosition(
-            in collectionView: UICollectionView
-        ) {
-            guard pendingSelectedLogicalIndex != nil,
-                  collectionView.bounds.width > 1,
-                  !positionAttemptScheduled else {
-                return
-            }
-            positionAttemptScheduled = true
-            let generation = positioningGeneration
-            DispatchQueue.main.async { [weak self, weak collectionView] in
-                guard let self,
-                      let collectionView else {
-                    return
-                }
-                self.positionAttemptScheduled = false
-                guard generation == self.positioningGeneration else {
-                    self.schedulePendingPosition(in: collectionView)
-                    return
-                }
-                guard let selectedLogicalIndex =
-                        self.pendingSelectedLogicalIndex else {
-                    return
-                }
-                collectionView.layoutIfNeeded()
-                let targetIndex = self.virtualIndex(
-                    for: selectedLogicalIndex,
-                    nearestToCurrentPositionIn: collectionView
-                )
-                guard collectionView.numberOfItems(inSection: 0)
-                    > targetIndex else {
-                    return
-                }
-                self.centerItem(
-                    at: IndexPath(item: targetIndex, section: 0),
-                    in: collectionView,
-                    animated: false
-                )
-                collectionView.layoutIfNeeded()
-                let targetIndexPath = IndexPath(
-                    item: targetIndex,
-                    section: 0
-                )
-                if !self.hasRestoredInitialSelection,
-                   let selectedCell = collectionView.cellForItem(
-                       at: targetIndexPath
-                   ) as? PPMainKindsCell {
-                    selectedCell.playRestoredSelectionAnimation()
-                    self.hasRestoredInitialSelection = true
-                }
-                self.pendingSelectedLogicalIndex = nil
-            }
-        }
-
-        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-            guard let collectionView = scrollView as? UICollectionView else {
-                return
-            }
-            recenterLoopIfNeeded(in: collectionView)
-        }
-
-        func scrollViewDidEndDragging(
-            _ scrollView: UIScrollView,
-            willDecelerate decelerate: Bool
-        ) {
-            guard !decelerate,
-                  let collectionView = scrollView as? UICollectionView else {
-                return
-            }
-            recenterLoopIfNeeded(in: collectionView)
-        }
-
-        func scrollViewDidEndScrollingAnimation(
-            _ scrollView: UIScrollView
-        ) {
-            guard let collectionView = scrollView as? UICollectionView else {
-                return
-            }
-            recenterLoopIfNeeded(in: collectionView)
-        }
-
-        private func logicalIndex(for virtualIndex: Int) -> Int {
-            guard logicalItemCount > 0 else { return 0 }
-            return virtualIndex % logicalItemCount
-        }
-
-        private func virtualIndex(
-            for logicalIndex: Int,
-            nearestToCurrentPositionIn collectionView: UICollectionView
-        ) -> Int {
-            guard usesInfiniteLoop else { return logicalIndex }
-
-            let middleCycleStart =
-                (Self.loopCycleCount / 2) * logicalItemCount
-            guard hasEstablishedLoopPosition,
-                  let centeredIndex = centeredVirtualIndex(
-                    in: collectionView
-                  ) else {
-                return middleCycleStart + logicalIndex
-            }
-
-            let centeredLogicalIndex = self.logicalIndex(
-                for: centeredIndex
-            )
-            let forwardDistance =
-                (logicalIndex - centeredLogicalIndex + logicalItemCount)
-                % logicalItemCount
-            let backwardDistance = forwardDistance - logicalItemCount
-            let shortestDistance =
-                abs(forwardDistance) <= abs(backwardDistance)
-                ? forwardDistance
-                : backwardDistance
-            let nearestIndex = centeredIndex + shortestDistance
-
-            guard nearestIndex >= 0,
-                  nearestIndex < presentedItemCount else {
-                return middleCycleStart + logicalIndex
-            }
-            return nearestIndex
-        }
-
-        private func centeredVirtualIndex(
-            in collectionView: UICollectionView
-        ) -> Int? {
-            let visibleCenter = CGPoint(
-                x: collectionView.contentOffset.x
-                    + collectionView.bounds.width / 2,
-                y: collectionView.contentOffset.y
-                    + collectionView.bounds.height / 2
-            )
-            if let exact = collectionView.indexPathForItem(
-                at: visibleCenter
-            ) {
-                return exact.item
-            }
-
-            return collectionView.indexPathsForVisibleItems.min {
-                let lhsCenter = collectionView.layoutAttributesForItem(
-                    at: $0
-                )?.center.x ?? .greatestFiniteMagnitude
-                let rhsCenter = collectionView.layoutAttributesForItem(
-                    at: $1
-                )?.center.x ?? .greatestFiniteMagnitude
-                return abs(lhsCenter - visibleCenter.x)
-                    < abs(rhsCenter - visibleCenter.x)
-            }?.item
-        }
-
-        private func centerItem(
-            at indexPath: IndexPath,
-            in collectionView: UICollectionView,
-            animated: Bool
-        ) {
-            guard indexPath.item >= 0,
-                  indexPath.item
-                    < collectionView.numberOfItems(inSection: 0) else {
-                return
-            }
-            hasEstablishedLoopPosition = true
-            collectionView.scrollToItem(
-                at: indexPath,
-                at: .centeredHorizontally,
-                animated: animated
-            )
-        }
-
-        private func recenterLoopIfNeeded(
-            in collectionView: UICollectionView
-        ) {
-            guard usesInfiniteLoop,
-                  let centeredIndex = centeredVirtualIndex(
-                    in: collectionView
-                  ) else {
-                return
-            }
-
-            let edgeBuffer = logicalItemCount * 10
-            guard centeredIndex < edgeBuffer
-                    || centeredIndex
-                        >= presentedItemCount - edgeBuffer else {
-                return
-            }
-
-            let middleIndex =
-                (Self.loopCycleCount / 2) * logicalItemCount
-                + logicalIndex(for: centeredIndex)
-            let sourceIndexPath = IndexPath(
-                item: centeredIndex,
-                section: 0
-            )
-            let targetIndexPath = IndexPath(
-                item: middleIndex,
-                section: 0
-            )
-            collectionView.layoutIfNeeded()
-            guard let sourceAttributes =
-                    collectionView.layoutAttributesForItem(
-                        at: sourceIndexPath
-                    ),
-                  let targetAttributes =
-                    collectionView.layoutAttributesForItem(
-                        at: targetIndexPath
-                    ) else {
-                centerItem(
-                    at: targetIndexPath,
-                    in: collectionView,
-                    animated: false
-                )
-                return
-            }
-
-            var offset = collectionView.contentOffset
-            offset.x +=
-                targetAttributes.center.x - sourceAttributes.center.x
-            collectionView.setContentOffset(offset, animated: false)
-            hasEstablishedLoopPosition = true
-        }
-
-        private func updateEdgeInsets(
-            in collectionView: UICollectionView
-        ) {
-            guard let layout =
-                    collectionView.collectionViewLayout
-                        as? UICollectionViewFlowLayout else {
-                return
-            }
-            let finiteCenterInset = max(
-                PPSpace.screenMargin,
-                (collectionView.bounds.width - itemSize.width) / 2
-            )
-            let horizontalInset = usesInfiniteLoop
-                ? PPSpace.screenMargin
-                : finiteCenterInset
-            let nextInsets = UIEdgeInsets(
-                top: PPSpace.xs,
-                left: horizontalInset,
-                bottom: PPSpace.xs,
-                right: horizontalInset
-            )
-            guard layout.sectionInset != nextInsets else { return }
-            layout.sectionInset = nextInsets
-            layout.invalidateLayout()
-        }
-
-        @objc
-        private func voiceOverStatusDidChange() {
-            guard let collectionView else { return }
-            hasEstablishedLoopPosition = false
-            contentSignature = ""
-            updateEdgeInsets(in: collectionView)
-            collectionView.reloadData()
-            positionSelectedItem(in: collectionView)
-        }
+    static func dismantleUIView(_ cell: PPMainKindsCell, coordinator: Void) {
+        cell.onSelect = nil
     }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 struct HomeOrderCard: View {
     let order: HomeOrderModel
     let onTap: () -> Void
-    let onSeeAll: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
@@ -2378,83 +2549,61 @@ struct HomeOrderCard: View {
                     fallback: "Current order"
                 ),
                 subtitle: order.reference,
-                actionTitle: HomeModelAdapter.localized(
-                    "home_pulse_orders",
-                    fallback: "Orders"
-                ),
-                action: onSeeAll,
-                sectionRawValue: 2
+                sectionRawValue: 2,
+                showsAction: false,
+                headingAccentColor: statusAccentUIColor
             )
             .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
             Button(action: onTap) {
-                HStack(spacing: PPSpace.md) {
-                    ZStack {
-                        RoundedRectangle(
-                            cornerRadius: PPCorner.medium,
-                            style: .continuous
-                        )
-                        .fill(Color.ppSoftRose)
-                        Image(systemName: order.symbol)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(Color.ppPrimary)
-                    }
-                    .frame(width: 58, height: 58)
-
-                    VStack(alignment: .leading, spacing: PPSpace.xs) {
-                        Text(order.statusTitle)
-                            .font(HomeFont.headline())
-                            .foregroundStyle(Color.ppTextPrimary)
-                        Text(order.statusHint)
-                            .font(HomeFont.footnote())
-                            .foregroundStyle(Color.ppTextSecondary)
-                            .lineLimit(2)
-                        ProgressView(value: order.progress)
-                            .tint(Color.ppPrimary)
-                            .accessibilityLabel(order.statusTitle)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    VStack(alignment: .trailing, spacing: PPSpace.xs) {
-                        if !order.amount.isEmpty {
-                            Text(order.amount)
-                                .font(HomeFont.bold(15))
-                                .foregroundStyle(Color.ppTextPrimary)
-                        }
-                        Text(
-                            String(
-                                format: HomeModelAdapter.localized(
-                                    "home_pulse_order_items",
-                                    fallback: "%d items"
-                                ),
-                                order.itemCount
-                            )
-                        )
-                        .font(HomeFont.caption1())
-                        .foregroundStyle(Color.ppTextSecondary)
-                        Image(systemName: "chevron.forward")
-                            .foregroundStyle(Color.ppPrimary)
-                            .flipsForRightToLeftLayoutDirection(true)
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        accessibilityContent
+                    } else {
+                        compactContent
                     }
                 }
                 .padding(PPSpace.base)
-                .background(Color.ppSurface)
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: PPCorner.card,
-                        style: .continuous
+                .background {
+                    cardShape.fill(
+                        LinearGradient(
+                            colors: [
+                                statusStrongSurface.opacity(
+                                    colorScheme == .dark ? 0.86 : 0.70
+                                ),
+                                statusSurface,
+                                Color.homeRaisedSurface,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .overlay {
-                    RoundedRectangle(
-                        cornerRadius: PPCorner.card,
-                        style: .continuous
-                    )
-                    .stroke(Color.ppBorder, lineWidth: 0.7)
                 }
+                .overlay {
+                    cardShape.stroke(
+                        statusBorder,
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
+                }
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(statusAccent)
+                        .frame(width: 4)
+                        .padding(.vertical, PPSpace.lg)
+                        .padding(.leading, PPSpace.xs)
+                }
+                .clipShape(cardShape)
+                .shadow(
+                    color: statusAccent.opacity(
+                        contrast == .increased
+                            ? 0
+                            : (colorScheme == .dark ? 0.05 : 0.07)
+                    ),
+                    radius: contrast == .increased ? 0 : 8,
+                    y: contrast == .increased ? 0 : 3
+                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HomeCardPressStyle())
             .accessibilityElement(children: .combine)
             .accessibilityHint(
                 HomeModelAdapter.localized(
@@ -2464,9 +2613,228 @@ struct HomeOrderCard: View {
             )
         }
     }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    }
+
+    private var compactContent: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            HStack(alignment: .center, spacing: PPSpace.md) {
+                statusGlyph
+                statusCopy
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
+                disclosureIndicator
+            }
+
+            statusProgress
+
+            Divider()
+                .overlay(statusBorder.opacity(0.72))
+                .accessibilityHidden(true)
+
+            orderSummary
+        }
+    }
+
+    private var accessibilityContent: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            HStack(alignment: .center, spacing: PPSpace.md) {
+                statusGlyph
+                Spacer(minLength: PPSpace.sm)
+                disclosureIndicator
+            }
+
+            statusCopy
+            statusProgress
+
+            Divider()
+                .overlay(statusBorder.opacity(0.72))
+                .accessibilityHidden(true)
+
+            orderSummary
+        }
+    }
+
+    private var statusCopy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(order.statusTitle)
+                .font(HomeFont.title2())
+                .foregroundStyle(Color.homeTextPrimary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(order.statusHint)
+                .font(HomeFont.subheadline())
+                .foregroundStyle(Color.homeTextSecondary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var statusProgress: some View {
+        ProgressView(value: resolvedProgress)
+            .progressViewStyle(.linear)
+            .tint(statusAccent)
+            .scaleEffect(x: 1, y: 1.35, anchor: .center)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var orderSummary: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                if !order.amount.isEmpty {
+                    amountLabel
+                }
+                itemCountLabel
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+                if !order.amount.isEmpty {
+                    amountLabel
+
+                    Circle()
+                        .fill(statusAccent)
+                        .frame(width: 4, height: 4)
+                        .accessibilityHidden(true)
+                }
+
+                itemCountLabel
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var amountLabel: some View {
+        Text(order.amount)
+            .font(HomeFont.bold(16))
+            .foregroundStyle(Color.homeTextPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var itemCountLabel: some View {
+        Text(
+            String(
+                format: HomeModelAdapter.localized(
+                    "home_pulse_order_items",
+                    fallback: "%d items"
+                ),
+                order.itemCount
+            )
+        )
+        .font(HomeFont.footnote())
+        .foregroundStyle(Color.homeTextSecondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var statusGlyph: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(statusStrongSurface)
+
+            statusSymbol
+                .foregroundStyle(statusAccent)
+                .frame(width: 27, height: 27)
+        }
+        .frame(width: 60, height: 60)
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .stroke(
+                    statusBorder,
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+        }
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var statusSymbol: some View {
+        if UIImage(systemName: statusSymbolName) != nil {
+            Image(systemName: statusSymbolName)
+                .resizable()
+                .scaledToFit()
+        } else if UIImage(named: statusSymbolName) != nil {
+            Image(statusSymbolName)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+        } else if UIImage(systemName: order.symbol) != nil {
+            Image(systemName: order.symbol)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(systemName: "shippingbox.fill")
+                .resizable()
+                .scaledToFit()
+        }
+    }
+
+    private var disclosureIndicator: some View {
+        Image(systemName: "chevron.forward")
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(statusAccent)
+            .flipsForRightToLeftLayoutDirection(true)
+            .frame(width: 42, height: 42)
+            .background(statusStrongSurface, in: Circle())
+            .overlay {
+                Circle().stroke(
+                    statusBorder,
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+            }
+            .accessibilityHidden(true)
+    }
+
+    private var resolvedProgress: Double {
+        min(max(order.progress, 0), 1)
+    }
+
+    private var statusTraits: UITraitCollection {
+        UITraitCollection(
+            userInterfaceStyle: colorScheme == .dark ? .dark : .light
+        )
+    }
+
+    private var statusAccentUIColor: UIColor {
+        // PPOrderStatusAppearance remains the single visual-status authority.
+        PPOrderStatusAccentColorForKey(order.statusKey)
+    }
+
+    private var statusAccent: Color {
+        Color(uiColor: statusAccentUIColor)
+    }
+
+    private var statusSurface: Color {
+        Color(uiColor: PPOrderStatusSurfaceColorForAccent(
+            statusAccentUIColor,
+            statusTraits
+        ))
+    }
+
+    private var statusStrongSurface: Color {
+        Color(uiColor: PPOrderStatusStrongSurfaceColorForAccent(
+            statusAccentUIColor,
+            statusTraits
+        ))
+    }
+
+    private var statusBorder: Color {
+        Color(uiColor: PPOrderStatusBorderColorForAccent(
+            statusAccentUIColor,
+            statusTraits
+        ))
+    }
+
+    private var statusSymbolName: String {
+        PPOrderStatusSymbolNameForKey(order.statusKey)
+    }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 struct HomeFeedSection: View {
     let section: HomeSectionModel
     let store: HomeStore
@@ -2487,7 +2855,7 @@ struct HomeFeedSection: View {
                 actionTitle: section.seeAllTitle,
                 action: section.seeAllTitle == nil
                     ? nil
-                    : { store.seeAll(section.id) },
+                    : { store.seeAll(section.kind) },
                 sectionRawValue: section.rawConfigSectionID
             )
             .padding(.horizontal, PPSpace.screenMargin * 0.5)
@@ -2537,7 +2905,7 @@ struct HomeFeedSection: View {
                     actionTitle: actionTitle,
                     action: actionTitle == nil
                         ? nil
-                        : { store.seeAll(section.id) }
+                        : { store.seeAll(section.kind) }
                 )
                 .padding(.horizontal, PPSpace.screenMargin)
             case let .failed(title, message, retryTitle):
@@ -2546,7 +2914,7 @@ struct HomeFeedSection: View {
                     title: title,
                     message: message,
                     actionTitle: retryTitle,
-                    action: { store.retry(section: section.id) }
+                    action: { store.retry(section: section.kind) }
                 )
                 .padding(.horizontal, PPSpace.screenMargin)
             }
@@ -2565,17 +2933,29 @@ struct HomeFeedSection: View {
             0,
             viewportWidth - PPSpace.screenMargin
         )
-        guard itemCount > 1 else { return availableWidth }
-
         let spacing = PPSpace.md
         let usesReadableSingleCard =
             dynamicTypeSize.isAccessibilitySize || viewportWidth < 350
+
+        let standardWidth: CGFloat
         if usesReadableSingleCard {
-            return max(
+            standardWidth = max(
                 0,
                 (availableWidth - spacing)
                     / (1 + thirdCardPeekFraction)
             )
+        } else {
+            standardWidth = max(
+                0,
+                (availableWidth - (spacing * 2))
+                    / (2 + thirdCardPeekFraction)
+            )
+        }
+
+        guard itemCount > 1 else { return standardWidth }
+
+        if usesReadableSingleCard {
+            return standardWidth
         }
 
         guard itemCount > 2 else {
@@ -2583,11 +2963,7 @@ struct HomeFeedSection: View {
         }
 
         // Leading margin + two complete cards + two gaps + 12% of the third.
-        return max(
-            0,
-            (availableWidth - (spacing * 2))
-                / (2 + thirdCardPeekFraction)
-        )
+        return standardWidth
     }
 }
 

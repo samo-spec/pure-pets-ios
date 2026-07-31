@@ -126,26 +126,46 @@ enum HomeModelAdapter {
         backgroundGlowsFaded: Bool,
         fromCache: Bool
     ) -> HomeConfigModel {
-        var order: [Int] = []
-        var visible = Set<Int>()
+        var seen = Set<Int>()
+        var resolvedSections: [HomeConfigSection] = []
         for row in sections {
             guard let identifier = (row["id"] as? NSNumber)?.intValue,
-                  !order.contains(identifier)
+                  identifier >= 0,
+                  seen.insert(identifier).inserted
             else {
                 continue
             }
-            order.append(identifier)
-            if (row["visible"] as? NSNumber)?.boolValue ?? true {
-                visible.insert(identifier)
+            let configuredVisibility =
+                (row["visible"] as? NSNumber)?.boolValue ?? true
+            resolvedSections.append(
+                HomeConfigSection(
+                    id: identifier,
+                    type: row["type"] as? String ?? "",
+                    isVisible: configuredVisibility &&
+                        (identifier != 9 || premiumCareVisible),
+                    metadata: row
+                )
+            )
+        }
+
+        if resolvedSections.isEmpty {
+            resolvedSections = HomeConfigModel.fallback.sections.map { section in
+                HomeConfigSection(
+                    id: section.id,
+                    type: section.type,
+                    isVisible: section.isVisible &&
+                        (section.id != 9 || premiumCareVisible),
+                    metadata: section.metadata
+                )
             }
         }
-        if order.isEmpty {
-            return .fallback
-        }
+
+        let resolvedTitleMode = ["location", "search"].contains(titleViewMode)
+            ? titleViewMode
+            : "location"
         return HomeConfigModel(
-            orderedSectionIDs: order,
-            visibleSectionIDs: visible,
-            titleViewMode: titleViewMode,
+            sections: resolvedSections,
+            titleViewMode: resolvedTitleMode,
             premiumCareVisible: premiumCareVisible,
             novaFloatingVisible: novaFloatingVisible,
             backgroundGlowsFaded: backgroundGlowsFaded,

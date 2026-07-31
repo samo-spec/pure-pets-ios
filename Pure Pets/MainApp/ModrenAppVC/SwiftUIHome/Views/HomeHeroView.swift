@@ -49,7 +49,7 @@ struct HomeHeroView: View {
     private func hero(_ page: HomeHeroPage) -> some View {
         let accent = Color(hex: page.accentHex)
         return ZStack {
-            HomeHeroProviderGlassField(
+            HomeHeroField(
                 accent: accent,
                 increasedContrast: contrast == .increased
             )
@@ -105,27 +105,10 @@ struct HomeHeroView: View {
             RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.hero,
-                style: .continuous
-            )
-            .stroke(
-                contrast == .increased
-                    ? AnyShapeStyle(Color.ppTextPrimary.opacity(0.62))
-                    : AnyShapeStyle(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.20),
-                                Color.white.opacity(
-                                    colorScheme == .dark ? 0.10 : 0.62
-                                ),
-                                Color.ppBorder,
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    ),
-                lineWidth: contrast == .increased ? 1.5 : 1
+            HomeHeroBorder(
+                accent: accent,
+                darkMode: colorScheme == .dark,
+                increasedContrast: contrast == .increased
             )
         }
         .shadow(
@@ -775,6 +758,7 @@ private struct HomeHeroFloatingPlate: View {
                 playbackEnabled: !reduceMotion
             )
             .padding(8)
+            .tint(accent)
         }
     }
 
@@ -839,7 +823,7 @@ private struct HomeHeroFloatingPlate: View {
     }
 }
 
-private struct HomeHeroProviderGlassField: View {
+private struct HomeHeroField: View {
     let accent: Color
     let increasedContrast: Bool
 
@@ -854,116 +838,123 @@ private struct HomeHeroProviderGlassField: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(
-                cornerRadius: PPCorner.hero,
-                style: .continuous
-            )
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.ppElevatedSurface,
-                        accent.opacity(
-                            colorScheme == .dark ? 0.10 : 0.055
-                        ),
-                        Color.ppElevatedSurface,
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+            heroShape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.homeRaisedSurface,
+                            increasedContrast
+                                ? Color.homeSectionBand
+                                : Color.homeSurface,
+                            Color.homeSurface.opacity(
+                                colorScheme == .dark ? 0.96 : 0.86
+                            ),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 )
-            )
 
             if !increasedContrast {
-                Circle()
-                    .fill(
-                        accent.opacity(
-                            colorScheme == .dark ? 0.14 : 0.11
-                        )
-                    )
-                    .frame(width: 176, height: 176)
-                    .blur(radius: 22)
-                    .offset(
-                        x: isRightToLeft ? -54 : 54,
-                        y: fieldAlive && !reduceMotion ? -46 : -28
-                    )
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: isRightToLeft
-                            ? .topLeading
-                            : .topTrailing
-                    )
-
-                Circle()
-                    .fill(
-                        Color.white.opacity(
-                            colorScheme == .dark ? 0.05 : 0.28
-                        )
-                    )
-                    .frame(width: 124, height: 124)
-                    .blur(radius: 18)
-                    .offset(
-                        x: isRightToLeft ? 36 : -36,
-                        y: fieldAlive && !reduceMotion ? 42 : 24
-                    )
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: isRightToLeft
-                            ? .bottomTrailing
-                            : .bottomLeading
-                    )
-
-                if !reduceMotion {
-                    lightSweep
-                }
+                careCurrent
             }
         }
-        .onAppear {
-            updateMotion()
-        }
+        .onAppear(perform: updateMotion)
         .onChange(of: reduceMotion) { _ in
             updateMotion()
+        }
+        .onDisappear {
+            fieldAlive = false
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
-    private var lightSweep: some View {
-        Rectangle()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0),
-                        Color.white.opacity(
-                            colorScheme == .dark ? 0.07 : 0.22
-                        ),
-                        Color.white.opacity(0),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
+    private var heroShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPCorner.hero,
+            style: .continuous
+        )
+    }
+
+    private var careCurrent: some View {
+        ZStack {
+            HomeHeroCareCurrentRibbon()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(
+                                colorScheme == .dark ? 0.025 : 0.018
+                            ),
+                            accent.opacity(
+                                colorScheme == .dark ? 0.13 : 0.075
+                            ),
+                            accent.opacity(
+                                colorScheme == .dark ? 0.055 : 0.028
+                            ),
+                            Color.clear,
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
                 )
-            )
-            .frame(width: 76)
-            .rotationEffect(.degrees(isRightToLeft ? -18 : 18))
-            .offset(
-                x: fieldAlive
-                    ? (isRightToLeft ? -360 : 360)
-                    : (isRightToLeft ? 360 : -360)
-            )
-            .blendMode(
-                colorScheme == .dark ? .screen : .plusLighter
-            )
-            .allowsHitTesting(false)
+
+            HomeHeroCareCurrentRibbon()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            Color.homeRaisedSurface.opacity(
+                                colorScheme == .dark ? 0.08 : 0.68
+                            ),
+                            Color.clear,
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .offset(
+                    x: fieldAlive && !reduceMotion ? 18 : -18,
+                    y: fieldAlive && !reduceMotion ? -2 : 2
+                )
+
+            HomeHeroCareCurrentLine()
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            accent.opacity(
+                                colorScheme == .dark ? 0.24 : 0.14
+                            ),
+                            accent.opacity(
+                                colorScheme == .dark ? 0.08 : 0.04
+                            ),
+                            Color.clear,
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(
+                        lineWidth: colorScheme == .dark ? 0.8 : 0.65,
+                        lineCap: .round
+                    )
+                )
+                .opacity(fieldAlive && !reduceMotion ? 0.76 : 0.48)
+        }
+        .scaleEffect(x: isRightToLeft ? -1 : 1, y: 1)
+        .offset(y: fieldAlive && !reduceMotion ? -3 : 3)
+        .allowsHitTesting(false)
     }
 
     private func updateMotion() {
-        guard !reduceMotion else {
+        guard !reduceMotion, !increasedContrast else {
             fieldAlive = false
             return
         }
         guard !fieldAlive else { return }
+
         withAnimation(
-            .easeInOut(duration: 5.8)
+            .easeInOut(duration: 8.6)
                 .repeatForever(autoreverses: true)
         ) {
             fieldAlive = true
@@ -971,7 +962,120 @@ private struct HomeHeroProviderGlassField: View {
     }
 }
 
-private struct HomeHeroLottieRepresentable: UIViewRepresentable {
+private struct HomeHeroCareCurrentRibbon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(
+            to: CGPoint(
+                x: rect.minX - (rect.width * 0.08),
+                y: rect.minY + (rect.height * 0.69)
+            )
+        )
+        path.addCurve(
+            to: CGPoint(
+                x: rect.maxX + (rect.width * 0.08),
+                y: rect.minY + (rect.height * 0.25)
+            ),
+            control1: CGPoint(
+                x: rect.minX + (rect.width * 0.30),
+                y: rect.minY + (rect.height * 0.74)
+            ),
+            control2: CGPoint(
+                x: rect.minX + (rect.width * 0.68),
+                y: rect.minY + (rect.height * 0.08)
+            )
+        )
+        path.addLine(
+            to: CGPoint(
+                x: rect.maxX + (rect.width * 0.08),
+                y: rect.minY + (rect.height * 0.53)
+            )
+        )
+        path.addCurve(
+            to: CGPoint(
+                x: rect.minX - (rect.width * 0.08),
+                y: rect.minY + (rect.height * 0.88)
+            ),
+            control1: CGPoint(
+                x: rect.minX + (rect.width * 0.70),
+                y: rect.minY + (rect.height * 0.36)
+            ),
+            control2: CGPoint(
+                x: rect.minX + (rect.width * 0.31),
+                y: rect.minY + (rect.height * 0.91)
+            )
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct HomeHeroCareCurrentLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(
+            to: CGPoint(
+                x: rect.minX - (rect.width * 0.05),
+                y: rect.minY + (rect.height * 0.77)
+            )
+        )
+        path.addCurve(
+            to: CGPoint(
+                x: rect.maxX + (rect.width * 0.05),
+                y: rect.minY + (rect.height * 0.37)
+            ),
+            control1: CGPoint(
+                x: rect.minX + (rect.width * 0.31),
+                y: rect.minY + (rect.height * 0.79)
+            ),
+            control2: CGPoint(
+                x: rect.minX + (rect.width * 0.67),
+                y: rect.minY + (rect.height * 0.18)
+            )
+        )
+        return path
+    }
+}
+
+private struct HomeHeroBorder: View {
+    let accent: Color
+    let darkMode: Bool
+    let increasedContrast: Bool
+
+    var body: some View {
+        heroShape
+            .strokeBorder(
+                borderStyle,
+                lineWidth: increasedContrast ? 1.5 : 0.65
+            )
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private var heroShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+    }
+
+    private var borderStyle: AnyShapeStyle {
+        if increasedContrast {
+            return AnyShapeStyle(Color.homeTextPrimary.opacity(0.76))
+        }
+
+        return AnyShapeStyle(
+            LinearGradient(
+                colors: [
+                    Color.homeSeparator.opacity(darkMode ? 0.52 : 0.34),
+                    accent.opacity(darkMode ? 0.22 : 0.12),
+                    Color.homeSeparator.opacity(darkMode ? 0.42 : 0.24),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+}
+
+struct HomeHeroLottieRepresentable: UIViewRepresentable {
     let animationName: String
     let loadsFromFirebase: Bool
     let playbackEnabled: Bool
@@ -1002,6 +1106,8 @@ private struct HomeHeroLottieRepresentable: UIViewRepresentable {
 
 private struct HomeHeroSkeleton: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var faded = false
 
     var body: some View {
@@ -1019,6 +1125,13 @@ private struct HomeHeroSkeleton: View {
                 }
                 .padding(PPSpace.lg)
                 .opacity(faded ? 0.55 : 1)
+            }
+            .overlay {
+                HomeHeroBorder(
+                    accent: Color.homeBrand,
+                    darkMode: colorScheme == .dark,
+                    increasedContrast: contrast == .increased
+                )
             }
             .onAppear {
                 guard !reduceMotion else { return }

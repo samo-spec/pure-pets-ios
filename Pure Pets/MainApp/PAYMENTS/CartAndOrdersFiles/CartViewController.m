@@ -788,8 +788,25 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         : PPBottomSurfaceKindNone;
 }
 
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.hidesBottomBarWhenPushed = YES;
 
     [self pp_applyCartScreenBackgroundColor];
     [self pp_installPremiumCartBackgroundViewIfNeeded];

@@ -120,6 +120,9 @@
     } else if ([self.animationName isEqualToString:@"PetMedicine"]) {
         fallbackSymbol = @"pills.fill";
     }
+    
+    
+    
     UIImage *fallbackImage =
         [UIImage systemImageNamed:fallbackSymbol
                 withConfiguration:configuration];
@@ -342,6 +345,47 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
         return NO;
     }
     return fallback;
+}
+
+/// HomeConfig rows may grow new payload or styling fields before this client is
+/// updated. Preserve every property-list-safe value so cached configuration does
+/// not erase forward-compatible metadata while still keeping NSUserDefaults safe.
+static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
+{
+    if (!value || [value isKindOfClass:NSNull.class]) {
+        return nil;
+    }
+    if ([value isKindOfClass:NSString.class] ||
+        [value isKindOfClass:NSNumber.class] ||
+        [value isKindOfClass:NSDate.class] ||
+        [value isKindOfClass:NSData.class]) {
+        return value;
+    }
+    if ([value isKindOfClass:NSArray.class]) {
+        NSMutableArray *array = [NSMutableArray array];
+        for (id child in (NSArray *)value) {
+            id sanitizedChild = PPHomeBridgeConfigValue(child);
+            if (sanitizedChild) {
+                [array addObject:sanitizedChild];
+            }
+        }
+        return array.copy;
+    }
+    if ([value isKindOfClass:NSDictionary.class]) {
+        NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+        [(NSDictionary *)value enumerateKeysAndObjectsUsingBlock:^(id key, id child, BOOL *stop) {
+            (void)stop;
+            if (![key isKindOfClass:NSString.class]) {
+                return;
+            }
+            id sanitizedChild = PPHomeBridgeConfigValue(child);
+            if (sanitizedChild) {
+                dictionary[key] = sanitizedChild;
+            }
+        }];
+        return dictionary.copy;
+    }
+    return nil;
 }
 
 @interface PPHomeDataBridge ()
@@ -974,6 +1018,38 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
     ];
 }
 
+- (NSString *)defaultTypeForSectionID:(NSInteger)sectionID
+{
+    switch (sectionID) {
+        case PPHomeSectionHero: return @"PPHomeSectionHero";
+        case PPHomeSectionQuickActions: return @"PPHomeSectionQuickActions";
+        case PPHomeSectionCurrentOrders: return @"PPHomeSectionCurrentOrders";
+        case PPHomeSectionCarousel: return @"PPHomeSectionCarousel";
+        case PPHomeSectionMainKinds: return @"PPHomeSectionMainKinds";
+        case PPHomeSectionSuggestions: return @"PPHomeSectionSuggestions";
+        case PPHomeSectionAccessories: return @"PPHomeSectionAccessories";
+        case PPHomeSectionPetProfile: return @"PPHomeSectionPetProfile";
+        case PPHomeSectionPremiumCare: return @"PPHomeSectionPremiumCare";
+        case PPHomeSectionLastFood: return @"PPHomeSectionLastFood";
+        case PPHomeSectionNearbyServices: return @"PPHomeSectionNearbyServices";
+        case PPHomeSectionAdsNearBy: return @"PPHomeSectionAdsNearBy";
+        case PPHomeSectionAdopt: return @"PPHomeSectionAdopt";
+        case PPHomeSectionBuyAgain: return @"PPHomeSectionBuyAgain";
+        case PPHomeSectionPremiumSearch: return @"PPHomeSectionPremiumSearch";
+        case PPHomeSectionProviderCategoryNav: return @"PPHomeSectionProviderCategoryNav";
+        case PPHomeSectionMarketplaceHero: return @"PPHomeSectionMarketplaceHero";
+        case PPHomeSectionSuggestionAds: return @"PPHomeSectionSuggestionAds";
+        case PPHomeSectionSuggestionAccessories: return @"PPHomeSectionSuggestionAccessories";
+        default: return @"";
+    }
+}
+
+- (BOOL)defaultVisibilityForSectionID:(NSInteger)sectionID
+{
+    return sectionID != PPHomeSectionMarketplaceHero &&
+           sectionID != PPHomeSectionProviderCategoryNav;
+}
+
 - (NSInteger)sectionIDFromValue:(id)value
 {
     if ([value isKindOfClass:NSNumber.class]) {
@@ -1028,11 +1104,6 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
 
     NSMutableArray<NSDictionary *> *result = [NSMutableArray array];
     NSMutableSet<NSNumber *> *seen = [NSMutableSet set];
-    NSInteger maxKnown = 0;
-    for (NSNumber *knownSectionID in [self defaultSectionOrder]) {
-        maxKnown = MAX(maxKnown, knownSectionID.integerValue);
-    }
-
     for (id rawRow in (NSArray *)rawSections) {
         if (![rawRow isKindOfClass:NSDictionary.class]) {
             continue;
@@ -1042,7 +1113,7 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
         if (sectionID == NSNotFound) {
             sectionID = [self sectionIDFromValue:row[@"type"]];
         }
-        if (sectionID < 0 || sectionID > maxKnown || sectionID == NSNotFound) {
+        if (sectionID < 0 || sectionID == NSNotFound) {
             continue;
         }
         NSNumber *boxedID = @(sectionID);
@@ -1050,9 +1121,25 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
             continue;
         }
         [seen addObject:boxedID];
+        NSMutableDictionary *preservedRow = [NSMutableDictionary dictionary];
+        [row enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop) {
+            (void)stop;
+            if (![key isKindOfClass:NSString.class]) {
+                return;
+            }
+            id sanitizedValue = PPHomeBridgeConfigValue(value);
+            if (sanitizedValue) {
+                preservedRow[key] = sanitizedValue;
+            }
+        }];
         BOOL visible = PPHomeBridgeBoolValue(row[@"visible"], YES);
-        NSString *type = [row[@"type"] isKindOfClass:NSString.class] ? row[@"type"] : @"";
-        [result addObject:@{ @"id" : boxedID, @"visible" : @(visible), @"type" : type }];
+        NSString *type = [row[@"type"] isKindOfClass:NSString.class]
+            ? row[@"type"]
+            : [self defaultTypeForSectionID:sectionID];
+        preservedRow[@"id"] = boxedID;
+        preservedRow[@"visible"] = @(visible);
+        preservedRow[@"type"] = type ?: @"";
+        [result addObject:preservedRow.copy];
     }
     return result.copy;
 }
@@ -1074,20 +1161,28 @@ static BOOL PPHomeBridgeBoolValue(id _Nullable value, BOOL fallback)
             visible = visible && premiumCareVisible;
         }
         [seen addObject:sectionID];
-        [merged addObject:@{
-            @"id" : sectionID,
-            @"visible" : @(visible),
-            @"type" : [row[@"type"] isKindOfClass:NSString.class] ? row[@"type"] : @"",
-        }];
+        NSMutableDictionary *preservedRow = [row mutableCopy];
+        preservedRow[@"id"] = sectionID;
+        preservedRow[@"visible"] = @(visible);
+        preservedRow[@"type"] = [row[@"type"] isKindOfClass:NSString.class]
+            ? row[@"type"]
+            : [self defaultTypeForSectionID:sectionID.integerValue];
+        [merged addObject:preservedRow.copy];
     }
 
     for (NSNumber *sectionID in catalog) {
         if ([seen containsObject:sectionID]) {
             continue;
         }
-        BOOL visible =
-            sectionID.integerValue == PPHomeSectionPremiumCare ? premiumCareVisible : YES;
-        [merged addObject:@{ @"id" : sectionID, @"visible" : @(visible), @"type" : @"" }];
+        BOOL visible = [self defaultVisibilityForSectionID:sectionID.integerValue];
+        if (sectionID.integerValue == PPHomeSectionPremiumCare) {
+            visible = visible && premiumCareVisible;
+        }
+        [merged addObject:@{
+            @"id" : sectionID,
+            @"visible" : @(visible),
+            @"type" : [self defaultTypeForSectionID:sectionID.integerValue],
+        }];
     }
     return merged.copy;
 }
@@ -1873,6 +1968,7 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
         @"showsSecondary" : @(card.showsSecondaryButton),
         @"imageURL" : card.characterImageURL.absoluteString ?: @"",
         @"accentHex" : card.accentColorHex ?: @"",
+        @"autoScrollInterval" : @(MAX(2.0, card.autoScrollInterval)),
     };
 }
 

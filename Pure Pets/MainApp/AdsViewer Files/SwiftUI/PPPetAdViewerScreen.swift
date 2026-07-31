@@ -113,8 +113,8 @@ struct PPPetAdViewerScreen: View {
             get: { store.isMediaViewerPresented },
             set: { store.isMediaViewerPresented = $0 }
         )) {
-            PPPetAdMediaViewerScreen(
-                items: store.snapshot.media,
+            PPMediaViewer(
+                items: PPMediaItem.from(petAdMedia: store.snapshot.media),
                 selection: Binding(
                     get: { store.selectedMediaIndex },
                     set: { store.selectedMediaIndex = $0 }

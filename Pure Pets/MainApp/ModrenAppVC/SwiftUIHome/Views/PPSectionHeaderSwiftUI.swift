@@ -99,6 +99,7 @@ private struct PPSectionHeaderState {
     var usesCirclePresentation = false
     var usesMainKindsPresentation = false
     var surfaceDecorationActive = true
+    var headingAccentColor = PPSectionHeaderPalette.accent
     var rightToLeft = Language.isRTL()
     var pressed = false
     var expanded = false
@@ -113,6 +114,7 @@ private final class PPSectionHeaderStore: ObservableObject {
         usesCirclePresentation: Bool,
         usesMainKindsPresentation: Bool,
         surfaceDecorationActive: Bool,
+        headingAccentColor: UIColor,
         rightToLeft: Bool,
         animated: Bool
     ) {
@@ -122,6 +124,7 @@ private final class PPSectionHeaderStore: ObservableObject {
             state.usesCirclePresentation = usesCirclePresentation
             state.usesMainKindsPresentation = usesMainKindsPresentation
             state.surfaceDecorationActive = surfaceDecorationActive
+            state.headingAccentColor = headingAccentColor
             state.rightToLeft = rightToLeft
         }
     }
@@ -170,7 +173,7 @@ private enum PPSectionHeaderHomeSectionRaw {
     static let accessories = 7
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 @objc(PPSectionHeaderSwiftUI)
 public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRecognizerDelegate {
     @objc public var titleLabel: UILabel { swiftUIHostView.titleLabel }
@@ -184,6 +187,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     private var isExpanded = false
     private var actionButtonUsesCirclePresentation = false
     private var surfaceDecorationActive = true
+    private var headingAccentColor = PPSectionHeaderPalette.accent
     private var currentSubtitleVisible = false
     private var currentSectionRawValue = 0
     private var lastActionTimestamp: CFTimeInterval = 0
@@ -400,6 +404,10 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         updateAccessibility()
     }
 
+    func setHeadingAccentColor(_ color: UIColor?) {
+        headingAccentColor = color ?? PPSectionHeaderPalette.accent
+    }
+
     @objc(setSurfaceDecorationActive:animated:)
     public func setSurfaceDecorationActive(_ active: Bool, animated: Bool) {
         let changed = surfaceDecorationActive != active
@@ -594,6 +602,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
             usesCirclePresentation: actionButtonUsesCirclePresentation,
             usesMainKindsPresentation: isMainKindsSection && !actionButtonUsesCirclePresentation,
             surfaceDecorationActive: surfaceDecorationActive,
+            headingAccentColor: headingAccentColor,
             rightToLeft: Language.isRTL(),
             animated: animated
         )
@@ -615,6 +624,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         actionAccessibilityTitle = nil
         isExpanded = false
         surfaceDecorationActive = true
+        headingAccentColor = PPSectionHeaderPalette.accent
         onTap = nil
         onTapMenu = nil
         lastActionTimestamp = 0
@@ -626,6 +636,10 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     }
 
     @objc private func actionTapped() {
+        guard !actionButton.isHidden, onTap != nil else {
+            return
+        }
+
         let now = CACurrentMediaTime()
         if now - lastActionTimestamp < 0.22 {
             return
@@ -717,7 +731,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 private final class PPSectionHeaderHostingView: UIView {
     let titleLabel: UILabel = {
         let label = UILabel()
@@ -810,6 +824,7 @@ private final class PPSectionHeaderHostingView: UIView {
         usesCirclePresentation: Bool,
         usesMainKindsPresentation: Bool,
         surfaceDecorationActive: Bool,
+        headingAccentColor: UIColor,
         rightToLeft: Bool,
         animated: Bool
     ) {
@@ -820,6 +835,7 @@ private final class PPSectionHeaderHostingView: UIView {
             usesCirclePresentation: usesCirclePresentation,
             usesMainKindsPresentation: usesMainKindsPresentation,
             surfaceDecorationActive: surfaceDecorationActive,
+            headingAccentColor: headingAccentColor,
             rightToLeft: rightToLeft,
             animated: animated
         )
@@ -848,7 +864,7 @@ private final class PPSectionHeaderHostingView: UIView {
     }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 private struct PPSectionHeaderRootView: View {
     @ObservedObject var store: PPSectionHeaderStore
     let titleLabel: UILabel
@@ -938,13 +954,13 @@ private struct PPSectionHeaderRootView: View {
     private var sectionMark: some View {
         ZStack(alignment: store.state.rightToLeft ? .trailing : .leading) {
             Capsule(style: .continuous)
-                .fill(Color(uiColor: PPSectionHeaderPalette.accent)
+                .fill(Color(uiColor: store.state.headingAccentColor)
                     .opacity(store.state.surfaceDecorationActive ? 0.16 : 0.10))
                 .frame(width: PPSectionHeaderMetrics.identityMarkWidth,
                        height: PPSectionHeaderMetrics.identityMarkHeight)
 
             Capsule(style: .continuous)
-                .fill(Color(uiColor: PPSectionHeaderPalette.accent)
+                .fill(Color(uiColor: store.state.headingAccentColor)
                     .opacity(store.state.surfaceDecorationActive ? 0.88 : 0.58))
                 .frame(width: store.state.expanded
                         ? PPSectionHeaderMetrics.identityExpandedWidth
@@ -959,7 +975,7 @@ private struct PPSectionHeaderRootView: View {
     private var titleUnderline: some View {
         HStack {
             Capsule(style: .continuous)
-                .fill(Color(uiColor: PPSectionHeaderPalette.accent)
+                .fill(Color(uiColor: store.state.headingAccentColor)
                     .opacity(store.state.surfaceDecorationActive ? 0.72 : 0.42))
                 .frame(width: store.state.expanded
                         ? PPSectionHeaderMetrics.titleUnderlineExpandedWidth
@@ -992,7 +1008,7 @@ private struct PPSectionHeaderRootView: View {
 
     private var pressHighlight: some View {
         Capsule(style: .continuous)
-            .fill(Color(uiColor: PPSectionHeaderPalette.accent)
+            .fill(Color(uiColor: store.state.headingAccentColor)
                 .opacity(store.state.pressed ? (reduceMotion ? 0.04 : 0.06) : 0))
             .accessibilityHidden(true)
     }
@@ -1011,7 +1027,7 @@ private struct PPSectionHeaderLabelRepresentable: UIViewRepresentable {
     }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 private struct PPSectionHeaderButtonRepresentable: UIViewRepresentable {
     let button: UIButton
     let minimumScaleFactor: CGFloat
@@ -1031,6 +1047,7 @@ private struct PPSectionHeaderButtonRepresentable: UIViewRepresentable {
         uiView.setContentHuggingPriority(.defaultHigh, for: .horizontal)
     }
 
+    @available(iOS 16.0, *)
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
         let fitting = uiView.systemLayoutSizeFitting(
             UIView.layoutFittingCompressedSize,
@@ -1044,26 +1061,32 @@ private struct PPSectionHeaderButtonRepresentable: UIViewRepresentable {
     }
 }
 
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
     public let title: String
     public let subtitle: String?
     public let actionTitle: String?
     public let action: (() -> Void)?
     public let sectionRawValue: Int
+    public let showsAction: Bool
+    public let headingAccentColor: UIColor?
 
     public init(
         title: String,
         subtitle: String? = nil,
         actionTitle: String? = nil,
         action: (() -> Void)? = nil,
-        sectionRawValue: Int = 7
+        sectionRawValue: Int = 7,
+        showsAction: Bool = true,
+        headingAccentColor: UIColor? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
         self.actionTitle = actionTitle
         self.action = action
         self.sectionRawValue = sectionRawValue
+        self.showsAction = showsAction
+        self.headingAccentColor = headingAccentColor
     }
 
     public func makeUIView(context: Context) -> PPSectionHeaderSwiftUI {
@@ -1073,6 +1096,7 @@ public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
 
     public func updateUIView(_ uiView: PPSectionHeaderSwiftUI, context: Context) {
         let section = PPHomeSection(rawValue: sectionRawValue) ?? .accessories
+        uiView.setHeadingAccentColor(headingAccentColor)
         uiView.configure(
             title: title,
             subtitle: subtitle,
@@ -1081,7 +1105,10 @@ public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
             menu: nil,
             ppHomeSection: section
         )
-        uiView.onTap = action
+        uiView.onTap = showsAction ? action : nil
+        if !showsAction {
+            uiView.hide()
+        }
     }
 
     @available(iOS 16.0, *)

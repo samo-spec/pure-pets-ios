@@ -119,6 +119,7 @@ public struct AnimatedAddToCartButton: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
 
+    @Namespace private var cartControlMorph
     @State private var phase: Phase = .idle
     @State private var displayedCount: Int
     @State private var flightProgress: CGFloat = 0
@@ -133,6 +134,7 @@ public struct AnimatedAddToCartButton: View {
     @State private var quantityImpulseID = 0
     @State private var showsQuantityFlight = false
     @State private var quantityMotionTask: Task<Void, Never>?
+    @State private var failureShakeProgress: CGFloat = 0
 
     private let cornerRadius: CGFloat
 
@@ -183,17 +185,7 @@ public struct AnimatedAddToCartButton: View {
                 legacyAddControl
             }
         }
-        .animation(
-            reduceMotion
-                ? .easeOut(duration: 0.16)
-                : .interpolatingSpring(
-                    mass: 0.72,
-                    stiffness: 230,
-                    damping: 22,
-                    initialVelocity: 0
-                ),
-            value: showsQuantityControl
-        )
+        .animation(quantityControlTransitionAnimation, value: showsQuantityControl)
         .overlayPreferenceValue(AddToCartFlightAnchorPreferenceKey.self) { anchors in
             GeometryReader { proxy in
                 ZStack {
@@ -234,12 +226,20 @@ public struct AnimatedAddToCartButton: View {
         ZStack {
             primaryAddButton(signature: true)
                 .opacity(showsQuantityControl ? 0 : 1)
+                .scaleEffect(
+                    x: reduceMotion || !showsQuantityControl ? 1 : 1.012,
+                    y: reduceMotion || !showsQuantityControl ? 1 : 0.91
+                )
                 .allowsHitTesting(!showsQuantityControl)
                 .accessibilityHidden(showsQuantityControl)
                 .zIndex(showsQuantityControl ? 0 : 1)
 
             quantityControl
                 .opacity(showsQuantityControl ? 1 : 0)
+                .scaleEffect(
+                    x: reduceMotion || showsQuantityControl ? 1 : 0.988,
+                    y: reduceMotion || showsQuantityControl ? 1 : 0.91
+                )
                 .allowsHitTesting(showsQuantityControl)
                 .accessibilityHidden(!showsQuantityControl)
                 .zIndex(showsQuantityControl ? 1 : 0)
@@ -259,30 +259,62 @@ public struct AnimatedAddToCartButton: View {
         Button(action: beginAdd) {
             ZStack {
                 buttonShape
-                    .fill(buttonColor)
+                    .fill(
+                        LinearGradient(
+                            colors: buttonSurfaceColors,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
 
                 buttonShape
                     .strokeBorder(
-                        buttonForeground.opacity(isEnabled ? 0.16 : 0.08),
+                        LinearGradient(
+                            colors: [
+                                buttonForeground.opacity(
+                                    isEnabled ? 0.34 : 0.10
+                                ),
+                                buttonForeground.opacity(
+                                    isEnabled ? 0.08 : 0.04
+                                ),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
                         lineWidth: 1
                     )
 
-                HStack(spacing: PPSpace.md) {
+                phaseSurfaceGlow
+
+                HStack(
+                    spacing: usesCompactSignatureControl
+                        ? PPSpace.sm
+                        : PPSpace.md
+                ) {
                     leadingStatus
+                        .modifier(
+                            CartControlMorphModifier(
+                                id: "cart-control-action",
+                                namespace: cartControlMorph,
+                                isSource: !showsQuantityControl,
+                                isEnabled: !reduceMotion &&
+                                    quantityMode != nil
+                            )
+                        )
 
-                    Text(currentTitle)
-                        .font(PPAccessoryTypography.bodyBold)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                        .layoutPriority(1)
+                    phaseTitle
 
-                    if !signature {
-                        Spacer(minLength: PPSpace.sm)
-                    }
+                    Spacer(minLength: signature ? PPSpace.xs : PPSpace.sm)
                 }
                 .foregroundStyle(buttonForeground)
-                .padding(.horizontal, signature ? PPSpace.lg : 14)
+                .padding(
+                    .horizontal,
+                    signature
+                        ? (usesCompactSignatureControl
+                            ? PPSpace.sm
+                            : PPSpace.lg)
+                        : 14
+                )
             }
             .frame(
                 maxWidth: signature ? .infinity : nil,
@@ -291,6 +323,12 @@ public struct AnimatedAddToCartButton: View {
             .contentShape(buttonShape)
         }
         .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
+        .modifier(
+            CartFailureShakeEffect(
+                progress: failureShakeProgress,
+                amplitude: reduceMotion ? 0 : 5
+            )
+        )
         .disabled(!isEnabled || phase.locksInteraction)
         .shadow(
             color: signature && isEnabled
@@ -305,6 +343,68 @@ public struct AnimatedAddToCartButton: View {
         )
         .accessibilityLabel(currentTitle)
         .accessibilityHint(accessibilityHint)
+    }
+
+    private var phaseTitle: some View {
+        ZStack(alignment: .leading) {
+            Text(currentTitle)
+                .font(PPAccessoryTypography.bodyBold)
+                .multilineTextAlignment(.leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .id(currentTitle)
+                .transition(phaseTitleTransition)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipped()
+        .animation(phaseTitleAnimation, value: currentTitle)
+        .layoutPriority(1)
+    }
+
+    private var phaseTitleTransition: AnyTransition {
+        guard !reduceMotion else {
+            return .opacity
+        }
+
+        return .asymmetric(
+            insertion: .opacity.combined(with: .offset(y: 6)),
+            removal: .opacity.combined(with: .offset(y: -4))
+        )
+    }
+
+    @ViewBuilder
+    private var phaseSurfaceGlow: some View {
+        switch phase {
+        case .processing, .flying:
+            buttonShape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.18),
+                            Color.clear,
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .transition(.opacity)
+        case .success:
+            buttonShape
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.white.opacity(0.22),
+                            Color.clear,
+                        ],
+                        center: .leading,
+                        startRadius: 0,
+                        endRadius: 90
+                    )
+                )
+                .transition(.opacity)
+        case .idle, .failure:
+            EmptyView()
+        }
     }
 
     private var authoritativeQuantity: Int {
@@ -342,34 +442,68 @@ public struct AnimatedAddToCartButton: View {
                 style: .continuous
             )
 
-            HStack(spacing: 0) {
+            HStack(spacing: 2) {
                 quantityActionButton(
                     isIncrease: true,
                     mode: quantityMode
                 )
 
+                quantityRailDivider
+
                 quantityStatus(mode: quantityMode)
+
+                quantityRailDivider
 
                 quantityActionButton(
                     isIncrease: false,
                     mode: quantityMode
                 )
             }
-            .environment(\.layoutDirection, .leftToRight)
+            .padding(.horizontal, 3)
             .frame(maxWidth: .infinity, minHeight: signatureControlHeight)
             .background {
                 ZStack {
                     shape.fill(Color.ppForeground)
                     shape.fill(
-                        tint.opacity(colorScheme == .dark ? 0.16 : 0.075)
+                        LinearGradient(
+                            colors: [
+                                tint.opacity(
+                                    colorScheme == .dark ? 0.18 : 0.10
+                                ),
+                                tint.opacity(
+                                    colorScheme == .dark ? 0.08 : 0.035
+                                ),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
                 }
             }
             .overlay {
-                shape.strokeBorder(
-                    tint.opacity(colorScheme == .dark ? 0.34 : 0.20),
-                    lineWidth: 1.5
-                )
+                ZStack {
+                    shape.strokeBorder(
+                        tint.opacity(
+                            colorScheme == .dark ? 0.38 : 0.24
+                        ),
+                        lineWidth: 1.25
+                    )
+
+                    shape
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(
+                                        colorScheme == .dark ? 0.10 : 0.72
+                                    ),
+                                    Color.clear,
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.75
+                        )
+                }
             }
             .shadow(
                 color: tint.opacity(colorScheme == .dark ? 0.14 : 0.11),
@@ -379,6 +513,15 @@ public struct AnimatedAddToCartButton: View {
             .contentShape(shape)
             .opacity(quantityMode.isEnabled ? 1 : 0.62)
         }
+    }
+
+    private var quantityRailDivider: some View {
+        Capsule(style: .continuous)
+            .fill(
+                tint.opacity(colorScheme == .dark ? 0.20 : 0.12)
+            )
+            .frame(width: 1, height: max(18, signatureControlHeight - 20))
+            .accessibilityHidden(true)
     }
 
     private func quantityActionButton(
@@ -402,6 +545,11 @@ public struct AnimatedAddToCartButton: View {
                     ? mode.removeAccessibilityLabel
                     : mode.decreaseAccessibilityLabel
             )
+        let actionTint = isRemove ? Color.ppError : tint
+        let visualSize = max(
+            30,
+            min(38, quantityActionSize - 8)
+        )
         let anchorKey: AddToCartFlightAnchor = isIncrease
             ? .quantityIncrease
             : .quantityDecrease
@@ -426,7 +574,12 @@ public struct AnimatedAddToCartButton: View {
         } label: {
             ZStack {
                 Image(systemName: symbol)
-                    .font(.system(size: isRemove ? 21 : 23, weight: .bold))
+                    .font(
+                        .system(
+                            size: isRemove ? 15 : 17,
+                            weight: .semibold
+                        )
+                    )
                     .id(symbol)
                     .transition(
                         reduceMotion
@@ -434,8 +587,9 @@ public struct AnimatedAddToCartButton: View {
                             : .scale(scale: 0.5).combined(with: .opacity)
                     )
             }
+            .frame(width: visualSize, height: visualSize)
             .frame(width: quantityActionSize, height: quantityActionSize)
-            .foregroundStyle(isRemove ? Color.ppError : tint)
+            .foregroundStyle(actionTint)
             .contentShape(
                 RoundedRectangle(
                     cornerRadius: PPCorner.medium,
@@ -445,15 +599,20 @@ public struct AnimatedAddToCartButton: View {
         }
         .buttonStyle(
             QuantityActionPressStyle(
-                tint: isRemove ? Color.ppError : tint,
+                tint: actionTint,
                 reduceMotion: reduceMotion
             )
         )
         .disabled(!isActionEnabled)
         .opacity(isActionEnabled ? 1 : 0.38)
-        .animation(
-            reduceMotion ? .easeOut(duration: 0.12) : .easeOut(duration: 0.24),
-            value: symbol
+        .animation(quantitySymbolAnimation, value: symbol)
+        .modifier(
+            CartControlMorphModifier(
+                id: "cart-control-action",
+                namespace: cartControlMorph,
+                isSource: showsQuantityControl,
+                isEnabled: !reduceMotion && isIncrease
+            )
         )
         .anchorPreference(
             key: AddToCartFlightAnchorPreferenceKey.self,
@@ -463,9 +622,7 @@ public struct AnimatedAddToCartButton: View {
         }
         .accessibilityLabel(accessibilityLabel)
         .accessibilitySortPriority(
-            isRightToLeft
-                ? (isIncrease ? 1 : 3)
-                : (isIncrease ? 3 : 1)
+            isIncrease ? 3 : 1
         )
     }
 
@@ -522,39 +679,111 @@ public struct AnimatedAddToCartButton: View {
     }
 
     private func quantityStatusLabel(mode: QuantityMode) -> some View {
-        ZStack {
-            Text(PPAccessoryViewerL10n.integer(displayedQuantity))
+        HStack(spacing: usesCompactSignatureControl ? 5 : 7) {
+            Image(systemName: "cart.fill")
                 .font(
-                    .custom(
-                        "Beiruti-Bold",
-                        size: 16,
-                        relativeTo: .callout
+                    .system(
+                        size: usesCompactSignatureControl ? 12 : 14,
+                        weight: .semibold
                     )
                 )
-                .monospacedDigit()
-                .id(displayedQuantity)
-                .transition(quantityNumberTransition)
+                .scaleEffect(
+                    reduceMotion ? 1 : 1 + (0.08 * quantityImpact)
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: -1) {
+                if !usesCompactSignatureControl {
+                    Text(mode.inCartTitle)
+                        .font(PPAccessoryTypography.captionBold)
+                        .foregroundStyle(
+                            Color.ppTextSecondary
+                        )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+
+                ZStack {
+                    Text(
+                        PPAccessoryViewerL10n.integer(
+                            displayedQuantity
+                        )
+                    )
+                    .font(
+                        .custom(
+                            "Beiruti-Bold",
+                            size: usesCompactSignatureControl ? 16 : 18,
+                            relativeTo: .callout
+                        )
+                    )
+                    .monospacedDigit()
+                    .id(displayedQuantity)
+                    .transition(quantityNumberTransition)
+                }
+                .frame(minWidth: 20, alignment: .leading)
+            }
         }
-        .padding(.horizontal, 8)
-        .frame(minWidth: 28, minHeight: max(22, signatureControlHeight - 16))
-        .background(
-            Color.ppForeground,
-            in: RoundedRectangle(
+        .padding(.horizontal, usesCompactSignatureControl ? 9 : 12)
+        .frame(
+            minWidth: usesCompactSignatureControl ? 52 : 68,
+            minHeight: max(30, signatureControlHeight - 10)
+        )
+        .background {
+            RoundedRectangle(
                 cornerRadius: PPCorner.small,
                 style: .continuous
             )
-        )
+            .fill(Color.ppForeground.opacity(colorScheme == .dark ? 0.88 : 0.96))
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+                .fill(
+                    tint.opacity(
+                        colorScheme == .dark ? 0.09 : 0.045
+                    )
+                )
+            }
+        }
         .overlay {
             RoundedRectangle(
                 cornerRadius: PPCorner.small,
                 style: .continuous
             )
-            .strokeBorder(tint.opacity(0.18), lineWidth: 1)
+            .strokeBorder(
+                tint.opacity(
+                    0.18 + (0.16 * quantityImpact)
+                ),
+                lineWidth: 1
+            )
         }
         .clipped()
         .foregroundStyle(tint)
         .frame(maxWidth: .infinity, alignment: .center)
+        .scaleEffect(
+            x: reduceMotion ? 1 : 1 + (0.045 * quantityImpact),
+            y: reduceMotion ? 1 : 1 - (0.055 * quantityImpact)
+        )
+        .offset(
+            y: reduceMotion ? 0 : -1.5 * quantityImpact
+        )
+        .rotationEffect(
+            .degrees(
+                reduceMotion
+                    ? 0
+                    : Double(
+                        quantityDirection == .increase ? -0.8 : 0.8
+                    ) * Double(quantityImpact)
+            )
+        )
+        .shadow(
+            color: tint.opacity(0.12 * quantityImpact),
+            radius: 6 * quantityImpact,
+            y: 3 * quantityImpact
+        )
         .animation(quantityNumberAnimation, value: displayedQuantity)
+        .animation(quantityImpactAnimation, value: quantityImpact)
         .accessibilityHidden(true)
     }
 
@@ -615,31 +844,59 @@ public struct AnimatedAddToCartButton: View {
 
     private var leadingStatus: some View {
         ZStack {
-            if phase != .idle {
-                Circle()
-                    .fill(buttonForeground.opacity(isEnabled ? 0.15 : 0.08))
+            Circle()
+                .fill(
+                    buttonForeground.opacity(
+                        isEnabled
+                            ? (phase == .success ? 0.24 : 0.15)
+                            : 0.08
+                    )
+                )
+
+            Circle()
+                .strokeBorder(
+                    buttonForeground.opacity(
+                        phase == .success ? 0.44 : 0.16
+                    ),
+                    lineWidth: 0.75
+                )
+
+            ZStack {
+                switch phase {
+                case .idle:
+                    Image(
+                        systemName: quantityMode == nil
+                            ? "plus"
+                            : "cart.badge.plus"
+                    )
+                    .font(.system(size: 13, weight: .bold))
+
+                case .processing, .flying:
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(buttonForeground)
+
+                case .success:
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .bold))
+
+                case .failure:
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .bold))
+                }
             }
-
-            switch phase {
-            case .idle:
-                Image(systemName: quantityMode == nil ? "plus" : "cart")
-                    .font(.system(size: 13, weight: .bold))
-
-            case .processing, .flying:
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(buttonForeground)
-
-            case .success:
-                Image(systemName: "checkmark")
-                    .font(.system(size: 13, weight: .bold))
-
-            case .failure:
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 13, weight: .bold))
-            }
+            .id(phase.visualID)
+            .transition(
+                reduceMotion
+                    ? .opacity
+                    : .scale(scale: 0.58).combined(with: .opacity)
+            )
         }
-        .frame(width: phase == .idle ? 20 : 32, height: phase == .idle ? 20 : 32)
+        .frame(width: 32, height: 32)
+        .scaleEffect(
+            reduceMotion || phase != .success ? 1 : 1.06
+        )
+        .animation(statusPhaseAnimation, value: phase)
         .anchorPreference(
             key: AddToCartFlightAnchorPreferenceKey.self,
             value: .bounds
@@ -778,13 +1035,15 @@ public struct AnimatedAddToCartButton: View {
             let endAnchor = isIncrease
                 ? anchors[.quantityStatus]
                 : anchors[.quantityDecrease]
-            let startFallback = CGPoint(
-                x: isIncrease ? 31 : size.width / 2,
-                y: size.height / 2
+            let startFallback = fallbackPoint(
+                leading: isIncrease ? 31 : size.width / 2,
+                vertical: size.height / 2,
+                in: size.width
             )
-            let endFallback = CGPoint(
-                x: isIncrease ? size.width / 2 : size.width - 31,
-                y: size.height / 2
+            let endFallback = fallbackPoint(
+                leading: isIncrease ? size.width / 2 : size.width - 31,
+                vertical: size.height / 2,
+                in: size.width
             )
             let startPoint = flightPoint(
                 for: startAnchor,
@@ -799,25 +1058,31 @@ public struct AnimatedAddToCartButton: View {
             let x = startPoint.x + ((endPoint.x - startPoint.x) * progress)
             let baselineY = startPoint.y +
                 ((endPoint.y - startPoint.y) * progress)
-            let arc = CGFloat(sin(Double(progress) * .pi)) * 24
+            let arc = CGFloat(sin(Double(progress) * .pi)) *
+                min(16, size.height * 0.32)
             let y = baselineY + (isIncrease ? -arc : arc)
             let fade = progress < 0.78
                 ? CGFloat(1)
                 : max(0, 1 - ((progress - 0.78) / 0.22))
 
-            RoundedRectangle(
-                cornerRadius: 4,
-                style: .continuous
-            )
-            .fill(isIncrease ? tint : Color.ppError)
-            .overlay {
-                RoundedRectangle(
-                    cornerRadius: 4,
-                    style: .continuous
-                )
-                .strokeBorder(Color.white.opacity(0.92), lineWidth: 2)
+            ZStack {
+                Circle()
+                    .fill(Color.ppForeground)
+
+                Circle()
+                    .strokeBorder(
+                        (isIncrease ? tint : Color.ppError)
+                            .opacity(0.42),
+                        lineWidth: 1
+                    )
+
+                Image(systemName: itemSymbol)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(
+                        isIncrease ? tint : Color.ppError
+                    )
             }
-            .frame(width: 13, height: 13)
+            .frame(width: 20, height: 20)
             .shadow(
                 color: (isIncrease ? tint : Color.ppError).opacity(0.24),
                 radius: 5,
@@ -826,16 +1091,16 @@ public struct AnimatedAddToCartButton: View {
             .scaleEffect(
                 isIncrease
                     ? max(
-                        0.12,
-                        0.50 + (
-                            0.50 *
+                        0.18,
+                        0.72 + (
+                            0.28 *
                                 CGFloat(sin(Double(progress) * .pi))
                         )
                     )
-                    : max(0.12, 0.82 - (0.64 * progress))
+                    : max(0.18, 0.92 - (0.70 * progress))
             )
             .rotationEffect(
-                .degrees(Double((isIncrease ? 90 : -70) * progress))
+                .degrees(Double((isIncrease ? 24 : -20) * progress))
             )
             .id(quantityImpulseID)
             .position(x: x, y: y)
@@ -886,26 +1151,87 @@ public struct AnimatedAddToCartButton: View {
         )
     }
 
-    private var buttonColor: Color {
+    private var buttonSurfaceColors: [Color] {
         guard isEnabled else {
-            return Color.ppTextSecondary.opacity(0.34)
+            return [
+                Color.ppSecondarySurface,
+                Color.ppTextSecondary.opacity(0.22),
+            ]
         }
 
         if phase == .failure {
-            return Color.ppError
+            return [
+                Color.ppError.opacity(0.94),
+                Color.ppError,
+            ]
         }
 
-        return tint
+        if phase == .success {
+            return [
+                tint,
+                tint.opacity(colorScheme == .dark ? 0.80 : 0.88),
+            ]
+        }
+
+        return [
+            tint.opacity(colorScheme == .dark ? 0.88 : 0.96),
+            tint,
+        ]
     }
 
     private var buttonForeground: Color {
         isEnabled ? .white : Color.ppTextSecondary
     }
 
-    private var quantityNumberAnimation: Animation {
+    private var quantityControlTransitionAnimation: Animation {
         reduceMotion
             ? .easeOut(duration: 0.16)
-            : .timingCurve(0.22, 1, 0.36, 1, duration: 0.32)
+            : .interpolatingSpring(
+                mass: 0.72,
+                stiffness: 285,
+                damping: 25,
+                initialVelocity: 0
+            )
+    }
+
+    private var phaseTitleAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.14)
+            : .timingCurve(0.22, 1, 0.36, 1, duration: 0.24)
+    }
+
+    private var quantitySymbolAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.12)
+            : .easeOut(duration: 0.24)
+    }
+
+    private var quantityImpactAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.16)
+            : .interpolatingSpring(
+                mass: 0.68,
+                stiffness: 250,
+                damping: 20,
+                initialVelocity: 0
+            )
+    }
+
+    private var statusPhaseAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.14)
+            : .interpolatingSpring(
+                mass: 0.64,
+                stiffness: 270,
+                damping: 19,
+                initialVelocity: 0
+            )
+    }
+
+    private var quantityNumberAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.14)
+            : .timingCurve(0.22, 1, 0.36, 1, duration: 0.24)
     }
 
     private var quantityNumberTransition: AnyTransition {
@@ -918,10 +1244,10 @@ public struct AnimatedAddToCartButton: View {
         return .asymmetric(
             insertion: .modifier(
                 active: QuantityNumberTransitionModifier(
-                    offset: 24 * sign,
-                    angle: 40 * Double(sign),
+                    offset: 14 * sign,
+                    angle: 18 * Double(sign),
                     opacity: 0,
-                    blur: 3.5
+                    blur: 1.2
                 ),
                 identity: QuantityNumberTransitionModifier(
                     offset: 0,
@@ -932,10 +1258,10 @@ public struct AnimatedAddToCartButton: View {
             ),
             removal: .modifier(
                 active: QuantityNumberTransitionModifier(
-                    offset: -24 * sign,
-                    angle: -40 * Double(sign),
+                    offset: -14 * sign,
+                    angle: -18 * Double(sign),
                     opacity: 0,
-                    blur: 3.5
+                    blur: 1.2
                 ),
                 identity: QuantityNumberTransitionModifier(
                     offset: 0,
@@ -945,14 +1271,6 @@ public struct AnimatedAddToCartButton: View {
                 )
             )
         )
-    }
-
-    private var badgeBackground: Color {
-        isEnabled ? .white : Color.ppForeground
-    }
-
-    private var badgeForeground: Color {
-        isEnabled ? buttonColor : Color.ppTextSecondary
     }
 
     private var isRightToLeft: Bool {
@@ -1001,7 +1319,11 @@ public struct AnimatedAddToCartButton: View {
         quantityImpulseID += 1
 
         guard !reduceMotion else {
+            quantityImpact = 0.55
             action()
+            withAnimation(.easeOut(duration: 0.18)) {
+                quantityImpact = 0
+            }
             return
         }
 
@@ -1012,31 +1334,31 @@ public struct AnimatedAddToCartButton: View {
         action()
 
         withAnimation(
-            .timingCurve(0.30, 0.70, 0.20, 1, duration: 0.48)
+            .timingCurve(0.22, 1, 0.36, 1, duration: 0.36)
         ) {
             quantityFlightProgress = 1
         }
 
-        withAnimation(.easeOut(duration: 0.12)) {
+        withAnimation(.easeOut(duration: 0.10)) {
             quantityImpact = 1
         }
 
         quantityMotionTask = Task { @MainActor in
             do {
-                try await sleep(milliseconds: 120)
+                try await sleep(milliseconds: 100)
 
                 withAnimation(
                     .interpolatingSpring(
-                        mass: 0.64,
-                        stiffness: 260,
-                        damping: 18,
+                        mass: 0.68,
+                        stiffness: 250,
+                        damping: 20,
                         initialVelocity: 0
                     )
                 ) {
                     quantityImpact = 0
                 }
 
-                try await sleep(milliseconds: 360)
+                try await sleep(milliseconds: 260)
                 showsQuantityFlight = false
                 quantityFlightProgress = 0
             } catch {
@@ -1066,6 +1388,7 @@ public struct AnimatedAddToCartButton: View {
         actionTask?.cancel()
         actionTask = Task { @MainActor in
             resetMotion()
+            failureShakeProgress = 0
 
             withAnimation(.easeOut(duration: 0.16)) {
                 phase = .processing
@@ -1087,10 +1410,22 @@ public struct AnimatedAddToCartButton: View {
                 resetMotion()
                 phase = .idle
             } catch {
-                withAnimation(
-                    reduceMotion ? nil : .easeOut(duration: 0.18)
-                ) {
+                failureShakeProgress = 0
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
                     phase = .failure
+                }
+                if !reduceMotion {
+                    withAnimation(
+                        .timingCurve(
+                            0.22,
+                            0.70,
+                            0.25,
+                            1,
+                            duration: 0.34
+                        )
+                    ) {
+                        failureShakeProgress = 1
+                    }
                 }
 
                 UIAccessibility.post(
@@ -1124,7 +1459,7 @@ public struct AnimatedAddToCartButton: View {
 
         announceSuccess(outcome: outcome)
 
-        try await sleep(milliseconds: 620)
+        try await sleep(milliseconds: 520)
 
         withAnimation(.easeOut(duration: 0.24)) {
             displayedCount = max(0, cartCount)
@@ -1248,6 +1583,7 @@ public struct AnimatedAddToCartButton: View {
         flightProgress = 0
         cartImpact = 0
         badgeScale = 1
+        failureShakeProgress = 0
     }
 
     private func sleep(milliseconds: UInt64) async throws {
@@ -1256,12 +1592,25 @@ public struct AnimatedAddToCartButton: View {
         )
     }
 
-    private enum Phase: Equatable {
+    private enum Phase: Hashable {
         case idle
         case processing
         case flying
         case success
         case failure
+
+        var visualID: String {
+            switch self {
+            case .idle:
+                return "idle"
+            case .processing, .flying:
+                return "processing"
+            case .success:
+                return "success"
+            case .failure:
+                return "failure"
+            }
+        }
 
         var locksInteraction: Bool {
             switch self {
@@ -1271,6 +1620,49 @@ public struct AnimatedAddToCartButton: View {
                 false
             }
         }
+    }
+}
+
+private struct CartControlMorphModifier: ViewModifier {
+    let id: String
+    let namespace: Namespace.ID
+    let isSource: Bool
+    let isEnabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.matchedGeometryEffect(
+                id: id,
+                in: namespace,
+                properties: .frame,
+                anchor: .center,
+                isSource: isSource
+            )
+        } else {
+            content
+        }
+    }
+}
+
+private struct CartFailureShakeEffect: GeometryEffect {
+    var progress: CGFloat
+    let amplitude: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let decay = max(0, 1 - progress)
+        let translation = sin(progress * .pi * 6) * amplitude * decay
+        return ProjectionTransform(
+            CGAffineTransform(
+                translationX: translation,
+                y: 0
+            )
+        )
     }
 }
 
@@ -1296,37 +1688,43 @@ private struct QuantityActionPressStyle: ButtonStyle {
     let tint: Color
     let reduceMotion: Bool
 
+    private var pressAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.11)
+    }
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
-                tint.opacity(configuration.isPressed ? 0.08 : 0),
+                tint.opacity(configuration.isPressed ? 0.12 : 0),
                 in: RoundedRectangle(
                     cornerRadius: PPCorner.medium,
                     style: .continuous
                 )
             )
             .scaleEffect(
-                configuration.isPressed && !reduceMotion ? 0.88 : 1
+                x: configuration.isPressed && !reduceMotion ? 1.025 : 1,
+                y: configuration.isPressed && !reduceMotion ? 0.90 : 1
             )
-            .animation(
-                reduceMotion ? nil : .easeOut(duration: 0.12),
-                value: configuration.isPressed
-            )
+            .offset(y: configuration.isPressed && !reduceMotion ? 1 : 0)
+            .animation(pressAnimation, value: configuration.isPressed)
     }
 }
 
 private struct CartPressStyle: ButtonStyle {
     let reduceMotion: Bool
 
+    private var pressAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.11)
+    }
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(
-                configuration.isPressed && !reduceMotion ? 0.985 : 1
+                x: configuration.isPressed && !reduceMotion ? 1.008 : 1,
+                y: configuration.isPressed && !reduceMotion ? 0.955 : 1
             )
+            .offset(y: configuration.isPressed && !reduceMotion ? 1 : 0)
             .brightness(configuration.isPressed ? -0.04 : 0)
-            .animation(
-                reduceMotion ? nil : .easeOut(duration: 0.12),
-                value: configuration.isPressed
-            )
+            .animation(pressAnimation, value: configuration.isPressed)
     }
 }

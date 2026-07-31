@@ -67,7 +67,9 @@ static CGFloat const PPCartFloatingBarRestingBottomConstant = -12.0;
 static CGFloat const PPCartFloatingBarHiddenBottomConstant = 140.0;
 static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
 static CGFloat const PPPremiumDockBottomInset = 18.0;
-static BOOL const PPShowsRootCenterAddButton = YES;
+// The create action is a native tab-bar item. Keeping it in the tab bar
+// preserves equal spacing, hit testing, Dynamic Type, and RTL ordering.
+static BOOL const PPShowsRootCenterAddButton = NO;
 static CGFloat const PPRootTabSelectionMarkerPhoneWidth = 22.0;
 static CGFloat const PPRootTabSelectionMarkerPadWidth = 26.0;
 static CGFloat const PPRootTabSelectionMarkerHeight = 3.0;
@@ -2576,12 +2578,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
 
-    item.imageInsets = centerAction
-        ? UIEdgeInsetsMake(-1.0, 0.0, 1.0, 0.0)
-        : UIEdgeInsetsMake(0.5, 0.0, -0.5, 0.0);
-    item.titlePositionAdjustment = centerAction
-        ? UIOffsetMake(0.0, -1.0)
-        : UIOffsetMake(0.0, 1.0);
+    item.imageInsets = UIEdgeInsetsMake(0.5, 0.0, -0.5, 0.0);
+    item.titlePositionAdjustment = UIOffsetMake(0.0, 1.0);
 
     if (@available(iOS 13.0, *)) {
         BOOL preservesOriginalArtwork =
@@ -2647,7 +2645,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (@available(iOS 13.0, *)) {
         UITabBarAppearance *appearance = [UITabBarAppearance new];
         [self pp_configureFloatingBackgroundForAppearance:appearance];
-        appearance.selectionIndicatorImage = [UIImage new];
+        appearance.selectionIndicatorImage = nil;
+        if (@available(iOS 26.0, *)) {
+            appearance.selectionIndicatorTintColor = UIColor.clearColor;
+        }
         appearance.stackedItemPositioning = UITabBarItemPositioningFill;
         
         NSDictionary<NSAttributedStringKey, id> *selectedTitle =
@@ -2689,7 +2690,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         }
 
         self.tabBar.itemPositioning = UITabBarItemPositioningFill;
-        self.tabBar.selectionIndicatorImage = [UIImage new];
+        self.tabBar.selectionIndicatorImage = nil;
         self.tabBar.standardAppearance = appearance;
         if (@available(iOS 15.0, *)) {
             self.tabBar.scrollEdgeAppearance = appearance;
@@ -3895,9 +3896,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         self.leadingTabButton.alpha = hidden ? 0.0 : 1.0;
         self.premiumNovaButton.alpha = showNova ? 1.0 : 0.0;
         if (!UIAccessibilityIsReduceMotionEnabled()) {
-            self.tabBar.transform = hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
-            self.leadingTabButton.transform = hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
-            self.premiumNovaButton.transform = hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
+            CGFloat slideOffset = MAX(140.0, self.tabBar.bounds.size.height + 60.0);
+            self.tabBar.transform = hidden ? CGAffineTransformMakeTranslation(0.0, slideOffset) : CGAffineTransformIdentity;
+            self.leadingTabButton.transform = hidden ? CGAffineTransformMakeTranslation(0.0, slideOffset) : CGAffineTransformIdentity;
+            self.premiumNovaButton.transform = hidden ? CGAffineTransformMakeTranslation(0.0, slideOffset) : CGAffineTransformIdentity;
         } else {
             self.tabBar.transform = CGAffineTransformIdentity;
             self.leadingTabButton.transform = CGAffineTransformIdentity;

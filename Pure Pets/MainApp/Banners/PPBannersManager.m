@@ -358,18 +358,42 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
 
 - (NSArray<PPHomePromoCarouselCard *> *)cardsFromSnapshot:(FIRQuerySnapshot *)snapshot
 {
-    NSMutableArray<PPHomePromoCarouselCard *> *items = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
+    NSMutableArray<PPHomePromoCarouselCard *> *items = [NSMutableArray array];
     for (FIRDocumentSnapshot *doc in snapshot.documents) {
-        if (![doc.data isKindOfClass:NSDictionary.class]) continue;
-        PPHomePromoCarouselCard *card = [[PPHomePromoCarouselCard alloc] initWithDictionary:doc.data
-                                                                                   documentID:doc.documentID];
-        if (card) [items addObject:card];
+        NSDictionary *dict = doc.data;
+        if (![dict isKindOfClass:NSDictionary.class]) continue;
+
+        BOOL isVisible = YES;
+        if (dict[@"bannerViewVisible"] != nil) {
+            isVisible = PPHomePromoBoolValue(dict[@"bannerViewVisible"], YES);
+        } else if (dict[@"visible"] != nil) {
+            isVisible = PPHomePromoBoolValue(dict[@"visible"], YES);
+        }
+        if (!isVisible) continue;
+
+        NSArray *childBanners = dict[@"childBanners"] ?: dict[@"banners"];
+        if ([childBanners isKindOfClass:NSArray.class] && childBanners.count > 0) {
+            for (NSDictionary *childDict in childBanners) {
+                if (![childDict isKindOfClass:NSDictionary.class]) continue;
+                PPHomePromoCarouselCard *card = [[PPHomePromoCarouselCard alloc] initWithDictionary:childDict documentID:doc.documentID];
+                if (card && card.visible) {
+                    [items addObject:card];
+                }
+            }
+        } else {
+            PPHomePromoCarouselCard *card = [[PPHomePromoCarouselCard alloc] initWithDictionary:dict documentID:doc.documentID];
+            if (card && card.visible) {
+                [items addObject:card];
+            }
+        }
     }
     return [self sortedVisibleCardsFromArray:items];
 }
 
 - (void)startListeningWithCompletion:(void (^)(NSArray<PPHomePromoCarouselCard *> * _Nullable, NSError * _Nullable))completion
 {
+    [self.listener remove];
+    self.listener = nil;
     self.cards = [self loadCardsFromCache];
     if (self.cards.count > 0 && completion) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -377,17 +401,34 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         });
     }
 
-    [self fetchOnceWithCompletion:^(NSArray<PPHomePromoCarouselCard *> * _Nullable cards, NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"[HomePromoCarousel] ❌ fetch error: %@", error.localizedDescription);
-            if (completion) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, error);
-                });
-            }
+    __weak typeof(self) weakSelf = self;
+    self.listener = [[self.db collectionWithPath:@"MainBannersViewsCol"]
+        addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot,
+                              NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
             return;
         }
-        self.cards = cards;
+        if (error || !snapshot || snapshot.documents.count == 0) {
+            [[self.db collectionWithPath:kPPHomePromoCarouselCollectionPath]
+             getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable legacySnap, NSError * _Nullable legacyErr) {
+                if (legacySnap && legacySnap.documents.count > 0) {
+                    self.cards = [self cardsFromSnapshot:legacySnap];
+                    [self saveCardsToCache];
+                    if (completion) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            completion(self.cards, nil);
+                        });
+                    }
+                } else if (completion && error) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        completion(nil, error);
+                    });
+                }
+            }];
+            return;
+        }
+        self.cards = [self cardsFromSnapshot:snapshot];
         [self saveCardsToCache];
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -400,24 +441,27 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
 - (void)fetchOnceWithCompletion:(void (^)(NSArray<PPHomePromoCarouselCard *> * _Nullable, NSError * _Nullable))completion
 {
     __weak typeof(self) weakSelf = self;
-    [[self.db collectionWithPath:kPPHomePromoCarouselCollectionPath]
+    [[self.db collectionWithPath:@"MainBannersViewsCol"]
      getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        if (error) {
-            if (completion) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil, error);
-                });
-            }
-            return;
-        }
-        if (!snapshot) {
-            if (completion) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(@[], nil);
-                });
-            }
+        if (error || !snapshot || snapshot.documents.count == 0) {
+            [[strongSelf.db collectionWithPath:kPPHomePromoCarouselCollectionPath]
+             getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable legacySnap, NSError * _Nullable legacyErr) {
+                if (legacySnap && legacySnap.documents.count > 0) {
+                    strongSelf.cards = [strongSelf cardsFromSnapshot:legacySnap];
+                    [strongSelf saveCardsToCache];
+                    if (completion) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            completion(strongSelf.cards, nil);
+                        });
+                    }
+                } else if (completion) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        completion(@[], legacyErr ?: error);
+                    });
+                }
+            }];
             return;
         }
         strongSelf.cards = [strongSelf cardsFromSnapshot:snapshot];

@@ -7,6 +7,7 @@
 //
 
 #import "PPPaymentFormViewController.h"
+#import "PPBottomSurfaceCoordinator.h"
 
 static CGFloat const kPPFieldHeight      = 70.0;
 static CGFloat const kPPOptionHeight     = 64.0;
@@ -100,6 +101,16 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
     self = [super init];
     if (self) {
         _fieldsByTag = [NSMutableDictionary dictionary];
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        _fieldsByTag = [NSMutableDictionary dictionary];
+        self.hidesBottomBarWhenPushed = YES;
     }
     return self;
 }
@@ -126,8 +137,13 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
 
 #pragma mark - Lifecycle
 
+- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind {
+    return PPBottomSurfaceKindNone;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.hidesBottomBarWhenPushed = YES;
 
     self.expanded = NO;
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);

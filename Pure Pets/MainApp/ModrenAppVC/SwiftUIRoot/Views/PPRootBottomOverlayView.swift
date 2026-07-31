@@ -86,17 +86,6 @@ public struct PPRootBottomOverlayView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     
-                    // Nova AI Button (floats neatly above tab bar)
-                    if store.shouldShowNovaButton && !store.shouldShowCartBar {
-                        PPRootNovaButton(state: store.novaState) {
-                            store.handleNovaTapped()
-                        }
-                        .passthroughTouches(false)
-                        .reportsBottomOverlayInteractiveFrame()
-                        .padding(.trailing, 16)
-                        .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
-                        .transition(.scale.combined(with: .opacity))
-                    }
                 }
                 .passthroughTouches(true)
                 .background(

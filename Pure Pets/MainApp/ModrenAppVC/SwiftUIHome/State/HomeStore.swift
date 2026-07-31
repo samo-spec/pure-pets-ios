@@ -6,23 +6,28 @@ import UIKit
 /// that Objective-C enum differently across toolchains, while HomeConfig
 /// persists these exact numeric identifiers.
 private enum HomeLegacySectionID: Int {
+    case hero = 0
+    case quickActions = 1
+    case currentOrders = 2
     case carousel = 4
+    case mainKinds = 5
     case suggestions = 6
     case accessories = 7
+    case petProfile = 8
+    case premiumCare = 9
     case lastFood = 10
     case nearbyServices = 11
     case adsNearby = 12
     case adopt = 13
     case buyAgain = 14
+    case premiumSearch = 15
+    case providerCategoryNav = 16
+    case marketplaceHero = 17
     case suggestionAds = 18
     case suggestionAccessories = 19
 }
 
-/// Temporary single-Hero mode. Keep the disabled page builders below intact so
-/// pet/reminder/onboarding/promotion/pharmacy Hero pages can be restored by
-/// flipping this flag without rebuilding Home state or HomeConfig contracts.
 private enum HomeHeroPresentationMode {
-    static let marketplaceOnly = true
     static let marketplaceHeroID = "home-marketplace-hero"
 }
 
@@ -61,6 +66,8 @@ final class HomeStore: ObservableObject {
     private var voiceOverRunning = UIAccessibility.isVoiceOverRunning
     private var reduceMotion = UIAccessibility.isReduceMotionEnabled
     private var hasPublishedLoadedState = false
+    private var refreshRequestGeneration = 0
+    private var refreshCompletionPending = false
 
     private static let selectedMainKindKey = "PPHome.lastSelectedMainKindID.v1"
     private static let selectedPetKey = "pp.home.selectedPetID.v2"
@@ -147,23 +154,43 @@ final class HomeStore: ObservableObject {
 
     func refresh() async {
         guard state.phase != .refreshing else { return }
+        refreshRequestGeneration += 1
+        let generation = refreshRequestGeneration
+        refreshCompletionPending = true
         state.phase = .refreshing
         repository.refresh()
-        try? await Task<Never, Never>.sleep(nanoseconds: 450_000_000)
-        if case .refreshing = state.phase {
-            updateScreenPhase()
+
+        let timeout = Date().addingTimeInterval(8)
+        while refreshCompletionPending,
+              generation == refreshRequestGeneration,
+              Date() < timeout,
+              !Task.isCancelled {
+            try? await Task<Never, Never>.sleep(nanoseconds: 100_000_000)
         }
-        UIAccessibility.post(
-            notification: .announcement,
-            argument: HomeModelAdapter.localized(
-                "home_pulse_refresh_complete_a11y",
-                fallback: "Home refreshed"
-            )
-        )
+
+        guard !Task.isCancelled else {
+            if generation == refreshRequestGeneration {
+                refreshCompletionPending = false
+            }
+            return
+        }
+        guard generation == refreshRequestGeneration,
+              refreshCompletionPending
+        else {
+            return
+        }
+        refreshCompletionPending = false
+        state.phase = hasAnyContent
+            ? .partial
+            : .failed(message: HomeModelAdapter.localized(
+                "home_refresh_interrupted",
+                fallback: "Refresh was interrupted. Try again."
+            ))
     }
 
     func retryAll() {
         sourceErrors.removeAll()
+        rebuildState()
         state.phase = hasAnyContent ? .refreshing : .coldLoading
         repository.refresh()
     }
@@ -182,10 +209,6 @@ final class HomeStore: ObservableObject {
     }
 
     func selectHero(index: Int) {
-        guard !HomeHeroPresentationMode.marketplaceOnly else {
-            state.selectedHeroIndex = 0
-            return
-        }
         guard state.heroPages.indices.contains(index) else { return }
         state.selectedHeroIndex = index
         restartHeroRotation()
@@ -202,15 +225,22 @@ final class HomeStore: ObservableObject {
         guard state.heroPages.indices.contains(state.selectedHeroIndex) else {
             return
         }
-        pauseHeroForNavigation()
-        router.openHeroAction(state.heroPages[state.selectedHeroIndex].action)
+        performHeroAction(state.heroPages[state.selectedHeroIndex])
     }
 
     func performSelectedHeroSecondaryAction() {
         guard state.heroPages.indices.contains(state.selectedHeroIndex) else {
             return
         }
-        let page = state.heroPages[state.selectedHeroIndex]
+        performHeroSecondaryAction(state.heroPages[state.selectedHeroIndex])
+    }
+
+    func performHeroAction(_ page: HomeHeroPage) {
+        pauseHeroForNavigation()
+        router.openHeroAction(page.action)
+    }
+
+    func performHeroSecondaryAction(_ page: HomeHeroPage) {
         switch page.kind {
         case .pet, .reminder:
             router.openAccessories(mainKind: selectedMainKind)
@@ -226,6 +256,29 @@ final class HomeStore: ObservableObject {
         case .petOnboarding:
             router.openAdvertisements(mainKind: selectedMainKind)
         }
+    }
+
+    func openProviderCategory(_ identifier: String) {
+        switch identifier {
+        case "veterinarians":
+            router.openVeterinaryCare(mainKind: selectedMainKind)
+        case "pharmacy":
+            router.openProviderCategory(
+                identifier: "pharmacy",
+                titleKey: "provider_pharmacies_title",
+                subtitleKey: "provider_pharmacies_subtitle"
+            )
+        default:
+            router.openProviderCategory(
+                identifier: identifier,
+                titleKey: nil,
+                subtitleKey: nil
+            )
+        }
+    }
+
+    func openAdoption() {
+        router.openAdoption()
     }
 
     func selectCategory(_ category: HomeCategoryModel?) {
@@ -319,8 +372,7 @@ final class HomeStore: ObservableObject {
         )
     }
 
-    func openFeaturedOrder() {
-        guard let order = state.featuredOrder else { return }
+    func openOrder(_ order: HomeOrderModel) {
         router.openOrder(order)
     }
 
@@ -401,6 +453,14 @@ final class HomeStore: ObservableObject {
     }
 
     private func handle(_ event: HomeRepositoryEvent) {
+        let completesRefresh: Bool
+        switch event {
+        case .connectivity:
+            completesRefresh = false
+        default:
+            completesRefresh = true
+        }
+
         switch event {
         case let .mainKinds(models):
             mainKinds = models
@@ -478,6 +538,16 @@ final class HomeStore: ObservableObject {
         state.languageCode = Language.currentLanguageCode() ?? "ar"
         state.isRightToLeft = Language.isRTL()
         rebuildState()
+        if completesRefresh && refreshCompletionPending {
+            refreshCompletionPending = false
+            UIAccessibility.post(
+                notification: .announcement,
+                argument: HomeModelAdapter.localized(
+                    "home_pulse_refresh_complete_a11y",
+                    fallback: "Home refreshed"
+                )
+            )
+        }
     }
 
     private func markLoaded(_ source: Int) {
@@ -546,10 +616,10 @@ final class HomeStore: ObservableObject {
             state.selectedMainKindID = petCategoryID
         }
 
-        state.heroPages = buildHeroPages()
-        if HomeHeroPresentationMode.marketplaceOnly {
-            state.selectedHeroIndex = 0
-        } else if state.heroPages.isEmpty {
+        state.heroPages = buildContextHeroPages()
+        state.promotionPages = buildPromotionHeroPages()
+        state.marketplaceHeroPage = buildMarketplaceHeroPage()
+        if state.heroPages.isEmpty {
             state.selectedHeroIndex = 0
         } else {
             state.selectedHeroIndex = min(
@@ -603,11 +673,7 @@ final class HomeStore: ObservableObject {
             state.connectivity == .offline && hasAnyContent
     }
 
-    private func buildHeroPages() -> [HomeHeroPage] {
-        guard !HomeHeroPresentationMode.marketplaceOnly else {
-            return [buildMarketplaceHeroPage()]
-        }
-
+    private func buildContextHeroPages() -> [HomeHeroPage] {
         var pages: [HomeHeroPage] = []
         let pet = selectedPet
 
@@ -650,91 +716,51 @@ final class HomeStore: ObservableObject {
             pages.append(buildPetOnboardingHeroPage())
         }
 
-        if state.config.isVisible(HomeLegacySectionID.carousel.rawValue) {
-            for card in promotions.prefix(3) {
-                let presentation =
-                    PPHomeDataBridge.promotionPresentation(for: card)
-                let title = presentation["title"] as? String ?? ""
-                guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                else {
-                    continue
-                }
-                let badge = presentation["badge"] as? String ?? ""
-                let subtitle = presentation["subtitle"] as? String ?? ""
-                let primaryTitle =
-                    presentation["primaryTitle"] as? String ?? ""
-                let secondaryTitle =
-                    presentation["secondaryTitle"] as? String ?? ""
-                let showsPrimary =
-                    (presentation["showsPrimary"] as? NSNumber)?.boolValue ?? false
-                let showsSecondary =
-                    (presentation["showsSecondary"] as? NSNumber)?.boolValue ?? false
-                let imageURL = presentation["imageURL"] as? String ?? ""
-                let accentHex = presentation["accentHex"] as? String ?? ""
-                let rawID = presentation["id"] as? String ?? ""
-                let stableID = rawID.isEmpty
-                    ? "content:\(title)|\(imageURL)|\(primaryTitle)"
-                    : rawID
-                pages.append(
-                    HomeHeroPage(
-                        id: "promotion-\(stableID)",
-                        kind: .promotion,
-                        eyebrow: badge,
-                        title: title,
-                        subtitle: subtitle,
-                        primaryTitle: showsPrimary
-                            ? primaryTitle
-                            : HomeModelAdapter.localized(
-                                "Details",
-                                fallback: "Explore"
-                            ),
-                        secondaryTitle: showsSecondary
-                            ? secondaryTitle
-                            : nil,
-                        imageURL: imageURL.isEmpty ? nil : imageURL,
-                        localImage: nil,
-                        accentHex: normalizedHex(
-                            accentHex,
-                            fallback: "CB2654"
-                        ),
-                        action: .openPromotion(card, interaction: "card")
-                    )
-                )
-            }
-        }
-
-        pages.append(buildMarketplaceHeroPage())
-
-        // Pharmacy Hero Slide
-        pages.append(
-            HomeHeroPage(
-                id: "pharmacy-\(state.selectedMainKindID ?? -1)",
-                kind: .pharmacy,
-                eyebrow: HomeModelAdapter.localized(
-                    "home_hero_pharmacy_eyebrow",
-                    fallback: "PET PHARMACY"
-                ),
-                title: HomeModelAdapter.localized(
-                    "home_hero_pharmacy_title",
-                    fallback: "Pet Medicines & Care"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "home_hero_pharmacy_subtitle",
-                    fallback: "Order essential medicines, vitamins, and health treatments delivered fast."
-                ),
-                primaryTitle: HomeModelAdapter.localized(
-                    "home_hero_pharmacy_cta",
-                    fallback: "Browse Pharmacy"
-                ),
-                secondaryTitle: nil,
-                imageURL: nil,
-                localImage: nil,
-                accentHex: "1E6B9B",
-                action: .openPharmacy(selectedMainKind)
-            )
-        )
-
         return pages
+    }
+
+    private func buildPromotionHeroPages() -> [HomeHeroPage] {
+        promotions.prefix(8).compactMap { card -> HomeHeroPage? in
+            let presentation = PPHomeDataBridge.promotionPresentation(for: card)
+            let title = presentation["title"] as? String ?? ""
+            guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
+                return nil
+            }
+            let badge = presentation["badge"] as? String ?? ""
+            let subtitle = presentation["subtitle"] as? String ?? ""
+            let primaryTitle = presentation["primaryTitle"] as? String ?? ""
+            let secondaryTitle = presentation["secondaryTitle"] as? String ?? ""
+            let showsPrimary =
+                (presentation["showsPrimary"] as? NSNumber)?.boolValue ?? false
+            let showsSecondary =
+                (presentation["showsSecondary"] as? NSNumber)?.boolValue ?? false
+            let imageURL = presentation["imageURL"] as? String ?? ""
+            let accentHex = presentation["accentHex"] as? String ?? ""
+            let rawID = presentation["id"] as? String ?? ""
+            let stableID = rawID.isEmpty
+                ? "content:\(title)|\(imageURL)|\(primaryTitle)"
+                : rawID
+            let interval =
+                (presentation["autoScrollInterval"] as? NSNumber)?.doubleValue
+                ?? 4.8
+            return HomeHeroPage(
+                id: "promotion-\(stableID)",
+                kind: .promotion,
+                eyebrow: badge,
+                title: title,
+                subtitle: subtitle,
+                primaryTitle: showsPrimary
+                    ? primaryTitle
+                    : HomeModelAdapter.localized("Details", fallback: "Explore"),
+                secondaryTitle: showsSecondary ? secondaryTitle : nil,
+                imageURL: imageURL.isEmpty ? nil : imageURL,
+                localImage: nil,
+                accentHex: normalizedHex(accentHex, fallback: "CB2654"),
+                action: .openPromotion(card, interaction: "card"),
+                autoScrollInterval: max(2.0, interval)
+            )
+        }
     }
 
     private func buildMarketplaceHeroPage() -> HomeHeroPage {
@@ -817,7 +843,7 @@ final class HomeStore: ObservableObject {
             ),
             imageURL: selectedCategory?.imageURL,
             localImage: selectedCategory?.localImage,
-            accentHex: selectedCategoryHex,
+            accentHex: normalizedHex(selectedCategoryHex, fallback: "CB2654"),
             action: .openMarketplace(selectedMainKind)
         )
     }
@@ -895,27 +921,21 @@ final class HomeStore: ObservableObject {
     }
 
     private func buildPriorityActions() -> [HomePriorityAction] {
-        let petTitle = selectedPet == nil
-            ? HomeModelAdapter.localized(
-                "home_pulse_priority_add_pet",
-                fallback: "Add pet"
-            )
-            : HomeModelAdapter.localized(
-                "home_pulse_priority_my_pet",
-                fallback: "My pet"
-            )
+        let petTitle = HomeModelAdapter.localized(
+            "home_pulse_priority_my_pet",
+            fallback: "My pet"
+        )
+        let petSubtitle = HomeModelAdapter.localized(
+            "home_pulse_priority_personalize",
+            fallback: "Pet profile, info, vaccines and more"
+        )
         return [
             HomePriorityAction(
                 id: "pet",
                 title: petTitle,
-                subtitle: selectedPet?.name ?? HomeModelAdapter.localized(
-                    "home_pulse_priority_personalize",
-                    fallback: "Personalize Home"
-                ),
-                systemImage: selectedPet == nil
-                    ? "plus.circle.fill"
-                    : "pawprint.circle.fill",
-                accent: .ppPrimary,
+                subtitle: petSubtitle,
+                systemImage: "pawprint.fill",
+                accent: UIColor(red: 0.88, green: 0.20, blue: 0.42, alpha: 1.0),
                 destination: .petProfile
             ),
             HomePriorityAction(
@@ -929,7 +949,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Food & essentials"
                 ),
                 systemImage: "bag.fill",
-                accent: UIColor(red: 0.79, green: 0.15, blue: 0.33, alpha: 1),
+                accent: UIColor(red: 0.84, green: 0.16, blue: 0.38, alpha: 1.0),
                 destination: .shop
             ),
             HomePriorityAction(
@@ -942,23 +962,9 @@ final class HomeStore: ObservableObject {
                     "home_pulse_priority_market_subtitle",
                     fallback: "Listings & adoption"
                 ),
-                systemImage: "heart.circle.fill",
-                accent: UIColor(red: 0.72, green: 0.30, blue: 0.48, alpha: 1),
+                systemImage: "heart.fill",
+                accent: UIColor(red: 0.84, green: 0.16, blue: 0.38, alpha: 1.0),
                 destination: .advertisements
-            ),
-            HomePriorityAction(
-                id: "vet",
-                title: HomeModelAdapter.localized(
-                    "home_pulse_priority_vet",
-                    fallback: "Veterinary"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "home_pulse_priority_vet_subtitle",
-                    fallback: "Care destination"
-                ),
-                systemImage: "cross.case.fill",
-                accent: UIColor(red: 0.20, green: 0.48, blue: 0.67, alpha: 1),
-                destination: .veterinary
             ),
             HomePriorityAction(
                 id: "pharmacy",
@@ -971,22 +977,22 @@ final class HomeStore: ObservableObject {
                     fallback: "Pet medicines"
                 ),
                 systemImage: "pills.fill",
-                accent: UIColor(red: 0.29, green: 0.52, blue: 0.48, alpha: 1),
+                accent: UIColor(red: 0.22, green: 0.62, blue: 0.52, alpha: 1.0),
                 destination: .pharmacy
             ),
             HomePriorityAction(
-                id: "services",
+                id: "vet",
                 title: HomeModelAdapter.localized(
-                    "home_pulse_priority_services",
-                    fallback: "Services"
+                    "home_pulse_priority_vet",
+                    fallback: "Veterinary"
                 ),
                 subtitle: HomeModelAdapter.localized(
-                    "home_pulse_priority_services_subtitle",
-                    fallback: "Grooming & training"
+                    "home_pulse_priority_vet_subtitle",
+                    fallback: "Care destination"
                 ),
-                systemImage: "sparkles",
-                accent: UIColor(red: 0.64, green: 0.40, blue: 0.24, alpha: 1),
-                destination: .services
+                systemImage: "cross.case.fill",
+                accent: UIColor(red: 0.22, green: 0.55, blue: 0.72, alpha: 1.0),
+                destination: .veterinary
             ),
         ]
     }
@@ -1006,46 +1012,35 @@ final class HomeStore: ObservableObject {
             selectedCategoryID != nil &&
             integerValue($0, key: "petMainKindID") == selectedCategoryID
         }
-        let recommendationObjects: [Any] =
-            Array(relevantAccessories.prefix(4)).map { $0 as Any } +
-            Array(relevantAds.prefix(3)).map { $0 as Any } +
-            Array(relevantServices.prefix(2)).map { $0 as Any }
-        let recommendationCards = recommendationObjects.compactMap {
-            object -> HomeCardModel? in
-            if object is PetAccessory {
-                return HomeModelAdapter.cards(
-                    from: [object],
-                    context: .forMarket,
-                    kind: .accessory,
-                    limit: 1
-                ).first
-            }
-            if object is ServiceModel {
-                return HomeModelAdapter.cards(
-                    from: [object],
-                    context: .forServices,
-                    kind: .service,
-                    limit: 1
-                ).first
-            }
-            return HomeModelAdapter.cards(
-                from: [object],
-                context: .forAds,
-                kind: .advertisement,
-                limit: 1
-            ).first
-        }
+        let suggestionAccessoryCards = HomeModelAdapter.cards(
+            from: Array(relevantAccessories.prefix(8)),
+            context: .forMarket,
+            kind: .accessory,
+            limit: 8
+        )
+        let suggestionAdCards = HomeModelAdapter.cards(
+            from: Array(relevantAds.prefix(8)),
+            context: .forAds,
+            kind: .advertisement,
+            limit: 8
+        )
+        let suggestionServiceCards = HomeModelAdapter.cards(
+            from: Array(relevantServices.prefix(4)),
+            context: .forServices,
+            kind: .service,
+            limit: 4
+        )
+        let recommendationCards = uniqueCards(
+            Array(suggestionAccessoryCards.prefix(4)) +
+            Array(suggestionAdCards.prefix(3)) +
+            Array(suggestionServiceCards.prefix(2))
+        )
         let recommendationIDs = Set(recommendationCards.map(\.id))
 
         let accessoryCards = HomeModelAdapter.cards(
             from: accessories,
             context: .forMarket,
             kind: .accessory
-        ).filter { !recommendationIDs.contains($0.id) }
-        let advertisementCards = HomeModelAdapter.cards(
-            from: advertisements,
-            context: .forAds,
-            kind: .advertisement
         ).filter { !recommendationIDs.contains($0.id) }
         let foodCards = HomeModelAdapter.cards(
             from: food,
@@ -1070,7 +1065,7 @@ final class HomeStore: ObservableObject {
         )
 
         var result: [HomeSectionModel] = []
-        var emitted = Set<HomeSectionID>()
+        var emitted = Set<Int>()
         for rawID in state.config.orderedSectionIDs
         where state.config.isVisible(rawID) {
             let section: HomeSectionModel?
@@ -1078,7 +1073,7 @@ final class HomeStore: ObservableObject {
             case HomeLegacySectionID.buyAgain.rawValue:
                 guard !buyAgainCards.isEmpty else { continue }
                 section = makeSection(
-                    id: .buyAgain,
+                    kind: .buyAgain,
                     rawID: rawID,
                     titleKey: "home_pulse_section_buy_again",
                     titleFallback: "Buy again",
@@ -1088,14 +1083,13 @@ final class HomeStore: ObservableObject {
                     source: PPHomeBridgeSource.orders.rawValue,
                     emptyAction: nil
                 )
-            case HomeLegacySectionID.suggestions.rawValue,
-                 HomeLegacySectionID.suggestionAds.rawValue,
-                 HomeLegacySectionID.suggestionAccessories.rawValue:
-                guard selectedPet != nil, !recommendationCards.isEmpty else {
+            case HomeLegacySectionID.suggestions.rawValue:
+                guard selectedPet != nil,
+                      !recommendationCards.isEmpty else {
                     continue
                 }
                 section = makeSection(
-                    id: .recommendations,
+                    kind: .recommendations,
                     rawID: rawID,
                     titleKey: "home_pulse_section_relevant",
                     titleFallback: "Relevant for your pet",
@@ -1105,9 +1099,41 @@ final class HomeStore: ObservableObject {
                     source: PPHomeBridgeSource.accessories.rawValue,
                     emptyAction: nil
                 )
+            case HomeLegacySectionID.suggestionAds.rawValue:
+                guard selectedPet != nil,
+                      !suggestionAdCards.isEmpty else {
+                    continue
+                }
+                section = makeSection(
+                    kind: .recommendations,
+                    rawID: rawID,
+                    titleKey: "home_pulse_section_relevant_ads",
+                    titleFallback: "Pet listings for you",
+                    subtitleKey: "home_pulse_section_relevant_ads_subtitle",
+                    subtitleFallback: "Listings matched to the selected pet category",
+                    cards: suggestionAdCards,
+                    source: PPHomeBridgeSource.advertisements.rawValue,
+                    emptyAction: nil
+                )
+            case HomeLegacySectionID.suggestionAccessories.rawValue:
+                guard selectedPet != nil,
+                      !suggestionAccessoryCards.isEmpty else {
+                    continue
+                }
+                section = makeSection(
+                    kind: .recommendations,
+                    rawID: rawID,
+                    titleKey: "home_pulse_section_relevant_accessories",
+                    titleFallback: "Essentials for your pet",
+                    subtitleKey: "home_pulse_section_relevant_accessories_subtitle",
+                    subtitleFallback: "Products matched to the selected pet category",
+                    cards: suggestionAccessoryCards,
+                    source: PPHomeBridgeSource.accessories.rawValue,
+                    emptyAction: nil
+                )
             case HomeLegacySectionID.accessories.rawValue:
                 section = makeSection(
-                    id: .accessories,
+                    kind: .accessories,
                     rawID: rawID,
                     titleKey: "home_pulse_section_accessories",
                     titleFallback: "Featured essentials",
@@ -1120,21 +1146,6 @@ final class HomeStore: ObservableObject {
                         fallback: "Explore marketplace"
                     )
                 )
-            case HomeLegacySectionID.adopt.rawValue:
-                section = makeSection(
-                    id: .advertisements,
-                    rawID: rawID,
-                    titleKey: "home_pulse_section_listings",
-                    titleFallback: "Pet marketplace",
-                    subtitleKey: "home_pulse_section_listings_subtitle",
-                    subtitleFallback: "Recent approved pet listings",
-                    cards: advertisementCards,
-                    source: PPHomeBridgeSource.advertisements.rawValue,
-                    emptyAction: HomeModelAdapter.localized(
-                        "home_pulse_keep_browsing",
-                        fallback: "Browse listings"
-                    )
-                )
             case HomeLegacySectionID.lastFood.rawValue:
                 guard !foodCards.isEmpty ||
                       sourceErrors[PPHomeBridgeSource.food.rawValue] != nil
@@ -1142,7 +1153,7 @@ final class HomeStore: ObservableObject {
                     continue
                 }
                 section = makeSection(
-                    id: .food,
+                    kind: .food,
                     rawID: rawID,
                     titleKey: "home_pulse_section_food",
                     titleFallback: "Food and nutrition",
@@ -1159,7 +1170,7 @@ final class HomeStore: ObservableObject {
                 )
             case HomeLegacySectionID.nearbyServices.rawValue:
                 section = makeSection(
-                    id: .services,
+                    kind: .services,
                     rawID: rawID,
                     titleKey: "home_pulse_section_services",
                     titleFallback: "Care and services",
@@ -1184,7 +1195,7 @@ final class HomeStore: ObservableObject {
     }
 
     private func makeSection(
-        id: HomeSectionID,
+        kind: HomeSectionID,
         rawID: Int,
         titleKey: String,
         titleFallback: String,
@@ -1226,7 +1237,8 @@ final class HomeStore: ObservableObject {
         }
 
         return HomeSectionModel(
-            id: id,
+            id: rawID,
+            kind: kind,
             title: HomeModelAdapter.localized(titleKey, fallback: titleFallback),
             subtitle: HomeModelAdapter.localized(
                 subtitleKey,
@@ -1258,7 +1270,7 @@ final class HomeStore: ObservableObject {
             )
             : subtitle
         let baseSection = makeSection(
-            id: .nearbyAdvertisements,
+            kind: .nearbyAdvertisements,
             rawID: rawID,
             titleKey: "home_pulse_section_nearby",
             titleFallback: "Near your area",
@@ -1273,6 +1285,7 @@ final class HomeStore: ObservableObject {
         )
         var section = HomeSectionModel(
             id: baseSection.id,
+            kind: baseSection.kind,
             title: baseSection.title,
             subtitle: resolvedSubtitle,
             seeAllTitle: baseSection.seeAllTitle,
@@ -1282,6 +1295,7 @@ final class HomeStore: ObservableObject {
         if !state.location.hasCoordinate {
             section = HomeSectionModel(
                 id: section.id,
+                kind: section.kind,
                 title: section.title,
                 subtitle: HomeModelAdapter.localized(
                     "home_pulse_nearby_location_needed",
@@ -1407,8 +1421,7 @@ final class HomeStore: ObservableObject {
     private func restartHeroRotation() {
         heroRotationTask?.cancel()
         heroRotationTask = nil
-        guard !HomeHeroPresentationMode.marketplaceOnly,
-              visible,
+        guard visible,
               sceneActive,
               !heroInteractionActive,
               !voiceOverRunning,
@@ -1493,6 +1506,11 @@ final class HomeStore: ObservableObject {
                 }
             }
         )
+    }
+
+    private func uniqueCards(_ cards: [HomeCardModel]) -> [HomeCardModel] {
+        var seen = Set<String>()
+        return cards.filter { seen.insert($0.id).inserted }
     }
 
     private func integerValue(_ object: NSObject, key: String) -> Int {

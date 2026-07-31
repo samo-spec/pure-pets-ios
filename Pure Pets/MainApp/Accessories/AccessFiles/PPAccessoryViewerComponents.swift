@@ -591,10 +591,10 @@ struct PPAccessoryShorelineGallery: View {
             )
         }
         .fullScreenCover(isPresented: $showsMediaViewer) {
-            PPAccessoryFullScreenMediaViewer(
-                items: snapshot.media,
+            PPMediaViewer(
+                items: PPMediaItem.from(accessoryMedia: snapshot.media),
                 selection: $selection,
-                productTitle: displayTitle,
+                title: displayTitle,
                 onDismiss: { showsMediaViewer = false },
                 onShare: onShare
             )

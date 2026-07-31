@@ -2028,7 +2028,7 @@ static char kUIViewTapActionKey;
             [iconView.widthAnchor constraintEqualToConstant:iconSize],
             [iconView.heightAnchor constraintEqualToConstant:iconSize],
             [subtitleLabel.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
-            [subtitleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:spacing],
+            [subtitleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:24.0],
             [subtitleLabel.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-spacing]
         ]];
         subtitleLabel.textAlignment = NSTextAlignmentCenter;

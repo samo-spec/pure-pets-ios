@@ -116,7 +116,13 @@
 }
 
 - (UIViewController *)viewControllerForTab:(PPAppTab)tab {
-    PPHomeViewController *vc = [PPHomeViewController new];
+    if (tab == PPAppTabHome) {
+        PPHomeViewController *home = [PPHomeViewController new];
+        home.view.backgroundColor = AppBackgroundClr;
+        return home;
+    }
+
+    UIViewController *vc = [UIViewController new];
     vc.view.backgroundColor = AppBackgroundClr;
 
     UILabel *label = [[UILabel alloc] init];
@@ -126,7 +132,6 @@
 
     switch (tab) {
         case PPAppTabHome:
-            return [[PPHomeViewController alloc] init];
             break;
         case PPAppTabNotifications:
             label.text = @"Notifications";

@@ -7,6 +7,7 @@
 
 #import "PPSelectPaymentVC.h"
 #import "PPSelectPaymentVC+Helper.h"
+#import "PPBottomSurfaceCoordinator.h"
 #import "PPAddressPickerView.h"
 #import "PPCheckoutCoordinator.h"
 #import "PPPaymentManager.h"
@@ -298,8 +299,29 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [self pp_navBarSetVisible:YES animated:YES];
 }
 
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
+- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind {
+    return PPBottomSurfaceKindSummaryBottomBar;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.hidesBottomBarWhenPushed = YES;
 
     self.instrumentManager = [UserPaymentInstrumentManager sharedManager];
     self.availableMethods = [PaymentMethod defaultMethods];

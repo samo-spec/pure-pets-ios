@@ -335,6 +335,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         }
 
         applyAppearance(animated: shouldAnimateSelection)
+        setNeedsLayout()
         if shouldPlayChangeMotion {
             playSelectionChangeAnimation()
         } else if shouldPlayDeselectionMotion {
@@ -416,8 +417,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 : (selected
                     ? PPMainKindsCellMetrics.selectedBorderWidth
                     : PPMainKindsCellMetrics.regularBorderWidth)
-            self.surfaceView.layer.shadowColor = selected ?  accent.cgColor : UIColor.black
-                .withAlphaComponent(0.3).cgColor
+            self.surfaceView.layer.shadowColor = UIColor.black.withAlphaComponent(0.3).cgColor
             self.surfaceView.layer.shadowOpacity = selected ? 0.055 : 0.015
             self.surfaceView.layer.shadowRadius = selected ? 10 : 5
             self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: selected ? 4 : 2)
@@ -751,10 +751,19 @@ public final class PPMainKindsCell: UICollectionViewCell {
             updateArtworkMetrics()
         }
 
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
+        updateMotionLayerPalette()
         let materialBounds = materialView.bounds
         let selectedGlow = rendersSelectedGlow
+        let glowSelected = selectedGlow
+        bottomGlowLayer.opacity = isPressing
+            ? pressedGlowOpacity(selected: glowSelected)
+            : restingGlowOpacity(selected: glowSelected)
+        kindNameGlowLayer.opacity = kindNameGlowOpacity(
+            selected: glowSelected,
+            pressing: isPressing
+        )
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         let glowDiameter = selectedGlow
             ? min(174, max(136, max(materialBounds.width, materialBounds.height) * 1.34))
             : min(116, max(86, materialBounds.height * 0.90))
@@ -898,7 +907,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func restingGlowOpacity(selected: Bool) -> Float {
         if selected {
-            return isAllOption ? 0.30 : 0.38
+            return isAllOption ? 0.22 : 0.35
         }
         return isAllOption ? 0.04 : 0.08
     }
@@ -909,9 +918,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
         if selected {
-            return pressing ? 0.45 : 0.35
+            return pressing ? 0.08 : 0.18
         }
-        return pressing ? 0.25 : 0.08
+        return pressing ? 0.15 : 0.08
     }
 
     private func updateMotionLayerPalette() {
@@ -919,10 +928,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let isAll = isAllOption
         let selected = rendersSelectedGlow
         let leadingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.34 : 0.42)
+            ? (isAll ? 0.40 : 0.58)
             : (isAll ? 0.18 : 0.25)
         let trailingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.20 : 0.27)
+            ? (isAll ? 0.22 : 0.34)
             : (isAll ? 0.10 : 0.16)
         bottomGlowLayer.colors = [
             accent.withAlphaComponent(leadingGlowAlpha).cgColor,
@@ -930,8 +939,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
             accent.withAlphaComponent(0).cgColor
         ]
         kindNameGlowLayer.colors = [
-            accent.withAlphaComponent(isAll ? 0.24 : 0.30).cgColor,
-            accent.withAlphaComponent(isAll ? 0.11 : 0.16).cgColor,
+            accent.withAlphaComponent(isAll ? 0.38 : 0.55).cgColor,
+            accent.withAlphaComponent(isAll ? 0.22 : 0.35).cgColor,
             accent.withAlphaComponent(0).cgColor
         ]
         tapHaloLayer.colors = [

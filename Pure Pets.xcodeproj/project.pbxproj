@@ -47,6 +47,7 @@
 		A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
+		A6B710063020000100000001 /* PPMediaViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710053020000100000001 /* PPMediaViewer.swift */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
@@ -994,6 +995,7 @@
 		A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotion.swift; sourceTree = "<group>"; };
 		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
 		A6B710003020000100000001 /* AppRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRemoteImage.swift; sourceTree = "<group>"; };
+		A6B710053020000100000001 /* PPMediaViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMediaViewer.swift; sourceTree = "<group>"; };
 		A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceMessageSending.swift; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
@@ -2622,6 +2624,7 @@
 			isa = PBXGroup;
 			children = (
 				A6B710003020000100000001 /* AppRemoteImage.swift */,
+				A6B710053020000100000001 /* PPMediaViewer.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -5913,6 +5916,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A6B710013020000100000001 /* AppRemoteImage.swift in Sources */,
+				A6B710063020000100000001 /* PPMediaViewer.swift in Sources */,
 				F2E900000000000000000066 /* PPRootLegacyAdapter.m in Sources */,
 				F2E900000000000000000068 /* PPRootNavigationDelegateProxy.swift in Sources */,
 				F2E90000000000000000006A /* PPRootObjCAdapter.swift in Sources */,

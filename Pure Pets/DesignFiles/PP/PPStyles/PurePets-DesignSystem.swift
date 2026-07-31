@@ -93,7 +93,7 @@ private enum PPPaletteHex {
         // Surfaces and fields
         static let mainBackground   = "F8F8F9"
         static let surface          = "FFFFFF"
-        static let elevatedSurface  = "FFFFFF"//FFFDFC
+        static let elevatedSurface  = "FFFDFC"//FFFDFC
         static let secondarySurface = "F7F1ED"
         static let warmPorcelain    = "F7F1ED"
         static let mineralBeige     = "EEE3DA"
@@ -1159,7 +1159,7 @@ struct PPQuickActionItem: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: PPSpace.sm) {
+        VStack(spacing: PPSpace.xl) {
             Image(systemName: icon)
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(color)

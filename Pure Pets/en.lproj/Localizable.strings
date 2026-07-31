@@ -3923,6 +3923,7 @@
 "home_pulse_priority_shop" = "Shop";
 "home_pulse_priority_shop_subtitle" = "Food & essentials";
 "home_pulse_priority_title" = "Your next step";
+"home_pulse_priority_subtitle" = "Everything your pet needs in one place";
 "home_pulse_priority_vet" = "Veterinary";
 "home_pulse_priority_vet_subtitle" = "Care destination";
 "home_pulse_quantity_a11y" = "Quantity %d";
@@ -3953,9 +3954,19 @@
 "home_pulse_section_nearby_subtitle" = "Choose an area for nearby discovery";
 "home_pulse_section_relevant" = "Relevant for your pet";
 "home_pulse_section_relevant_subtitle" = "Matched to the selected pet category";
+"home_pulse_section_relevant_ads" = "Pet listings for you";
+"home_pulse_section_relevant_ads_subtitle" = "Listings matched to the selected pet category";
+"home_pulse_section_relevant_accessories" = "Essentials for your pet";
+"home_pulse_section_relevant_accessories_subtitle" = "Products matched to the selected pet category";
 "home_pulse_section_services" = "Care and services";
 "home_pulse_section_services_subtitle" = "Grooming, training, and available provider offers";
 "home_pulse_shop_for_pet" = "Shop for this pet";
 "home_pulse_show_page_a11y" = "Show item %d";
 "home_pulse_up_next" = "UP NEXT";
 "home_pulse_view_pet" = "View pet";
+"home_carousel_empty_message" = "New offers will appear here when available.";
+"home_carousel_empty_title" = "Offers are being prepared";
+"home_provider_navigation_subtitle" = "Choose the care destination you need";
+"home_provider_navigation_title" = "Trusted care";
+"home_pulse_location_context" = "Location context";
+"home_refresh_interrupted" = "Refresh was interrupted. Try again.";

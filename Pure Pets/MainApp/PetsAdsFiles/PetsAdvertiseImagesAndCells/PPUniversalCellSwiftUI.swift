@@ -2526,10 +2526,16 @@ private struct PPUniversalCardRenderer: View {
                 ? availability.metaSystemImage
                 : nil,
             foreground: foreground,
-            background: foreground.opacity(
-                colorScheme == .dark ? 0.16 : 0.09
+            background: metadataPillBackground(
+                foreground,
+                darkOpacity: 0.16,
+                lightOpacity: 0.09
             ),
-            border: foreground.opacity(0.14)
+            border: metadataPillBorder(
+                foreground,
+                semanticOpacity: 0.14
+            ),
+            calm: store.context.isCatalogCommerce
         )
     }
 
@@ -2705,10 +2711,16 @@ private struct PPUniversalCardRenderer: View {
                 PPUniversalPill(
                     text: badgeText,
                     foreground: store.palette.accent,
-                    background: store.palette.accent.opacity(
-                        colorScheme == .dark ? 0.18 : 0.12
+                    background: metadataPillBackground(
+                        store.palette.accent,
+                        darkOpacity: 0.18,
+                        lightOpacity: 0.12
                     ),
-                    border: store.palette.accent.opacity(0.24)
+                    border: metadataPillBorder(
+                        store.palette.accent,
+                        semanticOpacity: 0.24
+                    ),
+                    calm: store.context.isCatalogCommerce
                 )
             }
 
@@ -2720,11 +2732,17 @@ private struct PPUniversalCardRenderer: View {
                     text: meta,
                     systemImage: availability.metaSystemImage,
                     foreground: metaForeground(availability),
-                    background: metaForeground(availability).opacity(
-                        colorScheme == .dark ? 0.16 : 0.10
+                    background: metadataPillBackground(
+                        metaForeground(availability),
+                        darkOpacity: 0.16,
+                        lightOpacity: 0.10
                     ),
-                    border: metaForeground(availability).opacity(0.18),
-                    fillWidth: hasText
+                    border: metadataPillBorder(
+                        metaForeground(availability),
+                        semanticOpacity: 0.18
+                    ),
+                    fillWidth: hasText,
+                    calm: store.context.isCatalogCommerce
                 )
             }
 
@@ -2732,11 +2750,17 @@ private struct PPUniversalCardRenderer: View {
                 PPUniversalPill(
                     text: availability.text,
                     foreground: availabilityForeground(availability.tone),
-                    background: availabilityForeground(availability.tone).opacity(
-                        colorScheme == .dark ? 0.16 : 0.10
+                    background: metadataPillBackground(
+                        availabilityForeground(availability.tone),
+                        darkOpacity: 0.16,
+                        lightOpacity: 0.10
                     ),
-                    border: availabilityForeground(availability.tone).opacity(0.18),
-                    fillWidth: fillsAvailableWidth
+                    border: metadataPillBorder(
+                        availabilityForeground(availability.tone),
+                        semanticOpacity: 0.18
+                    ),
+                    fillWidth: fillsAvailableWidth,
+                    calm: store.context.isCatalogCommerce
                 )
             }
 
@@ -2744,10 +2768,16 @@ private struct PPUniversalCardRenderer: View {
                 PPUniversalPill(
                     text: genderTitle(gender),
                     foreground: genderForeground(gender),
-                    background: genderForeground(gender).opacity(
-                        colorScheme == .dark ? 0.18 : 0.11
+                    background: metadataPillBackground(
+                        genderForeground(gender),
+                        darkOpacity: 0.18,
+                        lightOpacity: 0.11
                     ),
-                    border: genderForeground(gender).opacity(0.22)
+                    border: metadataPillBorder(
+                        genderForeground(gender),
+                        semanticOpacity: 0.22
+                    ),
+                    calm: store.context.isCatalogCommerce
                 )
             }
 
@@ -2756,6 +2786,35 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func metadataPillBackground(
+        _ semanticColor: Color,
+        darkOpacity: Double,
+        lightOpacity: Double
+    ) -> Color {
+        guard store.context.isCatalogCommerce else {
+            return semanticColor.opacity(
+                colorScheme == .dark ? darkOpacity : lightOpacity
+            )
+        }
+
+        return Color.ppSecondarySurface.opacity(
+            colorScheme == .dark ? 0.72 : 0.82
+        )
+    }
+
+    private func metadataPillBorder(
+        _ semanticColor: Color,
+        semanticOpacity: Double
+    ) -> Color {
+        guard store.context.isCatalogCommerce else {
+            return semanticColor.opacity(semanticOpacity)
+        }
+
+        return Color.ppBorder.opacity(
+            colorScheme == .dark ? 0.58 : 0.72
+        )
     }
 
     private func genderTitle(_ gender: PPUniversalCardGender) -> String {
@@ -3754,6 +3813,7 @@ private struct PPUniversalPill: View {
     let background: Color
     let border: Color
     var fillWidth = false
+    var calm = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -3773,11 +3833,35 @@ private struct PPUniversalPill: View {
             )
         )
         .foregroundStyle(foreground)
-        .padding(.horizontal, 9)
-        .frame(minHeight: 26)
+        .padding(.horizontal, calm ? 10 : 9)
+        .frame(minHeight: calm ? 27 : 26)
         .frame(maxWidth: fillWidth ? .infinity : nil)
-        .background(background, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(border, lineWidth: 0.75))
+        .background {
+            if calm {
+                Capsule(style: .continuous)
+                    .fill(background)
+            } else {
+                RoundedRectangle(
+                    cornerRadius: 11,
+                    style: .continuous
+                )
+                .fill(background)
+            }
+        }
+        .overlay(
+            Group {
+                if calm {
+                    Capsule(style: .continuous)
+                        .stroke(border, lineWidth: 0.65)
+                } else {
+                    RoundedRectangle(
+                        cornerRadius: 11,
+                        style: .continuous
+                    )
+                    .stroke(border, lineWidth: 0.75)
+                }
+            }
+        )
     }
 }
 

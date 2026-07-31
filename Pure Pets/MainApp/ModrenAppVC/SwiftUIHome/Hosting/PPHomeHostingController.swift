@@ -8,7 +8,7 @@ import UIKit
 /// `PPHomeViewController` remains the Objective-C runtime compatibility shell;
 /// this controller owns the visible hierarchy and the single authoritative
 /// `HomeStore`.
-@available(iOS 16.0, *)
+@available(iOS 15.0, *)
 @MainActor
 @objc(PPHomeHostingController)
 public final class PPHomeHostingController: UIViewController {
@@ -18,6 +18,7 @@ public final class PPHomeHostingController: UIViewController {
     private var isInitialContentReady = false
     private var didRevealInitialContent = false
     private var initialCoverLookupAttempts = 0
+    private var readinessFallbackTask: Task<Void, Never>?
 
     @objc(initWithOwner:)
     public init(owner: PPHomeViewController) {
@@ -61,6 +62,11 @@ public final class PPHomeHostingController: UIViewController {
             }
 
         store.start()
+        scheduleReadinessFallback()
+    }
+
+    isolated deinit {
+        readinessFallbackTask?.cancel()
     }
 
     public override func viewDidAppear(_ animated: Bool) {
@@ -127,10 +133,24 @@ public final class PPHomeHostingController: UIViewController {
     private func homePhaseDidChange(_ phase: HomeScreenPhase) {
         switch phase {
         case .loaded, .partial, .empty, .failed:
+            readinessFallbackTask?.cancel()
+            readinessFallbackTask = nil
             isInitialContentReady = true
             scheduleInitialContentReveal()
         case .coldLoading, .warmLoading, .refreshing:
             break
+        }
+    }
+
+    private func scheduleReadinessFallback() {
+        readinessFallbackTask?.cancel()
+        readinessFallbackTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 12_000_000_000)
+            guard !Task.isCancelled, let self, !self.didRevealInitialContent else {
+                return
+            }
+            self.isInitialContentReady = true
+            self.scheduleInitialContentReveal()
         }
     }
 

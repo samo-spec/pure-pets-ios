@@ -25,21 +25,18 @@ Three structures were evaluated:
 
 These are comparative concept-selection scores, not release-readiness scores.
 
-The final hero treatment was evaluated separately after the live Pure Pets Pro
-reference was opened:
+The hero treatment was re-evaluated for the 2026-07-30 server-driven registry
+pass:
 
-| Hero treatment | Reference fidelity | Product DNA | Five-second clarity | Arabic / RTL | Accessibility | Motion restraint | Performance | Migration safety | Total | Decision |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| Pro provider glass field + Home floating plate | 5 | 5 | 5 | 5 | 4 | 5 | 4 | 5 | 38/40 | Selected; it carries the exact Pro visual rhythm without copying Pro state or actions. |
-| Semantic pet line-art field | 2 | 5 | 4 | 5 | 5 | 4 | 5 | 5 | 35/40 | Rejected; strong Pure Pets meaning, but weak fidelity to the requested live reference. |
-| Plain elevated surface + context route | 2 | 4 | 5 | 5 | 5 | 5 | 5 | 5 | 36/40 | Rejected; disciplined, but loses the requested depth and animated middle-card signature. |
+| Hero treatment | Product DNA | Five-second clarity | Arabic / RTL | Accessibility | Motion restraint | Performance | Migration safety | Total | Decision |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| Restrained semantic gradient + Home floating plate | 5 | 5 | 5 | 5 | 5 | 5 | 5 | 35/35 | Selected; it keeps the signature content plate while removing decorative blur and ambient sweep work. |
+| Pro provider glass field + Home floating plate | 4 | 5 | 5 | 4 | 3 | 3 | 5 | 29/35 | Rejected for Home; visually rich, but its continuously animated blur/sweep field adds cost without communicating state. |
+| Plain elevated surface + context route | 4 | 4 | 5 | 5 | 5 | 5 | 5 | 33/35 | Rejected; disciplined, but loses useful visual separation between context pages. |
 
-The selected field is adapted from
-`PurePetsPro/AdminCore/Auth/PPProLoginSurfaceController.swift`:
-`providerStrip(compact:)`, `providerCardBackground(compact:)`,
-`providerLightSweep`, and `providerCardStroke`. Only presentation and motion
-were copied. Consumer Home state, analytics, navigation, hero timing, and data
-ownership remain independent.
+The selected field resolves through the existing Pure Pets semantic surface and
+accent tokens. Consumer Home state, analytics, navigation, hero timing, and
+data ownership remain independent.
 
 ## Symbol ledger
 
@@ -63,7 +60,7 @@ ownership remain independent.
 | Caller / behavior | Evidence | Preserved contract |
 |---|---|---|
 | Root tab creation | `PPRootTabBarController` creates `PPHomeViewController` | Unchanged entry point and navigation-controller wrapper. |
-| Legacy root creation | `NewAppVC` creates `PPHomeViewController` | Unchanged. |
+| Legacy root creation | `NewAppVC` resolves the Home tab through `PPHomeViewController` | Only the Home tab creates the Home shell; unrelated placeholder tabs use a plain `UIViewController`, preventing duplicate Home listeners. |
 | Runtime location return | `LocationPickerViewController` resolves `NSClassFromString(@"PPHomeViewController")` | Exact class name retained. |
 | Order return-to-home | `OrderDetailsViewController` tests `isKindOfClass:PPHomeViewController.class` | Exact class identity retained. |
 | Card Home presentation | `PPUniversalCellSwiftUI` tests the delegate's Home class | Shell remains the card delegate. |
@@ -108,10 +105,38 @@ ownership remain independent.
 | Firestore listener lifecycle | `PPHomeViewController` | `PPHomeDataBridge` owned by `HomeRepository` | Exactly one owner per Home instance. |
 | HomeConfig | `PPHomeViewController` | `PPHomeDataBridge` | Exact collection/document/cache contract retained. |
 | Hero timing and state | UIKit cells/timers | `HomeStore` | One atomic state owner. |
-| Section identity/order | Diffable UIKit snapshot | Stable SwiftUI `HomeSectionID` values | Console order is mapped and duplicates are consolidated. |
+| Section identity/order | Diffable UIKit snapshot | Stable raw integer IDs plus a semantic SwiftUI section kind | Console order is preserved and duplicate config rows retain their first occurrence. |
 | Navigation | `PPHomeViewController` | Existing UIKit navigation through thin shell | Shell forwards only; no SwiftUI navigation fork. |
 | Card mutations | Universal cell delegate on controller | Existing delegate selectors on thin shell | Business services remain unchanged. |
 | Root dock | `PPRootTabBarController` | `PPRootTabBarController` | Never duplicated by Home. |
+
+## 2026-07-30 server-driven registry pass
+
+- `AppConfigCol/HomeConfig` now reaches SwiftUI as ordered
+  `HomeConfigSection` values that retain raw integer identity, normalized type,
+  visibility, and property-list-safe server metadata.
+- All 19 Console-controlled Home IDs keep distinct identities, including
+  carousel `4`, suggestions `6`, marketplace `17`, suggestion ads `18`, and
+  suggestion accessories `19`. Unknown future IDs are retained by the
+  model/cache boundary and ignored by the current renderer until a supported
+  component exists.
+- Hero, promotion carousel, and marketplace are separate configurable lanes.
+  Their content no longer changes the identity of another configured row.
+- `titleViewMode`, `premiumCareVisible`, `novaFloatingVisible`, and
+  `backgroundGlowsFaded` are honored by the SwiftUI presentation. Invalid title
+  modes safely fall back to the location command surface.
+- The Home-specific semantic color aliases resolve through the existing
+  `Color.pp*` design-system tokens; this pass does not introduce a parallel
+  palette.
+- Promotion content is listener-driven through the existing
+  `HomePromoCarouselCollection` manager and uses server-provided rotation
+  timing. No collection, permission, or analytics contract changed.
+- Order-card taps forward the exact `HomeOrderModel` selected by the user.
+- The iOS 15 universal-card compatibility renderer observes `CartUpdated` and
+  re-reads the authoritative `CartManager` quantity, matching the iOS 16+
+  external-cart synchronization contract.
+- Pull-to-refresh returns after the first non-connectivity repository delivery,
+  with the existing eight-second timeout retained when no source delivers.
 
 ## Migration and validation boundaries
 
@@ -120,17 +145,22 @@ ownership remain independent.
 - No backend schema, Firebase rule, permission, provider, inventory, or analytics collection contract is changed.
 - No simulator is an accepted runtime proof target.
 - Shell `xcodebuild` is prohibited by repository policy.
-- Static parse, localization, project-graph, diff, and ownership audits precede the connected-device run.
+- Static parse, localization, config-contract, diff, and ownership audits precede the connected-device run.
 - A successful app build, install, and launch proves the production target reaches the connected iPhone 13 Pro Max; visual fidelity, interaction flows, accessibility modes, and performance remain separate evidence requirements.
 
 ## Final Home visual alignment
 
-- The pinned command surface now contains only the real search and cart controls. Search occupies the full semantic-leading lane up to the cart; the location workflow remains wired but its pill is temporarily hidden behind `HomePresentationFlags.showsLocationContextPill`.
+- The pinned command surface honors server `titleViewMode`: location mode shows
+  the real location control, compact search, and cart; search mode gives the
+  real search control the semantic-leading lane up to the cart.
 - `HomeTopFadeBackdrop` extends the command material through the top safe area and fades it out below the bar. It is noninteractive and accessibility-hidden.
 - The Pet Pulse hero's normal baseline height is 296 points instead of 326. Pagination owns a reserved bottom strip, so it no longer overlaps either action.
 - The primary hero action is content-fitting at normal Dynamic Type, keeps a full-width accessibility fallback, uses a 17-point continuous corner, and reserves deliberate label-to-arrow spacing without truncating the observed Arabic copy.
 - Hero headlines use concise three-to-four-word Arabic and English copy in one equal 42-point title slot at standard text sizes. Dynamic promotion/reminder titles are presentation-clamped to four words while their complete value remains available to accessibility; Accessibility Dynamic Type receives a reserved two-line slot.
-- The hero backdrop now uses the exact Pure Pets Pro provider-card composition: a three-stop elevated-surface/accent/elevated-surface field, two asymmetric blurred circles, and a narrow diagonal light sweep. The 5.8-second ambient cycle uses transforms and opacity only; Reduce Motion freezes the field and Increased Contrast removes the decorative sweep.
+- The hero backdrop uses a restrained three-stop semantic surface/accent field.
+  It has no continuous blur or light-sweep animation; state changes remain in
+  the keyed page transition, and Increased Contrast resolves through the
+  semantic section surface.
 - Hero page changes are atomic: title, supporting copy, floating plate, actions, and page control move as one keyed page. Standard motion uses a short damped spring with opacity, restrained vertical travel, and a 1% scale; Reduce Motion uses a 0.16-second crossfade.
 - Every genuine hero state now uses the same trailing floating-plate composition:
   - pet → bundled `HomePetPulse.json`
@@ -142,17 +172,35 @@ ownership remain independent.
 - “Explore by pet” embeds the production `PPMainKindsCell` through a focused `UIViewRepresentable` collection adapter. Its real images, accessibility identifiers, RTL semantics, and legacy main-kind route are retained; only the selected cell receives a restrained 3.5% scale.
 - The main-kind rail uses 101 virtual cycles for touch exploration, centers the selected logical category, recenters invisibly near its virtual edges, and starts with the real “All” item centered when no category is selected. VoiceOver receives one finite logical set with centered edge insets instead of duplicate accessibility elements.
 - Every Home section backed by `PPUniversalCellSwiftUI` is a lazy horizontal rail. At standard phone widths the live container resolves two complete cells, two inter-card gaps, and exactly 12% of the third cell. The initial state respects the semantic-leading screen inset; the terminal semantic-trailing edge is full-bleed with a zero inset. Compact widths and Accessibility Dynamic Type retain a readable one-card fallback.
-- iOS 16+ Home cards have one navigation owner. `HomeUniversalHostingCard` leaves the legacy `onTap` closure unset and routes the card through `PPUniversalCellDelegate`, preventing the previous closure-plus-delegate double push while preserving favorite, cart, quantity, save, video, report, and context actions. The iOS 15 compatibility card retains its SwiftUI closure fallback.
+- iOS 16+ Home cards have one navigation owner. `HomeUniversalDirectCard`
+  leaves the legacy `onTap` closure unset and routes the card through
+  `PPUniversalCellDelegate`, preventing the previous closure-plus-delegate
+  double push while preserving favorite, cart, quantity, save, video, report,
+  and context actions. The iOS 15 compatibility card retains its SwiftUI
+  closure fallback.
 - Loaded Home content enters once per Home lifetime. The hero, pet selector, and priority actions use small 60/100/120-millisecond staging with one damped spring; refreshes do not replay the entrance. Reduce Motion removes travel and stagger and retains only a short fade. Search and pinned command controls never move.
 
 ## Validation record
 
+- The 2026-07-30 registry pass is covered by scoped source parsing,
+  localization linting, diff checks, focused config-contract test sources, and
+  the SwiftyUI-MAX static audit. These are source-level checks only; the tests
+  were not executed.
+- The connected-device build recorded earlier on 2026-07-30 was a pre-edit
+  baseline. A post-edit build, install, launch, visual pass, interaction pass,
+  accessibility pass, and performance pass remain `UNVERIFIED`.
 - Final Swift and compatibility sources pass `swiftc -frontend -parse`, including the existing `PPMainKindsCell.swift` and focused Home migration tests.
 - `project.pbxproj` and both localization files pass `plutil -lint`; the three generated Lottie JSON files and the existing `pawprint4` asset manifest pass `jq empty`; `git diff --check` is clean.
-- The SwiftyUI-MAX package integrity gate passes all 26 required files. Its scoped static audit scans all 12 Home Swift/Objective-C sources with zero findings.
-- Swift references 98 unique `home_pulse_*` keys; Arabic and English each define the same 98-key set.
+- The SwiftyUI-MAX package integrity gate passes all 26 required files. Its
+  scoped static audit scans all 13 SwiftUI Home sources plus the two modified
+  Objective-C entry/listener sources with zero findings.
+- Every literal `HomeModelAdapter.localized` key referenced by SwiftUI Home
+  resolves in both Arabic and English.
 - Xcode GUI previously built, installed, and launched the production `Pure Pets` scheme on the connected physical iPhone 13 Pro Max (`iPhone14,3`, iOS 26.5.2).
-- The Arabic RTL Home was observed live after the first-render cover faded. The safe-area fade, hidden location pill, semantic-leading search geometry, compact non-clipping CTA, black `pawprint4`, cached Marketplace `petstore` Lottie, hero swiping, real `PPMainKindsCell` selection, horizontal universal-card scrolling, category route, and back navigation were exercised before the final Pro-field and 12%-peek refinement.
+- A historical 2026-07-29 Arabic RTL pass observed the previous command
+  surface, hero, category rail, universal-card scrolling, category route, and
+  back navigation. It predates the 2026-07-30 registry and command-surface
+  changes and is not current runtime proof.
 - After the CodeRabbit corrections, Xcode GUI `Product > Build` completed successfully for the production `Pure Pets` scheme with the selected physical iPhone destination at 10:05 on 2026-07-29. Xcode could not launch the app because the iPhone auto-locked. Final post-edit visual proof and live single-push interaction proof remain `UNVERIFIED` until the device is unlocked.
 - The scoped final runtime console recorded zero `Publishing changes from within view updates` warnings during the hero and category interaction pass, and no fatal error.
 - Device evidence:
