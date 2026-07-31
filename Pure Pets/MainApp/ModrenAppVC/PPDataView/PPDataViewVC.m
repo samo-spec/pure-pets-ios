@@ -52,7 +52,7 @@ static const CGFloat kPPProviderFilterChipAvatarDiameter = 30.0;
 static const CGFloat kPPProviderFilterChipTrailingIconDiameter = 26.0;
 static const CGFloat kPPFilterContextBarHeight = 44.0;
 static const CGFloat kPPFilterContextBadgeHeight = 36.0;
-static const CGFloat kPPFilterCollapseHandleHeight = 44.0;
+static const CGFloat kPPFilterCollapseHandleHeight = 40.0;
 
 static const CGFloat kPPFilterIslandTopPadding = 6.0;
 static const CGFloat kPPFilterIslandRowSpacing = 8.0;
@@ -1177,6 +1177,16 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @end
 
 @implementation PPPremiumCollapseButton
+
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
+{
+    (void)event;
+    CGFloat horizontalExpansion = MAX(44.0 - CGRectGetWidth(self.bounds), 0.0) * 0.5;
+    CGFloat verticalExpansion = MAX(44.0 - CGRectGetHeight(self.bounds), 0.0) * 0.5;
+    CGRect accessibleHitBounds =
+        CGRectInset(self.bounds, -horizontalExpansion, -verticalExpansion);
+    return CGRectContainsPoint(accessibleHitBounds, point);
+}
 
 - (void)setHighlighted:(BOOL)highlighted
 {
