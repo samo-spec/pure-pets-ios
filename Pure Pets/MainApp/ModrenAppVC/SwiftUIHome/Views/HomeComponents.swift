@@ -1743,7 +1743,7 @@ struct HomePriorityGrid: View {
         static let cardSpacing = PPSpace.sm
         static let featuredCircleSize: CGFloat = 108
         static let featuredCircleTopInset = PPSpace.sm
-        static let featuredCardWidth = featuredCircleSize + 8
+        static let featuredCardWidth: CGFloat = 168
         static let compactCardHeight: CGFloat = 120
         static let compactSectionHeight =
             (compactCardHeight * 2) + cardSpacing

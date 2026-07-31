@@ -856,6 +856,7 @@ private struct HomeHeroField: View {
                 )
 
             if !increasedContrast {
+                cornerGlowField
                 careCurrent
             }
         }
@@ -877,6 +878,48 @@ private struct HomeHeroField: View {
         )
     }
 
+    private var cornerGlowField: some View {
+        GeometryReader { proxy in
+            let radiusBasis = max(proxy.size.width, proxy.size.height)
+
+            ZStack {
+                RadialGradient(
+                    colors: [
+                        accent.opacity(
+                            colorScheme == .dark ? 0.14 : 0.09
+                        ),
+                        accent.opacity(
+                            colorScheme == .dark ? 0.052 : 0.032
+                        ),
+                        Color.clear,
+                    ],
+                    center: isRightToLeft
+                        ? UnitPoint(x: 1.04, y: -0.04)
+                        : UnitPoint(x: -0.04, y: -0.04),
+                    startRadius: 0,
+                    endRadius: radiusBasis * 0.52
+                )
+
+                RadialGradient(
+                    colors: [
+                        accent.opacity(
+                            colorScheme == .dark ? 0.115 : 0.075
+                        ),
+                        accent.opacity(
+                            colorScheme == .dark ? 0.042 : 0.026
+                        ),
+                        Color.clear,
+                    ],
+                    center: isRightToLeft
+                        ? UnitPoint(x: -0.05, y: 1.06)
+                        : UnitPoint(x: 1.05, y: 1.06),
+                    startRadius: 0,
+                    endRadius: radiusBasis * 0.60
+                )
+            }
+        }
+    }
+
     private var careCurrent: some View {
         ZStack {
             HomeHeroCareCurrentRibbon()
@@ -884,13 +927,13 @@ private struct HomeHeroField: View {
                     LinearGradient(
                         colors: [
                             accent.opacity(
-                                colorScheme == .dark ? 0.025 : 0.018
+                                colorScheme == .dark ? 0.03 : 0.022
                             ),
                             accent.opacity(
-                                colorScheme == .dark ? 0.13 : 0.075
+                                colorScheme == .dark ? 0.15 : 0.09
                             ),
                             accent.opacity(
-                                colorScheme == .dark ? 0.055 : 0.028
+                                colorScheme == .dark ? 0.064 : 0.034
                             ),
                             Color.clear,
                         ],
