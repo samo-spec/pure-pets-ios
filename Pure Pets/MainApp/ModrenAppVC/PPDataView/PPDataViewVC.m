@@ -52,7 +52,7 @@ static const CGFloat kPPProviderFilterChipAvatarDiameter = 30.0;
 static const CGFloat kPPProviderFilterChipTrailingIconDiameter = 26.0;
 static const CGFloat kPPFilterContextBarHeight = 44.0;
 static const CGFloat kPPFilterContextBadgeHeight = 36.0;
-static const CGFloat kPPFilterCollapseHandleHeight = 40.0;
+static const CGFloat kPPFilterCollapseHandleHeight = 38.0;
 
 static const CGFloat kPPFilterIslandTopPadding = 6.0;
 static const CGFloat kPPFilterIslandRowSpacing = 8.0;
@@ -2198,9 +2198,12 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 - (void)pp_applyPremiumMainKindsButtonSurface
 {
+    BOOL isActive = [self pp_mainKindsSelectorIsActive];
     [self pp_applyPremiumSelectorButton:self.KindsButton
                               titleText:[self pp_currentMainKindsDisplayTitle]
-                             emphasized:[self pp_mainKindsSelectorIsActive]];
+                             emphasized:NO];
+    self.KindsButton.accessibilityTraits =
+        isActive ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected) : UIAccessibilityTraitButton;
 }
 
 - (void)pp_applyPremiumSubKindsButtonSurface

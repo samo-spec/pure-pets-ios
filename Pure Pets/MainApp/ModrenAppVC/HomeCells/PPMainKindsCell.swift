@@ -580,7 +580,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
                     selected: glowSelected,
                     pressing: pressed
                 )
-                self.tapHaloLayer.opacity = pressed ? 0.20 : 0
+                self.tapHaloLayer.opacity = pressed ? 0.10 : 0
             }
         )
     }
@@ -629,8 +629,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         titleLabel.transform = CGAffineTransform(translationX: 0, y: 0.5)
         selectionIndicatorView.alpha = 0
         selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
-        bottomGlowLayer.opacity = max(0, finalBottomGlow - 0.28)
-        kindNameGlowLayer.opacity = max(0, finalNameGlow - 0.24)
+        bottomGlowLayer.opacity = max(0, finalBottomGlow - 0.14)
+        kindNameGlowLayer.opacity = max(0, finalNameGlow - 0.12)
         tapHaloLayer.opacity = 0
         CATransaction.commit()
 
@@ -681,8 +681,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
                     self.kindImageView.transform = CGAffineTransform(scaleX: 1.12, y: 1.12)
                     self.selectionIndicatorView.transform = .identity
                     self.selectionIndicatorView.alpha = 1
-                    self.bottomGlowLayer.opacity = min(1, finalBottomGlow + 0.14)
-                    self.kindNameGlowLayer.opacity = min(1, finalNameGlow + 0.12)
+                    self.bottomGlowLayer.opacity = min(1, finalBottomGlow + 0.06)
+                    self.kindNameGlowLayer.opacity = min(1, finalNameGlow + 0.05)
                 }
                 UIView.addKeyframe(withRelativeStartTime: 0.40, relativeDuration: 0.60) {
                     self.tapButton.transform = self.restingTapTransform
@@ -907,20 +907,20 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func restingGlowOpacity(selected: Bool) -> Float {
         if selected {
-            return isAllOption ? 0.22 : 0.35
+            return isAllOption ? 0.09 : 0.12
         }
-        return isAllOption ? 0.04 : 0.08
+        return isAllOption ? 0.02 : 0.04
     }
 
     private func pressedGlowOpacity(selected: Bool) -> Float {
-        min(1, restingGlowOpacity(selected: selected) + (selected ? 0.08 : 0.04))
+        min(1, restingGlowOpacity(selected: selected) + (selected ? 0.06 : 0.02))
     }
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
         if selected {
-            return pressing ? 0.08 : 0.18
+            return pressing ? 0.06 : 0.14
         }
-        return pressing ? 0.15 : 0.08
+        return pressing ? 0.08 : 0.04
     }
 
     private func updateMotionLayerPalette() {
@@ -928,24 +928,24 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let isAll = isAllOption
         let selected = rendersSelectedGlow
         let leadingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.40 : 0.58)
-            : (isAll ? 0.18 : 0.25)
+            ? (isAll ? 0.28 : 0.40)
+            : (isAll ? 0.10 : 0.14)
         let trailingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.22 : 0.34)
-            : (isAll ? 0.10 : 0.16)
+            ? (isAll ? 0.16 : 0.24)
+            : (isAll ? 0.05 : 0.08)
         bottomGlowLayer.colors = [
             accent.withAlphaComponent(leadingGlowAlpha).cgColor,
             accent.withAlphaComponent(trailingGlowAlpha).cgColor,
             accent.withAlphaComponent(0).cgColor
         ]
         kindNameGlowLayer.colors = [
-            accent.withAlphaComponent(isAll ? 0.38 : 0.55).cgColor,
-            accent.withAlphaComponent(isAll ? 0.22 : 0.35).cgColor,
+            accent.withAlphaComponent(isAll ? 0.26 : 0.38).cgColor,
+            accent.withAlphaComponent(isAll ? 0.16 : 0.24).cgColor,
             accent.withAlphaComponent(0).cgColor
         ]
         tapHaloLayer.colors = [
-            accent.withAlphaComponent(0.68).cgColor,
-            accent.withAlphaComponent(0.35).cgColor,
+            accent.withAlphaComponent(0.36).cgColor,
+            accent.withAlphaComponent(0.18).cgColor,
             accent.withAlphaComponent(0).cgColor
         ]
     }
@@ -958,7 +958,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         let restingGlow = restingGlowOpacity(selected: true)
         let glowAnimation = CABasicAnimation(keyPath: "opacity")
-        glowAnimation.fromValue = min(1, restingGlow + 0.18)
+        glowAnimation.fromValue = min(1, restingGlow + 0.10)
         glowAnimation.toValue = restingGlow
         glowAnimation.duration = PPMainKindsCellMetrics.glowCommitDuration
         glowAnimation.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -969,7 +969,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         )
 
         let nameGlowAnimation = CABasicAnimation(keyPath: "opacity")
-        nameGlowAnimation.fromValue = 0.92
+        nameGlowAnimation.fromValue = 0.50
         nameGlowAnimation.toValue = kindNameGlowOpacity(selected: true, pressing: false)
         nameGlowAnimation.duration = PPMainKindsCellMetrics.glowCommitDuration
         nameGlowAnimation.timingFunction = CAMediaTimingFunction(name: .easeOut)
