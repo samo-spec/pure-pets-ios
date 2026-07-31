@@ -3519,6 +3519,7 @@
 "dataview_filters_collapse_accessibility" = "Hide filters";
 "dataview_filters_expand_accessibility" = "Show filters";
 "dataview_filters_expand_active_count_format" = "Show filters · %ld";
+"dataview_filters_button_active_count_format" = "Filter · %ld";
 "dataview_filters_active_count_accessibility_format" = "%ld active filters";
 "dataview_smart_filter_additional_count_format" = "+%ld";
 

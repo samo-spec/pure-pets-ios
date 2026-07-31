@@ -44,20 +44,20 @@
 #define PPDataViewLog(...)
 #endif
 
-static const CGFloat kPPSectionsTabBarHeight = 48.0;
+static const CGFloat kPPSectionsTabBarHeight = 50.0;
 static const CGFloat kPPAccessoryFilterHeight = 44.0;
-static const CGFloat kPPDropdownFilterChipHeight = 40.0;
+static const CGFloat kPPDropdownFilterChipHeight = 44.0;
 static const CGFloat kPPProviderFilterChipHeight = 44.0;
 static const CGFloat kPPProviderFilterChipAvatarDiameter = 30.0;
 static const CGFloat kPPProviderFilterChipTrailingIconDiameter = 26.0;
-static const CGFloat kPPFilterContextBarHeight = 34.0;
-static const CGFloat kPPFilterContextBadgeHeight = 34.0;
-static const CGFloat kPPFilterCollapseHandleHeight = 40.0;
+static const CGFloat kPPFilterContextBarHeight = 44.0;
+static const CGFloat kPPFilterContextBadgeHeight = 36.0;
+static const CGFloat kPPFilterCollapseHandleHeight = 44.0;
 
-static const CGFloat kPPFilterIslandTopPadding = 5.0;
-static const CGFloat kPPFilterIslandRowSpacing = 6.0;
-static const CGFloat kPPFilterIslandExpandedRowSpacing = 6.0;
-static const CGFloat kPPFilterIslandBottomPadding = 10.0;
+static const CGFloat kPPFilterIslandTopPadding = 6.0;
+static const CGFloat kPPFilterIslandRowSpacing = 8.0;
+static const CGFloat kPPFilterIslandExpandedRowSpacing = 8.0;
+static const CGFloat kPPFilterIslandBottomPadding = 8.0;
 static const BOOL kPPDataViewPauseLegacyFilterIslandScrollCollapse = YES;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
@@ -359,8 +359,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     ]];
 
     self.surfaceGradientLayer = [CAGradientLayer layer];
-    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.5);
-    self.surfaceGradientLayer.endPoint = CGPointMake(0.5, 1.0);
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     self.surfaceGradientLayer.masksToBounds = YES;
     [self.layer insertSublayer:self.surfaceGradientLayer above:self.blurView.layer];
 
@@ -410,7 +410,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
                                                           cornerRadius:strokeRadius];
     self.liquidBorderMaskLayer.frame = self.bounds;
     self.liquidBorderMaskLayer.path = strokePath.CGPath;
-    self.liquidBorderMaskLayer.lineWidth = 0.45;
+    self.liquidBorderMaskLayer.lineWidth = 0.72;
 
     CGRect shineRect = CGRectInset(self.bounds, 0.5, 0.5);
     CGFloat shineRadius = MAX(radius - 0.5, 0.0);
@@ -418,7 +418,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
                                                          cornerRadius:shineRadius];
     self.liquidShineMaskLayer.frame = self.bounds;
     self.liquidShineMaskLayer.path = shinePath.CGPath;
-    self.liquidShineMaskLayer.lineWidth = 0.5;
+    self.liquidShineMaskLayer.lineWidth = 0.56;
 
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                                        cornerRadius:radius].CGPath;
@@ -443,22 +443,24 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     CGFloat dockedProgress = PPDataViewSmoothstep(self.dockedForegroundProgress);
 
     UIColor *foregroundSurface = PPDataViewAppForegroundSurfaceColor();
-    UIColor *surface = PPDataViewChromeSurfaceColor();
-    UIColor *softHighlight = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.92],
-                                                    [UIColor colorWithWhite:1.0 alpha:0.24]);
-    UIColor *surfaceTop = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.28 : 0.98];
-    UIColor *surfaceMid = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.80 : 0.95];
-    UIColor *surfaceBottom = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.20 : 0.92];
-    UIColor *borderLead = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
-                                                 [UIColor colorWithWhite:1.0 alpha:0.34]);
-    UIColor *borderMid = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.58],
-                                                [UIColor colorWithWhite:1.0 alpha:0.34]);
-    UIColor *borderAccent = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.74],
-                                                   [UIColor colorWithWhite:1.0 alpha:0.42]);
+    UIColor *accent = PPDataViewAccentColor();
+    UIColor *softHighlight = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
+                                                    [UIColor colorWithWhite:1.0 alpha:0.22]);
+    UIColor *surfaceTop = PPDataViewDynamicColor([UIColor colorWithRed:1.0 green:0.998 blue:0.999 alpha:0.98],
+                                                [UIColor colorWithWhite:0.205 alpha:0.92]);
+    UIColor *surfaceMid = PPDataViewDynamicColor([UIColor colorWithRed:1.0 green:0.982 blue:0.988 alpha:0.95],
+                                                [UIColor colorWithWhite:0.155 alpha:0.90]);
+    UIColor *surfaceBottom = PPDataViewDynamicColor([UIColor colorWithRed:0.982 green:0.958 blue:0.967 alpha:0.92],
+                                                   [UIColor colorWithWhite:0.105 alpha:0.88]);
+    UIColor *borderLead = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.94],
+                                                 [UIColor colorWithWhite:1.0 alpha:0.31]);
+    UIColor *borderMid = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.54],
+                                                [UIColor colorWithWhite:1.0 alpha:0.15]);
+    UIColor *borderAccent = [accent colorWithAlphaComponent:isDark ? 0.48 : 0.32];
 
     void (^updates)(void) = ^{
         self.blurView.hidden = NO;
-        CGFloat baseBlurAlpha = isDark ? 0.54 : 0.92;
+        CGFloat baseBlurAlpha = isDark ? 0.46 : 0.78;
         self.blurView.alpha = baseBlurAlpha * (1.0 - (0.90 * dockedProgress));
         self.backgroundColor = [foregroundSurface colorWithAlphaComponent:dockedProgress];
 
@@ -468,7 +470,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor(surfaceBottom, self.traitCollection)
         ];
         self.surfaceGradientLayer.locations = @[@0.0, @0.48, @1.0];
-        CGFloat baseSurfaceOpacity = isDark ? 0.76 : 0.94;
+        CGFloat baseSurfaceOpacity = isDark ? 0.84 : 0.90;
         self.surfaceGradientLayer.opacity = baseSurfaceOpacity * (1.0 - (0.90 * dockedProgress));
 
         self.liquidBorderLayer.colors = @[
@@ -478,7 +480,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor(borderLead, self.traitCollection)
         ];
         self.liquidBorderLayer.locations = @[@0.0, @0.34, @0.68, @1.0];
-        CGFloat baseBorderOpacity = isDark ? 0.92 : 0.0;
+        CGFloat baseBorderOpacity = isDark ? 0.88 : 0.76;
         self.liquidBorderLayer.opacity = baseBorderOpacity * (1.0 - (0.24 * dockedProgress));
 
         self.liquidShineLayer.colors = @[
@@ -487,7 +489,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor([UIColor clearColor], self.traitCollection)
         ];
         self.liquidShineLayer.locations = @[@0.08, @0.18, @0.30];
-        CGFloat baseShineOpacity = isDark ? 0.34 : 0.38;
+        CGFloat baseShineOpacity = isDark ? 0.18 : 0.16;
         self.liquidShineLayer.opacity = baseShineOpacity * (1.0 - (0.58 * dockedProgress));
 
         UIColor *shadowColor = PPDataViewChromeShadowColor();
@@ -495,10 +497,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             shadowColor = [shadowColor resolvedColorWithTraitCollection:self.traitCollection];
         }
         self.layer.shadowColor = shadowColor.CGColor;
-        self.layer.shadowOpacity = (isDark ? 0.16 : 0.075) + (dockedProgress * (isDark ? 0.025 : 0.018));
-        self.layer.shadowRadius = (isDark ? 18.0 : 14.0) + (dockedProgress * 3.0);
+        self.layer.shadowOpacity = (isDark ? 0.13 : 0.055) + (dockedProgress * (isDark ? 0.02 : 0.012));
+        self.layer.shadowRadius = (isDark ? 16.0 : 12.0) + (dockedProgress * 2.0);
         self.layer.shadowOffset = CGSizeMake(0.0,
-                                             (isDark ? 8.0 : 6.0) + (dockedProgress * 1.5));
+                                             (isDark ? 7.0 : 5.0) + (dockedProgress * 1.0));
     };
 
     if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
@@ -537,10 +539,11 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     CABasicAnimation *shine = [CABasicAnimation animationWithKeyPath:@"locations"];
     shine.fromValue = @[@-0.34, @-0.22, @-0.08];
     shine.toValue = @[@1.08, @1.22, @1.36];
-    shine.duration = 22.0;
-    shine.repeatCount = HUGE_VALF;
+    shine.beginTime = CACurrentMediaTime() + 0.18;
+    shine.duration = 1.1;
+    shine.repeatCount = 0.0;
     shine.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    shine.removedOnCompletion = NO;
+    shine.removedOnCompletion = YES;
     [self.liquidShineLayer addAnimation:shine forKey:@"pp.nav.liquid.shine"];
 }
 
@@ -556,6 +559,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 @interface PPDataViewControlIslandView ()
 @property (nonatomic, strong) PPBackgroundView *heroBackgroundView;
+@property (nonatomic, strong) CAGradientLayer *ambientTintLayer;
+@property (nonatomic, strong) CAGradientLayer *accentEdgeLayer;
+@property (nonatomic, strong) CAShapeLayer *accentEdgeMaskLayer;
 @property (nonatomic, strong, nullable) UIColor *baseAccentColorOverride;
 @property (nonatomic, assign) NSInteger activeFilterCount;
 @property (nonatomic, assign) CGFloat scrollCollapseProgress;
@@ -578,18 +584,33 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
-    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    glass.cornerGlowOpacityMultiplier = 0.018;
-    //glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
-    //glass.tintColor = [AppPrimaryClr colorWithAlphaComponent:0.2];
     glass.accentStyle = PPHeroGlassAccentStyleSolid;
     glass.overrideCornerRadius = kPPDataViewSectionsIslandCornerRadius;
     UIColor *solidSurface =
-        PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.90],
-                               [UIColor colorWithWhite:0.12 alpha:0.88]);
+        PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.965],
+                               [UIColor colorWithWhite:0.115 alpha:0.94]);
     glass.overrideSolidColor = solidSurface;
     [self insertSubview:glass atIndex:0];
     self.heroBackgroundView = glass;
+
+    self.ambientTintLayer = [CAGradientLayer layer];
+    self.ambientTintLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.ambientTintLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.ambientTintLayer.locations = @[@0.0, @0.44, @1.0];
+    self.ambientTintLayer.masksToBounds = YES;
+    [self.layer insertSublayer:self.ambientTintLayer above:glass.layer];
+
+    self.accentEdgeLayer = [CAGradientLayer layer];
+    self.accentEdgeLayer.startPoint = CGPointMake(0.0, 0.35);
+    self.accentEdgeLayer.endPoint = CGPointMake(1.0, 0.65);
+    self.accentEdgeLayer.locations = @[@0.0, @0.28, @0.70, @1.0];
+    self.accentEdgeMaskLayer = [CAShapeLayer layer];
+    self.accentEdgeMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    self.accentEdgeMaskLayer.strokeColor = UIColor.whiteColor.CGColor;
+    self.accentEdgeMaskLayer.lineCap = kCALineCapRound;
+    self.accentEdgeMaskLayer.lineJoin = kCALineJoinRound;
+    self.accentEdgeLayer.mask = self.accentEdgeMaskLayer;
+    [self.layer addSublayer:self.accentEdgeLayer];
 
     [NSLayoutConstraint activateConstraints:@[
         [glass.topAnchor constraintEqualToAnchor:self.topAnchor],
@@ -619,6 +640,17 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     CGFloat cornerRadius = kPPDataViewSectionsIslandCornerRadius;
     self.layer.cornerRadius = cornerRadius;
     self.heroBackgroundView.overrideCornerRadius = cornerRadius;
+    self.ambientTintLayer.frame = self.bounds;
+    self.ambientTintLayer.cornerRadius = cornerRadius;
+    self.accentEdgeLayer.frame = self.bounds;
+
+    CGRect edgeRect = CGRectInset(self.bounds, 0.5, 0.5);
+    UIBezierPath *edgePath =
+        [UIBezierPath bezierPathWithRoundedRect:edgeRect
+                                  cornerRadius:MAX(cornerRadius - 0.5, 0.0)];
+    self.accentEdgeMaskLayer.frame = self.bounds;
+    self.accentEdgeMaskLayer.path = edgePath.CGPath;
+    self.accentEdgeMaskLayer.lineWidth = 1.0;
 
     UIBezierPath *shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:cornerRadius];
     self.layer.shadowPath = shadowPath.CGPath;
@@ -628,7 +660,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 {
     [super didMoveToWindow];
     if (self.window) {
-       // [self.heroBackgroundView startAnimations];
+        [self.heroBackgroundView reapplyPalette];
     }
 }
 
@@ -681,11 +713,13 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
     UIColor *accent = [self pp_contentAccentColorForTraitCollection:self.traitCollection];
-    UIColor *resolvedAccent = selected ? accent : self.baseAccentColorOverride;
+    UIColor *resolvedAccent = selected
+        ? accent
+        : (self.baseAccentColorOverride ?: PPDataViewAccentColor());
     CGFloat collapseProgress = MIN(MAX(self.scrollCollapseProgress, 0.0), 1.0);
     UIColor *solidSurface =
-        PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:(selected ? 0.94 : 0.90)],
-                               [UIColor colorWithWhite:(selected ? 0.145 : 0.12) alpha:0.88]);
+        PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:(selected ? 0.98 : 0.965)],
+                               [UIColor colorWithWhite:(selected ? 0.145 : 0.115) alpha:0.94]);
 
     void (^updates)(void) = ^{
         self.heroBackgroundView.overrideCenterGlowColor = resolvedAccent;
@@ -696,16 +730,35 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             : (1.0 - (collapseProgress * 0.035));
         
         [self.heroBackgroundView reapplyPalette];
-        self.layer.borderWidth = darkMode ? (1.0 / UIScreen.mainScreen.scale) : 0.0;
+        self.ambientTintLayer.colors = @[
+            PPDataViewResolvedLayerColor([resolvedAccent colorWithAlphaComponent:darkMode ? 0.16 : 0.085],
+                                         self.traitCollection),
+            PPDataViewResolvedLayerColor([UIColor clearColor], self.traitCollection),
+            PPDataViewResolvedLayerColor([resolvedAccent colorWithAlphaComponent:darkMode ? 0.055 : 0.026],
+                                         self.traitCollection)
+        ];
+        self.ambientTintLayer.opacity = selected ? 1.0 : 0.68;
+        self.accentEdgeLayer.colors = @[
+            PPDataViewResolvedLayerColor([UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.26 : 0.92],
+                                         self.traitCollection),
+            PPDataViewResolvedLayerColor([resolvedAccent colorWithAlphaComponent:selected ? 0.48 : 0.22],
+                                         self.traitCollection),
+            PPDataViewResolvedLayerColor([resolvedAccent colorWithAlphaComponent:0.06],
+                                         self.traitCollection),
+            PPDataViewResolvedLayerColor([UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.18 : 0.72],
+                                         self.traitCollection)
+        ];
+        self.accentEdgeLayer.opacity = selected ? 0.92 : 0.70;
+        self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         self.layer.borderColor = PPDataViewResolvedColor(
-            [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (0.24 + collapseProgress * 0.08) : 0.0],
+            [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (0.16 + collapseProgress * 0.06) : 0.50],
             self.traitCollection
         ).CGColor;
         self.layer.shadowColor = UIColor.blackColor.CGColor;
-        CGFloat baseShadowOpacity = darkMode ? (selected ? 0.13 : 0.085) : (selected ? 0.065 : 0.038);
-        self.layer.shadowOpacity = baseShadowOpacity + (collapseProgress * (darkMode ? 0.035 : 0.030));
-        self.layer.shadowRadius = (selected ? 16.0 : 12.0) + (collapseProgress * 4.0);
-        self.layer.shadowOffset = CGSizeMake(0.0, (selected ? 8.0 : 6.0) + (collapseProgress * 2.0));
+        CGFloat baseShadowOpacity = darkMode ? (selected ? 0.12 : 0.075) : (selected ? 0.055 : 0.034);
+        self.layer.shadowOpacity = baseShadowOpacity + (collapseProgress * (darkMode ? 0.025 : 0.018));
+        self.layer.shadowRadius = (selected ? 16.0 : 13.0) + (collapseProgress * 3.0);
+        self.layer.shadowOffset = CGSizeMake(0.0, (selected ? 7.0 : 5.0) + (collapseProgress * 1.5));
     };
 
     if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
@@ -903,7 +956,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         baseFont = [UIFont systemFontOfSize:(action ? 12.4 : 13.0)
                                       weight:(active ? UIFontWeightSemibold : UIFontWeightMedium)];
     }
-    UIFont *font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:baseFont];
+    UIFont *font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                    scaledFontForFont:baseFont
+                    maximumPointSize:15.6];
     NSDictionary *textAttrs = @{
         NSFontAttributeName            : font,
         NSForegroundColorAttributeName : accentedFG
@@ -955,10 +1010,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             UIButtonConfiguration *config = [UIButtonConfiguration prominentGlassButtonConfiguration];
             config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
             config.attributedTitle = attrTitle;
-            config.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 16.0, 6.0, 14.0);
-            UIColor *chipBackground = [AppForgroundColr colorWithAlphaComponent:0.5];
+            config.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 12.0, 6.0, 10.0);
+            UIColor *chipBackground = [AppForgroundColr colorWithAlphaComponent:0.38];
             if (useAccentBackground) {
-                chipBackground = [PPDataViewBlendColor(chipBackground, brand, 0.16, self.traitCollection) colorWithAlphaComponent:0.62];
+                chipBackground = [PPDataViewBlendColor(chipBackground, brand, 0.12, self.traitCollection) colorWithAlphaComponent:0.52];
             }
             config.baseBackgroundColor = chipBackground;
             config.background.backgroundColor = chipBackground;
@@ -982,7 +1037,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     // ─── Active / iOS < 26: existing custom rendering ───
     self.configuration = nil;
-    self.contentEdgeInsets = action ? UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0) : UIEdgeInsetsMake(6.0, 16.0, 6.0, 14.0);
+    self.contentEdgeInsets = action ? UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0) : UIEdgeInsetsMake(6.0, 12.0, 6.0, 10.0);
     self.titleLabel.numberOfLines = 1;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.tintColor = accentedFG;
@@ -1020,38 +1075,38 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         UIColor *bottom;
         UIColor *stroke;
         if (action) {
-            top = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
-                                         [UIColor colorWithWhite:0.19 alpha:0.94]);
-            middle = PPDataViewDynamicColor([UIColor colorWithWhite:0.985 alpha:0.80],
-                                            [UIColor colorWithWhite:0.15 alpha:0.92]);
-            bottom = PPDataViewDynamicColor([UIColor colorWithWhite:0.97 alpha:0.76],
-                                            [UIColor colorWithWhite:0.11 alpha:0.90]);
-            stroke = [brand colorWithAlphaComponent:active ? 0.34 : 0.20];
+            top = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.70],
+                                         [UIColor colorWithWhite:1.0 alpha:0.10]);
+            middle = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.54],
+                                            [UIColor colorWithWhite:1.0 alpha:0.075]);
+            bottom = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.42],
+                                            [UIColor colorWithWhite:1.0 alpha:0.055]);
+            stroke = [brand colorWithAlphaComponent:active ? 0.28 : 0.14];
         } else {
-            top = PPDataViewDynamicColor([UIColor colorWithRed:1.000 green:0.998 blue:0.996 alpha:1.0],
-                                         [UIColor colorWithWhite:0.205 alpha:1.0]);
-            middle = PPDataViewDynamicColor([UIColor colorWithRed:0.996 green:0.982 blue:0.988 alpha:1.0],
-                                            [UIColor colorWithWhite:0.165 alpha:1.0]);
-            bottom = PPDataViewDynamicColor([UIColor colorWithRed:0.968 green:0.958 blue:0.966 alpha:1.0],
-                                            [UIColor colorWithWhite:0.115 alpha:1.0]);
+            top = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.68],
+                                         [UIColor colorWithWhite:1.0 alpha:0.09]);
+            middle = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.52],
+                                            [UIColor colorWithWhite:1.0 alpha:0.065]);
+            bottom = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.40],
+                                            [UIColor colorWithWhite:1.0 alpha:0.045]);
             stroke = active
-                ? [brand colorWithAlphaComponent:0.38]
-                : PPDataViewDynamicColor([UIColor colorWithRed:0.730 green:0.680 blue:0.710 alpha:0.44],
-                                         [UIColor colorWithWhite:1.0 alpha:0.14]);
+                ? [brand colorWithAlphaComponent:0.30]
+                : PPDataViewDynamicColor([UIColor colorWithWhite:0.22 alpha:0.10],
+                                         [UIColor colorWithWhite:1.0 alpha:0.10]);
         }
 
         if (usesAccentBackground) {
             BOOL dark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
             CGFloat accentBlend = (active || action)
-                ? (action ? (dark ? 0.28 : 0.14) : (dark ? 0.46 : 0.24))
-                : (dark ? 0.32 : 0.14);
+                ? (action ? (dark ? 0.20 : 0.10) : (dark ? 0.30 : 0.15))
+                : (dark ? 0.18 : 0.08);
             top = PPDataViewBlendColor(top, brand, accentBlend, self.traitCollection);
             middle = PPDataViewBlendColor(middle, brand, accentBlend * 0.82, self.traitCollection);
             bottom = PPDataViewBlendColor(bottom, brand, accentBlend * 0.68, self.traitCollection);
             stroke = [brand colorWithAlphaComponent:action ? 0.24 : (active ? 0.42 : 0.28)];
         } else if (action) {
             BOOL dark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
-            CGFloat quietAccentBlend = dark ? 0.22 : 0.10;
+            CGFloat quietAccentBlend = dark ? 0.14 : 0.06;
             top = PPDataViewBlendColor(top, brand, quietAccentBlend, self.traitCollection);
             middle = PPDataViewBlendColor(middle, brand, quietAccentBlend * 0.78, self.traitCollection);
             bottom = PPDataViewBlendColor(bottom, brand, quietAccentBlend * 0.56, self.traitCollection);
@@ -1085,14 +1140,14 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             
 
             self.strokeLayer.strokeColor = stroke.CGColor;
-            self.strokeLayer.lineWidth = active ? 1.15 : (action ? 0.75 : 1.0);
+            self.strokeLayer.lineWidth = active ? 0.9 : (1.0 / UIScreen.mainScreen.scale);
 
             self.layer.shadowColor = (action || active)
                 ? [brand colorWithAlphaComponent:0.26].CGColor
                 : [UIColor colorWithWhite:0.0 alpha:0.18].CGColor;
-            self.layer.shadowOpacity = active ? 0.15 : (action ? 0.055 : 0.10);
-            self.layer.shadowRadius = active ? 14.0 : (action ? 8.0 : 11.0);
-            self.layer.shadowOffset = CGSizeMake(0.0, active ? 6.0 : (action ? 3.0 : 5.0));
+            self.layer.shadowOpacity = active ? 0.07 : (action ? 0.02 : 0.0);
+            self.layer.shadowRadius = active ? 9.0 : (action ? 5.0 : 0.0);
+            self.layer.shadowOffset = CGSizeMake(0.0, active ? 4.0 : (action ? 2.0 : 0.0));
         }
         self.surfaceGradientLayer.locations = @[@0.0, @0.46, @1.0];
         self.surfaceGradientLayer.opacity = 1.0;
@@ -1165,6 +1220,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) PPDataViewControlIslandView *sectionsFiltersContainer;
 @property (nonatomic, strong) UIView *filterContextBar;
 @property (nonatomic, strong) UIView *filterContextBadgeView;
+@property (nonatomic, strong) UIView *filterContextDividerView;
 @property (nonatomic, strong) UIImageView *filterContextIconView;
 @property (nonatomic, strong) UILabel *filterContextLabel;
 @property (nonatomic, strong) UILabel *filterContextSecondaryLabel;
@@ -1933,22 +1989,24 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     UIColor *accent = PPDataViewAccentColor();
     UIColor *foreground = emphasized ? accent : PPDataViewChromeTextColor();
     UIColor *surface = emphasized
-        ? [accent colorWithAlphaComponent:0.115]
-        : PPDataViewChromeElevatedSurfaceColor();
+        ? [accent colorWithAlphaComponent:0.105]
+        : PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.76],
+                                 [UIColor colorWithWhite:1.0 alpha:0.085]);
     UIColor *stroke = emphasized
-        ? [accent colorWithAlphaComponent:0.28]
-        : PPDataViewChromeStrokeColor();
+        ? [accent colorWithAlphaComponent:0.24]
+        : PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
+                                 [UIColor colorWithWhite:1.0 alpha:0.14]);
 
     UIButtonConfiguration *configuration = button.configuration;
     if (!configuration) {
         configuration = [UIButtonConfiguration plainButtonConfiguration];
     }
     configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 7.0, 2.0, 7.0);
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 6.0, 2.0, 6.0);
     configuration.baseForegroundColor = foreground;
     configuration.background.backgroundColor = surface;
     configuration.background.strokeColor = stroke;
-    configuration.background.strokeWidth = 0.8;
+    configuration.background.strokeWidth = 1.0 / UIScreen.mainScreen.scale;
     button.configuration = configuration;
 
     button.tintColor = foreground;
@@ -1964,9 +2022,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     button.adjustsImageWhenHighlighted = NO;
     button.accessibilityTraits = UIAccessibilityTraitButton;
     [button pp_setShadowColor:PPDataViewChromeShadowColor()];
-    button.layer.shadowOpacity = emphasized ? 0.05 : 0.035;
-    button.layer.shadowRadius = emphasized ? 8.0 : 6.0;
-    button.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+    button.layer.shadowOpacity = emphasized ? 0.045 : 0.025;
+    button.layer.shadowRadius = emphasized ? 8.0 : 5.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 2.0);
 }
 
 - (void)pp_applyPremiumNavSearchButtonAppearance
@@ -2020,9 +2078,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     centeredStyle.paragraphSpacing = 0;
     centeredStyle.lineHeightMultiple = 1.0;
 
-    UIFont *baseTitleFont = [GM boldFontWithSize:13.8] ?: [UIFont systemFontOfSize:13.8 weight:UIFontWeightSemibold];
+    UIFont *baseTitleFont = [GM boldFontWithSize:13.4] ?: [UIFont systemFontOfSize:13.4 weight:UIFontWeightSemibold];
     UIFont *titleFont = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:baseTitleFont
-                                                                                         maximumPointSize:16.4];
+                                                                                         maximumPointSize:15.8];
 
     NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:resolvedTitle
                                                                               attributes:@{
@@ -2042,7 +2100,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     configuration.background.cornerRadius = selectorRadius;
 
     configuration.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
-    configuration.contentInsets = NSDirectionalEdgeInsetsMake(5.0, 8.0, 5.0, 8.0);
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(4.0, 9.0, 4.0, 9.0);
     configuration.subtitle = nil;
     configuration.attributedSubtitle = nil;
     configuration.attributedTitle = title;
@@ -2062,14 +2120,18 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
                    makeTemplate:NO];
         configuration.image = chevron;
         configuration.imagePlacement = NSDirectionalRectEdgeTrailing;
-        configuration.imagePadding = 7.5; // Added elegant horizontal breathing room next to the value
+        configuration.imagePadding = 6.0;
     } else {
         configuration.image = nil;
         configuration.imagePadding = 0.0;
     }
-    configuration.background.backgroundColor = UIColor.clearColor;
-    configuration.background.strokeColor = UIColor.clearColor;
-    configuration.background.strokeWidth = 0.0;
+    configuration.background.backgroundColor = emphasized
+        ? [accent colorWithAlphaComponent:0.082]
+        : UIColor.clearColor;
+    configuration.background.strokeColor = emphasized
+        ? [accent colorWithAlphaComponent:0.16]
+        : UIColor.clearColor;
+    configuration.background.strokeWidth = emphasized ? (1.0 / UIScreen.mainScreen.scale) : 0.0;
     configuration.background.cornerRadius = selectorRadius;
     button.configuration = configuration;
 
@@ -2808,46 +2870,43 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
     UIColor *accent = [self pp_controlIslandContentAccentColor];
     BOOL useIslandAccent = [self pp_controlIslandUsesAccentColor];
-    UIColor *surface = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.54],
-                                             [UIColor colorWithWhite:1.0 alpha:0.075]);
-    UIColor *badgeSurface = PPDataViewBlendColor(surface,
-                                                accent,
-                                                darkMode ? 0.18 : 0.055,
-                                                self.traitCollection);
-    UIColor *stroke = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.62],
-                                             [UIColor colorWithWhite:1.0 alpha:0.14]);
+    UIColor *iconSurface = [accent colorWithAlphaComponent:darkMode ? 0.16 : 0.09];
+    UIColor *dividerColor =
+        PPDataViewDynamicColor([UIColor colorWithWhite:0.20 alpha:0.10],
+                               [UIColor colorWithWhite:1.0 alpha:0.10]);
 
     self.filterContextBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.filterContextBar.backgroundColor = badgeSurface;
-    CGFloat contextRadius = PPDataViewPillRadiusForHeight(kPPFilterContextBarHeight, 16.0);
-    self.filterContextBar.layer.cornerRadius = contextRadius;
-    self.filterContextBar.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.filterContextBar.layer.borderColor = PPDataViewResolvedColor(stroke, self.traitCollection).CGColor;
-    self.filterContextBar.layer.shadowColor = [accent colorWithAlphaComponent:0.24].CGColor;
-    self.filterContextBar.layer.shadowOpacity = darkMode ? 0.075 : 0.045;
-    self.filterContextBar.layer.shadowRadius = 9.0;
-    self.filterContextBar.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+    self.filterContextBar.backgroundColor = UIColor.clearColor;
+    self.filterContextBar.layer.cornerRadius = 0.0;
+    self.filterContextBar.layer.borderWidth = 0.0;
+    self.filterContextBar.layer.borderColor = UIColor.clearColor.CGColor;
+    self.filterContextBar.layer.shadowOpacity = 0.0;
+    self.filterContextBar.layer.shadowRadius = 0.0;
+    self.filterContextBar.layer.shadowOffset = CGSizeZero;
 
     if (@available(iOS 13.0, *)) {
         self.filterContextBar.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
     self.filterContextBar.isAccessibilityElement = YES;
-    self.filterContextBadgeView.backgroundColor = AppClearClr;//badgeSurface
+    self.filterContextDividerView.backgroundColor = dividerColor;
+    self.filterContextBadgeView.backgroundColor = UIColor.clearColor;
     self.filterContextBadgeView.layer.cornerRadius = kPPFilterContextBadgeHeight * 0.5;
-    self.filterContextBadgeView.layer.borderWidth = 0.0 / UIScreen.mainScreen.scale;
-    self.filterContextBadgeView.layer.borderColor =
-        PPDataViewResolvedColor([UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.14 : 0.78],
-                                self.traitCollection).CGColor;
+    self.filterContextBadgeView.layer.borderWidth = 0.0;
+    self.filterContextBadgeView.layer.borderColor = UIColor.clearColor.CGColor;
     if (@available(iOS 13.0, *)) {
         self.filterContextBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
+    self.filterContextIconView.backgroundColor = iconSurface;
+    self.filterContextIconView.layer.cornerRadius = 11.0;
+    self.filterContextIconView.clipsToBounds = YES;
+    self.filterContextIconView.contentMode = UIViewContentModeCenter;
     self.filterContextIconView.tintColor = accent;
     self.filterContextLabel.textColor = PPDataViewChromeTextColor();
     self.filterContextLabel.font =
-        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:12.6] ?: [UIFont systemFontOfSize:12.6 weight:UIFontWeightSemibold])
-                                                                                   maximumPointSize:14.0];
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:12.8] ?: [UIFont systemFontOfSize:12.8 weight:UIFontWeightSemibold])
+                                                                                   maximumPointSize:14.4];
     self.filterContextLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.filterContextSecondaryLabel.textColor = PPDataViewChromeSecondaryTextColor();
     self.filterContextSecondaryLabel.font =
@@ -2858,21 +2917,38 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.filterCollapseButton.tintColor = useIslandAccent
         ? accent
         : PPDataViewAccentColor();
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *collapseConfiguration =
+            self.filterCollapseButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        collapseConfiguration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        collapseConfiguration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 10.0, 0.0, 10.0);
+        collapseConfiguration.imagePadding = 5.0;
+        collapseConfiguration.imagePlacement = NSDirectionalRectEdgeTrailing;
+        collapseConfiguration.baseForegroundColor = accent;
+        collapseConfiguration.background.backgroundColor = [accent colorWithAlphaComponent:darkMode ? 0.15 : 0.075];
+        collapseConfiguration.background.strokeColor = [accent colorWithAlphaComponent:darkMode ? 0.24 : 0.14];
+        collapseConfiguration.background.strokeWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.filterCollapseButton.configuration = collapseConfiguration;
+    } else {
+        self.filterCollapseButton.backgroundColor = [accent colorWithAlphaComponent:darkMode ? 0.15 : 0.075];
+        self.filterCollapseButton.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.filterCollapseButton.layer.borderColor =
+            PPDataViewResolvedColor([accent colorWithAlphaComponent:darkMode ? 0.24 : 0.14],
+                                    self.traitCollection).CGColor;
+    }
     [self pp_applySmartFilterPillAppearance];
 
     if (self.providerFilterChipButton) {
         BOOL dark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
-        UIColor *chipSurface = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.84],
-                                                     [UIColor colorWithWhite:1.0 alpha:0.105]);
-        if (useIslandAccent) {
-            chipSurface = PPDataViewBlendColor(chipSurface,
-                                               accent,
-                                               dark ? 0.24 : 0.12,
-                                               self.traitCollection);
-        }
+        UIColor *chipSurface = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.58],
+                                                     [UIColor colorWithWhite:1.0 alpha:0.065]);
+        chipSurface = PPDataViewBlendColor(chipSurface,
+                                           accent,
+                                           useIslandAccent ? (dark ? 0.20 : 0.09) : (dark ? 0.10 : 0.035),
+                                           self.traitCollection);
         UIColor *chipStroke = PPDataViewBlendColor(chipSurface,
                                                   accent,
-                                                  dark ? 0.26 : 0.18,
+                                                  dark ? 0.20 : 0.12,
                                                   self.traitCollection);
         UIColor *primaryTextColor = PPDataViewChromeTextColor();
         UIColor *secondaryTextColor = PPDataViewChromeSecondaryTextColor();
@@ -2883,10 +2959,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.providerFilterChipButton.layer.cornerRadius = providerChipRadius;
         self.providerFilterChipButton.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         self.providerFilterChipButton.layer.borderColor = PPDataViewResolvedColor(chipStroke, self.traitCollection).CGColor;
-        self.providerFilterChipButton.layer.shadowColor = [accent colorWithAlphaComponent:0.32].CGColor;
-        self.providerFilterChipButton.layer.shadowOpacity = dark ? 0.08 : 0.055;
-        self.providerFilterChipButton.layer.shadowRadius = 10.0;
-        self.providerFilterChipButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+        self.providerFilterChipButton.layer.shadowOpacity = 0.0;
+        self.providerFilterChipButton.layer.shadowRadius = 0.0;
+        self.providerFilterChipButton.layer.shadowOffset = CGSizeZero;
         if (@available(iOS 13.0, *)) {
             self.providerFilterChipButton.layer.cornerCurve = kCACornerCurveContinuous;
         }
@@ -3002,11 +3077,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     }
 
     if (self.filterContextBar && !CGRectIsEmpty(self.filterContextBar.bounds)) {
-        CGFloat radius = MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.filterContextBar.bounds), 18.0));
-        self.filterContextBar.layer.cornerRadius = radius;
-        self.filterContextBar.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:self.filterContextBar.bounds
-                                       cornerRadius:radius].CGPath;
+        self.filterContextBar.layer.cornerRadius = 0.0;
+        self.filterContextBar.layer.shadowPath = nil;
     }
 
     if (self.dockedSmartFilterPillView && !CGRectIsEmpty(self.dockedSmartFilterPillView.bounds)) {
@@ -5592,7 +5664,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     void (^layoutChanges)(void) = ^{
         self.filterChipTopConstraint.constant = shouldShow ? kPPFilterIslandExpandedRowSpacing : 0.0;
         self.filterChipHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
-        self.filterChipStackHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight - 4.0 : 0.0;
+        self.filterChipStackHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
         self.filterChipContainer.alpha = shouldShow ? 1.0 : 0.0;
         self.filterChipContainer.transform = shouldShow
             ? CGAffineTransformIdentity
@@ -7251,18 +7323,23 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         : @"dataview_filters_expand_accessibility";
     NSInteger activeFilterCount = [self pp_activeFilterCountForSection:section];
     NSString *baseTitle = kLang(labelKey) ?: @"";
-    NSString *titleText = baseTitle;
-    if (!expanded && activeFilterCount > 0) {
-        NSString *format = kLang(@"dataview_filters_expand_active_count_format");
-        titleText = format.length > 0
-            ? [NSString stringWithFormat:format, (long)activeFilterCount]
-            : [NSString stringWithFormat:@"%@ · %ld", baseTitle ?: @"", (long)activeFilterCount];
+    NSString *filterTitle = kLang(@"filterPPAction");
+    NSString *titleText = filterTitle.length > 0 ? filterTitle : baseTitle;
+    if (activeFilterCount > 0) {
+        NSString *activeCountFormat = kLang(@"dataview_filters_button_active_count_format");
+        if (activeCountFormat.length > 0) {
+            titleText = [NSString stringWithFormat:activeCountFormat, (long)activeFilterCount];
+        }
     }
-    self.filterCollapseButton.accessibilityLabel = baseTitle;
+    self.filterCollapseButton.accessibilityLabel = filterTitle.length > 0 ? filterTitle : baseTitle;
+    self.filterCollapseButton.accessibilityHint = baseTitle;
     NSString *activeCountAccessibilityFormat = kLang(@"dataview_filters_active_count_accessibility_format");
     self.filterCollapseButton.accessibilityValue = activeFilterCount > 0 && activeCountAccessibilityFormat.length > 0
         ? [NSString stringWithFormat:activeCountAccessibilityFormat, (long)activeFilterCount]
         : nil;
+    self.filterCollapseButton.accessibilityTraits = expanded
+        ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected)
+        : UIAccessibilityTraitButton;
     self.filterCollapseButton.enabled = hasFilters;
     self.filterCollapseButton.userInteractionEnabled = hasFilters;
     if (hasFilters) {
@@ -7943,7 +8020,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     self.navSeparatorLine = [UIView new];
     self.navSeparatorLine.translatesAutoresizingMaskIntoConstraints = NO;
-    self.navSeparatorLine.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.35] ?: [UIColor colorWithWhite:0.5 alpha:0.3];
+    self.navSeparatorLine.backgroundColor =
+        PPDataViewDynamicColor([UIColor colorWithWhite:0.20 alpha:0.12],
+                               [UIColor colorWithWhite:1.0 alpha:0.11]);
     self.navSeparatorLine.hidden = self.useCapsuleNavigation;
 
     [self.navContainerView addSubview:self.KindsButton];
@@ -7957,7 +8036,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     // Legacy center action retained hidden; search now lives in the right navbar slot.
  
     
-    CGFloat inset = 3.0;
+    CGFloat inset = 1.0;
     self.subKindsTrailingToCartConstraint =
     [self.subKindsButton.trailingAnchor constraintEqualToAnchor:self.cartButton.leadingAnchor constant:-inset];
     self.subKindsTrailingToContainerConstraint =
@@ -7974,8 +8053,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.cartButton.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-inset],
 
         // Separator vertical layout in center
-        [self.navSeparatorLine.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:12.0],
-        [self.navSeparatorLine.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-12.0],
+        [self.navSeparatorLine.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:11.0],
+        [self.navSeparatorLine.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-11.0],
         [self.navSeparatorLine.widthAnchor constraintEqualToConstant:1.0],
 
         // Horizontal (Kinds → Separator → SubKinds)
@@ -7984,8 +8063,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.KindsButton.trailingAnchor constraintEqualToAnchor:self.navSeparatorLine.leadingAnchor  constant:-4.0],
         [self.navSeparatorLine.trailingAnchor constraintEqualToAnchor:self.subKindsButton.leadingAnchor constant:-4.0],
 
-        [self.centerCapsuleButton.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:4.0],
-        [self.centerCapsuleButton.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-4.0],
+        [self.centerCapsuleButton.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:1.0],
+        [self.centerCapsuleButton.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-1.0],
         [self.centerCapsuleButton.centerXAnchor constraintEqualToAnchor:self.navContainerView.centerXAnchor],
         [self.centerCapsuleButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.navContainerView.leadingAnchor constant:inset],
         [self.centerCapsuleButton.trailingAnchor constraintLessThanOrEqualToAnchor:self.cartButton.leadingAnchor constant:-inset],
@@ -8043,7 +8122,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.cartButton invalidateIntrinsicContentSize];
 
         CGFloat visibleChromeWidth = MAX(176.0, self.navContainerWidthConstraint.constant);
-        CGFloat outerInset = 3.0;
+        CGFloat outerInset = 1.0;
         CGFloat separatorGap = 4.0;
         CGFloat separatorWidth = 1.0;
         CGFloat cartWidth = self.isCartButtonVisible ? 36.0 : 1.0;
@@ -9002,10 +9081,10 @@ presentingViewController:self
     [NSLayoutConstraint activateConstraints:@[
         [controlIsland.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
         [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? 20.0 : 16.0],
-        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:PPIOS26() ? -20.0 :  -16.0],
+        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:PPIOS26() ? -20.0 : -16.0],
         [sectionsControl.topAnchor constraintEqualToAnchor:controlIsland.topAnchor constant:kPPFilterIslandTopPadding],
-        [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:6.0],
-        [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-6.0]
+        [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:8.0],
+        [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-8.0]
     ]];
     [self pp_prepareSectionsSegmentedEntranceInitialState];
 
@@ -9022,6 +9101,13 @@ presentingViewController:self
     [filterContextBar addTarget:self
                          action:@selector(toggleFilterBadgesCollapsed:)
                forControlEvents:UIControlEventTouchUpInside];
+
+    UIView *filterContextDivider = [[UIView alloc] init];
+    filterContextDivider.translatesAutoresizingMaskIntoConstraints = NO;
+    filterContextDivider.userInteractionEnabled = NO;
+    filterContextDivider.isAccessibilityElement = NO;
+    self.filterContextDividerView = filterContextDivider;
+    [filterContextBar addSubview:filterContextDivider];
 
     UIView *filterBadgeView = [[UIView alloc] init];
     filterBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -9040,7 +9126,8 @@ presentingViewController:self
                                                     withConfiguration:contextIconConfig]
                                       imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
     contextIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    contextIconView.contentMode = UIViewContentModeScaleAspectFit;
+    contextIconView.contentMode = UIViewContentModeCenter;
+    contextIconView.clipsToBounds = YES;
     self.filterContextIconView = contextIconView;
     [filterBadgeView addSubview:contextIconView];
 
@@ -9296,6 +9383,11 @@ presentingViewController:self
         [filterContextBar.topAnchor constraintEqualToAnchor:filterContainer.bottomAnchor constant:kPPFilterIslandRowSpacing],
         [controlIsland.bottomAnchor constraintEqualToAnchor:filterContextBar.bottomAnchor constant:kPPFilterIslandBottomPadding],
 
+        [filterContextDivider.topAnchor constraintEqualToAnchor:filterContextBar.topAnchor],
+        [filterContextDivider.leadingAnchor constraintEqualToAnchor:filterContextBar.leadingAnchor constant:4.0],
+        [filterContextDivider.trailingAnchor constraintEqualToAnchor:filterContextBar.trailingAnchor constant:-4.0],
+        [filterContextDivider.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
+
         [providerAvatarView.leadingAnchor constraintEqualToAnchor:providerFilterChip.leadingAnchor constant:12.0],
         [providerAvatarView.centerYAnchor constraintEqualToAnchor:providerFilterChip.centerYAnchor],
         [providerAvatarView.widthAnchor constraintEqualToConstant:kPPProviderFilterChipAvatarDiameter],
@@ -9317,13 +9409,13 @@ presentingViewController:self
         [filterBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:collapseButton.leadingAnchor constant:-6.0],
         [filterBadgeView.heightAnchor constraintEqualToConstant:kPPFilterContextBadgeHeight],
 
-        [contextIconView.leadingAnchor constraintEqualToAnchor:filterBadgeView.leadingAnchor constant:10.0],
+        [contextIconView.leadingAnchor constraintEqualToAnchor:filterBadgeView.leadingAnchor constant:4.0],
         [contextIconView.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
-        [contextIconView.widthAnchor constraintEqualToConstant:13.0],
-        [contextIconView.heightAnchor constraintEqualToConstant:13.0],
+        [contextIconView.widthAnchor constraintEqualToConstant:22.0],
+        [contextIconView.heightAnchor constraintEqualToConstant:22.0],
 
-        [contextTextStack.leadingAnchor constraintEqualToAnchor:contextIconView.trailingAnchor constant:7.0],
-        [contextTextStack.trailingAnchor constraintEqualToAnchor:filterBadgeView.trailingAnchor constant:-10.0],
+        [contextTextStack.leadingAnchor constraintEqualToAnchor:contextIconView.trailingAnchor constant:8.0],
+        [contextTextStack.trailingAnchor constraintEqualToAnchor:filterBadgeView.trailingAnchor constant:-4.0],
         [contextTextStack.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
         [contextTextStack.topAnchor constraintGreaterThanOrEqualToAnchor:filterBadgeView.topAnchor constant:3.0],
         [contextTextStack.bottomAnchor constraintLessThanOrEqualToAnchor:filterBadgeView.bottomAnchor constant:-3.0],
@@ -9348,15 +9440,15 @@ presentingViewController:self
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
     chipsStack.alignment = UIStackViewAlignmentFill;
     chipsStack.distribution = UIStackViewDistributionFillEqually;
-    chipsStack.spacing = 8.0;
+    chipsStack.spacing = 6.0;
     self.filterChipStackView = chipsStack;
     [filterContainer addSubview:chipsStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [chipsStack.topAnchor constraintEqualToAnchor:filterContainer.topAnchor constant:2.0],
+        [chipsStack.topAnchor constraintEqualToAnchor:filterContainer.topAnchor],
         [chipsStack.leadingAnchor constraintEqualToAnchor:filterContainer.leadingAnchor],
         [chipsStack.trailingAnchor constraintEqualToAnchor:filterContainer.trailingAnchor],
-        [chipsStack.bottomAnchor constraintEqualToAnchor:filterContainer.bottomAnchor constant:-2.0],
+        [chipsStack.bottomAnchor constraintEqualToAnchor:filterContainer.bottomAnchor],
     ]];
     self.filterChipStackHeightConstraint = [chipsStack.heightAnchor constraintEqualToConstant:0.0];
     self.filterChipStackHeightConstraint.active = YES;
