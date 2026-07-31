@@ -19,7 +19,7 @@ private enum PPSectionHeaderMetrics {
     static let titleUnderlineWidth: CGFloat = 34
     static let titleUnderlineExpandedWidth: CGFloat = 52
     static let titleUnderlineHeight: CGFloat = 3
-    static let actionHeight: CGFloat = 36
+    static let actionHeight: CGFloat = 44
     static let actionMinWidth: CGFloat = 44
     static let actionMaxWidth: CGFloat = 160
     static let actionTitleMinimumScale: CGFloat = 0.76
@@ -71,11 +71,11 @@ private enum PPSectionHeaderTypography {
 
     static func action() -> UIFont {
         scaledBrandFont(
-            named: "Beiruti-Medium",
-            size: 12,
-            fallbackWeight: .medium,
-            textStyle: .caption1,
-            maximumPointSize: 16
+            named: "Beiruti-Bold",
+            size: 13,
+            fallbackWeight: .semibold,
+            textStyle: .subheadline,
+            maximumPointSize: 18
         )
     }
 
@@ -251,7 +251,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         actionButton.isHidden = true
         actionButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage()
         actionButton.clipsToBounds = true
-        actionButton.layer.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
+        actionButton.layer.cornerRadius = PPSectionHeaderMetrics.cornerRadius
         actionButton.layer.cornerCurve = .continuous
         actionButton.titleLabel?.numberOfLines = 1
         actionButton.titleLabel?.lineBreakMode = .byTruncatingTail
@@ -275,40 +275,64 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
 
     private func baseActionButtonConfiguration() -> UIButton.Configuration {
         var config = UIButton.Configuration.plain()
-        config.cornerStyle = .capsule
-        config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12)
-        config.imagePadding = 5
+        config.cornerStyle = .fixed
+        config.contentInsets = NSDirectionalEdgeInsets(
+            top: 7,
+            leading: 12,
+            bottom: 7,
+            trailing: 8
+        )
+        config.imagePadding = 8
         config.imagePlacement = .trailing
         config.baseForegroundColor = actionForegroundColor()
         config.background = actionBackgroundConfiguration(circlePresentation: false)
 
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 11.5, weight: .regular, scale: .medium)
-        config.image = UIImage(systemName: "chevron.down", withConfiguration: symbolConfig)?
+        let symbolConfig = UIImage.SymbolConfiguration(
+            pointSize: 13,
+            weight: .semibold,
+            scale: .medium
+        )
+        config.image = UIImage(
+            systemName: "arrow.forward.circle.fill",
+            withConfiguration: symbolConfig
+        )?
             .withTintColor(actionForegroundColor(), renderingMode: .alwaysTemplate)
         return config
     }
 
-    private func actionButtonConfiguration(subtitleVisible: Bool) -> UIButton.Configuration {
+    private func actionButtonConfiguration(circlePresentation: Bool) -> UIButton.Configuration {
         var config = baseActionButtonConfiguration()
         config.imagePlacement = .trailing
-        config.imagePadding = subtitleVisible ? 0 : 5
-        config.contentInsets = subtitleVisible
-            ? NSDirectionalEdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 6)
-            : NSDirectionalEdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12)
-        config.background = actionBackgroundConfiguration(circlePresentation: subtitleVisible)
+        config.imagePadding = circlePresentation ? 0 : 8
+        config.contentInsets = circlePresentation
+            ? NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+            : NSDirectionalEdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 8)
+        config.background = actionBackgroundConfiguration(
+            circlePresentation: circlePresentation
+        )
         return config
     }
 
     private func actionBackgroundConfiguration(circlePresentation: Bool) -> UIBackgroundConfiguration {
         let accent = PPSectionHeaderPalette.accent
         let darkMode = traitCollection.userInterfaceStyle == .dark
+        let increasedContrast =
+            traitCollection.accessibilityContrast == .high
         var background = UIBackgroundConfiguration.clear()
-        background.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
-        background.strokeWidth = 1
-        background.strokeColor = accent.withAlphaComponent(darkMode ? 0.22 : 0.18)
-        background.backgroundColor = accent.withAlphaComponent(circlePresentation
-            ? (darkMode ? 0.18 : 0.12)
-            : (darkMode ? 0.12 : 0.075))
+        background.cornerRadius = PPSectionHeaderMetrics.cornerRadius
+        background.strokeWidth = increasedContrast ? 1.5 : 1
+        if increasedContrast {
+            background.strokeColor = UIColor.ppTextPrimary.withAlphaComponent(0.62)
+        } else {
+            background.strokeColor = circlePresentation
+                ? accent.withAlphaComponent(darkMode ? 0.28 : 0.20)
+                : UIColor.ppBorder.withAlphaComponent(darkMode ? 0.82 : 0.92)
+        }
+        background.backgroundColor = circlePresentation
+            ? accent.withAlphaComponent(darkMode ? 0.18 : 0.12)
+            : UIColor.ppElevatedSurface.withAlphaComponent(
+                increasedContrast ? 1 : (darkMode ? 0.96 : 0.98)
+            )
         return background
     }
 
@@ -320,10 +344,10 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         config.background = actionBackgroundConfiguration(
             circlePresentation: actionButtonUsesCirclePresentation
         )
-        config.cornerStyle = .capsule
+        config.cornerStyle = .fixed
         config.baseForegroundColor = actionForegroundColor()
         actionButton.configuration = config
-        actionButton.layer.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
+        actionButton.layer.cornerRadius = PPSectionHeaderMetrics.cornerRadius
         actionButton.layer.cornerCurve = .continuous
         syncHost(animated: false)
     }
@@ -461,8 +485,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
             actionTitle: actionTitle,
             iconName: iconName,
             menu: menu,
-            sectionRawValue: currentSectionRawValue,
-            subtitleVisible: hasSubtitle
+            sectionRawValue: currentSectionRawValue
         )
         configureMenu(menu)
         refreshAppearance()
@@ -483,21 +506,24 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         actionTitle: String?,
         iconName: String?,
         menu: UIMenu?,
-        sectionRawValue: Int,
-        subtitleVisible: Bool
+        sectionRawValue: Int
     ) {
         actionButton.isHidden = false
 
-        let forceTitleAction =
-            sectionRawValue == PPSectionHeaderHomeSectionRaw.mainKinds ||
-            sectionRawValue == PPSectionHeaderHomeSectionRaw.accessories
-        let usesCirclePresentation = subtitleVisible && !forceTitleAction
+        let usesCirclePresentation = false
         actionButtonUsesCirclePresentation = usesCirclePresentation
 
         let resolvedActionTitle = (actionTitle?.isEmpty == false)
             ? actionTitle!
             : (Language.get("ShowAll", alter: nil) ?? "Show All")
-        var resolvedIconName = (iconName?.isEmpty == false) ? iconName! : "arrow.forward"
+        var resolvedIconName: String
+        if let iconName, !iconName.isEmpty {
+            resolvedIconName = iconName
+        } else if menu != nil {
+            resolvedIconName = "chevron.down"
+        } else {
+            resolvedIconName = "arrow.forward.circle.fill"
+        }
         if sectionRawValue == PPSectionHeaderHomeSectionRaw.mainKinds &&
             !usesCirclePresentation &&
             (iconName?.isEmpty ?? true) {
@@ -509,11 +535,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
 
         actionAccessibilityTitle = resolvedActionTitle
 
-        var config = actionButtonConfiguration(subtitleVisible: usesCirclePresentation)
-        applyIcon(
-            named: resolvedIconName,
-            to: &config,
-            sectionRawValue: sectionRawValue,
+        var config = actionButtonConfiguration(
             circlePresentation: usesCirclePresentation
         )
 
@@ -525,18 +547,33 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
             config.title = resolvedActionTitle
             config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { [weak self] incoming in
                 var outgoing = incoming
-                outgoing.font = self?.actionFont() ?? UIFont.systemFont(ofSize: 12, weight: .medium)
-                outgoing.foregroundColor = self?.actionForegroundColor() ?? .secondaryLabel
+                outgoing.font = self?.actionFont()
+                    ?? UIFont.systemFont(ofSize: 13, weight: .semibold)
+                outgoing.foregroundColor = self?.titleColor() ?? .label
                 return outgoing
             }
         }
+
+        applyIcon(
+            named: resolvedIconName,
+            to: &config,
+            sectionRawValue: sectionRawValue,
+            circlePresentation: usesCirclePresentation
+        )
 
         let usesMainKindsPresentation =
             sectionRawValue == PPSectionHeaderHomeSectionRaw.mainKinds &&
             !usesCirclePresentation
         if usesMainKindsPresentation {
-            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
-            config.imagePadding = config.image == nil ? 0 : PPSectionHeaderMetrics.mainKindsActionImagePadding
+            config.contentInsets = NSDirectionalEdgeInsets(
+                top: 7,
+                leading: 10,
+                bottom: 7,
+                trailing: 8
+            )
+            config.imagePadding = config.image == nil
+                ? 0
+                : PPSectionHeaderMetrics.mainKindsActionImagePadding
             actionButton.titleLabel?.minimumScaleFactor = PPSectionHeaderMetrics.mainKindsActionTitleMinimumScale
         } else {
             actionButton.titleLabel?.minimumScaleFactor = PPSectionHeaderMetrics.actionTitleMinimumScale
@@ -547,7 +584,6 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         actionButton.setNeedsUpdateConfiguration()
         actionButton.setNeedsLayout()
         syncHost(animated: false)
-        _ = menu
     }
 
     private func applyIcon(
@@ -556,8 +592,11 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         sectionRawValue: Int,
         circlePresentation: Bool
     ) {
-        let pointSize: CGFloat = circlePresentation ? 12.5 : 11.5
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .regular, scale: .medium)
+        let symbolConfig = UIImage.SymbolConfiguration(
+            pointSize: 13,
+            weight: .semibold,
+            scale: .medium
+        )
         var image: UIImage?
 
         if let iconName, !iconName.isEmpty {
@@ -567,7 +606,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         }
 
         config.image = image?.withTintColor(actionForegroundColor(), renderingMode: .alwaysTemplate)
-        config.imagePadding = (image != nil && !circlePresentation) ? 5 : 0
+        config.imagePadding = (image != nil && !circlePresentation) ? 8 : 0
         config.imagePlacement = .trailing
 
         let hasTitleText = !(config.title?.isEmpty ?? true) || config.attributedTitle != nil
@@ -918,7 +957,8 @@ private struct PPSectionHeaderRootView: View {
                     minimumScaleFactor: actionTitleMinimumScale
                 )
                 .layoutPriority(2)
-                .fixedSize(horizontal: true, vertical: true)
+                .frame(minHeight: PPSectionHeaderMetrics.actionHeight)
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.vertical, 3)
                 .transition(.opacity)
                 .accessibilitySortPriority(1)

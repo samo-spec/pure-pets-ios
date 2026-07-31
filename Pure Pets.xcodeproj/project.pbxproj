@@ -707,6 +707,7 @@
 		F2B641C12F4A96180092C2BF /* PPStoryCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B641C02F4A96180092C2BF /* PPStoryCollectionViewCell.m */; };
 		F2B641C42F4A96310092C2BF /* PPStoriesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B641C32F4A96310092C2BF /* PPStoriesViewController.m */; };
 		F2B641C62F4A96620092C2BF /* PPStoryPlayerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B641C52F4A96620092C2BF /* PPStoryPlayerViewController.m */; };
+		F2B66C14301C51C100D868AC /* WorldGlassBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B66C13301C51C100D868AC /* WorldGlassBackground.swift */; };
 		F2B6F79B2E37ABA400AC0DAE /* UserChatsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F79A2E37AB9100AC0DAE /* UserChatsViewController.m */; };
 		F2B6F7A12E37AE9A00AC0DAE /* ChatThreadModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7A02E37AE9A00AC0DAE /* ChatThreadModel.m */; };
 		F2B6F7A42E37AF6500AC0DAE /* ChManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7A32E37AF5500AC0DAE /* ChManager.m */; };
@@ -2194,6 +2195,7 @@
 		F2B641C32F4A96310092C2BF /* PPStoriesViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPStoriesViewController.m; sourceTree = "<group>"; };
 		F2B641C52F4A96620092C2BF /* PPStoryPlayerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPStoryPlayerViewController.m; sourceTree = "<group>"; };
 		F2B641C72F4A966B0092C2BF /* PPStoryPlayerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPStoryPlayerViewController.h; sourceTree = "<group>"; };
+		F2B66C13301C51C100D868AC /* WorldGlassBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldGlassBackground.swift; sourceTree = "<group>"; };
 		F2B6F7992E37AB8A00AC0DAE /* UserChatsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserChatsViewController.h; sourceTree = "<group>"; };
 		F2B6F79A2E37AB9100AC0DAE /* UserChatsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserChatsViewController.m; sourceTree = "<group>"; };
 		F2B6F79F2E37AE8F00AC0DAE /* ChatThreadModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatThreadModel.h; sourceTree = "<group>"; };
@@ -3550,6 +3552,7 @@
 		F25CC3A03009BDA2007D24AB /* PPBackground */ = {
 			isa = PBXGroup;
 			children = (
+				F2B66C13301C51C100D868AC /* WorldGlassBackground.swift */,
 				F2A24AD03002DA7F003AB79D /* PPBackgroundView.h */,
 				F2A24AD13002DA7F003AB79D /* PPBackgroundView.m */,
 				A5E100012FF1000100A5E001 /* PPHeroApex.swift */,
@@ -6587,6 +6590,7 @@
 				F27F45F92C701DE300876484 /* FFLoadingView.m in Sources */,
 				F2F750CE2E7C82EA00BACFA8 /* PPGradientView.m in Sources */,
 				F24D6EEC2EB9F00A009962D0 /* UserManager.m in Sources */,
+				F2B66C14301C51C100D868AC /* WorldGlassBackground.swift in Sources */,
 				F2AB488E2C72CF3C00D88603 /* JGProgressHUDErrorIndicatorView.m in Sources */,
 				F2FCEBAF2ECD09BF002A9F67 /* PPCompleteProfileVC.m in Sources */,
 				F23AUTH02FC4000000000001 /* PPAuthStepIndicatorView.m in Sources */,

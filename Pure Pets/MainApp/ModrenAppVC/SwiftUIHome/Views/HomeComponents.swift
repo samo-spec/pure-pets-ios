@@ -2073,8 +2073,8 @@ private struct HomeFeaturedPetCard: View {
                 .aspectRatio(contentMode: .fit)
                 .foregroundStyle(Color.homeBrand)
                 .frame(
-                    width: animationHaloSize * 0.56,
-                    height: animationHaloSize * 0.56
+                    width: animationHaloSize * 0.66,
+                    height: animationHaloSize * 0.66
                 )
         } else {
             HomeHeroLottieRepresentable(

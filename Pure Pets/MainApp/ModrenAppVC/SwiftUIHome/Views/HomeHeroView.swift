@@ -1085,6 +1085,8 @@ private struct HomeHeroBorder: View {
     let darkMode: Bool
     let increasedContrast: Bool
 
+    @Environment(\.layoutDirection) private var layoutDirection
+
     var body: some View {
         heroShape
             .strokeBorder(
@@ -1107,12 +1109,18 @@ private struct HomeHeroBorder: View {
         return AnyShapeStyle(
             LinearGradient(
                 colors: [
+                    Color.white.opacity(darkMode ? 0.48 : 0.92),
                     Color.homeSeparator.opacity(darkMode ? 0.52 : 0.34),
                     accent.opacity(darkMode ? 0.22 : 0.12),
                     Color.homeSeparator.opacity(darkMode ? 0.42 : 0.24),
+                    Color.white.opacity(darkMode ? 0.38 : 0.80),
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                startPoint: layoutDirection == .rightToLeft
+                    ? .topTrailing
+                    : .topLeading,
+                endPoint: layoutDirection == .rightToLeft
+                    ? .bottomLeading
+                    : .bottomTrailing
             )
         )
     }
