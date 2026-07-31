@@ -907,7 +907,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func restingGlowOpacity(selected: Bool) -> Float {
         if selected {
-            return isAllOption ? 0.09 : 0.12
+            return isAllOption ? 0.11 : 0.15
         }
         return isAllOption ? 0.02 : 0.04
     }
@@ -918,7 +918,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
         if selected {
-            return pressing ? 0.06 : 0.14
+            return pressing ? 0.07 : 0.16
         }
         return pressing ? 0.08 : 0.04
     }
@@ -928,10 +928,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let isAll = isAllOption
         let selected = rendersSelectedGlow
         let leadingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.28 : 0.40)
+            ? (isAll ? 0.31 : 0.44)
             : (isAll ? 0.10 : 0.14)
         let trailingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.16 : 0.24)
+            ? (isAll ? 0.18 : 0.27)
             : (isAll ? 0.05 : 0.08)
         bottomGlowLayer.colors = [
             accent.withAlphaComponent(leadingGlowAlpha).cgColor,
