@@ -44,6 +44,11 @@ public struct AnimatedAddToCartOutcome: Equatable {
 /// the signature add → confirmation → quantity control while preserving the
 /// caller's cart state and business logic.
 public struct AnimatedAddToCartButton: View {
+    public enum PresentationStyle: Equatable {
+        case standard
+        case accessoryDecisionRail
+    }
+
     /// Optional externally-owned quantity state for the signature one-control flow.
     ///
     /// The component never mutates cart or inventory state directly. Each action
@@ -110,6 +115,7 @@ public struct AnimatedAddToCartButton: View {
     private let tint: Color
     private let itemSymbol: String
     private let isEnabled: Bool
+    private let presentationStyle: PresentationStyle
     private let onCartTap: (() -> Void)?
     private let quantityMode: QuantityMode?
     private let onAdd: @MainActor () async throws -> AnimatedAddToCartOutcome
@@ -148,6 +154,7 @@ public struct AnimatedAddToCartButton: View {
         itemSymbol: String = "shippingbox.fill",
         isEnabled: Bool = true,
         cornerRadius: CGFloat = 13,
+        presentationStyle: PresentationStyle = .standard,
         onCartTap: (() -> Void)? = nil,
         quantityMode: QuantityMode? = nil,
         onAdd: @escaping @MainActor () async throws -> AnimatedAddToCartOutcome
@@ -161,6 +168,7 @@ public struct AnimatedAddToCartButton: View {
         self.itemSymbol = itemSymbol
         self.isEnabled = isEnabled
         self.cornerRadius = cornerRadius
+        self.presentationStyle = presentationStyle
         self.onCartTap = onCartTap
         self.quantityMode = quantityMode
         self.onAdd = onAdd
@@ -246,13 +254,43 @@ public struct AnimatedAddToCartButton: View {
         }
     }
 
+    @ViewBuilder
     private var legacyAddControl: some View {
-        HStack(spacing: 10) {
+        switch presentationStyle {
+        case .standard:
+            HStack(spacing: 10) {
+                primaryAddButton(signature: false)
+
+                cartButton
+            }
+            .padding(.trailing, 2)
+        case .accessoryDecisionRail:
+            accessoryDecisionRailControl
+        }
+    }
+
+    private var accessoryDecisionRailControl: some View {
+        HStack(spacing: PPSpace.sm) {
             primaryAddButton(signature: false)
+                .frame(maxWidth: .infinity)
 
             cartButton
         }
-        .padding(.trailing, 2)
+        .padding(PPSpace.xs)
+        .background {
+            buttonShape
+                .fill(
+                    Color.ppSecondarySurface.opacity(
+                        colorScheme == .dark ? 0.72 : 0.62
+                    )
+                )
+        }
+        .overlay {
+            buttonShape.strokeBorder(
+                tint.opacity(colorScheme == .dark ? 0.24 : 0.12),
+                lineWidth: 1
+            )
+        }
     }
 
     private func primaryAddButton(signature: Bool) -> some View {
@@ -313,12 +351,16 @@ public struct AnimatedAddToCartButton: View {
                         ? (usesCompactSignatureControl
                             ? PPSpace.sm
                             : PPSpace.lg)
-                        : 14
+                        : (presentationStyle == .accessoryDecisionRail
+                            ? PPSpace.base
+                            : 14)
                 )
             }
             .frame(
                 maxWidth: signature ? .infinity : nil,
-                minHeight: signature ? signatureControlHeight : 52
+                minHeight: signature
+                    ? signatureControlHeight
+                    : legacyControlHeight
             )
             .contentShape(buttonShape)
         }
@@ -350,7 +392,12 @@ public struct AnimatedAddToCartButton: View {
             Text(currentTitle)
                 .font(PPAccessoryTypography.bodyBold)
                 .multilineTextAlignment(.leading)
-                .lineLimit(1)
+                .lineLimit(
+                    presentationStyle == .accessoryDecisionRail &&
+                        dynamicTypeSize.isAccessibilitySize
+                        ? 2
+                        : 1
+                )
                 .minimumScaleFactor(0.78)
                 .id(currentTitle)
                 .transition(phaseTitleTransition)
@@ -432,6 +479,13 @@ public struct AnimatedAddToCartButton: View {
 
     private var usesCompactSignatureControl: Bool {
         signatureControlHeight < 58
+    }
+
+    private var legacyControlHeight: CGFloat {
+        guard presentationStyle == .accessoryDecisionRail else { return 52 }
+        return dynamicTypeSize.isAccessibilitySize
+            ? 72
+            : PPBottomDecisionBarGeometry.controlHeight
     }
 
     @ViewBuilder
@@ -789,7 +843,15 @@ public struct AnimatedAddToCartButton: View {
 
     @ViewBuilder
     private var cartButton: some View {
-        if #available(iOS 26.0, *) {
+        if presentationStyle == .accessoryDecisionRail {
+            Button(action: {
+                onCartTap?()
+            }) {
+                accessoryDecisionRailCartIndicator
+            }
+            .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
+            .disabled(!isEnabled && onCartTap == nil)
+        } else if #available(iOS 26.0, *) {
             ZStack(alignment: .topTrailing) {
                 PPAccessoryGlassButtonRepresentable(
                     symbol: "cart.fill",
@@ -840,6 +902,90 @@ public struct AnimatedAddToCartButton: View {
             .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
             .disabled(!isEnabled && onCartTap == nil)
         }
+    }
+
+    private var accessoryDecisionRailCartIndicator: some View {
+        ZStack(alignment: .topTrailing) {
+            ZStack {
+                RoundedRectangle(
+                    cornerRadius: max(PPCorner.small, cornerRadius - PPSpace.xs),
+                    style: .continuous
+                )
+                .fill(Color.ppForeground)
+
+                RoundedRectangle(
+                    cornerRadius: max(PPCorner.small, cornerRadius - PPSpace.xs),
+                    style: .continuous
+                )
+                .fill(tint.opacity(colorScheme == .dark ? 0.16 : 0.08))
+
+                Image(systemName: "cart.fill")
+                    .font(.system(size: 18, weight: .bold))
+            }
+            .frame(
+                width: PPBottomDecisionBarGeometry.utilityControlSize,
+                height: PPBottomDecisionBarGeometry.utilityControlSize
+            )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: max(PPCorner.small, cornerRadius - PPSpace.xs),
+                    style: .continuous
+                )
+                .strokeBorder(
+                    tint.opacity(colorScheme == .dark ? 0.34 : 0.18),
+                    lineWidth: 1
+                )
+            }
+            .foregroundStyle(isEnabled ? tint : Color.ppTextSecondary)
+            .scaleEffect(
+                x: 1 + (0.05 * cartImpact),
+                y: 1 - (0.10 * cartImpact),
+                anchor: .center
+            )
+            .rotationEffect(
+                .degrees(Double(-2.5 * direction * cartImpact))
+            )
+            .offset(x: 2 * direction * cartImpact)
+            .anchorPreference(
+                key: AddToCartFlightAnchorPreferenceKey.self,
+                value: .bounds
+            ) { anchor in
+                [.cart: anchor]
+            }
+
+            if displayedCount > 0 {
+                Text(PPAccessoryViewerL10n.integer(displayedCount))
+                    .font(PPAccessoryTypography.captionBold)
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .frame(minWidth: 20, minHeight: 20)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(tint)
+                    )
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(
+                                Color.ppElevatedSurface.opacity(0.92),
+                                lineWidth: 1.5
+                            )
+                    }
+                    .scaleEffect(badgeScale)
+                    .offset(x: 5 * direction, y: -5)
+                    .transition(
+                        .scale(scale: 0.55).combined(with: .opacity)
+                    )
+            }
+        }
+        .frame(
+            width: PPBottomDecisionBarGeometry.utilityControlSize + PPSpace.xs,
+            height: PPBottomDecisionBarGeometry.utilityControlSize + PPSpace.xs
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            PPAccessoryViewerL10n.text("accessory_view_open_cart")
+        )
     }
 
     private var leadingStatus: some View {
@@ -993,7 +1139,10 @@ public struct AnimatedAddToCartButton: View {
 
             let currentLeading = startLeading + ((endLeading - startLeading) * progress)
             let baselineY = startPoint.y + ((endPoint.y - startPoint.y) * progress)
-            let arc = CGFloat(sin(Double(progress) * .pi)) * min(22, size.height * 0.34)
+            let arc = CGFloat(sin(Double(progress) * .pi)) * min(
+                causalFlightArcHeight,
+                size.height * 0.34
+            )
             let y = baselineY - arc
 
             let currentPoint = pointFromLeading(currentLeading, vertical: y, in: size.width)
@@ -1181,6 +1330,22 @@ public struct AnimatedAddToCartButton: View {
 
     private var buttonForeground: Color {
         isEnabled ? .white : Color.ppTextSecondary
+    }
+
+    private var causalFlightDuration: Double {
+        presentationStyle == .accessoryDecisionRail ? 0.52 : 0.78
+    }
+
+    private var causalFlightLandingDelay: UInt64 {
+        presentationStyle == .accessoryDecisionRail ? 410 : 620
+    }
+
+    private var causalSuccessHoldDuration: UInt64 {
+        presentationStyle == .accessoryDecisionRail ? 720 : 1_100
+    }
+
+    private var causalFlightArcHeight: CGFloat {
+        presentationStyle == .accessoryDecisionRail ? 18 : 22
     }
 
     private var quantityControlTransitionAnimation: Animation {
@@ -1481,12 +1646,18 @@ public struct AnimatedAddToCartButton: View {
         cartCount = newCount
 
         withAnimation(
-            .timingCurve(0.20, 0.78, 0.18, 1, duration: 0.78)
+            .timingCurve(
+                0.20,
+                0.78,
+                0.18,
+                1,
+                duration: causalFlightDuration
+            )
         ) {
             flightProgress = 1
         }
 
-        try await sleep(milliseconds: 620)
+        try await sleep(milliseconds: causalFlightLandingDelay)
 
         withAnimation(.easeIn(duration: 0.18)) {
             cartImpact = 1
@@ -1524,7 +1695,7 @@ public struct AnimatedAddToCartButton: View {
             badgeScale = 1
         }
 
-        try await sleep(milliseconds: 1100)
+        try await sleep(milliseconds: causalSuccessHoldDuration)
 
         withAnimation(.easeOut(duration: 0.32)) {
             displayedCount = max(0, cartCount)

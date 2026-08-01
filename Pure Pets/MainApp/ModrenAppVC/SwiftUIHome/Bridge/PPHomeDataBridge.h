@@ -107,6 +107,12 @@ typedef NS_ENUM(NSInteger, PPHomeBridgeLocationState) {
                      completion:(void (^)(NSArray<PetAccessory *> *accessories))completion
     NS_SWIFT_NAME(fetchAccessories(ids:completion:));
 
+/// Uses the same category-scoped inventory query as DataView so Home can
+/// distinguish a genuine category match from its featured/latest fallback.
+- (void)fetchAccessoriesForMainCategoryID:(NSInteger)mainCategoryID
+                                completion:(void (^)(NSArray<PetAccessory *> *accessories))completion
+    NS_SWIFT_NAME(fetchAccessories(mainCategoryID:completion:));
+
 /// Shared order normalization helpers keep legacy and current order documents
 /// aligned while Swift owns the resulting presentation state.
 + (nullable NSObject *)activeOrderFromOrders:(NSArray<NSObject *> *)orders
@@ -142,6 +148,7 @@ typedef NS_ENUM(NSInteger, PPHomeBridgeLocationState) {
                     loadsFromFirebase:(BOOL)loadsFromFirebase;
 
 @property (nonatomic, assign, getter=isPlaybackEnabled) BOOL playbackEnabled;
+@property (nonatomic, strong, nullable) UIColor *customTintColor;
 
 @end
 

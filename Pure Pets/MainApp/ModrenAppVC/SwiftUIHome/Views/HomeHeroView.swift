@@ -755,10 +755,11 @@ private struct HomeHeroFloatingPlate: View {
             HomeHeroLottieRepresentable(
                 animationName: animationName,
                 loadsFromFirebase: loadsFromFirebase,
-                playbackEnabled: !reduceMotion
+                playbackEnabled: !reduceMotion,
+                tintColor: .white
             )
             .padding(8)
-            .tint(accent)
+            .tint(.white)
         }
     }
 
@@ -823,7 +824,7 @@ private struct HomeHeroFloatingPlate: View {
     }
 }
 
-private struct HomeHeroField: View {
+struct HomeHeroField: View {
     let accent: Color
     let increasedContrast: Bool
 
@@ -885,11 +886,14 @@ private struct HomeHeroField: View {
             ZStack {
                 RadialGradient(
                     colors: [
-                        accent.opacity(
-                            colorScheme == .dark ? 0.14 : 0.09
+                        Color.white.opacity(
+                            colorScheme == .dark ? 0.12 : 0.34
                         ),
                         accent.opacity(
-                            colorScheme == .dark ? 0.052 : 0.032
+                            colorScheme == .dark ? 0.22 : 0.16
+                        ),
+                        accent.opacity(
+                            colorScheme == .dark ? 0.075 : 0.052
                         ),
                         Color.clear,
                     ],
@@ -902,11 +906,14 @@ private struct HomeHeroField: View {
 
                 RadialGradient(
                     colors: [
-                        accent.opacity(
-                            colorScheme == .dark ? 0.115 : 0.075
+                        Color.white.opacity(
+                            colorScheme == .dark ? 0.10 : 0.30
                         ),
                         accent.opacity(
-                            colorScheme == .dark ? 0.042 : 0.026
+                            colorScheme == .dark ? 0.19 : 0.14
+                        ),
+                        accent.opacity(
+                            colorScheme == .dark ? 0.065 : 0.044
                         ),
                         Color.clear,
                     ],
@@ -1109,11 +1116,11 @@ private struct HomeHeroBorder: View {
         return AnyShapeStyle(
             LinearGradient(
                 colors: [
-                    Color.white.opacity(darkMode ? 0.48 : 0.92),
-                    Color.homeSeparator.opacity(darkMode ? 0.52 : 0.34),
-                    accent.opacity(darkMode ? 0.22 : 0.12),
-                    Color.homeSeparator.opacity(darkMode ? 0.42 : 0.24),
-                    Color.white.opacity(darkMode ? 0.38 : 0.80),
+                    Color.white.opacity(darkMode ? 0.66 : 0.98),
+                    Color.white.opacity(darkMode ? 0.52 : 0.90),
+                    accent.opacity(darkMode ? 0.12 : 0.07),
+                    Color.white.opacity(darkMode ? 0.46 : 0.84),
+                    Color.white.opacity(darkMode ? 0.60 : 0.96),
                 ],
                 startPoint: layoutDirection == .rightToLeft
                     ? .topTrailing
@@ -1130,6 +1137,7 @@ struct HomeHeroLottieRepresentable: UIViewRepresentable {
     let animationName: String
     let loadsFromFirebase: Bool
     let playbackEnabled: Bool
+    var tintColor: UIColor? = nil
 
     func makeUIView(context: Context) -> PPHomeHeroAnimationView {
         let view = PPHomeHeroAnimationView(
@@ -1137,6 +1145,9 @@ struct HomeHeroLottieRepresentable: UIViewRepresentable {
             loadsFromFirebase: loadsFromFirebase
         )
         view.isPlaybackEnabled = playbackEnabled
+        if let tintColor {
+            view.customTintColor = tintColor
+        }
         return view
     }
 
@@ -1145,6 +1156,9 @@ struct HomeHeroLottieRepresentable: UIViewRepresentable {
         context: Context
     ) {
         uiView.isPlaybackEnabled = playbackEnabled
+        if let tintColor {
+            uiView.customTintColor = tintColor
+        }
     }
 
     static func dismantleUIView(

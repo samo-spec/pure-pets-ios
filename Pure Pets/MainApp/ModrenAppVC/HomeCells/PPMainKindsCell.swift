@@ -1,29 +1,36 @@
 import UIKit
 
 private enum PPMainKindsCellMetrics {
-    static let cornerRadius: CGFloat = 24
-    static let contentInset: CGFloat = 11
+    static let cornerRadius: CGFloat = PPCorner.card
+    static let contentInset: CGFloat = PPSpace.sm
     static let imagePlateSize: CGFloat = 90
     static let compactImagePlateSize: CGFloat = 76
-    static let artworkSize: CGFloat = 70
+    static let maximumImagePlateSize: CGFloat = 96
+    static let maximumCompactImagePlateSize: CGFloat = 82
+    static let artworkSize: CGFloat = 76
     static let allArtworkSize: CGFloat = 36
-    static let imageToTitleSpacing: CGFloat = 6
-    static let indicatorWidth: CGFloat = 26
-    static let indicatorHeight: CGFloat = 3
-    static let selectedBorderWidth: CGFloat = 0.78
-    static let regularBorderWidth: CGFloat = 1 / UIScreen.main.scale
+    static let imageToTitleSpacing: CGFloat = PPSpace.xs
+    static let indicatorWidth: CGFloat = 30
+    static let indicatorHeight: CGFloat = PPSpace.xs
+    static let identitySpineWidth: CGFloat = PPSpace.xs
+    static let identitySpineInset: CGFloat = PPSpace.sm
+    static let selectedBorderWidth: CGFloat = 0.65
+    static let regularBorderWidth: CGFloat = 0.65
     static let pressDuration: TimeInterval = 0.10
     static let releaseDuration: TimeInterval = 0.22
     static let selectionDuration: TimeInterval = 0.28
     static let restoredEntranceDuration: TimeInterval = 0.38
     static let selectionChangeDuration: TimeInterval = 0.28
-    static let haloDuration: TimeInterval = 0.40
-    static let glowCommitDuration: TimeInterval = 0.36
+    static let haloDuration: TimeInterval = 0.28
+    static let identityRevealDuration: TimeInterval = 0.26
+    static let identityTraceDuration: TimeInterval = 0.34
+    static let commitDuration: TimeInterval = 0.22
 }
 
 private enum PPMainKindsCellAnimationKey {
     static let tapHalo = "pp.mainKinds.tapHalo"
-    static let glowCommit = "pp.mainKinds.glowCommit"
+    static let identityReveal = "pp.mainKinds.identityReveal"
+    static let identityTrace = "pp.mainKinds.identityTrace"
 }
 
 private enum PPMainKindsCellPalette {
@@ -35,36 +42,12 @@ private enum PPMainKindsCellPalette {
         UIColor(named: "PrimaryTextColor") ?? .label
     }
 
-    static var SeconerdText: UIColor {
-        UIColor(named: "PrimaryTextColor") ?? .label
-    }
-
     static var card: UIColor {
         UIColor(named: "AppCardColor") ?? .secondarySystemBackground
     }
 
-    static var appBackColor: UIColor {
-        UIColor(named: "AppBackgroundColor") ?? .secondarySystemBackground
-    }
-    
-    static var appBackgroundColorLigter: UIColor {
-        UIColor(named: "AppBackgroundColorLigter") ?? .secondarySystemBackground
-    }
-    
-    static var appForgroundColor: UIColor {
-        UIColor(named: "AppForgroundColor") ?? .secondarySystemBackground
-    }
-
-    static var plate: UIColor {
-        UIColor(named: "AppForgroundColor") ?? .secondarySystemBackground
-    }
-
-    static var border: UIColor {
-        UIColor.diff.withAlphaComponent(0.28)
-    }
-    
-    static var borderThin: UIColor {
-        UIColor.diff.withAlphaComponent(0.16)
+    static var appSurface: UIColor {
+        UIColor(named: "AppSurfColor") ?? UIColor(named: "AppCardColor") ?? .secondarySystemBackground
     }
 }
 
@@ -82,9 +65,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private let kindImageView = UIImageView()
     private let titleLabel = UILabel()
     private let selectionIndicatorView = UIView()
+    private let identityFieldLayer = CAGradientLayer()
+    private let identitySpineLayer = CAGradientLayer()
+    private let captionFieldLayer = CAGradientLayer()
     private let bottomGlowLayer = CAGradientLayer()
     private let kindNameGlowLayer = CAGradientLayer()
     private let tapHaloLayer = CAGradientLayer()
+    private let selectionIndicatorLayer = CAGradientLayer()
 
     private var imagePlateWidthConstraint: NSLayoutConstraint!
     private var imagePlateHeightConstraint: NSLayoutConstraint!
@@ -100,6 +87,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private var isPressing = false
     private var isPreviewingSelectedGlow = false
     private var appliedPlateSize: CGFloat = 0
+    private var interactionGeneration = 0
+    private var isCommitInFlight = false
 
     private var reduceMotion: Bool {
         UIAccessibility.isReduceMotionEnabled
@@ -128,6 +117,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         tapButton.translatesAutoresizingMaskIntoConstraints = false
         tapButton.backgroundColor = .clear
+        tapButton.isExclusiveTouch = true
         tapButton.accessibilityTraits = .button
         tapButton.addTarget(self, action: #selector(handleTap), for: .touchUpInside)
         tapButton.addTarget(self, action: #selector(handleTouchDown), for: [.touchDown, .touchDragEnter])
@@ -147,6 +137,23 @@ public final class PPMainKindsCell: UICollectionViewCell {
         materialView.layer.cornerRadius = PPMainKindsCellMetrics.cornerRadius
         materialView.layer.cornerCurve = .continuous
         surfaceView.addSubview(materialView)
+
+        identityFieldLayer.name = "PPMainKindsIdentityFieldLayer"
+        identityFieldLayer.locations = [0, 0.44, 0.78, 1]
+        materialView.layer.addSublayer(identityFieldLayer)
+
+        identitySpineLayer.name = "PPMainKindsIdentitySpineLayer"
+        identitySpineLayer.locations = [0, 0.5, 1]
+        identitySpineLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        identitySpineLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        identitySpineLayer.masksToBounds = true
+        materialView.layer.addSublayer(identitySpineLayer)
+
+        captionFieldLayer.name = "PPMainKindsCaptionFieldLayer"
+        captionFieldLayer.locations = [0, 0.48, 1]
+        captionFieldLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        captionFieldLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        materialView.layer.addSublayer(captionFieldLayer)
 
         bottomGlowLayer.name = "PPMainKindsBottomGlowCircleLayer"
         bottomGlowLayer.type = .radial
@@ -174,11 +181,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         imagePlateView.translatesAutoresizingMaskIntoConstraints = false
         imagePlateView.isUserInteractionEnabled = false
+        imagePlateView.backgroundColor = .clear
         imagePlateView.layer.masksToBounds = false
-        imagePlateView.layer.shadowColor = UIColor.black.cgColor
-        imagePlateView.layer.shadowOpacity = 0.085
-        imagePlateView.layer.shadowRadius = 8
-        imagePlateView.layer.shadowOffset = CGSize(width: 0, height: 3.5)
         surfaceView.addSubview(imagePlateView)
 
         kindImageView.translatesAutoresizingMaskIntoConstraints = false
@@ -201,6 +205,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
         selectionIndicatorView.layer.cornerRadius = PPMainKindsCellMetrics.indicatorHeight / 2
         selectionIndicatorView.layer.masksToBounds = true
         surfaceView.addSubview(selectionIndicatorView)
+
+        selectionIndicatorLayer.name = "PPMainKindsSelectionHorizonLayer"
+        selectionIndicatorLayer.locations = [0, 0.5, 1]
+        selectionIndicatorLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        selectionIndicatorLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        selectionIndicatorView.layer.addSublayer(selectionIndicatorLayer)
 
         imagePlateWidthConstraint = imagePlateView.widthAnchor.constraint(
             equalToConstant: PPMainKindsCellMetrics.imagePlateSize
@@ -305,6 +315,11 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let nextURL = stringValue(forKey: "KindImageUrl", in: kind)
         let shouldRefreshImage = !sameBinding || kindImageView.image == nil || currentImageURL != nextURL
 
+        if !sameBinding {
+            interactionGeneration &+= 1
+            isCommitInFlight = false
+        }
+
         boundCellID = nextCellID
         currentKind = kind
         currentImageURL = nextURL
@@ -348,12 +363,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         if isAll {
             let configuration = UIImage.SymbolConfiguration(
-                pointSize: 24,
+                pointSize: 25,
                 weight: .semibold,
                 scale: .medium
             )
-            let image = UIImage(named: "pawprint")
-                ?? UIImage(systemName: "square.grid.2x2.fill", withConfiguration: configuration)
+            let image = UIImage(
+                systemName: "square.grid.2x2.fill",
+                withConfiguration: configuration
+            ) ?? UIImage(named: "square-layout")
             kindImageView.image = image?.withRenderingMode(.alwaysTemplate)
             kindImageView.tintColor = resolvedImageViewTintColor(selected: isKindSelected)
             return
@@ -399,48 +416,56 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let accent = currentAccentColor
         let selected = isKindSelected
         let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
+        let increasedContrast = traitCollection.accessibilityContrast == .high
+        let darkMode = traitCollection.userInterfaceStyle == .dark
 
         updateMotionLayerPalette()
         let updates = {
             self.surfaceView.backgroundColor = .clear
-            self.materialView.backgroundColor = selected
-                ? PPMainKindsCellPalette.card
-                : PPMainKindsCellPalette.card.withAlphaComponent(reduceTransparency ? 0.46 : 0.82)
-            
+            self.materialView.backgroundColor = PPMainKindsCellPalette.card.withAlphaComponent(
+                reduceTransparency ? 1 : (selected ? 0.98 : 0.92)
+            )
+
+            let appSurface = PPMainKindsCellPalette.appSurface
+            let selectedBorderColor = accent.blended(
+                with: appSurface,
+                ratio: increasedContrast ? 0.80 : 0.50,
+                traitCollection: self.traitCollection
+            )
+
             self.surfaceView.layer.borderColor = (
                 self.usesRestoredSelectionAppearance && selected
                     ? UIColor.clear
-                    : (selected ? accent.withAlphaComponent(0.22) : PPMainKindsCellPalette.border)
+                    : (selected
+                        ? selectedBorderColor
+                        : UIColor.ppBorder.withAlphaComponent(increasedContrast ? 1 : 0.76))
             ).resolvedColor(with: self.traitCollection).cgColor
             self.surfaceView.layer.borderWidth = self.usesRestoredSelectionAppearance && selected
                 ? 0
                 : (selected
-                    ? PPMainKindsCellMetrics.selectedBorderWidth
-                    : PPMainKindsCellMetrics.regularBorderWidth)
-            self.surfaceView.layer.shadowColor = UIColor.black.withAlphaComponent(0.3).cgColor
-            self.surfaceView.layer.shadowOpacity = selected ? 0.055 : 0.015
-            self.surfaceView.layer.shadowRadius = selected ? 10 : 5
-            self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: selected ? 4 : 2)
-            let normalAlpha = reduceTransparency ? 0.18 : 0.22
-            let finalAlpha = self.isAllOption ? (normalAlpha * 0.2) : normalAlpha
-            self.imagePlateView.backgroundColor = selected
-                ? accent.withAlphaComponent(finalAlpha)
-            : PPMainKindsCellPalette.appBackgroundColorLigter.withAlphaComponent(0.92)
-            self.imagePlateView.layer.shadowOpacity = selected ? 0.015 : 0.085
-            self.imagePlateView.layer.borderColor = selected ? accent
-                .withAlphaComponent(
-                    0.12
-                ).cgColor : PPMainKindsCellPalette.borderThin.cgColor
-            self.imagePlateView.layer.shadowColor = selected ? accent.cgColor : UIColor.black.cgColor
+                    ? (increasedContrast ? 1.0 : PPMainKindsCellMetrics.selectedBorderWidth)
+                    : (increasedContrast ? 1.0 : PPMainKindsCellMetrics.regularBorderWidth))
+            self.surfaceView.layer.shadowColor = UIColor.black.cgColor
+            self.surfaceView.layer.shadowOpacity = darkMode
+                ? (selected ? 0.16 : 0.08)
+                : (selected ? 0.09 : 0.035)
+            self.surfaceView.layer.shadowRadius = selected ? 13 : 7
+            self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: selected ? 7 : 3)
 
-            self.imagePlateView.layer.borderWidth = selected
-            ? 0.3
-            : 0.25
-            self.titleLabel.textColor = selected ? accent : PPMainKindsCellPalette.primaryText
+            self.imagePlateView.backgroundColor = .clear
+            self.imagePlateView.layer.borderWidth = 0
+            self.imagePlateView.layer.shadowOpacity = 0
+            self.titleLabel.textColor = PPMainKindsCellPalette.primaryText
+            self.titleLabel.alpha = 1
             self.kindImageView.tintColor = self.resolvedImageViewTintColor(selected: selected)
-            self.selectionIndicatorView.backgroundColor = accent
             self.selectionIndicatorView.alpha = selected ? 1 : 0
             self.selectionIndicatorView.transform = selected ? .identity : CGAffineTransform(scaleX: 0.70, y: 1)
+            self.selectionIndicatorView.layer.shadowColor = accent
+                .resolvedColor(with: self.traitCollection)
+                .cgColor
+            self.selectionIndicatorView.layer.shadowOpacity = selected && !increasedContrast ? 0.22 : 0
+            self.selectionIndicatorView.layer.shadowRadius = 4
+            self.selectionIndicatorView.layer.shadowOffset = .zero
             let glowSelected = self.rendersSelectedGlow
             self.bottomGlowLayer.opacity = self.isPressing
                 ? self.pressedGlowOpacity(selected: glowSelected)
@@ -499,36 +524,40 @@ public final class PPMainKindsCell: UICollectionViewCell {
         imagePlateHeightConstraint.constant = plateSize
         artworkWidthConstraint.constant = artworkSize
         artworkHeightConstraint.constant = artworkSize
-        imagePlateView.layer.cornerRadius = plateSize / 2
-
-        let shadowBounds = CGRect(x: 0, y: 0, width: plateSize, height: plateSize)
-        imagePlateView.layer.shadowPath = UIBezierPath(roundedRect: shadowBounds, cornerRadius: plateSize / 2).cgPath
+        imagePlateView.layer.cornerRadius = 0
+        imagePlateView.layer.shadowPath = nil
     }
 
-    private func resolvedImageViewTintColor(selected: Bool) -> UIColor {
-        if isAllOption {
-            if #available(iOS 13.0, *) {
-                return selected ? currentAccentColor : UIColor.systemGray
-            } else {
-                return selected ? currentAccentColor : UIColor.gray
-            }
-        } else {
-            return currentAccentColor
-        }
+    private func resolvedImageViewTintColor(selected _: Bool) -> UIColor {
+        currentAccentColor
     }
 
     private func resolvedImagePlateSize(accessibilityText: Bool) -> CGFloat {
-        let baseSize = accessibilityText
+        let preferredSize = accessibilityText
             ? PPMainKindsCellMetrics.compactImagePlateSize
             : PPMainKindsCellMetrics.imagePlateSize
+        let maximumSize = accessibilityText
+            ? PPMainKindsCellMetrics.maximumCompactImagePlateSize
+            : PPMainKindsCellMetrics.maximumImagePlateSize
         let inset = PPMainKindsCellMetrics.contentInset
         let availableWidth = contentView.bounds.width > 1
             ? contentView.bounds.width
             : bounds.width
+        let availableHeight = contentView.bounds.height > 1
+            ? contentView.bounds.height
+            : bounds.height
         let widthMatchedSize = availableWidth > 1
             ? max(PPMainKindsCellMetrics.compactImagePlateSize, availableWidth - (inset * 2))
-            : baseSize
-        return min(baseSize, widthMatchedSize)
+            : preferredSize
+        let reservedTitleHeight: CGFloat = accessibilityText ? 44 : 26
+        let heightMatchedSize = availableHeight > 1
+            ? max(
+                PPMainKindsCellMetrics.compactImagePlateSize,
+                availableHeight - (inset * 2) -
+                    PPMainKindsCellMetrics.imageToTitleSpacing - reservedTitleHeight
+            )
+            : preferredSize
+        return min(maximumSize, min(widthMatchedSize, heightMatchedSize))
     }
 
     @objc private func handleTouchDown() {
@@ -561,10 +590,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
                     ? self.pressedTapTransform
                     : self.restingTapTransform
                 self.imagePlateView.transform = pressed
-                    ? CGAffineTransform(scaleX: 1.08, y: 1.08)
+                    ? CGAffineTransform(translationX: 0, y: -1.5)
+                        .scaledBy(x: 1.035, y: 1.035)
                     : .identity
                 self.kindImageView.transform = pressed
-                    ? CGAffineTransform(scaleX: 1.05, y: 1.05)
+                    ? CGAffineTransform(translationX: 0, y: -2)
+                        .scaledBy(x: 1.025, y: 1.025)
                     : .identity
                 self.titleLabel.transform = pressed
                     ? CGAffineTransform(translationX: 0, y: 0.5)
@@ -588,6 +619,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
     @objc private func handleTap() {
         applyPressed(false)
 
+        guard !isCommitInFlight else { return }
+
         let feedback = UIImpactFeedbackGenerator(style: .medium)
         feedback.prepare()
         feedback.impactOccurred(intensity: 0.88)
@@ -595,6 +628,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let selection = onSelect
         let kind = currentKind
         let isAll = isAllOption
+        let expectedCellID = boundCellID
+        let generation = interactionGeneration
         guard let selection else { return }
 
         if reduceMotion {
@@ -602,10 +637,31 @@ public final class PPMainKindsCell: UICollectionViewCell {
             return
         }
 
+        isCommitInFlight = true
+        isPreviewingSelectedGlow = true
         updateMotionLayerPalette()
         layoutMotionLayers()
-        performPremiumHaloExplosionAnimation {
+        performSignatureCommitMotion { [weak self] in
+            guard let self else { return }
+            self.isCommitInFlight = false
+            guard self.interactionGeneration == generation,
+                  self.boundCellID == expectedCellID,
+                  self.window != nil,
+                  self.onSelect != nil else {
+                return
+            }
             selection(kind, isAll)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) { [weak self] in
+                guard let self,
+                      self.interactionGeneration == generation,
+                      self.isPreviewingSelectedGlow,
+                      !self.isKindSelected else {
+                    return
+                }
+                self.isPreviewingSelectedGlow = false
+                self.applyAppearance(animated: true)
+                self.setNeedsLayout()
+            }
         }
     }
 
@@ -618,6 +674,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         updateMotionLayerPalette()
         layoutMotionLayers()
+        performIdentityRevealMotion()
         let finalBottomGlow = restingGlowOpacity(selected: true)
         let finalNameGlow = kindNameGlowOpacity(selected: true, pressing: false)
 
@@ -664,6 +721,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         updateMotionLayerPalette()
         layoutMotionLayers()
         performHaloBurstMotion()
+        performIdentityRevealMotion()
         let finalBottomGlow = restingGlowOpacity(selected: true)
         let finalNameGlow = kindNameGlowOpacity(selected: true, pressing: false)
 
@@ -676,9 +734,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
             options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
             animations: {
                 UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.40) {
-                    self.tapButton.transform = CGAffineTransform(scaleX: 1.03, y: 1.03)
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.20, y: 1.20)
-                    self.kindImageView.transform = CGAffineTransform(scaleX: 1.12, y: 1.12)
+                    self.tapButton.transform = CGAffineTransform(scaleX: 1.018, y: 1.018)
+                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.07, y: 1.07)
+                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -2)
+                        .scaledBy(x: 1.045, y: 1.045)
                     self.selectionIndicatorView.transform = .identity
                     self.selectionIndicatorView.alpha = 1
                     self.bottomGlowLayer.opacity = min(1, finalBottomGlow + 0.06)
@@ -755,6 +814,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let materialBounds = materialView.bounds
         let selectedGlow = rendersSelectedGlow
         let glowSelected = selectedGlow
+        let isRightToLeft =
+            UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
         bottomGlowLayer.opacity = isPressing
             ? pressedGlowOpacity(selected: glowSelected)
             : restingGlowOpacity(selected: glowSelected)
@@ -764,13 +825,39 @@ public final class PPMainKindsCell: UICollectionViewCell {
         )
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+
+        identityFieldLayer.frame = materialBounds
+        identityFieldLayer.startPoint = CGPoint(x: isRightToLeft ? 0.92 : 0.08, y: 0)
+        identityFieldLayer.endPoint = CGPoint(x: isRightToLeft ? 0.08 : 0.92, y: 1)
+
+        let spineHeight = min(58, max(46, materialBounds.height * 0.43))
+        let spineX = isRightToLeft
+            ? materialBounds.width - PPMainKindsCellMetrics.identitySpineInset -
+                PPMainKindsCellMetrics.identitySpineWidth
+            : PPMainKindsCellMetrics.identitySpineInset
+        identitySpineLayer.frame = CGRect(
+            x: spineX,
+            y: (materialBounds.height - spineHeight) / 2,
+            width: PPMainKindsCellMetrics.identitySpineWidth,
+            height: spineHeight
+        ).integral
+        identitySpineLayer.cornerRadius = PPMainKindsCellMetrics.identitySpineWidth / 2
+
+        let captionY = max(0, materialBounds.height * 0.58)
+        captionFieldLayer.frame = CGRect(
+            x: 0,
+            y: captionY,
+            width: materialBounds.width,
+            height: materialBounds.height - captionY
+        )
+
         let glowDiameter = selectedGlow
             ? min(174, max(136, max(materialBounds.width, materialBounds.height) * 1.34))
             : min(116, max(86, materialBounds.height * 0.90))
-        let isRightToLeft =
-            UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
         let glowX = selectedGlow
-            ? -glowDiameter * 0.34
+            ? (isRightToLeft
+                ? materialBounds.width - (glowDiameter * 0.66)
+                : -glowDiameter * 0.34)
             : (isRightToLeft
                 ? materialBounds.width - glowDiameter + 24
                 : -24)
@@ -798,6 +885,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         ).integral
         kindNameGlowLayer.cornerRadius = titleGlowHeight / 2
 
+        selectionIndicatorLayer.frame = selectionIndicatorView.bounds
+        selectionIndicatorLayer.cornerRadius = PPMainKindsCellMetrics.indicatorHeight / 2
         let plateFrame = imagePlateView.frame
         let plateCenterY = plateFrame.midY > 0 ? plateFrame.midY : (materialBounds.height * 0.38)
         let plateCenterX = plateFrame.midX > 0 ? plateFrame.midX : (materialBounds.width * 0.5)
@@ -820,6 +909,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         super.prepareForReuse()
         PPImageLoaderManager.shared().cancelImageLoad(for: kindImageView)
 
+        interactionGeneration &+= 1
+        isCommitInFlight = false
         onSelect = nil
         boundCellID = nil
         currentKind = nil
@@ -847,7 +938,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
             updateTypographyAndMetrics()
             setNeedsLayout()
         }
-        if previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true {
+        if previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true ||
+            previousTraitCollection?.accessibilityContrast != traitCollection.accessibilityContrast {
             applyAppearance(animated: false)
             setNeedsLayout()
         }
@@ -870,11 +962,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
            let color = kind.perform(selector)?.takeUnretainedValue() as? UIColor {
             return color
         }
-        return UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.72, green: 0.75, blue: 0.80, alpha: 1)
-                : UIColor(red: 0.38, green: 0.42, blue: 0.48, alpha: 1)
-        }
+        return PPMainKindsCellPalette.brand
     }
 
     private func localized(_ key: String, fallback: String) -> String {
@@ -906,10 +994,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
 
     private func restingGlowOpacity(selected: Bool) -> Float {
-        if selected {
-            return isAllOption ? 0.11 : 0.15
-        }
-        return isAllOption ? 0.02 : 0.04
+        guard selected else { return 0 }
+        return isAllOption ? 0.10 : 0.13
     }
 
     private func pressedGlowOpacity(selected: Bool) -> Float {
@@ -918,142 +1004,165 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
         if selected {
-            return pressing ? 0.07 : 0.16
+            return pressing ? 0.08 : 0.12
         }
-        return pressing ? 0.08 : 0.04
+        return pressing ? 0.04 : 0
     }
 
     private func updateMotionLayerPalette() {
         let accent = currentAccentColor.resolvedColor(with: traitCollection)
+        let surface = PPMainKindsCellPalette.card.resolvedColor(with: traitCollection)
         let isAll = isAllOption
         let selected = rendersSelectedGlow
+        let darkMode = traitCollection.userInterfaceStyle == .dark
+        let increasedContrast = traitCollection.accessibilityContrast == .high
+        let identityTopAlpha: CGFloat = increasedContrast
+            ? 0.48
+            : (isAll ? (darkMode ? 0.38 : 0.31) : (darkMode ? 0.44 : 0.36))
+        let identityMiddleAlpha = identityTopAlpha * 0.58
+        let identityLowAlpha = identityTopAlpha * 0.14
+        let spineAlpha: CGFloat = increasedContrast ? 1 : 0.98
         let leadingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.31 : 0.44)
-            : (isAll ? 0.10 : 0.14)
+            ? (isAll ? 0.28 : 0.38)
+            : 0
         let trailingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.18 : 0.27)
-            : (isAll ? 0.05 : 0.08)
+            ? (isAll ? 0.14 : 0.22)
+            : 0
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        identityFieldLayer.colors = [
+            accent.withAlphaComponent(identityTopAlpha).cgColor,
+            accent.withAlphaComponent(identityMiddleAlpha).cgColor,
+            accent.withAlphaComponent(identityLowAlpha).cgColor,
+            accent.withAlphaComponent(0).cgColor,
+        ]
+        identityFieldLayer.opacity = selected ? 1 : 0
+        identitySpineLayer.colors = [
+            accent.withAlphaComponent(spineAlpha * 0.50).cgColor,
+            accent.withAlphaComponent(spineAlpha).cgColor,
+            accent.withAlphaComponent(spineAlpha * 0.72).cgColor,
+        ]
+        identitySpineLayer.opacity = selected ? 1 : 0
+        captionFieldLayer.colors = [
+            surface.withAlphaComponent(0).cgColor,
+            surface.withAlphaComponent(darkMode ? 0.84 : 0.90).cgColor,
+            surface.withAlphaComponent(1).cgColor,
+        ]
         bottomGlowLayer.colors = [
             accent.withAlphaComponent(leadingGlowAlpha).cgColor,
             accent.withAlphaComponent(trailingGlowAlpha).cgColor,
-            accent.withAlphaComponent(0).cgColor
+            accent.withAlphaComponent(0).cgColor,
         ]
         kindNameGlowLayer.colors = [
             accent.withAlphaComponent(isAll ? 0.26 : 0.38).cgColor,
             accent.withAlphaComponent(isAll ? 0.16 : 0.24).cgColor,
-            accent.withAlphaComponent(0).cgColor
+            accent.withAlphaComponent(0).cgColor,
         ]
         tapHaloLayer.colors = [
-            accent.withAlphaComponent(0.36).cgColor,
-            accent.withAlphaComponent(0.18).cgColor,
-            accent.withAlphaComponent(0).cgColor
+            accent.withAlphaComponent(0.28).cgColor,
+            accent.withAlphaComponent(0.12).cgColor,
+            accent.withAlphaComponent(0).cgColor,
         ]
+        selectionIndicatorLayer.colors = [
+            accent.withAlphaComponent(0.12).cgColor,
+            accent.withAlphaComponent(increasedContrast ? 1 : 0.96).cgColor,
+            accent.withAlphaComponent(0.12).cgColor,
+        ]
+        CATransaction.commit()
     }
 
-    private func performTapCommitMotion() {
-        isPreviewingSelectedGlow = true
-        updateMotionLayerPalette()
-        layoutMotionLayers()
+    private func performSignatureCommitMotion(completion: @escaping () -> Void) {
         performHaloBurstMotion()
-
-        let restingGlow = restingGlowOpacity(selected: true)
-        let glowAnimation = CABasicAnimation(keyPath: "opacity")
-        glowAnimation.fromValue = min(1, restingGlow + 0.10)
-        glowAnimation.toValue = restingGlow
-        glowAnimation.duration = PPMainKindsCellMetrics.glowCommitDuration
-        glowAnimation.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        bottomGlowLayer.opacity = restingGlow
-        bottomGlowLayer.add(
-            glowAnimation,
-            forKey: PPMainKindsCellAnimationKey.glowCommit
-        )
-
-        let nameGlowAnimation = CABasicAnimation(keyPath: "opacity")
-        nameGlowAnimation.fromValue = 0.50
-        nameGlowAnimation.toValue = kindNameGlowOpacity(selected: true, pressing: false)
-        nameGlowAnimation.duration = PPMainKindsCellMetrics.glowCommitDuration
-        nameGlowAnimation.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        kindNameGlowLayer.opacity = kindNameGlowOpacity(selected: true, pressing: false)
-        kindNameGlowLayer.add(
-            nameGlowAnimation,
-            forKey: PPMainKindsCellAnimationKey.glowCommit
-        )
+        performIdentityRevealMotion()
 
         UIView.animateKeyframes(
-            withDuration: 0.42,
+            withDuration: PPMainKindsCellMetrics.commitDuration,
             delay: 0,
             options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
             animations: {
-                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.32) {
-                    let liftScale: CGFloat = self.isKindSelected ? 1.032 : 1.024
-                    self.tapButton.transform = CGAffineTransform(scaleX: liftScale, y: liftScale)
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.07, y: 1.07)
-                    self.kindImageView.transform = CGAffineTransform(scaleX: 1.04, y: 1.04)
+                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.42) {
+                    self.tapButton.transform = CGAffineTransform(scaleX: 0.982, y: 0.982)
+                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.06, y: 1.06)
+                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -2)
+                        .scaledBy(x: 1.04, y: 1.04)
                     self.selectionIndicatorView.transform = .identity
                 }
-                UIView.addKeyframe(withRelativeStartTime: 0.32, relativeDuration: 0.68) {
+                UIView.addKeyframe(withRelativeStartTime: 0.42, relativeDuration: 0.58) {
                     self.tapButton.transform = self.restingTapTransform
                     self.imagePlateView.transform = .identity
                     self.kindImageView.transform = .identity
                     self.titleLabel.transform = .identity
                     self.selectionIndicatorView.transform = .identity
-                    self.tapHaloLayer.opacity = 0
                 }
             }
         )
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + PPMainKindsCellMetrics.glowCommitDuration) { [weak self] in
-            guard let self, self.isPreviewingSelectedGlow, !self.isKindSelected else { return }
-            self.isPreviewingSelectedGlow = false
-            self.applyAppearance(animated: true)
-            self.setNeedsLayout()
-        }
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + PPMainKindsCellMetrics.commitDuration,
+            execute: completion
+        )
     }
 
-    private func performPremiumHaloExplosionAnimation(completion: @escaping () -> Void) {
-        tapHaloLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.tapHalo)
-        tapHaloLayer.opacity = 0
+    private func performIdentityRevealMotion() {
+        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
+        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityTrace)
+        identityFieldLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
 
-        let opacity = CAKeyframeAnimation(keyPath: "opacity")
-        opacity.values = [0.0, 0.98, 0.70, 0.0]
-        opacity.keyTimes = [0.0, 0.20, 0.60, 1.0]
+        let spineScale = CABasicAnimation(keyPath: "transform.scale.y")
+        spineScale.fromValue = 0.14
+        spineScale.toValue = 1
 
-        let scale = CAKeyframeAnimation(keyPath: "transform.scale")
-        scale.values = [0.20, 1.45, 2.90, 3.50]
-        scale.keyTimes = [0.0, 0.30, 0.75, 1.0]
-        scale.timingFunctions = [
-            CAMediaTimingFunction(name: .easeOut),
-            CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0),
-            CAMediaTimingFunction(name: .easeOut)
-        ]
+        let spineSlide = CABasicAnimation(keyPath: "position.y")
+        spineSlide.fromValue = identitySpineLayer.position.y - min(14, identitySpineLayer.bounds.height * 0.22)
+        spineSlide.toValue = identitySpineLayer.position.y
 
-        let group = CAAnimationGroup()
-        group.animations = [opacity, scale]
-        group.duration = 0.24
-        group.isRemovedOnCompletion = true
-        tapHaloLayer.add(group, forKey: PPMainKindsCellAnimationKey.tapHalo)
+        let spineOpacity = CABasicAnimation(keyPath: "opacity")
+        spineOpacity.fromValue = 0
+        spineOpacity.toValue = 1
 
-        UIView.animateKeyframes(
-            withDuration: 0.24,
-            delay: 0,
-            options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
-            animations: {
-                UIView.addKeyframe(withRelativeStartTime: 0.0, relativeDuration: 0.40) {
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.16, y: 1.16)
-                    self.kindImageView.transform = CGAffineTransform(scaleX: 1.10, y: 1.10)
-                    self.surfaceView.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
-                }
-                UIView.addKeyframe(withRelativeStartTime: 0.40, relativeDuration: 0.60) {
-                    self.imagePlateView.transform = .identity
-                    self.kindImageView.transform = .identity
-                    self.surfaceView.transform = .identity
-                }
-            }
+        let spineGroup = CAAnimationGroup()
+        spineGroup.animations = [spineScale, spineSlide, spineOpacity]
+        spineGroup.duration = PPMainKindsCellMetrics.identityRevealDuration
+        spineGroup.timingFunction = CAMediaTimingFunction(
+            controlPoints: 0.23,
+            1,
+            0.32,
+            1
         )
+        spineGroup.isRemovedOnCompletion = true
+        identitySpineLayer.add(spineGroup, forKey: PPMainKindsCellAnimationKey.identityReveal)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            completion()
-        }
+        let traceLocations: [[NSNumber]] = [
+            [0, 0.08, 0.24],
+            [0.12, 0.42, 0.72],
+            [0.54, 0.82, 1],
+            [0, 0.5, 1],
+        ]
+        let spineTrace = CAKeyframeAnimation(keyPath: "locations")
+        spineTrace.values = traceLocations
+        spineTrace.keyTimes = [0, 0.34, 0.72, 1]
+        spineTrace.duration = PPMainKindsCellMetrics.identityTraceDuration
+        spineTrace.timingFunction = CAMediaTimingFunction(
+            controlPoints: 0.23,
+            1,
+            0.32,
+            1
+        )
+        spineTrace.isRemovedOnCompletion = true
+        identitySpineLayer.add(spineTrace, forKey: PPMainKindsCellAnimationKey.identityTrace)
+
+        let fieldReveal = CABasicAnimation(keyPath: "opacity")
+        fieldReveal.fromValue = 0.32
+        fieldReveal.toValue = 1
+        fieldReveal.duration = PPMainKindsCellMetrics.haloDuration
+        fieldReveal.timingFunction = CAMediaTimingFunction(
+            controlPoints: 0.23,
+            1,
+            0.32,
+            1
+        )
+        identityFieldLayer.add(fieldReveal, forKey: PPMainKindsCellAnimationKey.identityReveal)
     }
 
     private func performHaloBurstMotion() {
@@ -1061,12 +1170,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
         tapHaloLayer.opacity = 0
 
         let opacity = CAKeyframeAnimation(keyPath: "opacity")
-        opacity.values = [0, 0.92, 0]
-        opacity.keyTimes = [0, 0.22, 1]
+        opacity.values = [0, 0.58, 0]
+        opacity.keyTimes = [0, 0.28, 1]
 
         let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = 0.20
-        scale.toValue = 2.75
+        scale.fromValue = 0.72
+        scale.toValue = 1.86
 
         let group = CAAnimationGroup()
         group.animations = [opacity, scale]
@@ -1078,8 +1187,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func resetTransientMotion() {
         tapHaloLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.tapHalo)
-        bottomGlowLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.glowCommit)
-        kindNameGlowLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.glowCommit)
+        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
+        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityTrace)
+        identityFieldLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
         isPressing = false
         tapButton.transform = restingTapTransform
         imagePlateView.transform = .identity
@@ -1093,5 +1203,28 @@ public final class PPMainKindsCell: UICollectionViewCell {
             selected: rendersSelectedGlow,
             pressing: false
         )
+    }
+}
+
+private extension UIColor {
+    func blended(with color: UIColor, ratio: CGFloat, traitCollection: UITraitCollection) -> UIColor {
+        let c1 = self.resolvedColor(with: traitCollection)
+        let c2 = color.resolvedColor(with: traitCollection)
+
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+
+        guard c1.getRed(&r1, green: &g1, blue: &b1, alpha: &a1),
+              c2.getRed(&r2, green: &g2, blue: &b2, alpha: &a2) else {
+            return c1
+        }
+
+        let clampedRatio = max(0, min(1, ratio))
+        let r = r1 * clampedRatio + r2 * (1 - clampedRatio)
+        let g = g1 * clampedRatio + g2 * (1 - clampedRatio)
+        let b = b1 * clampedRatio + b2 * (1 - clampedRatio)
+        let a = a1 * clampedRatio + a2 * (1 - clampedRatio)
+
+        return UIColor(red: r, green: g, blue: b, alpha: a)
     }
 }

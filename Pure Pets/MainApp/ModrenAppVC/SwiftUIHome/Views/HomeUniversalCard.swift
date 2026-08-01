@@ -6,6 +6,8 @@ struct HomeUniversalCard: View {
     let delegate: PPUniversalCellDelegate?
     let onTap: () -> Void
     let onQuantityChange: (Int) -> Void
+    let entrancePresented: Bool
+    let entranceOrdinal: Int
 
     var body: some View {
         Group {
@@ -25,6 +27,10 @@ struct HomeUniversalCard: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 328)
+        .ppUniversalHomeShelfEntrance(
+            isPresented: entrancePresented,
+            ordinal: entranceOrdinal
+        )
     }
 }
 

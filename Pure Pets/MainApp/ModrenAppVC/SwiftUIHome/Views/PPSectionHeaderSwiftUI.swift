@@ -527,7 +527,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         if sectionRawValue == PPSectionHeaderHomeSectionRaw.mainKinds &&
             !usesCirclePresentation &&
             (iconName?.isEmpty ?? true) {
-            resolvedIconName = isExpanded ? "chevron.up" : "chevron.down"
+            resolvedIconName = mainKindsLayoutIconName(expanded: isExpanded)
         }
         if usesCirclePresentation {
             resolvedIconName = "arrow.forward"
@@ -617,6 +617,19 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         }
     }
 
+    private func mainKindsLayoutIconName(expanded: Bool) -> String {
+        let candidates = expanded
+            ? [
+                "rectangle.split.3x1.fill",
+                "rectangle.split.3x1",
+                "rectangle.grid.1x2.fill",
+                "chevron.up",
+            ]
+            : ["square.grid.2x2.fill", "square.grid.2x2", "chevron.down"]
+        return candidates.first(where: { UIImage(systemName: $0) != nil })
+            ?? (expanded ? "chevron.up" : "chevron.down")
+    }
+
     private func configureMenu(_ menu: UIMenu?) {
         actionButton.menu = menu
         actionButton.showsMenuAsPrimaryAction = menu != nil
@@ -693,8 +706,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         }
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        isExpanded.toggle()
-        setExpanded(isExpanded, animated: true)
+        setExpanded(!isExpanded, animated: true)
         onTap?()
     }
 
@@ -716,36 +728,47 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         return true
     }
 
-    private func setExpanded(_ expanded: Bool, animated: Bool) {
+    fileprivate func setExpanded(_ expanded: Bool, animated: Bool) {
+        let changed = isExpanded != expanded
         isExpanded = expanded
 
         guard isMainKindsSection else {
             actionButton.imageView?.transform = .identity
             swiftUIHostView.setExpanded(false, animated: animated)
+            updateAccessibility()
             return
         }
 
-        let angle = expanded ? CGFloat.pi : 0
         let updates: () -> Void = {
-            if let imageView = self.actionButton.imageView {
-                imageView.transform = CGAffineTransform(rotationAngle: angle)
-            }
+            var config = self.actionButton.configuration
+                ?? self.baseActionButtonConfiguration()
+            self.applyIcon(
+                named: self.mainKindsLayoutIconName(expanded: expanded),
+                to: &config,
+                sectionRawValue: PPSectionHeaderHomeSectionRaw.mainKinds,
+                circlePresentation: false
+            )
+            self.actionButton.configuration = config
+            self.actionButton.imageView?.transform = .identity
         }
 
         swiftUIHostView.setExpanded(expanded, animated: animated)
-        if animated && !UIAccessibility.isReduceMotionEnabled {
-            UIView.animate(
-                withDuration: 0.34,
-                delay: 0,
-                usingSpringWithDamping: 0.76,
-                initialSpringVelocity: 0.55,
-                options: [.curveEaseInOut, .allowUserInteraction],
-                animations: updates,
-                completion: nil
+        if animated && changed && !UIAccessibility.isReduceMotionEnabled {
+            UIView.transition(
+                with: actionButton,
+                duration: 0.22,
+                options: [
+                    .transitionCrossDissolve,
+                    .allowAnimatedContent,
+                    .allowUserInteraction,
+                    .beginFromCurrentState,
+                ],
+                animations: updates
             )
         } else {
             updates()
         }
+        updateAccessibility()
     }
 
     private func updateAccessibility() {
@@ -762,10 +785,14 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         actionButton.accessibilityHint = nil
 
         if isMainKindsSection {
+            actionButton.accessibilityIdentifier = "home.mainKinds.layoutToggle"
             actionButton.accessibilityTraits = .button
             actionButton.accessibilityValue = isExpanded
                 ? Language.get("ShowLess", alter: nil)
                 : Language.get("ShowAll", alter: nil)
+        } else {
+            actionButton.accessibilityIdentifier = nil
+            actionButton.accessibilityValue = nil
         }
     }
 }
@@ -1110,6 +1137,7 @@ public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
     public let sectionRawValue: Int
     public let showsAction: Bool
     public let headingAccentColor: UIColor?
+    public let isExpanded: Bool?
 
     public init(
         title: String,
@@ -1118,7 +1146,8 @@ public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
         action: (() -> Void)? = nil,
         sectionRawValue: Int = 7,
         showsAction: Bool = true,
-        headingAccentColor: UIColor? = nil
+        headingAccentColor: UIColor? = nil,
+        isExpanded: Bool? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
@@ -1127,6 +1156,7 @@ public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
         self.sectionRawValue = sectionRawValue
         self.showsAction = showsAction
         self.headingAccentColor = headingAccentColor
+        self.isExpanded = isExpanded
     }
 
     public func makeUIView(context: Context) -> PPSectionHeaderSwiftUI {
@@ -1149,11 +1179,16 @@ public struct PPSectionHeaderSwiftUIRepresentable: UIViewRepresentable {
         if !showsAction {
             uiView.hide()
         }
+        if let isExpanded {
+            let shouldAnimate = context.transaction.animation != nil &&
+                !context.transaction.disablesAnimations
+            uiView.setExpanded(isExpanded, animated: shouldAnimate)
+        }
     }
 
     @available(iOS 16.0, *)
     public func sizeThatFits(_ proposal: ProposedViewSize, uiView: PPSectionHeaderSwiftUI, context: Context) -> CGSize? {
-        let targetWidth = proposal.width ?? UIScreen.main.bounds.width
+        let targetWidth = proposal.width ?? max(uiView.bounds.width, 1)
         let fittingSize = uiView.systemLayoutSizeFitting(
             CGSize(width: targetWidth, height: UIView.noIntrinsicMetric),
             withHorizontalFittingPriority: .required,

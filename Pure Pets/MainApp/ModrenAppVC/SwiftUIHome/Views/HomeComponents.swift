@@ -634,7 +634,7 @@ struct HomePetSwitcher: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .center, spacing: PPSpace.sm) {
-                    ForEach(pets) { pet in
+                    ForEach(Array(pets.enumerated()), id: \.element.id) { index, pet in
                         HomePetIdentityPill(
                             pet: pet,
                             selected: pet.id == selectedID,
@@ -642,6 +642,7 @@ struct HomePetSwitcher: View {
                                 onSelect(pet)
                             }
                         )
+                        .modifier(HomePetPillCascade(ordinal: index))
                     }
                 }
                 .padding(.horizontal, PPSpace.screenMargin)
@@ -1800,6 +1801,7 @@ struct HomePriorityGrid: View {
                             onSelect: onSelect
                         )
                         .frame(width: Layout.featuredCardWidth)
+                        .modifier(HomeScrollCellReveal(ordinal: 0))
                     }
 
                     secondaryGrid
@@ -1812,21 +1814,14 @@ struct HomePriorityGrid: View {
     }
 
     private var secondaryGrid: some View {
-        // VStack of HStacks is used instead of LazyVGrid(.flexible()) because a
-        // LazyVGrid inside an HStack can collapse to its content's intrinsic width
-        // rather than expanding to fill the proposed maxWidth, leaving dead space on
-        // the trailing edge and making the secondary cards narrower than intended.
-        // HStacks reliably fill their container and distribute width equally when
-        // every card uses .frame(maxWidth: .infinity).
-        let rows: [[HomePriorityAction]] = {
-            var result: [[HomePriorityAction]] = []
+        let rows: [[(index: Int, action: HomePriorityAction)]] = {
+            var result: [[(index: Int, action: HomePriorityAction)]] = []
             var index = 0
-            while index < secondaryActions.count {
+            let enumerated = Array(secondaryActions.enumerated())
+            while index < enumerated.count {
                 let end = index + 2
-                let sliceEnd = end <= secondaryActions.count
-                    ? end
-                    : secondaryActions.count
-                result.append(Array(secondaryActions[index..<sliceEnd]))
+                let sliceEnd = end <= enumerated.count ? end : enumerated.count
+                result.append(Array(enumerated[index..<sliceEnd].map { ($0.offset, $0.element) }))
                 index = end
             }
             return result
@@ -1835,13 +1830,14 @@ struct HomePriorityGrid: View {
         return VStack(spacing: Layout.cardSpacing) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: Layout.cardSpacing) {
-                    ForEach(row) { action in
+                    ForEach(row, id: \.action.id) { item in
                         HomeSecondaryActionCard(
-                            action: action,
+                            action: item.action,
                             compactHeight: Layout.compactCardHeight,
                             onSelect: onSelect
                         )
                         .frame(maxWidth: .infinity)
+                        .modifier(HomeScrollCellReveal(ordinal: item.index + 1))
                     }
                     if row.count == 1 {
                         Spacer(minLength: 0)
@@ -1852,7 +1848,7 @@ struct HomePriorityGrid: View {
     }
 
     private var headerView: some View {
-        VStack(spacing: PPSpace.xs) {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
             HStack(spacing: PPSpace.sm) {
                 Text(
                     HomeModelAdapter.localized(
@@ -1862,6 +1858,7 @@ struct HomePriorityGrid: View {
                 )
                 .font(HomeFont.bold(24))
                 .foregroundStyle(Color.homeTextPrimary)
+                .multilineTextAlignment(.leading)
 
                 Image(systemName: "sparkle")
                     .font(.system(size: 16, weight: .bold))
@@ -1877,10 +1874,10 @@ struct HomePriorityGrid: View {
             )
             .font(HomeFont.subheadline())
             .foregroundStyle(Color.homeTextSecondary)
-            .multilineTextAlignment(.center)
+            .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
@@ -2362,15 +2359,115 @@ private struct HomeCardPressStyle: ButtonStyle {
     }
 }
 
+private struct HomeMainKindShelfEntrance: ViewModifier {
+    let isPresented: Bool
+    let ordinal: Int
+    let isAllCategory: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    func body(content: Content) -> some View {
+        // Driven by Home's shared initial phase, never cell onAppear. Late
+        // lazy cells therefore stay still during horizontal scrolling.
+        content
+            .scaleEffect(
+                isStaged ? stagedScale : 1,
+                anchor: semanticAnchor
+            )
+            .rotation3DEffect(
+                .degrees(isStaged ? stagedYaw : 0),
+                axis: (x: 0, y: 1, z: 0),
+                anchor: semanticAnchor,
+                perspective: 0.72
+            )
+            .rotationEffect(
+                .degrees(isStaged ? stagedRoll : 0),
+                anchor: semanticAnchor
+            )
+            .offset(
+                x: isStaged ? stagedHorizontalTravel : 0,
+                y: isStaged ? stagedArcHeight : 0
+            )
+            .animation(entranceAnimation, value: isPresented)
+    }
+
+    private var isStaged: Bool {
+        !isPresented && !reduceMotion
+    }
+
+    private var cappedOrdinal: Int {
+        min(max(ordinal, 0), 4)
+    }
+
+    private var tier: CGFloat {
+        CGFloat(cappedOrdinal)
+    }
+
+    private var semanticSign: CGFloat {
+        layoutDirection == .rightToLeft ? -1 : 1
+    }
+
+    private var semanticAnchor: UnitPoint {
+        UnitPoint(
+            x: layoutDirection == .rightToLeft ? 1 : 0,
+            y: 0.74
+        )
+    }
+
+    private var stagedScale: CGFloat {
+        if isAllCategory { return 0.965 }
+        return max(0.916, 0.946 - (tier * 0.0075))
+    }
+
+    private var stagedHorizontalTravel: CGFloat {
+        let base: CGFloat = isAllCategory ? 7 : 10
+        return semanticSign * (base + (tier * 6))
+    }
+
+    private var stagedArcHeight: CGFloat {
+        switch cappedOrdinal {
+        case 0: return 3
+        case 1: return 7
+        case 2: return 11
+        case 3: return 8
+        default: return 4
+        }
+    }
+
+    private var stagedYaw: Double {
+        let base = isAllCategory ? 2.2 : 3.4
+        return Double(semanticSign) * (base + (Double(tier) * 0.75))
+    }
+
+    private var stagedRoll: Double {
+        let base = isAllCategory ? -0.65 : -1.15
+        return Double(semanticSign) * (base + (Double(tier) * 0.52))
+    }
+
+    private var entranceAnimation: Animation? {
+        guard !reduceMotion else { return nil }
+        return .spring(
+            response: 0.50,
+            dampingFraction: 0.72,
+            blendDuration: 0.07
+        )
+        .delay(0.02 + (Double(cappedOrdinal) * 0.045))
+    }
+}
+
 @available(iOS 15.0, *)
 struct HomeCategoryRail: View {
     let categories: [HomeCategoryModel]
     let selectedID: Int?
+    let entrancePresented: Bool
     let onSelect: (HomeCategoryModel?) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
+    @State private var isExpanded = false
+    @State private var viewportWidth: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
@@ -2383,39 +2480,146 @@ struct HomeCategoryRail: View {
                     "home_pulse_categories_subtitle",
                     fallback: "The selected species shapes relevant results"
                 ),
-                actionTitle: nil,
-                action: nil,
-                sectionRawValue: 5
+                actionTitle: layoutActionTitle,
+                action: toggleLayout,
+                sectionRawValue: 5,
+                isExpanded: isExpanded
             )
             .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
+            if isExpanded {
+                expandedGrid
+                    .transition(layoutTransition)
+            } else {
+                horizontalRail
+                    .transition(layoutTransition)
+            }
+        }
+        .background {
             GeometryReader { geometry in
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: PPSpace.md) {
-                            categoryCell(nil)
-                                .id(allCategoryScrollID)
-
-                            ForEach(categories) { category in
-                                categoryCell(category)
-                                    .id(scrollID(for: category))
-                            }
-                        }
-                        .padding(.horizontal, PPSpace.screenMargin)
-                        .padding(.vertical, PPSpace.xs)
-                    }
+                Color.clear
                     .onAppear {
-                        proxy.scrollTo(
-                            selectedScrollID,
-                            anchor: semanticLeadingAnchor(
-                                viewportWidth: geometry.size.width
-                            )
-                        )
+                        updateViewportWidth(geometry.size.width)
                     }
+                    .onChange(of: geometry.size.width) { width in
+                        updateViewportWidth(width)
+                    }
+            }
+        }
+    }
+
+    private var horizontalRail: some View {
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: PPSpace.md) {
+                        categoryCell(
+                            nil,
+                            entranceOrdinal: 0,
+                            size: itemSize
+                        )
+                        .id(allCategoryScrollID)
+
+                        ForEach(
+                            Array(categories.enumerated()),
+                            id: \.element.id
+                        ) { index, category in
+                            categoryCell(
+                                category,
+                                entranceOrdinal: index + 1,
+                                size: itemSize
+                            )
+                            .id(scrollID(for: category))
+                        }
+                    }
+                    .padding(.horizontal, PPSpace.screenMargin)
+                    .padding(.vertical, PPSpace.xs)
+                }
+                .onAppear {
+                    proxy.scrollTo(
+                        selectedScrollID,
+                        anchor: semanticLeadingAnchor(
+                            viewportWidth: geometry.size.width
+                        )
+                    )
                 }
             }
-            .frame(height: itemSize.height + (PPSpace.xs * 2))
         }
+        .frame(height: itemSize.height + (PPSpace.xs * 2))
+    }
+
+    private var expandedGrid: some View {
+        LazyVGrid(
+            columns: gridColumns,
+            alignment: .leading,
+            spacing: PPSpace.md
+        ) {
+            responsiveGridCell(
+                nil,
+                entranceOrdinal: 0
+            )
+            .id(allCategoryScrollID)
+
+            ForEach(
+                Array(categories.enumerated()),
+                id: \.element.id
+            ) { index, category in
+                responsiveGridCell(
+                    category,
+                    entranceOrdinal: index + 1
+                )
+                .id(scrollID(for: category))
+            }
+        }
+        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.vertical, PPSpace.xs)
+    }
+
+    private var gridColumns: [GridItem] {
+        [
+            GridItem(
+                .adaptive(
+                    minimum: dynamicTypeSize.isAccessibilitySize ? 132 : 104,
+                    maximum: dynamicTypeSize.isAccessibilitySize ? 184 : 132
+                ),
+                spacing: PPSpace.md,
+                alignment: .top
+            ),
+        ]
+    }
+
+    private var layoutActionTitle: String {
+        HomeModelAdapter.localized(
+            isExpanded ? "ShowLess" : "ShowAll",
+            fallback: isExpanded ? "Show less" : "Show all"
+        )
+    }
+
+    private var layoutTransition: AnyTransition {
+        .opacity.combined(
+            with: .scale(
+                scale: 0.985,
+                anchor: .top
+            )
+        )
+    }
+
+    private func toggleLayout() {
+        let update = {
+            isExpanded.toggle()
+        }
+        guard !reduceMotion else {
+            update()
+            return
+        }
+        withAnimation(
+            .spring(
+                response: 0.46,
+                dampingFraction: 0.86,
+                blendDuration: 0.08
+            ),
+            update
+        )
     }
 
     private var allCategoryScrollID: String {
@@ -2454,7 +2658,9 @@ struct HomeCategoryRail: View {
 
     @ViewBuilder
     private func categoryCell(
-        _ category: HomeCategoryModel?
+        _ category: HomeCategoryModel?,
+        entranceOrdinal: Int,
+        size: CGSize
     ) -> some View {
         let categoryID = category.map {
             HomeModelAdapter.mainKindID($0.raw)
@@ -2464,16 +2670,37 @@ struct HomeCategoryRail: View {
             selected: category == nil
                 ? selectedID == nil
                 : categoryID == selectedID,
-            size: itemSize,
+            size: size,
             onSelect: {
                 onSelect(category)
             }
         )
-        .frame(width: itemSize.width, height: itemSize.height)
+        .frame(width: size.width, height: size.height)
+        .modifier(
+            HomeMainKindShelfEntrance(
+                isPresented: entrancePresented,
+                ordinal: entranceOrdinal,
+                isAllCategory: category == nil
+            )
+        )
+    }
+
+    private func responsiveGridCell(
+        _ category: HomeCategoryModel?,
+        entranceOrdinal: Int
+    ) -> some View {
+        GeometryReader { geometry in
+            categoryCell(
+                category,
+                entranceOrdinal: entranceOrdinal,
+                size: geometry.size
+            )
+        }
+        .frame(height: itemSize.height)
     }
 
     private var itemSize: CGSize {
-        let width = UIScreen.main.bounds.width
+        let width = viewportWidth > 1 ? viewportWidth : 390
         let accessibility = dynamicTypeSize.isAccessibilitySize
         if width >= 700 {
             return CGSize(
@@ -2497,6 +2724,15 @@ struct HomeCategoryRail: View {
             width: accessibility ? 124 : 108,
             height: accessibility ? 152 : 132
         )
+    }
+
+    private func updateViewportWidth(_ width: CGFloat) {
+        guard width > 1, abs(viewportWidth - width) > 0.5 else { return }
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            viewportWidth = width
+        }
     }
 }
 
@@ -2529,6 +2765,82 @@ private struct HomeMainKindCellRepresentable: UIViewRepresentable {
 
     static func dismantleUIView(_ cell: PPMainKindsCell, coordinator: Void) {
         cell.onSelect = nil
+    }
+}
+
+/// Smooth animated linear progress bar indicator for HomeOrderCard.
+/// Animates progress fill with spring dynamics and respects native layout direction and Reduce Motion.
+private struct HomeAnimatedOrderProgress: View {
+    let progress: Double
+    let accentColor: Color
+    let borderColor: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var animatedProgress: Double = 0
+
+    private let barHeight: CGFloat = 6
+
+    var body: some View {
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            let fillWidth = max(0, min(totalWidth * animatedProgress, totalWidth))
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(borderColor.opacity(0.38))
+                    .frame(height: barHeight)
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accentColor.opacity(0.75),
+                                accentColor,
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: fillWidth, height: barHeight)
+            }
+        }
+        .frame(height: barHeight)
+        .onAppear {
+            animateToTarget(progress)
+        }
+        .onChange(of: progress) { newProgress in
+            animateToTarget(newProgress)
+        }
+    }
+
+    private func animateToTarget(_ target: Double) {
+        if reduceMotion {
+            animatedProgress = target
+        } else {
+            if animatedProgress == 0 {
+                DispatchQueue.main.async {
+                    withAnimation(
+                        .spring(
+                            response: 0.72,
+                            dampingFraction: 0.82,
+                            blendDuration: 0.08
+                        )
+                    ) {
+                        animatedProgress = target
+                    }
+                }
+            } else {
+                withAnimation(
+                    .spring(
+                        response: 0.62,
+                        dampingFraction: 0.82,
+                        blendDuration: 0.08
+                    )
+                ) {
+                    animatedProgress = target
+                }
+            }
+        }
     }
 }
 
@@ -2675,11 +2987,12 @@ struct HomeOrderCard: View {
     }
 
     private var statusProgress: some View {
-        ProgressView(value: resolvedProgress)
-            .progressViewStyle(.linear)
-            .tint(statusAccent)
-            .scaleEffect(x: 1, y: 1.35, anchor: .center)
-            .accessibilityHidden(true)
+        HomeAnimatedOrderProgress(
+            progress: resolvedProgress,
+            accentColor: statusAccent,
+            borderColor: statusBorder
+        )
+        .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -2838,6 +3151,7 @@ struct HomeOrderCard: View {
 struct HomeFeedSection: View {
     let section: HomeSectionModel
     let store: HomeStore
+    let entrancePresented: Bool
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -2879,16 +3193,22 @@ struct HomeFeedSection: View {
                     )
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: PPSpace.md) {
-                            ForEach(cards) { card in
+                            ForEach(
+                                Array(cards.enumerated()),
+                                id: \.element.id
+                            ) { ordinal, card in
                                 HomeUniversalCard(
                                     card: card,
                                     delegate: store.router.universalCardDelegate,
                                     onTap: { store.tapCard(card) },
                                     onQuantityChange: {
                                         store.setQuantity($0, for: card)
-                                    }
+                                    },
+                                    entrancePresented: entrancePresented,
+                                    entranceOrdinal: ordinal
                                 )
                                 .frame(width: resolvedCardWidth)
+                                .modifier(HomeScrollCellReveal(ordinal: ordinal))
                             }
                         }
                         .padding(.leading, PPSpace.screenMargin)
@@ -3137,7 +3457,7 @@ private struct HomeCardSkeletonRail: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: PPSpace.md) {
-                ForEach(Self.skeletonIDs, id: \.self) { _ in
+                ForEach(Array(Self.skeletonIDs.enumerated()), id: \.element) { index, _ in
                     VStack(alignment: .leading, spacing: PPSpace.sm) {
                         RoundedRectangle(cornerRadius: PPCorner.medium)
                             .fill(Color.ppSeparator.opacity(0.7))
@@ -3152,6 +3472,15 @@ private struct HomeCardSkeletonRail: View {
                     .padding(PPSpace.sm)
                     .frame(width: cardWidth, height: 328)
                     .background(Color.ppSurface)
+                    .overlay {
+                        HomeSkeletonShimmer(phaseOffset: Double(index) * 0.18)
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: PPCorner.card,
+                                    style: .continuous
+                                )
+                            )
+                    }
                     .clipShape(
                         RoundedRectangle(
                             cornerRadius: PPCorner.card,
@@ -3211,6 +3540,149 @@ struct HomeRemoteImage: View {
 
     private var swiftUIContentMode: ContentMode {
         contentMode == .scaleAspectFit ? .fit : .fill
+    }
+}
+
+// MARK: - HomeView Horizontal Scroll Motion System
+
+/// Cascade entrance for Pet Switcher pills.
+/// Each pill rises from the leading edge with staggered scale, opacity, and
+/// horizontal translation — creating a gentle wave that draws the eye across
+/// the rail without demanding attention.
+private struct HomePetPillCascade: ViewModifier {
+    let ordinal: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var revealed = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(reduceMotion || revealed ? 1 : 0)
+            .scaleEffect(
+                reduceMotion || revealed ? 1 : 0.92,
+                anchor: semanticLeadingAnchor
+            )
+            .offset(
+                x: reduceMotion || revealed
+                    ? 0
+                    : semanticSign * 14
+            )
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.12)
+                    : .spring(
+                        response: 0.44,
+                        dampingFraction: 0.78,
+                        blendDuration: 0.06
+                    )
+                    .delay(Double(cappedOrdinal) * 0.04),
+                value: revealed
+            )
+            .onAppear {
+                guard !revealed else { return }
+                // Fire on the next run-loop so the staged pose is rendered
+                // before the spring transition begins.
+                DispatchQueue.main.async {
+                    revealed = true
+                }
+            }
+    }
+
+    private var cappedOrdinal: Int { min(ordinal, 5) }
+
+    private var semanticSign: CGFloat {
+        layoutDirection == .rightToLeft ? 1 : -1
+    }
+
+    private var semanticLeadingAnchor: UnitPoint {
+        layoutDirection == .rightToLeft
+            ? UnitPoint(x: 1, y: 0.5)
+            : UnitPoint(x: 0, y: 0.5)
+    }
+}
+
+/// Scroll-triggered reveal for universal feed-section cards.
+/// When a card lazy-loads during horizontal scrolling, it lifts gently from
+/// below with a brief opacity ramp — making the appearance feel intentional
+/// rather than abrupt. Cards already visible at layout time still benefit
+/// from the one-shot entrance.
+struct HomeScrollCellReveal: ViewModifier {
+    let ordinal: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(reduceMotion || appeared ? 1 : 0)
+            .offset(y: reduceMotion || appeared ? 0 : 10)
+            .scaleEffect(
+                reduceMotion || appeared ? 1 : 0.97,
+                anchor: .bottom
+            )
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.12)
+                    : .spring(
+                        response: 0.48,
+                        dampingFraction: 0.84,
+                        blendDuration: 0.06
+                    )
+                    .delay(Double(min(ordinal, 3)) * 0.035),
+                value: appeared
+            )
+            .onAppear {
+                guard !appeared else { return }
+                DispatchQueue.main.async {
+                    appeared = true
+                }
+            }
+    }
+}
+
+/// Traveling shimmer overlay for skeleton placeholder cards.
+/// A translucent gradient sweeps across the card surface to communicate
+/// loading progress. Each card receives a phase offset so the wave
+/// cascades across the rail rather than pulsing in unison.
+private struct HomeSkeletonShimmer: View {
+    let phaseOffset: Double
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        if reduceMotion {
+            Color.clear
+        } else {
+            GeometryReader { geometry in
+                let shimmerWidth = geometry.size.width * 0.45
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0),
+                        Color.white.opacity(0.06),
+                        Color.white.opacity(0.12),
+                        Color.white.opacity(0.06),
+                        Color.white.opacity(0),
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: shimmerWidth)
+                .offset(x: -shimmerWidth + (phase * (geometry.size.width + shimmerWidth)))
+                .onAppear {
+                    withAnimation(
+                        .linear(duration: 1.6)
+                        .repeatForever(autoreverses: false)
+                        .delay(phaseOffset)
+                    ) {
+                        phase = 1
+                    }
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
     }
 }
 

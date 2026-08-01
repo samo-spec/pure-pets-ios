@@ -2,6 +2,17 @@
 //  AdoptPetDetailsViewController.m
 //  Pure Pets
 //
+//  Adoption detail experience — "Trusted Companion" redesign.
+//  UIKit (Obj-C), code-only. Behaviour contracts preserved:
+//  - initWithModel:/initWithModel:isOwner: public API.
+//  - Image gallery (paging) with video-badge media + PPPremiumVideoPlayer.
+//  - Owner vs non-owner surface (contact/favorite/report gated to non-owner).
+//  - Report flow writes to adopt_pets (reportedBy/reportCount) + reports collection.
+//  - Contact chat/call with sync cache + async Firestore owner fetch.
+//  - Reduce Motion gating for every signature moment.
+//  Design change: decorative hero glass replaced by a legibility scrim + a solid
+//  identity card; facts use a semantic category-chip role.
+//
 
 #import "AdoptPetDetailsViewController.h"
 #import "AdoptPetModel.h"
@@ -55,12 +66,13 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         return @"-";
     }
     NSDateFormatter *formatter = [NSDateFormatter new];
-    // Force en locale so dates show Latin digits (0-9)
     NSString *localeID = @"en_QA";
     formatter.locale = [NSLocale localeWithLocaleIdentifier:localeID];
     [formatter setLocalizedDateFormatFromTemplate:@"d MMM yyyy h:mm a"];
     return [formatter stringFromDate:date] ?: @"-";
 }
+
+#pragma mark - PPAdoptGalleryCell
 
 @interface PPAdoptGalleryCell : UICollectionViewCell
 @property (nonatomic, strong) UIImageView *imageView;
@@ -113,33 +125,34 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     badge.translatesAutoresizingMaskIntoConstraints = NO;
     badge.tintColor = UIColor.whiteColor;
     badge.contentMode = UIViewContentModeScaleAspectFit;
-    badge.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.20];
-    badge.layer.cornerRadius = 24.0;
-    badge.clipsToBounds = YES;
     [self.contentView addSubview:badge];
     [NSLayoutConstraint activateConstraints:@[
         [badge.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
         [badge.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [badge.widthAnchor constraintEqualToConstant:48.0],
-        [badge.heightAnchor constraintEqualToConstant:48.0]
+        [badge.widthAnchor constraintEqualToConstant:54.0],
+        [badge.heightAnchor constraintEqualToConstant:54.0]
     ]];
 }
 
 @end
 
-@interface PPAdoptBadgeView : UIVisualEffectView
+#pragma mark - PPAdoptInfoBadgeView (Category/Status chip)
+
+@interface PPAdoptInfoBadgeView : UIView
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *textLabel;
 - (void)configureWithIconName:(NSString *)iconName text:(NSString *)text;
+- (void)configureWithIconName:(NSString *)iconName text:(NSString *)text tint:(UIColor *)tint;
 @end
 
-@implementation PPAdoptBadgeView
+@implementation PPAdoptInfoBadgeView
 
 - (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark]];
+    self = [super initWithFrame:frame];
     if (self) {
         self.translatesAutoresizingMaskIntoConstraints = NO;
-        self.layer.cornerRadius = 14.0;
+        self.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+        self.layer.cornerRadius = PPCornerPill;
         self.layer.masksToBounds = YES;
         if (@available(iOS 13.0, *)) {
             self.layer.cornerCurve = kCACornerCurveContinuous;
@@ -152,23 +165,23 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
         _textLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         _textLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _textLabel.font = [GM MidFontWithSize:12];
+        _textLabel.font = [GM MidFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:PPFontFootnote weight:UIFontWeightMedium];
         _textLabel.textColor = UIColor.whiteColor;
         _textLabel.numberOfLines = 1;
         _textLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
-        [self.contentView addSubview:_iconView];
-        [self.contentView addSubview:_textLabel];
+        [self addSubview:_iconView];
+        [self addSubview:_textLabel];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_iconView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:10],
-            [_iconView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [_iconView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10],
+            [_iconView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
             [_iconView.widthAnchor constraintEqualToConstant:14],
             [_iconView.heightAnchor constraintEqualToConstant:14],
 
             [_textLabel.leadingAnchor constraintEqualToAnchor:_iconView.trailingAnchor constant:6],
-            [_textLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-10],
-            [_textLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [_textLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10],
+            [_textLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
             [self.heightAnchor constraintEqualToConstant:30]
         ]];
     }
@@ -176,15 +189,25 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 }
 
 - (void)configureWithIconName:(NSString *)iconName text:(NSString *)text {
+    [self configureWithIconName:iconName text:text tint:AppPrimaryClr];
+}
+
+- (void)configureWithIconName:(NSString *)iconName text:(NSString *)text tint:(UIColor *)tint {
     NSString *safeText = PPAdoptTrimmedString(text);
     self.hidden = (safeText.length == 0 || [safeText isEqualToString:@"-"]);
     self.iconView.image = [UIImage systemImageNamed:iconName ?: @"circle.fill"];
+    self.iconView.tintColor = tint;
     self.textLabel.text = safeText;
+    self.textLabel.textColor = tint;
+    self.backgroundColor = [tint colorWithAlphaComponent:0.12];
 }
 
 @end
 
+#pragma mark - PPAdoptFactView (Fact tile with category-chip role)
+
 @interface PPAdoptFactView : UIView
+@property (nonatomic, strong) UIView *iconPlateView;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *valueLabel;
@@ -201,52 +224,61 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
             if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
                 return [UIColor colorWithRed:0.15 green:0.15 blue:0.17 alpha:1.0];
             }
-            return [UIColor colorWithWhite:1.0 alpha:0.86];
+            return [UIColor colorWithWhite:1.0 alpha:0.92];
         }];
-        self.layer.cornerRadius = 18.0;
+        PPApplyContinuousCorners(self, PPCornerMedium);
         self.layer.masksToBounds = YES;
         self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         [self pp_setBorderColor:[[UIColor separatorColor] colorWithAlphaComponent:0.18]];
-        if (@available(iOS 13.0, *)) {
-            self.layer.cornerCurve = kCACornerCurveContinuous;
-        }
+
+        _iconPlateView = [[UIView alloc] initWithFrame:CGRectZero];
+        _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+        _iconPlateView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+        PPApplyContinuousCorners(_iconPlateView, 11.0);
+        _iconPlateView.layer.masksToBounds = YES;
 
         _iconView = [[UIImageView alloc] initWithFrame:CGRectZero];
         _iconView.translatesAutoresizingMaskIntoConstraints = NO;
         _iconView.contentMode = UIViewContentModeScaleAspectFit;
-        _iconView.tintColor = GM.appPrimaryColor;
+        _iconView.tintColor = AppPrimaryClr;
 
         _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _titleLabel.font = [GM MidFontWithSize:12];
-        _titleLabel.textColor = GM.SecondaryTextColor;
+        _titleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightMedium];
+        _titleLabel.textColor = GM.SecondaryTextColor ?: UIColor.secondaryLabelColor;
         _titleLabel.numberOfLines = 1;
 
         _valueLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _valueLabel.font = [GM boldFontWithSize:16];
-        _valueLabel.textColor = GM.PrimaryTextColor;
+        _valueLabel.font = [GM boldFontWithSize:PPFontCallout] ?: [UIFont systemFontOfSize:PPFontCallout weight:UIFontWeightBold];
+        _valueLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
         _valueLabel.numberOfLines = 2;
 
-        [self addSubview:_iconView];
+        [self addSubview:_iconPlateView];
+        [_iconPlateView addSubview:_iconView];
         [self addSubview:_titleLabel];
         [self addSubview:_valueLabel];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_iconView.topAnchor constraintEqualToAnchor:self.topAnchor constant:14],
-            [_iconView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14],
-            [_iconView.widthAnchor constraintEqualToConstant:16],
-            [_iconView.heightAnchor constraintEqualToConstant:16],
+            [_iconPlateView.topAnchor constraintEqualToAnchor:self.topAnchor constant:14],
+            [_iconPlateView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14],
+            [_iconPlateView.widthAnchor constraintEqualToConstant:34],
+            [_iconPlateView.heightAnchor constraintEqualToConstant:34],
 
-            [_titleLabel.centerYAnchor constraintEqualToAnchor:_iconView.centerYAnchor],
-            [_titleLabel.leadingAnchor constraintEqualToAnchor:_iconView.trailingAnchor constant:8],
+            [_iconView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
+            [_iconView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
+            [_iconView.widthAnchor constraintEqualToConstant:17],
+            [_iconView.heightAnchor constraintEqualToConstant:17],
+
+            [_titleLabel.leadingAnchor constraintEqualToAnchor:_iconPlateView.trailingAnchor constant:10],
             [_titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
+            [_titleLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:16],
 
-            [_valueLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:10],
+            [_valueLabel.topAnchor constraintEqualToAnchor:_iconPlateView.bottomAnchor constant:8],
             [_valueLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14],
             [_valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
             [_valueLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-14],
-            [self.heightAnchor constraintGreaterThanOrEqualToConstant:88]
+            [self.heightAnchor constraintGreaterThanOrEqualToConstant:92]
         ]];
     }
     return self;
@@ -260,35 +292,53 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
 @end
 
+
+#pragma mark - AdoptPetDetailsViewController
+
 @interface AdoptPetDetailsViewController () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UIScrollViewDelegate>
 @property (nonatomic, strong) AdoptPetModel *model;
 @property (nonatomic, assign) BOOL isOwner;
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UIStackView *contentStack;
+
+// Hero (pure gallery — no decorative glass)
 @property (nonatomic, strong) UIView *heroContainer;
 @property (nonatomic, strong) UICollectionView *imagesCV;
 @property (nonatomic, strong) NSArray<NSDictionary *> *mediaItems;
 @property (nonatomic, strong) NSLayoutConstraint *imagesHeightConstraint;
 @property (nonatomic, strong) UIView *heroShadeView;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) UIVisualEffectView *heroInfoBlur;
+@property (nonatomic, strong) UIPageControl *pageControl;
+@property (nonatomic, strong) UIView *galleryProgressTrackView;
+@property (nonatomic, strong) UIView *galleryProgressFillView;
+@property (nonatomic, strong) NSLayoutConstraint *galleryProgressLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *galleryProgressWidthConstraint;
+
+// Identity card (solid surface — replaces decorative blur plate)
+@property (nonatomic, strong) UIView *identityCard;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
-@property (nonatomic, strong) UIStackView *heroBadgesStack;
-@property (nonatomic, strong) UIPageControl *pageControl;
-@property (nonatomic, strong) UIButton *closeButton;
-@property (nonatomic, strong) UIButton *shareButton;
-@property (nonatomic, strong) FavoriteButton *favoriteButton;
-@property (nonatomic, strong) UIStackView *topActionsStack;
+@property (nonatomic, strong) UIStackView *identityChipsStack;
+
+// Content
 @property (nonatomic, strong) UILabel *detailsBodyLabel;
 @property (nonatomic, strong) UserContactView *contactView;
 @property (nonatomic, strong) CAGradientLayer *contactGradientLayer;
 @property (nonatomic, strong) NSArray<NSDictionary<NSString *, NSString *> *> *factItems;
+
+// Controls
+@property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, strong) UIButton *shareButton;
+@property (nonatomic, strong) FavoriteButton *favoriteButton;
+@property (nonatomic, strong) UIStackView *topActionsStack;
+
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @end
 
 @implementation AdoptPetDetailsViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithModel:(AdoptPetModel *)model {
     return [self initWithModel:model isOwner:NO];
@@ -313,6 +363,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     [self pp_buildFactItems];
     [self pp_setupScrollView];
     [self pp_setupHero];
+    [self pp_setupIdentityCard];
     [self pp_setupContentSections];
     [self pp_setupTopButtons];
     [self pp_setupContactView];
@@ -328,16 +379,23 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    CGFloat width = CGRectGetWidth(self.view.bounds) - 32.0;
-    CGFloat heroHeight = MIN(MAX(width * 0.96, 420.0), 540.0);
+    CGFloat width = CGRectGetWidth(self.view.bounds) - (PPSpaceBase * 2.0);
+    CGFloat heroHeight = MIN(MAX(width * 0.92, 380.0), 520.0);
     self.imagesHeightConstraint.constant = heroHeight;
     self.heroGradientLayer.frame = self.heroShadeView.bounds;
-    self.heroShadeView.layer.cornerRadius = 30.0;
-    self.heroContainer.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroContainer.bounds cornerRadius:30.0].CGPath;
+    self.heroShadeView.layer.cornerRadius = PPCornerHero;
+    self.heroContainer.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.heroContainer.bounds cornerRadius:PPCornerHero].CGPath;
     if (self.contactGradientLayer) {
         self.contactGradientLayer.frame = self.contactView.bounds;
     }
-    self.contactView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.contactView.bounds cornerRadius:26.0].CGPath;
+    self.contactView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.contactView.bounds cornerRadius:PPCornerCard].CGPath;
+
+    // Progress rail fill width = track width / page count.
+    NSInteger pages = MAX(self.mediaItems.count, 1);
+    CGFloat trackWidth = CGRectGetWidth(self.galleryProgressTrackView.bounds);
+    self.galleryProgressWidthConstraint.constant = (pages > 1) ? (trackWidth / (CGFloat)pages) : trackWidth;
 }
 
 #pragma mark - Build Data
@@ -387,16 +445,16 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     NSString *created = PPAdoptCreatedValue(self.model.createdAt);
 
     self.factItems = @[
-        @{@"icon": @"pawprint.fill", @"title": kLang(@"Kind"), @"value": PPAdoptDisplayValue(kind)},
-        @{@"icon": @"leaf.fill", @"title": kLang(@"Breed"), @"value": PPAdoptDisplayValue(breed)},
-        @{@"icon": @"calendar", @"title": kLang(@"Age"), @"value": PPAdoptDisplayValue(age)},
-        @{@"icon": @"figure.stand", @"title": kLang(@"Gender"), @"value": PPAdoptDisplayValue(gender)},
-        @{@"icon": @"mappin.and.ellipse", @"title": kLang(@"City"), @"value": PPAdoptDisplayValue(city)},
-        @{@"icon": @"clock.fill", @"title": kLang(@"Created"), @"value": PPAdoptDisplayValue(created)}
+        @{@"icon": @"pawprint.fill",       @"title": kLang(@"Kind"),   @"value": PPAdoptDisplayValue(kind)},
+        @{@"icon": @"leaf.fill",           @"title": kLang(@"Breed"),  @"value": PPAdoptDisplayValue(breed)},
+        @{@"icon": @"calendar",            @"title": kLang(@"Age"),    @"value": PPAdoptDisplayValue(age)},
+        @{@"icon": @"figure.stand",        @"title": kLang(@"Gender"), @"value": PPAdoptDisplayValue(gender)},
+        @{@"icon": @"mappin.and.ellipse",  @"title": kLang(@"City"),   @"value": PPAdoptDisplayValue(city)},
+        @{@"icon": @"clock.fill",          @"title": kLang(@"Created"),@"value": PPAdoptDisplayValue(created)}
     ];
 }
 
-#pragma mark - Setup
+#pragma mark - Setup ScrollView
 
 - (void)pp_setupScrollView {
     self.scrollView = [[UIScrollView alloc] initWithFrame:CGRectZero];
@@ -418,7 +476,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.contentStack = [[UIStackView alloc] initWithFrame:CGRectZero];
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentStack.axis = UILayoutConstraintAxisVertical;
-    self.contentStack.spacing = 16.0;
+    self.contentStack.spacing = PPSpaceBase;
     self.contentStack.alignment = UIStackViewAlignmentFill;
     self.contentStack.semanticContentAttribute = GM.setSemantic;
     [self.contentView addSubview:self.contentStack];
@@ -435,21 +493,20 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         [self.contentView.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor],
         [self.contentView.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor],
 
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
-        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
-        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
-        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-24]
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceMD],
+        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPSpaceBase],
+        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPSpaceBase],
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceXL]
     ]];
 }
+
+#pragma mark - Setup Hero (pure gallery + legibility scrim + progress rail)
 
 - (void)pp_setupHero {
     self.heroContainer = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroContainer.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroContainer.backgroundColor = UIColor.clearColor;
-    self.heroContainer.layer.cornerRadius = 30.0;
-    if (@available(iOS 13.0, *)) {
-        self.heroContainer.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    PPApplyContinuousCorners(self.heroContainer, PPCornerHero);
     [self.heroContainer pp_setShadowColor:UIColor.blackColor];
     self.heroContainer.layer.shadowOpacity = 0.09;
     self.heroContainer.layer.shadowRadius = 22.0;
@@ -470,73 +527,48 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.imagesCV.dataSource = self;
     self.imagesCV.delegate = self;
     self.imagesCV.clipsToBounds = YES;
-    self.imagesCV.layer.cornerRadius = 30.0;
-    if (@available(iOS 13.0, *)) {
-        self.imagesCV.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    PPApplyContinuousCorners(self.imagesCV, PPCornerHero);
     [self.imagesCV registerClass:PPAdoptGalleryCell.class forCellWithReuseIdentifier:@"PPAdoptGalleryCell"];
     [self.heroContainer addSubview:self.imagesCV];
 
+    // Legibility scrim — functional gradient (not decorative glass) for page control.
     self.heroShadeView = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroShadeView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroShadeView.userInteractionEnabled = NO;
     self.heroShadeView.backgroundColor = UIColor.clearColor;
     self.heroShadeView.clipsToBounds = YES;
-    self.heroShadeView.layer.cornerRadius = 30.0;
-    if (@available(iOS 13.0, *)) {
-        self.heroShadeView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    PPApplyContinuousCorners(self.heroShadeView, PPCornerHero);
     [self.heroContainer addSubview:self.heroShadeView];
 
     self.heroGradientLayer = [CAGradientLayer layer];
     self.heroGradientLayer.colors = @[
         (__bridge id)[UIColor colorWithWhite:0 alpha:0.0].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.10].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.58].CGColor
+        (__bridge id)[UIColor colorWithWhite:0 alpha:0.0].CGColor,
+        (__bridge id)[UIColor colorWithWhite:0 alpha:0.45].CGColor
     ];
-    self.heroGradientLayer.locations = @[@0.0, @0.54, @1.0];
+    self.heroGradientLayer.locations = @[@0.0, @0.62, @1.0];
     [self.heroShadeView.layer addSublayer:self.heroGradientLayer];
-
-    self.heroInfoBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark]];
-    self.heroInfoBlur.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroInfoBlur.layer.cornerRadius = 24.0;
-    self.heroInfoBlur.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.heroInfoBlur.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.heroContainer addSubview:self.heroInfoBlur];
-
-    self.heroBadgesStack = [[UIStackView alloc] initWithFrame:CGRectZero];
-    self.heroBadgesStack.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroBadgesStack.axis = UILayoutConstraintAxisHorizontal;
-    self.heroBadgesStack.spacing = 8.0;
-    self.heroBadgesStack.alignment = UIStackViewAlignmentLeading;
-    self.heroBadgesStack.distribution = UIStackViewDistributionFillProportionally;
-
-    self.titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:30];
-    self.titleLabel.textColor = UIColor.whiteColor;
-    self.titleLabel.numberOfLines = 2;
-    self.titleLabel.textAlignment = NSTextAlignmentNatural;
-
-    self.subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.subtitleLabel.font = [GM MidFontWithSize:15.5];
-    self.subtitleLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
-    self.subtitleLabel.numberOfLines = 2;
-    self.subtitleLabel.textAlignment = NSTextAlignmentNatural;
-
-    [self.heroInfoBlur.contentView addSubview:self.heroBadgesStack];
-    [self.heroInfoBlur.contentView addSubview:self.titleLabel];
-    [self.heroInfoBlur.contentView addSubview:self.subtitleLabel];
 
     self.pageControl = [[UIPageControl alloc] initWithFrame:CGRectZero];
     self.pageControl.translatesAutoresizingMaskIntoConstraints = NO;
-    self.pageControl.pageIndicatorTintColor = [[UIColor whiteColor] colorWithAlphaComponent:0.28];
+    self.pageControl.pageIndicatorTintColor = [[UIColor whiteColor] colorWithAlphaComponent:0.45];
     self.pageControl.currentPageIndicatorTintColor = UIColor.whiteColor;
     self.pageControl.hidesForSinglePage = YES;
     [self.heroContainer addSubview:self.pageControl];
+
+    // Signature moment 1 — brand progress rail (scroll-linked indicator).
+    self.galleryProgressTrackView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.galleryProgressTrackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.galleryProgressTrackView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.28];
+    self.galleryProgressTrackView.layer.cornerRadius = 2.0;
+    self.galleryProgressTrackView.layer.masksToBounds = YES;
+    [self.heroContainer addSubview:self.galleryProgressTrackView];
+
+    self.galleryProgressFillView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.galleryProgressFillView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.galleryProgressFillView.backgroundColor = UIColor.whiteColor;
+    self.galleryProgressFillView.layer.cornerRadius = 2.0;
+    self.galleryProgressFillView.layer.masksToBounds = YES;
+    [self.galleryProgressTrackView addSubview:self.galleryProgressFillView];
 
     CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
     if (@available(iOS 11.0, *)) {
@@ -547,11 +579,12 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
     CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
 
-    self.imagesHeightConstraint = [self.heroContainer.heightAnchor constraintEqualToConstant:MAX(440.0, minGalleryHeight)];
+    self.imagesHeightConstraint = [self.heroContainer.heightAnchor constraintEqualToConstant:MAX(420.0, minGalleryHeight)];
+    self.galleryProgressLeadingConstraint = [self.galleryProgressFillView.leadingAnchor constraintEqualToAnchor:self.galleryProgressTrackView.leadingAnchor constant:0];
+    self.galleryProgressWidthConstraint = [self.galleryProgressFillView.widthAnchor constraintEqualToConstant:40.0];
 
     [NSLayoutConstraint activateConstraints:@[
         self.imagesHeightConstraint,
-        [self.heroContainer.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.heroContainer.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.imagesCV.topAnchor constraintEqualToAnchor:self.heroContainer.topAnchor],
@@ -565,38 +598,92 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         [self.heroShadeView.trailingAnchor constraintEqualToAnchor:self.heroContainer.trailingAnchor],
         [self.heroShadeView.bottomAnchor constraintEqualToAnchor:self.heroContainer.bottomAnchor],
 
-        [self.heroInfoBlur.leadingAnchor constraintEqualToAnchor:self.heroContainer.leadingAnchor constant:14],
-        [self.heroInfoBlur.trailingAnchor constraintEqualToAnchor:self.heroContainer.trailingAnchor constant:-14],
-        [self.heroInfoBlur.bottomAnchor constraintEqualToAnchor:self.heroContainer.bottomAnchor constant:-14],
+        [self.pageControl.centerXAnchor constraintEqualToAnchor:self.heroContainer.centerXAnchor],
+        [self.pageControl.bottomAnchor constraintEqualToAnchor:self.heroContainer.bottomAnchor constant:-16.0],
 
-        [self.heroBadgesStack.topAnchor constraintEqualToAnchor:self.heroInfoBlur.contentView.topAnchor constant:14],
-        [self.heroBadgesStack.leadingAnchor constraintEqualToAnchor:self.heroInfoBlur.contentView.leadingAnchor constant:14],
-        [self.heroBadgesStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroInfoBlur.contentView.trailingAnchor constant:-14],
+        [self.galleryProgressTrackView.leadingAnchor constraintEqualToAnchor:self.heroContainer.leadingAnchor constant:PPSpaceBase],
+        [self.galleryProgressTrackView.trailingAnchor constraintEqualToAnchor:self.heroContainer.trailingAnchor constant:-PPSpaceBase],
+        [self.galleryProgressTrackView.bottomAnchor constraintEqualToAnchor:self.heroContainer.bottomAnchor constant:-8.0],
+        [self.galleryProgressTrackView.heightAnchor constraintEqualToConstant:3.0],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.heroBadgesStack.bottomAnchor constant:10],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.heroInfoBlur.contentView.leadingAnchor constant:14],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.heroInfoBlur.contentView.trailingAnchor constant:-14],
+        self.galleryProgressLeadingConstraint,
+        self.galleryProgressWidthConstraint,
+        [self.galleryProgressFillView.topAnchor constraintEqualToAnchor:self.galleryProgressTrackView.topAnchor],
+        [self.galleryProgressFillView.bottomAnchor constraintEqualToAnchor:self.galleryProgressTrackView.bottomAnchor]
+    ]];
+
+    self.galleryProgressTrackView.hidden = (self.mediaItems.count <= 1);
+}
+
+
+#pragma mark - Identity Card (solid surface — replaces decorative blur)
+
+- (void)pp_setupIdentityCard {
+    self.identityCard = [self pp_makeSectionCard];
+    [self.contentStack addArrangedSubview:self.identityCard];
+
+    self.titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleLabel.font = [GM boldFontWithSize:PPFontTitle1] ?: [UIFont systemFontOfSize:PPFontTitle1 weight:UIFontWeightBold];
+    self.titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.titleLabel.numberOfLines = 2;
+    self.titleLabel.textAlignment = NSTextAlignmentNatural;
+
+    self.subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.subtitleLabel.font = [GM MidFontWithSize:PPFontBody] ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightMedium];
+    self.subtitleLabel.textColor = GM.SecondaryTextColor ?: UIColor.secondaryLabelColor;
+    self.subtitleLabel.numberOfLines = 2;
+    self.subtitleLabel.textAlignment = NSTextAlignmentNatural;
+
+    self.identityChipsStack = [[UIStackView alloc] initWithFrame:CGRectZero];
+    self.identityChipsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.identityChipsStack.axis = UILayoutConstraintAxisHorizontal;
+    self.identityChipsStack.spacing = PPSpaceSM;
+    self.identityChipsStack.alignment = UIStackViewAlignmentCenter;
+    self.identityChipsStack.distribution = UIStackViewDistributionFill;
+    self.identityChipsStack.semanticContentAttribute = GM.setSemantic;
+
+    [self.identityCard addSubview:self.titleLabel];
+    [self.identityCard addSubview:self.subtitleLabel];
+    [self.identityCard addSubview:self.identityChipsStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.identityCard.topAnchor constant:18],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.identityCard.leadingAnchor constant:18],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.identityCard.trailingAnchor constant:-18],
 
         [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:6],
-        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroInfoBlur.contentView.leadingAnchor constant:14],
-        [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroInfoBlur.contentView.trailingAnchor constant:-14],
-        [self.subtitleLabel.bottomAnchor constraintEqualToAnchor:self.heroInfoBlur.contentView.bottomAnchor constant:-14],
+        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.identityCard.leadingAnchor constant:18],
+        [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.identityCard.trailingAnchor constant:-18],
 
-        [self.pageControl.centerXAnchor constraintEqualToAnchor:self.heroContainer.centerXAnchor],
-        [self.pageControl.bottomAnchor constraintEqualToAnchor:self.heroInfoBlur.topAnchor constant:-10]
+        [self.identityChipsStack.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:12],
+        [self.identityChipsStack.leadingAnchor constraintEqualToAnchor:self.identityCard.leadingAnchor constant:18],
+        [self.identityChipsStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.identityCard.trailingAnchor constant:-18],
+        [self.identityChipsStack.bottomAnchor constraintEqualToAnchor:self.identityCard.bottomAnchor constant:-18],
+        [self.identityChipsStack.heightAnchor constraintEqualToConstant:30]
     ]];
 }
+
+#pragma mark - Content Sections (Facts + Story)
 
 - (void)pp_setupContentSections {
     UIView *factsCard = [self pp_makeSectionCard];
     [self.contentStack addArrangedSubview:factsCard];
 
+    UILabel *factsEyebrow = [[UILabel alloc] initWithFrame:CGRectZero];
+    factsEyebrow.translatesAutoresizingMaskIntoConstraints = NO;
+    factsEyebrow.font = [GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightBold];
+    factsEyebrow.textColor = [AppPrimaryClr colorWithAlphaComponent:0.92];
+    factsEyebrow.text = kLang(@"adopt_detail_section_facts");
+
     UIStackView *factsGrid = [[UIStackView alloc] initWithFrame:CGRectZero];
     factsGrid.translatesAutoresizingMaskIntoConstraints = NO;
     factsGrid.axis = UILayoutConstraintAxisVertical;
-    factsGrid.spacing = 12.0;
+    factsGrid.spacing = PPSpaceMD;
     factsGrid.alignment = UIStackViewAlignmentFill;
     factsGrid.distribution = UIStackViewDistributionFillEqually;
+    [factsCard addSubview:factsEyebrow];
     [factsCard addSubview:factsGrid];
 
     for (NSInteger idx = 0; idx < self.factItems.count; idx += 2) {
@@ -619,14 +706,18 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:rowItems];
         row.translatesAutoresizingMaskIntoConstraints = NO;
         row.axis = UILayoutConstraintAxisHorizontal;
-        row.spacing = 12.0;
+        row.spacing = PPSpaceMD;
         row.alignment = UIStackViewAlignmentFill;
         row.distribution = UIStackViewDistributionFillEqually;
         [factsGrid addArrangedSubview:row];
     }
 
     [NSLayoutConstraint activateConstraints:@[
-        [factsGrid.topAnchor constraintEqualToAnchor:factsCard.topAnchor constant:14],
+        [factsEyebrow.topAnchor constraintEqualToAnchor:factsCard.topAnchor constant:18],
+        [factsEyebrow.leadingAnchor constraintEqualToAnchor:factsCard.leadingAnchor constant:18],
+        [factsEyebrow.trailingAnchor constraintEqualToAnchor:factsCard.trailingAnchor constant:-18],
+
+        [factsGrid.topAnchor constraintEqualToAnchor:factsEyebrow.bottomAnchor constant:12],
         [factsGrid.leadingAnchor constraintEqualToAnchor:factsCard.leadingAnchor constant:14],
         [factsGrid.trailingAnchor constraintEqualToAnchor:factsCard.trailingAnchor constant:-14],
         [factsGrid.bottomAnchor constraintEqualToAnchor:factsCard.bottomAnchor constant:-14]
@@ -637,14 +728,14 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
     UILabel *detailsTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     detailsTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    detailsTitleLabel.font = [GM boldFontWithSize:21];
-    detailsTitleLabel.textColor = GM.PrimaryTextColor;
+    detailsTitleLabel.font = [GM boldFontWithSize:PPFontTitle2] ?: [UIFont systemFontOfSize:PPFontTitle2 weight:UIFontWeightBold];
+    detailsTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     detailsTitleLabel.text = kLang(@"adopt_detail_story_title");
 
     self.detailsBodyLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.detailsBodyLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.detailsBodyLabel.font = [GM MidFontWithSize:16.2];
-    self.detailsBodyLabel.textColor = GM.PrimaryTextColor;
+    self.detailsBodyLabel.font = [GM MidFontWithSize:PPFontBody] ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightMedium];
+    self.detailsBodyLabel.textColor = GM.PrimaryTextColor ?: UIColor.labelColor;
     self.detailsBodyLabel.numberOfLines = 0;
     self.detailsBodyLabel.textAlignment = NSTextAlignmentNatural;
 
@@ -662,6 +753,8 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         [self.detailsBodyLabel.bottomAnchor constraintEqualToAnchor:detailsCard.bottomAnchor constant:-18]
     ]];
 }
+
+#pragma mark - Top Buttons (functional control glass over hero)
 
 - (void)pp_setupTopButtons {
     self.closeButton = [self pp_makeGlassCircleButtonWithSymbol:@"xmark" action:@selector(pp_closeTapped)];
@@ -696,13 +789,15 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     [self.view addSubview:self.topActionsStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.closeButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:24],
-        [self.closeButton.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:24],
+        [self.closeButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceXL],
+        [self.closeButton.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:PPSpaceXL],
 
-        [self.topActionsStack.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:24],
-        [self.topActionsStack.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-24]
+        [self.topActionsStack.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceXL],
+        [self.topActionsStack.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-PPSpaceXL]
     ]];
 }
+
+#pragma mark - Contact Dock
 
 - (void)pp_setupContactView {
     if (self.isOwner) {
@@ -711,17 +806,20 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
     self.contactView = [[UserContactView alloc] initWithFrame:CGRectZero];
     self.contactView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.contactView.alpha = 1.0;
+    self.contactView.alpha = 0.0;
     self.contactView.semanticContentAttribute = GM.setSemantic;
     self.contactView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
-    self.contactView.layer.cornerRadius = 26.0;
+    self.contactView.layer.cornerRadius = PPCornerCard;
     self.contactView.layer.masksToBounds = NO;
     self.contactView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [self.contactView pp_setBorderColor:[[UIColor separatorColor] colorWithAlphaComponent:0.20]];
     [self.contactView pp_setShadowColor:UIColor.blackColor];
-    self.contactView.layer.shadowOpacity = 0.10;
-    self.contactView.layer.shadowRadius = 20.0;
-    self.contactView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.contactView.layer.shadowOpacity = 0.12;
+    self.contactView.layer.shadowRadius = 18.0;
+    self.contactView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    if (@available(iOS 13.0, *)) {
+        self.contactView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 
     self.contactGradientLayer = [CAGradientLayer layer];
     self.contactGradientLayer.colors = @[
@@ -730,14 +828,14 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     ];
     self.contactGradientLayer.startPoint = CGPointMake(0.0, 0.5);
     self.contactGradientLayer.endPoint = CGPointMake(1.0, 0.5);
-    self.contactGradientLayer.cornerRadius = 26.0;
+    self.contactGradientLayer.cornerRadius = PPCornerCard;
     [self.contactView.layer insertSublayer:self.contactGradientLayer atIndex:0];
 
     [self.view addSubview:self.contactView];
     [NSLayoutConstraint activateConstraints:@[
-        [self.contactView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-        [self.contactView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [self.contactView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12],
+        [self.contactView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPSpaceBase],
+        [self.contactView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPSpaceBase],
+        [self.contactView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceMD],
         [self.contactView.heightAnchor constraintEqualToConstant:78]
     ]];
 
@@ -762,6 +860,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     }
 }
 
+
 #pragma mark - Configure
 
 - (void)pp_configureContent {
@@ -769,6 +868,8 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     NSString *kind = [MainKindsModel kindNameForID:self.model.kindID] ?: @"";
     NSString *breed = self.model.subKindModel.SubKindName ?: [[self.model.mainKindModel subKindForID:self.model.breedID] SubKindName] ?: @"";
     NSString *city = PPAdoptTrimmedString(self.model.mCityName);
+    NSString *gender = self.model.gender.length > 0 ? kLang(self.model.gender) : @"";
+    NSString *age = PPAdoptAgeValue(self.model.ageMonths);
 
     self.titleLabel.text = name;
 
@@ -784,11 +885,28 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     }
     self.subtitleLabel.text = subtitleParts.count > 0 ? [subtitleParts componentsJoinedByString:@"  •  "] : kLang(@"adopt_detail_available_now");
 
-    for (UIView *view in self.heroBadgesStack.arrangedSubviews) {
-        [self.heroBadgesStack removeArrangedSubview:view];
+    // Identity chips — status (success) + gender + age quick facts.
+    for (UIView *view in self.identityChipsStack.arrangedSubviews) {
+        [self.identityChipsStack removeArrangedSubview:view];
         [view removeFromSuperview];
     }
-    self.heroBadgesStack.hidden = YES;
+
+    PPAdoptInfoBadgeView *statusChip = [[PPAdoptInfoBadgeView alloc] initWithFrame:CGRectZero];
+    [statusChip configureWithIconName:@"heart.fill"
+                                 text:kLang(@"adopt_detail_available_now")
+                                 tint:AppSuccessClr ?: UIColor.systemGreenColor];
+    [self.identityChipsStack addArrangedSubview:statusChip];
+
+    if (PPAdoptTrimmedString(gender).length > 0 && ![gender isEqualToString:@"-"]) {
+        PPAdoptInfoBadgeView *genderChip = [[PPAdoptInfoBadgeView alloc] initWithFrame:CGRectZero];
+        [genderChip configureWithIconName:@"figure.stand" text:gender];
+        [self.identityChipsStack addArrangedSubview:genderChip];
+    }
+    if (PPAdoptTrimmedString(age).length > 0 && ![age isEqualToString:@"-"]) {
+        PPAdoptInfoBadgeView *ageChip = [[PPAdoptInfoBadgeView alloc] initWithFrame:CGRectZero];
+        [ageChip configureWithIconName:@"calendar" text:age];
+        [self.identityChipsStack addArrangedSubview:ageChip];
+    }
 
     NSString *details = PPAdoptTrimmedString(self.model.details);
     if (details.length == 0) {
@@ -800,6 +918,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.pageControl.numberOfPages = pageCount;
     self.pageControl.currentPage = 0;
     self.pageControl.hidden = (pageCount < 2);
+    self.galleryProgressTrackView.hidden = (pageCount < 2);
     [self.imagesCV reloadData];
 }
 
@@ -843,7 +962,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     [self.contactView.chatButton setTitle:nil forState:UIControlStateHighlighted];
     [self.contactView.chatButton setTitle:nil forState:UIControlStateDisabled];
 
-    [UIView animateWithDuration:0.24 animations:^{
+    [UIView animateWithDuration:PPAnimDurationNormal animations:^{
         weakSelf.contactView.alpha = 1.0;
     }];
 }
@@ -854,15 +973,46 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = AppForgroundColr;
-    card.layer.cornerRadius = 26.0;
+    PPApplyContinuousCorners(card, PPCornerCard);
     card.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [card pp_setBorderColor:[[UIColor separatorColor] colorWithAlphaComponent:0.28]];
     card.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        card.layer.cornerCurve = kCACornerCurveContinuous;
-    }
     return card;
 }
+
+- (NSAttributedString *)pp_bodyText:(NSString *)text {
+    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
+    style.lineSpacing = 6.0;
+    style.alignment = NSTextAlignmentNatural;
+    return [[NSAttributedString alloc] initWithString:text ?: @""
+                                           attributes:@{
+        NSFontAttributeName: [GM MidFontWithSize:PPFontBody] ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightMedium],
+        NSForegroundColorAttributeName: GM.PrimaryTextColor ?: UIColor.labelColor,
+        NSParagraphStyleAttributeName: style
+    }];
+}
+
+- (UIButton *)pp_makeGlassCircleButtonWithSymbol:(NSString *)symbol action:(SEL)action {
+    UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
+    config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    config.baseBackgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.18];
+    config.baseForegroundColor = UIColor.whiteColor;
+    config.background.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
+    config.image = [UIImage systemImageNamed:symbol];
+    config.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
+    config.contentInsets = NSDirectionalEdgeInsetsMake(13, 13, 13, 13);
+
+    UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.layer.cornerRadius = 23.0;
+    button.layer.masksToBounds = YES;
+    [button.widthAnchor constraintEqualToConstant:46].active = YES;
+    [button.heightAnchor constraintEqualToConstant:46].active = YES;
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
+#pragma mark - Entrance (Signature Moment — Reduce-Motion gated)
 
 - (void)pp_prepareEntranceStateIfNeeded {
     if (self.didAnimateEntrance || UIAccessibilityIsReduceMotionEnabled()) {
@@ -910,8 +1060,8 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
                           delay:0.02
          usingSpringWithDamping:0.88
           initialSpringVelocity:0.18
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
+                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                      animations:^{
         self.heroContainer.alpha = 1.0;
         self.heroContainer.transform = CGAffineTransformIdentity;
         self.closeButton.alpha = 1.0;
@@ -925,56 +1075,26 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         }
         [UIView animateWithDuration:0.38
                               delay:delay
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
+                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                          animations:^{
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         } completion:nil];
         delay += 0.055;
     }
 
+    // Signature moment 2 — contact dock rises last.
     [UIView animateWithDuration:0.38
                           delay:delay
          usingSpringWithDamping:0.86
           initialSpringVelocity:0.20
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
+                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                      animations:^{
         self.contactView.alpha = 1.0;
         self.contactView.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
-- (NSAttributedString *)pp_bodyText:(NSString *)text {
-    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
-    style.lineSpacing = 6.0;
-    style.alignment = NSTextAlignmentNatural;
-    return [[NSAttributedString alloc] initWithString:text ?: @""
-                                           attributes:@{
-        NSFontAttributeName: [GM MidFontWithSize:16],
-        NSForegroundColorAttributeName: GM.PrimaryTextColor,
-        NSParagraphStyleAttributeName: style
-    }];
-}
-
-- (UIButton *)pp_makeGlassCircleButtonWithSymbol:(NSString *)symbol action:(SEL)action {
-    UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
-    config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    config.baseBackgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.18];
-    config.baseForegroundColor = UIColor.whiteColor;
-    config.background.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
-    config.image = [UIImage systemImageNamed:symbol];
-    config.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
-    config.contentInsets = NSDirectionalEdgeInsetsMake(13, 13, 13, 13);
-
-    UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
-    button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.layer.cornerRadius = 23.0;
-    button.layer.masksToBounds = YES;
-    [button.widthAnchor constraintEqualToConstant:46].active = YES;
-    [button.heightAnchor constraintEqualToConstant:46].active = YES;
-    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    return button;
-}
 
 #pragma mark - Actions
 
@@ -1065,7 +1185,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     return collectionView.bounds.size;
 }
 
-#pragma mark - UIScrollViewDelegate
+#pragma mark - UIScrollViewDelegate (page + progress rail)
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     if (scrollView != self.imagesCV || self.pageControl.numberOfPages == 0) {
@@ -1076,6 +1196,18 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     NSInteger page = (NSInteger)lround(scrollView.contentOffset.x / width);
     page = MAX(0, MIN(page, self.pageControl.numberOfPages - 1));
     self.pageControl.currentPage = page;
+
+    // Progress rail — scroll-linked fill (continuous indicator).
+    NSInteger pages = MAX(self.mediaItems.count, 1);
+    if (pages <= 1 || self.galleryProgressTrackView.hidden) {
+        return;
+    }
+    CGFloat trackWidth = CGRectGetWidth(self.galleryProgressTrackView.bounds);
+    CGFloat fillWidth = self.galleryProgressWidthConstraint.constant;
+    CGFloat maxLeading = MAX(trackWidth - fillWidth, 0.0);
+    CGFloat progress = scrollView.contentOffset.x / MAX((scrollView.contentSize.width - width), 1.0);
+    progress = MAX(0.0, MIN(progress, 1.0));
+    self.galleryProgressLeadingConstraint.constant = maxLeading * progress;
 }
 
 #pragma mark - Report Ad
@@ -1090,12 +1222,12 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         [self presentViewController:alert animated:YES completion:nil];
         return;
     }
-    
+
     UIAlertController *sheet = [UIAlertController
         alertControllerWithTitle:kLang(@"report_alert_title")
         message:kLang(@"report_alert_message")
         preferredStyle:UIAlertControllerStyleActionSheet];
-    
+
     NSDictionary *reasons = @{
         @"inappropriate_content": kLang(@"report_reason_inappropriate"),
         @"scam_fraud": kLang(@"report_reason_fraud"),
@@ -1103,7 +1235,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         @"spam": kLang(@"report_reason_spam"),
         @"other": kLang(@"report_reason_other")
     };
-    
+
     for (NSString *code in @[@"inappropriate_content", @"scam_fraud", @"wrong_category", @"spam", @"other"]) {
         [sheet addAction:[UIAlertAction actionWithTitle:reasons[code]
             style:UIAlertActionStyleDefault
@@ -1111,34 +1243,34 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
                 [self submitAdoptReportWithReason:code];
             }]];
     }
-    
+
     [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
         style:UIAlertActionStyleCancel handler:nil]];
-    
+
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         sheet.popoverPresentationController.sourceView = sender;
         sheet.popoverPresentationController.sourceRect = sender.bounds;
     }
-    
+
     [self presentViewController:sheet animated:YES completion:nil];
 }
 
 - (void)submitAdoptReportWithReason:(NSString *)reason {
     NSString *docID = self.model.documentID;
     if (docID.length == 0) return;
-    
+
     NSString *currentUID = PPCurrentFIRAuthUser.uid;
     if (currentUID.length == 0) {
         currentUID = [UserManager sharedManager].currentUser.ID;
     }
     if (currentUID.length == 0) return;
-    
+
     FIRFirestore *db = [FIRFirestore firestore];
 
     // 1. Flag on the content document (array-union for multi-reporter support)
     FIRDocumentReference *docRef =
         [[db collectionWithPath:@"adopt_pets"] documentWithPath:docID];
-    
+
     [docRef updateData:@{
         @"reportedBy"    : [FIRFieldValue fieldValueForArrayUnion:@[currentUID]],
         @"reportCount"   : [FIRFieldValue fieldValueForIntegerIncrement:1],

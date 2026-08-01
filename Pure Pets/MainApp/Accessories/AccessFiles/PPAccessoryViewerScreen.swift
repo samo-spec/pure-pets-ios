@@ -125,6 +125,16 @@ struct PPAccessoryViewerScreen: View {
             }
             return 98
         }()
+        let resolvedDecisionBarClearance: CGFloat = {
+            guard decisionBarHeight > 0, decisionBarHeight < 420 else {
+                return decisionBarClearance
+            }
+            let measuredContentHeight = max(
+                decisionBarHeight - bottomInset,
+                decisionBarClearance
+            )
+            return measuredContentHeight + PPSpace.sm
+        }()
 
         return ZStack(alignment: .top) {
             ScrollViewReader { scrollProxy in
@@ -188,7 +198,10 @@ struct PPAccessoryViewerScreen: View {
                             .id("accessory-recommendations")
                         }
                         .padding(.horizontal, horizontalPadding)
-                        .padding(.bottom, decisionBarClearance + bottomInset)
+                        .padding(
+                            .bottom,
+                            resolvedDecisionBarClearance + bottomInset
+                        )
                         .opacity(cardsResolved ? 1 : 0)
                         .offset(y: cardsResolved ? 0 : 20)
                     }
@@ -285,7 +298,7 @@ struct PPAccessoryViewerScreen: View {
             .onPreferenceChange(
                 PPAccessoryDecisionBarHeightPreferenceKey.self
             ) { measuredHeight in
-                guard measuredHeight > 0, measuredHeight < 300 else { return }
+                guard measuredHeight > 0, measuredHeight < 420 else { return }
                 guard abs(measuredHeight - decisionBarHeight) > 0.5 else {
                     return
                 }
@@ -363,7 +376,7 @@ struct PPAccessoryViewerScreen: View {
         let fallbackHeight = dynamicTypeSize.isAccessibilitySize
             ? (snapshot.showsCart ? 224.0 : 168.0)
             : (snapshot.showsCart ? 170.0 : 112.0)
-        let safeDecisionBarHeight = (decisionBarHeight > 0 && decisionBarHeight < 300)
+        let safeDecisionBarHeight = (decisionBarHeight > 0 && decisionBarHeight < 420)
             ? decisionBarHeight
             : fallbackHeight
         let totalOverlayHeight = safeDecisionBarHeight

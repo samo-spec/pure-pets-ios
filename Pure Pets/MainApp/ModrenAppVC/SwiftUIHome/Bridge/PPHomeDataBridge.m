@@ -96,6 +96,15 @@
     [self pp_updateMarketplacePlayback];
 }
 
+- (void)setCustomTintColor:(UIColor *)customTintColor
+{
+    _customTintColor = customTintColor;
+    if (customTintColor) {
+        self.animationView.tintColor = customTintColor;
+        self.fallbackImageView.tintColor = customTintColor;
+    }
+}
+
 - (void)pp_buildMarketplaceAnimation
 {
     self.backgroundColor = UIColor.clearColor;
@@ -262,6 +271,9 @@
         self.animationView.animationSpeed =
             profileAnimation ? 0.85 : (self.loadsFromFirebase ? 0.3 : 0.8);
         self.animationView.animationProgress = profileAnimation ? 0.0 : 0.32;
+        if (self.customTintColor) {
+            self.animationView.tintColor = self.customTintColor;
+        }
     }
     [self pp_updateMarketplacePlayback];
 }
@@ -681,9 +693,9 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
 {
     __weak typeof(self) weakSelf = self;
     [[PetAccessoryManager sharedManager]
-        fetchLatestAccessoriesHasOffersWithLimit:36
-                                      completion:^(NSArray<PetAccessory *> *accessories,
-                                                   NSError * _Nullable error) {
+        fetchLatestAccessoriesWithLimit:50
+                              completion:^(NSArray<PetAccessory *> *accessories,
+                                           NSError * _Nullable error) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) {
             return;
@@ -1694,6 +1706,22 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
     }
     [PetAccessoryManager fetchAccessoriesWithIDs:uniqueIDs.array
                                       completion:^(NSArray<PetAccessory *> *accessories) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) {
+                completion(accessories ?: @[]);
+            }
+        });
+    }];
+}
+
+- (void)fetchAccessoriesForMainCategoryID:(NSInteger)mainCategoryID
+                                completion:(void (^)(NSArray<PetAccessory *> *accessories))completion
+{
+    [[PetAccessoryManager sharedManager]
+        fetchAccessoriesForMainCategoryID:mainCategoryID
+                            subCategoryID:0
+                                    limit:24
+                               completion:^(NSArray<PetAccessory *> *accessories) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) {
                 completion(accessories ?: @[]);

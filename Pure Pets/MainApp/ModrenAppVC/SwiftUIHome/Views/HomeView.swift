@@ -194,19 +194,22 @@ struct HomeView: View {
 
     private var loadedContent: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
-            ForEach(visibleSupportedSections) { section in
+            ForEach(
+                Array(visibleSupportedSections.enumerated()),
+                id: \.element.id
+            ) { index, section in
                 configuredSection(section)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, sectionVerticalPadding(section.id))
                     .background(sectionBand(for: section.id))
+                    .homeSectionEntrance(
+                        isVisible: loadedEntranceVisible,
+                        sectionIndex: index,
+                        reduceMotion: reduceMotion
+                    )
                     .id("home-section-\(section.id)")
             }
         }
-        .homeEntrance(
-            isVisible: loadedEntranceVisible,
-            delay: 0.05,
-            reduceMotion: reduceMotion
-        )
         .onAppear(perform: startLoadedEntranceIfNeeded)
     }
 
@@ -258,6 +261,7 @@ struct HomeView: View {
                 HomeCategoryRail(
                     categories: store.state.categories,
                     selectedID: store.state.selectedMainKindID,
+                    entrancePresented: loadedEntranceVisible,
                     onSelect: store.selectCategory
                 )
             }
@@ -351,7 +355,11 @@ struct HomeView: View {
              HomeSectionRawID.suggestionAds,
              HomeSectionRawID.suggestionAccessories:
             if let feed = store.state.sections.first(where: { $0.id == section.id }) {
-                HomeFeedSection(section: feed, store: store)
+                HomeFeedSection(
+                    section: feed,
+                    store: store,
+                    entrancePresented: loadedEntranceVisible
+                )
             }
 
         default:
@@ -396,7 +404,7 @@ struct HomeView: View {
 
     private func sectionBand(for rawID: Int) -> Color {
         switch rawID {
-        case HomeSectionRawID.premiumCare, HomeSectionRawID.adopt:
+        case HomeSectionRawID.premiumCare:
             return .homeSectionBand
         case HomeSectionRawID.suggestions,
              HomeSectionRawID.suggestionAds,
@@ -425,7 +433,12 @@ struct HomeView: View {
 
     private func startLoadedEntranceIfNeeded() {
         guard !loadedEntranceVisible else { return }
-        loadedEntranceVisible = true
+        // Commit on the next run loop so the initial visible shelves are
+        // already in their staged pose before the one-shot phase changes.
+        DispatchQueue.main.async {
+            guard !loadedEntranceVisible else { return }
+            loadedEntranceVisible = true
+        }
     }
 
     private var selectedPriorityPet: HomePetModel? {
@@ -668,7 +681,7 @@ private struct HomeProviderCategoryNavigation: View {
             )
 
             LazyVGrid(columns: columns, spacing: PPSpace.sm) {
-                ForEach(categories) { category in
+                ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
                     Button { action(category.id) } label: {
                         VStack(alignment: .leading, spacing: PPSpace.sm) {
                             Image(systemName: category.symbol)
@@ -699,6 +712,7 @@ private struct HomeProviderCategoryNavigation: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .modifier(HomeScrollCellReveal(ordinal: index))
                 }
             }
         }
@@ -831,21 +845,10 @@ private struct HomeAdoptionSection: View {
         }
         .padding(dynamicTypeSize.isAccessibilitySize ? PPSpace.lg : PPSpace.base)
         .background {
-            ZStack(alignment: .topTrailing) {
-                cardShape
-                    .fill(PPGradient.softBrandField)
-
-                Circle()
-                    .fill(Color.homeBrand.opacity(colorScheme == .dark ? 0.12 : 0.08))
-                    .frame(width: 190, height: 190)
-                    .offset(x: trailingOutwardOffset, y: -72)
-
-                Circle()
-                    .fill(Color.homeSurface.opacity(colorScheme == .dark ? 0.30 : 0.52))
-                    .frame(width: 116, height: 116)
-                    .offset(x: trailingInwardOffset, y: 132)
-            }
-            .clipShape(cardShape)
+            HomeHeroField(
+                accent: Color.homeBrand,
+                increasedContrast: contrast == .increased
+            )
         }
         .overlay {
             cardShape.stroke(
@@ -867,14 +870,6 @@ private struct HomeAdoptionSection: View {
 
     private var cardShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
-    }
-
-    private var trailingOutwardOffset: CGFloat {
-        layoutDirection == .rightToLeft ? -48 : 48
-    }
-
-    private var trailingInwardOffset: CGFloat {
-        layoutDirection == .rightToLeft ? 24 : -24
     }
 
     private var adoptionCopy: some View {
@@ -1126,6 +1121,34 @@ private struct HomeEntranceModifier: ViewModifier {
     }
 }
 
+private struct HomeSectionEntranceModifier: ViewModifier {
+    let isVisible: Bool
+    let sectionIndex: Int
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        let cappedIndex = min(sectionIndex, 6)
+        let delay = Double(cappedIndex) * 0.045
+        content
+            .opacity(isVisible ? 1 : 0)
+            .scaleEffect(
+                reduceMotion || isVisible ? 1 : 0.985,
+                anchor: .top
+            )
+            .offset(y: reduceMotion || isVisible ? 0 : 18)
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.12)
+                    : .spring(
+                        response: 0.52,
+                        dampingFraction: 0.82,
+                        blendDuration: 0.08
+                    ).delay(delay),
+                value: isVisible
+            )
+    }
+}
+
 private extension View {
     func homeEntrance(
         isVisible: Bool,
@@ -1135,6 +1158,18 @@ private extension View {
         modifier(HomeEntranceModifier(
             isVisible: isVisible,
             delay: delay,
+            reduceMotion: reduceMotion
+        ))
+    }
+
+    func homeSectionEntrance(
+        isVisible: Bool,
+        sectionIndex: Int,
+        reduceMotion: Bool
+    ) -> some View {
+        modifier(HomeSectionEntranceModifier(
+            isVisible: isVisible,
+            sectionIndex: sectionIndex,
             reduceMotion: reduceMotion
         ))
     }

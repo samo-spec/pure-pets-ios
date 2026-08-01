@@ -114,6 +114,16 @@ final class HomeRepository {
         bridge.fetchAccessories(ids: ids, completion: completion)
     }
 
+    func loadAccessories(
+        mainCategoryID: Int,
+        completion: @escaping ([PetAccessory]) -> Void
+    ) {
+        bridge.fetchAccessories(
+            mainCategoryID: mainCategoryID,
+            completion: completion
+        )
+    }
+
     private func bindBridge() {
         bridge.mainKindsDidChange = { [weak self] models in
             self?.forward(.mainKinds(models))

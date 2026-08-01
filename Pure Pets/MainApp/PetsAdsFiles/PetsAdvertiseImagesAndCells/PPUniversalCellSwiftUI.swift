@@ -270,6 +270,232 @@ public struct PPUniversalCardActions {
     }
 }
 
+// MARK: - Home Shelf Entrance
+
+fileprivate struct PPUniversalHomeShelfEntranceState: Equatable {
+    static let settled = PPUniversalHomeShelfEntranceState(
+        isEnabled: false,
+        isPresented: true,
+        ordinal: 0
+    )
+
+    let isEnabled: Bool
+    let isPresented: Bool
+    let ordinal: Int
+
+    var cappedOrdinal: Int {
+        min(max(ordinal, 0), 3)
+    }
+}
+
+private struct PPUniversalHomeShelfEntranceKey: EnvironmentKey {
+    static let defaultValue = PPUniversalHomeShelfEntranceState.settled
+}
+
+fileprivate extension EnvironmentValues {
+    var ppUniversalHomeShelfEntrance: PPUniversalHomeShelfEntranceState {
+        get { self[PPUniversalHomeShelfEntranceKey.self] }
+        set { self[PPUniversalHomeShelfEntranceKey.self] = newValue }
+    }
+}
+
+private struct PPUniversalHomeShelfPlacement: ViewModifier {
+    let state: PPUniversalHomeShelfEntranceState
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(
+                isStaged ? stagedScale : 1,
+                anchor: semanticShelfAnchor
+            )
+            .rotation3DEffect(
+                .degrees(isStaged ? stagedYaw : 0),
+                axis: (x: 0, y: 1, z: 0),
+                anchor: semanticShelfAnchor,
+                perspective: 0.68
+            )
+            .rotationEffect(
+                .degrees(isStaged ? stagedRoll : 0),
+                anchor: semanticShelfAnchor
+            )
+            .offset(
+                x: isStaged ? stagedHorizontalTravel : 0,
+                y: isStaged ? stagedVerticalTravel : 0
+            )
+            .animation(placementAnimation, value: state.isPresented)
+    }
+
+    private var isStaged: Bool {
+        state.isEnabled && !state.isPresented && !reduceMotion
+    }
+
+    private var tier: CGFloat {
+        CGFloat(state.cappedOrdinal)
+    }
+
+    private var semanticSign: CGFloat {
+        layoutDirection == .rightToLeft ? -1 : 1
+    }
+
+    private var semanticShelfAnchor: UnitPoint {
+        UnitPoint(
+            x: layoutDirection == .rightToLeft ? 1 : 0,
+            y: 0.72
+        )
+    }
+
+    private var stagedScale: CGFloat {
+        max(0.925, 0.968 - (tier * 0.013))
+    }
+
+    private var stagedHorizontalTravel: CGFloat {
+        semanticSign * (10 + (tier * 9))
+    }
+
+    private var stagedVerticalTravel: CGFloat {
+        5 + (tier * 3)
+    }
+
+    private var stagedYaw: Double {
+        Double(semanticSign) * (2.8 + (Double(tier) * 1.15))
+    }
+
+    private var stagedRoll: Double {
+        Double(semanticSign) * (-0.8 + (Double(tier) * 0.55))
+    }
+
+    private var placementAnimation: Animation? {
+        guard state.isEnabled, !reduceMotion else { return nil }
+        return .spring(
+            response: 0.52,
+            dampingFraction: 0.74,
+            blendDuration: 0.08
+        )
+        .delay(0.025 + (Double(state.cappedOrdinal) * 0.055))
+    }
+}
+
+private struct PPUniversalHomeShelfMediaSettle: ViewModifier {
+    let state: PPUniversalHomeShelfEntranceState
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(
+                isStaged ? 1.05 + (tier * 0.004) : 1,
+                anchor: semanticMediaAnchor
+            )
+            .rotationEffect(
+                .degrees(isStaged ? stagedRoll : 0),
+                anchor: semanticMediaAnchor
+            )
+            .offset(
+                x: isStaged ? -semanticSign * (5 + tier) : 0,
+                y: isStaged ? -2 : 0
+            )
+            .animation(mediaAnimation, value: state.isPresented)
+    }
+
+    private var isStaged: Bool {
+        state.isEnabled && !state.isPresented && !reduceMotion
+    }
+
+    private var tier: CGFloat {
+        CGFloat(state.cappedOrdinal)
+    }
+
+    private var semanticSign: CGFloat {
+        layoutDirection == .rightToLeft ? -1 : 1
+    }
+
+    private var semanticMediaAnchor: UnitPoint {
+        UnitPoint(
+            x: layoutDirection == .rightToLeft ? 0.78 : 0.22,
+            y: 0.45
+        )
+    }
+
+    private var stagedRoll: Double {
+        Double(semanticSign) * (-0.45 - (Double(tier) * 0.12))
+    }
+
+    private var mediaAnimation: Animation? {
+        guard state.isEnabled, !reduceMotion else { return nil }
+        return .spring(
+            response: 0.46,
+            dampingFraction: 0.78,
+            blendDuration: 0.06
+        )
+        .delay(0.05 + (Double(state.cappedOrdinal) * 0.055))
+    }
+}
+
+private struct PPUniversalHomeShelfInformationDock: ViewModifier {
+    let state: PPUniversalHomeShelfEntranceState
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(
+                x: isStaged ? 0.985 : 1,
+                y: isStaged ? 0.975 : 1,
+                anchor: .top
+            )
+            .offset(
+                x: isStaged ? semanticSign * (4 + tier) : 0,
+                y: isStaged ? 8 + tier : 0
+            )
+            .animation(informationAnimation, value: state.isPresented)
+    }
+
+    private var isStaged: Bool {
+        state.isEnabled && !state.isPresented && !reduceMotion
+    }
+
+    private var tier: CGFloat {
+        CGFloat(state.cappedOrdinal)
+    }
+
+    private var semanticSign: CGFloat {
+        layoutDirection == .rightToLeft ? -1 : 1
+    }
+
+    private var informationAnimation: Animation? {
+        guard state.isEnabled, !reduceMotion else { return nil }
+        return .spring(
+            response: 0.44,
+            dampingFraction: 0.80,
+            blendDuration: 0.05
+        )
+        .delay(0.085 + (Double(state.cappedOrdinal) * 0.055))
+    }
+}
+
+extension View {
+    // Home owns this one-shot phase. There is intentionally no onAppear or
+    // geometry trigger here: cells created later by horizontal scrolling see
+    // `isPresented == true` and are rendered directly in their settled pose.
+    func ppUniversalHomeShelfEntrance(
+        isPresented: Bool,
+        ordinal: Int
+    ) -> some View {
+        let state = PPUniversalHomeShelfEntranceState(
+            isEnabled: true,
+            isPresented: isPresented,
+            ordinal: ordinal
+        )
+        return environment(\.ppUniversalHomeShelfEntrance, state)
+            .modifier(PPUniversalHomeShelfPlacement(state: state))
+    }
+}
+
 @available(iOS 16.0, *)
 public struct PPUniversalCardView: View {
     @StateObject private var store: PPUniversalCardStore
@@ -1635,6 +1861,7 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
 
     private let cardRadius: CGFloat = 23
     private let mediaBottomRadius: CGFloat = 8
@@ -1731,6 +1958,11 @@ private struct PPUniversalCardRenderer: View {
                             minHeight: store.isHomePresentation && !store.isContextFocused ? metrics.mediaHeight : nil,
                             maxHeight: store.isHomePresentation && !store.isContextFocused ? metrics.mediaHeight : .infinity
                         )
+                        .modifier(
+                            PPUniversalHomeShelfMediaSettle(
+                                state: homeShelfEntrance
+                            )
+                        )
                     if store.isHomePresentation {
                         homeVerticalInformationGrid(metrics: metrics)
                             .frame(
@@ -1741,6 +1973,11 @@ private struct PPUniversalCardRenderer: View {
                             .padding(.horizontal, 11)
                             .padding(.top, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
                             .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
+                            .modifier(
+                                PPUniversalHomeShelfInformationDock(
+                                    state: homeShelfEntrance
+                                )
+                            )
                     } else {
                         bottomAnchoredInformation
                             .layoutPriority(1)

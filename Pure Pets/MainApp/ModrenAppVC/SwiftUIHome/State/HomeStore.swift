@@ -31,6 +31,27 @@ private enum HomeHeroPresentationMode {
     static let marketplaceHeroID = "home-marketplace-hero"
 }
 
+private enum HomeMarketplaceFeedKind {
+    case recommendations
+    case advertisements
+    case accessorySuggestions
+    case accessories
+    case food
+    case nearbyAdvertisements
+    case services
+}
+
+private enum HomeMarketplaceAudience {
+    case pet
+    case category(String)
+    case general
+}
+
+private struct HomeSectionCopy {
+    let title: String
+    let subtitle: String
+}
+
 @MainActor
 final class HomeStore: ObservableObject {
     @Published private(set) var state: HomeViewState
@@ -50,6 +71,8 @@ final class HomeStore: ObservableObject {
     private var petReminders: [NSObject] = []
     private var recentOrders: [NSObject] = []
     private var buyAgainAccessories: [PetAccessory] = []
+    private var categoryAccessories: [Int: [PetAccessory]] = [:]
+    private var categoryAccessoryRequests = Set<Int>()
     private var showingRecentNearbyFallback = false
 
     private var loadedSources = Set<Int>()
@@ -470,6 +493,7 @@ final class HomeStore: ObservableObject {
             markLoaded(PPHomeBridgeSource.promotions.rawValue)
         case let .accessories(models):
             accessories = models
+            categoryAccessories.removeAll()
             markLoaded(PPHomeBridgeSource.accessories.rawValue)
             resolveBuyAgain()
         case let .food(models):
@@ -581,6 +605,23 @@ final class HomeStore: ObservableObject {
         }
     }
 
+    private func requestCategoryAccessoriesIfNeeded(for categoryID: Int?) {
+        guard let categoryID,
+              categoryID > 0,
+              categoryAccessories[categoryID] == nil,
+              categoryAccessoryRequests.insert(categoryID).inserted
+        else {
+            return
+        }
+
+        repository.loadAccessories(mainCategoryID: categoryID) { [weak self] items in
+            guard let self else { return }
+            self.categoryAccessoryRequests.remove(categoryID)
+            self.categoryAccessories[categoryID] = items
+            self.rebuildState()
+        }
+    }
+
     private func rebuildState() {
         let previousHeroIDs = state.heroPages.map(\.id)
         state.categories = HomeModelAdapter.categories(from: mainKinds)
@@ -589,7 +630,7 @@ final class HomeStore: ObservableObject {
         let persistedCategory = UserDefaults.standard.object(
             forKey: Self.selectedMainKindKey
         ) as? NSNumber
-        state.selectedMainKindID = HomeModelAdapter.selectedCategoryID(
+        let savedMainKindID = HomeModelAdapter.selectedCategoryID(
             persistedID: persistedCategory?.intValue,
             initialID: initialMainKindID,
             categories: state.categories
@@ -606,15 +647,16 @@ final class HomeStore: ObservableObject {
                 state.pets.first(where: \.isDefault)?.id ?? state.pets.first?.id
         }
 
-        if persistedCategory == nil,
-           state.selectedMainKindID == nil,
-           let petCategoryID = selectedPet?.categoryID,
+        if let petCategoryID = selectedPet?.categoryID,
            petCategoryID > 0,
            state.categories.contains(where: {
                HomeModelAdapter.mainKindID($0.raw) == petCategoryID
            }) {
             state.selectedMainKindID = petCategoryID
+        } else {
+            state.selectedMainKindID = savedMainKindID
         }
+        requestCategoryAccessoriesIfNeeded(for: state.selectedMainKindID)
 
         state.heroPages = buildContextHeroPages()
         state.promotionPages = buildPromotionHeroPages()
@@ -999,8 +1041,19 @@ final class HomeStore: ObservableObject {
 
     private func buildSections() -> [HomeSectionModel] {
         let selectedCategoryID = state.selectedMainKindID
+        let audience = marketplaceAudience(for: selectedCategoryID)
+        let categoryAccessoryItems = selectedCategoryID.flatMap {
+            categoryAccessories[$0]
+        } ?? []
+        let accessoryCandidates = categoryAccessoryItems.isEmpty
+            ? accessories
+            : categoryAccessoryItems
 
-        let relevantAccessories = accessories.filter {
+        let relevantAccessories = accessoryCandidates.filter {
+            selectedCategoryID != nil &&
+            integerValue($0, key: "petMainCategoryID") == selectedCategoryID
+        }
+        let relevantFood = food.filter {
             selectedCategoryID != nil &&
             integerValue($0, key: "petMainCategoryID") == selectedCategoryID
         }
@@ -1008,60 +1061,152 @@ final class HomeStore: ObservableObject {
             selectedCategoryID != nil &&
             integerValue($0, key: "category") == selectedCategoryID
         }
+        let relevantNearbyAds = nearbyAdvertisements.filter {
+            selectedCategoryID != nil &&
+            integerValue($0, key: "category") == selectedCategoryID
+        }
         let relevantServices = services.filter {
             selectedCategoryID != nil &&
             integerValue($0, key: "petMainKindID") == selectedCategoryID
         }
+        let prioritizedAccessories = relevantAccessories.isEmpty
+            ? accessories
+            : relevantAccessories
+        let prioritizedFood = relevantFood.isEmpty ? food : relevantFood
+        let prioritizedAds = relevantAds.isEmpty
+            ? advertisements
+            : relevantAds
+        let prioritizedNearbyAds = relevantNearbyAds.isEmpty
+            ? nearbyAdvertisements
+            : relevantNearbyAds
+        let prioritizedServices = relevantServices.isEmpty
+            ? services
+            : relevantServices
+
+        let usesContextualRecommendations =
+            !relevantAccessories.isEmpty ||
+            !relevantAds.isEmpty ||
+            !relevantServices.isEmpty
+        let recommendationAccessories = usesContextualRecommendations
+            ? relevantAccessories
+            : accessories
+        let recommendationAds = usesContextualRecommendations
+            ? relevantAds
+            : advertisements
+        let recommendationServices = usesContextualRecommendations
+            ? relevantServices
+            : services
+
         let suggestionAccessoryCards = HomeModelAdapter.cards(
-            from: Array(relevantAccessories.prefix(8)),
+            from: Array(prioritizedAccessories.prefix(8)),
             context: .forMarket,
             kind: .accessory,
             limit: 8
         )
         let suggestionAdCards = HomeModelAdapter.cards(
-            from: Array(relevantAds.prefix(8)),
+            from: Array(prioritizedAds.prefix(8)),
             context: .forAds,
             kind: .advertisement,
             limit: 8
         )
-        let suggestionServiceCards = HomeModelAdapter.cards(
-            from: Array(relevantServices.prefix(4)),
+        let recommendationAccessoryCards = HomeModelAdapter.cards(
+            from: Array(recommendationAccessories.prefix(8)),
+            context: .forMarket,
+            kind: .accessory,
+            limit: 8
+        )
+        let recommendationAdCards = HomeModelAdapter.cards(
+            from: Array(recommendationAds.prefix(8)),
+            context: .forAds,
+            kind: .advertisement,
+            limit: 8
+        )
+        let recommendationServiceCards = HomeModelAdapter.cards(
+            from: Array(recommendationServices.prefix(4)),
             context: .forServices,
             kind: .service,
             limit: 4
         )
         let recommendationCards = uniqueCards(
-            Array(suggestionAccessoryCards.prefix(4)) +
-            Array(suggestionAdCards.prefix(3)) +
-            Array(suggestionServiceCards.prefix(2))
+            Array(recommendationAccessoryCards.prefix(4)) +
+            Array(recommendationAdCards.prefix(3)) +
+            Array(recommendationServiceCards.prefix(2))
         )
-        let recommendationIDs = Set(recommendationCards.map(\.id))
+        let recommendationIDs = state.config.isVisible(
+            HomeLegacySectionID.suggestions.rawValue
+        )
+            ? Set(recommendationCards.map(\.id))
+            : []
 
-        let accessoryCards = HomeModelAdapter.cards(
-            from: accessories,
+        let allAccessoryCards = HomeModelAdapter.cards(
+            from: prioritizedAccessories,
             context: .forMarket,
             kind: .accessory
-        ).filter { !recommendationIDs.contains($0.id) }
+        )
+        let accessoryCards = usefulCards(
+            from: allAccessoryCards,
+            excluding: recommendationIDs
+        )
         let foodCards = HomeModelAdapter.cards(
-            from: food,
+            from: prioritizedFood,
             context: .forFood,
             kind: .food
         )
         let nearbyCards = HomeModelAdapter.cards(
-            from: nearbyAdvertisements,
+            from: prioritizedNearbyAds,
             context: .forAds,
             kind: .advertisement
         )
-        let serviceCards = HomeModelAdapter.cards(
-            from: services,
+        let allServiceCards = HomeModelAdapter.cards(
+            from: prioritizedServices,
             context: .forServices,
             kind: .service
-        ).filter { !recommendationIDs.contains($0.id) }
+        )
+        let serviceCards = usefulCards(
+            from: allServiceCards,
+            excluding: recommendationIDs
+        )
         let buyAgainCards = HomeModelAdapter.cards(
             from: buyAgainAccessories,
             context: .forMarket,
             kind: .buyAgain,
             limit: 8
+        )
+
+        let recommendationCopy = marketplaceSectionCopy(
+            for: .recommendations,
+            audience: audience,
+            usesContext: usesContextualRecommendations
+        )
+        let advertisementCopy = marketplaceSectionCopy(
+            for: .advertisements,
+            audience: audience,
+            usesContext: !relevantAds.isEmpty
+        )
+        let accessorySuggestionCopy = marketplaceSectionCopy(
+            for: .accessorySuggestions,
+            audience: audience,
+            usesContext: !relevantAccessories.isEmpty
+        )
+        let accessoryCopy = marketplaceSectionCopy(
+            for: .accessories,
+            audience: audience,
+            usesContext: !relevantAccessories.isEmpty
+        )
+        let foodCopy = marketplaceSectionCopy(
+            for: .food,
+            audience: audience,
+            usesContext: !relevantFood.isEmpty
+        )
+        let nearbyCopy = marketplaceSectionCopy(
+            for: .nearbyAdvertisements,
+            audience: audience,
+            usesContext: !relevantNearbyAds.isEmpty
+        )
+        let serviceCopy = marketplaceSectionCopy(
+            for: .services,
+            audience: audience,
+            usesContext: !relevantServices.isEmpty
         )
 
         var result: [HomeSectionModel] = []
@@ -1075,113 +1220,68 @@ final class HomeStore: ObservableObject {
                 section = makeSection(
                     kind: .buyAgain,
                     rawID: rawID,
-                    titleKey: "home_pulse_section_buy_again",
-                    titleFallback: "Buy again",
-                    subtitleKey: "home_pulse_section_buy_again_subtitle",
-                    subtitleFallback: "Products resolved from your real order history",
+                    copy: localizedSectionCopy(
+                        titleKey: "home_pulse_section_buy_again",
+                        titleFallback: "Buy again",
+                        subtitleKey: "home_pulse_section_buy_again_subtitle",
+                        subtitleFallback: "Products resolved from your real order history"
+                    ),
                     cards: buyAgainCards,
-                    source: PPHomeBridgeSource.orders.rawValue,
-                    emptyAction: nil
+                    source: PPHomeBridgeSource.orders.rawValue
                 )
             case HomeLegacySectionID.suggestions.rawValue:
-                guard selectedPet != nil,
-                      !recommendationCards.isEmpty else {
-                    continue
-                }
                 section = makeSection(
                     kind: .recommendations,
                     rawID: rawID,
-                    titleKey: "home_pulse_section_relevant",
-                    titleFallback: "Relevant for your pet",
-                    subtitleKey: "home_pulse_section_relevant_subtitle",
-                    subtitleFallback: "Matched to the selected pet category",
+                    copy: recommendationCopy,
                     cards: recommendationCards,
-                    source: PPHomeBridgeSource.accessories.rawValue,
-                    emptyAction: nil
+                    source: PPHomeBridgeSource.accessories.rawValue
                 )
             case HomeLegacySectionID.suggestionAds.rawValue:
-                guard selectedPet != nil,
-                      !suggestionAdCards.isEmpty else {
-                    continue
-                }
                 section = makeSection(
                     kind: .recommendations,
                     rawID: rawID,
-                    titleKey: "home_pulse_section_relevant_ads",
-                    titleFallback: "Pet listings for you",
-                    subtitleKey: "home_pulse_section_relevant_ads_subtitle",
-                    subtitleFallback: "Listings matched to the selected pet category",
+                    copy: advertisementCopy,
                     cards: suggestionAdCards,
-                    source: PPHomeBridgeSource.advertisements.rawValue,
-                    emptyAction: nil
+                    source: PPHomeBridgeSource.advertisements.rawValue
                 )
             case HomeLegacySectionID.suggestionAccessories.rawValue:
-                guard selectedPet != nil,
-                      !suggestionAccessoryCards.isEmpty else {
-                    continue
-                }
                 section = makeSection(
                     kind: .recommendations,
                     rawID: rawID,
-                    titleKey: "home_pulse_section_relevant_accessories",
-                    titleFallback: "Essentials for your pet",
-                    subtitleKey: "home_pulse_section_relevant_accessories_subtitle",
-                    subtitleFallback: "Products matched to the selected pet category",
+                    copy: accessorySuggestionCopy,
                     cards: suggestionAccessoryCards,
-                    source: PPHomeBridgeSource.accessories.rawValue,
-                    emptyAction: nil
+                    source: PPHomeBridgeSource.accessories.rawValue
                 )
             case HomeLegacySectionID.accessories.rawValue:
                 section = makeSection(
                     kind: .accessories,
                     rawID: rawID,
-                    titleKey: "home_pulse_section_accessories",
-                    titleFallback: "Featured essentials",
-                    subtitleKey: "home_pulse_section_accessories_subtitle",
-                    subtitleFallback: "Available products and genuine offers",
+                    copy: accessoryCopy,
                     cards: accessoryCards,
-                    source: PPHomeBridgeSource.accessories.rawValue,
-                    emptyAction: HomeModelAdapter.localized(
-                        "home_pulse_explore_market",
-                        fallback: "Explore marketplace"
-                    )
+                    source: PPHomeBridgeSource.accessories.rawValue
                 )
             case HomeLegacySectionID.lastFood.rawValue:
-                guard !foodCards.isEmpty ||
-                      sourceErrors[PPHomeBridgeSource.food.rawValue] != nil
-                else {
-                    continue
-                }
                 section = makeSection(
                     kind: .food,
                     rawID: rawID,
-                    titleKey: "home_pulse_section_food",
-                    titleFallback: "Food and nutrition",
-                    subtitleKey: "home_pulse_section_food_subtitle",
-                    subtitleFallback: "Available food products for supported pets",
+                    copy: foodCopy,
                     cards: foodCards,
-                    source: PPHomeBridgeSource.food.rawValue,
-                    emptyAction: nil
+                    source: PPHomeBridgeSource.food.rawValue
                 )
             case HomeLegacySectionID.adsNearby.rawValue:
                 section = nearbySection(
                     rawID: rawID,
-                    cards: nearbyCards
+                    cards: nearbyCards,
+                    copy: nearbyCopy
                 )
             case HomeLegacySectionID.nearbyServices.rawValue:
                 section = makeSection(
                     kind: .services,
                     rawID: rawID,
-                    titleKey: "home_pulse_section_services",
-                    titleFallback: "Care and services",
-                    subtitleKey: "home_pulse_section_services_subtitle",
-                    subtitleFallback: "Grooming, training, and available provider offers",
+                    copy: serviceCopy,
                     cards: serviceCards,
-                    source: PPHomeBridgeSource.services.rawValue,
-                    emptyAction: HomeModelAdapter.localized(
-                        "home_pulse_find_services",
-                        fallback: "Find services"
-                    )
+                    source: PPHomeBridgeSource.services.rawValue
                 )
             default:
                 section = nil
@@ -1197,14 +1297,10 @@ final class HomeStore: ObservableObject {
     private func makeSection(
         kind: HomeSectionID,
         rawID: Int,
-        titleKey: String,
-        titleFallback: String,
-        subtitleKey: String,
-        subtitleFallback: String,
+        copy: HomeSectionCopy,
         cards: [HomeCardModel],
-        source: Int,
-        emptyAction: String?
-    ) -> HomeSectionModel {
+        source: Int
+    ) -> HomeSectionModel? {
         let renderState: HomeSectionRenderState
         if let message = sourceErrors[source] {
             renderState = .failed(
@@ -1221,17 +1317,7 @@ final class HomeStore: ObservableObject {
         } else if !loadedSources.contains(source) {
             renderState = .loading
         } else if cards.isEmpty {
-            renderState = .empty(
-                title: HomeModelAdapter.localized(
-                    "home_pulse_section_empty_title",
-                    fallback: "Nothing to show yet"
-                ),
-                message: HomeModelAdapter.localized(
-                    "home_pulse_section_empty_message",
-                    fallback: "New items will appear here when they are available."
-                ),
-                actionTitle: emptyAction
-            )
+            return nil
         } else {
             renderState = .content(cards)
         }
@@ -1239,11 +1325,8 @@ final class HomeStore: ObservableObject {
         return HomeSectionModel(
             id: rawID,
             kind: kind,
-            title: HomeModelAdapter.localized(titleKey, fallback: titleFallback),
-            subtitle: HomeModelAdapter.localized(
-                subtitleKey,
-                fallback: subtitleFallback
-            ),
+            title: copy.title,
+            subtitle: copy.subtitle,
             seeAllTitle: HomeModelAdapter.localized(
                 "ShowAll",
                 fallback: "See all"
@@ -1255,48 +1338,14 @@ final class HomeStore: ObservableObject {
 
     private func nearbySection(
         rawID: Int,
-        cards: [HomeCardModel]
-    ) -> HomeSectionModel {
-        let subtitle = showingRecentNearbyFallback
-            ? HomeModelAdapter.localized(
-                "home_pulse_nearby_recent_fallback",
-                fallback: "Few nearby results — showing recent listings"
-            )
-            : state.location.areaName
-        let resolvedSubtitle = subtitle.isEmpty
-            ? HomeModelAdapter.localized(
-                "home_pulse_section_nearby_subtitle",
-                fallback: "Choose an area for nearby discovery"
-            )
-            : subtitle
-        let baseSection = makeSection(
-            kind: .nearbyAdvertisements,
-            rawID: rawID,
-            titleKey: "home_pulse_section_nearby",
-            titleFallback: "Near your area",
-            subtitleKey: "home_pulse_section_nearby_subtitle",
-            subtitleFallback: "Choose an area for nearby discovery",
-            cards: cards,
-            source: PPHomeBridgeSource.nearbyAdvertisements.rawValue,
-            emptyAction: HomeModelAdapter.localized(
-                "home_pulse_choose_area",
-                fallback: "Choose area"
-            )
-        )
-        var section = HomeSectionModel(
-            id: baseSection.id,
-            kind: baseSection.kind,
-            title: baseSection.title,
-            subtitle: resolvedSubtitle,
-            seeAllTitle: baseSection.seeAllTitle,
-            rawConfigSectionID: baseSection.rawConfigSectionID,
-            state: baseSection.state
-        )
+        cards: [HomeCardModel],
+        copy: HomeSectionCopy
+    ) -> HomeSectionModel? {
         if !state.location.hasCoordinate {
-            section = HomeSectionModel(
-                id: section.id,
-                kind: section.kind,
-                title: section.title,
+            return HomeSectionModel(
+                id: rawID,
+                kind: .nearbyAdvertisements,
+                title: copy.title,
                 subtitle: HomeModelAdapter.localized(
                     "home_pulse_nearby_location_needed",
                     fallback: "Choose a location to see genuine nearby results."
@@ -1319,7 +1368,266 @@ final class HomeStore: ObservableObject {
                 )
             )
         }
-        return section
+
+        let subtitle = showingRecentNearbyFallback
+            ? HomeModelAdapter.localized(
+                "home_pulse_nearby_recent_fallback",
+                fallback: "Few nearby results — showing recent listings"
+            )
+            : state.location.areaName
+        let resolvedSubtitle = subtitle.isEmpty
+            ? HomeModelAdapter.localized(
+                "home_pulse_section_nearby_subtitle",
+                fallback: "Choose an area for nearby discovery"
+            )
+            : subtitle
+        guard let baseSection = makeSection(
+            kind: .nearbyAdvertisements,
+            rawID: rawID,
+            copy: copy,
+            cards: cards,
+            source: PPHomeBridgeSource.nearbyAdvertisements.rawValue
+        ) else {
+            return nil
+        }
+        return HomeSectionModel(
+            id: baseSection.id,
+            kind: baseSection.kind,
+            title: baseSection.title,
+            subtitle: resolvedSubtitle,
+            seeAllTitle: baseSection.seeAllTitle,
+            rawConfigSectionID: baseSection.rawConfigSectionID,
+            state: baseSection.state
+        )
+    }
+
+    private func marketplaceAudience(
+        for selectedCategoryID: Int?
+    ) -> HomeMarketplaceAudience {
+        guard let selectedCategoryID else { return .general }
+        if let petCategoryID = selectedPet?.categoryID,
+           petCategoryID == selectedCategoryID {
+            return .pet
+        }
+        guard let categoryTitle = state.categories.first(where: {
+            HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
+        })?.title.trimmingCharacters(in: .whitespacesAndNewlines),
+        !categoryTitle.isEmpty else {
+            return .general
+        }
+        return .category(categoryTitle)
+    }
+
+    private func marketplaceSectionCopy(
+        for kind: HomeMarketplaceFeedKind,
+        audience: HomeMarketplaceAudience,
+        usesContext: Bool
+    ) -> HomeSectionCopy {
+        if usesContext {
+            switch audience {
+            case .pet:
+                return petSectionCopy(for: kind)
+            case let .category(categoryTitle):
+                return categorySectionCopy(for: kind, title: categoryTitle)
+            case .general:
+                break
+            }
+        }
+        return generalSectionCopy(for: kind)
+    }
+
+    private func petSectionCopy(
+        for kind: HomeMarketplaceFeedKind
+    ) -> HomeSectionCopy {
+        switch kind {
+        case .recommendations:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_relevant",
+                titleFallback: "Relevant for your pet",
+                subtitleKey: "home_pulse_section_relevant_subtitle",
+                subtitleFallback: "Matched to the selected pet category"
+            )
+        case .advertisements:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_relevant_ads",
+                titleFallback: "Pet listings for you",
+                subtitleKey: "home_pulse_section_relevant_ads_subtitle",
+                subtitleFallback: "Listings matched to the selected pet category"
+            )
+        case .accessorySuggestions:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_relevant_accessories",
+                titleFallback: "Essentials for your pet",
+                subtitleKey: "home_pulse_section_relevant_accessories_subtitle",
+                subtitleFallback: "Products matched to the selected pet category"
+            )
+        case .accessories:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_pet_featured",
+                titleFallback: "Featured for your pet",
+                subtitleKey: "home_pulse_section_relevant_accessories_subtitle",
+                subtitleFallback: "Products matched to the selected pet category"
+            )
+        case .food:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_pet_food",
+                titleFallback: "Food for your pet",
+                subtitleKey: "home_pulse_section_relevant_subtitle",
+                subtitleFallback: "Matched to the selected pet category"
+            )
+        case .nearbyAdvertisements:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_pet_listings",
+                titleFallback: "Listings for your pet",
+                subtitleKey: "home_pulse_section_relevant_subtitle",
+                subtitleFallback: "Matched to the selected pet category"
+            )
+        case .services:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_pet_services",
+                titleFallback: "Care for your pet",
+                subtitleKey: "home_pulse_section_relevant_subtitle",
+                subtitleFallback: "Matched to the selected pet category"
+            )
+        }
+    }
+
+    private func categorySectionCopy(
+        for kind: HomeMarketplaceFeedKind,
+        title categoryTitle: String
+    ) -> HomeSectionCopy {
+        let titleKey: String
+        let titleFallback: String
+        switch kind {
+        case .recommendations:
+            titleKey = "home_pulse_section_category_picks_format"
+            titleFallback = "Picks for %@"
+        case .advertisements, .nearbyAdvertisements:
+            titleKey = "home_pulse_section_category_listings_format"
+            titleFallback = "Listings for %@"
+        case .accessorySuggestions:
+            titleKey = "home_pulse_section_category_accessories_format"
+            titleFallback = "Essentials for %@"
+        case .accessories:
+            titleKey = "home_pulse_section_category_featured_format"
+            titleFallback = "Featured for %@"
+        case .food:
+            titleKey = "home_pulse_section_category_food_format"
+            titleFallback = "Food for %@"
+        case .services:
+            titleKey = "home_pulse_section_category_services_format"
+            titleFallback = "Services for %@"
+        }
+
+        return formattedSectionCopy(
+            titleKey: titleKey,
+            titleFallback: titleFallback,
+            value: categoryTitle,
+            subtitleKey: "home_pulse_section_selected_category_subtitle",
+            subtitleFallback: "Matched to the category you selected"
+        )
+    }
+
+    private func generalSectionCopy(
+        for kind: HomeMarketplaceFeedKind
+    ) -> HomeSectionCopy {
+        switch kind {
+        case .recommendations:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_picked",
+                titleFallback: "Picked for you",
+                subtitleKey: "home_pulse_section_picked_subtitle",
+                subtitleFallback: "A fresh mix from across Pure Pets"
+            )
+        case .advertisements:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_listings",
+                titleFallback: "New pet listings",
+                subtitleKey: "home_pulse_section_listings_subtitle",
+                subtitleFallback: "Recent approved pet listings"
+            )
+        case .accessorySuggestions:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_accessories_latest",
+                titleFallback: "New and featured accessories",
+                subtitleKey: "home_pulse_section_accessories_subtitle",
+                subtitleFallback: "Offers first, followed by the newest arrivals"
+            )
+        case .accessories:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_accessories",
+                titleFallback: "Featured accessories",
+                subtitleKey: "home_pulse_section_accessories_subtitle",
+                subtitleFallback: "Offers first, followed by the newest arrivals"
+            )
+        case .food:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_food",
+                titleFallback: "New food arrivals",
+                subtitleKey: "home_pulse_section_food_subtitle",
+                subtitleFallback: "Recently added food and nutrition"
+            )
+        case .nearbyAdvertisements:
+            if showingRecentNearbyFallback {
+                return localizedSectionCopy(
+                    titleKey: "home_pulse_section_listings",
+                    titleFallback: "New pet listings",
+                    subtitleKey: "home_pulse_nearby_recent_fallback",
+                    subtitleFallback: "Few nearby results - showing recent listings"
+                )
+            }
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_nearby",
+                titleFallback: "Near your area",
+                subtitleKey: "home_pulse_section_nearby_subtitle",
+                subtitleFallback: "Choose an area for nearby discovery"
+            )
+        case .services:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_services",
+                titleFallback: "Latest care services",
+                subtitleKey: "home_pulse_section_services_subtitle",
+                subtitleFallback: "Recently added grooming, training, and provider offers"
+            )
+        }
+    }
+
+    private func localizedSectionCopy(
+        titleKey: String,
+        titleFallback: String,
+        subtitleKey: String,
+        subtitleFallback: String
+    ) -> HomeSectionCopy {
+        HomeSectionCopy(
+            title: HomeModelAdapter.localized(
+                titleKey,
+                fallback: titleFallback
+            ),
+            subtitle: HomeModelAdapter.localized(
+                subtitleKey,
+                fallback: subtitleFallback
+            )
+        )
+    }
+
+    private func formattedSectionCopy(
+        titleKey: String,
+        titleFallback: String,
+        value: String,
+        subtitleKey: String,
+        subtitleFallback: String
+    ) -> HomeSectionCopy {
+        let format = HomeModelAdapter.localized(
+            titleKey,
+            fallback: titleFallback
+        )
+        return HomeSectionCopy(
+            title: String(format: format, value),
+            subtitle: HomeModelAdapter.localized(
+                subtitleKey,
+                fallback: subtitleFallback
+            )
+        )
     }
 
     private func sourceIDs(for section: HomeSectionID) -> [Int] {
@@ -1511,6 +1819,16 @@ final class HomeStore: ObservableObject {
     private func uniqueCards(_ cards: [HomeCardModel]) -> [HomeCardModel] {
         var seen = Set<String>()
         return cards.filter { seen.insert($0.id).inserted }
+    }
+
+    private func usefulCards(
+        from cards: [HomeCardModel],
+        excluding identifiers: Set<String>
+    ) -> [HomeCardModel] {
+        guard !identifiers.isEmpty else { return cards }
+        let filtered = cards.filter { !identifiers.contains($0.id) }
+        let minimumUsefulCount = min(3, cards.count)
+        return filtered.count >= minimumUsefulCount ? filtered : cards
     }
 
     private func integerValue(_ object: NSObject, key: String) -> Int {

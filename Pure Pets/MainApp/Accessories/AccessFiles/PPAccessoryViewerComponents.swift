@@ -57,15 +57,22 @@ extension View {
 }
 
 private struct PPAccessoryBottomFaceSurface: View {
+    let isCommerce: Bool
+
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         let shape = RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius,
+            cornerRadius: isCommerce
+                ? PPCorner.hero
+                : PPBottomDecisionBarGeometry.surfaceRadius,
             style: .continuous
         )
-        let surfaceTint = colorScheme == .dark
+        let commerceSurface = colorScheme == .dark
+            ? Color.ppElevatedSurface
+            : Color.ppForeground
+        let contactSurface = colorScheme == .dark
             ? Color.ppElevatedSurface.opacity(0.46)
             : Color.ppForeground.opacity(0.58)
         let topStroke = colorSchemeContrast == .increased
@@ -73,16 +80,55 @@ private struct PPAccessoryBottomFaceSurface: View {
             : PPAccessorySubviewBackground.faintStroke
 
         return ZStack {
-            shape.fill(.ultraThinMaterial)
-            shape.fill(surfaceTint)
+            if !isCommerce {
+                shape.fill(.ultraThinMaterial)
+            }
+            shape.fill(isCommerce ? commerceSurface : contactSurface)
+            if isCommerce {
+                shape.fill(
+                    LinearGradient(
+                        colors: [
+                            PPAccessoryPalette.brand.opacity(
+                                colorScheme == .dark ? 0.10 : 0.055
+                            ),
+                            Color.clear,
+                            Color.ppElevatedSurface.opacity(
+                                colorScheme == .dark ? 0.08 : 0.34
+                            ),
+                        ],
+                        startPoint: .bottomLeading,
+                        endPoint: .topTrailing
+                    )
+                )
+            }
         }
         .overlay {
-            shape.stroke(topStroke.opacity(0.78), lineWidth: 0.8)
+            if isCommerce {
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            PPAccessoryPalette.brand.opacity(
+                                colorSchemeContrast == .increased ? 0.46 : 0.20
+                            ),
+                            topStroke.opacity(0.76),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                )
+            } else {
+                shape.stroke(topStroke.opacity(0.78), lineWidth: 0.8)
+            }
         }
         .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
-            radius: 18,
-            y: 8
+            color: Color.black.opacity(
+                colorScheme == .dark
+                    ? (isCommerce ? 0.20 : 0.18)
+                    : (isCommerce ? 0.09 : 0.08)
+            ),
+            radius: isCommerce ? 16 : 18,
+            y: isCommerce ? 7 : 8
         )
     }
 }
@@ -2996,6 +3042,7 @@ struct PPAccessoryPersistentDecisionBar: View {
     let bottomInset: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -3014,7 +3061,7 @@ struct PPAccessoryPersistentDecisionBar: View {
         )
         .padding(PPBottomDecisionBarGeometry.contentPadding)
         .background {
-            PPAccessoryBottomFaceSurface()
+            PPAccessoryBottomFaceSurface(isCommerce: snapshot.showsCart)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(
@@ -3024,7 +3071,10 @@ struct PPAccessoryPersistentDecisionBar: View {
                 : PPBottomDecisionBarGeometry.regularScreenInset
         )
         .padding(.top, PPSpace.sm)
-        .padding(.bottom, 16)
+        .padding(
+            .bottom,
+            max(bottomInset, PPSpace.base)
+        )
         .ignoresSafeArea(.container, edges: .bottom)
         .animation(
             reduceMotion
@@ -3047,11 +3097,12 @@ struct PPAccessoryPersistentDecisionBar: View {
     private var cartBar: some View {
         Group {
             if canAdd {
-                VStack(spacing: PPSpace.md) {
+                VStack(spacing: PPSpace.sm) {
                     if dynamicTypeSize.isAccessibilitySize {
                         VStack(alignment: .leading, spacing: PPSpace.md) {
                             stockIndicator
                             quantityControl
+                                .frame(maxWidth: .infinity, alignment: .trailing)
                             animatedCartButton
                         }
                     } else if compact {
@@ -3100,6 +3151,8 @@ struct PPAccessoryPersistentDecisionBar: View {
             tint: PPAccessoryPalette.brand,
             itemSymbol: "shippingbox.fill",
             isEnabled: canAdd,
+            cornerRadius: PPCorner.card,
+            presentationStyle: .accessoryDecisionRail,
             onCartTap: {
                 store.openCart()
             }
@@ -3725,20 +3778,23 @@ struct PPAccessoryPersistentDecisionBar: View {
                     value: store.totalPriceText
                 )
 
-            Text(canAdd ? remainingText : snapshot.stock)
-                .font(PPAccessoryTypography.captionBold)
-                .foregroundStyle(
-                    canAdd
-                        ? PPAccessoryPalette.inkSecondary
-                        : PPAccessoryPalette.error
-                )
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 5) {
+                Image(systemName: stockStatusSymbol)
+                    .font(.system(size: 11, weight: .bold))
+                    .accessibilityHidden(true)
+
+                Text(canAdd ? remainingText : snapshot.stock)
+                    .font(PPAccessoryTypography.captionBold)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(stockStatusColor)
         }
+        .layoutPriority(1)
         .accessibilityElement(children: .combine)
     }
 
     private var quantityControl: some View {
-        HStack(spacing: PPSpace.xs) {
+        HStack(spacing: 0) {
             quantityButton(
                 symbol: "minus",
                 enabled: store.quantity > 1,
@@ -3748,7 +3804,9 @@ struct PPAccessoryPersistentDecisionBar: View {
                 .font(PPAccessoryTypography.bodyBold)
                 .monospacedDigit()
                 .foregroundStyle(PPAccessoryPalette.ink)
-                .frame(minWidth: 34, alignment: .center)
+                .frame(minWidth: 38, alignment: .center)
+                .contentTransition(.numericText())
+                .animation(quantityChangeAnimation, value: store.quantity)
             quantityButton(
                 symbol: "plus",
                 enabled: store.quantity < store.remainingStock,
@@ -3757,12 +3815,23 @@ struct PPAccessoryPersistentDecisionBar: View {
         }
         .padding(PPSpace.xs)
         .background(
-            PPAccessorySubviewBackground.quietFill,
+            PPAccessoryPalette.brand.opacity(
+                colorScheme == .dark ? 0.14 : 0.065
+            ),
             in: RoundedRectangle(
-                cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                cornerRadius: PPCorner.card,
                 style: .continuous
             )
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .strokeBorder(
+                    PPAccessoryPalette.brand.opacity(
+                        colorScheme == .dark ? 0.28 : 0.16
+                    ),
+                    lineWidth: 1
+                )
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             PPAccessoryViewerL10n.text("accessory_view_quantity")
@@ -3799,15 +3868,27 @@ struct PPAccessoryPersistentDecisionBar: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(PPAccessoryPalette.ink)
-                .frame(width: 40, height: 40)
-                .background(
-                    PPAccessorySubviewBackground.baseSurface,
-                    in: RoundedRectangle(
-                        cornerRadius: PPCorner.small,
-                        style: .continuous
-                    )
+                .foregroundStyle(
+                    enabled
+                        ? PPAccessoryPalette.brand
+                        : PPAccessoryPalette.inkSecondary
                 )
+                .frame(width: 44, height: 44)
+                .background(
+                    PPAccessorySubviewBackground.baseSurface.opacity(
+                        enabled ? 0.94 : 0.48
+                    ),
+                    in: Circle()
+                )
+                .overlay {
+                    Circle()
+                        .strokeBorder(
+                            PPAccessoryPalette.brand.opacity(
+                                enabled ? 0.12 : 0.04
+                            ),
+                            lineWidth: 1
+                        )
+                }
         }
         .buttonStyle(PPBottomDecisionPressStyle(pressedScale: 0.92))
         .disabled(!enabled || store.cartPhase == .processing)
@@ -3833,6 +3914,26 @@ struct PPAccessoryPersistentDecisionBar: View {
         )
     }
 
+    private var stockStatusSymbol: String {
+        guard canAdd else { return "xmark.circle.fill" }
+        return store.remainingStock <= 5
+            ? "exclamationmark.triangle.fill"
+            : "checkmark.circle.fill"
+    }
+
+    private var stockStatusColor: Color {
+        guard canAdd else { return PPAccessoryPalette.error }
+        return store.remainingStock <= 5
+            ? PPAccessoryPalette.warning
+            : PPAccessoryPalette.success
+    }
+
+    private var quantityChangeAnimation: Animation? {
+        reduceMotion
+            ? nil
+            : .spring(response: 0.25, dampingFraction: 0.84)
+    }
+
     private var decisionStateIdentity: String {
         if snapshot.showsCart {
             return "cart-\(canAdd)-\(String(describing: store.livePhase))"
@@ -3854,12 +3955,7 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
                         Spacer()
                         quantitySkeleton
                     }
-                    HStack(
-                        spacing: PPBottomDecisionBarGeometry.controlSpacing
-                    ) {
-                        actionSkeleton
-                        utilitySkeleton
-                    }
+                    actionTrackSkeleton
                 }
             } else {
                 HStack(
@@ -3868,14 +3964,13 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
                     summarySkeleton
                     Spacer()
                     quantitySkeleton
-                    actionSkeleton.frame(maxWidth: 340)
-                    utilitySkeleton
+                    actionTrackSkeleton.frame(maxWidth: 410)
                 }
             }
         }
         .padding(PPBottomDecisionBarGeometry.contentPadding)
         .background {
-            PPAccessoryBottomFaceSurface()
+            PPAccessoryBottomFaceSurface(isCommerce: true)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(
@@ -3885,7 +3980,10 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
                 : PPBottomDecisionBarGeometry.regularScreenInset
         )
         .padding(.top, PPSpace.sm)
-        .padding(.bottom, 16)
+        .padding(
+            .bottom,
+            max(bottomInset, PPSpace.base)
+        )
         .redacted(reason: .placeholder)
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
@@ -3935,6 +4033,21 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
         .frame(
             width: PPBottomDecisionBarGeometry.utilityControlSize,
             height: PPBottomDecisionBarGeometry.utilityControlSize
+        )
+    }
+
+    private var actionTrackSkeleton: some View {
+        HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
+            actionSkeleton
+            utilitySkeleton
+        }
+        .padding(PPSpace.xs)
+        .background(
+            PPAccessoryPalette.ink.opacity(0.045),
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
         )
     }
 }
