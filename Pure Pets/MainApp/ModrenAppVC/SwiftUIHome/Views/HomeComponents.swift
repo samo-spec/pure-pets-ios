@@ -2339,8 +2339,8 @@ private struct HomeSecondaryActionCard: View {
 
     private var accentColor: Color {
         switch action.id {
-        case "shop": return Color(red: 0.04, green: 0.64, blue: 0.63)
-        case "ads": return Color(red: 0.80, green: 0.18, blue: 0.50)
+        case "shop": return Color(red: 0.90, green: 0.22, blue: 0.44) // Bright Rose Magenta degree (#E63870)
+        case "ads": return Color(red: 0.72, green: 0.12, blue: 0.38)  // Deep Berry Rose degree (#B81F61)
         case "pharmacy": return Color.homePharmacy
         case "vet": return Color.homeVeterinary
         default: return Color(uiColor: action.accent)
