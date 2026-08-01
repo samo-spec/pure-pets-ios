@@ -435,6 +435,9 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     self.lastKnownStatuses = [NSMutableDictionary dictionary];
     self.cachedHeights = [NSMutableDictionary dictionary];
     self.unsendingMessageIDs = [NSMutableSet set];
+    if (!self.messageRetryActions) {
+        self.messageRetryActions = [NSMutableDictionary dictionary];
+    }
     self.isPresentingFailureAlert = NO;
     self.didCaptureNotificationHandoff = [ChManager sharedManager].isHandlingNotificationHandoff;
 
@@ -703,6 +706,11 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
 - (void)pp_updateChatEmptyStateAnimated:(BOOL)animated
 {
+    if (self.messagingHostController) {
+        self.chatEmptyStateView.hidden = YES;
+        [self pp_publishMessagesAnimated:animated];
+        return;
+    }
     BOOL shouldShow =
         self.didFinishInitialLoad &&
         self.messages.count == 0 &&
@@ -830,6 +838,17 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 - (void)setInitialLoadingVisible:(BOOL)visible
 {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.messagingHostController) {
+            BOOL resolvedVisible = visible;
+            if (resolvedVisible && (self.didFinishInitialLoad || self.messages.count > 0)) {
+                self.didFinishInitialLoad = YES;
+                resolvedVisible = NO;
+            }
+            self.initialLoadIndicator.hidden = YES;
+            [self.messagingHostController setInitialLoadingVisible:resolvedVisible];
+            [self pp_publishMessagesAnimated:NO];
+            return;
+        }
         if (!self.initialLoadIndicator) return;
         if (visible && (self.didFinishInitialLoad || self.messages.count > 0)) {
             self.didFinishInitialLoad = YES;
@@ -1326,6 +1345,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     if (self.isExpandingMessagePage || !self.didFinishInitialLoad) return;
     if (self.messages.count < self.messagePageLimit) return;
     self.isExpandingMessagePage = YES;
+    [self.messagingHostController setPaginationLoading:YES];
     self.previousContentHeightBeforeExpansion = self.tableView.contentSize.height;
     self.previousContentOffsetYBeforeExpansion = self.tableView.contentOffset.y;
     self.messagePageLimit += PPChatMessagePageStep;
@@ -1587,6 +1607,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     NSString *subtitle = [self pp_replyPreviewTextForMessage:message];
     [self.inputbar setReplyPreviewTitle:title subtitle:subtitle animated:YES];
     [self.swiftUIInputVC setReplyPreviewTitle:title subtitle:subtitle animated:YES];
+    [self.messagingHostController setReplyPreviewTitle:title subtitle:subtitle];
     self.swiftUIInputBarHeightConstraint.constant = [self pp_expandedSwiftUIComposerHeight];
     [self pp_animateComposerHeightChange];
 
@@ -1600,6 +1621,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     self.replyingToMessage = nil;
     [self.inputbar clearReplyPreviewAnimated:animated];
     [self.swiftUIInputVC clearReplyPreviewAnimated:animated];
+    [self.messagingHostController clearReplyPreview];
     self.swiftUIInputBarHeightConstraint.constant = 54.0;
     [self pp_animateComposerHeightChange];
 }
@@ -2261,6 +2283,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
             [self.tableView reloadRowsAtIndexPaths:@[indexPath]
                                   withRowAnimation:UITableViewRowAnimationFade];
         }
+        [self pp_publishMessagesAnimated:YES];
         [PPHUD showSuccess:kLang(@"chat_unsend_success")];
     }];
 }
@@ -2747,6 +2770,12 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                                isPlaying:(BOOL)isPlaying
 {
     if (!messageID.length) return;
+
+    [self.messagingHostController updateAudioMessageID:messageID
+                                              progress:progress
+                                              duration:duration
+                                             isPlaying:isPlaying
+                                             isLoading:NO];
 
     NSInteger row =
         [self.messages indexOfObjectPassingTest:^BOOL(ChatMessageModel *obj,
@@ -4149,6 +4178,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     if (shouldStickToBottom) {
         [self scrollToBottomAnimated:NO];
     }
+    [self pp_publishMessagesAnimated:YES];
 }
  
 
@@ -4695,6 +4725,21 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
             } else if ([cell isKindOfClass:ChatImageMessageCell.class]) {
                 [(ChatImageMessageCell *)cell updateUploadingState:msg];
             }
+        }
+
+        if (self.messagingHostController) {
+            if (retryAction && msg.ID.length > 0) {
+                self.messageRetryActions[msg.ID] = [retryAction copy];
+            }
+            NSString *publicMessage = error
+                ? [PPFirebaseSessionBridge publicMessageForError:error
+                                                     fallbackKey:@"chat_message_failed_title"]
+                : kLang(@"chat_message_failed_title");
+            [self.messagingHostController setFailedMessageID:msg.ID ?: @""
+                                                     message:publicMessage ?: @""];
+            [self pp_publishMessagesAnimated:NO];
+            [PPHUD showError:publicMessage ?: kLang(@"SomethingWentWrong")];
+            return;
         }
 
         NSLog(@"❌ [ChatUI] handleSendFailureForMessage — code=%ld domain=%@ desc=%@",
@@ -6990,6 +7035,9 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
         if (error || !snapshot) {
             NSLog(@"❌ [Chat] Snapshot error: %@", error.localizedDescription);
+            weakSelf.connectionInterrupted = YES;
+            [weakSelf.messagingHostController setConnectionInterrupted:YES];
+            [weakSelf.messagingHostController setPaginationLoading:NO];
             [weakSelf setInitialLoadingVisible:NO];
             weakSelf.isExpandingMessagePage = NO;
             weakSelf.previousContentHeightBeforeExpansion = 0.0;
@@ -7004,6 +7052,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) return;
+            self.connectionInterrupted = NO;
+            [self.messagingHostController setConnectionInterrupted:NO];
 
             // =========================
             // INITIAL LOAD
@@ -7042,6 +7092,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                 }
                 [self setInitialLoadingVisible:NO];
                 [self pp_updateChatEmptyStateAnimated:YES];
+                [self pp_publishMessagesAnimated:NO];
                 [self activateRealtimeAfterInitialLoadIfNeeded];
 
                 NSLog(@"✅ [Chat] Initial load complete (%lu)",
@@ -7182,8 +7233,347 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                 }
             }
             [self pp_updateChatEmptyStateAnimated:YES];
+            [self pp_publishMessagesAnimated:YES];
         });
     }];
+}
+
+#pragma mark - SwiftUI Messaging Presentation Bridge
+
+- (void)pp_installSwiftUIPresentation
+{
+    if (self.messagingHostController) return;
+
+    PPMessagingSwiftUIHostController *host = [[PPMessagingSwiftUIHostController alloc] init];
+    host.delegate = self;
+    [self addChildViewController:host];
+    host.view.translatesAutoresizingMaskIntoConstraints = NO;
+    host.view.backgroundColor = UIColor.clearColor;
+    host.view.accessibilityIdentifier = @"messaging.screen";
+    [self.view addSubview:host.view];
+    [NSLayoutConstraint activateConstraints:@[
+        [host.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [host.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [host.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [host.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
+    [host didMoveToParentViewController:self];
+    self.messagingHostController = host;
+
+    [self pp_hideLegacyPresentationViews];
+    [self pp_publishConversationStateAnimated:NO];
+    [self pp_publishMessagesAnimated:NO];
+    [host setInitialLoadingVisible:!self.didFinishInitialLoad && self.messages.count == 0];
+    [host setConnectionInterrupted:self.connectionInterrupted];
+    [self pp_updateSwiftUIBottomNavigationClearance];
+}
+
+- (void)pp_hideLegacyPresentationViews
+{
+    self.tableView.hidden = YES;
+    self.inputbar.hidden = YES;
+    self.swiftUIInputVC.view.hidden = YES;
+    self.typingIndicatorView.hidden = YES;
+    self.chatEmptyStateView.hidden = YES;
+    self.initialLoadIndicator.hidden = YES;
+    self.chatHeaderView.hidden = YES;
+    self.premiumModalHeaderView.hidden = YES;
+    self.navBottomBlurView.hidden = YES;
+    self.bottomFill.hidden = YES;
+    self.bottomFillBlurView.hidden = YES;
+    self.scrollToBottomButton.hidden = YES;
+}
+
+- (NSDictionary<NSString *, id> *)pp_swiftUIPayloadForMessage:(ChatMessageModel *)message
+{
+    if (!message) return @{};
+
+    NSString *kind = @"text";
+    switch (message.messageType) {
+        case ChatMessageTypeImage: kind = @"image"; break;
+        case ChatMessageTypeVideo: kind = @"video"; break;
+        case ChatMessageTypeAudio: kind = @"audio"; break;
+        case ChatMessageTypeFile: kind = @"file"; break;
+        case ChatMessageTypeSticker: kind = @"sticker"; break;
+        case ChatMessageTypeText:
+        default: kind = @"text"; break;
+    }
+
+    NSString *currentUserID = [self pp_currentOutgoingSenderID];
+    NSMutableDictionary<NSString *, id> *payload = [@{
+        @"id": message.ID ?: @"",
+        @"text": message.text ?: @"",
+        @"senderID": message.senderID ?: @"",
+        @"timestamp": message.timestamp ?: [NSDate date],
+        @"kind": kind,
+        @"status": @(message.status),
+        @"fileURL": message.fileURL ?: @"",
+        @"thumbnailURL": message.thumbnailURL ?: @"",
+        @"duration": @(message.mediaDuration),
+        @"mediaWidth": @(message.mediaWidth),
+        @"mediaHeight": @(message.mediaHeight),
+        @"waveformSamples": message.waveformSamples ?: @[],
+        @"isUploading": @(message.isUploading),
+        @"isLocalPending": @(message.isLocalPending),
+        @"transferProgress": @(message.transferProgress),
+        @"isDeleted": @(message.isDeleted),
+        @"isOutgoing": @([message.senderID isEqualToString:currentUserID]),
+        @"canUnsend": @([self pp_canUnsendMessage:message])
+    } mutableCopy];
+
+    if (message.replyToMessageID.length > 0) {
+        payload[@"replyToMessageID"] = message.replyToMessageID;
+    }
+    if (message.localImage) {
+        payload[@"localImage"] = message.localImage;
+    }
+    if (message.thumbnailImage) {
+        payload[@"thumbnailImage"] = message.thumbnailImage;
+    }
+    return payload;
+}
+
+- (void)pp_publishMessagesAnimated:(BOOL)animated
+{
+    if (!self.messagingHostController) return;
+
+    NSMutableArray<NSDictionary<NSString *, id> *> *payloads =
+        [NSMutableArray arrayWithCapacity:self.messages.count];
+    for (ChatMessageModel *message in self.messages ?: @[]) {
+        [payloads addObject:[self pp_swiftUIPayloadForMessage:message]];
+    }
+
+    BOOL canLoadOlder = self.didFinishInitialLoad &&
+        self.messages.count >= self.messagePageLimit &&
+        self.messagePageLimit > 0;
+    [self.messagingHostController applyMessagePayloads:payloads
+                                         currentUserID:[self pp_currentOutgoingSenderID]
+                                  initialLoadCompleted:self.didFinishInitialLoad
+                                          canLoadOlder:canLoadOlder
+                                              animated:animated];
+}
+
+- (void)pp_publishConversationStateAnimated:(BOOL)animated
+{
+    if (!self.messagingHostController) return;
+    (void)animated;
+
+    UserModel *user = self.threadOtherUser ?: self.chatThread.otherUser;
+    NSString *displayName = @"";
+    if ([user respondsToSelector:@selector(PPBestDisplayName)]) {
+        displayName = [user PPBestDisplayName] ?: @"";
+    }
+    if (displayName.length == 0) {
+        displayName = user.UserName ?: @"";
+    }
+    if (displayName.length == 0) {
+        displayName = kLang(@"Chat");
+    }
+
+    NSString *statusText = @"";
+    BOOL isOnline = user.isOnline;
+    if (isOnline) {
+        statusText = kLang(@"chat.online");
+    } else if (user.lastSeen) {
+        statusText = [ChManager formattedLastSeen:user.lastSeen] ?: @"";
+    } else {
+        statusText = kLang(@"chat.offline");
+    }
+
+    [self.messagingHostController
+        configureConversationWithName:displayName
+        status:statusText
+        avatarURLString:user.UserImageUrl.absoluteString ?: @""
+        isOnline:isOnline
+        usesSupportLogo:PPChatPremiumHeaderUsesSupportLogo(user)
+        isModal:[self isPresentedModally]
+        unreadCount:self.chatThread.unreadCount
+        isPinned:self.chatThread.isPinned != 0
+        isMuted:self.chatThread.isMuted
+        isBinned:self.chatThread.isBinned
+        isReported:self.chatThread.isReportedByMe];
+}
+
+- (void)pp_updateSwiftUIBottomNavigationClearance
+{
+    if (!self.messagingHostController) return;
+    [self.messagingHostController
+        setBottomNavigationClearance:[self pp_visibleNotificationHandoffBottomNavigationClearance]];
+}
+
+- (void)pp_setOtherUserTyping:(BOOL)isTyping
+{
+    self.otherUserTyping = isTyping;
+    [self.messagingHostController setTypingVisible:isTyping && self.isViewVisible];
+}
+
+- (void)pp_toggleAudioForMessage:(ChatMessageModel *)message
+{
+    if (!message || message.messageType != ChatMessageTypeAudio || message.isDeleted) return;
+    NSString *messageID = message.ID ?: @"";
+    if (messageID.length == 0) return;
+
+    if ([self.audioController.currentMessageID isEqualToString:messageID]) {
+        [self.audioController togglePlayPause];
+        return;
+    }
+
+    NSString *oldMessageID = self.audioController.currentMessageID;
+    if (oldMessageID.length > 0) {
+        self.audioResumeTimes[oldMessageID] = @(self.audioController.currentPlaybackTime);
+    }
+    [self.messagingHostController updateAudioMessageID:messageID
+                                              progress:0.0
+                                              duration:message.mediaDuration
+                                             isPlaying:NO
+                                             isLoading:YES];
+
+    __weak typeof(self) weakSelf = self;
+    [self prepareLocalAudioForMessage:message completion:^(NSURL *localURL) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (!localURL) {
+            [strongSelf.messagingHostController updateAudioMessageID:messageID
+                                                            progress:0.0
+                                                            duration:message.mediaDuration
+                                                           isPlaying:NO
+                                                           isLoading:NO];
+            [PPHUD showError:kLang(@"chat_media_unavailable")];
+            return;
+        }
+
+        NSTimeInterval resumeTime = strongSelf.audioResumeTimes[messageID].doubleValue;
+        [strongSelf.audioController playMessageID:messageID url:localURL];
+        if (resumeTime > 0.0) {
+            [strongSelf.audioController seekToTime:resumeTime];
+        }
+    }];
+}
+
+#pragma mark - PPMessagingSwiftUIHostControllerDelegate
+
+- (void)messagingHostDidSendText:(NSString *)text
+{
+    [self sendChatMessageText:text];
+}
+
+- (void)messagingHostDidTapPhoto
+{
+    [self presentSourcePickerForMediaType:UTTypeImage.identifier];
+}
+
+- (void)messagingHostDidTapVideo
+{
+    [self presentSourcePickerForMediaType:UTTypeMovie.identifier];
+}
+
+- (void)messagingHostDidTapContact
+{
+    // Preserve the existing attachment route until the transport supports a
+    // distinct contact payload.
+    [self presentSourcePickerForMediaType:UTTypeImage.identifier];
+}
+
+- (void)messagingHostDidSelectSticker:(PPChatSticker *)sticker
+{
+    [self sendStickerMessage:sticker];
+}
+
+- (void)messagingHostDidChangeText:(NSString *)text
+{
+    (void)text;
+    [self.typingController userDidType];
+}
+
+- (void)messagingHostDidSendAudio:(NSURL *)audioURL duration:(double)duration
+{
+    [self swiftUIChatBarDidSendAudioWithURL:audioURL duration:duration];
+}
+
+- (void)messagingHostDidSeekAudioMessageID:(NSString *)messageID progress:(double)progress
+{
+    if (![self.audioController.currentMessageID isEqualToString:messageID]) return;
+    NSTimeInterval duration = self.audioController.playerDuration;
+    NSTimeInterval target = MAX(0.0, MIN(1.0, progress)) * duration;
+    [self.audioController seekToTime:target];
+    self.audioResumeTimes[messageID] = @(target);
+}
+
+- (void)messagingHostDidRequestAction:(NSString *)action messageID:(NSString *)messageID
+{
+    if ([action isEqualToString:@"close"]) {
+        [self handleCloseTapped];
+        return;
+    }
+    if ([action isEqualToString:@"profile"]) {
+        [self pp_openStoryForCurrentChatUser];
+        return;
+    }
+    if ([action isEqualToString:@"pin"]) {
+        [self handlePinThread];
+        return;
+    }
+    if ([action isEqualToString:@"mute"]) {
+        [self handleMuteThread];
+        return;
+    }
+    if ([action isEqualToString:@"background"]) {
+        [self presentChatBackgroundPicker];
+        return;
+    }
+    if ([action isEqualToString:@"report"]) {
+        [self presentReportConfirmation];
+        return;
+    }
+    if ([action isEqualToString:@"bin"]) {
+        [self handleBinThread];
+        return;
+    }
+    if ([action isEqualToString:@"loadOlder"]) {
+        [self pp_loadOlderMessagesIfNeeded];
+        return;
+    }
+    if ([action isEqualToString:@"retryConnection"]) {
+        self.connectionInterrupted = NO;
+        [self.messagingHostController setConnectionInterrupted:NO];
+        [self.messageListener remove];
+        self.messageListener = nil;
+        self.isObservingMessages = NO;
+        [self startObservingMessagesIfNeeded];
+        return;
+    }
+    if ([action isEqualToString:@"composerCancelledReply"]) {
+        [self pp_clearPendingReplyAnimated:YES];
+        return;
+    }
+
+    ChatMessageModel *message = [self pp_messageWithID:messageID ?: @""];
+    if (!message) return;
+
+    if ([action isEqualToString:@"reply"]) {
+        [self pp_selectReplyMessage:message];
+        [self.messagingHostController focusComposer];
+    } else if ([action isEqualToString:@"unsend"]) {
+        [self pp_presentUnsendConfirmationForMessage:message sourceCell:nil];
+    } else if ([action isEqualToString:@"retryMessage"]) {
+        dispatch_block_t retry = self.messageRetryActions[message.ID];
+        if (retry) {
+            [self.messageRetryActions removeObjectForKey:message.ID];
+            [self.messagingHostController clearFailedMessageID:message.ID];
+            retry();
+        }
+    } else if ([action isEqualToString:@"saveMedia"]) {
+        if (message.messageType == ChatMessageTypeVideo) {
+            [self pp_downloadVideoMessage:message];
+        } else if (message.messageType == ChatMessageTypeImage ||
+                   message.messageType == ChatMessageTypeSticker) {
+            [self pp_downloadImageMessage:message visibleImage:message.localImage];
+        }
+    } else if ([action isEqualToString:@"audioToggle"]) {
+        [self pp_toggleAudioForMessage:message];
+    } else if ([action isEqualToString:@"replyUnavailable"]) {
+        [PPHUD showError:kLang(@"chat_reply_unavailable")];
+    }
 }
 
 - (void)applyStatusUpdateForMessage:(ChatMessageModel *)msg
@@ -7209,6 +7599,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     if (!msg || !msg.ID.length) return;
 
     dispatch_async(dispatch_get_main_queue(), ^{
+
+        if (msg.status >= ChatMessageStatusSent) {
+            [self.messageRetryActions removeObjectForKey:msg.ID];
+            [self.messagingHostController clearFailedMessageID:msg.ID];
+        }
+        [self pp_publishMessagesAnimated:NO];
 
         NSInteger row =
         [self.messages indexOfObjectPassingTest:^BOOL(ChatMessageModel *obj,
