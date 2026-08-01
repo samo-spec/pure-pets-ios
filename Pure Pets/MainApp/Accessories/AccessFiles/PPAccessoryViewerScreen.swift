@@ -29,6 +29,8 @@ struct PPAccessoryViewerScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    private let bottomScreenSpacing = PPSpace.base
+
     var body: some View {
         NavigationStack {
             screenBody
@@ -70,7 +72,7 @@ struct PPAccessoryViewerScreen: View {
                 topInset: topChromeInset(proxy),
                 compact: proxy.size.width < 700 ||
                     dynamicTypeSize.isAccessibilitySize,
-                bottomInset: bottomChromeInset(proxy)
+                bottomInset: bottomScreenSpacing
             )
         case let .failed(message):
             PPAccessoryViewerErrorState(
@@ -104,7 +106,7 @@ struct PPAccessoryViewerScreen: View {
             ? min(max(proxy.size.height * 0.42, 370), 460)
             : min(max(contentWidth * 0.52, 420), 560)
         let topInset = topChromeInset(proxy)
-        let bottomInset = bottomChromeInset(proxy)
+        let bottomInset = bottomScreenSpacing
         let topBarHeight: CGFloat = topInset + (compact ? 70 : 80)
         let titleRevealOffset: CGFloat = compact ? 14 : 22
         let usesRecoveryDock =
@@ -334,18 +336,6 @@ struct PPAccessoryViewerScreen: View {
             .first { $0.isKeyWindow }?
             .safeAreaInsets.top ?? 0
         return max(sceneTop, 24)
-    }
-
-    private func bottomChromeInset(_ proxy: GeometryProxy) -> CGFloat {
-        let resolved = proxy.safeAreaInsets.bottom
-        if resolved > 1 {
-            return resolved
-        }
-        return UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first { $0.isKeyWindow }?
-            .safeAreaInsets.bottom ?? 0
     }
 
     private func topFadeOverlay(proxy: GeometryProxy) -> some View {

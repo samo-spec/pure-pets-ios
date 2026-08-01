@@ -91,11 +91,16 @@ static NSString *PPOrderCustomerVisibleTimelineStatusKey(NSString *statusKey)
         [normalized containsString:@"canceled"]) {
         return @"delivery_cancelled";
     }
-    if ([normalized isEqualToString:@"delivery_failed"] ||
-        [normalized isEqualToString:@"returned_to_store"] ||
+    if ([normalized isEqualToString:@"returned_to_store"] ||
         [normalized containsString:@"returned_to_store"] ||
-        [normalized containsString:@"failed"]) {
-        return @"delivery_delayed";
+        [normalized containsString:@"returned"]) {
+        return @"returned_to_store";
+    }
+    if ([normalized isEqualToString:@"delivery_failed"] ||
+        [normalized containsString:@"failed"] ||
+        [normalized containsString:@"rejected"] ||
+        [normalized containsString:@"declined"]) {
+        return @"delivery_failed";
     }
     if ([normalized isEqualToString:@"completed"] ||
         [normalized containsString:@"completed"] ||
@@ -138,6 +143,8 @@ static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
     if ([normalized isEqualToString:@"delivered"]) return kLang(@"Delivered");
     if ([normalized isEqualToString:@"completed"]) return kLang(@"Completed");
     if ([normalized isEqualToString:@"delivery_cancelled"]) return kLang(@"Delivery Cancelled");
+    if ([normalized isEqualToString:@"delivery_failed"]) return kLang(@"Delivery Failed");
+    if ([normalized isEqualToString:@"returned_to_store"]) return kLang(@"Returned to Store");
     if ([normalized isEqualToString:@"delivery_delayed"]) return kLang(@"Delivery Delayed");
     return kLang(@"Preparing for Shipment");
 }
@@ -152,6 +159,8 @@ static NSString *PPOrderCustomerVisibleStatusHint(NSString *statusKey)
     if ([normalized isEqualToString:@"delivered"]) return kLang(@"order_delivery_hint_delivered");
     if ([normalized isEqualToString:@"completed"]) return kLang(@"order_delivery_hint_completed");
     if ([normalized isEqualToString:@"delivery_cancelled"]) return kLang(@"order_delivery_hint_cancelled");
+    if ([normalized isEqualToString:@"delivery_failed"]) return kLang(@"order_delivery_hint_failed");
+    if ([normalized isEqualToString:@"returned_to_store"]) return kLang(@"order_delivery_hint_returned");
     if ([normalized isEqualToString:@"delivery_delayed"]) return kLang(@"order_delivery_hint_delayed");
     return kLang(@"order_delivery_hint_preparing");
 }
@@ -295,9 +304,11 @@ NSString *PPOrderTimelineTitle(PPOrderTimelineEvent *event)
     if ([type isEqualToString:@"order_cancel_delivery"]) {
         return PPOrderCustomerVisibleStatusTitle(@"delivery_cancelled");
     }
-    if ([type isEqualToString:@"order_mark_delivery_failed"] ||
-        [type isEqualToString:@"order_return_to_store"]) {
-        return PPOrderCustomerVisibleStatusTitle(@"delivery_delayed");
+    if ([type isEqualToString:@"order_mark_delivery_failed"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"delivery_failed");
+    }
+    if ([type isEqualToString:@"order_return_to_store"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"returned_to_store");
     }
     if ([type isEqualToString:@"customer_request_created"]) return kLang(@"order_request_timeline_submitted");
     if ([type isEqualToString:@"request_submitted"]) return kLang(@"order_request_timeline_submitted");
@@ -2883,6 +2894,12 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     if ([normalized isEqualToString:@"delivery_cancelled"]) {
         return order.cancelledAt ?: order.statusUpdatedAt;
     }
+    if ([normalized isEqualToString:@"delivery_failed"]) {
+        return order.deliveryFailedAt ?: order.statusUpdatedAt;
+    }
+    if ([normalized isEqualToString:@"returned_to_store"]) {
+        return order.returnedToStoreAt ?: order.statusUpdatedAt;
+    }
     if ([normalized isEqualToString:@"delivery_delayed"]) {
         return order.deliveryFailedAt ?: order.returnedToStoreAt ?: order.statusUpdatedAt;
     }
@@ -2928,12 +2945,20 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         [self statusKey:key matchesAnyKeywords:@[@"cancelled", @"canceled"]]) {
         return kLang(@"Delivery Cancelled");
     }
+    if ([key isEqualToString:@"returned_to_store"] ||
+        [self statusKey:key matchesAnyKeywords:@[@"returned"]]) {
+        return kLang(@"Returned to Store");
+    }
+    if ([key isEqualToString:@"delivery_failed"] ||
+        [self statusKey:key matchesAnyKeywords:@[@"failed", @"rejected", @"declined"]]) {
+        return kLang(@"Delivery Failed");
+    }
     return kLang(@"Delivery Delayed");
 }
 
 - (BOOL)isFailureStatusKey:(NSString *)statusKey
 {
-    return [self statusKey:statusKey matchesAnyKeywords:@[@"failed", @"rejected", @"cancelled", @"canceled", @"expired", @"returned_to_store", @"delivery_delayed"]];
+    return [self statusKey:statusKey matchesAnyKeywords:@[@"failed", @"delivery_failed", @"rejected", @"declined", @"cancelled", @"canceled", @"expired", @"error", @"voided", @"returned", @"returned_to_store", @"delivery_delayed"]];
 }
 
 - (NSString *)normalizedStatusKeyForOrder:(PPOrder *)order
@@ -2993,7 +3018,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     BOOL hasOrder = (self.order != nil);
     NSString *statusKey = [self normalizedStatusKeyForOrder:self.order];
     BOOL deliveredLike = [self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled", @"payment_pending", @"payment_confirmed"]];
-    BOOL shippedLike = [self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"in_transit", @"out_for_delivery", @"picked_up"]];
+    BOOL shippedLike = [self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"in_transit", @"out_for_delivery", @"picked_up", @"handed_over", @"delivery_assigned", @"awaiting_handover"]];
     BOOL cancelledLike = [self statusKey:statusKey matchesAnyKeywords:@[@"cancelled", @"canceled"]];
     BOOL chargeCapturedLike = hasOrder && [self.order hasCapturedPayment];
     BOOL issueRelevant = hasOrder;

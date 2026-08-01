@@ -113,6 +113,14 @@ static PPOrderStatus PPOrderStatusFromRawValue(id value)
         if (PPOrderStatusContainsToken(normalized, @"cancelled") || PPOrderStatusContainsToken(normalized, @"canceled")) {
             return PPOrderStatusCancelled;
         }
+        if (PPOrderStatusContainsToken(normalized, @"failed") ||
+            PPOrderStatusContainsToken(normalized, @"rejected") ||
+            PPOrderStatusContainsToken(normalized, @"error") ||
+            PPOrderStatusContainsToken(normalized, @"declined") ||
+            PPOrderStatusContainsToken(normalized, @"returned_to_store") ||
+            PPOrderStatusContainsToken(normalized, @"returned")) {
+            return PPOrderStatusFailed;
+        }
         if (PPOrderStatusContainsToken(normalized, @"paid") ||
             PPOrderStatusContainsToken(normalized, @"success") ||
             PPOrderStatusContainsToken(normalized, @"approved") ||
@@ -126,12 +134,6 @@ static PPOrderStatus PPOrderStatusFromRawValue(id value)
             PPOrderStatusContainsToken(normalized, @"delivered") ||
             PPOrderStatusContainsToken(normalized, @"fulfilled")) {
             return PPOrderStatusPaid;
-        }
-        if (PPOrderStatusContainsToken(normalized, @"failed") ||
-            PPOrderStatusContainsToken(normalized, @"rejected") ||
-            PPOrderStatusContainsToken(normalized, @"error") ||
-            PPOrderStatusContainsToken(normalized, @"declined")) {
-            return PPOrderStatusFailed;
         }
     }
     return PPOrderStatusPending;
@@ -467,16 +469,19 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
         PPOrderStatusContainsToken(raw, @"canceled")) {
         return @"delivery_cancelled";
     }
-    if ([delivery isEqualToString:@"delivery_failed"] ||
-        [delivery isEqualToString:@"returned_to_store"] ||
+    if ([delivery isEqualToString:@"returned_to_store"] ||
         PPOrderStatusContainsToken(raw, @"returned_to_store") ||
+        PPOrderStatusContainsToken(raw, @"returned")) {
+        return @"returned_to_store";
+    }
+    if ([delivery isEqualToString:@"delivery_failed"] ||
         PPOrderStatusContainsToken(raw, @"failed") ||
         PPOrderStatusContainsToken(raw, @"rejected") ||
         PPOrderStatusContainsToken(raw, @"declined") ||
         PPOrderStatusContainsToken(raw, @"expired") ||
         PPOrderStatusContainsToken(raw, @"voided") ||
         PPOrderStatusContainsToken(raw, @"error")) {
-        return @"delivery_delayed";
+        return @"delivery_failed";
     }
     if ([delivery isEqualToString:@"completed"] ||
         PPOrderStatusContainsToken(raw, @"completed") ||

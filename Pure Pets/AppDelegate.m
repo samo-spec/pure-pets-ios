@@ -56,6 +56,45 @@ static NSString *PPAppDelegateTrimmedString(id value) {
     return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
+static NSString *PPAppDelegateScalarString(id value) {
+    NSString *stringValue = PPAppDelegateTrimmedString(value);
+    if (stringValue.length > 0) return stringValue;
+
+    if ([value isKindOfClass:NSNumber.class]) {
+        NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+        formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+        formatter.minimumFractionDigits = 0;
+        formatter.maximumFractionDigits = 2;
+        return [formatter stringFromNumber:(NSNumber *)value] ?: [(NSNumber *)value stringValue];
+    }
+
+    return @"";
+}
+
+static NSDictionary *PPAppDelegateSafeDictionary(id value) {
+    return [value isKindOfClass:NSDictionary.class] ? value : @{};
+}
+
+static NSString *PPAppDelegateFirstScalarForKeys(NSDictionary *source, NSArray<NSString *> *keys) {
+    NSDictionary *safeSource = PPAppDelegateSafeDictionary(source);
+    for (NSString *key in keys) {
+        NSString *value = PPAppDelegateScalarString(safeSource[key]);
+        if (value.length > 0) return value;
+    }
+    return @"";
+}
+
+static NSString *PPAppDelegateOrderIDFromPayload(NSDictionary *payload) {
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(payload);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    NSArray<NSString *> *keys = @[@"orderId", @"orderID", @"parentOrderId", @"parentOrderID"];
+    NSString *orderID = PPAppDelegateFirstScalarForKeys(safePayload, keys);
+    if (orderID.length == 0) {
+        orderID = PPAppDelegateFirstScalarForKeys(meta, keys);
+    }
+    return orderID;
+}
+
 static NSString *PPAppDelegateMergedNotificationReason(NSString *existing, NSString *incoming) {
     NSString *safeIncoming = PPAppDelegateTrimmedString(incoming);
     if (safeIncoming.length == 0) {
@@ -129,13 +168,14 @@ static BOOL PPAppDelegateIsProviderOnlyNotificationPayload(NSDictionary *userInf
     NSString *route = [PPAppDelegateTrimmedString(userInfo[@"route"]) lowercaseString];
     NSString *targetAppId = [PPAppDelegateTrimmedString(userInfo[@"targetApp"] ?: userInfo[@"targetAppId"] ?: userInfo[@"appId"]) lowercaseString];
     NSString *audience = [PPAppDelegateTrimmedString(userInfo[@"audience"]) lowercaseString];
+    NSString *customerOrderID = PPAppDelegateOrderIDFromPayload(userInfo);
 
     return PPAppDelegateIsTargetedAwayFromUserApp(userInfo) ||
            [targetAppId isEqualToString:@"pro_ios"] ||
            [audience isEqualToString:@"delivery_providers"] ||
            [type hasPrefix:@"drivers_delivery_"] ||
            [type isEqualToString:@"provider_new_fulfillment"] ||
-           [route isEqualToString:@"fulfillment_order"];
+           ([route isEqualToString:@"fulfillment_order"] && customerOrderID.length == 0);
 }
 
 #if PP_HAS_FIREBASE_APPCHECK
@@ -1032,7 +1072,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 
     NSString *type = userInfo[@"type"];
     NSString *threadID = userInfo[@"conversationId"] ?: userInfo[@"threadID"] ?: userInfo[@"threadId"];
-    NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
+    NSString *orderId = PPAppDelegateOrderIDFromPayload(userInfo);
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
     NSLog(@"[Push] didReceiveRemoteNotification | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@ | threadID=%@",
@@ -1087,7 +1127,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
     }
 
     NSString *type = [userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"";
-    NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
+    NSString *orderId = PPAppDelegateOrderIDFromPayload(userInfo);
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
     if (type.length > 0 || orderId.length > 0) {
@@ -1127,7 +1167,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     }
 
     NSString *type = [userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"";
-    NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
+    NSString *orderId = PPAppDelegateOrderIDFromPayload(userInfo);
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
     NSLog(@"[Push] Notification tapped | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@",

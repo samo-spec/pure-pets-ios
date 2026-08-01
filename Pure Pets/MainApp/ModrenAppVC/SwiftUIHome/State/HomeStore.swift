@@ -991,7 +991,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Food & essentials"
                 ),
                 systemImage: "bag.fill",
-                accent: UIColor(red: 0.84, green: 0.16, blue: 0.38, alpha: 1.0),
+                accent: UIColor(red: 0.04, green: 0.64, blue: 0.63, alpha: 1.0),
                 destination: .shop
             ),
             HomePriorityAction(

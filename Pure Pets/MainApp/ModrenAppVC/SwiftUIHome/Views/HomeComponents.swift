@@ -2339,7 +2339,7 @@ private struct HomeSecondaryActionCard: View {
 
     private var accentColor: Color {
         switch action.id {
-        case "shop": return Color(red: 0.84, green: 0.16, blue: 0.38)
+        case "shop": return Color(red: 0.04, green: 0.64, blue: 0.63)
         case "ads": return Color(red: 0.80, green: 0.18, blue: 0.50)
         case "pharmacy": return Color.homePharmacy
         case "vet": return Color.homeVeterinary
@@ -2469,6 +2469,11 @@ struct HomeCategoryRail: View {
     @State private var isExpanded = false
     @State private var viewportWidth: CGFloat = 0
 
+    private enum RailLayout {
+        static let shadowTopInset = PPSpace.md
+        static let shadowBottomInset = PPSpace.lg
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             PPSectionHeaderSwiftUIRepresentable(
@@ -2533,7 +2538,8 @@ struct HomeCategoryRail: View {
                         }
                     }
                     .padding(.horizontal, PPSpace.screenMargin)
-                    .padding(.vertical, PPSpace.xs)
+                    .padding(.top, RailLayout.shadowTopInset)
+                    .padding(.bottom, RailLayout.shadowBottomInset)
                 }
                 .onAppear {
                     proxy.scrollTo(
@@ -2545,7 +2551,11 @@ struct HomeCategoryRail: View {
                 }
             }
         }
-        .frame(height: itemSize.height + (PPSpace.xs * 2))
+        .frame(
+            height: itemSize.height
+                + RailLayout.shadowTopInset
+                + RailLayout.shadowBottomInset
+        )
     }
 
     private var expandedGrid: some View {

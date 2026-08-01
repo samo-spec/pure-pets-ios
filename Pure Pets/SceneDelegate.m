@@ -22,6 +22,55 @@
 
 @end
 
+static NSString *PPSceneTrimmedString(id value)
+{
+    if (![value isKindOfClass:NSString.class]) return @"";
+    return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSString *PPSceneScalarString(id value)
+{
+    NSString *stringValue = PPSceneTrimmedString(value);
+    if (stringValue.length > 0) return stringValue;
+
+    if ([value isKindOfClass:NSNumber.class]) {
+        NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+        formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+        formatter.minimumFractionDigits = 0;
+        formatter.maximumFractionDigits = 2;
+        return [formatter stringFromNumber:(NSNumber *)value] ?: [(NSNumber *)value stringValue];
+    }
+
+    return @"";
+}
+
+static NSDictionary *PPSceneSafeDictionary(id value)
+{
+    return [value isKindOfClass:NSDictionary.class] ? value : @{};
+}
+
+static NSString *PPSceneFirstScalarForKeys(NSDictionary *source, NSArray<NSString *> *keys)
+{
+    NSDictionary *safeSource = PPSceneSafeDictionary(source);
+    for (NSString *key in keys) {
+        NSString *value = PPSceneScalarString(safeSource[key]);
+        if (value.length > 0) return value;
+    }
+    return @"";
+}
+
+static NSString *PPSceneOrderIDFromPayload(NSDictionary *payload)
+{
+    NSDictionary *safePayload = PPSceneSafeDictionary(payload);
+    NSDictionary *meta = PPSceneSafeDictionary(safePayload[@"meta"]);
+    NSArray<NSString *> *keys = @[@"orderId", @"orderID", @"parentOrderId", @"parentOrderID"];
+    NSString *orderID = PPSceneFirstScalarForKeys(safePayload, keys);
+    if (orderID.length == 0) {
+        orderID = PPSceneFirstScalarForKeys(meta, keys);
+    }
+    return orderID;
+}
+
 @implementation SceneDelegate
 
 - (void)pp_applyCurrentLanguageSemanticToWindow:(nullable UIWindow *)window
@@ -241,9 +290,11 @@ willConnectToSession:(UISceneSession *)session
 
 - (void)pp_handleNotificationTap:(NSDictionary *)userInfo {
 
-    NSString *type = [[userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"" lowercaseString];
-    NSString *threadID = userInfo[@"threadID"] ?: userInfo[@"threadId"];
-    NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
+    NSDictionary *safeUserInfo = PPSceneSafeDictionary(userInfo);
+    NSString *type = [[PPSceneFirstScalarForKeys(safeUserInfo, @[@"notificationType", @"type"]) lowercaseString] copy];
+    NSString *threadID = PPSceneFirstScalarForKeys(safeUserInfo, @[@"threadID", @"threadId", @"conversationId"]);
+    NSString *orderId = PPSceneOrderIDFromPayload(safeUserInfo);
+    NSString *route = [[PPSceneFirstScalarForKeys(safeUserInfo, @[@"route"]) lowercaseString] copy];
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
         [ChManager sharedManager].isHandlingNotificationHandoff = YES;
@@ -256,7 +307,11 @@ willConnectToSession:(UISceneSession *)session
         return;
     }
 
-    if (orderId.length > 0 || [type hasPrefix:@"order"]) {
+    if (orderId.length > 0 ||
+        [type hasPrefix:@"order"] ||
+        [route isEqualToString:@"orders"] ||
+        [route isEqualToString:@"order"] ||
+        [route isEqualToString:@"order_details"]) {
         if (orderId.length == 0) return;
         [ChManager sharedManager].isHandlingNotificationHandoff = YES;
         [self pp_navigateToOrderWithId:orderId];

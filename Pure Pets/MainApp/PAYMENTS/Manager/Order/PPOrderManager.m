@@ -556,7 +556,7 @@ static BOOL PPOrderStatusIsDeliveredLike(NSString *statusKey) {
 }
 
 static BOOL PPOrderStatusIsShippedLike(NSString *statusKey) {
-    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"shipped", @"shipping", @"in_transit", @"out_for_delivery"]);
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"shipped", @"shipping", @"in_transit", @"out_for_delivery", @"picked_up", @"handed_over", @"delivery_assigned", @"awaiting_handover"]);
 }
 
 static BOOL PPOrderStatusIsPackingLike(NSString *statusKey) {
@@ -568,7 +568,7 @@ static BOOL PPOrderStatusIsPaidLike(NSString *statusKey) {
 }
 
 static BOOL PPOrderStatusIsFailureLike(NSString *statusKey) {
-    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"failed", @"rejected", @"cancelled", @"canceled", @"expired", @"error", @"voided"]);
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"failed", @"delivery_failed", @"rejected", @"cancelled", @"canceled", @"expired", @"error", @"voided", @"returned", @"returned_to_store"]);
 }
 
 static BOOL PPOrderRequestStatusIsOpen(NSString *statusKey) {

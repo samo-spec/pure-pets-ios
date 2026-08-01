@@ -71,6 +71,18 @@ static NSString *PPHubFirstScalarForKeys(NSDictionary *source, NSArray<NSString 
     return @"";
 }
 
+static NSString *PPHubOrderIDFromPayload(NSDictionary *payload)
+{
+    NSDictionary *safePayload = PPHubSafeDictionary(payload);
+    NSDictionary *meta = PPHubSafeDictionary(safePayload[@"meta"]);
+    NSArray<NSString *> *keys = @[@"orderId", @"orderID", @"parentOrderId", @"parentOrderID"];
+    NSString *orderID = PPHubFirstScalarForKeys(safePayload, keys);
+    if (orderID.length == 0) {
+        orderID = PPHubFirstScalarForKeys(meta, keys);
+    }
+    return orderID;
+}
+
 static NSString *PPHubLocalizedValueFromDictionary(NSDictionary *source, NSArray<NSString *> *arKeys, NSArray<NSString *> *enKeys)
 {
     NSArray<NSString *> *primaryKeys = Language.isRTL ? arKeys : enKeys;
@@ -104,14 +116,15 @@ static BOOL PPHubIsProviderOnlyNotificationPayload(NSDictionary *payload)
     NSDictionary *safePayload = PPHubSafeDictionary(payload);
     NSString *type = [[PPHubFirstStringForKeys(safePayload, @[@"notificationType", @"type"]) lowercaseString] copy];
     NSString *route = [[PPHubTrimmedString(safePayload[@"route"]) lowercaseString] copy];
-    NSString *targetAppId = [[PPHubFirstStringForKeys(safePayload, @[@"targetAppId", @"appId"]) lowercaseString] copy];
+    NSString *targetAppId = [[PPHubFirstStringForKeys(safePayload, @[@"targetApp", @"targetAppId", @"appId"]) lowercaseString] copy];
     NSString *audience = [[PPHubTrimmedString(safePayload[@"audience"]) lowercaseString] copy];
+    NSString *customerOrderID = PPHubOrderIDFromPayload(safePayload);
 
     return [targetAppId isEqualToString:@"pro_ios"] ||
            [audience isEqualToString:@"delivery_providers"] ||
            [type hasPrefix:@"drivers_delivery_"] ||
            [type isEqualToString:@"provider_new_fulfillment"] ||
-           [route isEqualToString:@"fulfillment_order"];
+           ([route isEqualToString:@"fulfillment_order"] && customerOrderID.length == 0);
 }
 
 static NSString *PPHubOrderReferenceFromTitle(NSString *title)
@@ -188,9 +201,9 @@ static NSString *PPHubNotificationType(NSDictionary *payload, NSDictionary *meta
 
 static NSString *PPHubNotificationStatus(NSDictionary *payload, NSDictionary *meta)
 {
-    NSString *status = PPHubFirstStringForKeys(payload, @[@"status", @"paymentStatus", @"deliveryStatus"]);
+    NSString *status = PPHubFirstStringForKeys(payload, @[@"status", @"fulfillmentStatus", @"toStatus", @"paymentStatus", @"deliveryStatus"]);
     if (status.length == 0) {
-        status = PPHubFirstStringForKeys(meta, @[@"status", @"paymentStatus", @"deliveryStatus"]);
+        status = PPHubFirstStringForKeys(meta, @[@"status", @"fulfillmentStatus", @"toStatus", @"paymentStatus", @"deliveryStatus"]);
     }
     return [[status lowercaseString] copy];
 }
@@ -493,9 +506,10 @@ static NSString *PPHubLocalizedNotificationBody(NSString *rawBody, NSString *raw
 
 static NSString *PPHubInboxCategoryTitle(NSDictionary *payload)
 {
-    NSString *type = [[PPHubTrimmedString(payload[@"type"]) lowercaseString] copy];
+    NSDictionary *meta = PPHubSafeDictionary(payload[@"meta"]);
+    NSString *type = PPHubNotificationType(payload, meta);
     NSString *threadID = PPHubTrimmedString(payload[@"threadID"] ?: payload[@"threadId"]);
-    NSString *orderID = PPHubTrimmedString(payload[@"orderId"]);
+    NSString *orderID = PPHubOrderIDFromPayload(payload);
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
         return kLang(@"notifications_inbox_category_chat") ?: @"Chats";
@@ -508,8 +522,9 @@ static NSString *PPHubInboxCategoryTitle(NSDictionary *payload)
 
 static UIColor *PPHubInboxAccentColor(NSDictionary *payload)
 {
-    NSString *type = [[PPHubTrimmedString(payload[@"type"]) lowercaseString] copy];
-    NSString *status = [[PPHubTrimmedString(payload[@"status"]) lowercaseString] copy];
+    NSDictionary *meta = PPHubSafeDictionary(payload[@"meta"]);
+    NSString *type = PPHubNotificationType(payload, meta);
+    NSString *status = PPHubNotificationStatus(payload, meta);
     NSString *threadID = PPHubTrimmedString(payload[@"threadID"] ?: payload[@"threadId"]);
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
@@ -529,10 +544,11 @@ static UIColor *PPHubInboxAccentColor(NSDictionary *payload)
 
 static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
-    NSString *type = [[PPHubTrimmedString(payload[@"type"]) lowercaseString] copy];
+    NSDictionary *meta = PPHubSafeDictionary(payload[@"meta"]);
+    NSString *type = PPHubNotificationType(payload, meta);
     NSString *threadID = PPHubTrimmedString(payload[@"threadID"] ?: payload[@"threadId"]);
-    NSString *orderID = PPHubTrimmedString(payload[@"orderId"]);
-    NSString *status = [[PPHubTrimmedString(payload[@"status"]) lowercaseString] copy];
+    NSString *orderID = PPHubOrderIDFromPayload(payload);
+    NSString *status = PPHubNotificationStatus(payload, meta);
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
         return @"ellipsis.message.fill";
@@ -1169,9 +1185,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     PPNotificationInboxItem *item = self.items[indexPath.row];
     NSDictionary *payload = item.payload ?: @{};
+    NSDictionary *meta = PPHubSafeDictionary(payload[@"meta"]);
     NSString *threadID = PPHubTrimmedString(payload[@"threadID"] ?: payload[@"threadId"]);
-    NSString *orderID = PPHubTrimmedString(payload[@"orderId"]);
-    NSString *type = [[PPHubTrimmedString(payload[@"type"]) lowercaseString] copy];
+    NSString *orderID = PPHubOrderIDFromPayload(payload);
+    NSString *type = PPHubNotificationType(payload, meta);
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
         [[ChNotificationRouter shared] handleChatNotification:payload fromViewController:self];

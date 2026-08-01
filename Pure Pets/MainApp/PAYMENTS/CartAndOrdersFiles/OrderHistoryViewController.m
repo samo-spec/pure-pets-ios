@@ -169,6 +169,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSDictionary *> *accessoryCache;
 @property (nonatomic, strong) NSMutableSet<NSString *> *inFlightAccessoryIDs;
 @property (nonatomic, strong, nullable) FIRDocumentSnapshot *lastDocument;
+@property (nonatomic, strong, nullable) id<FIRListenerRegistration> ordersListener;
+@property (nonatomic, copy, nullable) NSString *ordersListenerUserID;
 
 @property (nonatomic, copy) NSString *selectedStatusFilterKey;
 @property (nonatomic, assign) NSInteger pageSize;
@@ -230,6 +232,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)dealloc
 {
+    [self stopOrdersRealtimeListener];
     [self.heroGlassBackground stopAnimations];
 }
 
@@ -1128,6 +1131,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     NSString *userID = [self currentUserID];
     if (userID.length == 0) {
+        if (reset) {
+            [self stopOrdersRealtimeListener];
+        }
         [self finishFetchingWithErrorMessage:kLang(@"UserNotAuthenticated") reset:reset];
         return;
     }
@@ -1140,12 +1146,47 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
     query = [query queryLimitedTo:self.pageSize];
 
+    if (reset) {
+        [self startOrdersRealtimeListenerWithQuery:query userID:userID];
+        return;
+    }
+
     __weak typeof(self) weakSelf = self;
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [weakSelf handleOrdersSnapshot:snapshot error:error reset:reset];
         });
     }];
+}
+
+- (void)startOrdersRealtimeListenerWithQuery:(FIRQuery *)query userID:(NSString *)userID
+{
+    NSString *safeUserID = [userID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (safeUserID.length == 0) {
+        [self stopOrdersRealtimeListener];
+        [self finishFetchingWithErrorMessage:kLang(@"UserNotAuthenticated") reset:YES];
+        return;
+    }
+
+    [self stopOrdersRealtimeListener];
+    self.ordersListenerUserID = safeUserID;
+
+    __weak typeof(self) weakSelf = self;
+    self.ordersListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (![strongSelf.ordersListenerUserID isEqualToString:safeUserID]) return;
+            [strongSelf handleOrdersSnapshot:snapshot error:error reset:YES];
+        });
+    }];
+}
+
+- (void)stopOrdersRealtimeListener
+{
+    [self.ordersListener remove];
+    self.ordersListener = nil;
+    self.ordersListenerUserID = nil;
 }
 
 - (void)handleOrdersSnapshot:(FIRQuerySnapshot * _Nullable)snapshot error:(NSError * _Nullable)error reset:(BOOL)reset
@@ -1706,12 +1747,28 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 {
     NSString *key = PPOrderHistoryNormalizedStatus(statusKey);
     if ([key isEqualToString:@"pending"]) return kLang(@"order_placed_title") ?: kLang(@"Pending");
-    if ([key isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
-    if ([key isEqualToString:@"delivery_partner_assigned"]) return kLang(@"Delivery Partner Assigned");
-    if ([key isEqualToString:@"on_the_way"]) return kLang(@"On the Way");
-    if ([key isEqualToString:@"delivered"]) return kLang(@"Delivered");
+    if ([key isEqualToString:@"ready_for_delivery"] ||
+        [key isEqualToString:@"ready_to_ship"] ||
+        [key isEqualToString:@"delivery_requested"] ||
+        [key isEqualToString:@"delivery_reassigned"] ||
+        [key isEqualToString:@"ready_for_pickup"] ||
+        [key isEqualToString:@"ready"]) return kLang(@"Ready for Delivery");
+    if ([key isEqualToString:@"delivery_partner_assigned"] ||
+        [key isEqualToString:@"delivery_assigned"] ||
+        [key isEqualToString:@"awaiting_handover"]) return kLang(@"Delivery Partner Assigned");
+    if ([key isEqualToString:@"on_the_way"] ||
+        [key isEqualToString:@"picked_up"] ||
+        [key isEqualToString:@"handed_over"] ||
+        [key isEqualToString:@"in_transit"]) return kLang(@"On the Way");
+    if ([key isEqualToString:@"delivered"] ||
+        [key isEqualToString:@"payment_pending"] ||
+        [key isEqualToString:@"payment_confirmed"]) return kLang(@"Delivered");
     if ([key isEqualToString:@"completed"]) return kLang(@"Completed");
     if ([key isEqualToString:@"delivery_cancelled"]) return kLang(@"Delivery Cancelled");
+    if ([key isEqualToString:@"delivery_failed"] ||
+        [key isEqualToString:@"failed"]) return kLang(@"Delivery Failed");
+    if ([key isEqualToString:@"returned_to_store"] ||
+        [key isEqualToString:@"returned"]) return kLang(@"Returned to Store");
     if ([key isEqualToString:@"delivery_delayed"]) return kLang(@"Delivery Delayed");
     return kLang(@"Preparing for Shipment");
 }
