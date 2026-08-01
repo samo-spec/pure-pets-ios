@@ -13,9 +13,12 @@
 
 static CGFloat const kPPChatNoticeHorizontalInset = 14.0;
 static CGFloat const kPPChatNoticeTopInset = 8.0;
-static CGFloat const kPPChatNoticeMinHeight = 74.0;
+static CGFloat const kPPChatNoticeMinHeight = 82.0;
+static CGFloat const kPPChatNoticeAccessibilityHeight = 124.0;
 static CGFloat const kPPChatNoticeMaxWidth = 520.0;
-static CGFloat const kPPChatNoticeAvatarSize = 44.0;
+static CGFloat const kPPChatNoticeIdentitySize = 52.0;
+static CGFloat const kPPChatNoticeAvatarSize = 40.0;
+static CGFloat const kPPChatNoticeActionSize = 36.0;
 static NSTimeInterval const kPPChatNoticeVisibleDuration = 5.2;
 static NSString * const kPPChatNoticeSupportAvatarToken = @"purepets://support-logo";
 
@@ -98,15 +101,26 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
 @property (nonatomic, strong) UIView *surfaceView;
 @property (nonatomic, strong) UIVisualEffectView *blurView;
 @property (nonatomic, strong) UIView *tintView;
+@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
+@property (nonatomic, strong) UIView *identityFieldView;
+@property (nonatomic, strong) CAGradientLayer *identityGradientLayer;
 @property (nonatomic, strong) UIImageView *avatarView;
+@property (nonatomic, strong) UIView *textContainerView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *messageLabel;
+@property (nonatomic, strong) UIView *actionFieldView;
 @property (nonatomic, strong) UIImageView *chevronView;
 @property (nonatomic, strong) CAGradientLayer *liveLineLayer;
 @property (nonatomic, strong) CAShapeLayer *progressLayer;
 @property (nonatomic, strong) UserModel *displayUser;
 @property (nonatomic, copy) NSString *avatarURLString;
-- (void)configureWithThread:(nullable ChatThreadModel *)thread message:(ChatMessageModel *)message;
+- (void)configureWithThread:(nullable ChatThreadModel *)thread
+                    message:(ChatMessageModel *)message
+                   animated:(BOOL)animated;
+- (void)prepareForEntrance;
+- (void)animateEntranceDetails;
+- (void)resetEntranceDetails;
+- (void)playRefreshAccent;
 - (void)startLiveEffectsWithDuration:(NSTimeInterval)duration;
 - (void)stopLiveEffects;
 @end
@@ -126,6 +140,8 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
 - (void)pp_setupUI
 {
     self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.clipsToBounds = NO;
+    self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
@@ -133,11 +149,12 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     surface.translatesAutoresizingMaskIntoConstraints = NO;
     surface.clipsToBounds = YES;
     surface.userInteractionEnabled = NO;
-    PPApplyContinuousCorners(surface, 26.0);
+    PPApplyContinuousCorners(surface, PPCornerCard);
     self.surfaceView = surface;
     [self addSubview:surface];
 
-    UIVisualEffectView *blur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+    UIVisualEffectView *blur = [[UIVisualEffectView alloc]
+        initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
     blur.translatesAutoresizingMaskIntoConstraints = NO;
     blur.userInteractionEnabled = NO;
     self.blurView = blur;
@@ -149,61 +166,109 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     self.tintView = tint;
     [surface addSubview:tint];
 
+    CAGradientLayer *surfaceGradient = [CAGradientLayer layer];
+    surfaceGradient.locations = @[@0.0, @0.58, @1.0];
+    self.surfaceGradientLayer = surfaceGradient;
+    [tint.layer insertSublayer:surfaceGradient atIndex:0];
+
+    UIView *identityField = [[UIView alloc] init];
+    identityField.translatesAutoresizingMaskIntoConstraints = NO;
+    identityField.clipsToBounds = YES;
+    identityField.userInteractionEnabled = NO;
+    identityField.isAccessibilityElement = NO;
+    PPApplyContinuousCorners(identityField, PPCornerMedium);
+    self.identityFieldView = identityField;
+    [surface addSubview:identityField];
+
+    CAGradientLayer *identityGradient = [CAGradientLayer layer];
+    identityGradient.startPoint = CGPointMake(0.0, 0.0);
+    identityGradient.endPoint = CGPointMake(1.0, 1.0);
+    self.identityGradientLayer = identityGradient;
+    [identityField.layer insertSublayer:identityGradient atIndex:0];
+
     UIImageView *avatar = [[UIImageView alloc] init];
     avatar.translatesAutoresizingMaskIntoConstraints = NO;
     avatar.contentMode = UIViewContentModeScaleAspectFill;
     avatar.clipsToBounds = YES;
-    avatar.layer.cornerRadius = kPPChatNoticeAvatarSize / 2.0;
+    avatar.isAccessibilityElement = NO;
+    PPApplyContinuousCorners(avatar, kPPChatNoticeAvatarSize / 2.0);
     self.avatarView = avatar;
-    [surface addSubview:avatar];
+    [identityField addSubview:avatar];
+
+    UIView *textContainer = [[UIView alloc] init];
+    textContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    textContainer.userInteractionEnabled = NO;
+    textContainer.isAccessibilityElement = NO;
+    self.textContainerView = textContainer;
+    [surface addSubview:textContainer];
 
     UILabel *title = [[UILabel alloc] init];
     title.translatesAutoresizingMaskIntoConstraints = NO;
-    title.font = [GM boldFontWithSize:PPFontCallout];
+    UIFont *titleFont = [GM boldFontWithSize:PPFontHeadline]
+        ?: [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+    title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+        scaledFontForFont:titleFont];
+    title.adjustsFontForContentSizeCategory = YES;
     title.numberOfLines = 1;
-    title.adjustsFontSizeToFitWidth = YES;
-    title.minimumScaleFactor = 0.82;
+    title.lineBreakMode = NSLineBreakByTruncatingTail;
     title.textAlignment = [Language alignmentForCurrentLanguage];
+    [title setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                           forAxis:UILayoutConstraintAxisVertical];
     self.titleLabel = title;
-    [surface addSubview:title];
+    [textContainer addSubview:title];
 
     UILabel *message = [[UILabel alloc] init];
     message.translatesAutoresizingMaskIntoConstraints = NO;
-    message.font = [GM fontWithSize:PPFontFootnote];
-    message.numberOfLines = 1;
+    UIFont *messageFont = [GM fontWithSize:PPFontSubheadline]
+        ?: [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+    message.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+        scaledFontForFont:messageFont];
+    message.adjustsFontForContentSizeCategory = YES;
+    message.numberOfLines = 2;
     message.lineBreakMode = NSLineBreakByTruncatingTail;
     message.textAlignment = [Language alignmentForCurrentLanguage];
+    [message setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                             forAxis:UILayoutConstraintAxisVertical];
     self.messageLabel = message;
-    [surface addSubview:message];
+    [textContainer addSubview:message];
+
+    UIView *actionField = [[UIView alloc] init];
+    actionField.translatesAutoresizingMaskIntoConstraints = NO;
+    actionField.userInteractionEnabled = NO;
+    actionField.isAccessibilityElement = NO;
+    PPApplyContinuousCorners(actionField, kPPChatNoticeActionSize / 2.0);
+    self.actionFieldView = actionField;
+    [surface addSubview:actionField];
 
     UIImageView *chevron = [[UIImageView alloc] init];
     chevron.translatesAutoresizingMaskIntoConstraints = NO;
     chevron.contentMode = UIViewContentModeScaleAspectFit;
+    chevron.isAccessibilityElement = NO;
     chevron.tintColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
     if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration
+            configurationWithPointSize:12.0
+                                 weight:UIImageSymbolWeightBold];
         chevron.image = [UIImage systemImageNamed:@"chevron.forward" withConfiguration:cfg];
     }
     self.chevronView = chevron;
-    [surface addSubview:chevron];
+    [actionField addSubview:chevron];
 
     CAGradientLayer *line = [CAGradientLayer layer];
     line.startPoint = CGPointMake(0.5, 0.0);
     line.endPoint = CGPointMake(0.5, 1.0);
-    line.opacity = 0.72;
+    line.cornerRadius = 1.5;
+    line.opacity = 0.78;
     self.liveLineLayer = line;
     [surface.layer addSublayer:line];
 
     CAShapeLayer *progress = [CAShapeLayer layer];
     progress.fillColor = UIColor.clearColor.CGColor;
     progress.lineCap = kCALineCapRound;
-    progress.lineWidth = 1.5;
-    progress.opacity = 0.72;
+    progress.lineWidth = 1.75;
+    progress.opacity = 0.62;
     self.progressLayer = progress;
     [surface.layer addSublayer:progress];
-
-    UILayoutGuide *textGuide = [[UILayoutGuide alloc] init];
-    [surface addLayoutGuide:textGuide];
 
     [NSLayoutConstraint activateConstraints:@[
         [surface.topAnchor constraintEqualToAnchor:self.topAnchor],
@@ -221,33 +286,69 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
         [tint.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor],
         [tint.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
 
-        [avatar.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
-        [avatar.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
+        [identityField.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceMD],
+        [identityField.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
+        [identityField.widthAnchor constraintEqualToConstant:kPPChatNoticeIdentitySize],
+        [identityField.heightAnchor constraintEqualToConstant:kPPChatNoticeIdentitySize],
+
+        [avatar.centerXAnchor constraintEqualToAnchor:identityField.centerXAnchor],
+        [avatar.centerYAnchor constraintEqualToAnchor:identityField.centerYAnchor],
         [avatar.widthAnchor constraintEqualToConstant:kPPChatNoticeAvatarSize],
         [avatar.heightAnchor constraintEqualToConstant:kPPChatNoticeAvatarSize],
 
-        [chevron.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
-        [chevron.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
-        [chevron.widthAnchor constraintEqualToConstant:16.0],
-        [chevron.heightAnchor constraintEqualToConstant:18.0],
+        [actionField.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceMD],
+        [actionField.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
+        [actionField.widthAnchor constraintEqualToConstant:kPPChatNoticeActionSize],
+        [actionField.heightAnchor constraintEqualToConstant:kPPChatNoticeActionSize],
 
-        [textGuide.leadingAnchor constraintEqualToAnchor:avatar.trailingAnchor constant:PPSpaceMD],
-        [textGuide.trailingAnchor constraintEqualToAnchor:chevron.leadingAnchor constant:-PPSpaceMD],
-        [textGuide.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
-        [textGuide.heightAnchor constraintEqualToConstant:40.0],
+        [chevron.centerXAnchor constraintEqualToAnchor:actionField.centerXAnchor],
+        [chevron.centerYAnchor constraintEqualToAnchor:actionField.centerYAnchor],
+        [chevron.widthAnchor constraintEqualToConstant:12.0],
+        [chevron.heightAnchor constraintEqualToConstant:16.0],
 
-        [title.topAnchor constraintEqualToAnchor:textGuide.topAnchor],
-        [title.leadingAnchor constraintEqualToAnchor:textGuide.leadingAnchor],
-        [title.trailingAnchor constraintEqualToAnchor:textGuide.trailingAnchor],
+        [textContainer.leadingAnchor constraintEqualToAnchor:identityField.trailingAnchor constant:PPSpaceMD],
+        [textContainer.trailingAnchor constraintEqualToAnchor:actionField.leadingAnchor constant:-PPSpaceSM],
+        [textContainer.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
+        [textContainer.topAnchor constraintGreaterThanOrEqualToAnchor:surface.topAnchor constant:PPSpaceSM],
+        [textContainer.bottomAnchor constraintLessThanOrEqualToAnchor:surface.bottomAnchor constant:-PPSpaceSM],
+
+        [title.topAnchor constraintEqualToAnchor:textContainer.topAnchor],
+        [title.leadingAnchor constraintEqualToAnchor:textContainer.leadingAnchor],
+        [title.trailingAnchor constraintEqualToAnchor:textContainer.trailingAnchor],
 
         [message.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:1.0],
-        [message.leadingAnchor constraintEqualToAnchor:textGuide.leadingAnchor],
-        [message.trailingAnchor constraintEqualToAnchor:textGuide.trailingAnchor],
-        [message.bottomAnchor constraintLessThanOrEqualToAnchor:textGuide.bottomAnchor],
+        [message.leadingAnchor constraintEqualToAnchor:textContainer.leadingAnchor],
+        [message.trailingAnchor constraintEqualToAnchor:textContainer.trailingAnchor],
+        [message.bottomAnchor constraintEqualToAnchor:textContainer.bottomAnchor]
     ]];
 
-    PPApplyElevatedShadow(self);
-    self.layer.shadowOpacity = 0.16;
+    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.layer.shadowRadius = 16.0;
+    self.layer.shadowOpacity = 0.12;
+    [self pp_updateContentAdaptation];
+}
+
+- (CGSize)intrinsicContentSize
+{
+    BOOL accessibilitySize = UIContentSizeCategoryIsAccessibilityCategory(
+        self.traitCollection.preferredContentSizeCategory
+    );
+    return CGSizeMake(
+        UIViewNoIntrinsicMetric,
+        accessibilitySize
+            ? kPPChatNoticeAccessibilityHeight
+            : kPPChatNoticeMinHeight
+    );
+}
+
+- (void)pp_updateContentAdaptation
+{
+    BOOL accessibilitySize = UIContentSizeCategoryIsAccessibilityCategory(
+        self.traitCollection.preferredContentSizeCategory
+    );
+    self.messageLabel.numberOfLines = accessibilitySize ? 3 : 2;
+    [self invalidateIntrinsicContentSize];
 }
 
 - (void)layoutSubviews
@@ -257,21 +358,42 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
 
     CGFloat height = self.surfaceView.bounds.size.height;
     CGFloat width = self.surfaceView.bounds.size.width;
-    CGFloat lineWidth = 3.0;
-    CGFloat lineX = Language.isRTL ? width - lineWidth : 0.0;
-    self.liveLineLayer.frame = CGRectMake(lineX, 13.0, lineWidth, MAX(1.0, height - 26.0));
+    BOOL isRTL = Language.isRTL;
 
-    CGFloat progressWidth = MAX(1.0, width - (PPSpaceBase * 2.0));
-    self.progressLayer.frame = CGRectMake(PPSpaceBase, height - 3.0, progressWidth, 1.5);
+    self.surfaceGradientLayer.frame = self.tintView.bounds;
+    self.surfaceGradientLayer.startPoint = CGPointMake(isRTL ? 1.0 : 0.0, 0.5);
+    self.surfaceGradientLayer.endPoint = CGPointMake(isRTL ? 0.0 : 1.0, 0.5);
+    self.identityGradientLayer.frame = self.identityFieldView.bounds;
+
+    CGFloat lineWidth = 3.0;
+    CGFloat lineX = isRTL ? width - lineWidth : 0.0;
+    self.liveLineLayer.frame = CGRectMake(
+        lineX,
+        PPSpaceBase,
+        lineWidth,
+        MAX(1.0, height - (PPSpaceBase * 2.0))
+    );
+
+    CGFloat progressInset = PPSpaceLG;
+    CGFloat progressWidth = MAX(1.0, width - (progressInset * 2.0));
+    self.progressLayer.frame = CGRectMake(progressInset, height - 3.5, progressWidth, 1.75);
     UIBezierPath *path = [UIBezierPath bezierPath];
-    [path moveToPoint:CGPointMake(0.0, 0.75)];
-    [path addLineToPoint:CGPointMake(progressWidth, 0.75)];
+    [path moveToPoint:CGPointMake(0.0, 0.875)];
+    [path addLineToPoint:CGPointMake(progressWidth, 0.875)];
     self.progressLayer.path = path.CGPath;
+
+    self.layer.shadowPath = [UIBezierPath
+        bezierPathWithRoundedRect:self.bounds
+                    cornerRadius:PPCornerCard].CGPath;
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (![previousTraitCollection.preferredContentSizeCategory
+            isEqualToString:self.traitCollection.preferredContentSizeCategory]) {
+        [self pp_updateContentAdaptation];
+    }
     [self pp_applyTheme];
 }
 
@@ -284,30 +406,68 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     UIColor *surfaceColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
         BOOL dark = trait.userInterfaceStyle == UIUserInterfaceStyleDark;
         return dark
-            ? [UIColor colorWithWhite:0.04 alpha:0.64]
-            : [UIColor colorWithWhite:1.0 alpha:0.70];
+            ? [UIColor colorWithRed:0.070 green:0.064 blue:0.078 alpha:0.90]
+            : [UIColor colorWithRed:1.000 green:0.985 blue:0.990 alpha:0.94];
     }];
     UIColor *borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
         BOOL dark = trait.userInterfaceStyle == UIUserInterfaceStyleDark;
         return dark
-            ? [UIColor colorWithWhite:1.0 alpha:0.13]
-            : [UIColor colorWithWhite:0.0 alpha:0.07];
+            ? [UIColor colorWithWhite:1.0 alpha:0.16]
+            : [UIColor colorWithWhite:0.18 alpha:0.09];
+    }];
+    UIColor *actionColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        BOOL dark = trait.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:1.0 alpha:0.085]
+            : [UIColor colorWithWhite:0.12 alpha:0.045];
     }];
     UIColor *accent = AppPrimaryClr ?: [UIColor systemPinkColor];
+    UIColor *resolvedAccent = [accent resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *resolvedBorder = [borderColor resolvedColorWithTraitCollection:self.traitCollection];
+    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL increasedContrast = self.traitCollection.accessibilityContrast == UIAccessibilityContrastHigh;
 
     self.tintView.backgroundColor = surfaceColor;
-    self.surfaceView.layer.borderColor = borderColor.CGColor;
-    self.surfaceView.layer.borderWidth = 0.8;
-    self.liveLineLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:0.08].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.95].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.08].CGColor
+    self.blurView.alpha = dark ? 0.82 : 0.90;
+    self.surfaceView.layer.borderColor = resolvedBorder.CGColor;
+    self.surfaceView.layer.borderWidth = increasedContrast ? 1.25 : 0.8;
+    self.surfaceGradientLayer.colors = @[
+        (__bridge id)[resolvedAccent colorWithAlphaComponent:dark ? 0.15 : 0.10].CGColor,
+        (__bridge id)[UIColor clearColor].CGColor,
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:dark ? 0.015 : 0.10].CGColor
     ];
-    self.progressLayer.strokeColor = [accent colorWithAlphaComponent:0.72].CGColor;
+    self.identityGradientLayer.colors = @[
+        (__bridge id)[resolvedAccent colorWithAlphaComponent:dark ? 0.24 : 0.16].CGColor,
+        (__bridge id)[resolvedAccent colorWithAlphaComponent:dark ? 0.09 : 0.045].CGColor
+    ];
+    self.identityFieldView.layer.borderColor =
+        [resolvedAccent colorWithAlphaComponent:dark ? 0.28 : 0.18].CGColor;
+    self.identityFieldView.layer.borderWidth = increasedContrast ? 1.25 : 0.75;
+    self.actionFieldView.backgroundColor = actionColor;
+    self.actionFieldView.layer.borderColor = resolvedBorder.CGColor;
+    self.actionFieldView.layer.borderWidth = increasedContrast ? 1.0 : 0.6;
+    self.liveLineLayer.colors = @[
+        (__bridge id)[resolvedAccent colorWithAlphaComponent:0.10].CGColor,
+        (__bridge id)[resolvedAccent colorWithAlphaComponent:0.92].CGColor,
+        (__bridge id)[resolvedAccent colorWithAlphaComponent:0.10].CGColor
+    ];
+    self.progressLayer.strokeColor = [resolvedAccent colorWithAlphaComponent:0.62].CGColor;
+    self.layer.shadowOpacity = dark ? 0.22 : 0.12;
 }
 
-- (void)configureWithThread:(nullable ChatThreadModel *)thread message:(ChatMessageModel *)message
+- (void)configureWithThread:(nullable ChatThreadModel *)thread
+                    message:(ChatMessageModel *)message
+                   animated:(BOOL)animated
 {
+    UIView *previousCopy = nil;
+    if (animated && self.window && !UIAccessibilityIsReduceMotionEnabled()) {
+        [self layoutIfNeeded];
+        previousCopy = [self.textContainerView snapshotViewAfterScreenUpdates:NO];
+        previousCopy.frame = self.textContainerView.frame;
+        previousCopy.userInteractionEnabled = NO;
+        [self.surfaceView addSubview:previousCopy];
+    }
+
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.messageLabel.textAlignment = [Language alignmentForCurrentLanguage];
@@ -337,7 +497,14 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
 
     NSString *avatarURL = PPChatNoticeTrimmedString(user.UserImageUrl.absoluteString);
     self.avatarURLString = avatarURL;
-    if ([avatarURL hasPrefix:kPPChatNoticeSupportAvatarToken]) {
+    BOOL isSupportIdentity = [avatarURL hasPrefix:kPPChatNoticeSupportAvatarToken];
+    self.avatarView.contentMode = isSupportIdentity
+        ? UIViewContentModeScaleAspectFit
+        : UIViewContentModeScaleAspectFill;
+    self.avatarView.layer.cornerRadius = isSupportIdentity
+        ? 0.0
+        : kPPChatNoticeAvatarSize / 2.0;
+    if (isSupportIdentity) {
         self.avatarView.image = [UIImage imageNamed:@"PPLogo"] ?: placeholder;
     } else if (avatarURL.length > 0) {
         [GM setImageFromUrlString:avatarURL imageView:self.avatarView phImage:nil completion:^(UIImage * _Nullable image, NSError * _Nullable error) {
@@ -350,6 +517,94 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
             }
         }];
     }
+
+    if (previousCopy) {
+        self.textContainerView.alpha = 0.0;
+        self.textContainerView.transform = CGAffineTransformMakeTranslation(0.0, 5.0);
+        [UIView animateWithDuration:0.22
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut |
+                                    UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            previousCopy.alpha = 0.0;
+            previousCopy.transform = CGAffineTransformMakeTranslation(0.0, -4.0);
+            self.textContainerView.alpha = 1.0;
+            self.textContainerView.transform = CGAffineTransformIdentity;
+        } completion:^(__unused BOOL finished) {
+            [previousCopy removeFromSuperview];
+        }];
+    } else {
+        self.textContainerView.alpha = 1.0;
+        self.textContainerView.transform = CGAffineTransformIdentity;
+    }
+}
+
+- (void)prepareForEntrance
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self resetEntranceDetails];
+        return;
+    }
+
+    CGFloat actionOffset = Language.isRTL ? -5.0 : 5.0;
+    self.identityFieldView.alpha = 0.0;
+    self.identityFieldView.transform = CGAffineTransformMakeScale(0.88, 0.88);
+    self.actionFieldView.alpha = 0.0;
+    self.actionFieldView.transform = CGAffineTransformMakeTranslation(actionOffset, 0.0);
+}
+
+- (void)animateEntranceDetails
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self resetEntranceDetails];
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.05
+                        options:UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.identityFieldView.alpha = 1.0;
+        self.identityFieldView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.20
+                          delay:0.09
+                        options:UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.actionFieldView.alpha = 1.0;
+        self.actionFieldView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)resetEntranceDetails
+{
+    self.identityFieldView.alpha = 1.0;
+    self.identityFieldView.transform = CGAffineTransformIdentity;
+    self.actionFieldView.alpha = 1.0;
+    self.actionFieldView.transform = CGAffineTransformIdentity;
+}
+
+- (void)playRefreshAccent
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [self.liveLineLayer removeAnimationForKey:@"pp.chat.notice.line.pulse"];
+    CABasicAnimation *accent = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    accent.fromValue = @0.38;
+    accent.toValue = @0.92;
+    accent.duration = 0.24;
+    accent.autoreverses = YES;
+    accent.repeatCount = 1.0;
+    accent.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.liveLineLayer addAnimation:accent forKey:@"pp.chat.notice.line.refresh"];
 }
 
 - (void)startLiveEffectsWithDuration:(NSTimeInterval)duration
@@ -360,11 +615,11 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     }
 
     CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    pulse.fromValue = @0.42;
-    pulse.toValue = @0.95;
-    pulse.duration = 1.35;
+    pulse.fromValue = @0.40;
+    pulse.toValue = @0.92;
+    pulse.duration = 0.34;
     pulse.autoreverses = YES;
-    pulse.repeatCount = HUGE_VALF;
+    pulse.repeatCount = 1.0;
     pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.liveLineLayer addAnimation:pulse forKey:@"pp.chat.notice.line.pulse"];
 
@@ -378,15 +633,16 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     progress.duration = duration;
     progress.removedOnCompletion = NO;
     progress.fillMode = kCAFillModeForwards;
-    progress.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.4 :0.0 :0.2 :1.0];
+    progress.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
     [self.progressLayer addAnimation:progress forKey:@"pp.chat.notice.progress"];
 }
 
 - (void)stopLiveEffects
 {
     [self.liveLineLayer removeAnimationForKey:@"pp.chat.notice.line.pulse"];
+    [self.liveLineLayer removeAnimationForKey:@"pp.chat.notice.line.refresh"];
     [self.progressLayer removeAnimationForKey:@"pp.chat.notice.progress"];
-    self.liveLineLayer.opacity = 0.72;
+    self.liveLineLayer.opacity = 0.78;
     self.progressLayer.strokeStart = 0.0;
     self.progressLayer.strokeEnd = 1.0;
 }
@@ -430,7 +686,15 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
 
         self.currentUserInfo = userInfo.copy;
         [self pp_prepareOverlayIfNeeded];
-        [self.bannerView configureWithThread:thread message:message];
+        if (!self.overlayWindow || !self.bannerView) {
+            [self pp_cancelDismissWork];
+            self.currentUserInfo = nil;
+            return;
+        }
+        BOOL updatesVisibleBanner = self.isVisible && !self.bannerView.hidden;
+        [self.bannerView configureWithThread:thread
+                                     message:message
+                                    animated:updatesVisibleBanner];
         [self pp_cancelDismissWork];
         [self pp_showBanner];
         [self pp_scheduleDismiss];
@@ -457,9 +721,12 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
             self.overlayWindow.hidden = NO;
             return;
         }
+        [self.bannerView stopLiveEffects];
+        [self.bannerView.layer removeAllAnimations];
         self.overlayWindow.hidden = YES;
         self.overlayWindow = nil;
         self.bannerView = nil;
+        self.isVisible = NO;
     }
 
     if (!activeScene) {
@@ -484,6 +751,13 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     UILayoutGuide *safe = root.view.safeAreaLayoutGuide;
     NSLayoutConstraint *widthLimit = [banner.widthAnchor constraintLessThanOrEqualToConstant:kPPChatNoticeMaxWidth];
     widthLimit.priority = UILayoutPriorityRequired;
+    NSLayoutConstraint *fillAvailableWidth = [banner.widthAnchor
+        constraintEqualToAnchor:root.view.widthAnchor
+                     constant:-(kPPChatNoticeHorizontalInset * 2.0)];
+    fillAvailableWidth.priority = 999;
+    NSLayoutConstraint *preferredMaxWidth = [banner.widthAnchor
+        constraintEqualToConstant:kPPChatNoticeMaxWidth];
+    preferredMaxWidth.priority = 998;
 
     [NSLayoutConstraint activateConstraints:@[
         [banner.topAnchor constraintEqualToAnchor:safe.topAnchor constant:kPPChatNoticeTopInset],
@@ -491,7 +765,9 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
         [banner.trailingAnchor constraintLessThanOrEqualToAnchor:root.view.trailingAnchor constant:-kPPChatNoticeHorizontalInset],
         [banner.centerXAnchor constraintEqualToAnchor:root.view.centerXAnchor],
         widthLimit,
-        [banner.heightAnchor constraintGreaterThanOrEqualToConstant:kPPChatNoticeMinHeight],
+        fillAvailableWidth,
+        preferredMaxWidth,
+        [banner.heightAnchor constraintGreaterThanOrEqualToConstant:kPPChatNoticeMinHeight]
     ]];
 
     window.touchTarget = banner;
@@ -521,36 +797,41 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     self.bannerView.hidden = NO;
 
     if (self.isVisible) {
-        [self pp_refreshVisibleBannerMotion];
         [self.bannerView startLiveEffectsWithDuration:kPPChatNoticeVisibleDuration];
+        [self pp_refreshVisibleBannerMotion];
         return;
     }
 
     self.isVisible = YES;
+    [self.bannerView prepareForEntrance];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.bannerView.alpha = 0.0;
         self.bannerView.transform = CGAffineTransformIdentity;
-        [UIView animateWithDuration:0.18 animations:^{
+        [UIView animateWithDuration:0.14 animations:^{
             self.bannerView.alpha = 1.0;
         }];
+        [self.bannerView resetEntranceDetails];
         return;
     }
 
     self.bannerView.alpha = 0.0;
-    self.bannerView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0, -30.0),
-                                                       CGAffineTransformMakeScale(0.985, 0.985));
+    self.bannerView.transform = CGAffineTransformConcat(
+        CGAffineTransformMakeTranslation(0.0, -18.0),
+        CGAffineTransformMakeScale(0.985, 0.985)
+    );
 
-    [UIView animateWithDuration:0.46
+    [UIView animateWithDuration:0.34
                           delay:0.0
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.72
+         usingSpringWithDamping:1.0
+          initialSpringVelocity:0.42
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.bannerView.alpha = 1.0;
         self.bannerView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
+    [self.bannerView animateEntranceDetails];
     [self.bannerView startLiveEffectsWithDuration:kPPChatNoticeVisibleDuration];
 }
 
@@ -559,19 +840,14 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.bannerView.alpha = 1.0;
         self.bannerView.transform = CGAffineTransformIdentity;
+        [self.bannerView resetEntranceDetails];
         return;
     }
 
-    self.bannerView.transform = CGAffineTransformMakeScale(0.985, 0.985);
-    [UIView animateWithDuration:0.22
-                          delay:0.0
-         usingSpringWithDamping:0.82
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.bannerView.alpha = 1.0;
-        self.bannerView.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    self.bannerView.alpha = 1.0;
+    self.bannerView.transform = CGAffineTransformIdentity;
+    [self.bannerView resetEntranceDetails];
+    [self.bannerView playRefreshAccent];
 }
 
 - (void)pp_hideBannerAnimated:(BOOL)animated completion:(void (^ _Nullable)(void))completion
@@ -588,6 +864,7 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
         self.bannerView.hidden = YES;
         self.bannerView.alpha = 0.0;
         self.bannerView.transform = CGAffineTransformIdentity;
+        [self.bannerView resetEntranceDetails];
         self.overlayWindow.hidden = YES;
         self.currentUserInfo = nil;
         if (completion) completion();
@@ -598,12 +875,15 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
         return;
     }
 
-    [UIView animateWithDuration:0.24
+    [UIView animateWithDuration:0.20
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
         self.bannerView.alpha = 0.0;
-        self.bannerView.transform = CGAffineTransformMakeTranslation(0, -24.0);
+        self.bannerView.transform = CGAffineTransformConcat(
+            CGAffineTransformMakeTranslation(0.0, -14.0),
+            CGAffineTransformMakeScale(0.99, 0.99)
+        );
     } completion:^(__unused BOOL finished) {
         finish();
     }];
@@ -642,7 +922,7 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        sender.transform = CGAffineTransformMakeScale(0.982, 0.982);
+        sender.transform = CGAffineTransformMakeScale(0.992, 0.992);
     } completion:nil];
 }
 
@@ -652,10 +932,10 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
         sender.transform = CGAffineTransformIdentity;
         return;
     }
-    [UIView animateWithDuration:0.18
+    [UIView animateWithDuration:0.20
                           delay:0.0
-         usingSpringWithDamping:0.84
-          initialSpringVelocity:0.45
+         usingSpringWithDamping:1.0
+          initialSpringVelocity:0.32
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         sender.transform = CGAffineTransformIdentity;

@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+private let homeHeroShowsSelectedMainKindArtwork = false
+
 struct HomeHeroView: View {
     let pages: [HomeHeroPage]
     let selectedIndex: Int
@@ -426,7 +428,7 @@ struct HomeHeroView: View {
             } else {
                 hasSelectedCategory = false
             }
-            if hasSelectedCategory {
+            if homeHeroShowsSelectedMainKindArtwork && hasSelectedCategory {
                 let categoryImage = page.localImage
                 let fallbackImage = categoryImage ?? UIImage(named: "pawprint4")
                 return HomeHeroArtworkAsset(
@@ -521,15 +523,21 @@ private struct HomeHeroPagingGestureModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if isEnabled {
+        if isEnabled && pageCount > 1 {
             content.simultaneousGesture(
-                DragGesture(minimumDistance: 8)
-                    .onChanged { _ in onInteractionChanged(true) }
+                DragGesture(minimumDistance: 16)
+                    .onChanged { value in
+                        let dx = abs(value.translation.width)
+                        let dy = abs(value.translation.height)
+                        if dx > 10 && dx > dy * 1.35 {
+                            onInteractionChanged(true)
+                        }
+                    }
                     .onEnded { value in
                         defer { onInteractionChanged(false) }
-                        guard abs(value.translation.width) > 44,
-                              pageCount > 1
-                        else {
+                        let dx = abs(value.translation.width)
+                        let dy = abs(value.translation.height)
+                        guard dx > 44, dx > dy * 1.35 else {
                             return
                         }
                         let physicalDirection =
@@ -751,11 +759,21 @@ private struct HomeHeroFloatingPlate: View {
                 animationName: animationName,
                 loadsFromFirebase: loadsFromFirebase,
                 playbackEnabled: !reduceMotion,
-                tintColor: .white
+                tintColor: lottieTintColor(for: animationName)
             )
-            .scaleEffect(animationName == "petstore" ? 0.88 : 1.30)
-            .tint(.white)
+            .scaleEffect(lottieScale(for: animationName))
+            .tint(Color(lottieTintColor(for: animationName)))
         }
+    }
+
+    private func lottieScale(for animationName: String) -> CGFloat {
+        animationName == "petstore" ? 0.78 : 1.30
+    }
+
+    private func lottieTintColor(for animationName: String) -> UIColor {
+        animationName == "petstore"
+            ? UIColor(Color.ppPrimary)
+            : UIColor.white
     }
 
     private var categoryArtworkSize: CGFloat {

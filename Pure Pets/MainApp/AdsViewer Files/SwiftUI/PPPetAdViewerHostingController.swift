@@ -59,16 +59,20 @@ final class PPPetAdViewerHostingController: UIViewController {
         view.addSubview(contentController.view)
         NSLayoutConstraint.activate([
             contentController.view.topAnchor.constraint(
-                equalTo: view.topAnchor
+                equalTo: view.topAnchor,
+                constant: 0
             ),
             contentController.view.leadingAnchor.constraint(
-                equalTo: view.leadingAnchor
+                equalTo: view.leadingAnchor,
+                constant: 0
             ),
             contentController.view.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor
+                equalTo: view.trailingAnchor,
+                constant: 0
             ),
             contentController.view.bottomAnchor.constraint(
-                equalTo: view.bottomAnchor
+                equalTo: view.bottomAnchor,
+                constant: 0
             )
         ])
         contentController.didMove(toParent: self)
@@ -76,12 +80,7 @@ final class PPPetAdViewerHostingController: UIViewController {
 
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
-        let systemTop = view.safeAreaInsets.top
-            - additionalSafeAreaInsets.top
-        guard systemTop > 0,
-              abs(additionalSafeAreaInsets.top + systemTop) > 0.5
-        else { return }
-        additionalSafeAreaInsets.top = -systemTop
+        additionalSafeAreaInsets = .zero
     }
 
     override func viewWillAppear(_ animated: Bool) {

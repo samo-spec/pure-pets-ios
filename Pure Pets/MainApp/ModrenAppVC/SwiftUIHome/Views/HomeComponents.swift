@@ -2807,12 +2807,12 @@ struct HomeCategoryRail: View {
             return CGSize(width: 118, height: 152)
         }
         if width >= 430 {
-            return CGSize(width: 116, height: 150)
+            return CGSize(width: 116, height: 140)
         }
         if width < 375 {
-            return CGSize(width: 108, height: 144)
+            return CGSize(width: 108, height: 134)
         }
-        return CGSize(width: 112, height: 148)
+        return CGSize(width: 112, height: 138)
     }
 
     private func updateViewportWidth(_ width: CGFloat) {

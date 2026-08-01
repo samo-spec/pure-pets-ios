@@ -129,14 +129,7 @@ private final class PPPetAdHeroHostingController<Content: View>:
 
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
-        if #available(iOS 16.4, *) { return }
-
-        let systemTop = view.safeAreaInsets.top - additionalSafeAreaInsets.top
-        guard systemTop > 0,
-              abs(additionalSafeAreaInsets.top + systemTop) > 0.5 else {
-            return
-        }
-        additionalSafeAreaInsets.top = -systemTop
+        additionalSafeAreaInsets = .zero
     }
 }
 
@@ -266,12 +259,7 @@ final class PPPetAdHeroScrollViewController<
 
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
-        let systemTop = view.safeAreaInsets.top
-            - additionalSafeAreaInsets.top
-        guard systemTop > 0,
-              abs(additionalSafeAreaInsets.top + systemTop) > 0.5
-        else { return }
-        additionalSafeAreaInsets.top = -systemTop
+        additionalSafeAreaInsets = .zero
     }
 
     func update(
