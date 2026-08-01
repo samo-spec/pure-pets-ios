@@ -2804,15 +2804,15 @@ struct HomeCategoryRail: View {
             )
         }
         if width >= 700 {
-            return CGSize(width: 118, height: 152)
+            return CGSize(width: 114, height: 184)
         }
         if width >= 430 {
-            return CGSize(width: 116, height: 140)
+            return CGSize(width: 112, height: 143)
         }
         if width < 375 {
-            return CGSize(width: 108, height: 134)
+            return CGSize(width: 104, height: 130)
         }
-        return CGSize(width: 112, height: 138)
+        return CGSize(width: 108, height: 132)
     }
 
     private func updateViewportWidth(_ width: CGFloat) {

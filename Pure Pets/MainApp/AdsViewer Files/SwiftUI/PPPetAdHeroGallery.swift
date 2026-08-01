@@ -462,9 +462,7 @@ private struct PPPetAdHeroAtmosphere: View {
         LinearGradient(
             stops: [
                 .init(
-                    color: Color.ppBackground.opacity(
-                        Double(0.08 + (0.06 * interactionState.progress))
-                    ),
+                    color: Color.clear,
                     location: 0
                 ),
                 .init(color: Color.clear, location: 0.42),

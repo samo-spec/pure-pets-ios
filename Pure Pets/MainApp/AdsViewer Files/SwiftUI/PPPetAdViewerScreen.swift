@@ -74,11 +74,6 @@ struct PPPetAdViewerScreen: View {
                             )
                     )
 
-                PPPetAdTopAtmosphereOverlay(
-                    interactionState: interactionState,
-                    height: topInset + 80
-                )
-
                 navigationBar(topInset: topInset)
 
                 navigationLink
@@ -642,39 +637,6 @@ struct PPPetAdViewerScreen: View {
             value: store.ppShowsContactDock
         )
         .zIndex(8)
-    }
-}
-
-@available(iOS 16.0, *)
-private struct PPPetAdTopAtmosphereOverlay: View {
-    @ObservedObject var interactionState: PPPetAdViewerInteractionState
-    let height: CGFloat
-
-    var body: some View {
-        LinearGradient(
-            colors: [
-                Color.ppBackground.opacity(
-                    Double(
-                        min(
-                            0.92,
-                            0.48 + interactionState.backgroundDimming
-                        )
-                    )
-                ),
-                Color.ppBackground.opacity(
-                    Double(0.28 + interactionState.backgroundDimming)
-                ),
-                Color.clear
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(height: height)
-        .ignoresSafeArea(edges: .top)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-        .zIndex(9)
     }
 }
 
