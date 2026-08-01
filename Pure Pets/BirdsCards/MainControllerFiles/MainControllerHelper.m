@@ -1155,7 +1155,7 @@
         configType == Local_PPButtonConfigrationClearGlass ? [UIButtonConfiguration glassButtonConfiguration] :
         configType == Local_PPButtonConfigrationFilled ? [UIButtonConfiguration filledButtonConfiguration] :
         configType == Local_PPButtonConfigrationPromp ? [UIButtonConfiguration prominentGlassButtonConfiguration] :
-        configType == Local_PPButtonConfigrationClearPromp ? [UIButtonConfiguration prominentClearGlassButtonConfiguration] :
+        configType == Local_PPButtonConfigrationClearPromp ? [UIButtonConfiguration prominentGlassButtonConfiguration] :
         configType == Local_PPButtonConfigrationTintedBorderd ? [UIButtonConfiguration borderedTintedButtonConfiguration] :
         configType == Local_PPButtonConfigrationTinted ? [UIButtonConfiguration tintedButtonConfiguration] : [UIButtonConfiguration plainButtonConfiguration] ;
         

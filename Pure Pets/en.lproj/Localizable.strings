@@ -174,7 +174,7 @@
 "OneAds" = "ad";
 "Online" = " Online ";
 "OrderDate" = "Date";
-"OrderHistory" = "Orders History";
+"OrderHistory" = "Order History";
 "OrderStatus" = "Status";
 "OrderSumLabel" = "";
 "OrderTotal" = "Total";
@@ -1988,13 +1988,24 @@
 "orders_empty_filtered" = "No matching orders found.";
 "order_support_request_call" = "Request Call";
 "order_support_button" = "Contact Support";
-"order_history_hero_eyebrow" = "ORDER COMMAND CENTER";
-"order_history_hero_subtitle" = "A calm view of payment, delivery, and support progress across every order.";
+"order_history_hero_eyebrow" = "ORDER JOURNEY";
+"order_history_hero_subtitle" = "Track each purchase from payment to delivery, with support always close.";
 "order_history_metric_orders" = "Orders";
 "order_history_metric_spent" = "Spent";
 "order_history_metric_active" = "Active";
 "order_history_scope_all" = "All orders";
 "order_history_scope_filtered" = "Filtered";
+"order_history_metric_active_format" = "%1$@ • Active: %2$ld";
+"order_history_summary_accessibility_format" = "Orders: %1$@. Spent: %2$@. Active: %3$ld.";
+"order_history_filter_count_format" = "%1$@ • %2$ld";
+"order_history_filter_action_format" = "%1$@ (%2$ld)";
+"order_history_search_open" = "Search and filter orders";
+"order_history_search_close" = "Close search and filters";
+"order_history_filter_accessibility" = "Filter orders by status";
+"order_history_row_accessibility_format" = "%1$@. %2$@. %3$@. %4$@. %5$@.";
+"order_history_row_accessibility_hint" = "Opens order details";
+"NoOrders" = "No orders yet";
+"UserNotAuthenticated" = "Sign in to view your orders.";
 "order_change_delivery_address" = "Change Delivery Address";
 "order_cancel_button" = "Cancel Order";
 "order_edit_location_pending_only" = "Delivery location can only be edited while the order is pending.";
@@ -3203,7 +3214,7 @@
 "chat_accessibility_incoming" = "Received message";
 "chat_accessibility_outgoing" = "Sent message";
 "chat_accessibility_reply_format" = "Reply to: %@";
-"chat_message_actions_hint" = "Swipe to reply, or touch and hold for message actions.";
+"chat_message_actions_hint" = "Message actions are available.";
 
 /* Premium intro */
 "intro_brand_kicker" = "Care, thoughtfully connected";
@@ -3708,6 +3719,7 @@
 "report" = "Report";
 
 /* SwiftUI Pet Advertisement Viewer */
+"Actions" = "Actions";
 "Collapsed" = "Collapsed";
 "Expanded" = "Expanded";
 "Login" = "Sign in";
@@ -3771,6 +3783,7 @@
 "pet_ad_viewer_title_fallback" = "Pet advertisement";
 "pet_ad_viewer_zoom" = "Zoom in";
 "pet_ad_viewer_verified_owner" = "Verified Pure Pets member";
+"pet_ad_viewer_seller_role" = "Advertiser";
 "pet_ad_viewer_verified_seller_role" = "Verified advertiser";
 "pet_ad_viewer_your_listing" = "This is your advertisement";
 "pet_ad_viewer_your_listing_detail" = "Contact actions are hidden when you view your own listing.";
@@ -4029,3 +4042,38 @@
 "splash_footer_format" = "Pure Pets © %ld · All rights reserved";
 "splash_loading_accessibility_format" = "%1$@. %2$@";
 "splash_progress_accessibility_format" = "Launch step %1$ld of %2$ld";
+
+/* Messaging — SwiftUI conversation */
+"chat_loading_older" = "Loading earlier messages";
+"chat_connection_interrupted" = "Connection interrupted";
+"chat_loading_messages_title" = "Opening your conversation";
+"chat_loading_messages_subtitle" = "Messages and delivery updates are being prepared.";
+"chat_offline_title" = "Messages are temporarily offline";
+"chat_offline_subtitle" = "Your conversation is safe. Reconnect to continue sending and receiving.";
+"chat_typing_format" = "%@ is typing";
+"chat_date_today" = "Today";
+"chat_date_yesterday" = "Yesterday";
+"chat_scroll_latest" = "Go to latest message";
+"chat_attachment_picker_close" = "Close attachments";
+"chat_attachment_picker_expanded" = "Attachment options expanded";
+"chat_attachment_picker_collapsed" = "Attachment options collapsed";
+
+/* Chat Inbox */
+"chat_inbox_compose_hint" = "Opens the people picker to start a conversation.";
+"chat_inbox_loading" = "Loading conversations";
+"chat_inbox_stale_summary" = "Showing recent conversations. Reconnect to refresh.";
+"chat_inbox_unread_one" = "1 unread message";
+"chat_inbox_unread_other" = "%ld unread messages";
+"chat_inbox_conversation_one" = "1 conversation";
+"chat_inbox_conversation_other" = "%ld conversations";
+"chat_inbox_all_caught_up" = "All caught up";
+"chat_inbox_summary_join_format" = "%1$@ · %2$@";
+"chat_inbox_load_error_subtitle" = "Check your connection and try loading your conversations again.";
+"chat_sign_in_required_title" = "Sign in to see your conversations";
+"chat_sign_in_required_subtitle" = "Your chats and unread messages will appear after you sign in.";
+"chat_sign_in_action" = "Sign in";
+"chat_open_conversation_hint" = "Opens this conversation.";
+"chat_delete_thread_title" = "Delete conversation?";
+"chat_delete_thread_message" = "This removes the shared conversation and cannot be undone.";
+"chat_delete_thread_failed" = "The conversation could not be deleted. It has been restored.";
+"story_add_hint" = "Adds a photo to your story.";

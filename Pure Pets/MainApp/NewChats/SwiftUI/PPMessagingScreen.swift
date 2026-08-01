@@ -144,7 +144,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
     @objc(setConnectionInterrupted:)
     public func setConnectionInterrupted(_ interrupted: Bool) {
         onMain { [weak self] in
-            self?.screenState.connectionInterrupted = interrupted
+            self?.screenState.setConnectionInterrupted(interrupted)
         }
     }
 
@@ -192,6 +192,13 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
     public func setBottomNavigationClearance(_ clearance: CGFloat) {
         onMain { [weak self] in
             self?.screenState.bottomNavigationClearance = max(0, clearance)
+        }
+    }
+
+    @objc(setConversationBackgroundImage:)
+    public func setConversationBackgroundImage(_ image: UIImage?) {
+        onMain { [weak self] in
+            self?.screenState.backgroundImage = image
         }
     }
 
@@ -246,6 +253,7 @@ private final class PPMessagingScreenState: ObservableObject {
     @Published var isBinned = false
     @Published var isReported = false
     @Published var bottomNavigationClearance: CGFloat = 0
+    @Published var backgroundImage: UIImage?
     @Published private(set) var messageRevision = 0
     @Published private(set) var latestAppendedCount = 0
     @Published private(set) var latestAppendContainsOutgoing = false
@@ -298,7 +306,7 @@ private final class PPMessagingScreenState: ObservableObject {
 
         messages = snapshots
         self.initialLoadCompleted = initialLoadCompleted
-        self.isLoading = !initialLoadCompleted && snapshots.isEmpty
+        self.isLoading = !connectionInterrupted && !initialLoadCompleted && snapshots.isEmpty
         self.canLoadOlder = canLoadOlder
         if initialLoadCompleted {
             isLoadingOlder = false
@@ -311,6 +319,15 @@ private final class PPMessagingScreenState: ObservableObject {
         knownMessageIDs.formUnion(incomingIDs)
         resolveUnreadBoundaryIfNeeded()
         messageRevision &+= 1
+    }
+
+    func setConnectionInterrupted(_ interrupted: Bool) {
+        connectionInterrupted = interrupted
+        if interrupted {
+            isLoading = false
+        } else if !initialLoadCompleted && messages.isEmpty {
+            isLoading = true
+        }
     }
 
     func configureConversation(
@@ -552,6 +569,7 @@ private struct PPMessagingScreen: View {
     let relay: PPMessagingActionRelay
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var presentedMedia: PPMessagingMessageSnapshot?
     @State private var hasPositionedInitially = false
@@ -576,6 +594,8 @@ private struct PPMessagingScreen: View {
 
                 ChatBarView(
                     state: state.composerState,
+                    presentation: .messaging,
+                    chatBarHeight: 54,
                     onSendText: { relay.delegate?.messagingHostDidSendText($0) },
                     onCameraTap: { relay.delegate?.messagingHostDidTapPhoto() },
                     onVideoTap: { relay.delegate?.messagingHostDidTapVideo() },
@@ -588,13 +608,25 @@ private struct PPMessagingScreen: View {
                         relay.request(.composerCancelledReply)
                     }
                 )
+                .accessibilityIdentifier("pp.messaging.composer")
                 .onReceive(state.composerState.$message.dropFirst()) { text in
                     relay.delegate?.messagingHostDidChangeText(text)
                 }
-                .padding(.bottom, state.bottomNavigationClearance)
-                .background(.ultraThinMaterial)
+                .padding(.horizontal, 12)
+                .padding(.top, 9)
+                .padding(
+                    .bottom,
+                    max(8, state.bottomNavigationClearance)
+                )
+                .background {
+                    PPMessagingComposerBackdrop()
+                }
             }
-            .background(PPMessagingCanvas().ignoresSafeArea())
+            .background {
+                PPMessagingCanvas(backgroundImage: state.backgroundImage)
+                    .ignoresSafeArea()
+            }
+            .accessibilityIdentifier("pp.messaging.screen")
         }
         .environment(
             \.layoutDirection,
@@ -630,7 +662,7 @@ private struct PPMessagingScreen: View {
     }
 
     private func messageScroller(availableWidth: CGFloat) -> some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: .bottom) {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -656,11 +688,12 @@ private struct PPMessagingScreen: View {
                         ForEach(Array(state.messages.enumerated()), id: \.element.id) { index, message in
                             if needsDateSeparator(at: index) {
                                 PPMessagingDateSeparator(date: message.timestamp)
-                                    .padding(.vertical, index == 0 ? 10 : 14)
+                                    .padding(.vertical, index == 0 ? 8 : 10)
                             }
 
                             if state.unreadBoundaryMessageID == message.id {
                                 PPMessagingUnreadSeparator()
+                                    .id(PPMessagingScrollID.unreadBoundary)
                                     .padding(.vertical, 8)
                             }
 
@@ -682,6 +715,7 @@ private struct PPMessagingScreen: View {
                                 }
                             )
                             .id(message.id)
+                            .accessibilityIdentifier("pp.messaging.message.\(message.id)")
                             .padding(.bottom, rowSpacing(after: index))
                         }
 
@@ -708,6 +742,7 @@ private struct PPMessagingScreen: View {
                     .padding(.top, 4)
                     .padding(.bottom, 12)
                 }
+                .accessibilityIdentifier("pp.messaging.messages")
                 .ppInteractiveKeyboardDismissal()
                 .onChange(of: state.initialLoadCompleted) { completed in
                     guard completed else { return }
@@ -730,7 +765,6 @@ private struct PPMessagingScreen: View {
                     PPMessagingLatestButton(count: unseenMessageCount) {
                         scrollToLatest(using: proxy, animated: true)
                     }
-                    .padding(.trailing, 18)
                     .padding(.bottom, 14)
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
                 }
@@ -741,9 +775,14 @@ private struct PPMessagingScreen: View {
     private func positionInitially(using proxy: ScrollViewProxy) {
         guard !hasPositionedInitially else { return }
         DispatchQueue.main.async {
-            proxy.scrollTo(PPMessagingScrollID.bottom, anchor: .bottom)
+            if state.unreadBoundaryMessageID != nil {
+                proxy.scrollTo(PPMessagingScrollID.unreadBoundary, anchor: .top)
+                isAtLatest = false
+            } else {
+                proxy.scrollTo(PPMessagingScrollID.bottom, anchor: .bottom)
+                isAtLatest = true
+            }
             hasPositionedInitially = true
-            isAtLatest = true
         }
     }
 
@@ -837,8 +876,12 @@ private struct PPMessagingScreen: View {
         let message = state.messages[index]
         let previous = index > 0 ? state.messages[index - 1] : nil
         let next = index + 1 < state.messages.count ? state.messages[index + 1] : nil
-        let joinsPrevious = previous.map { canGroup(message, with: $0) } ?? false
-        let joinsNext = next.map { canGroup(message, with: $0) } ?? false
+        let joinsPrevious =
+            state.unreadBoundaryMessageID != message.id &&
+            (previous.map { canGroup(message, with: $0) } ?? false)
+        let joinsNext =
+            next?.id != state.unreadBoundaryMessageID &&
+            (next.map { canGroup(message, with: $0) } ?? false)
 
         switch (joinsPrevious, joinsNext) {
         case (false, false): return .single
@@ -860,7 +903,7 @@ private struct PPMessagingScreen: View {
     }
 
     private func rowSpacing(after index: Int) -> CGFloat {
-        grouping(at: index) == .last || grouping(at: index) == .single ? 10 : 3
+        grouping(at: index) == .last || grouping(at: index) == .single ? 11 : 2.5
     }
 
     private func needsDateSeparator(at index: Int) -> Bool {
@@ -897,6 +940,7 @@ private enum PPMessagingScrollID: Hashable {
     case top
     case typing
     case bottom
+    case unreadBoundary
 }
 
 // MARK: - Header and Screen States
@@ -907,22 +951,30 @@ private struct PPMessagingHeader: View {
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        HStack(spacing: 11) {
+        HStack(spacing: 8) {
             Button {
                 relay.request(.close)
             } label: {
                 Image(systemName: closeSymbol)
                     .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 42, height: 42)
+                    .foregroundColor(PPMessagingPalette.primaryText)
+                    .frame(width: 40, height: 40)
                     .background(PPMessagingPalette.controlSurface, in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
+                    )
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
             }
             .buttonStyle(PPMessagingPressButtonStyle())
             .accessibilityLabel(localized("Close"))
+            .accessibilityIdentifier("pp.messaging.close")
 
             Button {
                 relay.request(.profile)
             } label: {
-                HStack(spacing: 11) {
+                HStack(spacing: 10) {
                     PPMessagingAvatar(
                         name: state.conversationName,
                         urlString: state.avatarURLString,
@@ -930,24 +982,17 @@ private struct PPMessagingHeader: View {
                         usesSupportLogo: state.usesSupportLogo
                     )
 
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: 0) {
                         Text(state.conversationName.isEmpty ? localized("Chat") : state.conversationName)
-                            .font(.custom("Beiruti-Bold", size: 17, relativeTo: .headline))
+                            .font(.custom("Beiruti-Bold", size: 17.5, relativeTo: .headline))
                             .foregroundColor(PPMessagingPalette.primaryText)
                             .lineLimit(1)
 
-                        HStack(spacing: 5) {
-                            if state.isOnline {
-                                Circle()
-                                    .fill(PPMessagingPalette.online)
-                                    .frame(width: 6, height: 6)
-                                    .accessibilityHidden(true)
-                            }
-                            Text(state.presenceText)
-                                .font(.custom("Beiruti-Medium", size: 12.5, relativeTo: .caption))
-                                .foregroundColor(PPMessagingPalette.secondaryText)
-                                .lineLimit(1)
-                        }
+                        Text(state.presenceText)
+                            .font(.custom("Beiruti-Medium", size: 12.5, relativeTo: .caption))
+                            .foregroundColor(PPMessagingPalette.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -1005,18 +1050,38 @@ private struct PPMessagingHeader: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 42, height: 42)
+                    .foregroundColor(PPMessagingPalette.primaryText)
+                    .frame(width: 40, height: 40)
                     .background(PPMessagingPalette.controlSurface, in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
+                    )
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
             }
             .buttonStyle(PPMessagingPressButtonStyle())
             .accessibilityLabel(localized("more"))
+            .accessibilityIdentifier("pp.messaging.more")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 5)
+        .background {
+            ZStack {
+                PPMessagingPalette.headerSurface
+                LinearGradient(
+                    colors: [
+                        PPMessagingPalette.headerHighlight,
+                        .clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(PPMessagingPalette.hairline)
+                .fill(PPMessagingPalette.hairline.opacity(0.82))
                 .frame(height: 0.5)
         }
     }
@@ -1045,7 +1110,7 @@ private struct PPMessagingAvatar: View {
                         .resizable()
                         .scaledToFit()
                         .padding(7)
-                        .background(Color.white)
+                        .background(PPMessagingPalette.avatarLogoSurface)
                 } else if let url = URL(string: urlString), !urlString.isEmpty {
                     AsyncImage(url: url) { phase in
                         if let image = phase.image {
@@ -1058,15 +1123,15 @@ private struct PPMessagingAvatar: View {
                     avatarFallback
                 }
             }
-            .frame(width: 48, height: 48)
+            .frame(width: 44, height: 44)
             .clipShape(Circle())
-            .overlay(Circle().stroke(PPMessagingPalette.avatarStroke, lineWidth: 1))
+            .overlay(Circle().stroke(PPMessagingPalette.avatarStroke, lineWidth: 0.8))
 
             if isOnline {
                 Circle()
                     .fill(PPMessagingPalette.online)
-                    .frame(width: 12, height: 12)
-                    .overlay(Circle().stroke(PPMessagingPalette.canvasUIColor, lineWidth: 2))
+                    .frame(width: 11, height: 11)
+                    .overlay(Circle().stroke(Color(PPMessagingPalette.canvasUIColor), lineWidth: 2))
                     .accessibilityHidden(true)
             }
         }
@@ -1293,6 +1358,7 @@ private struct PPMessagingMessageRow: View {
     let onSeekAudio: (Double) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var appeared = false
     @State private var replyDragOffset: CGFloat = 0
@@ -1300,17 +1366,16 @@ private struct PPMessagingMessageRow: View {
 
     var body: some View {
         bubble
-            .frame(maxWidth: min(max(availableWidth * 0.79, 220), 430), alignment: message.isOutgoing ? .trailing : .leading)
-            .frame(maxWidth: .infinity, alignment: message.isOutgoing ? .trailing : .leading)
+            .frame(maxWidth: maximumBubbleWidth, alignment: rowAlignment)
+            .frame(maxWidth: .infinity, alignment: rowAlignment)
             .offset(x: replyDragOffset)
             .opacity(appeared ? 1 : 0.01)
-            .scaleEffect(appeared ? 1 : 0.985, anchor: message.isOutgoing ? .trailing : .leading)
+            .scaleEffect(appeared ? 1 : 0.985, anchor: scaleAnchor)
             .overlay {
                 if highlighted {
                     PPMessagingBubbleShape(
                         isOutgoing: message.isOutgoing,
-                        grouping: grouping,
-                        layoutDirection: layoutDirection
+                        grouping: grouping
                     )
                     .stroke(PPMessagingPalette.highlight, lineWidth: 2)
                     .padding(-3)
@@ -1329,21 +1394,34 @@ private struct PPMessagingMessageRow: View {
                     appeared = true
                 }
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: accessibilityChildBehavior)
             .accessibilityLabel(accessibilityLabel)
+            .accessibilityValue(accessibilityValue)
             .accessibilityHint(message.isDeleted ? "" : localized("chat_message_actions_hint"))
-            .accessibilityAction(named: Text(localized("reply"))) {
-                onAction(.reply)
-            }
-            .accessibilityAction(named: Text(localized("copy"))) {
-                if message.kind == "text", !message.text.isEmpty {
-                    onAction(.copy)
-                }
-            }
+            .ppMessagingAccessibilityAction(
+                enabled: !message.isDeleted,
+                label: localized("reply"),
+                action: { onAction(.reply) }
+            )
+            .ppMessagingAccessibilityAction(
+                enabled: !message.isDeleted && message.kind == "text" && !message.text.isEmpty,
+                label: localized("copy"),
+                action: { onAction(.copy) }
+            )
+            .ppMessagingAccessibilityAction(
+                enabled: !message.isDeleted && message.isMedia,
+                label: localized("chat_media_download"),
+                action: { onAction(.save) }
+            )
+            .ppMessagingAccessibilityAction(
+                enabled: !message.isDeleted && message.canUnsend,
+                label: localized("chat_unsend"),
+                action: { onAction(.unsend) }
+            )
     }
 
     private var bubble: some View {
-        VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 7) {
+        VStack(alignment: contentAlignment, spacing: 5) {
             if let replyID = message.replyToMessageID {
                 Button {
                     onAction(.openReplySource)
@@ -1374,31 +1452,26 @@ private struct PPMessagingMessageRow: View {
                 .foregroundColor(PPMessagingPalette.failure)
             }
 
-            PPMessagingMetadataRow(message: message)
+            if shouldShowMetadata {
+                PPMessagingMetadataRow(message: message)
+            }
         }
-        .padding(.horizontal, message.kind == "sticker" ? 5 : 13)
-        .padding(.vertical, message.kind == "sticker" ? 5 : 9)
+        .padding(.horizontal, message.kind == "sticker" ? 5 : 12)
+        .padding(.vertical, message.kind == "sticker" ? 5 : 8)
         .background(
             PPMessagingBubbleShape(
                 isOutgoing: message.isOutgoing,
-                grouping: grouping,
-                layoutDirection: layoutDirection
+                grouping: grouping
             )
             .fill(bubbleFill)
         )
         .overlay {
             PPMessagingBubbleShape(
                 isOutgoing: message.isOutgoing,
-                grouping: grouping,
-                layoutDirection: layoutDirection
+                grouping: grouping
             )
             .stroke(message.failureText == nil ? bubbleStroke : PPMessagingPalette.failure.opacity(0.7), lineWidth: 0.8)
         }
-        .shadow(
-            color: message.isOutgoing ? .clear : PPMessagingPalette.incomingShadow,
-            radius: grouping == .middle ? 0 : 9,
-            y: 3
-        )
     }
 
     @ViewBuilder
@@ -1437,6 +1510,7 @@ private struct PPMessagingMessageRow: View {
                     .font(.custom("Beiruti-Regular", size: 16.5, relativeTo: .body))
                     .foregroundColor(contentPrimary)
                     .multilineTextAlignment(.leading)
+                    .environment(\.layoutDirection, messageTextDirection)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
             }
@@ -1510,8 +1584,54 @@ private struct PPMessagingMessageRow: View {
     }
 
     private var replyPhysicalDirection: CGFloat {
-        let rtl: CGFloat = layoutDirection == .rightToLeft ? -1 : 1
-        return message.isOutgoing ? rtl : -rtl
+        message.isOutgoing ? 1 : -1
+    }
+
+    private var rowAlignment: Alignment {
+        if layoutDirection == .rightToLeft {
+            return message.isOutgoing ? .leading : .trailing
+        }
+        return message.isOutgoing ? .trailing : .leading
+    }
+
+    private var contentAlignment: HorizontalAlignment {
+        if layoutDirection == .rightToLeft {
+            return message.isOutgoing ? .leading : .trailing
+        }
+        return message.isOutgoing ? .trailing : .leading
+    }
+
+    private var scaleAnchor: UnitPoint {
+        if layoutDirection == .rightToLeft {
+            return message.isOutgoing ? .leading : .trailing
+        }
+        return message.isOutgoing ? .trailing : .leading
+    }
+
+    private var maximumBubbleWidth: CGFloat {
+        let widthFraction = dynamicTypeSize.isAccessibilitySize ? 0.90 : 0.79
+        return min(max(availableWidth * widthFraction, 0), 440)
+    }
+
+    private var shouldShowMetadata: Bool {
+        if message.failureText != nil || message.isUploading || message.isLocalPending {
+            return true
+        }
+        return grouping == .single || grouping == .last
+    }
+
+    private var accessibilityChildBehavior: AccessibilityChildBehavior {
+        if message.replyToMessageID != nil ||
+            message.failureText != nil ||
+            message.kind == "audio" ||
+            message.isMedia {
+            return .contain
+        }
+        return .combine
+    }
+
+    private var messageTextDirection: LayoutDirection {
+        PPMessagingTextDirection.resolve(message.text, fallback: layoutDirection)
     }
 
     private var bubbleFill: Color {
@@ -1544,7 +1664,21 @@ private struct PPMessagingMessageRow: View {
             default: content = message.text
             }
         }
-        return "\(direction). \(content). \(PPMessagingFormatters.accessibleDate.string(from: message.timestamp))"
+        return "\(direction). \(content). \(PPMessagingFormatters.accessibleDate(message.timestamp))"
+    }
+
+    private var accessibilityValue: String {
+        if message.failureText != nil {
+            return localized("chat_message_failed_title")
+        }
+        guard message.isOutgoing else { return "" }
+
+        switch message.status {
+        case 3: return localized("chat_status_read")
+        case 2: return localized("chat_status_delivered")
+        case 1: return localized("chat_status_sent")
+        default: return localized("chat_status_sending")
+        }
     }
 
     private func localized(_ key: String) -> String {
@@ -1556,6 +1690,7 @@ private struct PPMessagingReplyPreview: View {
     let source: PPMessagingMessageSnapshot?
     let sourceID: String
     let isOutgoing: Bool
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         HStack(spacing: 8) {
@@ -1568,6 +1703,14 @@ private struct PPMessagingReplyPreview: View {
                 Text(previewText)
                     .font(.custom("Beiruti-Medium", size: 11.5, relativeTo: .caption))
                     .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .environment(
+                        \.layoutDirection,
+                        PPMessagingTextDirection.resolve(
+                            previewText,
+                            fallback: layoutDirection
+                        )
+                    )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1606,7 +1749,7 @@ private struct PPMessagingMetadataRow: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Text(PPMessagingFormatters.time.string(from: message.timestamp))
+            Text(PPMessagingFormatters.time(message.timestamp))
                 .font(.custom("Beiruti-Medium", size: 10.5, relativeTo: .caption2))
                 .monospacedDigit()
 
@@ -1816,7 +1959,7 @@ private struct PPMessagingAudioContent: View {
                 ZStack {
                     Circle()
                         .fill(foreground.opacity(0.10))
-                        .frame(width: 42, height: 42)
+                        .frame(width: 40, height: 40)
                     if state.isLoading {
                         ProgressView().tint(foreground)
                     } else {
@@ -1826,6 +1969,7 @@ private struct PPMessagingAudioContent: View {
                             .offset(x: state.isPlaying ? 0 : 1)
                     }
                 }
+                .frame(width: 44, height: 44)
             }
             .buttonStyle(PPMessagingPressButtonStyle())
             .accessibilityLabel(
@@ -1908,6 +2052,7 @@ private struct PPMessagingWaveform: View {
 private struct PPMessagingFileContent: View {
     let message: PPMessagingMessageSnapshot
     let foreground: Color
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         HStack(spacing: 10) {
@@ -1918,6 +2063,14 @@ private struct PPMessagingFileContent: View {
             Text(message.text.isEmpty ? localized("chat_notification_file") : message.text)
                 .font(.custom("Beiruti-Medium", size: 15, relativeTo: .body))
                 .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .environment(
+                    \.layoutDirection,
+                    PPMessagingTextDirection.resolve(
+                        message.text,
+                        fallback: layoutDirection
+                    )
+                )
         }
         .foregroundColor(foreground)
     }
@@ -1929,6 +2082,7 @@ private struct PPMessagingFileContent: View {
 
 private struct PPMessagingTypingRow: View {
     let name: String
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         HStack(spacing: 9) {
@@ -1942,9 +2096,13 @@ private struct PPMessagingTypingRow: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 9)
         .background(PPMessagingPalette.incomingBubble, in: Capsule())
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: incomingAlignment)
         .padding(.top, 5)
         .accessibilityElement(children: .combine)
+    }
+
+    private var incomingAlignment: Alignment {
+        layoutDirection == .rightToLeft ? .trailing : .leading
     }
 
     private func localized(_ key: String) -> String {
@@ -1959,7 +2117,7 @@ private struct PPMessagingTypingDots: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { index in
+            ForEach([0, 1, 2], id: \.self) { index in
                 Circle()
                     .fill(PPMessagingPalette.secondaryText)
                     .frame(width: 5, height: 5)
@@ -1979,20 +2137,29 @@ private struct PPMessagingTypingDots: View {
 
 private struct PPMessagingDateSeparator: View {
     let date: Date
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack(spacing: 9) {
-            line
+        HStack(spacing: 8) {
+            if !dynamicTypeSize.isAccessibilitySize {
+                line
+            }
             Text(label)
-                .font(.custom("Beiruti-Bold", size: 11.5, relativeTo: .caption))
+                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
                 .foregroundColor(PPMessagingPalette.secondaryText)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
                 .background(PPMessagingPalette.separatorSurface, in: Capsule())
-            line
+                .overlay(
+                    Capsule()
+                        .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.6)
+                )
+            if !dynamicTypeSize.isAccessibilitySize {
+                line
+            }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(PPMessagingFormatters.accessibleDate.string(from: date))
+        .accessibilityLabel(PPMessagingFormatters.accessibleDate(date))
     }
 
     private var line: some View {
@@ -2008,7 +2175,7 @@ private struct PPMessagingDateSeparator: View {
         if Calendar.current.isDateInYesterday(date) {
             return localized("chat_date_yesterday")
         }
-        return PPMessagingFormatters.dateSeparator.string(from: date)
+        return PPMessagingFormatters.dateSeparator(date)
     }
 
     private func localized(_ key: String) -> String {
@@ -2063,8 +2230,9 @@ private struct PPMessagingLatestButton: View {
             .foregroundColor(PPMessagingPalette.primaryText)
             .frame(minWidth: 44, minHeight: 44)
             .padding(.horizontal, count > 0 ? 8 : 0)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().stroke(PPMessagingPalette.hairline, lineWidth: 0.8))
+            .background(PPMessagingPalette.headerSurface, in: Capsule())
+            .overlay(Capsule().stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8))
+            .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
         }
         .buttonStyle(PPMessagingPressButtonStyle())
         .accessibilityLabel(
@@ -2167,12 +2335,11 @@ private struct PPMessagingVideoPlayer: View {
 private struct PPMessagingBubbleShape: Shape {
     let isOutgoing: Bool
     let grouping: PPMessagingGrouping
-    let layoutDirection: LayoutDirection
 
     func path(in rect: CGRect) -> Path {
-        let speakerOnPhysicalRight = isOutgoing != (layoutDirection == .rightToLeft)
-        let large: CGFloat = 21
-        let joined: CGFloat = 7
+        let speakerOnPhysicalRight = isOutgoing
+        let large: CGFloat = 20
+        let joined: CGFloat = 6
 
         var topLeft = large
         var topRight = large
@@ -2240,19 +2407,74 @@ private enum PPMessagingRoundedPath {
 }
 
 private struct PPMessagingCanvas: View {
+    let backgroundImage: UIImage?
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         ZStack {
             PPMessagingPalette.canvas
-            LinearGradient(
+
+            if let backgroundImage {
+                GeometryReader { proxy in
+                    Image(uiImage: backgroundImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                        .saturation(0.28)
+                        .contrast(0.92)
+                        .opacity(colorScheme == .dark ? 0.16 : 0.22)
+                        .id(ObjectIdentifier(backgroundImage))
+                        .transition(.opacity)
+                }
+
+                PPMessagingPalette.canvas
+                    .opacity(colorScheme == .dark ? 0.34 : 0.42)
+            }
+
+            RadialGradient(
                 colors: [
-                    PPMessagingPalette.canvasGlowTop,
-                    .clear,
-                    PPMessagingPalette.canvasGlowBottom
+                    PPMessagingPalette.canvasWarmField,
+                    .clear
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                center: .topTrailing,
+                startRadius: 8,
+                endRadius: 430
+            )
+            RadialGradient(
+                colors: [
+                    PPMessagingPalette.canvasCoolField,
+                    .clear
+                ],
+                center: .bottomLeading,
+                startRadius: 12,
+                endRadius: 520
             )
         }
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.25),
+            value: backgroundImage.map(ObjectIdentifier.init)
+        )
+        .accessibilityHidden(true)
+    }
+}
+
+private struct PPMessagingComposerBackdrop: View {
+    var body: some View {
+        LinearGradient(
+            colors: [
+                .clear,
+                PPMessagingPalette.composerBackdrop.opacity(0.84),
+                PPMessagingPalette.composerBackdrop
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -2260,15 +2482,20 @@ private struct PPMessagingPressButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
+        let pressAnimation = reduceMotion
+            ? Animation.easeOut(duration: 0.08)
+            : Animation.timingCurve(
+                0.2,
+                0,
+                0,
+                1,
+                duration: configuration.isPressed ? 0.09 : 0.18
+            )
+
         configuration.label
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.96 : 1))
             .opacity(configuration.isPressed ? 0.78 : 1)
-            .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.08)
-                    : .timingCurve(0.2, 0, 0, 1, duration: configuration.isPressed ? 0.09 : 0.18),
-                value: configuration.isPressed
-            )
+            .animation(pressAnimation, value: configuration.isPressed)
     }
 }
 
@@ -2281,89 +2508,210 @@ private extension View {
             self
         }
     }
+
+    @ViewBuilder
+    func ppMessagingAccessibilityAction(
+        enabled: Bool,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        if enabled {
+            accessibilityAction(named: Text(label), action)
+        } else {
+            self
+        }
+    }
+}
+
+private enum PPMessagingTextDirection {
+    static func resolve(
+        _ text: String,
+        fallback: LayoutDirection
+    ) -> LayoutDirection {
+        for scalar in text.unicodeScalars {
+            if isRightToLeft(scalar.value) {
+                return .rightToLeft
+            }
+            if CharacterSet.letters.contains(scalar) {
+                return .leftToRight
+            }
+        }
+        return fallback
+    }
+
+    private static func isRightToLeft(_ value: UInt32) -> Bool {
+        switch value {
+        case 0x0590...0x08FF,
+             0xFB1D...0xFDFF,
+             0xFE70...0xFEFF,
+             0x10800...0x10FFF:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 private enum PPMessagingFormatters {
-    static let time: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.timeStyle = .short
-        formatter.dateStyle = .none
-        return formatter
-    }()
+    static func time(_ date: Date) -> String {
+        active.time.string(from: date)
+    }
 
-    static let dateSeparator: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.setLocalizedDateFormatFromTemplate("EEE d MMM")
-        return formatter
-    }()
+    static func dateSeparator(_ date: Date) -> String {
+        active.dateSeparator.string(from: date)
+    }
 
-    static let accessibleDate: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.dateStyle = .full
-        formatter.timeStyle = .short
-        return formatter
-    }()
+    static func accessibleDate(_ date: Date) -> String {
+        active.accessibleDate.string(from: date)
+    }
+
+    private static var active: FormatterSet {
+        Language.isRTL() ? arabic : english
+    }
+
+    private static let arabic = FormatterSet(locale: Locale(identifier: "ar_QA"))
+    private static let english = FormatterSet(locale: Locale(identifier: "en_QA"))
+
+    private struct FormatterSet {
+        let time: DateFormatter
+        let dateSeparator: DateFormatter
+        let accessibleDate: DateFormatter
+
+        init(locale: Locale) {
+            time = Self.makeTime(locale: locale)
+            dateSeparator = Self.makeDateSeparator(locale: locale)
+            accessibleDate = Self.makeAccessibleDate(locale: locale)
+        }
+
+        private static func makeTime(locale: Locale) -> DateFormatter {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return formatter
+        }
+
+        private static func makeDateSeparator(locale: Locale) -> DateFormatter {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.setLocalizedDateFormatFromTemplate("EEE d MMM")
+            return formatter
+        }
+
+        private static func makeAccessibleDate(locale: Locale) -> DateFormatter {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.dateStyle = .full
+            formatter.timeStyle = .short
+            return formatter
+        }
+    }
+
 }
 
 private enum PPMessagingPalette {
     static let canvasUIColor = UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.045, green: 0.049, blue: 0.055, alpha: 1)
-            : UIColor(red: 0.973, green: 0.969, blue: 0.963, alpha: 1)
+        let increasedContrast = traits.accessibilityContrast == .high
+        if traits.userInterfaceStyle == .dark {
+            return UIColor(
+                red: increasedContrast ? 0.025 : 0.043,
+                green: increasedContrast ? 0.028 : 0.048,
+                blue: increasedContrast ? 0.030 : 0.050,
+                alpha: 1
+            )
+        }
+        return UIColor(
+            red: increasedContrast ? 0.935 : 0.953,
+            green: increasedContrast ? 0.925 : 0.945,
+            blue: increasedContrast ? 0.905 : 0.929,
+            alpha: 1
+        )
     }
     static let canvas = Color(canvasUIColor)
-    static let primaryText = Color(UIColor.label)
-    static let secondaryText = Color(UIColor.secondaryLabel)
+    static let composerBackdrop = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.043, green: 0.048, blue: 0.050, alpha: 0.97)
+            : UIColor(red: 0.953, green: 0.945, blue: 0.929, alpha: 0.97)
+    })
+    static let primaryText = Color.ppTextPrimary
+    static let secondaryText = Color.ppTextSecondary
     static let inverseText = Color(UIColor.systemBackground)
     static let outgoingText = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark ? .white : UIColor(white: 0.98, alpha: 1)
     })
-    static let outgoingSecondary = Color.white.opacity(0.68)
+    static let outgoingSecondary = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 1.0, alpha: 0.72)
+            : UIColor(white: 1.0, alpha: 0.76)
+    })
     static let incomingBubble = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.105, green: 0.113, blue: 0.125, alpha: 0.96)
-            : UIColor(white: 1, alpha: 0.92)
+            ? UIColor(red: 0.095, green: 0.103, blue: 0.108, alpha: 0.98)
+            : UIColor(red: 0.997, green: 0.991, blue: 0.976, alpha: 0.98)
     })
     static let outgoingBubble = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.24, green: 0.255, blue: 0.28, alpha: 1)
-            : UIColor(red: 0.17, green: 0.18, blue: 0.20, alpha: 1)
+            ? UIColor(red: 0.200, green: 0.212, blue: 0.218, alpha: 1)
+            : UIColor(red: 0.145, green: 0.153, blue: 0.158, alpha: 1)
     })
-    static let incomingStroke = Color(UIColor.separator).opacity(0.28)
+    static let incomingStroke = Color(UIColor { traits in
+        let increasedContrast = traits.accessibilityContrast == .high
+        if traits.userInterfaceStyle == .dark {
+            return UIColor(white: 1.0, alpha: increasedContrast ? 0.24 : 0.10)
+        }
+        return UIColor(white: 0.05, alpha: increasedContrast ? 0.20 : 0.085)
+    })
     static let outgoingStroke = Color.white.opacity(0.08)
-    static let incomingShadow = Color.black.opacity(0.055)
     static let controlSurface = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.085)
-            : UIColor(white: 0, alpha: 0.045)
+            ? UIColor(white: 1, alpha: 0.075)
+            : UIColor(white: 0, alpha: 0.038)
     })
-    static let hairline = Color(UIColor.separator).opacity(0.42)
-    static let separatorSurface = Color(UIColor.secondarySystemBackground).opacity(0.8)
-    static let mediaPlaceholder = Color(UIColor.secondarySystemBackground)
-    static let online = Color(red: 0.22, green: 0.70, blue: 0.45)
-    static let failure = Color(red: 0.86, green: 0.25, blue: 0.27)
-    static let highlight = Color(red: 0.37, green: 0.48, blue: 0.52)
+    static let controlStroke = Color(UIColor { traits in
+        let increasedContrast = traits.accessibilityContrast == .high
+        return traits.userInterfaceStyle == .dark
+            ? UIColor(white: 1.0, alpha: increasedContrast ? 0.30 : 0.13)
+            : UIColor(white: 0.0, alpha: increasedContrast ? 0.22 : 0.075)
+    })
+    static let hairline = Color.ppSeparator.opacity(0.72)
+    static let separatorSurface = Color.ppElevatedSurface.opacity(0.90)
+    static let mediaPlaceholder = Color.ppSecondarySurface
+    static let online = Color.ppSuccess
+    static let failure = Color.ppError
+    static let highlight = PPChatComposerPalette.messagingAccent
     static let incomingReplySurface = Color(UIColor.tertiarySystemFill)
     static let outgoingReplySurface = Color.white.opacity(0.09)
     static let warningSurface = Color(UIColor.systemOrange).opacity(0.11)
     static let warningText = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark ? UIColor.systemOrange : UIColor.systemOrange.darker(by: 0.22)
     })
-    static let avatarStroke = Color(UIColor.separator).opacity(0.34)
-    static let avatarTop = Color(UIColor.secondarySystemBackground)
-    static let avatarBottom = Color(UIColor.tertiarySystemBackground)
-    static let canvasGlowTop = Color(UIColor { traits in
+    static let avatarStroke = Color.ppSeparator.opacity(0.78)
+    static let avatarTop = Color.ppElevatedSurface
+    static let avatarBottom = Color.ppSecondarySurface
+    static let avatarLogoSurface = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.22, green: 0.24, blue: 0.27, alpha: 0.16)
-            : UIColor(red: 0.88, green: 0.85, blue: 0.80, alpha: 0.30)
+            ? UIColor(white: 0.92, alpha: 1)
+            : UIColor.white
     })
-    static let canvasGlowBottom = Color(UIColor { traits in
+    static let headerSurface = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.12, green: 0.14, blue: 0.16, alpha: 0.18)
-            : UIColor(red: 0.93, green: 0.91, blue: 0.87, alpha: 0.24)
+            ? UIColor(red: 0.055, green: 0.061, blue: 0.063, alpha: 0.94)
+            : UIColor(red: 0.975, green: 0.965, blue: 0.946, alpha: 0.94)
+    })
+    static let headerHighlight = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 1.0, alpha: 0.025)
+            : UIColor(white: 1.0, alpha: 0.36)
+    })
+    static let canvasWarmField = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.22, green: 0.17, blue: 0.13, alpha: 0.16)
+            : UIColor(red: 0.82, green: 0.73, blue: 0.62, alpha: 0.20)
+    })
+    static let canvasCoolField = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.12, green: 0.16, blue: 0.17, alpha: 0.14)
+            : UIColor(red: 0.62, green: 0.67, blue: 0.68, alpha: 0.12)
     })
 }
 

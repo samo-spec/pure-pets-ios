@@ -3,6 +3,7 @@
 #import "GM.h"
 #import "PPChatsFunc.h"
 #import "PPOrderStatusAppearance.h"
+#import "UIImageView+YYWebImage.h"
 
 #pragma mark - PPOrderCellStatusLabel (Private Intercept Label)
 
@@ -85,11 +86,14 @@
                  statusKey:(nullable NSString *)statusKey
                   dateText:(nullable NSString *)dateText
              fallbackColor:(nullable UIColor *)fallbackColor;
+- (void)pp_updateContentSizeLayout;
 @end
 
 @implementation OrderCell {
     UIView *_cardView;
     UIVisualEffectView *_blurView;
+    UIView *_surfaceTintView;
+    UIView *_statusRailView;
 
     UIStackView *_rowStack;       // horizontal: image + textContainerStack + chevron
     UIStackView *_textStack;      // vertical: headerRow + qtyLabel + statusRow
@@ -98,16 +102,19 @@
 
     UIView *_statusPillContainer;
     CAGradientLayer *_statusPillGradientLayer;
+    UIImageView *_statusIconView;
     UILabel *_statusPillLabel;
     UILabel *_customDateLabel;
     UIImageView *_chevronImageView;
+    UIView *_statusSpacer;
+    NSLayoutConstraint *_itemImageWidthConstraint;
+    NSLayoutConstraint *_itemImageHeightConstraint;
 
     NSString *_currentStatusKey;
     NSString *_currentStatusText;
     NSString *_currentDateText;
     UIColor *_currentFallbackStatusColor;
 
-    BOOL _hasAnimatedEntrance;
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
@@ -127,13 +134,15 @@
 
     // Card padding setup following PPDesignTokens
     CGFloat horizontalPadding = PPSpaceBase; // 16pt
-    CGFloat verticalPadding = PPSpaceMDHalf; // 6pt
-    CGFloat innerPadding = PPSpaceBase;      // 16pt
+    CGFloat verticalPadding = PPSpaceMDHalf;
+    CGFloat innerPadding = PPSpaceMD;
 
     // 1. Shadow Container (Card View)
     _cardView = [[UIView alloc] initWithFrame:CGRectZero];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
+    _cardView.backgroundColor = PPIOS26()
+        ? UIColor.clearColor
+        : [AppForgroundColr colorWithAlphaComponent:0.70];
     _cardView.userInteractionEnabled = NO;
     [self.contentView addSubview:_cardView];
 
@@ -150,20 +159,22 @@
     ]];
 
     // 2. Premium Material Background (UIVisualEffectView for blur / glassmorphism)
-    UIBlurEffect *blurEffect;
-    if (@available(iOS 13.0, *)) {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    UIVisualEffect *materialEffect = nil;
+    if (@available(iOS 26.0, *)) {
+        materialEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
+    } else if (@available(iOS 13.0, *)) {
+        materialEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
     } else {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
+        materialEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
     }
     
-    _blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    _blurView = [[UIVisualEffectView alloc] initWithEffect:materialEffect];
     _blurView.translatesAutoresizingMaskIntoConstraints = NO;
     PPApplyContinuousCorners(_blurView, PPCornerCard);
     _blurView.clipsToBounds = YES;
     _blurView.layer.borderWidth = 0.7;
     _blurView.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.45].CGColor;
-    _blurView.alpha = 0.4;
+    _blurView.alpha = PPIOS26() ? 1.0 : 0.78;
     [_cardView addSubview:_blurView];
 
     // Constraints for Blur Material (pins to Card View edges)
@@ -172,6 +183,31 @@
         [_blurView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor],
         [_blurView.topAnchor constraintEqualToAnchor:_cardView.topAnchor],
         [_blurView.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor]
+    ]];
+
+    _surfaceTintView = [[UIView alloc] initWithFrame:CGRectZero];
+    _surfaceTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    _surfaceTintView.userInteractionEnabled = NO;
+    [_blurView.contentView addSubview:_surfaceTintView];
+    [NSLayoutConstraint activateConstraints:@[
+        [_surfaceTintView.leadingAnchor constraintEqualToAnchor:_blurView.contentView.leadingAnchor],
+        [_surfaceTintView.trailingAnchor constraintEqualToAnchor:_blurView.contentView.trailingAnchor],
+        [_surfaceTintView.topAnchor constraintEqualToAnchor:_blurView.contentView.topAnchor],
+        [_surfaceTintView.bottomAnchor constraintEqualToAnchor:_blurView.contentView.bottomAnchor]
+    ]];
+
+    _statusRailView = [[UIView alloc] initWithFrame:CGRectZero];
+    _statusRailView.translatesAutoresizingMaskIntoConstraints = NO;
+    _statusRailView.userInteractionEnabled = NO;
+    _statusRailView.layer.cornerRadius = 1.5;
+    _statusRailView.layer.masksToBounds = YES;
+    [_cardView addSubview:_statusRailView];
+    [NSLayoutConstraint activateConstraints:@[
+        [_statusRailView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:PPSpaceSM],
+        [_statusRailView.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:PPSpaceMD],
+        [_statusRailView.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor constant:-PPSpaceMD],
+        [_statusRailView.widthAnchor constraintEqualToConstant:3.0],
+        [_cardView.heightAnchor constraintGreaterThanOrEqualToConstant:116.0]
     ]];
 
     // 3. Image View
@@ -184,34 +220,41 @@
     
     _itemImageView.layer.borderWidth = 0.5;
 
-    // Constraints for Image (92x92)
-    [NSLayoutConstraint activateConstraints:@[
-        [_itemImageView.widthAnchor constraintEqualToConstant:92.0],
-        [_itemImageView.heightAnchor constraintEqualToConstant:92.0]
-    ]];
+    // Stable media plate keeps missing and loaded imagery from shifting the row.
+    _itemImageWidthConstraint = [_itemImageView.widthAnchor constraintEqualToConstant:84.0];
+    _itemImageHeightConstraint = [_itemImageView.heightAnchor constraintEqualToConstant:84.0];
+    [NSLayoutConstraint activateConstraints:@[_itemImageWidthConstraint, _itemImageHeightConstraint]];
 
     // 4. Labels
     _nameLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _nameLabel.font = [GM boldFontWithSize:16];
+    UIFont *nameBaseFont = [GM boldFontWithSize:16];
+    _nameLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:nameBaseFont];
     _nameLabel.textColor = GM.PrimaryTextColor;
-    _nameLabel.numberOfLines = 1;
+    _nameLabel.numberOfLines = 2;
     _nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _nameLabel.adjustsFontForContentSizeCategory = YES;
 
     _priceLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _priceLabel.font = [GM boldFontWithSize:16];
+    UIFont *priceBaseFont = [GM boldFontWithSize:15.5];
+    _priceLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:priceBaseFont];
     _priceLabel.textColor = GM.PrimaryTextColor;
     _priceLabel.numberOfLines = 1;
+    _priceLabel.adjustsFontSizeToFitWidth = YES;
+    _priceLabel.minimumScaleFactor = 0.78;
+    _priceLabel.adjustsFontForContentSizeCategory = YES;
     [_priceLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_priceLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
     _quantityLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _quantityLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _quantityLabel.font = [GM MidFontWithSize:13];
+    UIFont *quantityBaseFont = [GM MidFontWithSize:13];
+    _quantityLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:quantityBaseFont];
     _quantityLabel.textColor = GM.SecondaryTextColor;
-    _quantityLabel.numberOfLines = 1;
+    _quantityLabel.numberOfLines = 2;
     _quantityLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _quantityLabel.adjustsFontForContentSizeCategory = YES;
 
     // Date Label (Private Intercept Label, hidden but functional)
     _dateLabel = [[PPOrderCellStatusLabel alloc] initWithFrame:CGRectZero];
@@ -230,14 +273,27 @@
     _statusPillGradientLayer.name = @"PPOrderHistoryStatusGradient";
     [_statusPillContainer.layer insertSublayer:_statusPillGradientLayer atIndex:0];
 
+    _statusIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    _statusIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _statusIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [_statusPillContainer addSubview:_statusIconView];
+
     _statusPillLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _statusPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _statusPillLabel.font = [GM boldFontWithSize:11];
+    UIFont *statusBaseFont = [GM boldFontWithSize:11];
+    _statusPillLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:statusBaseFont];
     _statusPillLabel.textAlignment = NSTextAlignmentCenter;
+    _statusPillLabel.adjustsFontSizeToFitWidth = YES;
+    _statusPillLabel.minimumScaleFactor = 0.82;
+    _statusPillLabel.adjustsFontForContentSizeCategory = YES;
     [_statusPillContainer addSubview:_statusPillLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_statusPillLabel.leadingAnchor constraintEqualToAnchor:_statusPillContainer.leadingAnchor constant:8.0],
+        [_statusIconView.leadingAnchor constraintEqualToAnchor:_statusPillContainer.leadingAnchor constant:8.0],
+        [_statusIconView.centerYAnchor constraintEqualToAnchor:_statusPillContainer.centerYAnchor],
+        [_statusIconView.widthAnchor constraintEqualToConstant:13.0],
+        [_statusIconView.heightAnchor constraintEqualToConstant:13.0],
+        [_statusPillLabel.leadingAnchor constraintEqualToAnchor:_statusIconView.trailingAnchor constant:4.0],
         [_statusPillLabel.trailingAnchor constraintEqualToAnchor:_statusPillContainer.trailingAnchor constant:-8.0],
         [_statusPillLabel.topAnchor constraintEqualToAnchor:_statusPillContainer.topAnchor constant:4.0],
         [_statusPillLabel.bottomAnchor constraintEqualToAnchor:_statusPillContainer.bottomAnchor constant:-4.0]
@@ -246,9 +302,14 @@
     // Custom Date Label
     _customDateLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _customDateLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _customDateLabel.font = [GM MidFontWithSize:12];
+    UIFont *dateBaseFont = [GM MidFontWithSize:12];
+    _customDateLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:dateBaseFont];
     _customDateLabel.textColor = [UIColor secondaryLabelColor];
     _customDateLabel.numberOfLines = 1;
+    _customDateLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _customDateLabel.adjustsFontForContentSizeCategory = YES;
+    [_customDateLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                     forAxis:UILayoutConstraintAxisHorizontal];
 
     // 5. Chevron disclosure indicator
     _chevronImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
@@ -268,11 +329,11 @@
     _headerRow.distribution = UIStackViewDistributionFill;
     _headerRow.spacing = PPSpaceSM;
 
-    UIView *statusSpacer = [[UIView alloc] initWithFrame:CGRectZero];
-    statusSpacer.translatesAutoresizingMaskIntoConstraints = NO;
-    [statusSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    _statusSpacer = [[UIView alloc] initWithFrame:CGRectZero];
+    _statusSpacer.translatesAutoresizingMaskIntoConstraints = NO;
+    [_statusSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
-    _statusRow = [[UIStackView alloc] initWithArrangedSubviews:@[_statusPillContainer, _customDateLabel, statusSpacer]];
+    _statusRow = [[UIStackView alloc] initWithArrangedSubviews:@[_statusPillContainer, _customDateLabel, _statusSpacer]];
     _statusRow.translatesAutoresizingMaskIntoConstraints = NO;
     _statusRow.axis = UILayoutConstraintAxisHorizontal;
     _statusRow.alignment = UIStackViewAlignmentCenter;
@@ -285,6 +346,8 @@
     _textStack.alignment = UIStackViewAlignmentFill;
     _textStack.distribution = UIStackViewDistributionFill;
     _textStack.spacing = PPSpaceMDHalf;
+    [_textStack setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisHorizontal];
 
     _rowStack = [[UIStackView alloc] initWithArrangedSubviews:@[_itemImageView, _textStack, _chevronImageView]];
     _rowStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -301,6 +364,8 @@
         [_rowStack.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:innerPadding],
         [_rowStack.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor constant:-innerPadding]
     ]];
+
+    [self pp_updateContentSizeLayout];
 
     // Connect intercept dateLabel update block
     __weak typeof(self) weakSelf = self;
@@ -330,6 +395,7 @@
                   dateText:(NSString *)dateText
              fallbackColor:(UIColor *)fallbackColor
 {
+    NSString *previousStatusKey = _currentStatusKey;
     _currentStatusKey = [PPOrderStatusAppearanceNormalizedKey(statusKey) copy];
     _currentStatusText = [statusText ?: @"" copy];
     _currentDateText = [dateText ?: @"" copy];
@@ -343,10 +409,25 @@
             ? PPOrderStatusAccentColorForKey(_currentStatusKey)
             : (fallbackColor ?: PPOrderStatusAccentColorForKey(@"pending"));
         UIColor *resolvedAccent = PPOrderStatusResolvedColor(accent, self.traitCollection);
+        _statusRailView.backgroundColor = resolvedAccent;
+        _surfaceTintView.backgroundColor = [resolvedAccent colorWithAlphaComponent:
+                                            PPOrderStatusUsesDarkAppearance(self.traitCollection) ? 0.055 : 0.026];
+        if (@available(iOS 26.0, *)) {
+            if ([_blurView.effect isKindOfClass:UIGlassEffect.class]) {
+                ((UIGlassEffect *)_blurView.effect).tintColor =
+                    [resolvedAccent colorWithAlphaComponent:PPOrderStatusUsesDarkAppearance(self.traitCollection) ? 0.10 : 0.065];
+            }
+        }
         _statusPillContainer.backgroundColor = PPOrderStatusSurfaceColorForAccent(accent, self.traitCollection);
         _statusPillContainer.layer.borderWidth = 1.0;
         _statusPillContainer.layer.borderColor = PPOrderStatusBorderColorForAccent(accent, self.traitCollection).CGColor;
         _statusPillLabel.textColor = accent;
+        UIImage *statusIcon = [UIImage systemImageNamed:PPOrderStatusSymbolNameForKey(_currentStatusKey)];
+        if (!statusIcon) {
+            statusIcon = [UIImage systemImageNamed:@"circle.fill"];
+        }
+        _statusIconView.image = [statusIcon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        _statusIconView.tintColor = accent;
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         PPOrderStatusConfigureGradientLayer(_statusPillGradientLayer,
@@ -355,10 +436,31 @@
                                             self.traitCollection,
                                             [Language isRTL]);
         [CATransaction commit];
+    } else {
+        UIColor *neutral = PPOrderStatusAccentColorForKey(nil);
+        _statusRailView.backgroundColor = neutral;
+        _surfaceTintView.backgroundColor = UIColor.clearColor;
+        _statusIconView.image = nil;
+        if (@available(iOS 26.0, *)) {
+            if ([_blurView.effect isKindOfClass:UIGlassEffect.class]) {
+                ((UIGlassEffect *)_blurView.effect).tintColor = nil;
+            }
+        }
     }
 
     _customDateLabel.hidden = (_currentDateText.length == 0);
     _customDateLabel.text = _currentDateText;
+
+    BOOL statusChanged = previousStatusKey.length > 0 &&
+        ![previousStatusKey isEqualToString:_currentStatusKey];
+    if (statusChanged && self.window && !UIAccessibilityIsReduceMotionEnabled()) {
+        CATransition *transition = [CATransition animation];
+        transition.type = kCATransitionFade;
+        transition.duration = 0.22;
+        transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+        [_statusPillContainer.layer addAnimation:transition forKey:@"PPOrderStatusChange"];
+        [_statusRailView.layer addAnimation:transition forKey:@"PPOrderRailChange"];
+    }
     [self setNeedsLayout];
 }
 
@@ -375,10 +477,13 @@
 
     // Setup semantic attributes for Stack Views (Flipped automatically for RTL layout)
     UISemanticContentAttribute semanticAttr = isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+    self.contentView.semanticContentAttribute = semanticAttr;
+    _cardView.semanticContentAttribute = semanticAttr;
     _rowStack.semanticContentAttribute = semanticAttr;
     _textStack.semanticContentAttribute = semanticAttr;
     _headerRow.semanticContentAttribute = semanticAttr;
     _statusRow.semanticContentAttribute = semanticAttr;
+    _statusPillContainer.semanticContentAttribute = semanticAttr;
 
     // Setup text alignments
     NSTextAlignment leadingAlign = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
@@ -387,7 +492,8 @@
     _nameLabel.textAlignment = leadingAlign;
     _quantityLabel.textAlignment = leadingAlign;
     _customDateLabel.textAlignment = leadingAlign;
-    _priceLabel.textAlignment = trailingAlign;
+    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    _priceLabel.textAlignment = usesAccessibilityLayout ? leadingAlign : trailingAlign;
 
     // Chevron display matching layout direction
     UIImage *chevronImg;
@@ -427,6 +533,7 @@
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    [self pp_updateContentSizeLayout];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
             [self pp_applyStatusText:_currentStatusText
@@ -435,6 +542,30 @@
                        fallbackColor:_currentFallbackStatusColor];
         }
     }
+}
+
+- (void)pp_updateContentSizeLayout
+{
+    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+
+    _itemImageWidthConstraint.constant = usesAccessibilityLayout ? 64.0 : 84.0;
+    _itemImageHeightConstraint.constant = usesAccessibilityLayout ? 64.0 : 84.0;
+    _headerRow.axis = usesAccessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    _headerRow.alignment = usesAccessibilityLayout ? UIStackViewAlignmentFill : UIStackViewAlignmentCenter;
+    _statusRow.axis = usesAccessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    _statusRow.alignment = usesAccessibilityLayout ? UIStackViewAlignmentLeading : UIStackViewAlignmentCenter;
+    _rowStack.alignment = usesAccessibilityLayout ? UIStackViewAlignmentTop : UIStackViewAlignmentCenter;
+    _statusSpacer.hidden = usesAccessibilityLayout;
+
+    _nameLabel.numberOfLines = usesAccessibilityLayout ? 0 : 2;
+    _priceLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+    _priceLabel.adjustsFontSizeToFitWidth = !usesAccessibilityLayout;
+    _quantityLabel.numberOfLines = usesAccessibilityLayout ? 0 : 2;
+    _statusPillLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+    _statusPillLabel.adjustsFontSizeToFitWidth = !usesAccessibilityLayout;
+    _customDateLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+
+    [self setNeedsLayout];
 }
 
 #pragma mark - Interactive Selection Feedback
@@ -449,6 +580,12 @@
 }
 
 - (void)animatePress:(BOOL)pressed {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        _cardView.transform = CGAffineTransformIdentity;
+        _cardView.alpha = pressed ? 0.88 : 1.0;
+        return;
+    }
+    _cardView.alpha = 1.0;
     [UIView animateWithDuration:PPAnimDurationNormal
                           delay:0
          usingSpringWithDamping:PPAnimSpringDamping
@@ -463,65 +600,47 @@
     } completion:nil];
 }
 
-#pragma mark - Cascade Entrance Animations
+#pragma mark - Order Ledger Entrance
 
-- (void)willMoveToWindow:(UIWindow *)newWindow
+- (void)playEntranceWithOrdinal:(NSInteger)ordinal animated:(BOOL)animated
 {
-    [super willMoveToWindow:newWindow];
-    if (newWindow && !_hasAnimatedEntrance && !UIAccessibilityIsReduceMotionEnabled()) {
-        self.contentView.alpha = 0.0;
-        self.contentView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    }
-}
+    [_cardView.layer removeAnimationForKey:@"PPOrderCardEntrance"];
+    [_statusRailView.layer removeAnimationForKey:@"PPOrderRailEntrance"];
+    self.contentView.alpha = 1.0;
+    self.contentView.transform = CGAffineTransformIdentity;
 
-- (void)didMoveToWindow {
-    [super didMoveToWindow];
-    if (self.window && !_hasAnimatedEntrance) {
-        if (UIAccessibilityIsReduceMotionEnabled()) {
-            _hasAnimatedEntrance = YES;
-            self.contentView.alpha = 1.0;
-            self.contentView.transform = CGAffineTransformIdentity;
-            return;
-        }
-        [self performEntranceAnimation];
-    }
-}
-
-- (void)performEntranceAnimation {
-    _hasAnimatedEntrance = YES;
-
-    UIView *superview = self.superview;
-    while (superview && ![superview isKindOfClass:[UITableView class]]) {
-        superview = superview.superview;
-    }
-
-    BOOL isScrolling = NO;
-    NSTimeInterval delay = 0;
-    if (superview) {
-        UITableView *tableView = (UITableView *)superview;
-        isScrolling = tableView.isDragging || tableView.isDecelerating;
-        NSIndexPath *indexPath = [tableView indexPathForCell:self];
-        // Apply stagger delay only to first screen visible cards
-        if (indexPath && indexPath.row < 6) {
-            delay = indexPath.row * 0.04;
-        }
-    }
-
-    // If table view is scrolling, display cell instantly to maintain 60/120fps fluid scrolling
-    if (isScrolling) {
-        self.contentView.alpha = 1.0;
-        self.contentView.transform = CGAffineTransformIdentity;
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        _cardView.alpha = 1.0;
+        _cardView.transform = CGAffineTransformIdentity;
+        _statusRailView.transform = CGAffineTransformIdentity;
         return;
     }
 
-    [UIView animateWithDuration:0.28
+    BOOL isRTL = ([Language languageVal] == 1);
+    CGFloat horizontalResolve = isRTL ? -14.0 : 14.0;
+    _cardView.alpha = 1.0;
+    _cardView.transform = CGAffineTransformScale(CGAffineTransformMakeTranslation(horizontalResolve, 0.0),
+                                                 0.988,
+                                                 0.988);
+    _statusRailView.transform = CGAffineTransformMakeScale(1.0, 0.08);
+
+    NSTimeInterval delay = MIN(MAX(ordinal, 0), 5) * 0.035;
+    [UIView animateWithDuration:0.34
                           delay:delay
                         options:UIViewAnimationOptionCurveEaseOut |
                                 UIViewAnimationOptionAllowUserInteraction |
                                 UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self.contentView.alpha = 1.0;
-        self.contentView.transform = CGAffineTransformIdentity;
+        self->_cardView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.40
+                          delay:delay + 0.04
+                        options:UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self->_statusRailView.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
@@ -529,6 +648,7 @@
 
 - (void)prepareForReuse {
     [super prepareForReuse];
+    [_itemImageView cancelCurrentImageRequest];
     _itemImageView.image = [UIImage imageNamed:@"placeholder"];
     _nameLabel.text = @"";
     _quantityLabel.text = @"";
@@ -541,10 +661,18 @@
     _currentStatusText = nil;
     _currentDateText = nil;
     _currentFallbackStatusColor = nil;
+    self.isAccessibilityElement = NO;
+    self.accessibilityLabel = nil;
+    self.accessibilityHint = nil;
 
     self.contentView.alpha = 1.0;
     self.contentView.transform = CGAffineTransformIdentity;
+    _cardView.alpha = 1.0;
     _cardView.transform = CGAffineTransformIdentity;
+    _statusRailView.transform = CGAffineTransformIdentity;
+    [_cardView.layer removeAllAnimations];
+    [_statusRailView.layer removeAllAnimations];
+    [_statusPillContainer.layer removeAllAnimations];
 }
 
 #pragma mark - Configuration (Standard / Fallback)

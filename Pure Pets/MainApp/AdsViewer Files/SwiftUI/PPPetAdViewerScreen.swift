@@ -26,6 +26,7 @@ struct PPPetAdViewerScreen: View {
         PPPetAdViewerInteractionState()
     @State private var hasAppeared = false
     @State private var contactDockHeight: CGFloat = 0
+    @State private var hostSafeAreaInsets: UIEdgeInsets = .zero
 
     private let repository: PPPetAdViewerRepository
     private let hostActions: PPPetAdViewerHostActions
@@ -54,8 +55,9 @@ struct PPPetAdViewerScreen: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let topInset = topChromeInset(proxy)
-            let bottomInset = bottomChromeInset(proxy)
+            let chromeInsets = resolvedChromeInsets(proxy)
+            let topInset = chromeInsets.top
+            let bottomInset = chromeInsets.bottom
 
             ZStack {
                 PPPetAdViewerBackground(
@@ -64,7 +66,11 @@ struct PPPetAdViewerScreen: View {
                     bottomColor: store.heroBottomColor
                 )
 
-                screenContent(proxy: proxy)
+                screenContent(
+                    proxy: proxy,
+                    topInset: topInset,
+                    bottomInset: bottomInset
+                )
                     .id(screenStateIdentity)
                     .transition(
                         reduceMotion
@@ -78,7 +84,7 @@ struct PPPetAdViewerScreen: View {
 
                 navigationLink
 
-                bottomFadeOverlay(proxy: proxy)
+                bottomFadeOverlay(bottomInset: bottomInset)
 
                 contactDock(
                     bottomInset: bottomInset
@@ -88,22 +94,18 @@ struct PPPetAdViewerScreen: View {
                 toastOverlay(
                     bottomInset: bottomInset
                 )
-                .animation(
-                    reduceMotion ? nil : PPPetAdViewerMotion.toast,
-                    value: store.toastMessage
-                )
+                .animation(reduceMotion ? nil : PPPetAdViewerMotion.toast, value: store.toastMessage)
                 .zIndex(20)
             }
-            .animation(
-                reduceMotion ? nil : PPPetAdViewerMotion.state,
-                value: screenStateIdentity
-            )
-            .animation(
-                reduceMotion ? nil : PPPetAdViewerMotion.navigation,
-                value: store.ppShowsContactDock
-            )
+            .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: screenStateIdentity)
+            .animation(reduceMotion ? nil : PPPetAdViewerMotion.navigation, value: store.ppShowsContactDock)
         }
         .ignoresSafeArea(.all, edges: [.top, .bottom])
+        .background {
+            PPPetAdSafeAreaReader(insets: $hostSafeAreaInsets)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
         .navigationBarHidden(true)
         .fullScreenCover(isPresented: Binding(
             get: { store.isMediaViewerPresented },
@@ -170,12 +172,20 @@ struct PPPetAdViewerScreen: View {
     }
 
     @ViewBuilder
-    private func screenContent(proxy: GeometryProxy) -> some View {
+    private func screenContent(
+        proxy: GeometryProxy,
+        topInset: CGFloat,
+        bottomInset: CGFloat
+    ) -> some View {
         switch store.screenState {
         case .loading:
             PPPetAdViewerLoadingStateView()
         case .content:
-            content(proxy: proxy)
+            content(
+                proxy: proxy,
+                topInset: topInset,
+                bottomInset: bottomInset
+            )
         case .empty:
             PPPetAdViewerEmptyStateView(onClose: handleBack)
         case .offline(let message):
@@ -216,10 +226,14 @@ struct PPPetAdViewerScreen: View {
         }
     }
 
-    private func content(proxy: GeometryProxy) -> some View {
+    private func content(
+        proxy: GeometryProxy,
+        topInset: CGFloat,
+        bottomInset: CGFloat
+    ) -> some View {
         let metrics = PPPetAdViewerLayoutMetrics(
             containerSize: proxy.size,
-            safeAreaTop: topChromeInset(proxy)
+            safeAreaTop: topInset
         )
 
         return PPPetAdHeroScrollContainer(
@@ -246,15 +260,10 @@ struct PPPetAdViewerScreen: View {
                 reduceMotion || hasAppeared ? 1 : 1.024,
                 anchor: UnitPoint.center
             )
-            .animation(
-                reduceMotion
-                    ? Animation.easeOut(duration: 0.16)
-                    : PPPetAdViewerMotion.heroEntrance,
-                value: hasAppeared
-            )
+            .animation(reduceMotion ? Animation.easeOut(duration: 0.16) : PPPetAdViewerMotion.heroEntrance, value: hasAppeared)
             .zIndex(0)
         } content: {
-            detailsSheet(bottomInset: bottomChromeInset(proxy))
+            detailsSheet(bottomInset: bottomInset)
                 .zIndex(1)
         }
         .ignoresSafeArea(edges: .top)
@@ -402,7 +411,7 @@ struct PPPetAdViewerScreen: View {
     }
 
     @ViewBuilder
-    private func contactDock(bottomInset _: CGFloat) -> some View {
+    private func contactDock(bottomInset: CGFloat) -> some View {
         if store.ppShowsContactDock {
             PPPetAdContactDock(store: store)
                 .fixedSize(horizontal: false, vertical: true)
@@ -420,7 +429,10 @@ struct PPPetAdViewerScreen: View {
                     }
                 }
                 .padding(.horizontal, PPSpace.base)
-                .padding(.bottom, 16)
+                .padding(
+                    .bottom,
+                    max(PPSpace.base, bottomInset + PPSpace.sm)
+                )
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
                 .frame(maxHeight: .infinity, alignment: .bottom)
@@ -433,23 +445,13 @@ struct PPPetAdViewerScreen: View {
                         ? 0
                         : 8
                 )
-                .animation(
-                    reduceMotion
-                        ? Animation.easeOut(duration: 0.16)
-                        : PPPetAdViewerMotion.entrance(
-                            delayIndex: 2
-                        ),
-                    value: hasAppeared
-                )
+                .animation(reduceMotion ? Animation.easeOut(duration: 0.16) : PPPetAdViewerMotion.entrance(delayIndex: 2), value: hasAppeared)
                 .transition(
                     reduceMotion
                         ? .opacity
                         : .move(edge: .bottom).combined(with: .opacity)
                 )
-                .animation(
-                    reduceMotion ? nil : PPPetAdViewerMotion.navigation,
-                    value: store.ppShowsContactDock
-                )
+                .animation(reduceMotion ? nil : PPPetAdViewerMotion.navigation, value: store.ppShowsContactDock)
                 .onPreferenceChange(
                     PPPetAdContactDockHeightPreferenceKey.self
                 ) { measuredHeight in
@@ -590,31 +592,53 @@ struct PPPetAdViewerScreen: View {
         )
     }
 
-    private func topChromeInset(_ proxy: GeometryProxy) -> CGFloat {
-        if proxy.safeAreaInsets.top > 1 {
-            return proxy.safeAreaInsets.top
-        }
-        let sceneTop = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first { $0.isKeyWindow }?
-            .safeAreaInsets.top ?? 0
-        return max(sceneTop, 24)
+    private func resolvedChromeInsets(
+        _ proxy: GeometryProxy
+    ) -> UIEdgeInsets {
+        let hasMeasuredInsets =
+            hostSafeAreaInsets.top > 1
+            || hostSafeAreaInsets.bottom > 1
+            || proxy.safeAreaInsets.top > 1
+            || proxy.safeAreaInsets.bottom > 1
+        let immediateFallback = hasMeasuredInsets
+            ? UIEdgeInsets.zero
+            : PPPetAdSafeAreaReader.activeWindowInsets()
+
+        return UIEdgeInsets(
+            top: max(
+                max(
+                    max(
+                        proxy.safeAreaInsets.top,
+                        hostSafeAreaInsets.top
+                    ),
+                    immediateFallback.top
+                ),
+                24
+            ),
+            left: max(
+                max(proxy.safeAreaInsets.leading, hostSafeAreaInsets.left),
+                immediateFallback.left
+            ),
+            bottom: max(
+                max(
+                    proxy.safeAreaInsets.bottom,
+                    hostSafeAreaInsets.bottom
+                ),
+                immediateFallback.bottom
+            ),
+            right: max(
+                max(
+                    proxy.safeAreaInsets.trailing,
+                    hostSafeAreaInsets.right
+                ),
+                immediateFallback.right
+            )
+        )
     }
 
-    private func bottomChromeInset(_ proxy: GeometryProxy) -> CGFloat {
-        if proxy.safeAreaInsets.bottom > 1 {
-            return proxy.safeAreaInsets.bottom
-        }
-        return UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first { $0.isKeyWindow }?
-            .safeAreaInsets.bottom ?? 0
-    }
-
-    private func bottomFadeOverlay(proxy _: GeometryProxy) -> some View {
-        let totalOverlayHeight = contactDockHeight + 16 + 44
+    private func bottomFadeOverlay(bottomInset: CGFloat) -> some View {
+        let totalOverlayHeight =
+            contactDockHeight + bottomInset + PPSpace.xxxl + PPSpace.lg
         let bottomColor = Color.ppBackground
 
         return LinearGradient(
@@ -632,11 +656,68 @@ struct PPPetAdViewerScreen: View {
         .frame(maxHeight: .infinity, alignment: .bottom)
         .allowsHitTesting(false)
         .opacity(hasAppeared && store.ppShowsContactDock ? 1 : 0)
-        .animation(
-            reduceMotion ? nil : PPPetAdViewerMotion.navigation,
-            value: store.ppShowsContactDock
-        )
+        .animation(reduceMotion ? nil : PPPetAdViewerMotion.navigation, value: store.ppShowsContactDock)
         .zIndex(8)
+    }
+}
+
+private struct PPPetAdSafeAreaReader: UIViewRepresentable {
+    @Binding var insets: UIEdgeInsets
+
+    func makeUIView(context _: Context) -> ReaderView {
+        let view = ReaderView()
+        configure(view)
+        return view
+    }
+
+    func updateUIView(_ view: ReaderView, context _: Context) {
+        configure(view)
+        view.publishInsetsIfNeeded()
+    }
+
+    static func dismantleUIView(_ view: ReaderView, coordinator _: ()) {
+        view.onInsetsChanged = nil
+    }
+
+    static func activeWindowInsets() -> UIEdgeInsets {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets ?? .zero
+    }
+
+    private func configure(_ view: ReaderView) {
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.onInsetsChanged = { nextInsets in
+            guard nextInsets != insets else { return }
+            DispatchQueue.main.async {
+                guard nextInsets != insets else { return }
+                insets = nextInsets
+            }
+        }
+    }
+
+    final class ReaderView: UIView {
+        var onInsetsChanged: ((UIEdgeInsets) -> Void)?
+        private var lastInsets: UIEdgeInsets = .zero
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            publishInsetsIfNeeded()
+        }
+
+        override func safeAreaInsetsDidChange() {
+            super.safeAreaInsetsDidChange()
+            publishInsetsIfNeeded()
+        }
+
+        func publishInsetsIfNeeded() {
+            guard safeAreaInsets != lastInsets else { return }
+            lastInsets = safeAreaInsets
+            onInsetsChanged?(safeAreaInsets)
+        }
     }
 }
 
@@ -664,9 +745,9 @@ private struct PPPetAdWorldSheetSurface: View {
 
             LinearGradient(
                 colors: [
-                    sampled(topColor, opacity: 0.13),
-                    sampled(middleColor, opacity: 0.07),
-                    sampled(bottomColor, opacity: 0.025),
+                    sampled(topColor, opacity: 0.075),
+                    sampled(middleColor, opacity: 0.035),
+                    sampled(bottomColor, opacity: 0.012),
                     Color.clear
                 ],
                 startPoint: .topLeading,
@@ -676,7 +757,9 @@ private struct PPPetAdWorldSheetSurface: View {
 
             LinearGradient(
                 colors: [
-                    Color.ppCard.opacity(colorScheme == .dark ? 0.30 : 0.44),
+                    Color.ppWarmPorcelain.opacity(
+                        colorScheme == .dark ? 0.16 : 0.26
+                    ),
                     Color.clear
                 ],
                 startPoint: .top,

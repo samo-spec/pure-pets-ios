@@ -26,6 +26,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updatePresenceUI:(BOOL)isOnline;
 - (void)applyPresenceOnline:(BOOL)online
                    lastSeen:(nullable NSDate *)lastSeen;
+/// Plays the controller-owned, first-viewport entrance without changing content state.
+- (void)playEntranceWithOrdinal:(NSInteger)ordinal animated:(BOOL)animated;
 @end
 
 NS_ASSUME_NONNULL_END

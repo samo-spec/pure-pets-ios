@@ -9,7 +9,7 @@
 // ChNotificationRouter.m
 
 #import "ChNotificationRouter.h"
-#import "ChMessagingController.h"
+#import "PPMessagingViewController.h"
 #import "ChatThreadModel.h"
 #import "PPRootTabBarController.h"
 #import "PPOverlayCoordinator.h"
@@ -20,20 +20,20 @@ static NSString *PPChatRouterThreadIDFromPayload(NSDictionary *userInfo)
     return [value isKindOfClass:NSString.class] ? value : @"";
 }
 
-static ChMessagingController *PPChatRouterVisibleMessagingController(UIViewController *controller,
-                                                                     NSString *threadID)
+static PPMessagingViewController *PPChatRouterVisibleMessagingController(UIViewController *controller,
+                                                                         NSString *threadID)
 {
     if (!controller || threadID.length == 0) return nil;
 
     if (controller.presentedViewController) {
-        ChMessagingController *presented =
+        PPMessagingViewController *presented =
             PPChatRouterVisibleMessagingController(controller.presentedViewController, threadID);
         if (presented) return presented;
     }
 
     if ([controller isKindOfClass:UINavigationController.class]) {
         UINavigationController *navigationController = (UINavigationController *)controller;
-        ChMessagingController *visible =
+        PPMessagingViewController *visible =
             PPChatRouterVisibleMessagingController(navigationController.visibleViewController ?: navigationController.topViewController,
                                                    threadID);
         if (visible) return visible;
@@ -41,13 +41,13 @@ static ChMessagingController *PPChatRouterVisibleMessagingController(UIViewContr
 
     if ([controller isKindOfClass:UITabBarController.class]) {
         UITabBarController *tabController = (UITabBarController *)controller;
-        ChMessagingController *selected =
+        PPMessagingViewController *selected =
             PPChatRouterVisibleMessagingController(tabController.selectedViewController, threadID);
         if (selected) return selected;
     }
 
-    if ([controller isKindOfClass:ChMessagingController.class]) {
-        ChMessagingController *chatController = (ChMessagingController *)controller;
+    if ([controller isKindOfClass:PPMessagingViewController.class]) {
+        PPMessagingViewController *chatController = (PPMessagingViewController *)controller;
         NSString *visibleThreadID = chatController.chatThread.ID ?: @"";
         if ([visibleThreadID isEqualToString:threadID]) {
             return chatController;
@@ -55,7 +55,7 @@ static ChMessagingController *PPChatRouterVisibleMessagingController(UIViewContr
     }
 
     for (UIViewController *child in controller.childViewControllers.reverseObjectEnumerator) {
-        ChMessagingController *visible = PPChatRouterVisibleMessagingController(child, threadID);
+        PPMessagingViewController *visible = PPChatRouterVisibleMessagingController(child, threadID);
         if (visible) return visible;
     }
 
@@ -164,7 +164,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
         presentingVC.view.window.rootViewController ?:
         UIApplication.sharedApplication.keyWindow.rootViewController ?:
         presentingVC;
-    ChMessagingController *visibleChat =
+    PPMessagingViewController *visibleChat =
         PPChatRouterVisibleMessagingController(searchRoot, threadID);
     if (visibleChat) {
         [ChManager sharedManager].activeThreadID = threadID;
@@ -187,7 +187,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
                 presentingVC.view.window.rootViewController ?:
                 UIApplication.sharedApplication.keyWindow.rootViewController ?:
                 presentingVC;
-            ChMessagingController *visibleChat =
+            PPMessagingViewController *visibleChat =
                 PPChatRouterVisibleMessagingController(currentRoot, threadID);
             if (visibleChat) {
                 [ChManager sharedManager].activeThreadID = threadID;

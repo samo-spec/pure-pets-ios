@@ -48,6 +48,9 @@
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
 		A6B710063020000100000001 /* PPMediaViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710053020000100000001 /* PPMediaViewer.swift */; };
+		A8100001301E000100000001 /* PPMessagingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8100002301E000100000002 /* PPMessagingScreen.swift */; };
+		A8100003301E000100000003 /* PPMessagingViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A8100004301E000100000004 /* PPMessagingViewController.m */; };
+		A8100006301E000100000006 /* PPMessagingViewController+helper.m in Sources */ = {isa = PBXBuildFile; fileRef = A8100007301E000100000007 /* PPMessagingViewController+helper.m */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
@@ -484,7 +487,6 @@
 		F286BA8D2F2123930069CD5C /* ChNotificationRouter.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA8C2F2123930069CD5C /* ChNotificationRouter.m */; };
 		F286BA902F21611D0069CD5C /* ChTypingController.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA8F2F21610C0069CD5C /* ChTypingController.m */; };
 		F286BA932F21B31A0069CD5C /* ChCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA922F21B2F60069CD5C /* ChCell.m */; };
-		F286BA962F21B6470069CD5C /* ChMessagingController+Image.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA952F21B6470069CD5C /* ChMessagingController+Image.m */; };
 		F2882CB03012EA2800656E2F /* PPPetAdZoomableImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2882CAF3012EA2800656E2F /* PPPetAdZoomableImageView.swift */; };
 		F28A09F72EE72DEC00EE5055 /* PPCenteredSelectorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F28A09F62EE72DD800EE5055 /* PPCenteredSelectorView.m */; };
 		F28A09FE2EE772E900EE5055 /* YTScaledCenterCarouselPaginator.m in Sources */ = {isa = PBXBuildFile; fileRef = F28A09FC2EE772E900EE5055 /* YTScaledCenterCarouselPaginator.m */; };
@@ -593,13 +595,11 @@
 		F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D02D0D08CB00FF2180 /* StepperCell.m */; };
 		F29F01D52D0D08FD00FF2180 /* PKYStepper.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D32D0D08FD00FF2180 /* PKYStepper.m */; };
 		F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */; };
-		F2A0BBB72F1EB01E003715F0 /* ChMessagingController+Record.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBB62F1EB01E003715F0 /* ChMessagingController+Record.m */; };
 		F2A0BBBE2F1F0B88003715F0 /* ChatImageMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBBD2F1F0B71003715F0 /* ChatImageMessageCell.m */; };
 		F2A0BBC12F1F0BA4003715F0 /* ChatVideoMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC02F1F0BA4003715F0 /* ChatVideoMessageCell.m */; };
 		F2A0BBC42F1FD9BB003715F0 /* PPAudioPlaybackController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC32F1FD9AA003715F0 /* PPAudioPlaybackController.m */; };
 		F2A0BBC72F1FDAF2003715F0 /* ChatAudioMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC62F1FDAD9003715F0 /* ChatAudioMessageCell.m */; };
 		F2A0BBCD2F203B1E003715F0 /* TypingIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */; };
-		F2A0BBD02F203D81003715F0 /* ChMessagingController+Video.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBCF2F203D81003715F0 /* ChMessagingController+Video.m */; };
 		F2A0BBD22FFAA111003715F0 /* ChatStickerMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBD12FFAA111003715F0 /* ChatStickerMessageCell.m */; };
 		F2A0F5F22CC842D300B38F14 /* KBSwipeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0F5F12CC842D300B38F14 /* KBSwipeCell.m */; };
 		F2A1B2C32F45111100FFA0B8 /* QIBPayment.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = F273148B2F31540B00FFA0B8 /* QIBPayment.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -711,7 +711,6 @@
 		F2B6F79B2E37ABA400AC0DAE /* UserChatsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F79A2E37AB9100AC0DAE /* UserChatsViewController.m */; };
 		F2B6F7A12E37AE9A00AC0DAE /* ChatThreadModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7A02E37AE9A00AC0DAE /* ChatThreadModel.m */; };
 		F2B6F7A42E37AF6500AC0DAE /* ChManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7A32E37AF5500AC0DAE /* ChManager.m */; };
-		F2B6F7A72E37B4D000AC0DAE /* ChMessagingController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7A62E37B4BD00AC0DAE /* ChMessagingController.m */; };
 		F2B6F7AA2E37CE3E00AC0DAE /* ChatBubbleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7A92E37CE3E00AC0DAE /* ChatBubbleView.m */; };
 		F2B6F7AF2E37CECE00AC0DAE /* ChatMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7AE2E37CECE00AC0DAE /* ChatMessageCell.m */; };
 		F2B6F7B22E37CFB300AC0DAE /* ChatMessageModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B6F7B12E37CFB300AC0DAE /* ChatMessageModel.m */; };
@@ -747,7 +746,6 @@
 		F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */ = {isa = PBXBuildFile; fileRef = F273146C2F31168400FFA0B8 /* PPOrder.h */; };
 		F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8722E7A3A3E00F0C084 /* UserModel.h */; };
 		F2CA8DD02F1DC1C900AD4416 /* PPChatsFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */; };
-		F2CA8DD32F1DCF2500AD4416 /* ChMessagingController+helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DD22F1DCF2500AD4416 /* ChMessagingController+helper.m */; };
 		F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CALC002F40A00000000002 /* PPCartCalculator.m */; };
 		F2CD36E02E901F350056F59C /* InstallationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CD36DF2E901F350056F59C /* InstallationManager.m */; };
 		F2CD9CA52CAB16AA00C0827B /* UISearchBar+FMAdd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CD9CA42CAB16AA00C0827B /* UISearchBar+FMAdd.m */; };
@@ -997,6 +995,11 @@
 		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
 		A6B710003020000100000001 /* AppRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRemoteImage.swift; sourceTree = "<group>"; };
 		A6B710053020000100000001 /* PPMediaViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMediaViewer.swift; sourceTree = "<group>"; };
+		A8100002301E000100000002 /* PPMessagingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftUI/PPMessagingScreen.swift; sourceTree = "<group>"; };
+		A8100004301E000100000004 /* PPMessagingViewController.m */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; path = PPMessagingViewController.m; sourceTree = "<group>"; };
+		A8100005301E000100000005 /* PPMessagingViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPMessagingViewController.h; sourceTree = "<group>"; };
+		A8100007301E000100000007 /* PPMessagingViewController+helper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PPMessagingViewController+helper.m"; sourceTree = "<group>"; };
+		A8100008301E000100000008 /* PPMessagingViewController+helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PPMessagingViewController+helper.h"; sourceTree = "<group>"; };
 		A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceMessageSending.swift; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
@@ -1809,8 +1812,6 @@
 		F286BA8F2F21610C0069CD5C /* ChTypingController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChTypingController.m; sourceTree = "<group>"; };
 		F286BA912F21B2DD0069CD5C /* ChCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChCell.h; sourceTree = "<group>"; };
 		F286BA922F21B2F60069CD5C /* ChCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChCell.m; sourceTree = "<group>"; };
-		F286BA942F21B6470069CD5C /* ChMessagingController+Image.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+Image.h"; sourceTree = "<group>"; };
-		F286BA952F21B6470069CD5C /* ChMessagingController+Image.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+Image.m"; sourceTree = "<group>"; };
 		F2882CAF3012EA2800656E2F /* PPPetAdZoomableImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdZoomableImageView.swift; sourceTree = "<group>"; };
 		F28A09F52EE72DD400EE5055 /* PPCenteredSelectorView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCenteredSelectorView.h; sourceTree = "<group>"; };
 		F28A09F62EE72DD800EE5055 /* PPCenteredSelectorView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCenteredSelectorView.m; sourceTree = "<group>"; };
@@ -1975,8 +1976,6 @@
 		F2A0A6E9300D7D2D0062A529 /* PPOrderStatusAppearance.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrderStatusAppearance.h; sourceTree = "<group>"; };
 		F2A0A6F1300D7FA50062A529 /* PPSaveForLaterManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSaveForLaterManager.h; sourceTree = "<group>"; };
 		F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSaveForLaterManager.m; sourceTree = "<group>"; };
-		F2A0BBB52F1EB01E003715F0 /* ChMessagingController+Record.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+Record.h"; sourceTree = "<group>"; };
-		F2A0BBB62F1EB01E003715F0 /* ChMessagingController+Record.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+Record.m"; sourceTree = "<group>"; };
 		F2A0BBBC2F1F0B64003715F0 /* ChatImageMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatImageMessageCell.h; sourceTree = "<group>"; };
 		F2A0BBBD2F1F0B71003715F0 /* ChatImageMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatImageMessageCell.m; sourceTree = "<group>"; };
 		F2A0BBBF2F1F0B9A003715F0 /* ChatVideoMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatVideoMessageCell.h; sourceTree = "<group>"; };
@@ -1987,8 +1986,6 @@
 		F2A0BBC62F1FDAD9003715F0 /* ChatAudioMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatAudioMessageCell.m; sourceTree = "<group>"; };
 		F2A0BBCA2F203AD2003715F0 /* TypingIndicatorView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TypingIndicatorView.h; sourceTree = "<group>"; };
 		F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TypingIndicatorView.m; sourceTree = "<group>"; };
-		F2A0BBCE2F203D81003715F0 /* ChMessagingController+Video.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+Video.h"; sourceTree = "<group>"; };
-		F2A0BBCF2F203D81003715F0 /* ChMessagingController+Video.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+Video.m"; sourceTree = "<group>"; };
 		F2A0BBD02FFAA111003715F0 /* ChatStickerMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatStickerMessageCell.h; sourceTree = "<group>"; };
 		F2A0BBD12FFAA111003715F0 /* ChatStickerMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatStickerMessageCell.m; sourceTree = "<group>"; };
 		F2A0F5F02CC842D300B38F14 /* KBSwipeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KBSwipeCell.h; sourceTree = "<group>"; };
@@ -2202,8 +2199,6 @@
 		F2B6F7A02E37AE9A00AC0DAE /* ChatThreadModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatThreadModel.m; sourceTree = "<group>"; };
 		F2B6F7A22E37AF2F00AC0DAE /* ChManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChManager.h; sourceTree = "<group>"; };
 		F2B6F7A32E37AF5500AC0DAE /* ChManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChManager.m; sourceTree = "<group>"; };
-		F2B6F7A52E37B45100AC0DAE /* ChMessagingController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChMessagingController.h; sourceTree = "<group>"; };
-		F2B6F7A62E37B4BD00AC0DAE /* ChMessagingController.m */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; path = ChMessagingController.m; sourceTree = "<group>"; };
 		F2B6F7A82E37CE2300AC0DAE /* ChatBubbleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatBubbleView.h; sourceTree = "<group>"; };
 		F2B6F7A92E37CE3E00AC0DAE /* ChatBubbleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatBubbleView.m; sourceTree = "<group>"; };
 		F2B6F7AD2E37CEBD00AC0DAE /* ChatMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatMessageCell.h; sourceTree = "<group>"; };
@@ -2269,8 +2264,6 @@
 		F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPModrenSegmrnted.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.m"; sourceTree = SOURCE_ROOT; };
 		F2CA8DCE2F1DC1C800AD4416 /* PPChatsFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPChatsFunc.h; sourceTree = "<group>"; };
 		F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatsFunc.m; sourceTree = "<group>"; };
-		F2CA8DD12F1DCF0400AD4416 /* ChMessagingController+helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+helper.h"; sourceTree = "<group>"; };
-		F2CA8DD22F1DCF2500AD4416 /* ChMessagingController+helper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+helper.m"; sourceTree = "<group>"; };
 		F2CALC001F40A00000000001 /* PPCartCalculator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartCalculator.h; sourceTree = "<group>"; };
 		F2CALC002F40A00000000002 /* PPCartCalculator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartCalculator.m; sourceTree = "<group>"; };
 		F2CD36DE2E901F2A0056F59C /* InstallationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InstallationManager.h; sourceTree = "<group>"; };
@@ -4339,19 +4332,13 @@
 		F293B21B2F1C42A9001F0831 /* helpers */ = {
 			isa = PBXGroup;
 			children = (
+				A8100008301E000100000008 /* PPMessagingViewController+helper.h */,
+				A8100007301E000100000007 /* PPMessagingViewController+helper.m */,
 				F2D0939F2F2675CD00D4EE49 /* SubHelpers */,
 				F286BA882F207A330069CD5C /* PPFullscreenVideoController.h */,
 				F286BA892F207A3F0069CD5C /* PPFullscreenVideoController.m */,
 				F2A0BBCA2F203AD2003715F0 /* TypingIndicatorView.h */,
 				F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */,
-				F2CA8DD12F1DCF0400AD4416 /* ChMessagingController+helper.h */,
-				F2CA8DD22F1DCF2500AD4416 /* ChMessagingController+helper.m */,
-				F2A0BBCE2F203D81003715F0 /* ChMessagingController+Video.h */,
-				F2A0BBCF2F203D81003715F0 /* ChMessagingController+Video.m */,
-				F286BA942F21B6470069CD5C /* ChMessagingController+Image.h */,
-				F286BA952F21B6470069CD5C /* ChMessagingController+Image.m */,
-				F2A0BBB52F1EB01E003715F0 /* ChMessagingController+Record.h */,
-				F2A0BBB62F1EB01E003715F0 /* ChMessagingController+Record.m */,
 				F293B2182F1BE612001F0831 /* PPChatHeaderView.h */,
 				F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */,
 				F2CA8DCE2F1DC1C800AD4416 /* PPChatsFunc.h */,
@@ -4948,10 +4935,11 @@
 		F2B6F7892E37A2C000AC0DAE /* NewChats */ = {
 			isa = PBXGroup;
 			children = (
+				A8100002301E000100000002 /* PPMessagingScreen.swift */,
+				A8100005301E000100000005 /* PPMessagingViewController.h */,
+				A8100004301E000100000004 /* PPMessagingViewController.m */,
 				F2A0BBB82F1F0695003715F0 /* ChCells */,
 				F293B21B2F1C42A9001F0831 /* helpers */,
-				F2B6F7A52E37B45100AC0DAE /* ChMessagingController.h */,
-				F2B6F7A62E37B4BD00AC0DAE /* ChMessagingController.m */,
 				F2B6F7992E37AB8A00AC0DAE /* UserChatsViewController.h */,
 				F2B6F79A2E37AB9100AC0DAE /* UserChatsViewController.m */,
 				F2B6F7B02E37CF8D00AC0DAE /* ChatMessageModel.h */,
@@ -6282,7 +6270,6 @@
 				F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */,
 				F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */,
 				F2AB48D72C72D43D00D88603 /* KafkaNativeHeader.m in Sources */,
-				F2B6F7A72E37B4D000AC0DAE /* ChMessagingController.m in Sources */,
 				F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */,
 				F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F281B4812FCB6735009118F2 /* PPRatingView.m in Sources */,
@@ -6325,7 +6312,6 @@
 				F20ACAB72EFB86FD009B4FA2 /* MainController_Func.m in Sources */,
 				F2A903452F9E7B680097485B /* PPPetCareVetCell.m in Sources */,
 				F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */,
-				F2A0BBD02F203D81003715F0 /* ChMessagingController+Video.m in Sources */,
 				F20956822F856845007C4ABA /* PPPetRemindersViewController.m in Sources */,
 				F28D58402E1958F00055DAED /* OrderItemCell.m in Sources */,
 				F2A0BBC72F1FDAF2003715F0 /* ChatAudioMessageCell.m in Sources */,
@@ -6491,7 +6477,6 @@
 				F22C07C22EF66C2F00C00EAC /* YYReachability.m in Sources */,
 				F22C07C32EF66C2F00C00EAC /* NSData+YYAdd.m in Sources */,
 				F22C07C42EF66C2F00C00EAC /* YYCGUtilities.m in Sources */,
-				F2CA8DD32F1DCF2500AD4416 /* ChMessagingController+helper.m in Sources */,
 				F22C07C52EF66C2F00C00EAC /* YYFrameImage.m in Sources */,
 				F22C07C62EF66C2F00C00EAC /* YYTextKeyboardManager.m in Sources */,
 				F286BA932F21B31A0069CD5C /* ChCell.m in Sources */,
@@ -6500,7 +6485,6 @@
 				F22C07C92EF66C2F00C00EAC /* YYTextSelectionView.m in Sources */,
 				F22C07CA2EF66C2F00C00EAC /* NSThread+YYAdd.m in Sources */,
 				F22C07CB2EF66C2F00C00EAC /* NSString+YYAdd.m in Sources */,
-				F286BA962F21B6470069CD5C /* ChMessagingController+Image.m in Sources */,
 				F22C07CC2EF66C2F00C00EAC /* UIScrollView+YYAdd.m in Sources */,
 				F22C07CD2EF66C2F00C00EAC /* NSObject+YYModel.m in Sources */,
 				F26EDCEE2F2702FF00AE10ED /* PPChatInputBarView.m in Sources */,
@@ -6672,7 +6656,6 @@
 				F2D0C5DD2C4BE1B80023CE53 /* SceneDelegate.m in Sources */,
 				F27A50C42EEDF7B0006CBE9D /* TrashCollectionViewCell.m in Sources */,
 				F2CDBD222D1151D400FE7FA2 /* CageModel.m in Sources */,
-				F2A0BBB72F1EB01E003715F0 /* ChMessagingController+Record.m in Sources */,
 				F260D32D2C7B36EF0098C8F0 /* FORScrollViewEmptyAssistant.m in Sources */,
 				F2EF8EED2F87768700A797B3 /* PPProfileActionCell.m in Sources */,
 				F260D33C2C7C72F80098C8F0 /* selectChildCell.m in Sources */,
@@ -6697,6 +6680,9 @@
 				369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */,
 				BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */,
 				1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */,
+				A8100001301E000100000001 /* PPMessagingScreen.swift in Sources */,
+				A8100003301E000100000003 /* PPMessagingViewController.m in Sources */,
+				A8100006301E000100000006 /* PPMessagingViewController+helper.m in Sources */,
 				12CEBEE12FFAA00100C0A901 /* PPStickerKit.swift in Sources */,
 				5674957214A3074F19934B30 /* PPNovaSwiftUIChatBarViewController.swift in Sources */,
 				8A0A552A9BF600F0C770F8FD /* PurePets-DesignSystem.swift in Sources */,

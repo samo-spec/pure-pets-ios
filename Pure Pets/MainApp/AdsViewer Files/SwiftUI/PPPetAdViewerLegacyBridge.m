@@ -3,7 +3,7 @@
 #import "AccessViewerVC.h"
 #import "AppClasses.h"
 #import "ChManager.h"
-#import "ChMessagingController.h"
+#import "PPMessagingViewController.h"
 #import "CitiesManager.h"
 #import "EnumValues.h"
 #import "GM.h"
@@ -533,8 +533,8 @@ fromViewController:(UIViewController *)viewController
                 return;
             }
 
-            ChMessagingController *chat =
-                [[ChMessagingController alloc] initWithChatThread:thread];
+            PPMessagingViewController *chat =
+                [[PPMessagingViewController alloc] initWithChatThread:thread];
             UIViewController *presenter =
                 PPPetAdViewerResolvedPresenter(viewController);
             if (!presenter ||

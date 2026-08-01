@@ -164,12 +164,7 @@ struct PPPetAdHeroGallery: View {
                         width: index == selection ? 18 : 6,
                         height: 6
                     )
-                    .animation(
-                        reduceMotion
-                            ? nil
-                            : PPPetAdViewerMotion.galleryChrome,
-                        value: selection
-                    )
+                    .animation(reduceMotion ? nil : PPPetAdViewerMotion.galleryChrome, value: selection)
             }
         }
         .padding(.horizontal, PPSpace.base)
@@ -187,13 +182,16 @@ struct PPPetAdHeroGallery: View {
     }
 
     private var thumbnailFooter: some View {
-        HStack(spacing: PPSpace.sm) {
-            thumbnailRail
+        GeometryReader { proxy in
+            HStack(spacing: PPSpace.sm) {
+                thumbnailRail(maxWidth: proxy.size.width)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: thumbnailRailHeight)
     }
 
-    private var thumbnailRail: some View {
+    private func thumbnailRail(maxWidth: CGFloat) -> some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: PPSpace.sm) {
@@ -244,12 +242,7 @@ struct PPPetAdHeroGallery: View {
                                     ? 1
                                     : 0.94
                             )
-                            .animation(
-                                reduceMotion
-                                    ? nil
-                                    : PPPetAdViewerMotion.galleryChrome,
-                                value: selection
-                            )
+                            .animation(reduceMotion ? nil : PPPetAdViewerMotion.galleryChrome, value: selection)
                         }
                         .buttonStyle(
                             PPPetAdPressButtonStyle(pressedScale: 0.92)
@@ -268,7 +261,10 @@ struct PPPetAdHeroGallery: View {
                 .padding(.horizontal, thumbnailRailInset)
                 .padding(.vertical, thumbnailRailInset)
             }
-            .frame(width: thumbnailRailWidth, height: thumbnailRailHeight)
+            .frame(
+                width: thumbnailRailWidth(maxWidth: maxWidth),
+                height: thumbnailRailHeight
+            )
             .ppGlassSurface(
                 in: RoundedRectangle(
                     cornerRadius: 18,
@@ -291,13 +287,12 @@ struct PPPetAdHeroGallery: View {
         }
     }
 
-    private var thumbnailRailWidth: CGFloat {
+    private func thumbnailRailWidth(maxWidth: CGFloat) -> CGFloat {
         let count = max(items.count, 1)
         let spacing = PPSpace.sm * CGFloat(max(count - 1, 0))
         let neededWidth =
             (thumbnailSize * CGFloat(count)) + spacing + (thumbnailRailInset * 2)
-        let maxAllowedWidth = max(0, UIScreen.main.bounds.width - (PPSpace.screenMargin * 2))
-        return min(neededWidth, maxAllowedWidth)
+        return min(neededWidth, max(maxWidth, 0))
     }
 
     private var thumbnailRailHeight: CGFloat {

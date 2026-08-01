@@ -31,7 +31,7 @@
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
-#import "ChMessagingController.h"
+#import "PPMessagingViewController.h"
 #import "CartManager.h"
 #import "CartViewController.h"
 #import "PPHomeHelper.h"
@@ -100,6 +100,7 @@ static CGFloat const PPRootCenterActionSize = PPButtonHeightMD;
 @property (nonatomic, assign) BOOL guestProfileLottieReady;
 @property (nonatomic, assign) BOOL premiumNovaVisibleByConfiguration;
 @property (nonatomic, assign) BOOL premiumBottomNavigationHidden;
+@property (nonatomic, assign) NSUInteger premiumBottomNavigationTransitionToken;
 @property (nonatomic, assign) BOOL premiumNavigationDidAnimateIn;
 @property (nonatomic, assign) BOOL rootTabBarTitleLayoutRefreshScheduled;
 @property (nonatomic, strong, nullable) UIView *rootTabSelectionMarker;
@@ -355,6 +356,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.accessibilityIdentifier = @"pp.root.floatingCart";
     self.accessibilityTraits = UIAccessibilityTraitButton;
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleSystemUltraThinMaterialLight;
@@ -749,6 +751,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 @property (nonatomic, assign) BOOL isCollapsed;
 @property (nonatomic, strong, nullable) NSTimer *collapseTimer;
 @property (nonatomic, assign) BOOL preparedForPremiumReveal;
+@property (nonatomic, assign) NSUInteger visibilityTransitionToken;
 - (BOOL)isEligibleFloatingCartSourceViewController:(UIViewController *)viewController;
 - (void)refreshForCurrentVisibleControllerAnimated:(BOOL)animated;
 - (nullable UIViewController *)topVisibleViewControllerFrom:(nullable UIViewController *)viewController;
@@ -1112,6 +1115,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
 
+    NSUInteger transitionToken = ++self.visibilityTransitionToken;
     self.state.visible = shouldShow;
     if (shouldShow) {
         [self ensureFloatingBarIfNeeded];
@@ -1152,6 +1156,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             [host.view layoutIfNeeded];
         };
         void (^showCompletion)(BOOL) = ^(__unused BOOL finished) {
+            if (self.visibilityTransitionToken != transitionToken) {
+                return;
+            }
             self.preparedForPremiumReveal = NO;
             [host pp_applyBottomNavigationClearanceToVisibleLists];
             [self refreshActiveSourceInsetsIfNeeded];
@@ -1186,6 +1193,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [host.view layoutIfNeeded];
     };
     void (^hideCompletion)(BOOL) = ^(__unused BOOL finished) {
+        if (self.visibilityTransitionToken != transitionToken) {
+            return;
+        }
         self.preparedForPremiumReveal = NO;
         fadeView.hidden = YES;
         barView.hidden = YES;
@@ -1413,6 +1423,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
     self.view.semanticContentAttribute = semantic;
     self.tabBar.semanticContentAttribute = semantic;
+    self.tabBar.accessibilityIdentifier = @"pp.root.tabBar";
     self.view.backgroundColor = AppClearClr;
     self.delegate = self;
     self.premiumMyAdsRootTabIndex = NSNotFound;
@@ -1868,12 +1879,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [chatNavigationController setViewControllers:@[rootController] animated:NO];
     }
 
-    ChMessagingController *chatController =
-        [[ChMessagingController alloc] initWithChatThread:thread];
-    chatController.keepsBottomNavigationVisibleForNotificationHandoff = YES;
+    PPMessagingViewController *chatController =
+        [[PPMessagingViewController alloc] initWithChatThread:thread];
     chatController.hidesBottomBarWhenPushed = NO;
 
-    [self pp_setBottomNavigationHidden:NO animated:animated];
     [chatNavigationController pushViewController:chatController animated:animated];
     [self pp_applyPremiumTabSelectionAnimated:animated];
     return YES;
@@ -3869,6 +3878,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_setPremiumBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
+    NSUInteger transitionToken = ++self.premiumBottomNavigationTransitionToken;
     if (!hidden) {
         self.tabBar.hidden = NO;
     }
@@ -3907,6 +3917,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         }
     };
     void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        if (self.premiumBottomNavigationTransitionToken != transitionToken) {
+            return;
+        }
         for (UIView *view in navigationViews) {
             view.hidden = hidden;
         }

@@ -15,6 +15,8 @@ struct PPPetAdDetailsSummary: View {
 
     @ObservedObject private var interactionState: PPPetAdViewerInteractionState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     init(
         title: String,
@@ -40,7 +42,7 @@ struct PPPetAdDetailsSummary: View {
 
     var body: some View {
         PPPetAdAdaptiveSummaryLayout(
-            identityExtent: interactionState.mainHeaderExtent
+            identityExtent: effectiveIdentityExtent
         ) {
             VStack(alignment: .leading, spacing: 0) {
                 PPPetAdHeaderCard(
@@ -56,11 +58,11 @@ struct PPPetAdDetailsSummary: View {
                         .padding(.top, PPSpace.lg)
                 }
             }
-            .opacity(Double(interactionState.mainHeaderVisibility))
+            .opacity(Double(effectiveIdentityVisibility))
             .offset(
                 y: reduceMotion
                     ? 0
-                    : -PPSpace.sm * (1 - interactionState.mainHeaderVisibility)
+                    : -PPSpace.sm * (1 - effectiveIdentityVisibility)
             )
             .accessibilityHidden(!interactionState.mainHeaderOwnsAccessibility)
 
@@ -70,6 +72,30 @@ struct PPPetAdDetailsSummary: View {
             }
         }
         .clipped()
+        .padding(.horizontal, PPSpace.lg)
+        .padding(.vertical, summaryVerticalPadding)
+        .background(summarySurface)
+        .overlay {
+            summaryShape
+                .stroke(
+                    Color.ppBorder.opacity(
+                        colorSchemeContrast == .increased ? 0.92 : 0.30
+                    ),
+                    lineWidth: colorSchemeContrast == .increased
+                        ? 1.25
+                        : PPPetAdViewerStyle.hairlineWidth
+                )
+                .accessibilityHidden(true)
+        }
+        .overlay(alignment: .topLeading) {
+            Capsule(style: .continuous)
+                .fill(Color.ppPrimary.opacity(
+                    colorSchemeContrast == .increased ? 1 : 0.76
+                ))
+                .frame(width: 44, height: 3)
+                .padding(.horizontal, PPSpace.lg)
+                .accessibilityHidden(true)
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .contain)
@@ -77,6 +103,49 @@ struct PPPetAdDetailsSummary: View {
 
     private var hasFacts: Bool {
         !type.isEmpty || !age.isEmpty || !gender.isEmpty
+    }
+
+    private var effectiveIdentityExtent: CGFloat {
+        reduceMotion
+            ? (interactionState.mainHeaderOwnsAccessibility ? 1 : 0)
+            : interactionState.mainHeaderExtent
+    }
+
+    private var effectiveIdentityVisibility: CGFloat {
+        reduceMotion
+            ? (interactionState.mainHeaderOwnsAccessibility ? 1 : 0)
+            : interactionState.mainHeaderVisibility
+    }
+
+    private var summaryVerticalPadding: CGFloat {
+        hasFacts
+            ? PPSpace.base
+            : PPSpace.base * effectiveIdentityExtent
+    }
+
+    private var summarySurface: some View {
+        summaryShape.fill(
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [
+                        Color.ppElevatedSurface,
+                        Color.ppWarmPorcelain.opacity(0.42)
+                    ]
+                    : [
+                        Color.ppWarmPorcelain.opacity(0.88),
+                        Color.ppElevatedSurface.opacity(0.96)
+                    ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+
+    private var summaryShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPCorner.card,
+            style: .continuous
+        )
     }
 }
 
@@ -96,7 +165,7 @@ private struct PPPetAdAdaptiveSummaryLayout: Layout {
         let width = proposal.width ?? sizes.map(\.width).max() ?? 0
         return CGSize(
             width: width,
-            height: identity.height + factsHeight
+            height: (identity.height * clampedExtent) + factsHeight
         )
     }
 
@@ -116,7 +185,9 @@ private struct PPPetAdAdaptiveSummaryLayout: Layout {
         identity.place(
             at: CGPoint(
                 x: bounds.minX,
-                y: bounds.minY
+                y:
+                    bounds.minY
+                    - (identitySize.height * (1 - clampedExtent))
             ),
             anchor: .topLeading,
             proposal: ProposedViewSize(
@@ -130,7 +201,7 @@ private struct PPPetAdAdaptiveSummaryLayout: Layout {
         facts.place(
             at: CGPoint(
                 x: bounds.minX,
-                y: bounds.minY + identitySize.height
+                y: bounds.minY + (identitySize.height * clampedExtent)
             ),
             anchor: .topLeading,
             proposal: ProposedViewSize(width: bounds.width, height: nil)
@@ -171,10 +242,14 @@ struct PPPetAdHeaderCard: View {
 
     private var identityBlock: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
-            Text(petNameLabel)
-                .font(PPPetAdTypography.footnoteBold)
-                .foregroundStyle(Color.ppPrimary)
-                .accessibilityHidden(true)
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 10, weight: .bold))
+                Text(petNameLabel)
+                    .font(PPPetAdTypography.footnoteBold)
+            }
+            .foregroundStyle(Color.ppPrimary)
+            .accessibilityHidden(true)
 
             titlePriceLayout
 
@@ -254,7 +329,7 @@ struct PPPetAdHeaderCard: View {
 
     private var titleText: some View {
         Text(verbatim: "\u{2068}\(displayTitle)\u{2069}")
-            .font(PPPetAdTypography.title)
+            .font(PPPetAdTypography.largeTitle)
             .foregroundStyle(Color.ppTextPrimary)
             .lineSpacing(PPSpace.xxs)
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)

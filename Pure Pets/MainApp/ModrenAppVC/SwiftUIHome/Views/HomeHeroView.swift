@@ -154,31 +154,31 @@ struct HomeHeroView: View {
         _ page: HomeHeroPage,
         accent: Color
     ) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
             eyebrowPill(page, accent: accent)
 
-            Text(compactHeroTitle(page.title))
-                .font(HomeFont.title1())
-                .foregroundStyle(Color.ppTextPrimary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
-                .minimumScaleFactor(0.72)
-                .allowsTightening(true)
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: dynamicTypeSize.isAccessibilitySize ? 82 : 56,
-                    maxHeight: dynamicTypeSize.isAccessibilitySize ? 82 : 56,
-                    alignment: .leading
-                )
-                .accessibilityLabel(page.title)
-                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                Text(compactHeroTitle(page.title))
+                    .font(HomeFont.title1())
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.72)
+                    .allowsTightening(true)
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: .leading
+                    )
+                    .accessibilityLabel(page.title)
+                    .accessibilityAddTraits(.isHeader)
 
-            Text(page.subtitle)
-                .font(HomeFont.subheadline())
-                .foregroundStyle(Color.ppTextSecondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(page.subtitle)
+                    .font(HomeFont.subheadline())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             VStack(alignment: .leading, spacing: PPSpace.xs) {
                 primaryButton(page, accent: accent)

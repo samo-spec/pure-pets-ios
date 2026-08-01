@@ -427,13 +427,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let updates = {
             self.surfaceView.backgroundColor = .clear
             self.materialView.backgroundColor = PPMainKindsCellPalette.card.withAlphaComponent(
-                reduceTransparency ? 1 : (selected ? 0.98 : 0.92)
+                reduceTransparency ? 1 : 0.94
             )
 
             let appSurface = PPMainKindsCellPalette.appSurface
             let selectedBorderColor = accent.blended(
                 with: appSurface,
-                ratio: increasedContrast ? 0.80 : 0.50,
+                ratio: increasedContrast ? 0.72 : 0.30,
                 traitCollection: self.traitCollection
             )
 
@@ -450,11 +450,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
                     ? (increasedContrast ? 1.0 : PPMainKindsCellMetrics.selectedBorderWidth)
                     : (increasedContrast ? 1.0 : PPMainKindsCellMetrics.regularBorderWidth))
             self.surfaceView.layer.shadowColor = UIColor.black.cgColor
-            self.surfaceView.layer.shadowOpacity = darkMode
-                ? (selected ? 0.16 : 0.08)
-                : (selected ? 0.09 : 0.035)
-            self.surfaceView.layer.shadowRadius = selected ? 13 : 7
-            self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: selected ? 7 : 3)
+            self.surfaceView.layer.shadowOpacity = darkMode ? 0.08 : 0.035
+            self.surfaceView.layer.shadowRadius = 7
+            self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: 3)
 
             self.imagePlateView.backgroundColor = .clear
             self.imagePlateView.layer.borderWidth = 0
@@ -532,8 +530,11 @@ public final class PPMainKindsCell: UICollectionViewCell {
         imagePlateView.layer.shadowPath = nil
     }
 
-    private func resolvedImageViewTintColor(selected _: Bool) -> UIColor {
-        currentAccentColor
+    private func resolvedImageViewTintColor(selected: Bool) -> UIColor {
+        if isAllOption, !selected {
+            return .secondaryLabel
+        }
+        return currentAccentColor
     }
 
     private func resolvedImagePlateSize(accessibilityText: Bool) -> CGFloat {
@@ -987,9 +988,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
 
     private var restingTapTransform: CGAffineTransform {
-        isKindSelected
-            ? CGAffineTransform(scaleX: 1.008, y: 1.008)
-            : .identity
+        .identity
     }
 
     private var pressedTapTransform: CGAffineTransform {
@@ -999,7 +998,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func restingGlowOpacity(selected: Bool) -> Float {
         guard selected else { return 0 }
-        return isAllOption ? 0.10 : 0.13
+        return isAllOption ? 0.035 : 0.045
     }
 
     private func pressedGlowOpacity(selected: Bool) -> Float {
@@ -1008,9 +1007,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
         if selected {
-            return pressing ? 0.08 : 0.12
+            return pressing ? 0.055 : 0.045
         }
-        return pressing ? 0.04 : 0
+        return pressing ? 0.025 : 0
     }
 
     private func updateMotionLayerPalette() {
@@ -1021,16 +1020,16 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let darkMode = traitCollection.userInterfaceStyle == .dark
         let increasedContrast = traitCollection.accessibilityContrast == .high
         let identityTopAlpha: CGFloat = increasedContrast
-            ? 0.48
-            : (isAll ? (darkMode ? 0.38 : 0.31) : (darkMode ? 0.44 : 0.36))
-        let identityMiddleAlpha = identityTopAlpha * 0.58
-        let identityLowAlpha = identityTopAlpha * 0.14
-        let spineAlpha: CGFloat = increasedContrast ? 1 : 0.98
+            ? 0.36
+            : (isAll ? (darkMode ? 0.20 : 0.14) : (darkMode ? 0.22 : 0.16))
+        let identityMiddleAlpha = identityTopAlpha * 0.48
+        let identityLowAlpha = identityTopAlpha * 0.10
+        let spineAlpha: CGFloat = increasedContrast ? 1 : 0.78
         let leadingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.28 : 0.38)
+            ? (isAll ? 0.14 : 0.16)
             : 0
         let trailingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.14 : 0.22)
+            ? (isAll ? 0.05 : 0.07)
             : 0
 
         CATransaction.begin()
@@ -1059,8 +1058,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
             accent.withAlphaComponent(0).cgColor,
         ]
         kindNameGlowLayer.colors = [
-            accent.withAlphaComponent(isAll ? 0.26 : 0.38).cgColor,
-            accent.withAlphaComponent(isAll ? 0.16 : 0.24).cgColor,
+            accent.withAlphaComponent(isAll ? 0.16 : 0.18).cgColor,
+            accent.withAlphaComponent(isAll ? 0.10 : 0.11).cgColor,
             accent.withAlphaComponent(0).cgColor,
         ]
         tapHaloLayer.colors = [

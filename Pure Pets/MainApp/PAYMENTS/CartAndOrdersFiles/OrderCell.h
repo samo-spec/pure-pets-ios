@@ -22,5 +22,6 @@
 - (void)configureStatusText:(NSString *)statusText
                   statusKey:(NSString *)statusKey
                    dateText:(NSString *)dateText;
+- (void)playEntranceWithOrdinal:(NSInteger)ordinal animated:(BOOL)animated;
 
 @end

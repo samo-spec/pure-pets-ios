@@ -60,7 +60,6 @@ struct PPPetAdInfoGrid: View {
     let gender: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     @ViewBuilder
@@ -96,20 +95,6 @@ struct PPPetAdInfoGrid: View {
                     compactSupportingLedger
                 }
             }
-        }
-        .padding(PPSpace.sm)
-        .background(ledgerSurface)
-        .overlay {
-            ledgerShape
-                .stroke(
-                    Color.ppBorder.opacity(
-                        colorSchemeContrast == .increased ? 0.88 : 0.28
-                    ),
-                    lineWidth: colorSchemeContrast == .increased
-                        ? 1.25
-                        : PPPetAdViewerStyle.hairlineWidth
-                )
-                .accessibilityHidden(true)
         }
     }
 
@@ -191,21 +176,6 @@ struct PPPetAdInfoGrid: View {
             emphasis: emphasis,
             showsBottomAccent: emphasis == .featured,
             usesCompactColumn: usesCompactColumn
-        )
-    }
-
-    private var ledgerSurface: some View {
-        ledgerShape.fill(
-            colorScheme == .dark
-                ? Color.ppForeground.opacity(0.68)
-                : Color.ppForeground.opacity(0.56)
-        )
-    }
-
-    private var ledgerShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.infoRadius,
-            style: .continuous
         )
     }
 

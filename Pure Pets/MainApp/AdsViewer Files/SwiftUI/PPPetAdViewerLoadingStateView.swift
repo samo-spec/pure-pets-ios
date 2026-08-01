@@ -95,6 +95,27 @@ struct PPPetAdViewerLoadingStateView: View {
             factsSkeletonRail
                 .padding(.top, PPSpace.xs)
         }
+        .padding(.horizontal, PPSpace.lg)
+        .padding(.vertical, PPSpace.base)
+        .background(
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [
+                        Color.ppElevatedSurface,
+                        Color.ppWarmPorcelain.opacity(0.42)
+                    ]
+                    : [
+                        Color.ppWarmPorcelain.opacity(0.88),
+                        Color.ppElevatedSurface.opacity(0.96)
+                    ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+        )
     }
 
     private var headerSkeleton: some View {
@@ -176,16 +197,6 @@ struct PPPetAdViewerLoadingStateView: View {
                 }
             }
         }
-        .padding(PPSpace.sm)
-        .background(
-            colorScheme == .dark
-                ? Color.ppForeground.opacity(0.68)
-                : Color.ppForeground.opacity(0.56),
-            in: RoundedRectangle(
-                cornerRadius: PPPetAdViewerStyle.infoRadius,
-                style: .continuous
-            )
-        )
     }
 
     private var featuredFactSkeleton: some View {
@@ -248,7 +259,9 @@ struct PPPetAdViewerLoadingStateView: View {
         }
         .padding(PPSpace.base)
         .background(
-            Color.ppCard,
+            colorScheme == .dark
+                ? Color.ppWarmPorcelain.opacity(0.46)
+                : Color.ppWarmPorcelain.opacity(0.72),
             in: RoundedRectangle(
                 cornerRadius: PPPetAdViewerStyle.descriptionRadius,
                 style: .continuous

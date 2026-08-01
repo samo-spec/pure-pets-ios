@@ -281,6 +281,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
     self.nameLabel.font = isCurrentUserEntry ? [GM MidFontWithSize:11.75] : [GM MidFontWithSize:11.25];
     self.nameLabel.textColor = UIColor.labelColor;
     self.addBadgeButton.hidden = !showAddBadge;
+    self.accessibilityHint = showAddBadge ? kLang(@"story_add_hint") : nil;
 
     // Show verified badge if this user is verified (lookup from cache)
     UserModel *storyUser = [UserManager userModelForID:story.userID];
@@ -401,21 +402,18 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 #pragma mark - Ring Rotation (Unseen)
 
 - (void)pp_startRingRotation {
-    if ([self.ringGradientLayer animationForKey:kRingRotationKey]) {
-        return;
-    }
-    CABasicAnimation *rot = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
-    rot.fromValue = @0.0;
-    rot.toValue = @(M_PI * 2.0);
-    rot.duration = 4.0;
-    rot.repeatCount = HUGE_VALF;
-    rot.removedOnCompletion = NO;
-    [self.ringGradientLayer addAnimation:rot forKey:kRingRotationKey];
+    [self.ringGradientLayer removeAnimationForKey:kRingRotationKey];
 }
 
 #pragma mark - Entrance Animation
 
 - (void)playEntranceAnimationWithDelay:(NSTimeInterval)delay {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.contentView.transform = CGAffineTransformIdentity;
+        self.contentView.alpha = 1.0;
+        self.cardBackdropView.transform = CGAffineTransformIdentity;
+        return;
+    }
     self.contentView.transform = CGAffineTransformMakeScale(0.88, 0.88);
     self.contentView.alpha = 0.0;
     self.cardBackdropView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
@@ -436,6 +434,10 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [super touchesBegan:touches withEvent:event];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.contentView.alpha = 0.90;
+        return;
+    }
     [UIView animateWithDuration:0.12 delay:0.0
          usingSpringWithDamping:0.94 initialSpringVelocity:0.0
                         options:UIViewAnimationOptionAllowUserInteraction
@@ -446,6 +448,11 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [super touchesEnded:touches withEvent:event];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.contentView.alpha = 1.0;
+        self.contentView.transform = CGAffineTransformIdentity;
+        return;
+    }
     [UIView animateWithDuration:0.28 delay:0.0
          usingSpringWithDamping:0.72 initialSpringVelocity:0.0
                         options:UIViewAnimationOptionAllowUserInteraction
@@ -456,6 +463,11 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [super touchesCancelled:touches withEvent:event];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.contentView.alpha = 1.0;
+        self.contentView.transform = CGAffineTransformIdentity;
+        return;
+    }
     [UIView animateWithDuration:0.24 delay:0.0
          usingSpringWithDamping:0.76 initialSpringVelocity:0.0
                         options:UIViewAnimationOptionAllowUserInteraction

@@ -81,7 +81,7 @@ Key macros to use:
 | `PetsAdsFiles/` | Pet ad model/manager (`PetAd`, `PetAdManager`), ad browser, ad creation coordinator |
 | `BirdsCards/` | Bird-specific listing flow (cards, sales, archive, cages) |
 | `PAYMENTS/` | Cart, checkout (`PPCheckoutCoordinator`), order manager, QIB payment manager, payment method selection |
-| `NewChats/` | Real-time messaging (`ChMessagingController`, `ChManager`, `ChatThreadModel`) |
+| `NewChats/` | Real-time messaging (`PPMessagingViewController`, `PPMessagingScreen`, `ChManager`, `ChatThreadModel`) |
 | `UserFiles/` | Auth (`PPUserSigningController`), profile, settings, addresses, pet profiles |
 | `VeterinarianFiles/` | Vet listings and viewer |
 | `Accessories/` | Pet accessories listing |

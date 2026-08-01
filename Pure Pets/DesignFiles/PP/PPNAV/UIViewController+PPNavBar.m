@@ -2392,7 +2392,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         configType == PPButtonConfigrationClearGlass ? [UIButtonConfiguration glassButtonConfiguration] :
         configType == PPButtonConfigrationFilled ? [UIButtonConfiguration filledButtonConfiguration] :
         configType == PPButtonConfigrationPromp ? [UIButtonConfiguration prominentGlassButtonConfiguration] :
-        configType == PPButtonConfigrationClearPromp ? [UIButtonConfiguration prominentClearGlassButtonConfiguration] :
+        configType == PPButtonConfigrationClearPromp ? [UIButtonConfiguration prominentGlassButtonConfiguration] :
         configType == PPButtonConfigrationTintedBorderd ? [UIButtonConfiguration borderedTintedButtonConfiguration] :
         configType == PPButtonConfigrationTinted ? [UIButtonConfiguration tintedButtonConfiguration] : [UIButtonConfiguration plainButtonConfiguration] ;
         

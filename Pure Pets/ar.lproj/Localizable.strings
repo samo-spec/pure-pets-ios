@@ -1968,13 +1968,24 @@
 "orders_empty_filtered" = "لا توجد طلبات مطابقة.";
 "order_support_request_call" = "طلب اتصال";
 "order_support_button" = "التواصل مع الدعم";
-"order_history_hero_eyebrow" = "مركز متابعة الطلبات";
-"order_history_hero_subtitle" = "عرض هادئ لحالة الدفع والتوصيل والدعم في كل طلب.";
+"order_history_hero_eyebrow" = "رحلة طلباتك";
+"order_history_hero_subtitle" = "تابع كل عملية شراء من الدفع حتى التوصيل، مع بقاء الدعم قريبًا دائمًا.";
 "order_history_metric_orders" = "الطلبات";
 "order_history_metric_spent" = "المنصرف";
 "order_history_metric_active" = "النشطة";
 "order_history_scope_all" = "كل الطلبات";
 "order_history_scope_filtered" = "تمت التصفية";
+"order_history_metric_active_format" = "النشطة: %2$ld • %1$@";
+"order_history_summary_accessibility_format" = "الطلبات: %1$@. المنصرف: %2$@. النشطة: %3$ld.";
+"order_history_filter_count_format" = "%1$@ • %2$ld";
+"order_history_filter_action_format" = "%1$@ (%2$ld)";
+"order_history_search_open" = "البحث في الطلبات وتصفيتها";
+"order_history_search_close" = "إغلاق البحث والتصفية";
+"order_history_filter_accessibility" = "تصفية الطلبات حسب الحالة";
+"order_history_row_accessibility_format" = "%1$@. %2$@. %3$@. %4$@. %5$@.";
+"order_history_row_accessibility_hint" = "يفتح تفاصيل الطلب";
+"NoOrders" = "لا توجد طلبات بعد";
+"UserNotAuthenticated" = "سجّل الدخول لعرض طلباتك.";
 "order_change_delivery_address" = "تغيير عنوان التوصيل";
 "order_cancel_button" = "إلغاء الطلب";
 "order_edit_location_pending_only" = "يمكن تعديل موقع التوصيل فقط عندما يكون الطلب قيد الانتظار.";
@@ -3182,7 +3193,7 @@
 "chat_accessibility_incoming" = "رسالة مستلمة";
 "chat_accessibility_outgoing" = "رسالة مرسلة";
 "chat_accessibility_reply_format" = "رد على: %@";
-"chat_message_actions_hint" = "اسحب للرد، أو المس مطولاً لعرض إجراءات الرسالة.";
+"chat_message_actions_hint" = "تتوفر إجراءات لهذه الرسالة.";
 
 /* Premium intro */
 "intro_brand_kicker" = "عناية متكاملة بكل اهتمام";
@@ -3687,6 +3698,7 @@
 "report" = "إبلاغ";
 
 /* SwiftUI Pet Advertisement Viewer */
+"Actions" = "الإجراءات";
 "Collapsed" = "مطوي";
 "Expanded" = "موسّع";
 "Login" = "تسجيل الدخول";
@@ -3750,6 +3762,7 @@
 "pet_ad_viewer_title_fallback" = "إعلان حيوان أليف";
 "pet_ad_viewer_zoom" = "تكبير";
 "pet_ad_viewer_verified_owner" = "عضو موثّق في بيور بتس";
+"pet_ad_viewer_seller_role" = "معلن";
 "pet_ad_viewer_verified_seller_role" = "معلن موثّق";
 "pet_ad_viewer_your_listing" = "هذا إعلانك";
 "pet_ad_viewer_your_listing_detail" = "تُخفى وسائل التواصل عند عرض إعلانك الخاص.";
@@ -4022,3 +4035,46 @@
 "splash_footer_format" = "بيور بتس © %ld · جميع الحقوق محفوظة";
 "splash_loading_accessibility_format" = "%1$@. %2$@";
 "splash_progress_accessibility_format" = "خطوة التشغيل %1$ld من %2$ld";
+
+/* Messaging — SwiftUI conversation */
+"chat_loading_older" = "جارٍ تحميل الرسائل السابقة";
+"chat_connection_interrupted" = "انقطع اتصال المحادثة";
+"chat_loading_messages_title" = "نفتح محادثتك";
+"chat_loading_messages_subtitle" = "نجهّز الرسائل وتحديثات التسليم.";
+"chat_offline_title" = "الرسائل غير متاحة مؤقتًا";
+"chat_offline_subtitle" = "محادثتك محفوظة. أعد الاتصال لمتابعة الإرسال والاستلام.";
+"chat_typing_format" = "%@ يكتب الآن";
+"chat_date_today" = "اليوم";
+"chat_date_yesterday" = "أمس";
+"chat_scroll_latest" = "الانتقال إلى أحدث رسالة";
+"chat_attachment_picker_close" = "إغلاق المرفقات";
+"chat_attachment_picker_expanded" = "خيارات المرفقات موسّعة";
+"chat_attachment_picker_collapsed" = "خيارات المرفقات مطوية";
+
+/* Chat Inbox */
+"chat_inbox_compose_hint" = "يفتح قائمة الأشخاص لبدء محادثة.";
+"chat_inbox_loading" = "جارٍ تحميل المحادثات";
+"chat_inbox_stale_summary" = "نعرض أحدث المحادثات. أعد الاتصال لتحديثها.";
+"chat_inbox_unread_zero" = "لا توجد رسائل غير مقروءة";
+"chat_inbox_unread_one" = "رسالة واحدة غير مقروءة";
+"chat_inbox_unread_two" = "رسالتان غير مقروءتان";
+"chat_inbox_unread_few" = "%ld رسائل غير مقروءة";
+"chat_inbox_unread_many" = "%ld رسالة غير مقروءة";
+"chat_inbox_unread_other" = "%ld رسالة غير مقروءة";
+"chat_inbox_conversation_zero" = "لا توجد محادثات";
+"chat_inbox_conversation_one" = "محادثة واحدة";
+"chat_inbox_conversation_two" = "محادثتان";
+"chat_inbox_conversation_few" = "%ld محادثات";
+"chat_inbox_conversation_many" = "%ld محادثة";
+"chat_inbox_conversation_other" = "%ld محادثة";
+"chat_inbox_all_caught_up" = "كلها مقروءة";
+"chat_inbox_summary_join_format" = "%1$@، %2$@";
+"chat_inbox_load_error_subtitle" = "تحقق من اتصالك وحاول تحميل محادثاتك مرة أخرى.";
+"chat_sign_in_required_title" = "سجّل الدخول لعرض محادثاتك";
+"chat_sign_in_required_subtitle" = "ستظهر محادثاتك ورسائلك غير المقروءة بعد تسجيل الدخول.";
+"chat_sign_in_action" = "تسجيل الدخول";
+"chat_open_conversation_hint" = "يفتح هذه المحادثة.";
+"chat_delete_thread_title" = "حذف المحادثة؟";
+"chat_delete_thread_message" = "سيؤدي هذا إلى حذف المحادثة المشتركة نهائيًا ولا يمكن التراجع عنه.";
+"chat_delete_thread_failed" = "تعذّر حذف المحادثة، لذلك أعدناها إلى القائمة.";
+"story_add_hint" = "يضيف صورة إلى قصتك.";

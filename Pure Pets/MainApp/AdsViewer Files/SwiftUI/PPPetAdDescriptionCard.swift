@@ -25,7 +25,7 @@ struct PPPetAdDescriptionCard: View {
 
                 Text(normalizedDescription)
                     .font(PPPetAdTypography.body)
-                    .foregroundStyle(Color.ppTextSecondary)
+                    .foregroundStyle(Color.ppTextPrimary.opacity(0.86))
                     .lineSpacing(PPSpace.xs)
                     .lineLimit(isExpanded ? nil : 6)
                     .fixedSize(horizontal: false, vertical: true)
@@ -92,7 +92,7 @@ struct PPPetAdDescriptionCard: View {
             descriptionShape
                 .stroke(
                     Color.ppBorder.opacity(
-                        colorSchemeContrast == .increased ? 0.92 : 0.36
+                        colorSchemeContrast == .increased ? 0.92 : 0.22
                     ),
                     lineWidth: colorSchemeContrast == .increased
                         ? 1.5
@@ -100,12 +100,6 @@ struct PPPetAdDescriptionCard: View {
                 )
                 .accessibilityHidden(true)
         }
-        .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.14 : 0.03),
-            radius: colorScheme == .dark ? 14 : 8,
-            x: 0,
-            y: colorScheme == .dark ? 7 : 3
-        )
         .padding(.top, PPSpace.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: description) { _ in
@@ -156,7 +150,21 @@ struct PPPetAdDescriptionCard: View {
 
     private var descriptionSurface: some View {
         descriptionShape
-            .fill(Color.ppCard)
+            .fill(
+                LinearGradient(
+                    colors: colorScheme == .dark
+                        ? [
+                            Color.ppWarmPorcelain.opacity(0.46),
+                            Color.ppElevatedSurface
+                        ]
+                        : [
+                            Color.ppWarmPorcelain.opacity(0.72),
+                            Color.ppCard
+                        ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
     }
 
     private var descriptionShape: RoundedRectangle {

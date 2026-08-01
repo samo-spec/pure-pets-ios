@@ -243,7 +243,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                                      UITextViewDelegate, AVAudioPlayerDelegate,PPChatInputBarViewDelegate, AVAudioRecorderDelegate, AVAudioPlayerDelegate,
                                      UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIGestureRecognizerDelegate,
                                      ChatMessageCellDelegate, ChatImageMessageCellDelegate, PPNovaSwiftUIChatBarViewControllerDelegate,
-                                     PPMessagingSwiftUIHostControllerDelegate>
+                                     PPMessagingSwiftUIHostControllerDelegate, PPAudioPlaybackControllerDelegate>
 
 @property (nonatomic, strong) PPMessagingSwiftUIHostController *messagingHostController;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, dispatch_block_t> *messageRetryActions;
@@ -296,6 +296,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 @property (nonatomic, strong) UIButton *bottomFillBlurView;
 @property (nonatomic, strong) UIView *chatBackgroundContainer;
 @property (nonatomic, strong) UIImageView *chatBackgroundImageView;
+@property (nonatomic, assign) NSUInteger chatBackgroundRequestGeneration;
 
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *cachedHeights;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> userStatusListener;
@@ -708,7 +709,6 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 {
     if (self.messagingHostController) {
         self.chatEmptyStateView.hidden = YES;
-        [self pp_publishMessagesAnimated:animated];
         return;
     }
     BOOL shouldShow =
@@ -1317,6 +1317,9 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     }
 
     [self pp_updateInputBarBottomConstraintsForCurrentState];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_updateSwiftUIBottomNavigationClearance];
+    });
 }
 
 - (void)scrollToBottomButtonTapped
@@ -3033,7 +3036,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
     self.previewPlayer.delegate = self;
     [self.previewPlayer prepareToPlay];
-    self.previewState = PPRecordingPreviewStatePaused;
+    self.previewState = PPMessagingRecordingPreviewStatePaused;
 
     // Show PREVIEW UI
     [self.inputbar.recordingBar setRecordingState:PPRecordingBarStatePreview animated:YES];
@@ -3219,6 +3222,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                 (CGFloat)snap.progress.completedUnitCount /
                 (CGFloat)snap.progress.totalUnitCount;
         }
+        [strongSelf pp_publishMessagesAnimated:NO];
 
         NSInteger row = [strongSelf.messages indexOfObject:msg];
         if (row == NSNotFound) return;
@@ -3387,6 +3391,8 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     UserModel *otherUser = self.threadOtherUser ?: self.chatThread.otherUser;
     if (!otherUser) {
         NSLog(@"❌ [Chat] Missing other user. Cannot create thread.");
+        self.connectionInterrupted = YES;
+        [self.messagingHostController setConnectionInterrupted:YES];
         [self setInitialLoadingVisible:NO];
         return;
     }
@@ -3400,6 +3406,8 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
         if (error || !thread.ID.length) {
             NSLog(@"❌ Failed to create thread");
+            strongSelf.connectionInterrupted = YES;
+            [strongSelf.messagingHostController setConnectionInterrupted:YES];
             [strongSelf setInitialLoadingVisible:NO];
             return;
         }
@@ -3419,6 +3427,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
             strongSelf.threadOtherUser =
             [ChatThreadModel resolveOtherUserFromThread:strongSelf.chatThread];
         }
+        [strongSelf pp_publishConversationStateAnimated:YES];
 
         NSString *presenceUserID = [strongSelf resolvedOtherUserPresenceID];
         if (strongSelf.isViewVisible &&
@@ -3439,7 +3448,11 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
             __weak typeof(strongSelf) weakStrongSelf = strongSelf;
             strongSelf.typingController.onTypingChanged = ^(BOOL isTyping) {
-                if (!weakStrongSelf.isKeyboardVisible && ![weakStrongSelf isNearBottom]) return;
+                if (!weakStrongSelf.isKeyboardVisible && ![weakStrongSelf isNearBottom]) {
+                    [weakStrongSelf pp_setOtherUserTyping:NO];
+                    return;
+                }
+                [weakStrongSelf pp_setOtherUserTyping:isTyping];
                 isTyping
                 ? [weakStrongSelf.typingIndicatorView startAnimating]
                 : [weakStrongSelf.typingIndicatorView stopAnimating];
@@ -3614,6 +3627,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                     ChatMediaHeight([strongSelf resolvedMediaMaxBubbleWidth],
                                     msg.mediaWidth,
                                     msg.mediaHeight);
+                [strongSelf pp_publishMessagesAnimated:NO];
 
                 NSInteger row = [strongSelf.messages indexOfObject:msg];
                 if (row != NSNotFound) {
@@ -3661,6 +3675,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                     msg.status = ChatMessageStatusSending;
                     msg.isLocalPending = YES;
                     msg.transferProgress = MAX(0.0, MIN(progress, 1.0));
+                    [strongSelf pp_publishMessagesAnimated:NO];
 
                     NSInteger row = [strongSelf.messages indexOfObject:msg];
                     if (row == NSNotFound) return;
@@ -4286,6 +4301,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         msg.transferProgress = progress;
 
         dispatch_async(dispatch_get_main_queue(), ^{
+            [strongSelf pp_publishMessagesAnimated:NO];
             NSInteger row = [strongSelf.messages indexOfObject:msg];
             if (row == NSNotFound) return;
 
@@ -5727,6 +5743,11 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_bringChatHeaderToFront
 {
+    if (self.messagingHostController.view.superview) {
+        [self pp_hideLegacyPresentationViews];
+        [self.view bringSubviewToFront:self.messagingHostController.view];
+        return;
+    }
     if (self.navBottomBlurView.superview && !self.navBottomBlurView.hidden) {
         [self.view bringSubviewToFront:self.navBottomBlurView];
     }
@@ -5740,6 +5761,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_updatePremiumModalChatHeaderContentAnimated:(BOOL)animated
 {
+    [self pp_publishConversationStateAnimated:animated];
     if (!self.premiumModalHeaderView) {
         return;
     }
@@ -6172,6 +6194,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
             }
             [PPHUD showSuccess: nextMuted ? kLang(@"chat.muted") : kLang(@"chat.unmuted")];
             [weakSelf pp_updatePremiumModalChatHeaderContentAnimated:YES];
+            [weakSelf pp_publishConversationStateAnimated:YES];
         });
     }];
 }
@@ -6211,6 +6234,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
             }
             [PPHUD showSuccess:kLang(@"chat.report.success")];
             [weakSelf pp_updatePremiumModalChatHeaderContentAnimated:YES];
+            [weakSelf pp_publishConversationStateAnimated:YES];
         });
     }];
 }
@@ -6254,6 +6278,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                     weakSelf.chatThread.binnedBy = [arr copy];
                 }
                 [PPHUD showSuccess: nextBinned ? kLang(@"chat.binned") : kLang(@"chat.unbinned")];
+                [weakSelf pp_publishConversationStateAnimated:YES];
 
                 // If binned, close chat and refresh list
                 if (nextBinned) {
@@ -6312,6 +6337,11 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    if (!self.didCaptureNavigationBarVisibility && self.navigationController) {
+        self.didCaptureNavigationBarVisibility = YES;
+        self.previousNavigationBarHidden = self.navigationController.navigationBarHidden;
+    }
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
     // 🔥 CRITICAL: neutralize tab bar safe area
     [self pp_captureBottomNavigationRestoreStateIfNeeded];
 
@@ -6350,6 +6380,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self configureBackUX];
     [self pp_applyBorderlessChatNavigationAppearanceIfNeeded];
     [self pp_bringChatHeaderToFront];
+    [self pp_publishConversationStateAnimated:NO];
+    [self pp_updateSwiftUIBottomNavigationClearance];
 }
 
 - (void)setupTopView {
@@ -6391,6 +6423,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         strongSelf.threadOtherUser.isOnline = isOnline;
         strongSelf.threadOtherUser.lastSeen = lastSeen;
         [strongSelf pp_updatePremiumModalChatHeaderContentAnimated:YES];
+        [strongSelf pp_publishConversationStateAnimated:YES];
     }];
 }
  
@@ -6399,6 +6432,10 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
  
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    if (self.didCaptureNavigationBarVisibility && self.navigationController) {
+        [self.navigationController setNavigationBarHidden:self.previousNavigationBarHidden
+                                                 animated:animated];
+    }
     [self pp_restorePreviousNavigationAppearanceIfNeeded];
     // 🔄 restore normal behavior
       self.additionalSafeAreaInsets = UIEdgeInsetsZero;
@@ -6416,6 +6453,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     }
     
     self.isViewVisible = NO;
+    [self.messagingHostController setTypingVisible:NO];
     [ChManager sharedManager].activeThreadID = nil;
     
     IQKeyboardManager *manager = [IQKeyboardManager sharedManager];
@@ -6499,6 +6537,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_updateChatEmptyStateAnimated:NO];
     [self pp_animatePremiumModalChatHeaderIfNeeded];
     [self pp_bringChatHeaderToFront];
+    [self pp_updateSwiftUIBottomNavigationClearance];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -6540,20 +6579,28 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)applyChatBackground:(NSInteger)index
 {
+    self.chatBackgroundRequestGeneration += 1;
+    NSUInteger requestGeneration = self.chatBackgroundRequestGeneration;
     __weak typeof(self) weakSelf = self;
 
     [[PPChatBackgroundManager shared]
      fetchChatBackgroundAtIndex:index
      completion:^(UIImage *image) {
 
-        if (!image) return;
+        if (!image ||
+            !weakSelf ||
+            requestGeneration != weakSelf.chatBackgroundRequestGeneration) {
+            return;
+        }
 
         [UIView transitionWithView:weakSelf.chatBackgroundImageView
                           duration:0.25
                            options:UIViewAnimationOptionTransitionCrossDissolve
-                        animations:^{
+        animations:^{
             weakSelf.chatBackgroundImageView.image = image;
         } completion:nil];
+
+        [weakSelf.messagingHostController setConversationBackgroundImage:image];
     }];
 }
 
@@ -6593,17 +6640,25 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     NSInteger bgIndex = [self resolvedChatBackgroundIndex];
 
     if(bgIndex == -1)return;
+    self.chatBackgroundRequestGeneration += 1;
+    NSUInteger requestGeneration = self.chatBackgroundRequestGeneration;
     __weak typeof(self) weakSelf = self;
     [[PPChatBackgroundManager shared] fetchChatBackgroundAtIndex:bgIndex completion:^(UIImage *image) {
 
-        if (!image) return;
+        if (!image ||
+            !weakSelf ||
+            requestGeneration != weakSelf.chatBackgroundRequestGeneration) {
+            return;
+        }
 
         [UIView transitionWithView:weakSelf.chatBackgroundImageView
                           duration:0.25
                            options:UIViewAnimationOptionTransitionCrossDissolve
-                        animations:^{
+        animations:^{
             weakSelf.chatBackgroundImageView.image = image;
         } completion:nil];
+
+        [weakSelf.messagingHostController setConversationBackgroundImage:image];
         
     }];
 }
@@ -6723,9 +6778,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)onOtherUserTypingChanged:(BOOL)isTyping {
 
     if (!self.isViewVisible) {
+        [self pp_setOtherUserTyping:NO];
         [self.typingIndicatorView stopAnimating];
         return;
     }
+
+    [self pp_setOtherUserTyping:isTyping];
 
     isTyping
     ? [self.typingIndicatorView startAnimating]
@@ -6779,9 +6837,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         NSLog(@"⌨️ OTHER USER TYPING = %@", isTyping ? @"YES" : @"NO");
 
         if (!weakSelf.isKeyboardVisible && ![weakSelf isNearBottom]) {
+            [weakSelf pp_setOtherUserTyping:NO];
             [weakSelf.typingIndicatorView stopAnimating];
             return;
         }
+
+        [weakSelf pp_setOtherUserTyping:isTyping];
 
         isTyping
         ? [weakSelf.typingIndicatorView startAnimating]
@@ -6808,10 +6869,14 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 	{
 	    [super viewDidAppear:animated];
 	    self.isViewVisible = YES;
+	    [self pp_setOtherUserTyping:self.otherUserTyping];
 	    [ChManager sharedManager].activeThreadID = self.chatThread.ID;
         [self pp_applyNotificationHandoffBottomNavigationVisibilityAnimated:animated];
 	    [self pp_animatePremiumModalChatHeaderIfNeeded];
 	    [self pp_bringChatHeaderToFront];
+        [self pp_publishConversationStateAnimated:NO];
+        [self pp_publishMessagesAnimated:NO];
+        [self pp_updateSwiftUIBottomNavigationClearance];
     // ✅ Handoff finished
     [ChManager sharedManager].isHandlingNotificationHandoff = NO;
 
@@ -6914,6 +6979,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     CGFloat previousOffsetY = self.tableView.contentOffset.y;
     self.currentKeyboardHeight = rawKeyboardHeight;
     self.isKeyboardVisible = rawKeyboardHeight > 0.5;
+    [self pp_updateSwiftUIBottomNavigationClearance];
 
     self.inputBarBottomConstraint.constant = self.isKeyboardVisible
         ? -(keyboardHeight + 8.0)
@@ -6945,6 +7011,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
             [self.tableView setContentOffset:CGPointMake(0.0, preservedOffsetY) animated:NO];
         }
     } completion:^(__unused BOOL finished) {
+        [self pp_updateSwiftUIBottomNavigationClearance];
         if (shouldKeepBottomPinned) {
             [self pp_scrollTableViewToBottomWithoutAnimation];
         }
@@ -7265,6 +7332,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_publishMessagesAnimated:NO];
     [host setInitialLoadingVisible:!self.didFinishInitialLoad && self.messages.count == 0];
     [host setConnectionInterrupted:self.connectionInterrupted];
+    [self loadChatBackground];
     [self pp_updateSwiftUIBottomNavigationClearance];
 }
 
@@ -7300,6 +7368,10 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     }
 
     NSString *currentUserID = [self pp_currentOutgoingSenderID];
+    NSString *resolvedFileURL = message.fileURL;
+    if (resolvedFileURL.length == 0 && message.localVideoURL) {
+        resolvedFileURL = message.localVideoURL.absoluteString;
+    }
     NSMutableDictionary<NSString *, id> *payload = [@{
         @"id": message.ID ?: @"",
         @"text": message.text ?: @"",
@@ -7307,7 +7379,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         @"timestamp": message.timestamp ?: [NSDate date],
         @"kind": kind,
         @"status": @(message.status),
-        @"fileURL": message.fileURL ?: @"",
+        @"fileURL": resolvedFileURL ?: @"",
         @"thumbnailURL": message.thumbnailURL ?: @"",
         @"duration": @(message.mediaDuration),
         @"mediaWidth": @(message.mediaWidth),
@@ -7340,6 +7412,10 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     NSMutableArray<NSDictionary<NSString *, id> *> *payloads =
         [NSMutableArray arrayWithCapacity:self.messages.count];
     for (ChatMessageModel *message in self.messages ?: @[]) {
+        if (message.status >= ChatMessageStatusSent && !message.isLocalPending) {
+            [self.messageRetryActions removeObjectForKey:message.ID];
+            [self.messagingHostController clearFailedMessageID:message.ID];
+        }
         [payloads addObject:[self pp_swiftUIPayloadForMessage:message]];
     }
 
@@ -7539,7 +7615,11 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [self.messageListener remove];
         self.messageListener = nil;
         self.isObservingMessages = NO;
-        [self startObservingMessagesIfNeeded];
+        if (self.chatThread.ID.length > 0) {
+            [self startObservingMessagesIfNeeded];
+        } else {
+            [self ensureThreadThen:^(__unused NSString *threadID) {}];
+        }
         return;
     }
     if ([action isEqualToString:@"composerCancelledReply"]) {

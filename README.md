@@ -205,7 +205,7 @@ Open `Pure Pets.xcworkspace` in Xcode, select a target device or simulator, and 
 - Analytics: `PPAnalytics.logBeginCheckoutWithCartItems` + `logPurchaseWithTransactionID`
 
 ### Chat (`NewChats/`)
-- `ChMessagingController` — real-time chat UI
+- `PPMessagingViewController` + `PPMessagingScreen` — SwiftUI real-time chat presentation with the existing Objective-C behavior bridge
 - `ChManager` — message lifecycle and Firestore orchestration
 - `ChatThreadModel` — thread metadata
 - `ChatMessageModel` — status lifecycle: Pending → Sending → Sent → Delivered → Read

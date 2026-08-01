@@ -14,10 +14,11 @@ enum PPPetAdInfoSignature: String, CaseIterable {
         switch self {
         case .breed:
             return .ppPrimary
-        case .age:
-            return .ppInfo
-        case .gender:
-            return .ppSuccess
+        case .age, .gender:
+            // Age and sex are descriptive facts, not status signals. Keeping
+            // them neutral prevents success/info colors from implying meaning
+            // that the backend does not provide.
+            return .ppTextSecondary
         }
     }
 }
@@ -196,11 +197,11 @@ struct PPPetAdInfoPillView: View {
                 color: signature.accentColor.opacity(
                     colorScheme == .dark
                         ? 0
-                        : (isFeatured ? 0.12 : 0.055)
+                        : (isFeatured ? 0.10 : 0)
                 ),
-                radius: isFeatured ? 8 : 5,
+                radius: isFeatured ? 7 : 0,
                 x: 0,
-                y: isFeatured ? 4 : 2
+                y: isFeatured ? 3 : 0
             )
             .accessibilityHidden(true)
     }

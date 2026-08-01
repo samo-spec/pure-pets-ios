@@ -54,10 +54,7 @@ struct PPPetAdContactCard: View {
                 )
                 .accessibilityHidden(true)
         }
-        .animation(
-            reduceMotion ? nil : PPPetAdViewerMotion.state,
-            value: contactStateIdentity
-        )
+        .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: contactStateIdentity)
     }
 
     private var signedOutContent: some View {
@@ -502,10 +499,7 @@ struct PPPetAdContactCard: View {
         )
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.58)
-        .animation(
-            reduceMotion ? nil : PPPetAdViewerMotion.state,
-            value: isLoading
-        )
+        .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: isLoading)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(
             isLoading
@@ -602,6 +596,7 @@ struct PPPetAdContactDock: View {
     @ObservedObject var store: PPPetAdViewerStore
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -613,14 +608,8 @@ struct PPPetAdContactDock: View {
                     ? .opacity
                     : .opacity.combined(with: .scale(scale: 0.99))
             )
-            .animation(
-                reduceMotion ? nil : PPPetAdViewerMotion.state,
-                value: stateIdentity
-            )
-            .animation(
-                reduceMotion ? nil : PPPetAdViewerMotion.state,
-                value: store.chatState
-            )
+            .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: stateIdentity)
+            .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: store.chatState)
             .padding(.horizontal, PPSpace.base)
             .padding(.vertical, PPSpace.md)
             .background {
@@ -636,10 +625,35 @@ struct PPPetAdContactDock: View {
     }
 
     private var contactSurface: some View {
-        PPHeroApexGlowCornerSurface(
-            accentStyle: .solid,
-            solidColor: .ppElevatedSurface
+        let shape = RoundedRectangle(
+            cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius,
+            style: .continuous
         )
+
+        return shape
+            .fill(
+                LinearGradient(
+                    colors: colorScheme == .dark
+                        ? [
+                            Color.ppElevatedSurface,
+                            Color.ppWarmPorcelain.opacity(0.34)
+                        ]
+                        : [
+                            Color.ppElevatedSurface.opacity(0.98),
+                            Color.ppWarmPorcelain.opacity(0.76)
+                        ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay {
+                shape.stroke(
+                    Color.ppBorder.opacity(
+                        colorSchemeContrast == .increased ? 0.96 : 0.40
+                    ),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.75
+                )
+            }
     }
 
     @ViewBuilder
@@ -881,7 +895,7 @@ struct PPPetAdContactDock: View {
                     }
                 }
                 .frame(width: 22, height: 22)
-                .foregroundStyle(Color("AppForegroundColor"))
+                .foregroundStyle(primaryActionForeground)
                 .accessibilityHidden(true)
 
                 Text(title)

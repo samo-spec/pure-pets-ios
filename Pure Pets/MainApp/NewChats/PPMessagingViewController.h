@@ -18,10 +18,10 @@
 #import "PPAudioPlaybackController.h"
 
 NS_ASSUME_NONNULL_BEGIN
-typedef NS_ENUM(NSUInteger, PPRecordingPreviewState) {
-    PPRecordingPreviewStateIdle,
-    PPRecordingPreviewStatePlaying,
-    PPRecordingPreviewStatePaused
+typedef NS_ENUM(NSUInteger, PPMessagingRecordingPreviewState) {
+    PPMessagingRecordingPreviewStateIdle,
+    PPMessagingRecordingPreviewStatePlaying,
+    PPMessagingRecordingPreviewStatePaused
 };
 
 @protocol ReloadChatsDelegate <NSObject>
@@ -48,7 +48,7 @@ typedef NS_ENUM(NSUInteger, PPRecordingPreviewState) {
 @property (nonatomic, strong,nullable) CADisplayLink *previewDisplayLink;
 @property (nonatomic, assign) BOOL isPreviewPlaying;
 
-@property (nonatomic, assign) PPRecordingPreviewState previewState;
+@property (nonatomic, assign) PPMessagingRecordingPreviewState previewState;
  
 @property (nonatomic, strong,nullable) CADisplayLink *recordingWaveDisplayLink;
 @property (nonatomic, strong,nullable) AVAudioRecorder *audioRecorder;

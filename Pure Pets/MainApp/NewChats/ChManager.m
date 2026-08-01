@@ -2545,7 +2545,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }];
 }
 
-+ (CGFloat)heightForMessage:(NSString *)text onController:(ChMessagingController *)cont {
++ (CGFloat)heightForMessage:(NSString *)text onController:(PPMessagingViewController *)cont {
     UIFont *font = [UIFont systemFontOfSize:15];
 
     CGRect rect = [text boundingRectWithSize:CGSizeMake(MAX_BUBBLE_WIDTH(cont.view) - 20, CGFLOAT_MAX)
@@ -3267,7 +3267,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         }
         
         // Push chat messaging controller
-        ChMessagingController *chatVC = [[ChMessagingController alloc] initWithChatThread:thread];
+        PPMessagingViewController *chatVC = [[PPMessagingViewController alloc] initWithChatThread:thread];
         [PPFunc presentSheetFrom:controller
                          sheetVC:chatVC
                      detentStyle:PPSheetDetentStyleSemiLargAndLarge];
@@ -3351,7 +3351,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             }
 
             // Push chat messaging controller
-            ChMessagingController *chatVC = [[ChMessagingController alloc] initWithChatThread:chatThread];
+            PPMessagingViewController *chatVC = [[PPMessagingViewController alloc] initWithChatThread:chatThread];
             [PPFunc presentSheetFrom:controller
                              sheetVC:chatVC
                          detentStyle:PPSheetDetentStyleSemiLargAndLarge];

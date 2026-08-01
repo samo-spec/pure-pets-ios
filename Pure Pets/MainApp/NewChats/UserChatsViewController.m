@@ -13,6 +13,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPOverlayCoordinator.h"
 #import "PPHUD.h"
+#import "PPChatsFunc.h"
 #import "PPSelectOptionViewController.h"
 #import "PPStoriesViewController.h"
 
@@ -24,6 +25,9 @@ static const CGFloat PPChatStoriesHeaderVisibleHeight = 208.0;
 static const CGFloat PPChatListContentTopInset = 10.0;
 static const CGFloat PPChatListContentBottomInset = 128.0;
 static const CGFloat PPChatListEstimatedRowHeight = 84.0;
+static const CGFloat PPChatInboxHeaderSideInset = 18.0;
+static const CGFloat PPChatInboxHeaderTopInset = 8.0;
+static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 
 @interface UserChatsViewController ()
 <UITableViewDelegate, UITableViewDataSource, UITableViewDataSourcePrefetching>
@@ -31,15 +35,30 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSArray<ChatThreadModel *> *threads;
 @property (nonatomic, strong) id<FIRListenerRegistration> threadsListener;
+@property (nonatomic, copy) NSString *observedChatIdentity;
 @property (nonatomic, strong) id presenceToken;
 @property (nonatomic, strong) PPEmptyStateConfig *config;
+@property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
+@property (nonatomic, strong) UIView *tableHeaderContainer;
+@property (nonatomic, strong) UIView *inboxHeaderView;
+@property (nonatomic, strong) UIView *inboxAccentRailView;
+@property (nonatomic, strong) UILabel *inboxEyebrowLabel;
+@property (nonatomic, strong) UILabel *inboxTitleLabel;
+@property (nonatomic, strong) UILabel *inboxSummaryLabel;
+@property (nonatomic, strong) UIButton *composeButton;
 @property (nonatomic, strong) UIView *storiesHeaderContainer;
 @property (nonatomic, strong) PPStoriesViewController *storiesViewController;
 @property (nonatomic, strong) NSMutableSet<NSString *> *resolvingOtherUserIDs;
+@property (nonatomic, strong) NSMutableSet<NSString *> *animatedThreadIDs;
 @property (nonatomic, assign) BOOL storiesHeaderVisible;
 @property (nonatomic, assign) BOOL isLoading;
 @property (nonatomic, assign) BOOL isObserving;
 @property (nonatomic, assign) BOOL isPerformingLocalMutation;
+@property (nonatomic, assign) CGFloat storiesHeaderHeight;
+@property (nonatomic, assign) UserChatsState state;
+@property (nonatomic, strong) NSError *loadError;
+@property (nonatomic, assign) BOOL didRunHeaderEntrance;
+@property (nonatomic, assign) BOOL didRunListEntrance;
 
 @end
 
@@ -52,12 +71,16 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 
     self.threads = @[];
     self.isLoading = YES;
+    self.state = UserChatsStateLoading;
     self.resolvingOtherUserIDs = [NSMutableSet set];
+    self.animatedThreadIDs = [NSMutableSet set];
 
     [self pp_configureAppearance];
     [self pp_configureTableView];
+    [self pp_configureInboxHeader];
     [self pp_configureStoriesHeader];
     [self pp_configureEmptyState];
+    [self pp_configureLoadingIndicator];
     [self pp_registerNotifications];
     [self pp_updateEmptyState];
 }
@@ -73,15 +96,20 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [self startObservingOnlineStatus];
+    [self pp_runHeaderEntranceIfNeeded];
+    [self pp_scheduleListEntranceIfNeeded];
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
     if (self.storiesHeaderContainer) {
-        CGFloat height = self.storiesHeaderVisible ? PPChatStoriesHeaderVisibleHeight : PPChatStoriesHeaderHiddenHeight;
+        CGFloat height = self.storiesHeaderVisible
+            ? [self pp_storiesVisibleHeight]
+            : PPChatStoriesHeaderHiddenHeight;
         [self pp_applyStoriesHeaderHeight:height];
     }
+    [self pp_layoutTableHeaderIfNeeded];
     [self pp_applyPremiumBottomContentInset];
 }
 
@@ -95,6 +123,36 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         [[ChatPresenceManager shared] removePresenceObserver:self.presenceToken];
         self.presenceToken = nil;
     }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    BOOL contentSizeChanged = !previousTraitCollection ||
+        ![previousTraitCollection.preferredContentSizeCategory
+          isEqualToString:self.traitCollection.preferredContentSizeCategory];
+    if (contentSizeChanged) {
+        if (self.storiesHeaderVisible) {
+            [self pp_applyStoriesHeaderHeight:[self pp_storiesVisibleHeight]];
+        } else {
+            [self pp_layoutTableHeaderIfNeeded];
+        }
+        [self.tableView setNeedsLayout];
+    }
+}
+
+- (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification {
+    (void)notification;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.inboxHeaderView.transform = CGAffineTransformIdentity;
+        self.composeButton.transform = CGAffineTransformIdentity;
+        self.inboxAccentRailView.transform = CGAffineTransformIdentity;
+        for (UITableViewCell *candidate in self.tableView.visibleCells) {
+            if ([candidate isKindOfClass:ChCell.class]) {
+                [(ChCell *)candidate playEntranceWithOrdinal:0 animated:NO];
+            }
+        }
+    }
+    [self pp_updateEmptyState];
 }
 
 - (void)dealloc {
@@ -111,12 +169,18 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:@"forceReloadThreads"
                                                   object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                                  object:nil];
 }
 
 #pragma mark - Setup
 
 - (void)pp_configureAppearance {
-    self.view.backgroundColor = AppBackgroundClr ;// PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = self.shouldHideStories
+        ? UIColor.clearColor
+        : [PPChatsFunc chatCanvasBackgroundColor];
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 }
 
 - (void)pp_configureTableView {
@@ -144,69 +208,12 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
 
-    [self pp_setupBackgroundGlows];
     [self.view addSubview:self.tableView];
     [NSLayoutConstraint activateConstraints:@[
         [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-    ]];
-}
-
-- (void)pp_setupBackgroundGlows {
-    UIView *glow1 = [UIView new];
-    glow1.translatesAutoresizingMaskIntoConstraints = NO;
-    glow1.backgroundColor = [bageColor colorWithAlphaComponent:0.05];
-    glow1.layer.cornerRadius = 88.0;
-    glow1.clipsToBounds = YES;
-    [self.view addSubview:glow1];
-
-    UIView *glow2 = [UIView new];
-    glow2.translatesAutoresizingMaskIntoConstraints = NO;
-    glow2.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.018];
-    glow2.layer.cornerRadius = 110.0;
-    glow2.clipsToBounds = YES;
-    [self.view addSubview:glow2];
-
-    UIView *glow3 = [UIView new];
-    glow3.translatesAutoresizingMaskIntoConstraints = NO;
-    glow3.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.024];
-    glow3.layer.cornerRadius = 80.0;
-    glow3.clipsToBounds = YES;
-    [self.view addSubview:glow3];
-
-    UIBlurEffect *blurEffect;
-    if (@available(iOS 13.0, *)) {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
-    } else {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
-    }
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.alpha = 0.4;
-    [self.view addSubview:blurView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [glow1.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:18.0],
-        [glow1.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:24.0],
-        [glow1.widthAnchor constraintEqualToConstant:176.0],
-        [glow1.heightAnchor constraintEqualToConstant:176.0],
-
-        [glow2.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
-        [glow2.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-32.0],
-        [glow2.widthAnchor constraintEqualToConstant:220.0],
-        [glow2.heightAnchor constraintEqualToConstant:220.0],
-
-        [glow3.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:28.0],
-        [glow3.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-152.0],
-        [glow3.widthAnchor constraintEqualToConstant:160.0],
-        [glow3.heightAnchor constraintEqualToConstant:160.0],
-
-        [blurView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
 }
 
@@ -226,6 +233,116 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     self.tableView.scrollIndicatorInsets = indicatorInset;
 }
 
+- (void)pp_configureInboxHeader {
+    if (self.shouldHideStories) {
+        return;
+    }
+
+    self.tableHeaderContainer = [[UIView alloc] initWithFrame:CGRectZero];
+    self.tableHeaderContainer.backgroundColor = UIColor.clearColor;
+    self.tableHeaderContainer.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.tableView.tableHeaderView = self.tableHeaderContainer;
+
+    self.inboxHeaderView = [UIView new];
+    self.inboxHeaderView.backgroundColor = UIColor.clearColor;
+    self.inboxHeaderView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.inboxHeaderView.isAccessibilityElement = NO;
+    [self.tableHeaderContainer addSubview:self.inboxHeaderView];
+
+    self.inboxAccentRailView = [UIView new];
+    self.inboxAccentRailView.backgroundColor = [PPChatsFunc chatNeutralAccentColor];
+    self.inboxAccentRailView.layer.cornerRadius = 1.5;
+    self.inboxAccentRailView.userInteractionEnabled = NO;
+    [self.inboxHeaderView addSubview:self.inboxAccentRailView];
+
+    self.inboxEyebrowLabel = [UILabel new];
+    self.inboxEyebrowLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+         scaledFontForFont:([GM boldFontWithSize:11.5]
+                            ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold])];
+    self.inboxEyebrowLabel.adjustsFontForContentSizeCategory = YES;
+    self.inboxEyebrowLabel.textColor = [[PPChatsFunc chatNeutralAccentColor] colorWithAlphaComponent:0.88];
+    self.inboxEyebrowLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.inboxEyebrowLabel.text = kLang(@"notifications_hub_hero_eyebrow");
+    self.inboxEyebrowLabel.isAccessibilityElement = NO;
+    [self.inboxHeaderView addSubview:self.inboxEyebrowLabel];
+
+    self.inboxTitleLabel = [UILabel new];
+    self.inboxTitleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle1]
+         scaledFontForFont:([GM boldFontWithSize:27.0]
+                            ?: [UIFont systemFontOfSize:27.0 weight:UIFontWeightBold])];
+    self.inboxTitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.inboxTitleLabel.textColor = UIColor.labelColor;
+    self.inboxTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.inboxTitleLabel.numberOfLines = 0;
+    self.inboxTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
+    self.inboxTitleLabel.text = kLang(@"pet_chats_tab");
+    [self.inboxHeaderView addSubview:self.inboxTitleLabel];
+
+    self.inboxSummaryLabel = [UILabel new];
+    self.inboxSummaryLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+         scaledFontForFont:([GM MidFontWithSize:14.0]
+                            ?: [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline])];
+    self.inboxSummaryLabel.adjustsFontForContentSizeCategory = YES;
+    self.inboxSummaryLabel.textColor = UIColor.secondaryLabelColor;
+    self.inboxSummaryLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.inboxSummaryLabel.numberOfLines = 0;
+    [self.inboxHeaderView addSubview:self.inboxSummaryLabel];
+
+    self.composeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.composeButton.tintColor = [PPChatsFunc chatNeutralAccentColor];
+    self.composeButton.layer.cornerRadius = PPChatInboxComposeButtonSize * 0.5;
+    self.composeButton.clipsToBounds = YES;
+    UIImageSymbolConfiguration *symbolConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:16.0
+                                                        weight:UIImageSymbolWeightSemibold];
+    UIImage *composeImage = [UIImage systemImageNamed:@"square.and.pencil"
+                                     withConfiguration:symbolConfig];
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration glassButtonConfiguration];
+        configuration.image = composeImage;
+        self.composeButton.configuration = configuration;
+    } else {
+        self.composeButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
+        [self.composeButton setImage:composeImage forState:UIControlStateNormal];
+    }
+    [self.composeButton addTarget:self
+                           action:@selector(startNewChat)
+                 forControlEvents:UIControlEventTouchUpInside];
+    self.composeButton.accessibilityLabel = kLang(@"empty_chats_button");
+    self.composeButton.accessibilityHint = kLang(@"chat_inbox_compose_hint");
+    [self.inboxHeaderView addSubview:self.composeButton];
+
+    self.inboxHeaderView.accessibilityElements = @[
+        self.inboxTitleLabel,
+        self.inboxSummaryLabel,
+        self.composeButton
+    ];
+    [self pp_updateInboxSummaryAnimated:NO];
+
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        self.inboxHeaderView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+        self.composeButton.transform = CGAffineTransformMakeScale(0.92, 0.92);
+        self.inboxAccentRailView.transform = CGAffineTransformMakeScale(1.0, 0.08);
+    }
+}
+
+- (void)pp_configureLoadingIndicator {
+    self.loadingIndicator = [[UIActivityIndicatorView alloc]
+                             initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    self.loadingIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+    self.loadingIndicator.hidesWhenStopped = YES;
+    self.loadingIndicator.color = [PPChatsFunc chatNeutralAccentColor];
+    self.loadingIndicator.accessibilityLabel = kLang(@"chat_inbox_loading");
+    [self.view addSubview:self.loadingIndicator];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.loadingIndicator.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.loadingIndicator.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
+    ]];
+}
+
 - (void)pp_configureStoriesHeader {
     if (self.shouldHideStories) {
         return;
@@ -239,15 +356,22 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         width = CGRectGetWidth(self.view.bounds);
     }
 
+    if (!self.tableHeaderContainer) {
+        self.tableHeaderContainer = [[UIView alloc] initWithFrame:CGRectZero];
+        self.tableHeaderContainer.backgroundColor = UIColor.clearColor;
+        self.tableView.tableHeaderView = self.tableHeaderContainer;
+    }
+
+    self.storiesHeaderHeight = PPChatStoriesHeaderHiddenHeight;
     self.storiesHeaderContainer =
-    [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, PPChatStoriesHeaderHiddenHeight)];
+    [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, self.storiesHeaderHeight)];
     self.storiesHeaderContainer.backgroundColor = UIColor.clearColor;
     self.storiesHeaderContainer.clipsToBounds = NO;
     self.storiesHeaderContainer.layer.cornerRadius = 22;
     if (@available(iOS 13.0, *)) {
         self.storiesHeaderContainer.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    self.tableView.tableHeaderView = self.storiesHeaderContainer;
+    [self.tableHeaderContainer addSubview:self.storiesHeaderContainer];
 
     PPStoriesViewController *storiesVC = [PPStoriesViewController new];
     storiesVC.sectionTitleLocalizationKey = @"chat_stories_title";
@@ -282,8 +406,8 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 
 - (void)pp_configureEmptyState {
     self.config = [PPEmptyStateConfig new];
-    self.config.animationName = @"chats2.json";
-    self.config.isNetworkFile = YES;
+    self.config.animationName = @"";
+    self.config.isNetworkFile = NO;
     self.config.title = kLang(@"empty_chats_title");
     self.config.subTitle = kLang(@"empty_chats_subtitle");
     self.config.buttonTitle = kLang(@"empty_chats_button");
@@ -298,12 +422,36 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
                                                object:nil];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(forceReloadThreads)
+                                             selector:@selector(pp_forceReloadThreadsNotification:)
                                                  name:@"forceReloadThreads"
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_reduceMotionStatusDidChange:)
+                                                 name:UIAccessibilityReduceMotionStatusDidChangeNotification
                                                object:nil];
 }
 
+- (void)pp_forceReloadThreadsNotification:(NSNotification *)notification {
+    (void)notification;
+    [self forceReloadThreads];
+}
+
 #pragma mark - Stories Header
+
+- (CGFloat)pp_storiesVisibleHeight {
+    CGFloat width = CGRectGetWidth(self.tableView.bounds);
+    if (width <= 0.0) {
+        width = CGRectGetWidth(self.view.bounds);
+    }
+    if (width <= 0.0) {
+        width = UIScreen.mainScreen.bounds.size.width;
+    }
+
+    CGFloat requiredHeight =
+        [self.storiesViewController requiredContentHeightForWidth:width];
+    return MAX(PPChatStoriesHeaderVisibleHeight, requiredHeight);
+}
 
 - (void)pp_setStoriesHeaderVisible:(BOOL)visible animated:(BOOL)animated {
     if (self.shouldHideStories) {
@@ -314,7 +462,9 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     }
 
     self.storiesHeaderVisible = visible;
-    CGFloat targetHeight = visible ? PPChatStoriesHeaderVisibleHeight : PPChatStoriesHeaderHiddenHeight;
+    CGFloat targetHeight = visible
+        ? [self pp_storiesVisibleHeight]
+        : PPChatStoriesHeaderHiddenHeight;
 
     void (^changes)(void) = ^{
         self.storiesViewController.view.hidden = NO;
@@ -344,6 +494,15 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         return;
     }
 
+    self.storiesHeaderHeight = height;
+    [self pp_layoutTableHeaderIfNeeded];
+}
+
+- (void)pp_layoutTableHeaderIfNeeded {
+    if (!self.tableHeaderContainer) {
+        return;
+    }
+
     CGFloat width = CGRectGetWidth(self.tableView.bounds);
     if (width <= 0.0) {
         width = CGRectGetWidth(self.view.bounds);
@@ -352,16 +511,242 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         width = UIScreen.mainScreen.bounds.size.width;
     }
 
-    CGRect frame = self.storiesHeaderContainer.frame;
-    BOOL sizeChanged = fabs(frame.size.height - height) > 0.5 || fabs(frame.size.width - width) > 0.5;
+    CGFloat nextY = 0.0;
+    if (self.inboxHeaderView) {
+        BOOL isRTL = [Language isRTL];
+        BOOL usesAccessibilityLayout =
+            UIContentSizeCategoryIsAccessibilityCategory(
+                self.traitCollection.preferredContentSizeCategory);
+        CGFloat headerWidth = MIN(MAX(0.0, width - (PPChatInboxHeaderSideInset * 2.0)), 720.0);
+        CGFloat headerX = floor((width - headerWidth) * 0.5);
+        CGFloat padding = PPSpaceBase;
+        CGFloat actionX = isRTL
+            ? padding
+            : headerWidth - padding - PPChatInboxComposeButtonSize;
+        self.composeButton.frame = CGRectMake(actionX,
+                                              PPSpaceMD,
+                                              PPChatInboxComposeButtonSize,
+                                              PPChatInboxComposeButtonSize);
+
+        CGFloat actionAllowance = PPChatInboxComposeButtonSize + PPSpaceMD;
+        CGFloat textX = isRTL ? padding + actionAllowance : padding;
+        CGFloat textWidth = MAX(0.0, headerWidth - (padding * 2.0) - actionAllowance);
+        CGFloat eyebrowY = PPSpaceMD;
+        CGFloat eyebrowHeight = MAX(self.inboxEyebrowLabel.font.lineHeight,
+                                    ceil([self.inboxEyebrowLabel sizeThatFits:
+                                          CGSizeMake(textWidth, CGFLOAT_MAX)].height));
+        self.inboxEyebrowLabel.frame = CGRectMake(textX,
+                                                  eyebrowY,
+                                                  textWidth,
+                                                  eyebrowHeight);
+
+        CGFloat titleY = CGRectGetMaxY(self.inboxEyebrowLabel.frame) + PPSpaceXXS;
+        if (usesAccessibilityLayout) {
+            textX = padding;
+            textWidth = MAX(0.0, headerWidth - (padding * 2.0));
+            titleY = MAX(titleY, CGRectGetMaxY(self.composeButton.frame) + PPSpaceSM);
+        }
+        CGFloat titleHeight = MAX(self.inboxTitleLabel.font.lineHeight,
+                                  ceil([self.inboxTitleLabel sizeThatFits:
+                                        CGSizeMake(textWidth, CGFLOAT_MAX)].height));
+        self.inboxTitleLabel.frame = CGRectMake(textX,
+                                                titleY,
+                                                textWidth,
+                                                titleHeight);
+
+        CGFloat summaryY = CGRectGetMaxY(self.inboxTitleLabel.frame) + PPSpaceXS;
+        CGFloat summaryHeight = MAX(self.inboxSummaryLabel.font.lineHeight,
+                                    ceil([self.inboxSummaryLabel sizeThatFits:
+                                          CGSizeMake(textWidth, CGFLOAT_MAX)].height));
+        self.inboxSummaryLabel.frame = CGRectMake(textX,
+                                                  summaryY,
+                                                  textWidth,
+                                                  summaryHeight);
+
+        CGFloat headerHeight = MAX(CGRectGetMaxY(self.inboxSummaryLabel.frame) + PPSpaceMD,
+                                   CGRectGetMaxY(self.composeButton.frame) + PPSpaceMD);
+        self.inboxHeaderView.frame = CGRectMake(headerX,
+                                                PPChatInboxHeaderTopInset,
+                                                headerWidth,
+                                                headerHeight);
+        CGFloat railX = isRTL ? headerWidth - 3.0 : 0.0;
+        self.inboxAccentRailView.frame = CGRectMake(railX,
+                                                    PPSpaceMD,
+                                                    3.0,
+                                                    MAX(0.0, headerHeight - (PPSpaceMD * 2.0)));
+        nextY = CGRectGetMaxY(self.inboxHeaderView.frame) + PPSpaceSM;
+    }
+
+    if (self.storiesHeaderContainer) {
+        self.storiesHeaderContainer.frame = CGRectMake(0.0,
+                                                       nextY,
+                                                       width,
+                                                       self.storiesHeaderHeight);
+        nextY = CGRectGetMaxY(self.storiesHeaderContainer.frame);
+    }
+
+    CGRect headerFrame = self.tableHeaderContainer.frame;
+    BOOL sizeChanged = fabs(headerFrame.size.width - width) > 0.5 ||
+        fabs(headerFrame.size.height - nextY) > 0.5;
     if (!sizeChanged) {
         return;
     }
+    self.tableHeaderContainer.frame = CGRectMake(0.0, 0.0, width, nextY);
+    self.tableView.tableHeaderView = self.tableHeaderContainer;
+}
 
-    frame.origin = CGPointZero;
-    frame.size = CGSizeMake(width, height);
-    self.storiesHeaderContainer.frame = frame;
-    self.tableView.tableHeaderView = self.storiesHeaderContainer;
+- (NSInteger)pp_totalUnreadCount {
+    NSInteger unreadCount = 0;
+    for (ChatThreadModel *thread in self.threads ?: @[]) {
+        unreadCount += MAX(thread.unreadCount, 0);
+    }
+    return unreadCount;
+}
+
+- (NSString *)pp_pluralCategoryForCount:(NSInteger)count {
+    if (![Language isRTL]) {
+        return count == 1 ? @"one" : @"other";
+    }
+
+    NSInteger absoluteCount = labs(count);
+    NSInteger moduloHundred = absoluteCount % 100;
+    if (absoluteCount == 0) return @"zero";
+    if (absoluteCount == 1) return @"one";
+    if (absoluteCount == 2) return @"two";
+    if (moduloHundred >= 3 && moduloHundred <= 10) return @"few";
+    if (moduloHundred >= 11 && moduloHundred <= 99) return @"many";
+    return @"other";
+}
+
+- (NSString *)pp_localizedCountPhraseWithPrefix:(NSString *)prefix
+                                           count:(NSInteger)count
+{
+    NSString *category = [self pp_pluralCategoryForCount:count];
+    NSString *key = [NSString stringWithFormat:@"%@_%@", prefix, category];
+    NSString *localizedValue = kLang(key);
+    BOOL includesNumber = [category isEqualToString:@"few"] ||
+        [category isEqualToString:@"many"] ||
+        [category isEqualToString:@"other"];
+    return includesNumber
+        ? [NSString stringWithFormat:localizedValue, (long)count]
+        : localizedValue;
+}
+
+- (void)pp_updateInboxSummaryAnimated:(BOOL)animated {
+    if (!self.inboxSummaryLabel) {
+        return;
+    }
+
+    NSInteger threadCount = self.threads.count;
+    NSInteger unreadCount = [self pp_totalUnreadCount];
+    NSString *summary = nil;
+    if (self.loadError && threadCount > 0) {
+        summary = kLang(@"chat_inbox_stale_summary");
+    } else if (threadCount == 0) {
+        summary = kLang(@"empty_chats_subtitle");
+    } else {
+        NSString *conversationPhrase =
+            [self pp_localizedCountPhraseWithPrefix:@"chat_inbox_conversation"
+                                              count:threadCount];
+        NSString *activityPhrase = unreadCount > 0
+            ? [self pp_localizedCountPhraseWithPrefix:@"chat_inbox_unread"
+                                                count:unreadCount]
+            : kLang(@"chat_inbox_all_caught_up");
+        summary = [NSString stringWithFormat:kLang(@"chat_inbox_summary_join_format"),
+                   activityPhrase,
+                   conversationPhrase];
+    }
+
+    UIColor *accentColor = [PPChatsFunc chatNeutralAccentColor];
+    void (^changes)(void) = ^{
+        self.inboxSummaryLabel.text = summary ?: @"";
+        self.inboxAccentRailView.backgroundColor = unreadCount > 0
+            ? accentColor
+            : UIColor.tertiaryLabelColor;
+        self.inboxAccentRailView.alpha = unreadCount > 0 ? 1.0 : 0.58;
+        [self pp_layoutTableHeaderIfNeeded];
+    };
+
+    if (animated && self.view.window && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView transitionWithView:self.inboxSummaryLabel
+                          duration:0.20
+                           options:(UIViewAnimationOptionTransitionCrossDissolve |
+                                    UIViewAnimationOptionBeginFromCurrentState)
+                        animations:changes
+                        completion:nil];
+    } else {
+        changes();
+    }
+}
+
+- (void)pp_runHeaderEntranceIfNeeded {
+    if (self.didRunHeaderEntrance || !self.inboxHeaderView) {
+        return;
+    }
+    self.didRunHeaderEntrance = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.inboxHeaderView.transform = CGAffineTransformIdentity;
+        self.composeButton.transform = CGAffineTransformIdentity;
+        self.inboxAccentRailView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.34
+                          delay:0.02
+                        options:(UIViewAnimationOptionCurveEaseOut |
+                                 UIViewAnimationOptionBeginFromCurrentState |
+                                 UIViewAnimationOptionAllowUserInteraction)
+                     animations:^{
+        self.inboxHeaderView.transform = CGAffineTransformIdentity;
+        self.composeButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.38
+                          delay:0.08
+                        options:(UIViewAnimationOptionCurveEaseOut |
+                                 UIViewAnimationOptionBeginFromCurrentState |
+                                 UIViewAnimationOptionAllowUserInteraction)
+                     animations:^{
+        self.inboxAccentRailView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_scheduleListEntranceIfNeeded {
+    if (self.didRunListEntrance || self.threads.count == 0 || !self.view.window) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.didRunListEntrance || self.threads.count == 0 || !self.view.window) {
+            return;
+        }
+        [self.tableView layoutIfNeeded];
+        NSArray<NSIndexPath *> *visibleRows =
+            [self.tableView.indexPathsForVisibleRows sortedArrayUsingSelector:@selector(compare:)];
+        if (visibleRows.count == 0) {
+            return;
+        }
+
+        self.didRunListEntrance = YES;
+        NSInteger ordinal = 0;
+        for (NSIndexPath *indexPath in visibleRows) {
+            if (ordinal >= 5) {
+                break;
+            }
+            ChatThreadModel *thread = [self pp_threadAtIndexPath:indexPath];
+            ChCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+            if (thread.ID.length == 0 ||
+                [self.animatedThreadIDs containsObject:thread.ID] ||
+                ![cell isKindOfClass:ChCell.class]) {
+                continue;
+            }
+            [self.animatedThreadIDs addObject:thread.ID];
+            [cell playEntranceWithOrdinal:ordinal
+                                 animated:!UIAccessibilityIsReduceMotionEnabled()];
+            ordinal += 1;
+        }
+    });
 }
 
 #pragma mark - Data Helpers
@@ -386,6 +771,11 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     }
 
     return [UserManager sharedManager].currentUser.ID ?: @"";
+}
+
+- (BOOL)pp_hasAuthenticatedSession {
+    return [FIRAuth auth].currentUser != nil ||
+        [UserManager sharedManager].isUserLoggedIn;
 }
 
 - (NSDate *)pp_activityDateForThread:(ChatThreadModel *)thread {
@@ -419,63 +809,53 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 }
 
 - (void)pp_updateEmptyState {
+    BOOL showsInitialLoading = self.state == UserChatsStateLoading && self.threads.count == 0;
+    if (showsInitialLoading) {
+        [self.loadingIndicator startAnimating];
+        [PPEmptyStateHelper updateEmptyStateForListView:(UICollectionView *)self.tableView
+                                              dataCount:1
+                                                 config:self.config];
+        self.tableView.accessibilityValue = kLang(@"chat_inbox_loading");
+        return;
+    }
+
+    [self.loadingIndicator stopAnimating];
+    self.tableView.accessibilityValue = nil;
+
+    if (self.state == UserChatsStateError) {
+        self.config.animationName = @"404.json";
+        self.config.isNetworkFile = NO;
+        self.config.title = kLang(@"load_error_title");
+        self.config.subTitle = kLang(@"chat_inbox_load_error_subtitle");
+        self.config.buttonTitle = kLang(@"empty_retry_button");
+        self.config.action = @selector(forceReloadThreads);
+    } else if (![self pp_hasAuthenticatedSession]) {
+        self.config.animationName = @"";
+        self.config.isNetworkFile = NO;
+        self.config.title = kLang(@"chat_sign_in_required_title");
+        self.config.subTitle = kLang(@"chat_sign_in_required_subtitle");
+        self.config.buttonTitle = kLang(@"chat_sign_in_action");
+        self.config.action = @selector(startNewChat);
+    } else {
+        self.config.animationName = @"";
+        self.config.isNetworkFile = NO;
+        self.config.title = kLang(@"empty_chats_title");
+        self.config.subTitle = kLang(@"empty_chats_subtitle");
+        self.config.buttonTitle = kLang(@"empty_chats_button");
+        self.config.action = @selector(startNewChat);
+    }
+
     [PPEmptyStateHelper updateEmptyStateForListView:(UICollectionView *)self.tableView
                                           dataCount:self.threads.count
                                              config:self.config];
-}
-
-- (void)pp_animatePromotedTopThreadCell {
-    if (self.threads.count == 0) {
-        return;
-    }
-
-    NSIndexPath *topIndexPath = [NSIndexPath indexPathForRow:0 inSection:0];
-    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:topIndexPath];
-    if (!cell) {
-        return;
-    }
-
-    cell.transform = CGAffineTransformMakeTranslation(0.0, -10.0);
-    cell.alpha = 0.88;
-
-    [UIView animateWithDuration:0.40
-                          delay:0.0
-         usingSpringWithDamping:0.80
-          initialSpringVelocity:0.88
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        cell.transform = CGAffineTransformIdentity;
-        cell.alpha = 1.0;
-    } completion:nil];
+    [self pp_updateInboxSummaryAnimated:NO];
 }
 
 - (void)pp_applyThreadsSnapshot:(NSArray<ChatThreadModel *> *)newThreads animated:(BOOL)animated {
-    NSArray<ChatThreadModel *> *previousThreads = self.threads ?: @[];
-    NSString *previousTopThreadID = previousThreads.firstObject.ID ?: @"";
-
     self.threads = newThreads ?: @[];
-
-    if (!animated || previousThreads.count == 0 || self.threads.count == 0) {
-        [self reloadTableAnimated];
-        return;
-    }
-
-    NSString *newTopThreadID = self.threads.firstObject.ID ?: @"";
-    BOOL promotedThreadChanged = newTopThreadID.length > 0 && ![newTopThreadID isEqualToString:previousTopThreadID];
-
-    if (!promotedThreadChanged) {
-        [self reloadTableAnimated];
-        return;
-    }
-
-    [UIView transitionWithView:self.tableView
-                      duration:0.24
-                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
-                    animations:^{
-        [self.tableView reloadData];
-    } completion:^(__unused BOOL finished) {
-        [self pp_animatePromotedTopThreadCell];
-    }];
+    [self pp_updateInboxSummaryAnimated:animated];
+    [self reloadTableAnimated];
+    [self pp_scheduleListEntranceIfNeeded];
 }
 
 - (NSString *)pp_otherUserIDForThread:(ChatThreadModel *)thread {
@@ -520,16 +900,34 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     }
 
     NSString *currentUserID = [self pp_currentChatIdentity];
-    if (currentUserID.length == 0) {
+    BOOL hasAuthenticatedSession = [self pp_hasAuthenticatedSession];
+    if (currentUserID.length == 0 || !hasAuthenticatedSession) {
         self.isLoading = NO;
+        self.state = UserChatsStateEmpty;
+        self.loadError = nil;
+        self.observedChatIdentity = nil;
         self.threads = @[];
+        self.didRunListEntrance = NO;
+        [self.animatedThreadIDs removeAllObjects];
         [self reloadTableAnimated];
         [self pp_updateEmptyState];
         return;
     }
 
+    if (self.observedChatIdentity.length > 0 &&
+        ![self.observedChatIdentity isEqualToString:currentUserID]) {
+        self.threads = @[];
+        self.didRunListEntrance = NO;
+        [self.animatedThreadIDs removeAllObjects];
+        [self reloadTableAnimated];
+    }
+
     self.isObserving = YES;
     self.isLoading = YES;
+    self.observedChatIdentity = currentUserID;
+    self.loadError = nil;
+    self.state = self.threads.count > 0 ? UserChatsStateLoaded : UserChatsStateLoading;
+    [self pp_updateEmptyState];
 
     __weak typeof(self) weakSelf = self;
     self.threadsListener =
@@ -538,6 +936,20 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) {
+                return;
+            }
+            NSString *liveIdentity = [self pp_currentChatIdentity];
+            if (!self.isObserving ||
+                ![self.observedChatIdentity isEqualToString:currentUserID] ||
+                ![liveIdentity isEqualToString:currentUserID]) {
+                if (![liveIdentity isEqualToString:currentUserID]) {
+                    [self stopObservingChats];
+                    self.threads = @[];
+                    self.loadError = nil;
+                    self.state = UserChatsStateEmpty;
+                    [self reloadTableAnimated];
+                    [self pp_updateEmptyState];
+                }
                 return;
             }
 
@@ -554,6 +966,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 
 - (void)forceReloadThreads {
     [self stopObservingChats];
+    self.loadError = nil;
     [self startObservingChats];
 }
 
@@ -568,8 +981,22 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     self.isLoading = NO;
 
     if (error) {
-        self.threads = @[];
-        [self reloadTableAnimated];
+        BOOL hasAuthenticatedSession = [self pp_hasAuthenticatedSession];
+        if (!hasAuthenticatedSession) {
+            self.threads = @[];
+            self.observedChatIdentity = nil;
+            self.loadError = nil;
+            self.state = UserChatsStateEmpty;
+            [self reloadTableAnimated];
+            [self pp_updateEmptyState];
+            return;
+        }
+        self.loadError = error;
+        self.state = self.threads.count > 0 ? UserChatsStateLoaded : UserChatsStateError;
+        if (self.threads.count > 0) {
+            [PPHUD showError:kLang(@"chat_inbox_stale_summary")];
+            [self pp_updateInboxSummaryAnimated:YES];
+        }
         [self pp_updateEmptyState];
         return;
     }
@@ -583,10 +1010,13 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     }
 
     NSArray<ChatThreadModel *> *sortedThreads = [self pp_sortedVisibleThreads:visibleThreads.copy];
+    self.loadError = nil;
+    self.state = sortedThreads.count > 0 ? UserChatsStateLoaded : UserChatsStateEmpty;
     [self pp_applyThreadsSnapshot:sortedThreads animated:YES];
     [self pp_resolveMissingOtherUsersForThreads:self.threads];
     [self startObservingOnlineStatus];
     [self pp_updateEmptyState];
+    [self pp_scheduleListEntranceIfNeeded];
 }
 
 - (void)pp_resolveMissingOtherUsersForThreads:(NSArray<ChatThreadModel *> *)threads {
@@ -795,6 +1225,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     // Sort and apply the snapshot so the order is updated if a new message has arrived
     NSArray<ChatThreadModel *> *sortedThreads = [self pp_sortedVisibleThreads:self.threads];
     [self pp_applyThreadsSnapshot:sortedThreads animated:YES];
+    [self pp_updateInboxSummaryAnimated:YES];
 }
 
 #pragma mark - Table Refresh
@@ -830,7 +1261,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     __weak typeof(self) weakSelf = self;
     UIContextualAction *deleteAction =
     [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
-                                            title:kLang(@"deleteCard")
+                                            title:kLang(@"Delete")
                                           handler:^(__unused UIContextualAction *action,
                                                     __unused UIView *sourceView,
                                                     void (^completionHandler)(BOOL)) {
@@ -840,7 +1271,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
 
-        [self pp_deleteThreadAtIndexPath:indexPath completion:completionHandler];
+        completionHandler(NO);
+        [self pp_presentDeleteConfirmationAtIndexPath:indexPath];
     }];
     deleteAction.backgroundColor = UIColor.systemRedColor;
 
@@ -848,6 +1280,36 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
     configuration.performsFirstActionWithFullSwipe = NO;
     return configuration;
+}
+
+- (void)pp_presentDeleteConfirmationAtIndexPath:(NSIndexPath *)indexPath {
+    ChatThreadModel *thread = [self pp_threadAtIndexPath:indexPath];
+    if (!thread) {
+        return;
+    }
+
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:kLang(@"chat_delete_thread_title")
+                                            message:kLang(@"chat_delete_thread_message")
+                                     preferredStyle:UIAlertControllerStyleAlert];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel")
+                                             style:UIAlertActionStyleCancel
+                                           handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Delete")
+                                             style:UIAlertActionStyleDestructive
+                                           handler:^(__unused UIAlertAction *action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        NSIndexPath *currentIndexPath = [self indexPathForChat:thread];
+        if (currentIndexPath) {
+            [self pp_deleteThreadAtIndexPath:currentIndexPath
+                                  completion:^(__unused BOOL finished) {}];
+        }
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)pp_deleteThreadAtIndexPath:(NSIndexPath *)indexPath
@@ -869,11 +1331,38 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
         [self.tableView deleteRowsAtIndexPaths:@[indexPath]
                               withRowAnimation:UITableViewRowAnimationFade];
     } completion:^(__unused BOOL finished) {
+        self.state = self.threads.count > 0 ? UserChatsStateLoaded : UserChatsStateEmpty;
         [self pp_updateEmptyState];
+        [self pp_updateInboxSummaryAnimated:YES];
     }];
 
+    __weak typeof(self) weakSelf = self;
     [[ChManager sharedManager] deleteChatThreadWithID:thread.ID
-                                           completion:^(__unused NSError *error) {
+                                           completion:^(NSError *error) {
+        if (!error) {
+            return;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            self.isPerformingLocalMutation = NO;
+            BOOL alreadyRestored = [self.threads indexOfObjectPassingTest:
+                ^BOOL(ChatThreadModel *candidate, __unused NSUInteger idx, __unused BOOL *stop) {
+                    return [candidate.ID isEqualToString:thread.ID];
+                }] != NSNotFound;
+            if (!alreadyRestored) {
+                NSMutableArray<ChatThreadModel *> *restoredThreads = [self.threads mutableCopy];
+                [restoredThreads addObject:thread];
+                self.threads = [self pp_sortedVisibleThreads:restoredThreads.copy];
+                self.state = UserChatsStateLoaded;
+                [self reloadTableAnimated];
+                [self pp_updateEmptyState];
+                [self pp_updateInboxSummaryAnimated:YES];
+            }
+            [PPHUD showError:kLang(@"chat_delete_thread_failed")];
+        });
     }];
 
     completion(YES);
@@ -963,6 +1452,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 }
 
 - (void)startNewChat {
+    if (![self pp_hasAuthenticatedSession]) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
     NSString *currentUID = [self pp_currentChatIdentity];
     NSArray<UserModel *> *options =
     [AppMgr.usersArray filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(UserModel *user, __unused NSDictionary *bindings) {

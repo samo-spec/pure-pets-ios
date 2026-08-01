@@ -194,7 +194,7 @@ final class PPPetAdHeroScrollViewController<
     private let refreshControl = UIRefreshControl()
 
     private var contentHeightConstraint: NSLayoutConstraint!
-    private var heroContentConstraint: NSLayoutConstraint!
+    private var heroHeightConstraint: NSLayoutConstraint!
     private var minimumHeroHeight: CGFloat
     private var expandedHeroHeight: CGFloat
     private var hasAppliedInitialOffset = false
@@ -241,7 +241,6 @@ final class PPPetAdHeroScrollViewController<
         configureScrollView()
         installHeroController()
         installContentController()
-        installHeroContentConstraint()
         scrollView.sendSubviewToBack(heroController.view)
         scrollView.bringSubviewToFront(contentController.view)
         scrollView.bringSubviewToFront(refreshControl)
@@ -404,15 +403,6 @@ final class PPPetAdHeroScrollViewController<
         scrollView.bringSubviewToFront(contentController.view)
     }
 
-    private func installHeroContentConstraint() {
-        heroContentConstraint = heroController.view.bottomAnchor.constraint(
-            equalTo: contentController.view.topAnchor,
-            constant: PPPetAdViewerStyle.sheetOverlap
-        )
-        heroContentConstraint.priority = .defaultHigh
-        heroContentConstraint.isActive = true
-    }
-
     private func installHeroController() {
         addChild(heroController)
         heroController.view.translatesAutoresizingMaskIntoConstraints =
@@ -423,6 +413,12 @@ final class PPPetAdHeroScrollViewController<
         scrollView.addSubview(heroController.view)
         scrollView.sendSubviewToBack(heroController.view)
 
+        heroHeightConstraint = heroController.view.heightAnchor.constraint(
+            equalToConstant: max(
+                expandedHeroHeight + PPPetAdViewerStyle.sheetOverlap,
+                1
+            )
+        )
         NSLayoutConstraint.activate([
             heroController.view.topAnchor.constraint(
                 equalTo: scrollView.frameLayoutGuide.topAnchor,
@@ -433,7 +429,8 @@ final class PPPetAdHeroScrollViewController<
             ),
             heroController.view.trailingAnchor.constraint(
                 equalTo: scrollView.frameLayoutGuide.trailingAnchor
-            )
+            ),
+            heroHeightConstraint
         ])
         heroController.didMove(toParent: self)
         scrollView.bringSubviewToFront(refreshControl)
@@ -485,6 +482,19 @@ final class PPPetAdHeroScrollViewController<
             min(max(visibleInsetHeight, minimum), expanded)
         let progress =
             (expanded - clampedVisibleHeight) / collapseRange
+
+        // The hero lives entirely in viewport coordinates. Giving it an
+        // explicit height avoids coupling a frame-layout anchor to the
+        // content-layout guide, which can otherwise produce a one-frame
+        // discontinuity while intrinsic sheet height is being reconciled.
+        // Pulling past rest is still elastic, while collapse is clamped to
+        // the navigation-safe minimum.
+        let resolvedHeroHeight =
+            max(visibleInsetHeight, minimum)
+            + PPPetAdViewerStyle.sheetOverlap
+        if abs(heroHeightConstraint.constant - resolvedHeroHeight) > 0.5 {
+            heroHeightConstraint.constant = resolvedHeroHeight
+        }
 
         onCollapseProgressChanged?(progress)
     }

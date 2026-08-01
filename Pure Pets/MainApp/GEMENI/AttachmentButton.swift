@@ -26,6 +26,8 @@ private enum PPChatAttachmentPalette {
 /// to visually transform it into an ✕ (cancel) icon when the attachment panel is open.
 struct AttachmentButton: View {
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// When `true`, the icon rotates 137°. Bound from the parent to the `+` button only.
     @Binding var needsRotation: Bool
     /// Reserved for a press-ring feedback animation.
@@ -35,8 +37,26 @@ struct AttachmentButton: View {
     var iconName: String
     /// Point size of the SF Symbol. Defaults to 20; the `+` button uses 24.
     var iconSize: CGFloat = 20
+    /// Host-owned tint keeps the shared attachment control coherent across
+    /// Nova and user-to-user messaging without forking its behavior.
+    var tint: Color = PPChatAttachmentPalette.accent
+    /// Optional selected surface used by the expandable attachment trigger.
+    var selectedSurface: Color = .clear
+    /// Existing Nova hosts retain their original rotation; messaging opts into
+    /// the shorter, direct plus-to-close motion.
+    var expandedRotationDegrees: Double = 137
     /// Closure executed when the button is tapped.
     var action: () -> Void
+
+    private var rotationAnimation: Animation {
+        if reduceMotion {
+            return .easeOut(duration: 0.01)
+        }
+        if abs(expandedRotationDegrees - 137) < 0.001 {
+            return .easeIn(duration: 0.25).speed(1.5)
+        }
+        return .timingCurve(0.2, 0, 0, 1, duration: 0.20)
+    }
 
     var body: some View {
         Button {
@@ -46,13 +66,17 @@ struct AttachmentButton: View {
             Image(systemName: iconName)
                 .renderingMode(.template)
                 .font(.system(size: iconSize, weight: .medium, design: .rounded))
-                .foregroundColor(PPChatAttachmentPalette.accent)
+                .foregroundColor(tint)
                 .padding()
                 .frame(width: 44, height: 44)
-                .background(Color.clear)
+                .background(needsRotation ? selectedSurface : Color.clear)
                 .cornerRadius(22)
-                .rotationEffect(needsRotation ? .degrees(137) : .degrees(0))
-                .animation(.easeIn(duration: 0.25).speed(1.5), value: needsRotation)
+                .rotationEffect(
+                    needsRotation
+                        ? .degrees(expandedRotationDegrees)
+                        : .degrees(0)
+                )
+                .animation(rotationAnimation, value: needsRotation)
                 .overlay(
                     Circle()
                         .opacity(buttonPressAnimation ? 0.1 : 0)

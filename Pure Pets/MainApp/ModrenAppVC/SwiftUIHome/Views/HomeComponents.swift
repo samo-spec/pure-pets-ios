@@ -1129,7 +1129,7 @@ struct HomeMyPetProfileCard: View {
                 .minimumScaleFactor(0.84)
                 .allowsTightening(true)
                 .frame(minHeight: 30, alignment: .leading)
-                .padding(.top, PPSpace.xxs)
+                .padding(.top, PPSpace.sm)
 
             Text(subtitle)
                 .font(HomeFont.medium(13))
@@ -1772,7 +1772,7 @@ struct HomePriorityGrid: View {
         static let columnSpacing = PPSpace.md
         static let cardSpacing = PPSpace.sm
         static let featuredCircleSize: CGFloat = 108
-        static let featuredCircleTopInset = PPSpace.sm
+        static let featuredCircleTopInset = PPSpace.md
         static let featuredCardWidth: CGFloat = 148
     }
 

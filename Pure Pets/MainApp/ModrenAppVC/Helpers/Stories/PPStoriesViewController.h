@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)reloadStories;
 - (void)startObservingStories;
 - (void)stopObservingStories;
+- (CGFloat)requiredContentHeightForWidth:(CGFloat)width;
 @end
 
 NS_ASSUME_NONNULL_END

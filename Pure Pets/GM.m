@@ -2343,7 +2343,7 @@ CGSize getImageSizeSafely(UIImage *image) {
 
 +(void)showMessagingWithChat:(ChatThreadModel *)chat FromController:(UIViewController *)controller
 {
-    ChMessagingController *chatVC = [[ChMessagingController alloc] initWithChatThread:chat];
+    PPMessagingViewController *chatVC = [[PPMessagingViewController alloc] initWithChatThread:chat];
     [PPFunc presentSheetFrom:controller
                      sheetVC:chatVC
                  detentStyle:PPSheetDetentStyleSemiLargAndLarge];

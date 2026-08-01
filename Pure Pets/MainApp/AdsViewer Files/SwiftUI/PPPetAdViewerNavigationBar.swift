@@ -86,11 +86,11 @@ struct PPPetAdViewerNavigationBar: View {
             } label: {
                 favoriteLabel
             } primaryAction: {
+                guard !isFavoriteWorking else { return }
                 onFavorite()
             }
             .menuIndicator(.hidden)
             .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
-            .disabled(isFavoriteWorking)
             .accessibilityLabel(favoriteAccessibilityLabel)
             .accessibilityValue(favoriteAccessibilityValue)
             .accessibilityHint(
@@ -152,13 +152,11 @@ struct PPPetAdViewerNavigationBar: View {
         } label: {
             circleControl(
                 symbol: "ellipsis",
-                tint: .white,
-                showsProgress: isReportWorking
+                tint: .white
             )
         }
         .menuIndicator(.hidden)
         .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
-        .disabled(isReportWorking)
         .accessibilityLabel(
             PPPetAdLocalization.text("Actions", fallback: "Actions")
         )
@@ -268,7 +266,7 @@ struct PPPetAdViewerNavBarSmartPill: View {
             }
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(snapshot.title)
+                Text(displayTitle)
                     .font(PPPetAdTypography.footnoteBold)
                     .foregroundStyle(Color.ppTextPrimary)
                     .lineLimit(1)
@@ -287,25 +285,27 @@ struct PPPetAdViewerNavBarSmartPill: View {
             Spacer(minLength: PPSpace.xs)
 
             let pc = priceAndCurrency
-            if pc.currency.isEmpty {
-                Text(pc.price)
-                    .font(.custom("Beiruti-Bold", size: 15, relativeTo: .subheadline))
-                    .foregroundStyle(Color.ppPrimary)
-                    .lineLimit(1)
-                    .padding(.horizontal, PPSpace.xs)
-            } else {
-                VStack(alignment: .center, spacing: -2) {
+            if !pc.price.isEmpty {
+                if pc.currency.isEmpty {
                     Text(pc.price)
                         .font(.custom("Beiruti-Bold", size: 15, relativeTo: .subheadline))
                         .foregroundStyle(Color.ppPrimary)
                         .lineLimit(1)
+                        .padding(.horizontal, PPSpace.xs)
+                } else {
+                    VStack(alignment: .center, spacing: -2) {
+                        Text(pc.price)
+                            .font(.custom("Beiruti-Bold", size: 15, relativeTo: .subheadline))
+                            .foregroundStyle(Color.ppPrimary)
+                            .lineLimit(1)
 
-                    Text(pc.currency)
-                        .font(.custom("Beiruti-Regular", size: 9, relativeTo: .caption2))
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(1)
+                        Text(pc.currency)
+                            .font(.custom("Beiruti-Regular", size: 9, relativeTo: .caption2))
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, PPSpace.xs)
                 }
-                .padding(.horizontal, PPSpace.xs)
             }
         }
         .padding(.leading, PPSpace.xs)
@@ -325,18 +325,30 @@ struct PPPetAdViewerNavBarSmartPill: View {
             y: 2
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            String(
-                format: PPPetAdLocalization.text(
-                    "a11y_nav_smart_pill_format",
-                    fallback: "%@, %@, price %@"
-                ),
-                snapshot.title,
-                subtitleText,
-                snapshot.price
-            )
-        )
+        .accessibilityLabel(accessibilitySummary)
         .accessibilityAddTraits(.isHeader)
+    }
+
+    private var displayTitle: String {
+        snapshot.title.isEmpty
+            ? PPPetAdLocalization.text(
+                "pet_ad_viewer_title_fallback",
+                fallback: "Pet advertisement"
+            )
+            : snapshot.title
+    }
+
+    private var accessibilitySummary: String {
+        var components = [displayTitle]
+        if !subtitleText.isEmpty {
+            components.append(subtitleText)
+        }
+        if !snapshot.price.isEmpty {
+            components.append(
+                "\(PPPetAdLocalization.text("Price", fallback: "Price")): \(snapshot.price)"
+            )
+        }
+        return components.joined(separator: ", ")
     }
 
     private var subtitleText: String {

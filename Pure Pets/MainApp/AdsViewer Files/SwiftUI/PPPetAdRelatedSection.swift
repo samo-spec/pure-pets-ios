@@ -18,7 +18,7 @@ enum PPPetAdRelatedSectionKind {
         case .pets:
             return .ppPrimary
         case .accessories:
-            return .ppInfo
+            return .ppTextSecondary
         }
     }
 }
@@ -57,10 +57,7 @@ struct PPPetAdRelatedSection: View {
                 )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(
-            reduceMotion ? nil : PPPetAdViewerMotion.state,
-            value: sectionStateIdentity
-        )
+        .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: sectionStateIdentity)
     }
 
     private var sectionHeading: some View {

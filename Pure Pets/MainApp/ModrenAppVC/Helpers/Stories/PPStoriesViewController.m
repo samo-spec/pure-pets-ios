@@ -19,7 +19,6 @@
 #import <FirebaseAuth/FirebaseAuth.h>
 
 static const CGFloat PPStoriesSidePadding        = 18.0;
-static const CGFloat PPStoriesContainerSideInset = 16.0;
 static const CGFloat PPStoriesTopPadding         = 10.0;
 static const CGFloat PPStoriesBottomPadding      = 10.0;
 static const CGFloat PPStoriesItemSpacing        = 12.0;
@@ -37,9 +36,6 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
 @property (nonatomic, strong, nullable) ImagePicker *imagePicker;
 @property (nonatomic, assign) BOOL isUploadingStory;
 @property (nonatomic, assign) BOOL hasPlayedEntrance;
-@property (nonatomic, strong) UIVisualEffectView *glassBackdrop;
-@property (nonatomic, strong) UIView *ambientGlowView;
-@property (nonatomic, strong) UIView *bottomAccentView;
 @end
 
 @implementation PPStoriesViewController
@@ -48,74 +44,18 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
     self.view.semanticContentAttribute = GM.setSemantic;
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-    UIColor *storiesAccentColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *storiesSurfaceColor = AppForgroundColr ?: AppBackgroundClr ?: UIColor.secondarySystemBackgroundColor;
-    _glassBackdrop = [[UIVisualEffectView alloc] initWithEffect:blur];
-    _glassBackdrop.translatesAutoresizingMaskIntoConstraints = NO;
-    _glassBackdrop.layer.cornerRadius = 28.0;
-    _glassBackdrop.layer.masksToBounds = YES;
-    _glassBackdrop.clipsToBounds = YES;
-    _glassBackdrop.layer.borderWidth = 0.0;
-    [_glassBackdrop pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.68]];
-    [_glassBackdrop pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.10]];
-    _glassBackdrop.layer.shadowOpacity = 1.0;
-    _glassBackdrop.layer.shadowRadius = 22.0;
-    _glassBackdrop.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    [self.view addSubview:_glassBackdrop];
-
-    UIView *ambientGlow = [UIView new];
-    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    ambientGlow.backgroundColor = [storiesAccentColor colorWithAlphaComponent:0.20];
-    ambientGlow.userInteractionEnabled = NO;
-    ambientGlow.layer.cornerRadius = 76.0;
-    [ambientGlow pp_setShadowColor:storiesAccentColor];
-    ambientGlow.layer.shadowOpacity = 0.28;
-    ambientGlow.layer.shadowRadius = 46.0;
-    ambientGlow.layer.shadowOffset = CGSizeZero;
-    [_glassBackdrop.contentView addSubview:ambientGlow];
-    self.ambientGlowView = ambientGlow;
-
-    UIView *tintOverlay = [UIView new];
-    tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    tintOverlay.backgroundColor = [storiesSurfaceColor colorWithAlphaComponent:0.94];
-    tintOverlay.userInteractionEnabled = NO;
-    tintOverlay.layer.cornerRadius = 28.0;
-    tintOverlay.clipsToBounds = YES;
-    [_glassBackdrop.contentView addSubview:tintOverlay];
-
-    UIView *bottomAccent = [UIView new];
-    bottomAccent.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomAccent.userInteractionEnabled = NO;
-    bottomAccent.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.12];
-    bottomAccent.layer.cornerRadius = 1.5;
-    bottomAccent.hidden = YES;
-    [_glassBackdrop.contentView addSubview:bottomAccent];
-    self.bottomAccentView = bottomAccent;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [ambientGlow.widthAnchor constraintEqualToConstant:152.0],
-        [ambientGlow.heightAnchor constraintEqualToConstant:152.0],
-        [ambientGlow.topAnchor constraintEqualToAnchor:_glassBackdrop.contentView.topAnchor constant:-56.0],
-        [ambientGlow.trailingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.trailingAnchor constant:42.0],
-
-        [tintOverlay.topAnchor constraintEqualToAnchor:_glassBackdrop.contentView.topAnchor],
-        [tintOverlay.leadingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.leadingAnchor],
-        [tintOverlay.trailingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.trailingAnchor],
-        [tintOverlay.bottomAnchor constraintEqualToAnchor:_glassBackdrop.contentView.bottomAnchor],
-
-        [bottomAccent.leadingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.leadingAnchor constant:22.0],
-        [bottomAccent.trailingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.trailingAnchor constant:-22.0],
-        [bottomAccent.bottomAnchor constraintEqualToAnchor:_glassBackdrop.contentView.bottomAnchor constant:-10.0],
-        [bottomAccent.heightAnchor constraintEqualToConstant:3.0],
-    ]];
 
     _sectionTitleLabel = [UILabel new];
     _sectionTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _sectionTitleLabel.font = [GM boldFontWithSize:15.5];
+    UIFont *sectionTitleBaseFont = [GM boldFontWithSize:15.5]
+        ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
+    _sectionTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+                               scaledFontForFont:sectionTitleBaseFont];
     _sectionTitleLabel.textColor = UIColor.labelColor;
     _sectionTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    _sectionTitleLabel.numberOfLines = 1;
+    _sectionTitleLabel.numberOfLines = 0;
+    _sectionTitleLabel.adjustsFontForContentSizeCategory = YES;
+    _sectionTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
     _sectionTitleLabel.hidden = YES;
     [self.view addSubview:_sectionTitleLabel];
 
@@ -143,11 +83,6 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
         [_collectionView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:0.0];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_glassBackdrop.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:4.0],
-        [_glassBackdrop.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPStoriesContainerSideInset],
-        [_glassBackdrop.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPStoriesContainerSideInset],
-        [_glassBackdrop.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-4.0],
-
         [_sectionTitleLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:PPStoriesTitleTopPadding],
         [_sectionTitleLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPStoriesSidePadding + 8.0],
         [_sectionTitleLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-(PPStoriesSidePadding + 8.0)],
@@ -163,9 +98,6 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    self.glassBackdrop.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.glassBackdrop.bounds
-                                                                     cornerRadius:28.0].CGPath;
-    [Styling addLiquidGlassBorderToView:_glassBackdrop cornerRadius:28.0];
     [self.collectionView.collectionViewLayout invalidateLayout];
 }
 
@@ -200,6 +132,27 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
         [self.storiesListener remove];
         self.storiesListener = nil;
     }
+}
+
+- (CGFloat)requiredContentHeightForWidth:(CGFloat)width
+{
+    [self loadViewIfNeeded];
+    [self pp_applySectionTitle];
+
+    CGFloat titleHeight = 0.0;
+    CGFloat collectionTop = 0.0;
+    if (self.hasSectionTitle) {
+        CGFloat availableTitleWidth = MAX(0.0,
+            width - ((PPStoriesSidePadding + 8.0) * 2.0));
+        titleHeight = MAX(self.sectionTitleLabel.font.lineHeight,
+                          ceil([self.sectionTitleLabel sizeThatFits:
+                                CGSizeMake(availableTitleWidth, CGFLOAT_MAX)].height));
+        collectionTop = PPStoriesTitleTopPadding + titleHeight + PPStoriesTitleBottomSpacing;
+    }
+    self.collectionTopConstraint.constant = collectionTop;
+
+    CGFloat collectionHeight = PPStoriesTopPadding + PPStoriesItemHeight + PPStoriesBottomPadding;
+    return ceil(collectionTop + collectionHeight);
 }
 
 - (void)dealloc
@@ -295,6 +248,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 
     BOOL isCurrentUserEntry = [self pp_isCurrentUserEntryAtIndex:indexPath.item];
     if (isCurrentUserEntry && self.currentUserStory.items.count == 0) {
+        [self pp_handleCurrentUserStoryTap];
         return;
     }
 
@@ -453,12 +407,15 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.sectionTitleLocalizationKey.length > 0) {
         resolvedTitle = kLang(self.sectionTitleLocalizationKey);
     }
-    resolvedTitle = nil;
     self.hasSectionTitle = resolvedTitle.length > 0;
     self.sectionTitleLabel.text = resolvedTitle;
     self.sectionTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.sectionTitleLabel.hidden = !self.hasSectionTitle;
-    CGFloat labelHeight = ceil(self.sectionTitleLabel.font.lineHeight);
+    CGFloat availableTitleWidth = MAX(0.0,
+        CGRectGetWidth(self.view.bounds) - ((PPStoriesSidePadding + 8.0) * 2.0));
+    CGFloat labelHeight = MAX(self.sectionTitleLabel.font.lineHeight,
+                              ceil([self.sectionTitleLabel sizeThatFits:
+                                    CGSizeMake(availableTitleWidth, CGFLOAT_MAX)].height));
     self.collectionTopConstraint.constant =
         self.hasSectionTitle ? (PPStoriesTitleTopPadding + PPStoriesTitleBottomSpacing + labelHeight) : 0.0;
 }

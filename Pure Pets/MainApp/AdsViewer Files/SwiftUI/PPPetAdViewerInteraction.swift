@@ -255,12 +255,12 @@ final class PPPetAdViewerInteractionState: ObservableObject {
         progress < Self.galleryAccessibilityEnd
     }
 
-    /// The focused image deliberately retains enough luminance and color to
-    /// remain perceptually present against pale marketplace photography.
-    var focusedHeroOpacity: CGFloat { 1 - (0.55 * progress) }
-    var heroSaturation: CGFloat { 1 - (0.18 * progress) }
-    var heroScale: CGFloat { 1 + (0.025 * progress) }
-    var heroTranslation: CGFloat { -PPSpace.sm * progress }
+    /// The portrait remains visibly present during the identity handoff. The
+    /// sheet, rather than a heavy fade, becomes the foreground owner.
+    var focusedHeroOpacity: CGFloat { 1 - (0.28 * progress) }
+    var heroSaturation: CGFloat { 1 - (0.08 * progress) }
+    var heroScale: CGFloat { 1 + (0.012 * progress) }
+    var heroTranslation: CGFloat { -PPSpace.xs * progress }
     var navigationControlScale: CGFloat { 1 - (0.04 * progress) }
     var sheetRadius: CGFloat { PPCorner.hero - (PPSpace.sm * progress) }
     var sheetEdgeOpacity: CGFloat { 0.28 + (0.30 * progress) }
@@ -274,17 +274,17 @@ final class PPPetAdViewerInteractionState: ObservableObject {
     }
 
     private static let approachingExpandedStart: CGFloat = 0.88
-    private static let mainHeaderFadeStart: CGFloat = 0.72
-    private static let mainHeaderFadeEnd: CGFloat = 0.88
-    private static let mainHeaderCollapseStart: CGFloat = 0.75
-    private static let mainHeaderCollapseEnd: CGFloat = 0.90
-    private static let mainAccessibilityEnd: CGFloat = 0.88
-    private static let compactSummaryStart: CGFloat = 0.84
-    private static let compactSummaryEnd: CGFloat = 0.92
-    private static let compactAccessibilityStart: CGFloat = 0.84
-    private static let galleryHandoffStart: CGFloat = 0.58
-    private static let galleryHandoffEnd: CGFloat = 0.80
-    private static let galleryAccessibilityEnd: CGFloat = 0.78
+    private static let mainHeaderFadeStart: CGFloat = 0.62
+    private static let mainHeaderFadeEnd: CGFloat = 0.80
+    private static let mainHeaderCollapseStart: CGFloat = 0.66
+    private static let mainHeaderCollapseEnd: CGFloat = 0.82
+    private static let mainAccessibilityEnd: CGFloat = 0.80
+    private static let compactSummaryStart: CGFloat = 0.74
+    private static let compactSummaryEnd: CGFloat = 0.86
+    private static let compactAccessibilityStart: CGFloat = 0.80
+    private static let galleryHandoffStart: CGFloat = 0.50
+    private static let galleryHandoffEnd: CGFloat = 0.72
+    private static let galleryAccessibilityEnd: CGFloat = 0.70
 }
 
 enum PPPetAdViewerMotion {
@@ -458,12 +458,7 @@ private struct PPPetAdViewerEntranceModifier: ViewModifier {
                 reduceMotion || isPresented ? 1 : 0.988,
                 anchor: .top
             )
-            .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.16)
-                    : PPPetAdViewerMotion.entrance(delayIndex: delayIndex),
-                value: isPresented
-            )
+            .animation(reduceMotion ? .easeOut(duration: 0.16) : PPPetAdViewerMotion.entrance(delayIndex: delayIndex), value: isPresented)
     }
 }
 
@@ -507,10 +502,7 @@ struct PPPetAdPressButtonStyle: ButtonStyle {
                     ? 0.48
                     : (configuration.isPressed ? 0.76 : 1)
             )
-            .animation(
-                reduceMotion ? nil : PPPetAdViewerMotion.press,
-                value: configuration.isPressed
-            )
+            .animation(reduceMotion ? nil : PPPetAdViewerMotion.press, value: configuration.isPressed)
     }
 }
 

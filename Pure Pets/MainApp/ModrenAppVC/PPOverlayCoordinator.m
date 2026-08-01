@@ -13,7 +13,7 @@
 
 #import "PPOverlayCoordinator.h"
 #import "AccessViewerVC.h"
-#import "ChMessagingController.h"
+#import "PPMessagingViewController.h"
 #import "PetCare/PPPetCareVetViewrVC.h"
 #define PPLog(fmt, ...) NSLog((@"[Overlay] " fmt), ##__VA_ARGS__)
 
@@ -209,13 +209,13 @@
     UIViewController *presenter = [PPOverlayCoordinator pp_resolvedPresenterFrom:self.presenter];
     if (![PPOverlayCoordinator pp_canPresentFrom:presenter]) return;
  
-    //ChMessagingController *chatVC =
-     //   [[ChMessagingController alloc] initWithChatThread:thread];
+    // PPMessagingViewController *chatVC =
+    //     [[PPMessagingViewController alloc] initWithChatThread:thread];
      //[PPFunc presentFloatingSheetFrom:presenter sheetVC:chatVC detentStyle:PPSheetDetentStyleSemiLargAndLarge];
     //[nav pushViewController:chatVC animated:YES];
     
-    ChMessagingController *chat =
-        [[ChMessagingController alloc] initWithChatThread:thread];
+    PPMessagingViewController *chat =
+        [[PPMessagingViewController alloc] initWithChatThread:thread];
 
     PPNavigationController *nav =
         [[PPNavigationController alloc] initWithRootViewController:chat];
@@ -252,10 +252,10 @@
           (long)thread.messagesCount);
 
     
-    NSLog(@"➡️ [Chat] Pushing ChMessagingController");
+    NSLog(@"➡️ [Chat] Pushing PPMessagingViewController");
 
-    ChMessagingController *chat =
-        [[ChMessagingController alloc] initWithChatThread:thread];
+    PPMessagingViewController *chat =
+        [[PPMessagingViewController alloc] initWithChatThread:thread];
 
     PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:chat];
     nav.modalPresentationStyle = UIModalPresentationFullScreen;

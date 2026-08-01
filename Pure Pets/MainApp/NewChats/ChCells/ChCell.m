@@ -9,7 +9,7 @@
 //  Structure thesis: identity and time first, conversation preview second,
 //  one compact unread signal last.
 //  Motion thesis: immediate material press response, truthful state
-//  transitions, and a restrained presence breath while the cell is visible.
+//  transitions, a static presence signal, and a one-shot activity trace.
 //  Risk thesis: reusable-cell motion must never replay during scrolling,
 //  obscure content, or continue offscreen.
 //
@@ -86,13 +86,20 @@ static UIColor *PPChatResolvedColor(UIColor *color,
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) UILabel *unreadBadge;
 @property (nonatomic, strong) UIImageView *verifiedBadgeView;
+@property (nonatomic, strong) UIView *unreadRailView;
+@property (nonatomic, strong) UIStackView *headerStack;
+@property (nonatomic, strong) UIStackView *previewStack;
+@property (nonatomic, strong) UIStackView *textStack;
 @property (nonatomic, strong) NSLayoutConstraint *badgeWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *messageAccessibilityWidthConstraint;
 @property (nonatomic, copy) NSString *presenceAccessibilityText;
 @property (nonatomic, assign) NSInteger currentUnreadCount;
 @property (nonatomic, assign) BOOL currentOnline;
 @property (nonatomic, assign) BOOL hasConfiguredContent;
 @property (nonatomic, assign) BOOL isConfiguring;
 @property (nonatomic, strong) UIView *separatorView;
+
+- (void)pp_updateContentSizeLayout;
 
 @end
 
@@ -169,7 +176,7 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     [super didMoveToWindow];
 
     if (self.window && self.currentOnline) {
-        [self pp_startPresenceBreathingIfNeeded];
+        [self pp_applyRestingPresenceState];
     } else {
         [self pp_stopPresenceBreathing];
     }
@@ -195,6 +202,8 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     self.unreadBadge.text = nil;
     self.unreadBadge.hidden = YES;
     self.badgeWidthConstraint.constant = 0.0;
+    self.unreadRailView.alpha = 0.0;
+    self.unreadRailView.transform = CGAffineTransformIdentity;
 
     self.verifiedBadgeView.hidden = YES;
     self.onlineDot.hidden = YES;
@@ -232,6 +241,7 @@ static UIColor *PPChatResolvedColor(UIColor *color,
 
     if (contentSizeChanged) {
         [self pp_applyTypographyForCurrentState];
+        [self pp_updateContentSizeLayout];
         [self setNeedsLayout];
     }
     if (colorAppearanceChanged) {
@@ -351,6 +361,45 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     }
     [self.surfaceView addSubview:self.unreadBadge];
 
+    self.headerStack =
+        [[UIStackView alloc] initWithArrangedSubviews:@[self.nameLabel,
+                                                        self.timeLabel]];
+    self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.headerStack.axis = UILayoutConstraintAxisHorizontal;
+    self.headerStack.alignment = UIStackViewAlignmentFirstBaseline;
+    self.headerStack.distribution = UIStackViewDistributionFill;
+    self.headerStack.spacing = kTextMetaSpacing;
+
+    self.previewStack =
+        [[UIStackView alloc] initWithArrangedSubviews:@[self.messageLabel,
+                                                        self.unreadBadge]];
+    self.previewStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.previewStack.axis = UILayoutConstraintAxisHorizontal;
+    self.previewStack.alignment = UIStackViewAlignmentCenter;
+    self.previewStack.distribution = UIStackViewDistributionFill;
+    self.previewStack.spacing = kTextMetaSpacing;
+
+    self.messageAccessibilityWidthConstraint =
+        [self.messageLabel.widthAnchor constraintEqualToAnchor:self.previewStack.widthAnchor];
+    self.messageAccessibilityWidthConstraint.priority = UILayoutPriorityDefaultHigh;
+
+    self.textStack =
+        [[UIStackView alloc] initWithArrangedSubviews:@[self.headerStack,
+                                                        self.previewStack]];
+    self.textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.textStack.axis = UILayoutConstraintAxisVertical;
+    self.textStack.alignment = UIStackViewAlignmentFill;
+    self.textStack.distribution = UIStackViewDistributionFill;
+    self.textStack.spacing = kTextRowSpacing;
+    [self.surfaceView addSubview:self.textStack];
+
+    self.unreadRailView = [UIView new];
+    self.unreadRailView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.unreadRailView.userInteractionEnabled = NO;
+    self.unreadRailView.layer.cornerRadius = 1.5;
+    self.unreadRailView.alpha = 0.0;
+    [self.surfaceView addSubview:self.unreadRailView];
+
     [self.nameLabel
         setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                         forAxis:UILayoutConstraintAxisHorizontal];
@@ -378,6 +427,7 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         self.separatorView.backgroundColor = [UIColor colorWithWhite:0.8 alpha:1.0];
     }
     [self.surfaceView addSubview:self.separatorView];
+    [self pp_updateContentSizeLayout];
 }
 
 #pragma mark - Layout
@@ -442,45 +492,36 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         [self.presenceGlowView.centerYAnchor
             constraintEqualToAnchor:self.onlineDot.centerYAnchor],
 
-        [self.nameLabel.leadingAnchor
+        [self.textStack.leadingAnchor
             constraintEqualToAnchor:self.avatarHaloView.trailingAnchor
                            constant:kAvatarTextSpacing],
-        [self.nameLabel.trailingAnchor
-            constraintEqualToAnchor:self.timeLabel.leadingAnchor
-                           constant:-kTextMetaSpacing],
-        [self.nameLabel.topAnchor
+        [self.textStack.trailingAnchor
+            constraintEqualToAnchor:self.surfaceView.trailingAnchor
+                           constant:-kSurfaceHorizontalInset],
+        [self.textStack.centerYAnchor
+            constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.textStack.topAnchor
             constraintGreaterThanOrEqualToAnchor:self.surfaceView.topAnchor
-                                        constant:kSurfaceVerticalInset + PPSpaceXXS],
-
-        [self.timeLabel.trailingAnchor
-            constraintEqualToAnchor:self.surfaceView.trailingAnchor
-                           constant:-kSurfaceHorizontalInset],
-        [self.timeLabel.firstBaselineAnchor
-            constraintEqualToAnchor:self.nameLabel.firstBaselineAnchor],
-
-        [self.messageLabel.leadingAnchor
-            constraintEqualToAnchor:self.nameLabel.leadingAnchor],
-        [self.messageLabel.trailingAnchor
-            constraintEqualToAnchor:self.unreadBadge.leadingAnchor
-                           constant:-kTextMetaSpacing],
-        [self.messageLabel.topAnchor
-            constraintEqualToAnchor:self.nameLabel.bottomAnchor
-                           constant:kTextRowSpacing],
-        [self.messageLabel.bottomAnchor
+                                        constant:kSurfaceVerticalInset],
+        [self.textStack.bottomAnchor
             constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor
-                                     constant:-(kSurfaceVerticalInset + PPSpaceXXS)],
+                                     constant:-kSurfaceVerticalInset],
 
-        [self.unreadBadge.trailingAnchor
-            constraintEqualToAnchor:self.surfaceView.trailingAnchor
-                           constant:-kSurfaceHorizontalInset],
-        [self.unreadBadge.centerYAnchor
-            constraintEqualToAnchor:self.messageLabel.centerYAnchor],
         [self.unreadBadge.heightAnchor
             constraintEqualToConstant:kUnreadBadgeHeight],
         self.badgeWidthConstraint,
+
+        [self.unreadRailView.leadingAnchor
+            constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:3.0],
+        [self.unreadRailView.topAnchor
+            constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceMD],
+        [self.unreadRailView.bottomAnchor
+            constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceMD],
+        [self.unreadRailView.widthAnchor constraintEqualToConstant:3.0],
+
         [self.separatorView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
         [self.separatorView.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
-        [self.separatorView.leadingAnchor constraintEqualToAnchor:self.nameLabel.leadingAnchor],
+        [self.separatorView.leadingAnchor constraintEqualToAnchor:self.textStack.leadingAnchor],
         [self.separatorView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
     ]];
 }
@@ -732,6 +773,34 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         PPChatScaledFont(timeBaseFont, UIFontTextStyleCaption1);
 }
 
+- (void)pp_updateContentSizeLayout {
+    BOOL usesAccessibilityLayout =
+        UIContentSizeCategoryIsAccessibilityCategory(
+            self.traitCollection.preferredContentSizeCategory);
+
+    self.headerStack.axis = usesAccessibilityLayout
+        ? UILayoutConstraintAxisVertical
+        : UILayoutConstraintAxisHorizontal;
+    self.headerStack.alignment = usesAccessibilityLayout
+        ? UIStackViewAlignmentFill
+        : UIStackViewAlignmentFirstBaseline;
+    self.previewStack.axis = usesAccessibilityLayout
+        ? UILayoutConstraintAxisVertical
+        : UILayoutConstraintAxisHorizontal;
+    self.previewStack.alignment = usesAccessibilityLayout
+        ? UIStackViewAlignmentLeading
+        : UIStackViewAlignmentCenter;
+    self.headerStack.spacing = usesAccessibilityLayout ? PPSpaceXXS : kTextMetaSpacing;
+    self.previewStack.spacing = usesAccessibilityLayout ? PPSpaceSM : kTextMetaSpacing;
+    self.textStack.spacing = usesAccessibilityLayout ? PPSpaceSM : kTextRowSpacing;
+    self.messageAccessibilityWidthConstraint.active = usesAccessibilityLayout;
+
+    self.nameLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+    self.messageLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+    self.timeLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+    [self setNeedsLayout];
+}
+
 - (void)pp_refreshChromeAnimated:(BOOL)animated {
     void (^changes)(void) = ^{
         [self pp_applyChromeValues];
@@ -769,6 +838,9 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         } else {
             self.surfaceView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.05];
         }
+    } else if (hasUnread) {
+        self.surfaceView.backgroundColor =
+            [accentColor colorWithAlphaComponent:[self pp_isDarkMode] ? 0.055 : 0.028];
     } else {
         self.surfaceView.backgroundColor = UIColor.clearColor;
     }
@@ -786,6 +858,11 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     self.timeLabel.textColor =
         hasUnread ? accentColor : UIColor.tertiaryLabelColor;
     self.unreadBadge.backgroundColor = accentColor;
+    self.unreadRailView.backgroundColor = accentColor;
+    self.unreadRailView.alpha = hasUnread ? 1.0 : 0.0;
+    self.unreadRailView.transform = hasUnread
+        ? CGAffineTransformIdentity
+        : CGAffineTransformMakeScale(1.0, 0.22);
 
     self.onlineDot.backgroundColor = UIColor.systemGreenColor;
     [self.onlineDot pp_setBorderColor:surfaceColor];
@@ -1077,7 +1154,7 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         self.onlineDot.transform = CGAffineTransformIdentity;
         self.presenceGlowView.transform = CGAffineTransformIdentity;
         if (self.currentOnline) {
-            [self pp_startPresenceBreathingIfNeeded];
+            [self pp_applyRestingPresenceState];
         }
         return;
     }
@@ -1107,7 +1184,7 @@ static UIColor *PPChatResolvedColor(UIColor *color,
                          }
                          completion:^(__unused BOOL finished) {
                              if (self.currentOnline) {
-                                 [self pp_startPresenceBreathingIfNeeded];
+                                 [self pp_applyRestingPresenceState];
                              }
                          }];
     } else {
@@ -1140,37 +1217,10 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     }
 }
 
-- (void)pp_startPresenceBreathingIfNeeded {
-    if (!self.currentOnline ||
-        !self.window ||
-        UIAccessibilityIsReduceMotionEnabled() ||
-        [self.presenceGlowView.layer
-         animationForKey:@"pp_chat_presence_breath"]) {
-        return;
-    }
-
-    CABasicAnimation *scale =
-        [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scale.fromValue = @0.92;
-    scale.toValue = @1.12;
-
-    CABasicAnimation *opacity =
-        [CABasicAnimation animationWithKeyPath:@"opacity"];
-    opacity.fromValue = @0.52;
-    opacity.toValue = @1.0;
-
-    CAAnimationGroup *breath = [CAAnimationGroup animation];
-    breath.animations = @[scale, opacity];
-    breath.duration = 1.8;
-    breath.autoreverses = YES;
-    breath.repeatCount = HUGE_VALF;
-    breath.timingFunction =
-        [CAMediaTimingFunction
-         functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-
-    [self.presenceGlowView.layer
-        addAnimation:breath
-              forKey:@"pp_chat_presence_breath"];
+- (void)pp_applyRestingPresenceState {
+    [self pp_stopPresenceBreathing];
+    self.presenceGlowView.alpha = self.currentOnline ? 0.62 : 1.0;
+    self.presenceGlowView.transform = CGAffineTransformIdentity;
 }
 
 - (void)pp_stopPresenceBreathing {
@@ -1203,6 +1253,70 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     self.unreadBadge.alpha = 1.0;
     self.unreadBadge.transform = CGAffineTransformIdentity;
     self.ambientGradientLayer.opacity = kAmbientRestingOpacity;
+    self.ambientGradientLayer.hidden = YES;
+}
+
+#pragma mark - First Viewport Entrance
+
+- (void)playEntranceWithOrdinal:(NSInteger)ordinal animated:(BOOL)animated {
+    [self.surfaceView.layer removeAnimationForKey:@"pp_chat_inbox_entrance"];
+    [self.avatarHaloView.layer removeAnimationForKey:@"pp_chat_avatar_entrance"];
+    [self.separatorView.layer removeAnimationForKey:@"pp_chat_separator_entrance"];
+    [self.ambientGradientLayer removeAnimationForKey:@"pp_chat_activity_trace"];
+
+    self.surfaceView.alpha = 1.0;
+    self.surfaceView.transform = CGAffineTransformIdentity;
+    self.avatarHaloView.transform = CGAffineTransformIdentity;
+    self.separatorView.transform = CGAffineTransformIdentity;
+    self.ambientGradientLayer.hidden = YES;
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [self layoutIfNeeded];
+    BOOL isRTL = [self pp_isRTL];
+    CGFloat resolveX = isRTL ? 12.0 : -12.0;
+    NSTimeInterval delay = MIN(MAX(ordinal, 0), 4) * 0.035;
+
+    self.surfaceView.transform = CGAffineTransformMakeTranslation(resolveX, 0.0);
+    self.avatarHaloView.transform = CGAffineTransformMakeScale(0.94, 0.94);
+    self.separatorView.transform = CGAffineTransformMakeScale(0.08, 1.0);
+
+    [self pp_updateAmbientGradientAnimated:NO];
+    self.ambientGradientLayer.hidden = NO;
+    self.ambientGradientLayer.opacity = 0.0;
+    CGFloat traceDistance = MAX(CGRectGetWidth(self.surfaceView.bounds) * 0.42, 80.0);
+    CABasicAnimation *traceMove =
+        [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    traceMove.fromValue = @(isRTL ? traceDistance : -traceDistance);
+    traceMove.toValue = @0.0;
+
+    CAKeyframeAnimation *traceOpacity =
+        [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    traceOpacity.values = @[@0.0, @(self.currentUnreadCount > 0 ? 0.46 : 0.24), @0.0];
+    traceOpacity.keyTimes = @[@0.0, @0.46, @1.0];
+
+    CAAnimationGroup *trace = [CAAnimationGroup animation];
+    trace.animations = @[traceMove, traceOpacity];
+    trace.duration = 0.34;
+    trace.beginTime = CACurrentMediaTime() + delay;
+    trace.timingFunction =
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    [self.ambientGradientLayer addAnimation:trace forKey:@"pp_chat_activity_trace"];
+
+    [UIView animateWithDuration:0.30
+                          delay:delay
+                        options:(UIViewAnimationOptionCurveEaseOut |
+                                 UIViewAnimationOptionBeginFromCurrentState |
+                                 UIViewAnimationOptionAllowUserInteraction)
+                     animations:^{
+        self.surfaceView.transform = CGAffineTransformIdentity;
+        self.avatarHaloView.transform = CGAffineTransformIdentity;
+        self.separatorView.transform = CGAffineTransformIdentity;
+    } completion:^(__unused BOOL finished) {
+        self.ambientGradientLayer.hidden = YES;
+    }];
 }
 
 - (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification {
@@ -1254,6 +1368,7 @@ static UIColor *PPChatResolvedColor(UIColor *color,
             : nil;
     }
     self.accessibilityTraits = UIAccessibilityTraitButton;
+    self.accessibilityHint = kLang(@"chat_open_conversation_hint");
 }
 
 #pragma mark - Language Direction
@@ -1266,6 +1381,9 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     self.semanticContentAttribute = semanticAttribute;
     self.contentView.semanticContentAttribute = semanticAttribute;
     self.surfaceView.semanticContentAttribute = semanticAttribute;
+    self.headerStack.semanticContentAttribute = semanticAttribute;
+    self.previewStack.semanticContentAttribute = semanticAttribute;
+    self.textStack.semanticContentAttribute = semanticAttribute;
     self.nameLabel.textAlignment = alignment;
     self.messageLabel.textAlignment = alignment;
     self.timeLabel.textAlignment = alignment;
