@@ -151,16 +151,17 @@
     [self addSubview:animation];
     self.animationView = animation;
 
+    CGFloat inset = [self.animationName isEqualToString:@"petstore"] ? 9.0 : -2.0;
     [NSLayoutConstraint activateConstraints:@[
         [fallback.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [fallback.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
         [fallback.widthAnchor constraintEqualToAnchor:self.widthAnchor multiplier:0.58],
         [fallback.heightAnchor constraintEqualToAnchor:self.heightAnchor multiplier:0.58],
 
-        [animation.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:6.0],
-        [animation.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6.0],
-        [animation.topAnchor constraintEqualToAnchor:self.topAnchor constant:6.0],
-        [animation.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-6.0],
+        [animation.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:inset],
+        [animation.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-inset],
+        [animation.topAnchor constraintEqualToAnchor:self.topAnchor constant:inset],
+        [animation.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-inset],
     ]];
 
     NSNotificationCenter *center = NSNotificationCenter.defaultCenter;

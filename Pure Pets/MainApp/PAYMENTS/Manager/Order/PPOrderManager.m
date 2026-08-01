@@ -1219,6 +1219,10 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     if (!order) return kLang(@"order_support_unavailable_no_order");
 
     NSString *statusKey = PPOrderNormalizedStatusString(order.rawStatus.length > 0 ? order.rawStatus : @"pending");
+    NSLog(@"PPLAB PPOrderManager cancel eligibility start | orderId=%@ status=%@ deliveryStatus=%@",
+          order.orderId ?: @"",
+          statusKey ?: @"",
+          order.deliveryStatus ?: @"");
 
     if (PPOrderStatusIsCancelledLike(statusKey) || PPOrderStatusIsFailureLike(statusKey)) {
         return kLang(@"order_action_cancel_unavailable_closed");

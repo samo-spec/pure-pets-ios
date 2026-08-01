@@ -1,15 +1,18 @@
 import UIKit
 
 private enum PPMainKindsCellMetrics {
-    static let cornerRadius: CGFloat = PPCorner.card
-    static let contentInset: CGFloat = PPSpace.sm
-    static let imagePlateSize: CGFloat = 90
-    static let compactImagePlateSize: CGFloat = 76
-    static let maximumImagePlateSize: CGFloat = 96
-    static let maximumCompactImagePlateSize: CGFloat = 82
+    static let cornerRadius: CGFloat = PPCorner.hero
+    static let contentInset: CGFloat = PPSpace.md
+    static let imagePlateSize: CGFloat = 92
+    static let compactImagePlateSize: CGFloat = 80
+    static let maximumImagePlateSize: CGFloat = 92
+    static let maximumCompactImagePlateSize: CGFloat = 80
     static let artworkSize: CGFloat = 76
     static let allArtworkSize: CGFloat = 36
     static let imageToTitleSpacing: CGFloat = PPSpace.xs
+    // Temporary visual switch: selection semantics and motion stay active,
+    // while the decorative bottom line remains hidden.
+    static let showsBottomSelectionIndicator = false
     static let indicatorWidth: CGFloat = 30
     static let indicatorHeight: CGFloat = PPSpace.xs
     static let identitySpineWidth: CGFloat = PPSpace.xs
@@ -202,6 +205,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         selectionIndicatorView.translatesAutoresizingMaskIntoConstraints = false
         selectionIndicatorView.isUserInteractionEnabled = false
+        selectionIndicatorView.isHidden = !PPMainKindsCellMetrics.showsBottomSelectionIndicator
         selectionIndicatorView.layer.cornerRadius = PPMainKindsCellMetrics.indicatorHeight / 2
         selectionIndicatorView.layer.masksToBounds = true
         surfaceView.addSubview(selectionIndicatorView)
@@ -549,7 +553,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let widthMatchedSize = availableWidth > 1
             ? max(PPMainKindsCellMetrics.compactImagePlateSize, availableWidth - (inset * 2))
             : preferredSize
-        let reservedTitleHeight: CGFloat = accessibilityText ? 44 : 26
+        let reservedTitleHeight: CGFloat = accessibilityText ? 44 : 36
         let heightMatchedSize = availableHeight > 1
             ? max(
                 PPMainKindsCellMetrics.compactImagePlateSize,

@@ -449,9 +449,11 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
 
 - (void)pp_prepareOverlayIfNeeded
 {
+    UIWindowScene *activeScene = [self pp_activeWindowScene];
+
     if (self.overlayWindow && self.bannerView.superview) {
         UIWindowScene *scene = self.overlayWindow.windowScene;
-        if (!scene || scene.activationState == UISceneActivationStateForegroundActive) {
+        if (scene && scene == activeScene && scene.activationState == UISceneActivationStateForegroundActive) {
             self.overlayWindow.hidden = NO;
             return;
         }
@@ -460,13 +462,11 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
         self.bannerView = nil;
     }
 
-    PPChatNoticePassthroughWindow *window = nil;
-    UIWindowScene *activeScene = [self pp_activeWindowScene];
-    if (activeScene) {
-        window = [[PPChatNoticePassthroughWindow alloc] initWithWindowScene:activeScene];
-    } else {
-        window = [[PPChatNoticePassthroughWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    if (!activeScene) {
+        return;
     }
+
+    PPChatNoticePassthroughWindow *window = [[PPChatNoticePassthroughWindow alloc] initWithWindowScene:activeScene];
     window.windowLevel = UIWindowLevelStatusBar + 4.0;
     window.backgroundColor = UIColor.clearColor;
     window.hidden = NO;

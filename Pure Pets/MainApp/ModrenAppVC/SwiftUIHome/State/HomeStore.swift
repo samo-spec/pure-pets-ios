@@ -764,13 +764,18 @@ final class HomeStore: ObservableObject {
     private func buildPromotionHeroPages() -> [HomeHeroPage] {
         promotions.prefix(8).compactMap { card -> HomeHeroPage? in
             let presentation = PPHomeDataBridge.promotionPresentation(for: card)
-            let title = presentation["title"] as? String ?? ""
-            guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            else {
-                return nil
-            }
-            let badge = presentation["badge"] as? String ?? ""
+            var title = presentation["title"] as? String ?? ""
             let subtitle = presentation["subtitle"] as? String ?? ""
+            let badge = presentation["badge"] as? String ?? ""
+            if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    title = subtitle
+                } else if !badge.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    title = badge
+                } else {
+                    title = HomeModelAdapter.localized("home_banner_default_title", fallback: "Special Offer")
+                }
+            }
             let primaryTitle = presentation["primaryTitle"] as? String ?? ""
             let secondaryTitle = presentation["secondaryTitle"] as? String ?? ""
             let showsPrimary =
@@ -798,7 +803,7 @@ final class HomeStore: ObservableObject {
                 secondaryTitle: showsSecondary ? secondaryTitle : nil,
                 imageURL: imageURL.isEmpty ? nil : imageURL,
                 localImage: nil,
-                accentHex: normalizedHex(accentHex, fallback: "CB2654"),
+                accentHex: normalizedHex(accentHex, fallback: "75666B"),
                 action: .openPromotion(card, interaction: "card"),
                 autoScrollInterval: max(2.0, interval)
             )
@@ -991,7 +996,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Food & essentials"
                 ),
                 systemImage: "bag.fill",
-                accent: UIColor(red: 0.04, green: 0.64, blue: 0.63, alpha: 1.0),
+                accent: UIColor(red: 0.86, green: 0.23, blue: 0.37, alpha: 1.0),
                 destination: .shop
             ),
             HomePriorityAction(
@@ -1005,7 +1010,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Listings & adoption"
                 ),
                 systemImage: "heart.fill",
-                accent: UIColor(red: 0.84, green: 0.16, blue: 0.38, alpha: 1.0),
+                accent: UIColor(red: 0.74, green: 0.31, blue: 0.52, alpha: 1.0),
                 destination: .advertisements
             ),
             HomePriorityAction(
@@ -1019,7 +1024,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Pet medicines"
                 ),
                 systemImage: "pills.fill",
-                accent: UIColor(red: 0.22, green: 0.62, blue: 0.52, alpha: 1.0),
+                accent: UIColor(red: 0.22, green: 0.58, blue: 0.62, alpha: 1.0),
                 destination: .pharmacy
             ),
             HomePriorityAction(
@@ -1033,7 +1038,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Care destination"
                 ),
                 systemImage: "cross.case.fill",
-                accent: UIColor(red: 0.22, green: 0.55, blue: 0.72, alpha: 1.0),
+                accent: UIColor(red: 0.31, green: 0.53, blue: 0.70, alpha: 1.0),
                 destination: .veterinary
             ),
         ]

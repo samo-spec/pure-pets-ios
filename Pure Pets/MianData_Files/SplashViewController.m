@@ -17,57 +17,551 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     PPSplashLoadingPhaseFinalizing,
     PPSplashLoadingPhaseReady
 };
-static UIColor *SplashViewControllerGoldColor(void) {
-    return [UIColor colorWithRed:0.78 green:0.62 blue:0.30 alpha:1.0];
+
+static NSString * const PPSplashAtmosphereDriftAnimationKey =
+    @"pp.splash.atmosphere.drift";
+
+#pragma mark - Living Mark
+
+/// The launch progress is carried by the Pure Pets mark itself. Three quiet
+/// contours map to the three visible launch phases and resolve around the logo,
+/// keeping progress honest without introducing a second, generic loading UI.
+@interface PPSplashLivingMarkView : UIView
+@property (nonatomic, strong) CAGradientLayer *haloLayer;
+@property (nonatomic, strong) CALayer *pedestalLayer;
+@property (nonatomic, strong) NSArray<CAShapeLayer *> *trackLayers;
+@property (nonatomic, strong) NSArray<CAShapeLayer *> *progressLayers;
+@property (nonatomic, strong) UIView *logoWrapperView;
+@property (nonatomic, strong) UIImageView *logoImageView;
+@property (nonatomic, strong) CALayer *markSheenContainerLayer;
+@property (nonatomic, strong) CAGradientLayer *markSheenLayer;
+@property (nonatomic, strong) CALayer *markSheenMaskLayer;
+@property (nonatomic, assign) NSInteger activeStepCount;
+@property (nonatomic, assign, getter=isReady) BOOL ready;
+@property (nonatomic, assign) BOOL usesFallback;
+@property (nonatomic, assign) BOOL didPlayEntrance;
+- (void)setActiveStepCount:(NSInteger)activeStepCount animated:(BOOL)animated;
+- (void)setReady:(BOOL)ready usesFallback:(BOOL)usesFallback animated:(BOOL)animated;
+- (void)playEntrance;
+- (void)stopMotion;
+- (void)settleForSnapshot;
+- (void)pp_applyTheme;
+- (void)pp_commonInit;
+@end
+
+@implementation PPSplashLivingMarkView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self pp_commonInit];
+    }
+    return self;
 }
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        [self pp_commonInit];
+    }
+    return self;
+}
+
+- (void)pp_commonInit
+{
+    self.backgroundColor = UIColor.clearColor;
+    self.opaque = NO;
+    self.userInteractionEnabled = NO;
+    self.accessibilityElementsHidden = YES;
+
+    CAGradientLayer *haloLayer = [CAGradientLayer layer];
+    if (@available(iOS 12.0, *)) {
+        haloLayer.type = kCAGradientLayerRadial;
+    }
+    haloLayer.startPoint = CGPointMake(0.5, 0.5);
+    haloLayer.endPoint = CGPointMake(1.0, 1.0);
+    haloLayer.locations = @[@0.0, @0.46, @1.0];
+    haloLayer.opacity = 0.0f;
+    [self.layer addSublayer:haloLayer];
+    self.haloLayer = haloLayer;
+
+    // A quiet, borderless raised surface separates the identity from the
+    // atmospheric field. It remains inset from the progress contour so the
+    // loading state stays crisp and visually independent.
+    CALayer *pedestalLayer = [CALayer layer];
+    pedestalLayer.borderWidth = 0.0;
+    pedestalLayer.masksToBounds = NO;
+    pedestalLayer.opacity = 0.0f;
+    [self.layer addSublayer:pedestalLayer];
+    self.pedestalLayer = pedestalLayer;
+
+    NSMutableArray<CAShapeLayer *> *trackLayers = [NSMutableArray arrayWithCapacity:3];
+    NSMutableArray<CAShapeLayer *> *progressLayers = [NSMutableArray arrayWithCapacity:3];
+    for (NSInteger index = 0; index < 3; index++) {
+        CAShapeLayer *trackLayer = [CAShapeLayer layer];
+        trackLayer.fillColor = UIColor.clearColor.CGColor;
+        trackLayer.lineCap = kCALineCapRound;
+        trackLayer.opacity = 0.0f;
+        [self.layer addSublayer:trackLayer];
+        [trackLayers addObject:trackLayer];
+
+        CAShapeLayer *progressLayer = [CAShapeLayer layer];
+        progressLayer.fillColor = UIColor.clearColor.CGColor;
+        progressLayer.lineCap = kCALineCapRound;
+        progressLayer.strokeEnd = 0.0;
+        progressLayer.opacity = 0.0f;
+        [self.layer addSublayer:progressLayer];
+        [progressLayers addObject:progressLayer];
+    }
+    self.trackLayers = trackLayers.copy;
+    self.progressLayers = progressLayers.copy;
+
+    UIImage *brandImage = [[UIImage imageNamed:@"PureIconTransFilledV3"]
+        imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    UIView *logoWrapperView = [[UIView alloc] init];
+    logoWrapperView.backgroundColor = UIColor.clearColor;
+    logoWrapperView.userInteractionEnabled = NO;
+    logoWrapperView.accessibilityElementsHidden = YES;
+    // The static LaunchScreen uses the same optical size and center, so the
+    // identity anchor never disappears while UIKit takes ownership.
+    logoWrapperView.alpha = 1.0;
+    logoWrapperView.transform = CGAffineTransformIdentity;
+    [self addSubview:logoWrapperView];
+    self.logoWrapperView = logoWrapperView;
+
+    UIImageView *logoImageView = [[UIImageView alloc] initWithImage:brandImage];
+    logoImageView.contentMode = UIViewContentModeScaleAspectFit;
+    logoImageView.userInteractionEnabled = NO;
+    logoImageView.accessibilityElementsHidden = YES;
+    [logoWrapperView addSubview:logoImageView];
+    self.logoImageView = logoImageView;
+
+    CAGradientLayer *markSheenLayer = [CAGradientLayer layer];
+    markSheenLayer.startPoint = CGPointMake(0.0, 0.5);
+    markSheenLayer.endPoint = CGPointMake(1.0, 0.5);
+    markSheenLayer.locations = @[@0.42, @0.50, @0.58];
+    markSheenLayer.opacity = 0.0f;
+    CALayer *markSheenContainerLayer = [CALayer layer];
+    CALayer *markSheenMaskLayer = [CALayer layer];
+    markSheenMaskLayer.contents = (__bridge id)brandImage.CGImage;
+    markSheenMaskLayer.contentsGravity = kCAGravityResizeAspect;
+    markSheenContainerLayer.mask = markSheenMaskLayer;
+    [markSheenContainerLayer addSublayer:markSheenLayer];
+    [logoWrapperView.layer addSublayer:markSheenContainerLayer];
+    self.markSheenContainerLayer = markSheenContainerLayer;
+    self.markSheenLayer = markSheenLayer;
+    self.markSheenMaskLayer = markSheenMaskLayer;
+
+    _activeStepCount = 0;
+    [self setActiveStepCount:1 animated:NO];
+    [self pp_applyTheme];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    CGFloat side = MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds));
+    CGPoint center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
+    self.haloLayer.frame = CGRectInset(self.bounds, -side * 0.08, -side * 0.08);
+    self.haloLayer.cornerRadius = CGRectGetWidth(self.haloLayer.bounds) * 0.5;
+
+    // Keep the raised surface comfortably inside the contour's inner edge.
+    // At the default 232pt mark field this creates a ~149pt pedestal with a
+    // 12–13pt optical inset from the widest progress stroke.
+    CGFloat pedestalDiameter = side * 0.64;
+    self.pedestalLayer.frame = CGRectMake(center.x - pedestalDiameter * 0.5,
+                                          center.y - pedestalDiameter * 0.5,
+                                          pedestalDiameter,
+                                          pedestalDiameter);
+    self.pedestalLayer.cornerRadius = pedestalDiameter * 0.5;
+    self.pedestalLayer.shadowPath =
+        [UIBezierPath bezierPathWithOvalInRect:self.pedestalLayer.bounds].CGPath;
+
+    // The source PNG has asymmetric transparent padding. The wrapper is the
+    // optical mark bounds (and therefore the animation pivot); the image is
+    // expanded and offset inside it so the visible alpha mass is truly centered.
+    // The reduced 36% scale gives the mark breathing room on its new pedestal.
+    CGFloat visualMarkHeight = side * 0.36;
+    CGFloat wrapperWidth = visualMarkHeight * (640.0 / 760.0);
+    self.logoWrapperView.frame = CGRectMake(center.x - wrapperWidth * 0.5,
+                                            center.y - visualMarkHeight * 0.5,
+                                            wrapperWidth,
+                                            visualMarkHeight);
+    CGFloat sourceCanvasSide = visualMarkHeight * (1024.0 / 760.0);
+    CGFloat visibleMinX = sourceCanvasSide * (225.0 / 1024.0);
+    CGFloat visibleMinY = sourceCanvasSide * (108.0 / 1024.0);
+    self.logoImageView.frame = CGRectMake(-visibleMinX,
+                                          -visibleMinY,
+                                          sourceCanvasSide,
+                                          sourceCanvasSide);
+    self.markSheenContainerLayer.frame = self.logoWrapperView.bounds;
+    self.markSheenLayer.frame = CGRectMake(-CGRectGetWidth(self.logoWrapperView.bounds),
+                                           0.0,
+                                           CGRectGetWidth(self.logoWrapperView.bounds) * 3.0,
+                                           CGRectGetHeight(self.logoWrapperView.bounds));
+    self.markSheenMaskLayer.frame = self.logoImageView.frame;
+
+    CGFloat radius = side * 0.385;
+    CGFloat gap = (CGFloat)(M_PI * 14.0 / 180.0);
+    CGFloat segmentSpan = ((CGFloat)(M_PI * 2.0) - gap * 3.0) / 3.0;
+    CGFloat firstStart = (CGFloat)-M_PI_2;
+    [self.trackLayers enumerateObjectsUsingBlock:^(CAShapeLayer *trackLayer,
+                                                    NSUInteger index,
+                                                    BOOL *stop) {
+        CGFloat start = firstStart + (segmentSpan + gap) * (CGFloat)index;
+        CGFloat end = start + segmentSpan;
+        UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:center
+                                                            radius:radius
+                                                        startAngle:start
+                                                          endAngle:end
+                                                         clockwise:YES];
+        trackLayer.frame = self.bounds;
+        trackLayer.path = path.CGPath;
+
+        CAShapeLayer *progressLayer = self.progressLayers[index];
+        progressLayer.frame = self.bounds;
+        progressLayer.path = path.CGPath;
+    }];
+}
+
+- (void)setActiveStepCount:(NSInteger)activeStepCount animated:(BOOL)animated
+{
+    NSInteger clampedCount = MIN(MAX(activeStepCount, 1), 3);
+    NSInteger previousCount = _activeStepCount;
+    _activeStepCount = clampedCount;
+
+    BOOL shouldAnimate = animated && self.didPlayEntrance && !UIAccessibilityIsReduceMotionEnabled();
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [self.progressLayers enumerateObjectsUsingBlock:^(CAShapeLayer *progressLayer,
+                                                       NSUInteger index,
+                                                       BOOL *stop) {
+        CGFloat target = ((NSInteger)index < clampedCount) ? 1.0 : 0.0;
+        CGFloat fromValue = progressLayer.presentationLayer
+            ? ((CAShapeLayer *)progressLayer.presentationLayer).strokeEnd
+            : progressLayer.strokeEnd;
+        progressLayer.strokeEnd = target;
+        progressLayer.opacity = 1.0f;
+
+        if (shouldAnimate && target > fromValue && (NSInteger)index >= previousCount) {
+            CABasicAnimation *draw = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+            draw.fromValue = @(fromValue);
+            draw.toValue = @(target);
+            draw.duration = 0.42;
+            draw.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                                  :1.0
+                                                                                  :0.32
+                                                                                  :1.0];
+            [progressLayer addAnimation:draw forKey:@"pp.progress.draw"];
+        }
+    }];
+    [CATransaction commit];
+
+}
+
+- (void)setReady:(BOOL)ready usesFallback:(BOOL)usesFallback animated:(BOOL)animated
+{
+    BOOL didBecomeReady = !_ready && ready;
+    _ready = ready;
+    self.usesFallback = usesFallback;
+    [self pp_applyTheme];
+
+    if (!didBecomeReady) {
+        return;
+    }
+
+    CALayer *presentationLayer = self.haloLayer.presentationLayer;
+    CGFloat visibleOpacity = presentationLayer ? presentationLayer.opacity : self.haloLayer.opacity;
+    CATransform3D visibleTransform = presentationLayer
+        ? presentationLayer.transform
+        : self.haloLayer.transform;
+    [self.haloLayer removeAnimationForKey:@"pp.halo.entrance"];
+    [self.haloLayer removeAnimationForKey:@"pp.halo.resolve"];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.haloLayer.opacity = 1.0f;
+    self.haloLayer.transform = CATransform3DIdentity;
+    [CATransaction commit];
+
+    BOOL needsResolution = visibleOpacity < 0.995 ||
+        !CATransform3DEqualToTransform(visibleTransform, CATransform3DIdentity);
+    if (!animated || UIAccessibilityIsReduceMotionEnabled() || !needsResolution) {
+        return;
+    }
+
+    CABasicAnimation *resolveOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    resolveOpacity.fromValue = @(visibleOpacity);
+    resolveOpacity.toValue = @1.0;
+    CABasicAnimation *resolveTransform = [CABasicAnimation animationWithKeyPath:@"transform"];
+    resolveTransform.fromValue = [NSValue valueWithCATransform3D:visibleTransform];
+    resolveTransform.toValue = [NSValue valueWithCATransform3D:CATransform3DIdentity];
+    CAAnimationGroup *resolve = [CAAnimationGroup animation];
+    resolve.animations = @[resolveOpacity, resolveTransform];
+    resolve.duration = 0.28;
+    resolve.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                              :1.0
+                                                                              :0.32
+                                                                              :1.0];
+    [self.haloLayer addAnimation:resolve forKey:@"pp.halo.resolve"];
+
+}
+
+- (void)playEntrance
+{
+    if (self.didPlayEntrance) {
+        return;
+    }
+    self.didPlayEntrance = YES;
+    [self layoutIfNeeded];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.haloLayer.opacity = 1.0f;
+        self.pedestalLayer.opacity = 1.0f;
+        self.pedestalLayer.transform = CATransform3DIdentity;
+        self.logoWrapperView.alpha = 1.0;
+        self.logoWrapperView.transform = CGAffineTransformIdentity;
+        for (CAShapeLayer *trackLayer in self.trackLayers) {
+            trackLayer.opacity = 1.0f;
+        }
+        for (CAShapeLayer *progressLayer in self.progressLayers) {
+            progressLayer.opacity = 1.0f;
+        }
+        return;
+    }
+
+    self.haloLayer.opacity = 1.0f;
+    CAAnimationGroup *haloReveal = [CAAnimationGroup animation];
+    CABasicAnimation *haloOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    haloOpacity.fromValue = @0.0;
+    haloOpacity.toValue = @1.0;
+    CABasicAnimation *haloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    haloScale.fromValue = @0.94;
+    haloScale.toValue = @1.0;
+    haloReveal.animations = @[haloOpacity, haloScale];
+    haloReveal.duration = 0.62;
+    haloReveal.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                               :1.0
+                                                                               :0.32
+                                                                               :1.0];
+    [self.haloLayer addAnimation:haloReveal forKey:@"pp.halo.entrance"];
+
+    CFTimeInterval now = CACurrentMediaTime();
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.pedestalLayer.opacity = 1.0f;
+    self.pedestalLayer.transform = CATransform3DIdentity;
+    [CATransaction commit];
+    CABasicAnimation *pedestalReveal = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    pedestalReveal.fromValue = @0.0;
+    pedestalReveal.toValue = @1.0;
+    pedestalReveal.beginTime = now + 0.04;
+    pedestalReveal.duration = 0.48;
+    pedestalReveal.fillMode = kCAFillModeBackwards;
+    pedestalReveal.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                                   :1.0
+                                                                                   :0.32
+                                                                                   :1.0];
+    [self.pedestalLayer addAnimation:pedestalReveal forKey:@"pp.pedestal.entrance"];
+
+    CAKeyframeAnimation *sheenOpacity = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    sheenOpacity.values = @[@0.0, @0.18, @0.18, @0.0];
+    sheenOpacity.keyTimes = @[@0.0, @0.24, @0.76, @1.0];
+    CABasicAnimation *sheenTravel = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    sheenTravel.fromValue = @(-CGRectGetWidth(self.logoWrapperView.bounds));
+    sheenTravel.toValue = @(CGRectGetWidth(self.logoWrapperView.bounds));
+    CAAnimationGroup *sheenGroup = [CAAnimationGroup animation];
+    sheenGroup.animations = @[sheenOpacity, sheenTravel];
+    sheenGroup.beginTime = now + 0.10;
+    sheenGroup.duration = 0.58;
+    sheenGroup.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                                :1.0
+                                                                                :0.32
+                                                                                :1.0];
+    [self.markSheenLayer addAnimation:sheenGroup forKey:@"pp.mark.sheen"];
+
+    [self.trackLayers enumerateObjectsUsingBlock:^(CAShapeLayer *trackLayer,
+                                                    NSUInteger index,
+                                                    BOOL *stop) {
+        trackLayer.opacity = 1.0f;
+        CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        fade.fromValue = @0.0;
+        fade.toValue = @1.0;
+        fade.beginTime = now + 0.12 + (CFTimeInterval)index * 0.045;
+        fade.duration = 0.34;
+        fade.fillMode = kCAFillModeBackwards;
+        fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+        [trackLayer addAnimation:fade forKey:@"pp.track.entrance"];
+
+        CAShapeLayer *progressLayer = self.progressLayers[index];
+        progressLayer.opacity = 1.0f;
+        if ((NSInteger)index < self.activeStepCount) {
+            CABasicAnimation *draw = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+            draw.fromValue = @0.0;
+            draw.toValue = @(progressLayer.strokeEnd);
+            draw.beginTime = now + 0.16 + (CFTimeInterval)index * 0.055;
+            draw.duration = 0.46;
+            draw.fillMode = kCAFillModeBackwards;
+            draw.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                                  :1.0
+                                                                                  :0.32
+                                                                                  :1.0];
+            [progressLayer addAnimation:draw forKey:@"pp.progress.entrance"];
+        }
+    }];
+
+}
+
+- (void)stopMotion
+{
+    [self.haloLayer removeAllAnimations];
+    [self.pedestalLayer removeAllAnimations];
+    [self.logoWrapperView.layer removeAllAnimations];
+    [self.markSheenLayer removeAllAnimations];
+    for (CAShapeLayer *layer in self.trackLayers) {
+        [layer removeAllAnimations];
+    }
+    for (CAShapeLayer *layer in self.progressLayers) {
+        [layer removeAllAnimations];
+    }
+}
+
+- (void)settleForSnapshot
+{
+    [self stopMotion];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.haloLayer.opacity = 1.0f;
+    self.haloLayer.transform = CATransform3DIdentity;
+    self.pedestalLayer.opacity = 1.0f;
+    self.pedestalLayer.transform = CATransform3DIdentity;
+    self.markSheenLayer.opacity = 0.0f;
+    self.markSheenLayer.transform = CATransform3DIdentity;
+    self.logoWrapperView.alpha = 1.0;
+    self.logoWrapperView.transform = CGAffineTransformIdentity;
+    [self.trackLayers enumerateObjectsUsingBlock:^(CAShapeLayer *trackLayer,
+                                                    NSUInteger index,
+                                                    BOOL *stop) {
+        trackLayer.opacity = 1.0f;
+        CAShapeLayer *progressLayer = self.progressLayers[index];
+        progressLayer.opacity = 1.0f;
+        progressLayer.strokeEnd = ((NSInteger)index < self.activeStepCount) ? 1.0 : 0.0;
+    }];
+    [CATransaction commit];
+}
+
+- (void)pp_applyTheme
+{
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL usesIncreasedContrast =
+        self.traitCollection.accessibilityContrast == UIAccessibilityContrastHigh;
+    UIColor *brandColor = [(AppPrimaryClr ?: UIColor.systemPinkColor)
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *secondaryColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor)
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *pedestalColor = [(AppForgroundColr ?: UIColor.systemBackgroundColor)
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *progressColor = self.usesFallback
+        ? [(AppInfoClr ?: brandColor) resolvedColorWithTraitCollection:self.traitCollection]
+        : brandColor;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+
+    CGFloat centerAlpha = usesIncreasedContrast
+        ? (isDark ? 0.28 : 0.22)
+        : (isDark ? 0.22 : 0.16);
+    self.haloLayer.colors = @[
+        (id)[brandColor colorWithAlphaComponent:centerAlpha].CGColor,
+        (id)[brandColor colorWithAlphaComponent:centerAlpha * 0.36].CGColor,
+        (id)UIColor.clearColor.CGColor
+    ];
+
+    self.pedestalLayer.backgroundColor = pedestalColor.CGColor;
+    self.pedestalLayer.borderWidth = 0.0;
+    self.pedestalLayer.shadowColor = UIColor.blackColor.CGColor;
+    self.pedestalLayer.shadowOpacity = usesIncreasedContrast
+        ? (isDark ? 0.44f : 0.16f)
+        : (isDark ? 0.34f : 0.10f);
+    self.pedestalLayer.shadowRadius = usesIncreasedContrast ? 18.0 : 22.0;
+    self.pedestalLayer.shadowOffset = CGSizeMake(0.0, isDark ? 9.0 : 8.0);
+
+    UIColor *trackColor = [secondaryColor colorWithAlphaComponent:
+        usesIncreasedContrast ? (isDark ? 0.72 : 0.90) : (isDark ? 0.52 : 0.76)];
+    CGFloat sheenAlpha = isDark ? 0.34 : 0.58;
+    self.markSheenLayer.colors = @[
+        (id)UIColor.clearColor.CGColor,
+        (id)[UIColor.whiteColor colorWithAlphaComponent:sheenAlpha].CGColor,
+        (id)UIColor.clearColor.CGColor
+    ];
+    CGFloat trackWidth = usesIncreasedContrast ? 3.0 : 2.0;
+    CGFloat progressWidth = usesIncreasedContrast ? 5.5 : 4.5;
+    for (CAShapeLayer *trackLayer in self.trackLayers) {
+        trackLayer.strokeColor = trackColor.CGColor;
+        trackLayer.lineWidth = trackWidth;
+    }
+    for (CAShapeLayer *progressLayer in self.progressLayers) {
+        progressLayer.strokeColor = progressColor.CGColor;
+        progressLayer.lineWidth = progressWidth;
+    }
+    [CATransaction commit];
+}
+
+@end
+
+#pragma mark - Splash Controller
+
 @interface SplashViewController ()
 @property (nonatomic, assign) BOOL didShowMainVC;
 @property (nonatomic, assign) BOOL didStartInitialDataLoad;
 @property (nonatomic, assign) BOOL didLoadMainKinds;
 @property (nonatomic, assign) BOOL didLoadBanners;
+@property (nonatomic, assign) BOOL didUseFallbackLaunch;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, assign) PPSplashLoadingPhase currentLoadingPhase;
 @property (nonatomic, copy, nullable) NSString *currentLoadingDetail;
 @property (nonatomic, strong, nullable) NSDate *launchBeganAt;
 @property (nonatomic, copy, nullable) dispatch_block_t launchTimeoutBlock;
-@property (nonatomic, strong) CAGradientLayer *backgroundGradientLayer;
-@property (nonatomic, strong) UIImageView *patternView;
-@property (nonatomic, strong) UIView *topGlowView;
-@property (nonatomic, strong) UIView *bottomGlowView;
 @property (nonatomic, strong) PPBackgroundView *ambientBackgroundView;
 @property (nonatomic, strong) UIStackView *contentStackView;
-@property (nonatomic, strong) UIView *logoPlateView;
-@property (nonatomic, strong) UIView *logoInnerSurfaceView;
-@property (nonatomic, strong) UIImageView *logoView;
+@property (nonatomic, strong) PPSplashLivingMarkView *livingMarkView;
+@property (nonatomic, strong) NSLayoutConstraint *livingMarkWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *livingMarkHeightConstraint;
 @property (nonatomic, strong) UILabel *brandLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
-@property (nonatomic, strong) UIView *loadingCardView;
-@property (nonatomic, strong) UIActivityIndicatorView *spinnerView;
+@property (nonatomic, strong) UIView *statusGroupView;
 @property (nonatomic, strong) UILabel *loadingTitleLabel;
 @property (nonatomic, strong) UILabel *loadingStatusLabel;
-@property (nonatomic, strong) UIStackView *progressStackView;
-@property (nonatomic, strong) NSArray<UIView *> *progressSegments;
 @property (nonatomic, strong) UILabel *footerLabel;
-@property (nonatomic, strong) LOTAnimationView *logoAnimationView;
-- (BOOL)pp_isRTL;
+@property (nonatomic, strong, nullable) UIViewPropertyAnimator *contentEntranceAnimator;
+@property (nonatomic, strong, nullable) UIViewPropertyAnimator *statusEntranceAnimator;
+@property (nonatomic, strong, nullable) UIViewPropertyAnimator *statusTextAnimator;
 - (void)pp_buildSplashInterface;
 - (void)pp_applySplashTheme;
 - (void)pp_applySplashCopy;
+- (void)pp_applyContentSizeLayout;
 - (void)pp_beginSplashAnimationsIfNeeded;
+- (void)pp_startSplashAtmosphereMotion;
+- (void)pp_stopSplashAtmosphereMotion;
 - (void)pp_refreshLoadingProgressPresentation;
 - (void)pp_updateLoadingPhase:(PPSplashLoadingPhase)phase detail:(NSString *)detail;
 - (void)pp_scheduleLaunchTimeout;
 - (void)pp_cancelLaunchTimeout;
 - (void)pp_completeLaunchIfNeededForced:(BOOL)forced;
+- (void)pp_prepareSplashForSnapshot;
+- (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification;
 - (nullable UIWindow *)pp_transitionWindow;
 - (void)pp_swapRootViewController:(UIViewController *)rootViewController
                           onWindow:(UIWindow *)window;
 @end
 
 @implementation SplashViewController
-- (void)setupLogoLottieFromPath {
-   
-   
-}
+
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -78,116 +572,129 @@ static UIColor *SplashViewControllerGoldColor(void) {
     [self pp_applySplashCopy];
     [self pp_updateLoadingPhase:PPSplashLoadingPhaseBootstrapping detail:self.currentLoadingDetail];
 
-    [PPHUD dismiss];
-    
-    if ([[NSBundle mainBundle] pathForResource:@"AddUserIconAnimation" ofType:@"json"].length > 0)
-    {
-        self.logoAnimationView = [LOTAnimationView animationNamed:@"AddUserIconAnimation"];
-        self.logoAnimationView.frame = CGRectMake(0, 0, 240, 240);
-        self.logoAnimationView.center = self.view.center;
-        self.logoAnimationView.contentMode = UIViewContentModeScaleAspectFit;
-        self.logoAnimationView.loopAnimation = YES;
-    }
-    //[self.view addSubview:self.logoAnimationView];
-    
-    
-    
-    
-    [self setupLogoLottieFromPath];
-}
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_reduceMotionStatusDidChange:)
+                                                 name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                               object:nil];
 
-- (void)viewDidLayoutSubviews
-{
-    [super viewDidLayoutSubviews];
+    [PPHUD dismiss];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
 
-    if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applySplashTheme];
-        }
-    } else {
+    BOOL colorAppearanceChanged = !previousTraitCollection ||
+        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection];
+    BOOL contrastChanged = previousTraitCollection &&
+        self.traitCollection.accessibilityContrast != previousTraitCollection.accessibilityContrast;
+    if (colorAppearanceChanged || contrastChanged) {
         [self pp_applySplashTheme];
+    }
+    if (!previousTraitCollection ||
+        ![self.traitCollection.preferredContentSizeCategory
+            isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+        [self pp_applyContentSizeLayout];
     }
 }
 
-- (BOOL)pp_isRTL
+- (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification
 {
-    return [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:Language.semanticAttributeForCurrentLanguage] ==
-        UIUserInterfaceLayoutDirectionRightToLeft;
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [self.contentEntranceAnimator stopAnimation:YES];
+    [self.statusEntranceAnimator stopAnimation:YES];
+    [self.statusTextAnimator stopAnimation:YES];
+    self.contentEntranceAnimator = nil;
+    self.statusEntranceAnimator = nil;
+    self.statusTextAnimator = nil;
+
+    [self pp_stopSplashAtmosphereMotion];
+    [self.livingMarkView settleForSnapshot];
+    self.ambientBackgroundView.alpha = 1.0;
+    self.brandLabel.alpha = 1.0;
+    self.brandLabel.transform = CGAffineTransformIdentity;
+    self.subtitleLabel.alpha = 1.0;
+    self.subtitleLabel.transform = CGAffineTransformIdentity;
+    self.statusGroupView.alpha = 1.0;
+    self.statusGroupView.transform = CGAffineTransformIdentity;
+    self.loadingTitleLabel.alpha = 1.0;
+    self.loadingStatusLabel.alpha = 1.0;
+    self.footerLabel.alpha = 1.0;
 }
+
+#pragma mark - Interface
 
 - (void)pp_buildSplashInterface
 {
-    self.view.backgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
-    self.view.semanticContentAttribute = GM.setSemantic;
+    // SceneDelegate installs this controller programmatically, but clearing the
+    // container keeps the composition deterministic if the controller is ever
+    // reintroduced through an archived scene.
+    for (UIView *legacySubview in self.view.subviews.copy) {
+        [legacySubview removeFromSuperview];
+    }
+
+    UIColor *launchCanvasColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
+        AppForgroundColr ?: UIColor.systemBackgroundColor;
+    self.view.backgroundColor = launchCanvasColor;
+    self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.view.clipsToBounds = YES;
-    
+
     PPBackgroundView *ambientBackgroundView = [[PPBackgroundView alloc] init];
     ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     ambientBackgroundView.userInteractionEnabled = NO;
     ambientBackgroundView.PPHeroApexUseShimmer = NO;
-    ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
-    
+    ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
+    ambientBackgroundView.overrideBorders = YES;
+    ambientBackgroundView.overrideBorderColor = UIColor.clearColor;
+    // The bridge treats values <= 0.5 as "unset" and falls back to a 30pt
+    // card radius. A sub-point explicit value keeps the full-screen field square.
+    ambientBackgroundView.overrideCornerRadius = 0.51;
+    ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleBBBaseBackground;
+    // Seed the field with Home's quiet-lilac atmosphere. The theme pass below
+    // resolves it into a lighter lilac mist for the current appearance.
+    ambientBackgroundView.accentColorOverride = [UIColor ppQuietLilac];
+    ambientBackgroundView.overrideSurfaceColor = [UIColor ppElevatedSurface];
+    // Begin on the exact solid LaunchScreen canvas. The authored atmosphere
+    // arrives only after UIKit owns the frame, avoiding a launch-boundary flash.
+    ambientBackgroundView.alpha = 0.0;
     [self.view addSubview:ambientBackgroundView];
     self.ambientBackgroundView = ambientBackgroundView;
-
-    UIImage *patternImage = [[UIImage imageNamed:@"chat3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    UIImageView *patternView = [[UIImageView alloc] initWithImage:patternImage];
-    patternView.translatesAutoresizingMaskIntoConstraints = NO;
-    patternView.contentMode = UIViewContentModeScaleAspectFill;
-    patternView.userInteractionEnabled = NO;
-    [self.view addSubview:patternView];
-    self.patternView = patternView;
 
     UIStackView *contentStackView = [[UIStackView alloc] init];
     contentStackView.translatesAutoresizingMaskIntoConstraints = NO;
     contentStackView.axis = UILayoutConstraintAxisVertical;
     contentStackView.alignment = UIStackViewAlignmentCenter;
     contentStackView.distribution = UIStackViewDistributionFill;
-    contentStackView.spacing = 22.0;
-    contentStackView.alpha = 0.0;
-    contentStackView.transform = CGAffineTransformMakeTranslation(0.0, 22.0);
+    contentStackView.spacing = 0.0;
+    contentStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     [self.view addSubview:contentStackView];
     self.contentStackView = contentStackView;
 
-    UIView *logoPlateView = [[UIView alloc] init];
-    logoPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    logoPlateView.layer.cornerRadius = 42.0;
-    logoPlateView.layer.masksToBounds = NO;
-    if (@available(iOS 13.0, *)) {
-        logoPlateView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [logoPlateView.widthAnchor constraintEqualToConstant:172.0].active = YES;
-    [logoPlateView.heightAnchor constraintEqualToConstant:172.0].active = YES;
-    [contentStackView addArrangedSubview:logoPlateView];
-    self.logoPlateView = logoPlateView;
-
-    UIView *logoInnerSurfaceView = [[UIView alloc] init];
-    logoInnerSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    logoInnerSurfaceView.layer.cornerRadius = 34.0;
-    logoInnerSurfaceView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        logoInnerSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [logoPlateView addSubview:logoInnerSurfaceView];
-    self.logoInnerSurfaceView = logoInnerSurfaceView;
-
-    UIImage *logoImage = [[UIImage imageNamed:@"PureIconTransFilledV3"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-    UIImageView *logoView = [[UIImageView alloc] initWithImage:logoImage];
-    logoView.translatesAutoresizingMaskIntoConstraints = NO;
-    logoView.contentMode = UIViewContentModeScaleAspectFit;
-    [logoInnerSurfaceView addSubview:logoView];
-    self.logoView = logoView;
+    PPSplashLivingMarkView *livingMarkView = [[PPSplashLivingMarkView alloc] init];
+    livingMarkView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.livingMarkWidthConstraint = [livingMarkView.widthAnchor constraintEqualToConstant:232.0];
+    self.livingMarkHeightConstraint = [livingMarkView.heightAnchor constraintEqualToConstant:232.0];
+    self.livingMarkWidthConstraint.active = YES;
+    self.livingMarkHeightConstraint.active = YES;
+    [contentStackView addArrangedSubview:livingMarkView];
+    self.livingMarkView = livingMarkView;
 
     UILabel *brandLabel = [[UILabel alloc] init];
     brandLabel.translatesAutoresizingMaskIntoConstraints = NO;
     brandLabel.textAlignment = NSTextAlignmentCenter;
     brandLabel.numberOfLines = 1;
-    brandLabel.font = [GM boldFontWithSize:34.0] ?: [UIFont systemFontOfSize:34.0 weight:UIFontWeightBlack];
+    UIFont *brandBaseFont = [GM boldFontWithSize:PPFontLargeTitle] ?:
+        [UIFont systemFontOfSize:34.0 weight:UIFontWeightBlack];
+    brandLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleLargeTitle]
+        scaledFontForFont:brandBaseFont
+        maximumPointSize:50.0];
+    brandLabel.adjustsFontForContentSizeCategory = YES;
+    brandLabel.accessibilityTraits = UIAccessibilityTraitHeader;
+    brandLabel.alpha = 0.0;
+    brandLabel.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceSM);
     [contentStackView addArrangedSubview:brandLabel];
     self.brandLabel = brandLabel;
 
@@ -195,270 +702,347 @@ static UIColor *SplashViewControllerGoldColor(void) {
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     subtitleLabel.numberOfLines = 0;
-    subtitleLabel.font = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    UIFont *subtitleBaseFont = [GM MidFontWithSize:PPFontHeadline] ?:
+        [UIFont systemFontOfSize:17.0 weight:UIFontWeightMedium];
+    subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+        scaledFontForFont:subtitleBaseFont
+        maximumPointSize:27.0];
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
     subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
-    [subtitleLabel.widthAnchor constraintLessThanOrEqualToConstant:308.0].active = YES;
+    subtitleLabel.alpha = 0.0;
+    subtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceSM);
     [contentStackView addArrangedSubview:subtitleLabel];
     self.subtitleLabel = subtitleLabel;
 
-    UIView *loadingCardView = [[UIView alloc] init];
-    loadingCardView.translatesAutoresizingMaskIntoConstraints = NO;
-    loadingCardView.layer.cornerRadius = 26.0;
-    loadingCardView.layer.masksToBounds = NO;
-    if (@available(iOS 13.0, *)) {
-        loadingCardView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    CGFloat cardWidth = MIN(MAX(CGRectGetWidth(UIScreen.mainScreen.bounds) - 56.0, 264.0), 340.0);
-    [loadingCardView.widthAnchor constraintEqualToConstant:cardWidth].active = YES;
-    [contentStackView addArrangedSubview:loadingCardView];
-    self.loadingCardView = loadingCardView;
+    UIView *statusGroupView = [[UIView alloc] init];
+    statusGroupView.translatesAutoresizingMaskIntoConstraints = NO;
+    statusGroupView.backgroundColor = UIColor.clearColor;
+    statusGroupView.isAccessibilityElement = YES;
+    statusGroupView.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
+    statusGroupView.alpha = 0.0;
+    statusGroupView.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceSM);
+    [contentStackView addArrangedSubview:statusGroupView];
+    self.statusGroupView = statusGroupView;
 
-    UIStackView *cardContentStack = [[UIStackView alloc] init];
-    cardContentStack.translatesAutoresizingMaskIntoConstraints = NO;
-    cardContentStack.axis = UILayoutConstraintAxisVertical;
-    cardContentStack.alignment = UIStackViewAlignmentFill;
-    cardContentStack.distribution = UIStackViewDistributionFill;
-    cardContentStack.spacing = 14.0;
-    [loadingCardView addSubview:cardContentStack];
-
-    UIStackView *headerStack = [[UIStackView alloc] init];
-    headerStack.translatesAutoresizingMaskIntoConstraints = NO;
-    headerStack.axis = UILayoutConstraintAxisHorizontal;
-    headerStack.alignment = UIStackViewAlignmentCenter;
-    headerStack.spacing = 12.0;
-    [cardContentStack addArrangedSubview:headerStack];
-
-    UIActivityIndicatorView *spinnerView = nil;
-    if (@available(iOS 13.0, *)) {
-        spinnerView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
-    } else {
-        spinnerView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
-    }
-    spinnerView.translatesAutoresizingMaskIntoConstraints = NO;
-    spinnerView.hidesWhenStopped = NO;
-    [spinnerView.widthAnchor constraintEqualToConstant:22.0].active = YES;
-    [spinnerView.heightAnchor constraintEqualToConstant:22.0].active = YES;
-    [spinnerView startAnimating];
-    [headerStack addArrangedSubview:spinnerView];
-    self.spinnerView = spinnerView;
-
-    UIStackView *textStack = [[UIStackView alloc] init];
-    textStack.translatesAutoresizingMaskIntoConstraints = NO;
-    textStack.axis = UILayoutConstraintAxisVertical;
-    textStack.alignment = UIStackViewAlignmentFill;
-    textStack.distribution = UIStackViewDistributionFill;
-    textStack.spacing = 3.0;
-    [headerStack addArrangedSubview:textStack];
+    UIStackView *statusTextStack = [[UIStackView alloc] init];
+    statusTextStack.translatesAutoresizingMaskIntoConstraints = NO;
+    statusTextStack.axis = UILayoutConstraintAxisVertical;
+    statusTextStack.alignment = UIStackViewAlignmentFill;
+    statusTextStack.distribution = UIStackViewDistributionFill;
+    statusTextStack.spacing = PPSpaceXXS;
+    statusTextStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [statusGroupView addSubview:statusTextStack];
 
     UILabel *loadingTitleLabel = [[UILabel alloc] init];
     loadingTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    loadingTitleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
-    loadingTitleLabel.numberOfLines = 1;
-    [textStack addArrangedSubview:loadingTitleLabel];
+    UIFont *loadingTitleBaseFont = [GM boldFontWithSize:PPFontSubheadline] ?:
+        [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    loadingTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+        scaledFontForFont:loadingTitleBaseFont
+        maximumPointSize:24.0];
+    loadingTitleLabel.adjustsFontForContentSizeCategory = YES;
+    loadingTitleLabel.textAlignment = NSTextAlignmentCenter;
+    loadingTitleLabel.numberOfLines = 0;
+    loadingTitleLabel.isAccessibilityElement = NO;
+    [statusTextStack addArrangedSubview:loadingTitleLabel];
     self.loadingTitleLabel = loadingTitleLabel;
 
     UILabel *loadingStatusLabel = [[UILabel alloc] init];
     loadingStatusLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    loadingStatusLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    loadingStatusLabel.numberOfLines = 2;
-    [textStack addArrangedSubview:loadingStatusLabel];
+    UIFont *loadingStatusBaseFont = [GM MidFontWithSize:PPFontFootnote] ?:
+        [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    loadingStatusLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+        scaledFontForFont:loadingStatusBaseFont
+        maximumPointSize:21.0];
+    loadingStatusLabel.adjustsFontForContentSizeCategory = YES;
+    loadingStatusLabel.textAlignment = NSTextAlignmentCenter;
+    loadingStatusLabel.numberOfLines = 0;
+    loadingStatusLabel.isAccessibilityElement = NO;
+    [statusTextStack addArrangedSubview:loadingStatusLabel];
     self.loadingStatusLabel = loadingStatusLabel;
-
-    UIStackView *progressStackView = [[UIStackView alloc] init];
-    progressStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    progressStackView.axis = UILayoutConstraintAxisHorizontal;
-    progressStackView.alignment = UIStackViewAlignmentFill;
-    progressStackView.distribution = UIStackViewDistributionFillEqually;
-    progressStackView.spacing = 8.0;
-    [cardContentStack addArrangedSubview:progressStackView];
-    self.progressStackView = progressStackView;
-
-    NSMutableArray<UIView *> *progressSegments = [NSMutableArray array];
-    for (NSInteger idx = 0; idx < 3; idx++) {
-        UIView *segment = [[UIView alloc] init];
-        segment.translatesAutoresizingMaskIntoConstraints = NO;
-        segment.layer.cornerRadius = 3.0;
-        segment.layer.masksToBounds = YES;
-        [segment.heightAnchor constraintEqualToConstant:6.0].active = YES;
-        [progressStackView addArrangedSubview:segment];
-        [progressSegments addObject:segment];
-    }
-    self.progressSegments = progressSegments.copy;
 
     UILabel *footerLabel = [[UILabel alloc] init];
     footerLabel.translatesAutoresizingMaskIntoConstraints = NO;
     footerLabel.textAlignment = NSTextAlignmentCenter;
     footerLabel.numberOfLines = 2;
-    footerLabel.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+    UIFont *footerBaseFont = [GM MidFontWithSize:PPFontCaption2] ?:
+        [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    footerLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2]
+        scaledFontForFont:footerBaseFont
+        maximumPointSize:16.0];
+    footerLabel.adjustsFontForContentSizeCategory = YES;
     footerLabel.alpha = 0.0;
-    footerLabel.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+    footerLabel.accessibilityElementsHidden = YES;
     [self.view addSubview:footerLabel];
     self.footerLabel = footerLabel;
-    
+
+    NSLayoutConstraint *contentFluidWidth =
+        [contentStackView.widthAnchor constraintEqualToAnchor:self.view.widthAnchor constant:-48.0];
+    contentFluidWidth.priority = UILayoutPriorityRequired - 1.0;
+    NSLayoutConstraint *contentMaximumWidth =
+        [contentStackView.widthAnchor constraintLessThanOrEqualToConstant:430.0];
+    NSLayoutConstraint *contentPreferredWidth =
+        [contentStackView.widthAnchor constraintEqualToConstant:430.0];
+    contentPreferredWidth.priority = UILayoutPriorityRequired - 2.0;
+    // Match the static LaunchScreen's optical mark anchor exactly at default
+    // content size. The surrounding safety constraints are allowed to override
+    // this preference on compact or large-accessibility layouts.
+    NSLayoutConstraint *markContinuityPosition =
+        [livingMarkView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor
+                                                     constant:-110.0];
+    markContinuityPosition.priority = UILayoutPriorityDefaultHigh;
+
+    UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        
-        [self.ambientBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [self.ambientBackgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.ambientBackgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.ambientBackgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        
-        [patternView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [patternView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [patternView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [patternView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [ambientBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [ambientBackgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [ambientBackgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [ambientBackgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
 
         [contentStackView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [contentStackView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-42.0],
-        [contentStackView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:28.0],
-        [contentStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-28.0],
-        [contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:36.0],
+        [contentStackView.leadingAnchor constraintGreaterThanOrEqualToAnchor:safeArea.leadingAnchor
+                                                                    constant:PPSpaceXL],
+        [contentStackView.trailingAnchor constraintLessThanOrEqualToAnchor:safeArea.trailingAnchor
+                                                                   constant:-PPSpaceXL],
+        [contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:safeArea.topAnchor
+                                                                 constant:PPSpaceBase],
+        [contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:footerLabel.topAnchor
+                                                                 constant:-PPSpaceXXL],
+        contentFluidWidth,
+        contentMaximumWidth,
+        contentPreferredWidth,
+        markContinuityPosition,
 
-        [logoInnerSurfaceView.leadingAnchor constraintEqualToAnchor:logoPlateView.leadingAnchor constant:12.0],
-        [logoInnerSurfaceView.trailingAnchor constraintEqualToAnchor:logoPlateView.trailingAnchor constant:-12.0],
-        [logoInnerSurfaceView.topAnchor constraintEqualToAnchor:logoPlateView.topAnchor constant:12.0],
-        [logoInnerSurfaceView.bottomAnchor constraintEqualToAnchor:logoPlateView.bottomAnchor constant:-12.0],
+        [brandLabel.widthAnchor constraintEqualToAnchor:contentStackView.widthAnchor],
+        [subtitleLabel.widthAnchor constraintEqualToAnchor:contentStackView.widthAnchor],
+        [statusGroupView.widthAnchor constraintEqualToAnchor:contentStackView.widthAnchor],
 
-        [logoView.centerXAnchor constraintEqualToAnchor:logoInnerSurfaceView.centerXAnchor],
-        [logoView.centerYAnchor constraintEqualToAnchor:logoInnerSurfaceView.centerYAnchor],
-        [logoView.widthAnchor constraintEqualToConstant:104.0],
-        [logoView.heightAnchor constraintEqualToConstant:104.0],
+        [statusTextStack.leadingAnchor constraintEqualToAnchor:statusGroupView.leadingAnchor],
+        [statusTextStack.trailingAnchor constraintEqualToAnchor:statusGroupView.trailingAnchor],
+        [statusTextStack.topAnchor constraintEqualToAnchor:statusGroupView.topAnchor],
+        [statusTextStack.bottomAnchor constraintEqualToAnchor:statusGroupView.bottomAnchor],
 
-        [cardContentStack.leadingAnchor constraintEqualToAnchor:loadingCardView.leadingAnchor constant:18.0],
-        [cardContentStack.trailingAnchor constraintEqualToAnchor:loadingCardView.trailingAnchor constant:-18.0],
-        [cardContentStack.topAnchor constraintEqualToAnchor:loadingCardView.topAnchor constant:18.0],
-        [cardContentStack.bottomAnchor constraintEqualToAnchor:loadingCardView.bottomAnchor constant:-18.0],
-
-        [footerLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
-        [footerLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
-        [footerLabel.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-22.0]
+        [footerLabel.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor constant:PPSpaceXL],
+        [footerLabel.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor constant:-PPSpaceXL],
+        [footerLabel.bottomAnchor constraintEqualToAnchor:safeArea.bottomAnchor constant:-PPSpaceMD]
     ]];
-    
-    
-    
+
+    [contentStackView setCustomSpacing:PPSpaceXL afterView:livingMarkView];
+    [contentStackView setCustomSpacing:PPSpaceSM afterView:brandLabel];
+    [contentStackView setCustomSpacing:PPSpaceXXL afterView:subtitleLabel];
+
+    self.view.accessibilityElements = @[brandLabel, subtitleLabel, statusGroupView];
+    [self pp_applyContentSizeLayout];
 }
 
 - (void)pp_applySplashTheme
 {
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    UIColor *surfaceColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
-    UIColor *primaryColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *primaryGlowColor = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:0.9];
+    UIColor *canvasColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
+        AppForgroundColr ?: UIColor.systemBackgroundColor;
     UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *secondaryTextColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    UIColor *whiteTint = UIColor.whiteColor;
+    UIColor *elevatedSurface = [[UIColor ppElevatedSurface]
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *homeQuietLilac = [[UIColor ppQuietLilac]
+        resolvedColorWithTraitCollection:self.traitCollection];
+    // 58% Home lilac + 42% elevated surface keeps the hue recognizable while
+    // lifting it into the near-white range requested for this identity screen.
+    UIColor *lightLilacMist = [PPColorUtils blendColor:homeQuietLilac
+                                             withColor:elevatedSurface
+                                                factor:0.58];
 
-    self.view.backgroundColor = surfaceColor;
+    self.view.backgroundColor = canvasColor;
+    self.ambientBackgroundView.accentColorOverride = lightLilacMist;
+    self.ambientBackgroundView.overrideSurfaceColor = elevatedSurface;
     [self.ambientBackgroundView reapplyPalette];
-
-    self.patternView.tintColor = primaryColor;
-    self.patternView.alpha = isDark ? 0.05 : 0.035;
-
-    self.logoPlateView.backgroundColor = [whiteTint colorWithAlphaComponent:isDark ? 0.06 : 0.42];
-    self.logoPlateView.layer.borderWidth = 1.0f;
-    [self.logoPlateView pp_setBorderColor:[whiteTint colorWithAlphaComponent:isDark ? 0.08 : 0.22]];
-    [self.logoPlateView pp_setShadowColor:UIColor.blackColor];
-    self.logoPlateView.layer.shadowOpacity = isDark ? 0.34f : 0.10f;
-    self.logoPlateView.layer.shadowRadius = isDark ? 26.0f : 24.0f;
-    self.logoPlateView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-
-    self.logoInnerSurfaceView.backgroundColor = [surfaceColor colorWithAlphaComponent:isDark ? 0.94 : 0.96];
-    self.logoInnerSurfaceView.layer.borderWidth = 1.0f;
-    [self.logoInnerSurfaceView pp_setBorderColor:[whiteTint colorWithAlphaComponent:isDark ? 0.06 : 0.20]];
-
-    self.logoView.tintColor = primaryColor;
+    [self.livingMarkView pp_applyTheme];
 
     self.brandLabel.textColor = titleColor;
-    self.subtitleLabel.textColor = [secondaryTextColor colorWithAlphaComponent:isDark ? 0.94 : 0.88];
-
-    self.loadingCardView.backgroundColor = [surfaceColor colorWithAlphaComponent:isDark ? 0.74 : 0.90];
-    self.loadingCardView.layer.borderWidth = 1.0f;
-    [self.loadingCardView pp_setBorderColor:[whiteTint colorWithAlphaComponent:isDark ? 0.08 : 0.18]];
-    [self.loadingCardView pp_setShadowColor:UIColor.blackColor];
-    self.loadingCardView.layer.shadowOpacity = isDark ? 0.22f : 0.08f;
-    self.loadingCardView.layer.shadowRadius = 18.0f;
-    self.loadingCardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-
-    self.spinnerView.color = primaryColor;
+    self.subtitleLabel.textColor = secondaryTextColor;
     self.loadingTitleLabel.textColor = titleColor;
-    self.loadingStatusLabel.textColor = [secondaryTextColor colorWithAlphaComponent:isDark ? 0.92 : 0.82];
-    self.footerLabel.textColor = [secondaryTextColor colorWithAlphaComponent:isDark ? 0.86 : 0.78];
-
-    [self pp_updateLoadingPhase:self.currentLoadingPhase detail:self.currentLoadingDetail];
+    self.loadingStatusLabel.textColor = secondaryTextColor;
+    self.footerLabel.textColor = [secondaryTextColor colorWithAlphaComponent:0.78];
 }
 
 - (void)pp_applySplashCopy
 {
-    BOOL isRTL = [self pp_isRTL];
-    NSInteger currentYear = [[NSCalendar currentCalendar] component:NSCalendarUnitYear fromDate:[NSDate date]];
+    NSInteger currentYear = [[NSCalendar currentCalendar] component:NSCalendarUnitYear
+                                                            fromDate:[NSDate date]];
 
-    self.brandLabel.text = @"Pure Pets";
-    self.subtitleLabel.text = isRTL
-        ? @"كل ما يحتاجه حيوانك الأليف، في تجربة حديثة وسريعة ومريحة."
-        : @"Everything your pet needs, in one modern, calm, and reliable experience.";
-    self.loadingTitleLabel.text = isRTL ? @"نجهز تجربتك الآن" : @"Preparing your experience";
-    self.footerLabel.text =
-        isRTL
-            ? [NSString stringWithFormat:@"Pure Pets © %ld\nجميع الحقوق محفوظة.", (long)currentYear]
-            : [NSString stringWithFormat:@"Pure Pets © %ld\nAll rights reserved.", (long)currentYear];
+    self.brandLabel.text = kLang(@"AppName");
+    self.subtitleLabel.text = kLang(@"splash_product_promise");
+    self.loadingTitleLabel.text = kLang(@"splash_loading_title");
+    self.footerLabel.text = [NSString localizedStringWithFormat:kLang(@"splash_footer_format"),
+                                                             (long)currentYear];
+    self.currentLoadingDetail = kLang(@"splash_loading_boot");
+}
 
-    self.currentLoadingDetail = isRTL
-        ? @"نحمّل الأقسام والواجهة الرئيسية"
-        : @"Loading categories and your home feed";
+- (void)pp_applyContentSizeLayout
+{
+    BOOL usesAccessibilitySizes =
+        UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    CGFloat markDimension = usesAccessibilitySizes ? 188.0 : 232.0;
+    self.livingMarkWidthConstraint.constant = markDimension;
+    self.livingMarkHeightConstraint.constant = markDimension;
+    self.brandLabel.numberOfLines = usesAccessibilitySizes ? 2 : 1;
+    self.footerLabel.numberOfLines = usesAccessibilitySizes ? 2 : 1;
+
+    [self.contentStackView setCustomSpacing:usesAccessibilitySizes ? PPSpaceBase : PPSpaceXL
+                                  afterView:self.livingMarkView];
+    [self.contentStackView setCustomSpacing:usesAccessibilitySizes ? PPSpaceXS : PPSpaceSM
+                                  afterView:self.brandLabel];
+    [self.contentStackView setCustomSpacing:usesAccessibilitySizes ? PPSpaceXL : PPSpaceXXL
+                                  afterView:self.subtitleLabel];
+    [self.view setNeedsLayout];
+}
+
+#pragma mark - Motion and Progress
+
+- (void)pp_startSplashAtmosphereMotion
+{
+    // The shared field owns adaptive aurora motion and automatically reduces
+    // itself for accessibility, Low Power Mode, thermal pressure, and inactive
+    // application state. Shimmer and touch parallax remain explicitly disabled.
+    [self.ambientBackgroundView startAnimations];
+    [self.ambientBackgroundView.layer
+        removeAnimationForKey:PPSplashAtmosphereDriftAnimationKey];
+
+    if (UIAccessibilityIsReduceMotionEnabled() ||
+        NSProcessInfo.processInfo.isLowPowerModeEnabled) {
+        self.ambientBackgroundView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    CGFloat readingDirection =
+        self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft
+            ? -1.0
+            : 1.0;
+    CGAffineTransform openingTransform = CGAffineTransformMakeScale(1.045, 1.045);
+    openingTransform = CGAffineTransformTranslate(openingTransform,
+                                                  readingDirection * 6.0,
+                                                  -6.0);
+    CGAffineTransform passingTransform = CGAffineTransformMakeScale(1.022, 1.022);
+    passingTransform = CGAffineTransformTranslate(passingTransform,
+                                                  readingDirection * -3.0,
+                                                  2.5);
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.ambientBackgroundView.layer.transform = CATransform3DIdentity;
+    [CATransaction commit];
+
+    CAKeyframeAnimation *fieldSettle =
+        [CAKeyframeAnimation animationWithKeyPath:@"transform"];
+    fieldSettle.values = @[
+        [NSValue valueWithCATransform3D:CATransform3DMakeAffineTransform(openingTransform)],
+        [NSValue valueWithCATransform3D:CATransform3DMakeAffineTransform(passingTransform)],
+        [NSValue valueWithCATransform3D:CATransform3DIdentity]
+    ];
+    fieldSettle.keyTimes = @[@0.0, @0.58, @1.0];
+    fieldSettle.calculationMode = kCAAnimationCubic;
+    fieldSettle.timingFunctions = @[
+        [CAMediaTimingFunction functionWithControlPoints:0.20 :0.0 :0.0 :1.0],
+        [CAMediaTimingFunction functionWithControlPoints:0.23 :1.0 :0.32 :1.0]
+    ];
+    fieldSettle.duration = 1.80;
+    fieldSettle.fillMode = kCAFillModeBackwards;
+    [self.ambientBackgroundView.layer addAnimation:fieldSettle
+                                            forKey:PPSplashAtmosphereDriftAnimationKey];
+}
+
+- (void)pp_stopSplashAtmosphereMotion
+{
+    [self.ambientBackgroundView stopAnimations];
+    [self.ambientBackgroundView.layer
+        removeAnimationForKey:PPSplashAtmosphereDriftAnimationKey];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.ambientBackgroundView.layer.transform = CATransform3DIdentity;
+    [CATransaction commit];
 }
 
 - (void)pp_beginSplashAnimationsIfNeeded
 {
-    if (self.contentStackView.alpha > 0.99f) {
+    if (self.didAnimateEntrance) {
         return;
     }
+    self.didAnimateEntrance = YES;
 
-    [UIView animateWithDuration:0.72
-                          delay:0.0
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.28
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.contentStackView.alpha = 1.0;
-        self.contentStackView.transform = CGAffineTransformIdentity;
-        self.footerLabel.alpha = 1.0;
-        self.footerLabel.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    [self.livingMarkView playEntrance];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.ambientBackgroundView.alpha = 1.0;
+        self.brandLabel.alpha = 1.0;
+        self.brandLabel.transform = CGAffineTransformIdentity;
+        self.subtitleLabel.alpha = 1.0;
+        self.subtitleLabel.transform = CGAffineTransformIdentity;
+        self.statusGroupView.alpha = 1.0;
+        self.statusGroupView.transform = CGAffineTransformIdentity;
+        self.footerLabel.alpha = 1.0;
         return;
     }
 
-    if (![self.logoPlateView.layer animationForKey:@"pp.splash.logoPulse"]) {
-        CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-        pulse.fromValue = @(0.985);
-        pulse.toValue = @(1.02);
-        pulse.duration = 2.3;
-        pulse.autoreverses = YES;
-        pulse.repeatCount = HUGE_VALF;
-        pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.logoPlateView.layer addAnimation:pulse forKey:@"pp.splash.logoPulse"];
-    }
+    __weak typeof(self) weakSelf = self;
+    UICubicTimingParameters *entranceTiming =
+        [[UICubicTimingParameters alloc] initWithControlPoint1:CGPointMake(0.23, 1.0)
+                                                 controlPoint2:CGPointMake(0.32, 1.0)];
+    UIViewPropertyAnimator *copyAnimator =
+        [[UIViewPropertyAnimator alloc] initWithDuration:0.44
+                                        timingParameters:entranceTiming];
+    [copyAnimator addAnimations:^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        self.ambientBackgroundView.alpha = 1.0;
+        self.brandLabel.alpha = 1.0;
+        self.brandLabel.transform = CGAffineTransformIdentity;
+        self.subtitleLabel.alpha = 1.0;
+        self.subtitleLabel.transform = CGAffineTransformIdentity;
+    }];
+    self.contentEntranceAnimator = copyAnimator;
+    [copyAnimator startAnimationAfterDelay:0.08];
+
+    UIViewPropertyAnimator *statusAnimator =
+        [[UIViewPropertyAnimator alloc] initWithDuration:0.34
+                                        timingParameters:entranceTiming];
+    [statusAnimator addAnimations:^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        self.statusGroupView.alpha = 1.0;
+        self.statusGroupView.transform = CGAffineTransformIdentity;
+        self.footerLabel.alpha = 1.0;
+    }];
+    self.statusEntranceAnimator = statusAnimator;
+    [statusAnimator startAnimationAfterDelay:0.16];
 }
 
 - (void)pp_refreshLoadingProgressPresentation
 {
-    BOOL isRTL = [self pp_isRTL];
+    // A late manager callback must not overwrite the timeout/fallback state
+    // that will be captured by the root-handoff snapshot.
+    if (self.didShowMainVC) {
+        return;
+    }
+
     NSInteger completedTasks = (self.didLoadMainKinds ? 1 : 0) + (self.didLoadBanners ? 1 : 0);
     PPSplashLoadingPhase phase = PPSplashLoadingPhaseBootstrapping;
     NSString *detail = nil;
 
     if (completedTasks <= 0) {
         phase = PPSplashLoadingPhaseBootstrapping;
-        detail = isRTL ? @"نحمّل الأقسام والواجهة الرئيسية" : @"Loading categories and your home feed";
+        detail = kLang(@"splash_loading_boot");
     } else if (!self.didLoadMainKinds) {
         phase = PPSplashLoadingPhasePreparingContent;
-        detail = isRTL ? @"نرتب الأقسام الرئيسية لك" : @"Finishing your categories and browse paths";
+        detail = kLang(@"splash_loading_categories");
     } else if (!self.didLoadBanners) {
         phase = PPSplashLoadingPhaseFinalizing;
-        detail = isRTL ? @"نضيف أبرز العروض والواجهات" : @"Adding highlights, banners, and home moments";
+        detail = kLang(@"splash_loading_highlights");
     } else {
         phase = PPSplashLoadingPhaseReady;
-        detail = isRTL ? @"كل شيء أصبح جاهزًا تقريبًا" : @"Everything is ready to go";
+        detail = kLang(@"splash_loading_ready");
     }
 
     [self pp_updateLoadingPhase:phase detail:detail];
@@ -466,40 +1050,88 @@ static UIColor *SplashViewControllerGoldColor(void) {
 
 - (void)pp_updateLoadingPhase:(PPSplashLoadingPhase)phase detail:(NSString *)detail
 {
+    PPSplashLoadingPhase previousPhase = self.currentLoadingPhase;
     self.currentLoadingPhase = phase;
     self.currentLoadingDetail = detail ?: self.currentLoadingDetail;
 
-    NSString *safeDetail = self.currentLoadingDetail ?: @"";
-    if (self.loadingStatusLabel.text.length == 0 || ![self.loadingStatusLabel.text isEqualToString:safeDetail]) {
-        [UIView transitionWithView:self.loadingStatusLabel
-                          duration:0.22
-                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
-                        animations:^{
-            self.loadingStatusLabel.text = safeDetail;
-        } completion:nil];
-    } else {
-        self.loadingStatusLabel.text = safeDetail;
+    BOOL isReady = phase == PPSplashLoadingPhaseReady;
+    NSString *titleKey = @"splash_loading_title";
+    if (isReady) {
+        titleKey = self.didUseFallbackLaunch ? @"splash_continue_title" : @"splash_ready_title";
     }
 
-    NSInteger activeSegments = MIN(MAX((NSInteger)phase + 1, 1), (NSInteger)self.progressSegments.count);
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    UIColor *activeColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *secondaryBase = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    UIColor *inactiveColor = [secondaryBase colorWithAlphaComponent:isDark ? 0.18 : 0.14];
+    NSString *title = kLang(titleKey) ?: @"";
+    NSString *safeDetail = self.currentLoadingDetail ?: @"";
+    NSString *previousTitle = self.loadingTitleLabel.text ?: @"";
+    NSString *previousDetail = self.loadingStatusLabel.text ?: @"";
+    BOOL didCopyChange =
+        ![previousTitle isEqualToString:title] ||
+        ![previousDetail isEqualToString:safeDetail];
 
-    [self.progressSegments enumerateObjectsUsingBlock:^(UIView *segment, NSUInteger idx, BOOL *stop) {
-        BOOL isActive = ((NSInteger)idx < activeSegments);
-        [UIView animateWithDuration:0.22 animations:^{
-            segment.backgroundColor = isActive ? activeColor : inactiveColor;
-            segment.alpha = isActive ? 1.0 : (isDark ? 0.72 : 0.88);
-            segment.transform = isActive ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.98, 1.0);
+    CALayer *titlePresentation = self.loadingTitleLabel.layer.presentationLayer;
+    CALayer *detailPresentation = self.loadingStatusLabel.layer.presentationLayer;
+    CGFloat visibleTitleOpacity = titlePresentation
+        ? titlePresentation.opacity
+        : self.loadingTitleLabel.alpha;
+    CGFloat visibleDetailOpacity = detailPresentation
+        ? detailPresentation.opacity
+        : self.loadingStatusLabel.alpha;
+    [self.statusTextAnimator stopAnimation:YES];
+    self.statusTextAnimator = nil;
+    self.loadingTitleLabel.text = title;
+    self.loadingStatusLabel.text = safeDetail;
+
+    if (didCopyChange && self.view.window && !UIAccessibilityIsReduceMotionEnabled()) {
+        // Continue from any in-flight presentation value. For a fresh update,
+        // use only a quiet opacity delta so clustered cache callbacks cannot flash.
+        self.loadingTitleLabel.alpha = MIN(visibleTitleOpacity, 0.88);
+        self.loadingStatusLabel.alpha = MIN(visibleDetailOpacity, 0.82);
+
+        __weak typeof(self) weakSelf = self;
+        UICubicTimingParameters *statusTiming =
+            [[UICubicTimingParameters alloc] initWithControlPoint1:CGPointMake(0.23, 1.0)
+                                                     controlPoint2:CGPointMake(0.32, 1.0)];
+        UIViewPropertyAnimator *textAnimator =
+            [[UIViewPropertyAnimator alloc] initWithDuration:0.20
+                                            timingParameters:statusTiming];
+        [textAnimator addAnimations:^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            self.loadingTitleLabel.alpha = 1.0;
+            self.loadingStatusLabel.alpha = 1.0;
         }];
-    }];
+        self.statusTextAnimator = textAnimator;
+        [textAnimator startAnimation];
+    } else {
+        self.loadingTitleLabel.alpha = 1.0;
+        self.loadingStatusLabel.alpha = 1.0;
+    }
 
-    NSString *title = self.loadingTitleLabel.text ?: @"";
-    self.loadingCardView.accessibilityLabel =
-        safeDetail.length > 0 ? [NSString stringWithFormat:@"%@. %@", title, safeDetail] : title;
+    NSInteger completedTasks = (self.didLoadMainKinds ? 1 : 0) + (self.didLoadBanners ? 1 : 0);
+    NSInteger activeSteps = MIN(1 + completedTasks, 3);
+    if (isReady && !self.didUseFallbackLaunch) {
+        activeSteps = 3;
+    }
+
+    BOOL shouldAnimate = self.view.window != nil && self.didAnimateEntrance;
+    [self.livingMarkView setActiveStepCount:activeSteps animated:shouldAnimate];
+    [self.livingMarkView setReady:isReady
+                    usesFallback:self.didUseFallbackLaunch
+                         animated:shouldAnimate && previousPhase != phase];
+
+    self.statusGroupView.accessibilityLabel =
+        [NSString localizedStringWithFormat:kLang(@"splash_loading_accessibility_format"),
+                                             title,
+                                             safeDetail];
+    self.statusGroupView.accessibilityValue =
+        [NSString localizedStringWithFormat:kLang(@"splash_progress_accessibility_format"),
+                                             (long)activeSteps,
+                                             3L];
 }
+
+#pragma mark - Launch Timeout
 
 - (void)pp_scheduleLaunchTimeout
 {
@@ -882,14 +1514,23 @@ static UIColor *SplashViewControllerGoldColor(void) {
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
-    [self.ambientBackgroundView stopAnimations];
+    [self pp_stopSplashAtmosphereMotion];
+    [self.livingMarkView stopMotion];
+    [self.contentEntranceAnimator stopAnimation:YES];
+    [self.statusEntranceAnimator stopAnimation:YES];
+    [self.statusTextAnimator stopAnimation:YES];
     [self pp_cancelLaunchTimeout];
     [PPHUD dismiss];
 }
 
 - (void)dealloc
 {
-    [self.ambientBackgroundView stopAnimations];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self pp_stopSplashAtmosphereMotion];
+    [self.livingMarkView stopMotion];
+    [self.contentEntranceAnimator stopAnimation:YES];
+    [self.statusEntranceAnimator stopAnimation:YES];
+    [self.statusTextAnimator stopAnimation:YES];
     [self pp_cancelLaunchTimeout];
     [PPHUD dismiss];
 }
@@ -899,7 +1540,7 @@ static UIColor *SplashViewControllerGoldColor(void) {
     [super viewDidAppear:animated];
     NSLog(@"[Splash] viewDidAppear - start data loading");
 
-    [self.ambientBackgroundView startAnimations];
+    [self pp_startSplashAtmosphereMotion];
     [self pp_beginSplashAnimationsIfNeeded];
     [self startInitialDataLoad];
 }
@@ -925,15 +1566,20 @@ static UIColor *SplashViewControllerGoldColor(void) {
     __block BOOL didLeaveKindsGroup = NO;
     dispatch_group_enter(group);
     [PPMainKindsManager loadMainDataCompletionHandler:^(int result) {
-        if (didLeaveKindsGroup) return;
-        didLeaveKindsGroup = YES;
-
-        NSLog(@"[Splash] ✅ MainKinds loaded (result = %d)", result);
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.didLoadMainKinds = YES;
+            if (didLeaveKindsGroup) {
+                return;
+            }
+            didLeaveKindsGroup = YES;
+
+            BOOL didSucceed = result != 0;
+            NSLog(@"[Splash] %@ MainKinds terminal callback (result = %d)",
+                  didSucceed ? @"✅" : @"⚠️",
+                  result);
+            self.didLoadMainKinds = didSucceed;
             [self pp_refreshLoadingProgressPresentation];
+            dispatch_group_leave(group);
         });
-        dispatch_group_leave(group);
     }];
 
     __block BOOL didLeaveBannerGroup = NO;
@@ -942,35 +1588,39 @@ static UIColor *SplashViewControllerGoldColor(void) {
     if (PPBannersManager.sharedManager.bannerGroups.count > 0) {
         NSLog(@"[PPBannersManager] ✅ LOADED BEFORE");
 
+        didLeaveBannerGroup = YES;
         self.didLoadBanners = YES;
         [self pp_refreshLoadingProgressPresentation];
         dispatch_group_leave(group);
     } else {
         [[PPBannersManager sharedManager] fetchBannersOnceWithCompletion:^(NSArray<MainBannerModel *> * _Nullable bannerGroups, NSError * _Nullable error) {
-            if (didLeaveBannerGroup) return; // 🚫 prevents double leave
-            didLeaveBannerGroup = YES;
-
-            if (error) {
-                NSLog(@"[Splash] ⚠️ Error fetching banners: %@", error.localizedDescription);
-            } else {
-                NSLog(@"[Splash] ✅ Banners fetched: %lu items", (unsigned long)bannerGroups.count);
-            }
-
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (!error) {
-                    self.didLoadBanners = YES;
+                if (didLeaveBannerGroup) {
+                    return;
                 }
+                didLeaveBannerGroup = YES;
+
+                BOOL didSucceed = error == nil;
+                if (!didSucceed) {
+                    NSLog(@"[Splash] ⚠️ Error fetching banners: %@", error.localizedDescription);
+                } else {
+                    NSLog(@"[Splash] ✅ Banners fetched: %lu items", (unsigned long)bannerGroups.count);
+                }
+
+                self.didLoadBanners = didSucceed;
                 [self pp_refreshLoadingProgressPresentation];
+                dispatch_group_leave(group);
             });
-            dispatch_group_leave(group);
         }];
     }
 
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        NSLog(@"[Splash] 🎬 All data loaded (MainKinds=%@, Banners=%@)",
+        NSLog(@"[Splash] 🎬 Startup callbacks terminal (MainKinds=%@, Banners=%@)",
               self.didLoadMainKinds ? @"✅" : @"❌",
               self.didLoadBanners ? @"✅" : @"❌");
 
+        // Preserve the legacy navigation contract: terminal callbacks still
+        // fail open. Presentation truthfully distinguishes complete from partial.
         [self pp_completeLaunchIfNeededForced:NO];
     });
 }
@@ -982,12 +1632,14 @@ static UIColor *SplashViewControllerGoldColor(void) {
     }
 
     self.didShowMainVC = YES;
+    BOOL didCompleteAllLaunchData = self.didLoadMainKinds && self.didLoadBanners;
+    self.didUseFallbackLaunch = forced || !didCompleteAllLaunchData;
     [self pp_cancelLaunchTimeout];
 
-    NSString *completionDetail =
-        forced
-            ? ([self pp_isRTL] ? @"سندخل بما أصبح جاهزًا الآن" : @"Continuing with what is ready now")
-            : ([self pp_isRTL] ? @"كل شيء جاهز للانطلاق" : @"Everything is ready to launch");
+    NSString *completionKey = self.didUseFallbackLaunch
+        ? @"splash_loading_fallback"
+        : @"splash_loading_ready";
+    NSString *completionDetail = kLang(completionKey);
     [self pp_updateLoadingPhase:PPSplashLoadingPhaseReady detail:completionDetail];
 
     NSTimeInterval elapsed = self.launchBeganAt ? [[NSDate date] timeIntervalSinceDate:self.launchBeganAt] : 0.0;
@@ -997,6 +1649,48 @@ static UIColor *SplashViewControllerGoldColor(void) {
                    dispatch_get_main_queue(), ^{
         [self transitionToMainApp];
     });
+}
+
+- (void)pp_prepareSplashForSnapshot
+{
+    [self.contentEntranceAnimator stopAnimation:YES];
+    [self.statusEntranceAnimator stopAnimation:YES];
+    [self.statusTextAnimator stopAnimation:YES];
+    self.contentEntranceAnimator = nil;
+    self.statusEntranceAnimator = nil;
+    self.statusTextAnimator = nil;
+    [self pp_stopSplashAtmosphereMotion];
+    [self.livingMarkView settleForSnapshot];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.ambientBackgroundView.alpha = 1.0;
+    self.brandLabel.alpha = 1.0;
+    self.brandLabel.transform = CGAffineTransformIdentity;
+    self.subtitleLabel.alpha = 1.0;
+    self.subtitleLabel.transform = CGAffineTransformIdentity;
+    self.statusGroupView.alpha = 1.0;
+    self.statusGroupView.transform = CGAffineTransformIdentity;
+    self.loadingTitleLabel.alpha = 1.0;
+    self.loadingStatusLabel.alpha = 1.0;
+    self.footerLabel.alpha = 1.0;
+    [self.view layoutIfNeeded];
+    [CATransaction commit];
+
+    // Only cancel layers owned by this splash. Avoid recursively stripping
+    // animations from UIKit/private sublayers during the root handoff.
+    NSArray<CALayer *> *ownedLayers = @[
+        self.ambientBackgroundView.layer,
+        self.brandLabel.layer,
+        self.subtitleLabel.layer,
+        self.statusGroupView.layer,
+        self.loadingTitleLabel.layer,
+        self.loadingStatusLabel.layer,
+        self.footerLabel.layer
+    ];
+    for (CALayer *layer in ownedLayers) {
+        [layer removeAllAnimations];
+    }
 }
 
 #pragma mark - 🔹 Transition to Main App
@@ -1016,10 +1710,14 @@ static UIColor *SplashViewControllerGoldColor(void) {
         return;
     }
 
+    // Resolve any in-flight entrance/progress motion before taking the window-level
+    // cover. Home may hold this snapshot while its first presentation is prepared.
+    [self pp_prepareSplashForSnapshot];
+
     // Capture a static snapshot of the splash interface to overlay on the window.
     // This snapshot covers the screen seamlessly during the Home screen's remote
     // config and initial data bootstrap process, preventing any visual stacking.
-    UIView *coverView = [self.view snapshotViewAfterScreenUpdates:NO];
+    UIView *coverView = [self.view snapshotViewAfterScreenUpdates:YES];
     if (!coverView) {
         coverView = [[UIView alloc] initWithFrame:window.bounds];
         coverView.backgroundColor = self.view.backgroundColor;
@@ -1030,7 +1728,12 @@ static UIColor *SplashViewControllerGoldColor(void) {
     coverView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     coverView.opaque = YES;
     coverView.userInteractionEnabled = YES;
-    coverView.accessibilityElementsHidden = YES;
+    coverView.isAccessibilityElement = YES;
+    coverView.accessibilityViewIsModal = YES;
+    coverView.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
+    coverView.accessibilityLabel = self.statusGroupView.accessibilityLabel ?:
+        kLang(@"splash_loading_title");
+    coverView.accessibilityValue = self.statusGroupView.accessibilityValue;
     coverView.backgroundColor = coverView.backgroundColor ?: self.view.backgroundColor ?: window.backgroundColor ?: UIColor.systemBackgroundColor;
 
     [self pp_swapRootViewController:rootVC onWindow:window];

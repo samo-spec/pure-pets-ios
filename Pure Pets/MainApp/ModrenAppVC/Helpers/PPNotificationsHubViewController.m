@@ -1105,6 +1105,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)reloadNotifications
 {
+    NSLog(@"PPLAB NotificationsHub reload start");
     __weak typeof(self) weakSelf = self;
     [[UNUserNotificationCenter currentNotificationCenter] getDeliveredNotificationsWithCompletionHandler:^(NSArray<UNNotification *> * _Nonnull notifications) {
         NSMutableArray<PPNotificationInboxItem *> *items = [NSMutableArray array];
@@ -1189,6 +1190,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     NSString *threadID = PPHubTrimmedString(payload[@"threadID"] ?: payload[@"threadId"]);
     NSString *orderID = PPHubOrderIDFromPayload(payload);
     NSString *type = PPHubNotificationType(payload, meta);
+    NSLog(@"PPLAB NotificationsHub select start | type=%@ orderId=%@ threadID=%@",
+          type ?: @"",
+          orderID ?: @"",
+          threadID ?: @"");
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
         [[ChNotificationRouter shared] handleChatNotification:payload fromViewController:self];

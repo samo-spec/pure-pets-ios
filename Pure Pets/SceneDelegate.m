@@ -243,7 +243,8 @@ willConnectToSession:(UISceneSession *)session
     if (![scene isKindOfClass:[UIWindowScene class]]) return;
     UIWindowScene *windowScene = (UIWindowScene *)scene;
     self.window = [[PPNovaMotionWindow alloc] initWithWindowScene:windowScene];
-    UIColor *launchBackgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    UIColor *launchBackgroundColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
+        AppForgroundColr ?: UIColor.systemBackgroundColor;
     self.window.backgroundColor = launchBackgroundColor;
     [self applySavedInterfaceStyleToWindow:self.window];
     SplashViewController *splash = [SplashViewController new];
@@ -295,6 +296,11 @@ willConnectToSession:(UISceneSession *)session
     NSString *threadID = PPSceneFirstScalarForKeys(safeUserInfo, @[@"threadID", @"threadId", @"conversationId"]);
     NSString *orderId = PPSceneOrderIDFromPayload(safeUserInfo);
     NSString *route = [[PPSceneFirstScalarForKeys(safeUserInfo, @[@"route"]) lowercaseString] copy];
+    NSLog(@"PPLAB Scene notification tap start | type=%@ route=%@ orderId=%@ threadID=%@",
+          type ?: @"",
+          route ?: @"",
+          orderId ?: @"",
+          threadID ?: @"");
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
         [ChManager sharedManager].isHandlingNotificationHandoff = YES;

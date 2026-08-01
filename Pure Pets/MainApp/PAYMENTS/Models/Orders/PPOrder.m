@@ -84,13 +84,14 @@ static NSString *PPOrderNormalizedDeliveryStatusString(id value)
         return normalized;
     }
     if ([normalized isEqualToString:@"ready_to_ship"] ||
+        [normalized isEqualToString:@"ready_for_pickup"] ||
         [normalized isEqualToString:@"delivery_requested"] ||
         [normalized isEqualToString:@"delivery_reassigned"]) {
         return normalized;
     }
     if ([normalized isEqualToString:@"ready_for_delivery"] ||
         [normalized isEqualToString:@"ready"]) {
-        return @"delivery_requested";
+        return @"ready_for_delivery";
     }
     return @"";
 }
@@ -301,6 +302,11 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
 
     order.deliveryStatus = PPOrderTrimmedString(data[@"deliveryStatus"]);
     order.deliveryUserId = PPOrderTrimmedString(data[@"deliveryUserId"] ?: data[@"deliveryUid"]);
+    NSLog(@"PPLAB PPOrder parse start | orderId=%@ rawStatus=%@ deliveryStatus=%@ fulfillmentVersion=%@",
+          order.orderId ?: @"",
+          order.rawStatus ?: @"",
+          order.deliveryStatus ?: @"",
+          data[@"fulfillmentVersion"] ?: @"");
 
     // Per-owner fulfillment fields (Phase 15 — additive, backward-compatible)
     if ([data[@"fulfillmentOrderIDs"] isKindOfClass:NSArray.class]) {
@@ -508,6 +514,7 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
         return @"delivery_partner_assigned";
     }
     if ([delivery isEqualToString:@"ready_to_ship"] ||
+        [delivery isEqualToString:@"ready_for_pickup"] ||
         [delivery isEqualToString:@"delivery_requested"] ||
         [delivery isEqualToString:@"delivery_reassigned"] ||
         self.deliveryRequestedAt != nil) {

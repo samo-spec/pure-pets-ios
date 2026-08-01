@@ -159,15 +159,13 @@ struct HomeHeroView: View {
                 .font(HomeFont.title1())
                 .foregroundStyle(Color.ppTextPrimary)
                 .multilineTextAlignment(.leading)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                .minimumScaleFactor(
-                    dynamicTypeSize.isAccessibilitySize ? 0.78 : 0.72
-                )
+                .lineLimit(2)
+                .minimumScaleFactor(0.72)
                 .allowsTightening(true)
                 .frame(
                     maxWidth: .infinity,
-                    minHeight: dynamicTypeSize.isAccessibilitySize ? 82 : 42,
-                    maxHeight: dynamicTypeSize.isAccessibilitySize ? 82 : 42,
+                    minHeight: dynamicTypeSize.isAccessibilitySize ? 82 : 56,
+                    maxHeight: dynamicTypeSize.isAccessibilitySize ? 82 : 56,
                     alignment: .leading
                 )
                 .accessibilityLabel(page.title)
@@ -237,11 +235,7 @@ struct HomeHeroView: View {
     }
 
     private func compactHeroTitle(_ title: String) -> String {
-        let words = title.split(whereSeparator: \.isWhitespace)
-        guard words.count > 4 else {
-            return words.joined(separator: " ")
-        }
-        return words.prefix(4).joined(separator: " ") + "…"
+        return title
     }
 
     private func primaryButton(
@@ -414,11 +408,12 @@ struct HomeHeroView: View {
                 secondarySymbol: "calendar"
             )
         case .promotion:
+            let remoteURL = normalizedHeroImageURL(page.imageURL)
             return HomeHeroArtworkAsset(
-                animationName: "HomePromotionSpark",
+                animationName: remoteURL == nil ? "HomePromotionSpark" : nil,
                 imageName: nil,
                 localImage: nil,
-                remoteImageURL: nil,
+                remoteImageURL: remoteURL,
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: false,
                 primarySymbol: "sparkles",
@@ -462,7 +457,7 @@ struct HomeHeroView: View {
             )
         case .petOnboarding:
             return HomeHeroArtworkAsset(
-                animationName: "Profile.lottie",
+                animationName: "LottieAnimations/Boy Giving Food To Rabbit New.json",
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
@@ -758,7 +753,7 @@ private struct HomeHeroFloatingPlate: View {
                 playbackEnabled: !reduceMotion,
                 tintColor: .white
             )
-            .padding(8)
+            .scaleEffect(animationName == "petstore" ? 0.88 : 1.30)
             .tint(.white)
         }
     }
@@ -783,12 +778,13 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private var allowsFloatingMotion: Bool {
-        !reduceMotion && !usesCategoryArtworkTreatment
+        false
     }
 
     private var floatingPhase: Bool {
-        allowsFloatingMotion && floating
+        false
     }
+
 
     private func floatingTile(
         symbol: String,

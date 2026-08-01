@@ -225,7 +225,9 @@ struct HomeView: View {
         case HomeSectionRawID.premiumSearch:
             HomePremiumSearchSection(
                 isRightToLeft: store.state.isRightToLeft,
-                action: store.router.openSearch
+                showsNova: store.state.config.novaFloatingVisible,
+                searchAction: store.router.openSearch,
+                novaAction: store.router.openNova
             )
             .padding(.horizontal, PPSpace.screenMargin)
 
@@ -404,10 +406,11 @@ struct HomeView: View {
 
     private func sectionBand(for rawID: Int) -> Color {
         switch rawID {
+        case HomeSectionRawID.suggestions:
+            return .ppQuietLilac
         case HomeSectionRawID.premiumCare:
             return .homeSectionBand
-        case HomeSectionRawID.suggestions,
-             HomeSectionRawID.suggestionAds,
+        case HomeSectionRawID.suggestionAds,
              HomeSectionRawID.suggestionAccessories,
              HomeSectionRawID.nearbyServices:
             return .homeAmbientField
@@ -592,53 +595,249 @@ private struct HomePromotionCarousel: View {
 @available(iOS 15.0, *)
 private struct HomePremiumSearchSection: View {
     let isRightToLeft: Bool
-    let action: () -> Void
+    let showsNova: Bool
+    let searchAction: () -> Void
+    let novaAction: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        Button(action: action) {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            discoveryHeader
+
+            VStack(spacing: 0) {
+                searchButton
+
+                if showsNova {
+                    Rectangle()
+                        .fill(Color.homeSeparator.opacity(contrast == .increased ? 0.92 : 0.70))
+                        .frame(height: contrast == .increased ? 1.5 : 0.8)
+                        .padding(.horizontal, PPSpace.base)
+
+                    novaButton
+                }
+            }
+            .background(Color.homeRaisedSurface, in: consoleShape)
+            .clipShape(consoleShape)
+            .overlay {
+                consoleShape.stroke(
+                    contrast == .increased
+                        ? Color.homeTextPrimary.opacity(0.68)
+                        : Color.homeBrand.opacity(colorScheme == .dark ? 0.24 : 0.12),
+                    lineWidth: contrast == .increased ? 1.5 : 0.9
+                )
+            }
+            .shadow(
+                color: contrast == .increased
+                    ? .clear
+                    : Color.black.opacity(colorScheme == .dark ? 0.20 : 0.065),
+                radius: colorScheme == .dark ? 12 : 18,
+                y: colorScheme == .dark ? 5 : 9
+            )
+        }
+        .padding(PPSpace.base)
+        .background(sectionAtmosphere, in: outerShape)
+        .overlay {
+            outerShape.stroke(
+                Color.homeBrand.opacity(contrast == .increased ? 0.42 : 0.10),
+                lineWidth: contrast == .increased ? 1.5 : 0.8
+            )
+        }
+        .environment(
+            \.layoutDirection,
+            isRightToLeft ? .rightToLeft : .leftToRight
+        )
+    }
+
+    private var discoveryHeader: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                Text(HomeModelAdapter.localized(
+                    "home_search_hint",
+                    fallback: "What are you looking for?"
+                ))
+                .font(HomeFont.title2())
+                .foregroundStyle(Color.homeTextPrimary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Text(HomeModelAdapter.localized(
+                    "home_pulse_search_prompt",
+                    fallback: "Search products, pets, and services"
+                ))
+                .font(HomeFont.subheadline())
+                .foregroundStyle(Color.homeTextSecondary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "sparkles")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.homeBrand)
+                .frame(width: 42, height: 42)
+                .background(Color.homeRaisedSurface.opacity(0.86), in: Circle())
+                .overlay {
+                    Circle().stroke(Color.homeBrand.opacity(0.13), lineWidth: 0.8)
+                }
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var searchButton: some View {
+        Button(action: searchAction) {
             HStack(spacing: PPSpace.md) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 44, height: 44)
-                    .background(Color.homeBrand, in: RoundedRectangle(
+                ZStack(alignment: .bottomTrailing) {
+                    RoundedRectangle(
                         cornerRadius: PPCorner.small,
                         style: .continuous
-                    ))
+                    )
+                    .fill(Color.homeBrand)
 
-                VStack(alignment: .leading, spacing: 3) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    Circle()
+                        .fill(Color.homeRaisedSurface)
+                        .frame(width: 10, height: 10)
+                        .overlay(Circle().fill(Color.homeBrand).padding(3))
+                        .offset(x: 2, y: 2)
+                }
+                .frame(width: 46, height: 46)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
                     Text(HomeModelAdapter.localized(
-                        "home_search_hint",
-                        fallback: "What are you looking for?"
+                        "home_pulse_search_a11y",
+                        fallback: "Search Pure Pets"
                     ))
-                    .font(HomeFont.caption1())
-                    .foregroundStyle(Color.homeTextSecondary)
+                    .font(HomeFont.headline())
+                    .foregroundStyle(Color.homeTextPrimary)
+                    .multilineTextAlignment(.leading)
+
                     HomeCommandBar.HomeAnimatedSearchSuggestionView(
                         isRTL: isRightToLeft
                     )
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Image(systemName: "arrow.forward")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.homeBrand)
-                    .accessibilityHidden(true)
+                directionalArrow
             }
-            .padding(PPSpace.sm)
-            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
-            .background(Color.homeRaisedSurface, in: RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            ))
-            .overlay {
-                RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                    .stroke(Color.homeSeparator, lineWidth: 0.8)
-            }
+            .padding(.horizontal, PPSpace.base)
+            .padding(.vertical, PPSpace.md)
+            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HomePremiumSearchButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(HomeModelAdapter.localized(
             "home_pulse_search_a11y",
             fallback: "Search Pure Pets"
         ))
+        .accessibilityHint(HomeModelAdapter.localized(
+            "home_pulse_search_prompt",
+            fallback: "Search products, pets, and services"
+        ))
+    }
+
+    private var novaButton: some View {
+        Button(action: novaAction) {
+            HStack(spacing: PPSpace.md) {
+                Text(verbatim: "N")
+                    .font(HomeFont.bold(20))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 46, height: 46)
+                    .background(Color.homeBrandDeep, in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    ))
+                    .overlay {
+                        RoundedRectangle(
+                            cornerRadius: PPCorner.small,
+                            style: .continuous
+                        )
+                        .stroke(Color.white.opacity(0.24), lineWidth: 0.8)
+                    }
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(HomeModelAdapter.localized(
+                        "nova_empty_title",
+                        fallback: "Ask Nova"
+                    ))
+                    .font(HomeFont.headline())
+                    .foregroundStyle(Color.homeBrandDeep)
+                    .multilineTextAlignment(.leading)
+
+                    Text(HomeModelAdapter.localized(
+                        "nova_subtitle",
+                        fallback: "Pure Pets smart shopping assistant"
+                    ))
+                    .font(HomeFont.footnote())
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                directionalArrow
+            }
+            .padding(.horizontal, PPSpace.base)
+            .padding(.vertical, PPSpace.md)
+            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+            .background(Color.homeBrand.opacity(colorScheme == .dark ? 0.12 : 0.055))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(HomePremiumSearchButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityLabel(HomeModelAdapter.localized(
+            "home_pulse_nova_a11y",
+            fallback: "Open Nova assistant"
+        ))
+        .accessibilityHint(HomeModelAdapter.localized(
+            "home_pulse_nova_hint_a11y",
+            fallback: "Ask Pure Pets for help"
+        ))
+    }
+
+    private var directionalArrow: some View {
+        Image(systemName: isRightToLeft ? "arrow.left" : "arrow.right")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(Color.homeBrand)
+            .frame(width: 36, height: 36)
+            .background(Color.homeAmbientField.opacity(0.78), in: Circle())
+            .accessibilityHidden(true)
+    }
+
+    private var sectionAtmosphere: Color {
+        Color.homeAmbientField.opacity(colorScheme == .dark ? 0.42 : 0.72)
+    }
+
+    private var outerShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+    }
+
+    private var consoleShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    }
+}
+
+@available(iOS 15.0, *)
+private struct HomePremiumSearchButtonStyle: ButtonStyle {
+    let reduceMotion: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.988 : 1)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(
+                reduceMotion ? nil : .easeOut(duration: 0.16),
+                value: configuration.isPressed
+            )
     }
 }
 
@@ -862,9 +1061,9 @@ private struct HomeAdoptionSection: View {
         }
         .clipShape(cardShape)
         .shadow(
-            color: Color.homeBrand.opacity(colorScheme == .dark ? 0.10 : 0.13),
-            radius: contrast == .increased ? 0 : 18,
-            y: contrast == .increased ? 0 : 9
+            color: Color.homeBrand.opacity(colorScheme == .dark ? 0.07 : 0.055),
+            radius: contrast == .increased ? 0 : 10,
+            y: contrast == .increased ? 0 : 4
         )
     }
 
@@ -927,10 +1126,10 @@ private struct HomeAdoptionSection: View {
                     color: Color.homeBrand.opacity(
                         contrast == .increased
                             ? 0
-                            : (colorScheme == .dark ? 0.14 : 0.20)
+                            : (colorScheme == .dark ? 0.08 : 0.10)
                     ),
-                    radius: contrast == .increased ? 0 : 7,
-                    y: contrast == .increased ? 0 : 4
+                    radius: contrast == .increased ? 0 : 4,
+                    y: contrast == .increased ? 0 : 2
                 )
                 .contentShape(RoundedRectangle(
                     cornerRadius: PPCorner.medium,

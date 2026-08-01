@@ -4008,3 +4008,17 @@
 "pp_media_viewer_loading" = "جارٍ التحميل";
 "pp_media_viewer_retry" = "إعادة المحاولة";
 "pp_media_viewer_play" = "تشغيل";
+
+/* Splash — Living Mark */
+"splash_product_promise" = "عالم حيوانك، أقرب إليك.";
+"splash_loading_title" = "نجهّز عالم حيوانك";
+"splash_continue_title" = "لنبدأ";
+"splash_ready_title" = "أهلاً بكما";
+"splash_loading_boot" = "نهيّئ الرعاية والمتجر والخدمات";
+"splash_loading_categories" = "نرتّب ما يحتاجه حيوانك";
+"splash_loading_highlights" = "نضيف أحدث المختارات والعروض";
+"splash_loading_ready" = "عالم حيوانك جاهز";
+"splash_loading_fallback" = "سنبدأ بما أصبح جاهزًا";
+"splash_footer_format" = "بيور بتس © %ld · جميع الحقوق محفوظة";
+"splash_loading_accessibility_format" = "%1$@. %2$@";
+"splash_progress_accessibility_format" = "خطوة التشغيل %1$ld من %2$ld";

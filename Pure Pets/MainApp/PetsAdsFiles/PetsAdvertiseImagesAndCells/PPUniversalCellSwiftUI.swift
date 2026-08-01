@@ -387,7 +387,7 @@ private struct PPUniversalHomeShelfMediaSettle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scaleEffect(
-                isStaged ? 1.05 + (tier * 0.004) : 1,
+                1,
                 anchor: semanticMediaAnchor
             )
             .rotationEffect(

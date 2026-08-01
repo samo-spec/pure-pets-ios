@@ -150,6 +150,9 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         _cardID = [PPHomePromoSafeString(dict[@"CardID"]) copy];
     }
     if (_cardID.length == 0) {
+        _cardID = [PPHomePromoSafeString(dict[@"ChildsPannerID"] ?: dict[@"ChildBannerID"] ?: dict[@"bannerID"]) copy];
+    }
+    if (_cardID.length == 0) {
         _cardID = [PPHomePromoSafeString(documentID) copy];
     }
 
@@ -187,7 +190,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         _hideSecondaryButton = !PPHomePromoBoolValue(dict[@"showSecondaryButton"], NO);
     }
 
-    _characterImageURL = [PPHomePromoURLValue(dict[@"characterImageURL"] ?: dict[@"foregroundImageURL"] ?: dict[@"sampleImageURL"]) copy];
+    _characterImageURL = [PPHomePromoURLValue(dict[@"characterImageURL"] ?: dict[@"foregroundImageURL"] ?: dict[@"sampleImageURL"] ?: dict[@"badgeImageURL"]) copy];
     _backgroundImageURL = [PPHomePromoURLValue(dict[@"backgroundImageURL"]) copy];
 
     _startColorHex = PPHomePromoSafeString(dict[@"startColorHex"] ?: dict[@"backgroundStartColorHex"] ?: dict[@"gradientStartHex"]);
@@ -195,7 +198,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     _endColorHex = PPHomePromoSafeString(dict[@"endColorHex"] ?: dict[@"backgroundEndColorHex"] ?: dict[@"gradientEndHex"]);
     if (_endColorHex.length == 0) _endColorHex = @"#F08A2A";
     _accentColorHex = PPHomePromoSafeString(dict[@"accentColorHex"] ?: dict[@"shapeColorHex"]);
-    if (_accentColorHex.length == 0) _accentColorHex = @"#FFD08A";
+    if (_accentColorHex.length == 0) _accentColorHex = @"#75666B";
     _textStyle = PPHomePromoTextStyleValue(dict[@"pannerTextStyle"] ?: dict[@"textStyle"] ?: dict[@"bannerTextStyle"],
                                            _textStyle);
 
@@ -364,14 +367,21 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         if (![dict isKindOfClass:NSDictionary.class]) continue;
 
         BOOL isVisible = YES;
-        if (dict[@"bannerViewVisible"] != nil) {
+        if (dict[@"BannerViewVisible"] != nil) {
+            isVisible = PPHomePromoBoolValue(dict[@"BannerViewVisible"], YES);
+        } else if (dict[@"bannerViewVisible"] != nil) {
             isVisible = PPHomePromoBoolValue(dict[@"bannerViewVisible"], YES);
         } else if (dict[@"visible"] != nil) {
             isVisible = PPHomePromoBoolValue(dict[@"visible"], YES);
         }
         if (!isVisible) continue;
 
-        NSArray *childBanners = dict[@"childBanners"] ?: dict[@"banners"];
+        NSArray *childBanners = dict[@"ChildsPannersModels"]
+                             ?: dict[@"childsPannersModels"]
+                             ?: dict[@"ChildsPannerModels"]
+                             ?: dict[@"childsPanners"]
+                             ?: dict[@"childBanners"]
+                             ?: dict[@"banners"];
         if ([childBanners isKindOfClass:NSArray.class] && childBanners.count > 0) {
             for (NSDictionary *childDict in childBanners) {
                 if (![childDict isKindOfClass:NSDictionary.class]) continue;

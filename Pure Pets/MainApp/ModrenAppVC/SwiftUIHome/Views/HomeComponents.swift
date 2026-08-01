@@ -1732,22 +1732,52 @@ private struct HomeMyPetProfileCardPressStyle: ButtonStyle {
     }
 }
 
+private enum HomeQuickActionTone {
+    static let lightSurfaceOpacity = 0.075
+    static let darkSurfaceOpacity = 0.15
+
+    static func accent(for action: HomePriorityAction) -> Color {
+        switch action.id {
+        case "shop":
+            // Shopping: a warmer, grounded rose.
+            return .ppQuickActionShopping
+        case "pet":
+            // Animals: a quieter magenta-lilac.
+            return .ppQuickActionAnimals
+        case "pharmacy":
+            // Services: muted cyan.
+            return .ppQuickActionServices
+        case "vet":
+            // Community: pale, composed blue.
+            return .ppQuickActionCommunity
+        case "ads":
+            // Adoption: warm peach.
+            return .ppQuickActionAdoption
+        default:
+            return Color(uiColor: action.accent)
+        }
+    }
+}
+
 struct HomePriorityGrid: View {
     let actions: [HomePriorityAction]
     let featuredPet: HomePetModel?
     let onSelect: (HomePriorityAction) -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .subheadline)
+    private var compactCardHeight: CGFloat = 128
 
     private enum Layout {
         static let columnSpacing = PPSpace.md
         static let cardSpacing = PPSpace.sm
         static let featuredCircleSize: CGFloat = 108
         static let featuredCircleTopInset = PPSpace.sm
-        static let featuredCardWidth: CGFloat = 168
-        static let compactCardHeight: CGFloat = 120
-        static let compactSectionHeight =
-            (compactCardHeight * 2) + cardSpacing
+        static let featuredCardWidth: CGFloat = 148
+    }
+
+    private var compactSectionHeight: CGFloat {
+        (compactCardHeight * 2) + Layout.cardSpacing
     }
 
     private var featuredAction: HomePriorityAction? {
@@ -1772,7 +1802,8 @@ struct HomePriorityGrid: View {
                         HomeFeaturedPetCard(
                             action: featured,
                             pet: featuredPet,
-                            compactHeight: Layout.compactSectionHeight,
+                            regularWidth: Layout.featuredCardWidth,
+                            compactHeight: compactSectionHeight,
                             regularCircleSize: Layout.featuredCircleSize,
                             circleInset: Layout.featuredCircleTopInset,
                             onSelect: onSelect
@@ -1781,7 +1812,7 @@ struct HomePriorityGrid: View {
                     ForEach(secondaryActions) { action in
                         HomeSecondaryActionCard(
                             action: action,
-                            compactHeight: Layout.compactCardHeight,
+                            compactHeight: compactCardHeight,
                             onSelect: onSelect
                         )
                     }
@@ -1795,7 +1826,8 @@ struct HomePriorityGrid: View {
                         HomeFeaturedPetCard(
                             action: featured,
                             pet: featuredPet,
-                            compactHeight: Layout.compactSectionHeight,
+                            regularWidth: Layout.featuredCardWidth,
+                            compactHeight: compactSectionHeight,
                             regularCircleSize: Layout.featuredCircleSize,
                             circleInset: Layout.featuredCircleTopInset,
                             onSelect: onSelect
@@ -1808,7 +1840,7 @@ struct HomePriorityGrid: View {
                         .frame(maxWidth: .infinity)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: Layout.compactSectionHeight)
+                .frame(height: compactSectionHeight)
             }
         }
     }
@@ -1833,7 +1865,7 @@ struct HomePriorityGrid: View {
                     ForEach(row, id: \.action.id) { item in
                         HomeSecondaryActionCard(
                             action: item.action,
-                            compactHeight: Layout.compactCardHeight,
+                            compactHeight: compactCardHeight,
                             onSelect: onSelect
                         )
                         .frame(maxWidth: .infinity)
@@ -1886,6 +1918,7 @@ struct HomePriorityGrid: View {
 private struct HomeFeaturedPetCard: View {
     let action: HomePriorityAction
     let pet: HomePetModel?
+    let regularWidth: CGFloat
     let compactHeight: CGFloat
     let regularCircleSize: CGFloat
     let circleInset: CGFloat
@@ -1903,6 +1936,22 @@ private struct HomeFeaturedPetCard: View {
 
     private var animationViewSize: CGFloat {
         dynamicTypeSize.isAccessibilitySize ? 204 : 168
+    }
+
+    private var regularCTAWidth: CGFloat {
+        max(regularWidth - (PPSpace.sm * 2), 44)
+    }
+
+    private var subtitleColor: Color {
+        Color.homeTextPrimary.opacity(
+            contrast == .increased
+                ? 0.92
+                : (colorScheme == .dark ? 0.84 : 0.76)
+        )
+    }
+
+    private var actionAccent: Color {
+        HomeQuickActionTone.accent(for: action)
     }
 
     private var cardShape: RoundedRectangle {
@@ -1941,11 +1990,11 @@ private struct HomeFeaturedPetCard: View {
                         .minimumScaleFactor(0.82)
 
                     Text(action.subtitle)
-                        .font(HomeFont.caption2())
-                        .foregroundStyle(Color.homeTextSecondary)
+                        .font(HomeFont.medium(14))
+                        .foregroundStyle(subtitleColor)
                         .multilineTextAlignment(.center)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                        .minimumScaleFactor(0.86)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.93)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, PPSpace.sm)
@@ -1970,10 +2019,25 @@ private struct HomeFeaturedPetCard: View {
                 }
                 .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
+                .frame(
+                    width: dynamicTypeSize.isAccessibilitySize
+                        ? nil
+                        : regularCTAWidth
+                )
                 .frame(minHeight: 44)
-                .background(PPGradient.hero, in: Capsule())
+                .background(
+                    LinearGradient(
+                        colors: [
+                            actionAccent.opacity(0.88),
+                            actionAccent,
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: Capsule()
+                )
                 .shadow(
-                    color: Color.homeBrand.opacity(
+                    color: actionAccent.opacity(
                         colorScheme == .dark ? 0.18 : 0.24
                     ),
                     radius: 7,
@@ -1984,6 +2048,11 @@ private struct HomeFeaturedPetCard: View {
             }
             .frame(maxWidth: .infinity)
             .frame(
+                width: dynamicTypeSize.isAccessibilitySize
+                    ? nil
+                    : regularWidth
+            )
+            .frame(
                 minHeight: dynamicTypeSize.isAccessibilitySize
                     ? 328
                     : compactHeight
@@ -1993,10 +2062,21 @@ private struct HomeFeaturedPetCard: View {
                     ? nil
                     : compactHeight
             )
-            .background(PPGradient.softBrandField, in: cardShape)
+            .background {
+                ZStack {
+                    cardShape.fill(Color.homeRaisedSurface)
+                    cardShape.fill(
+                        actionAccent.opacity(
+                            colorScheme == .dark
+                                ? HomeQuickActionTone.darkSurfaceOpacity
+                                : HomeQuickActionTone.lightSurfaceOpacity
+                        )
+                    )
+                }
+            }
             .overlay {
                 cardShape.stroke(
-                    Color.homeBrand.opacity(
+                    actionAccent.opacity(
                         contrast == .increased
                             ? 0.58
                             : (colorScheme == .dark ? 0.34 : 0.22)
@@ -2009,7 +2089,7 @@ private struct HomeFeaturedPetCard: View {
                     .padding(PPSpace.md)
             }
             .shadow(
-                color: Color.homeBrand.opacity(
+                color: actionAccent.opacity(
                     colorScheme == .dark ? 0.10 : 0.12
                 ),
                 radius: 14,
@@ -2027,13 +2107,13 @@ private struct HomeFeaturedPetCard: View {
         ZStack {
             Circle()
                 .fill(
-                    Color.homeBrand.opacity(
+                    actionAccent.opacity(
                         colorScheme == .dark ? 0.19 : 0.12
                     )
                 )
                 .overlay {
                     Circle().stroke(
-                        Color.homeBrand.opacity(
+                        actionAccent.opacity(
                             contrast == .increased ? 0.48 : 0.16
                         ),
                         lineWidth: contrast == .increased ? 1.5 : 0.8
@@ -2068,7 +2148,7 @@ private struct HomeFeaturedPetCard: View {
             Image("pawprint")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .foregroundStyle(Color.homeBrand)
+                .foregroundStyle(actionAccent)
                 .frame(
                     width: animationHaloSize * 0.66,
                     height: animationHaloSize * 0.66
@@ -2131,19 +2211,19 @@ private struct HomeFeaturedPetCard: View {
     private var pawBadge: some View {
         Image("pawsmall")
             .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(Color.homeBrand)
+            .foregroundStyle(actionAccent)
             .frame(width: 38, height: 38)
             .background(Color.homeRaisedSurface.opacity(0.8), in: Circle())
             .overlay {
                 Circle().stroke(
-                    Color.homeBrand.opacity(
+                    actionAccent.opacity(
                         contrast == .increased ? 0.48 : 0.14
                     ),
                     lineWidth: contrast == .increased ? 1.5 : 0.8
                 )
             }
             .shadow(
-                color: Color.homeBrand.opacity(0.12),
+                color: actionAccent.opacity(0.12),
                 radius: 6,
                 y: 3
             )
@@ -2164,6 +2244,14 @@ private struct HomeSecondaryActionCard: View {
         RoundedRectangle(
             cornerRadius: PPCorner.medium,
             style: .continuous
+        )
+    }
+
+    private var subtitleColor: Color {
+        Color.homeTextPrimary.opacity(
+            contrast == .increased
+                ? 0.92
+                : (colorScheme == .dark ? 0.84 : 0.76)
         )
     }
 
@@ -2188,7 +2276,9 @@ private struct HomeSecondaryActionCard: View {
                     cardShape.fill(Color.homeRaisedSurface)
                     cardShape.fill(
                         accentColor.opacity(
-                            colorScheme == .dark ? 0.12 : 0.055
+                            colorScheme == .dark
+                                ? HomeQuickActionTone.darkSurfaceOpacity
+                                : HomeQuickActionTone.lightSurfaceOpacity
                         )
                     )
                 }
@@ -2247,7 +2337,7 @@ private struct HomeSecondaryActionCard: View {
             }
             .padding(.horizontal, PPSpace.sm)
             .padding(.top, PPSpace.md)
-            .padding(.bottom, PPSpace.md)
+            .padding(.bottom, PPSpace.base)
         }
     }
 
@@ -2260,11 +2350,11 @@ private struct HomeSecondaryActionCard: View {
                 .minimumScaleFactor(0.76)
 
             Text(action.subtitle)
-                .font(HomeFont.caption2())
-                .foregroundStyle(Color.homeTextSecondary)
+                .font(HomeFont.medium(14))
+                .foregroundStyle(subtitleColor)
                 .multilineTextAlignment(.leading)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                .minimumScaleFactor(0.78)
+                .lineLimit(2)
+                .minimumScaleFactor(0.93)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -2338,13 +2428,7 @@ private struct HomeSecondaryActionCard: View {
     }
 
     private var accentColor: Color {
-        switch action.id {
-        case "shop": return Color(red: 0.90, green: 0.22, blue: 0.44) // Bright Rose Magenta degree (#E63870)
-        case "ads": return Color(red: 0.72, green: 0.12, blue: 0.38)  // Deep Berry Rose degree (#B81F61)
-        case "pharmacy": return Color.homePharmacy
-        case "vet": return Color.homeVeterinary
-        default: return Color(uiColor: action.accent)
-        }
+        HomeQuickActionTone.accent(for: action)
     }
 }
 
@@ -2470,6 +2554,7 @@ struct HomeCategoryRail: View {
     @State private var viewportWidth: CGFloat = 0
 
     private enum RailLayout {
+        static let cellSpacing = PPSpace.md
         static let shadowTopInset = PPSpace.md
         static let shadowBottomInset = PPSpace.lg
     }
@@ -2517,7 +2602,7 @@ struct HomeCategoryRail: View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: PPSpace.md) {
+                    LazyHStack(spacing: RailLayout.cellSpacing) {
                         categoryCell(
                             nil,
                             entranceOrdinal: 0,
@@ -2562,7 +2647,7 @@ struct HomeCategoryRail: View {
         LazyVGrid(
             columns: gridColumns,
             alignment: .leading,
-            spacing: PPSpace.md
+            spacing: RailLayout.cellSpacing
         ) {
             responsiveGridCell(
                 nil,
@@ -2586,13 +2671,14 @@ struct HomeCategoryRail: View {
     }
 
     private var gridColumns: [GridItem] {
-        [
+        let fixedCardWidth = itemSize.width
+        return [
             GridItem(
                 .adaptive(
-                    minimum: dynamicTypeSize.isAccessibilitySize ? 132 : 104,
-                    maximum: dynamicTypeSize.isAccessibilitySize ? 184 : 132
+                    minimum: fixedCardWidth,
+                    maximum: fixedCardWidth
                 ),
-                spacing: PPSpace.md,
+                spacing: RailLayout.cellSpacing,
                 alignment: .top
             ),
         ]
@@ -2711,29 +2797,22 @@ struct HomeCategoryRail: View {
 
     private var itemSize: CGSize {
         let width = viewportWidth > 1 ? viewportWidth : 390
-        let accessibility = dynamicTypeSize.isAccessibilitySize
-        if width >= 700 {
+        if dynamicTypeSize.isAccessibilitySize {
             return CGSize(
-                width: accessibility ? 152 : 132,
-                height: accessibility ? 174 : 146
+                width: width < 375 ? 116 : 118,
+                height: 148
             )
+        }
+        if width >= 700 {
+            return CGSize(width: 118, height: 152)
         }
         if width >= 430 {
-            return CGSize(
-                width: accessibility ? 126 : 108,
-                height: accessibility ? 154 : 132
-            )
+            return CGSize(width: 116, height: 150)
         }
         if width < 375 {
-            return CGSize(
-                width: accessibility ? 120 : 104,
-                height: accessibility ? 150 : 128
-            )
+            return CGSize(width: 108, height: 144)
         }
-        return CGSize(
-            width: accessibility ? 124 : 108,
-            height: accessibility ? 152 : 132
-        )
+        return CGSize(width: 112, height: 148)
     }
 
     private func updateViewportWidth(_ width: CGFloat) {

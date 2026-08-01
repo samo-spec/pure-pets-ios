@@ -23,6 +23,7 @@
 #import "PPProfileSelectorCell.h"
 #import "PPProfileAddressCell.h"
 #import "PPProfileActionCell.h"
+#import "PPFormEngine.h"
 
 
 
@@ -50,8 +51,54 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 
 
+@interface PPProfileFormEngineCell : UITableViewCell
+- (void)attachFormEngineView:(PPFormEngineView *)formEngineView;
+@end
+
+@implementation PPProfileFormEngineCell {
+    __weak PPFormEngineView *_currentFormEngineView;
+}
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        self.contentView.backgroundColor = UIColor.clearColor;
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
+        self.preservesSuperviewLayoutMargins = NO;
+        self.contentView.preservesSuperviewLayoutMargins = NO;
+    }
+    return self;
+}
+
+- (void)attachFormEngineView:(PPFormEngineView *)formEngineView
+{
+    if (!formEngineView) return;
+    if (_currentFormEngineView == formEngineView && formEngineView.superview == self.contentView) return;
+
+    if (_currentFormEngineView && _currentFormEngineView.superview == self.contentView) {
+        [_currentFormEngineView removeFromSuperview];
+    }
+    _currentFormEngineView = formEngineView;
+
+    formEngineView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:formEngineView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [formEngineView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4.0],
+        [formEngineView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
+        [formEngineView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
+        [formEngineView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0]
+    ]];
+}
+
+@end
+
 @interface ProfileVC ()<UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, AddressFormVCDelegate, TOCropViewControllerDelegate, PHPickerViewControllerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) PPFormEngineView *detailsFormView;
+@property (nonatomic, strong) PPFormEngineView *contactFormView;
 @property (nonatomic, assign) NSInteger petProfilesCount;
 @property (nonatomic, strong) NSArray<PPAddressModel *> *addresses;
 @property (nonatomic, strong) id<FIRListenerRegistration> addressListener;
@@ -75,17 +122,16 @@ static CGFloat PPProfileBottomBarClearance(void) {
 @property (nonatomic, strong) UIView *headerCardView;
 @property (nonatomic, strong) UIView *headerMaterialView;
 @property (nonatomic, strong) CAGradientLayer *headerMarketplaceGradientLayer;
-@property (nonatomic, strong) UIView *headerAmbientGlowView;
-@property (nonatomic, strong) UIView *headerSupportGlowView;
+@property (nonatomic, strong) CAGradientLayer *headerBorderGradientLayer;
+@property (nonatomic, strong) CAShapeLayer *headerBorderMaskLayer;
 @property (nonatomic, strong) UIView *headerAccentBarView;
+@property (nonatomic, strong) NSLayoutConstraint *headerAccentBarWidthConstraint;
 @property (nonatomic, strong) UILabel *headerEyebrowLabel;
 @property (nonatomic, strong) UILabel *headerNameLabel;
 @property (nonatomic, strong) UILabel *headerHandleLabel;
 @property (nonatomic, strong) UILabel *headerMetaLabel;
 @property (nonatomic, strong) RoundedImageViewWithShadow *avatarIMV;
 @property (nonatomic, strong) UIButton *addPhotoBtn;
-@property (nonatomic, strong) UIView *backgroundGlowViewTop;
-@property (nonatomic, strong) UIView *backgroundGlowViewBottom;
 @property (nonatomic, strong, nullable) UIImage *pendingAvatarImage;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedCellKeys;
 @property (nonatomic, assign) BOOL needsProfileEntranceAnimation;
@@ -108,17 +154,86 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (UIColor *)pp_profileSurfaceColor
 {
-    return [AppForgroundColr colorWithAlphaComponent:0.82];
+    return [AppForgroundColr colorWithAlphaComponent:0.94];
 }
 
 - (UIColor *)pp_profileSurfaceBorderColor
 {
-    return [AppPrimaryClr colorWithAlphaComponent:0.08];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat alpha = tc.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.12 : 0.055;
+        return [UIColor colorWithWhite:tc.userInterfaceStyle == UIUserInterfaceStyleDark ? 1.0 : 0.0
+                                  alpha:alpha];
+    }];
+}
+
+- (UIColor *)pp_profileDestructiveSurfaceColor
+{
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return [UIColor.systemRedColor colorWithAlphaComponent:tc.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.24 : 0.10];
+    }];
 }
 
 - (UIColor *)pp_profileHeroAccentColor
 {
     return AppPrimaryClr ?: UIColor.systemOrangeColor;
+}
+
+- (UIColor *)pp_profileHeroOuterBorderFallbackColor
+{
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.14]
+            : [UIColor colorWithWhite:0.22 alpha:0.075];
+    }];
+}
+
+- (UIColor *)pp_profileHeroInnerBorderColor
+{
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.055]
+            : [UIColor colorWithWhite:1.0 alpha:0.62];
+    }];
+}
+
+- (void)pp_configureProfileHeroBackgroundGradientWithAccent:(UIColor *)accent isDark:(BOOL)isDark
+{
+    UITraitCollection *traits = self.traitCollection;
+    UIColor *surface = PPMarketplaceHeroCardSurfaceBaseColor(traits);
+    UIColor *canvas = [self pp_profileCanvasColor] ?: surface;
+    UIColor *lift = PPMarketplaceHeroCardBlend(surface, UIColor.whiteColor, isDark ? 0.055 : 0.24, traits);
+    UIColor *brandVeil = PPMarketplaceHeroCardBlend(surface, accent, isDark ? 0.105 : 0.038, traits);
+    UIColor *paperTail = PPMarketplaceHeroCardBlend(surface, canvas, isDark ? 0.34 : 0.16, traits);
+    UIColor *edgeShade = PPMarketplaceHeroCardBlend(paperTail, UIColor.blackColor, isDark ? 0.12 : 0.018, traits);
+
+    self.headerMarketplaceGradientLayer.opacity = 1.0;
+    self.headerMarketplaceGradientLayer.colors = @[
+        (id)PPMarketplaceHeroCardResolvedColor(lift, traits).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(brandVeil, traits).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(paperTail, traits).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(edgeShade, traits).CGColor
+    ];
+    self.headerMarketplaceGradientLayer.locations = @[@0.0, @0.44, @0.82, @1.0];
+    self.headerMarketplaceGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+    self.headerMarketplaceGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
+}
+
+- (void)pp_configureProfileHeroBorderGradientWithAccent:(UIColor *)accent isDark:(BOOL)isDark
+{
+    UITraitCollection *traits = self.traitCollection;
+    UIColor *topEdge = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.18 : 0.92];
+    UIColor *brandEdge = [accent colorWithAlphaComponent:isDark ? 0.25 : 0.18];
+    UIColor *floorEdge = [UIColor.blackColor colorWithAlphaComponent:isDark ? 0.24 : 0.075];
+
+    self.headerBorderGradientLayer.opacity = 1.0;
+    self.headerBorderGradientLayer.colors = @[
+        (id)PPMarketplaceHeroCardResolvedColor(topEdge, traits).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(brandEdge, traits).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(floorEdge, traits).CGColor
+    ];
+    self.headerBorderGradientLayer.locations = @[@0.0, @0.52, @1.0];
+    self.headerBorderGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+    self.headerBorderGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
 }
 
 - (void)pp_applyProfileHeroMarketplaceMaterial
@@ -128,32 +243,27 @@ static CGFloat PPProfileBottomBarClearance(void) {
     PPMarketplaceHeroCardApplySurfaceChrome(self.headerCardView,
                                             PPCornerHero - 6.0,
                                             self.traitCollection);
-    PPMarketplaceHeroCardConfigureSurfaceGradient(self.headerMarketplaceGradientLayer,
-                                                  accent,
-                                                  self.traitCollection,
-                                                  Language.isRTL);
+    [self pp_configureProfileHeroBackgroundGradientWithAccent:accent isDark:isDark];
+    [self pp_configureProfileHeroBorderGradientWithAccent:accent isDark:isDark];
 
     self.headerMaterialView.backgroundColor = UIColor.clearColor;
     self.headerMaterialView.layer.cornerRadius = PPCornerHero - 6.0;
     if (@available(iOS 13.0, *)) {
         self.headerMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    self.headerMaterialView.layer.borderWidth = 0.5;
+    [self.headerMaterialView pp_setBorderColor:[self pp_profileHeroInnerBorderColor]];
 
-    UIColor *backgroundAccent = PPMarketplaceHeroCardBackgroundAccentColor(accent, self.traitCollection);
-    UIColor *supportGlowColor = PPMarketplaceHeroCardSupportGlowColor(accent, self.traitCollection);
-    self.headerAmbientGlowView.backgroundColor = [backgroundAccent colorWithAlphaComponent:isDark ? 0.17 : 0.11];
-    self.headerAmbientGlowView.layer.shadowColor = UIColor.clearColor.CGColor;
-    self.headerAmbientGlowView.layer.shadowOpacity = 0.0f;
-    self.headerAmbientGlowView.layer.shadowRadius = 0.0f;
-    self.headerAmbientGlowView.layer.shadowOffset = CGSizeZero;
+    self.headerCardView.layer.borderWidth = self.headerBorderGradientLayer ? 0.0 : 1.0;
+    [self.headerCardView pp_setBorderColor:[self pp_profileHeroOuterBorderFallbackColor]];
+    [self.headerCardView pp_setShadowColor:UIColor.blackColor];
+    self.headerCardView.layer.shadowOpacity = isDark ? 0.16f : 0.075f;
+    self.headerCardView.layer.shadowRadius = isDark ? 18.0f : 16.0f;
+    self.headerCardView.layer.shadowOffset = CGSizeMake(0.0, isDark ? 9.0 : 8.0);
 
-    self.headerSupportGlowView.backgroundColor = [supportGlowColor colorWithAlphaComponent:isDark ? 0.12 : 0.095];
-    self.headerSupportGlowView.layer.shadowColor = supportGlowColor.CGColor;
-    self.headerSupportGlowView.layer.shadowOpacity = isDark ? 0.11f : 0.075f;
-    self.headerSupportGlowView.layer.shadowRadius = 18.0f;
-    self.headerSupportGlowView.layer.shadowOffset = CGSizeZero;
-
-    self.headerAccentBarView.backgroundColor = [accent colorWithAlphaComponent:0.58];
+    BOOL hasPendingChanges = self.showingSave || [self pp_hasPendingProfileChanges];
+    self.headerAccentBarView.backgroundColor = [accent colorWithAlphaComponent:hasPendingChanges ? 0.96 : 0.58];
+    self.headerAccentBarWidthConstraint.constant = hasPendingChanges ? 68.0 : 44.0;
 }
 
 - (void)pp_layoutProfileHeroMarketplaceMaterial
@@ -161,11 +271,24 @@ static CGFloat PPProfileBottomBarClearance(void) {
     CGRect materialBounds = self.headerMaterialView.bounds;
     self.headerMarketplaceGradientLayer.frame = CGRectIsEmpty(materialBounds) ? CGRectZero : materialBounds;
     self.headerMarketplaceGradientLayer.cornerRadius = self.headerMaterialView.layer.cornerRadius;
+    self.headerBorderGradientLayer.frame = self.headerCardView.bounds;
 
     if (!CGRectIsEmpty(self.headerCardView.bounds)) {
         self.headerCardView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.headerCardView.bounds
                                        cornerRadius:self.headerCardView.layer.cornerRadius].CGPath;
+        CGRect borderRect = CGRectInset(self.headerCardView.bounds, 0.5, 0.5);
+        CGFloat borderRadius = MAX(self.headerCardView.layer.cornerRadius - 0.5, 0.0);
+        self.headerBorderMaskLayer.frame = self.headerCardView.bounds;
+        self.headerBorderMaskLayer.lineWidth = 1.0;
+        self.headerBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
+        self.headerBorderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+        self.headerBorderMaskLayer.path =
+            [UIBezierPath bezierPathWithRoundedRect:borderRect
+                                       cornerRadius:borderRadius].CGPath;
+    } else {
+        self.headerCardView.layer.shadowPath = nil;
+        self.headerBorderMaskLayer.path = nil;
     }
 }
 
@@ -205,8 +328,8 @@ static CGFloat PPProfileBottomBarClearance(void) {
     self.suppressEditTracking = YES;
 
     [self pp_prepareDraftState];
+    [self pp_initFormEngineViews];
     [self pp_buildTableView];
-    [self setupModernBackdrop];
     [self setupHeaderUI];
     [self pp_applyProfileCanvasBackground];
     [self pp_refreshProfileHeaderContent];
@@ -317,11 +440,6 @@ static CGFloat PPProfileBottomBarClearance(void) {
     [super viewDidLayoutSubviews];
 
     [self pp_applyProfileCanvasBackground];
-
-    self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
-    self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
-    [self.view sendSubviewToBack:self.backgroundGlowViewBottom];
-    [self.view sendSubviewToBack:self.backgroundGlowViewTop];
 
     self.avatarIMV.layer.borderWidth = 3.0;
     UIColor *avatarBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
@@ -512,6 +630,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
         tableView.sectionHeaderTopPadding = 0.0;
     }
 
+    [tableView registerClass:PPProfileFormEngineCell.class forCellReuseIdentifier:@"PPProfileFormEngineCell"];
     [tableView registerClass:PPProfileTextFieldCell.class forCellReuseIdentifier:@"PPProfileTextFieldCell"];
     [tableView registerClass:PPProfilePhoneCell.class forCellReuseIdentifier:@"PPProfilePhoneCell"];
     [tableView registerClass:PPProfileTextViewCell.class forCellReuseIdentifier:@"PPProfileTextViewCell"];
@@ -527,6 +646,173 @@ static CGFloat PPProfileBottomBarClearance(void) {
         [tableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
     self.tableView = tableView;
+}
+
+- (PPFormStyle *)pp_profileFormStyle
+{
+    PPFormStyle *style = [PPFormStyle defaultStyle];
+    style.cardBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithRed:0.16 green:0.16 blue:0.18 alpha:1.0]
+            : UIColor.whiteColor;
+    }];
+    style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithRed:0.12 green:0.12 blue:0.13 alpha:1.0]
+            : [UIColor colorWithRed:0.973 green:0.974 blue:0.978 alpha:1.0];
+    }];
+    style.fieldBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.06]
+            : [UIColor colorWithRed:0.42 green:0.43 blue:0.46 alpha:0.055];
+    }];
+    style.accentColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    style.primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    style.secondaryTextColor = UIColor.secondaryLabelColor;
+    style.titleFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    style.inputFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    style.placeholderFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    style.cardCornerRadius = 24.0;
+    style.fieldCornerRadius = 14.0;
+    style.stackSpacing = 12.0;
+    style.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.01 : 0.03;
+    style.shadowRadius = 16.0;
+    style.shadowOffset = CGSizeMake(0.0, 6.0);
+    return style;
+}
+
+- (void)pp_initFormEngineViews
+{
+    PPFormStyle *style = [self pp_profileFormStyle];
+
+    self.detailsFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    self.detailsFormView.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.contactFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    self.contactFormView.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [self pp_rebuildFormEngineFields];
+}
+
+- (void)pp_rebuildFormEngineFields
+{
+    __weak typeof(self) weakSelf = self;
+
+    // --- User Details Form ---
+    PPFormFieldConfig *username = [PPFormFieldConfig fieldWithIdentifier:@"username"
+                                                                   title:(kLang(@"UserName_Palce") ?: @"Username")
+                                                             placeholder:(kLang(@"UserName_Palce") ?: @"Username")
+                                                               inputType:PPFormInputTypeText];
+    username.value = self.draftUserName ?: @"";
+    username.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.draftUserName = value ?: @"";
+        [self setformDataArray:value forKey:@"UserName"];
+        [self.detailsFormView setErrorText:nil forIdentifier:@"username"];
+        [self pp_refreshProfileHeaderContent];
+        [self markFormAsEdited];
+    };
+
+    PPFormFieldConfig *firstname = [PPFormFieldConfig fieldWithIdentifier:@"firstname"
+                                                                    title:(kLang(@"firstName_Palce") ?: @"First Name")
+                                                              placeholder:(kLang(@"Enter_First_Name") ?: @"Enter First Name")
+                                                                inputType:PPFormInputTypeText];
+    firstname.value = self.draftFirstName ?: @"";
+    firstname.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.draftFirstName = value ?: @"";
+        [self setformDataArray:value forKey:@"firstName"];
+        [self.detailsFormView setErrorText:nil forIdentifier:@"firstname"];
+        [self pp_refreshProfileHeaderContent];
+        [self markFormAsEdited];
+    };
+
+    PPFormFieldConfig *lastname = [PPFormFieldConfig fieldWithIdentifier:@"lastname"
+                                                                   title:(kLang(@"LastName_Palce") ?: @"Last Name")
+                                                             placeholder:(kLang(@"Enter_Last_Name") ?: @"Enter Last Name")
+                                                               inputType:PPFormInputTypeText];
+    lastname.value = self.draftLastName ?: @"";
+    lastname.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.draftLastName = value ?: @"";
+        [self setformDataArray:value forKey:@"LastName"];
+        [self.detailsFormView setErrorText:nil forIdentifier:@"lastname"];
+        [self pp_refreshProfileHeaderContent];
+        [self markFormAsEdited];
+    };
+
+    [self.detailsFormView setFields:@[username, firstname, lastname]];
+
+    // --- Contact Details Form ---
+    NSString *countryName = [self pp_trimmedString:self.selectedCountry.country];
+    if (countryName.length == 0) {
+        countryName = kLang(@"TapToSelect") ?: @"Tap to Select";
+    }
+
+    PPFormFieldConfig *country = [PPFormFieldConfig fieldWithIdentifier:@"country"
+                                                                  title:(kLang(@"code_Palce") ?: @"Country Code")
+                                                            placeholder:(kLang(@"TapToSelect") ?: @"Tap to Select")
+                                                              inputType:PPFormInputTypePicker];
+    country.value = countryName;
+    country.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_presentCountryPicker];
+    };
+
+    PPFormFieldConfig *mobile = [PPFormFieldConfig fieldWithIdentifier:@"mobile"
+                                                                 title:(kLang(@"MobileNo_Palce") ?: @"Mobile Number")
+                                                           placeholder:(kLang(@"MobileNo_Palce") ?: @"Mobile Number")
+                                                             inputType:PPFormInputTypePhone];
+    mobile.value = self.draftMobileLocal ?: @"";
+    mobile.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.draftMobileLocal = value ?: @"";
+        NSString *countryCode = [self pp_trimmedString:self.selectedCountry.phoneCode];
+        NSString *localNumber = [self pp_trimmedString:value];
+        NSString *combined = localNumber.length > 0 ? [NSString stringWithFormat:@"%@%@", countryCode ?: @"", localNumber] : @"";
+        [self setformDataArray:combined forKey:@"MobileNo"];
+        [self setformDataArray:localNumber forKey:kMobileNoRow];
+        [self.contactFormView setErrorText:nil forIdentifier:@"mobile"];
+        [self pp_refreshProfileHeaderContent];
+        [self markFormAsEdited];
+    };
+
+    PPFormFieldConfig *email = [PPFormFieldConfig fieldWithIdentifier:@"email"
+                                                                title:(kLang(@"UserEmail_Palce") ?: @"Email Address")
+                                                          placeholder:(kLang(@"UserEmail_Palce") ?: @"Email Address")
+                                                            inputType:PPFormInputTypeText];
+    email.keyboardType = UIKeyboardTypeEmailAddress;
+    email.value = self.draftUserEmail ?: @"";
+    email.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.draftUserEmail = value ?: @"";
+        [self setformDataArray:value forKey:@"UserEmail"];
+        [self.contactFormView setErrorText:nil forIdentifier:@"email"];
+        [self pp_refreshProfileHeaderContent];
+        [self markFormAsEdited];
+    };
+
+    PPFormFieldConfig *about = [PPFormFieldConfig fieldWithIdentifier:@"about"
+                                                                title:(kLang(@"UserAbout_Palce") ?: @"About / Bio")
+                                                          placeholder:(kLang(@"UserAbout_Palce") ?: @"Tell us about yourself...")
+                                                            inputType:PPFormInputTypeTextView];
+    about.value = self.draftUserAbout ?: @"";
+    about.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.draftUserAbout = value ?: @"";
+        [self setformDataArray:value forKey:@"UserAbout"];
+        [self.contactFormView setErrorText:nil forIdentifier:@"about"];
+        [self markFormAsEdited];
+    };
+
+    [self.contactFormView setFields:@[country, mobile, email, about]];
 }
 
 - (void)pp_prepareDraftState
@@ -582,6 +868,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     self.suppressEditTracking = YES;
     self.selectedCountry = [self pp_resolvedSelectedCountry];
     [self pp_loadDraftValuesFromUser:PPCurrentUser];
+    [self pp_rebuildFormEngineFields];
     [self.formDataArray removeAllObjects];
     [self setformDataArray:@(self.selectedCountry.ID) forKey:@"CountryID"];
     [self pp_captureProfileDraftBaseline];
@@ -648,6 +935,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
 {
     BOOL hasChanges = [self pp_hasPendingProfileChanges];
     self.showingSave = hasChanges;
+    [self pp_updateProfileDraftChromeForPendingChanges:hasChanges];
     if (hasChanges) {
         [self pp_showSaveButton];
     } else {
@@ -655,6 +943,35 @@ static CGFloat PPProfileBottomBarClearance(void) {
         [self pp_navBarHideButtonForKey:@"saveOrLogout" hidden:YES animated:NO];
         //[self pp_navBarHideButtonForKey:@"saveOrLogout"];
     }
+}
+
+- (void)pp_updateProfileDraftChromeForPendingChanges:(BOOL)hasPendingChanges
+{
+    if (!self.headerAccentBarView || !self.headerAccentBarWidthConstraint) {
+        return;
+    }
+
+    UIColor *accent = [self pp_profileHeroAccentColor];
+    self.headerAccentBarView.backgroundColor = [accent colorWithAlphaComponent:hasPendingChanges ? 0.96 : 0.58];
+    self.headerAccentBarWidthConstraint.constant = hasPendingChanges ? 68.0 : 44.0;
+
+    void (^applyChanges)(void) = ^{
+        [self.headerRoot layoutIfNeeded];
+        self.headerCardView.layer.shadowOpacity = hasPendingChanges ? 0.12f : 0.08f;
+        self.headerMetaLabel.layer.borderWidth = hasPendingChanges ? 1.0 : 0.0;
+        [self.headerMetaLabel pp_setBorderColor:[accent colorWithAlphaComponent:hasPendingChanges ? 0.20 : 0.0]];
+    };
+
+    if ([self pp_profileReduceMotionEnabled]) {
+        applyChanges();
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                     animations:applyChanges
+                     completion:nil];
 }
 
 - (void)markFormAsEdited
@@ -742,55 +1059,6 @@ static CGFloat PPProfileBottomBarClearance(void) {
     return value;
 }
 
-- (void)setupModernBackdrop
-{
-    if (self.backgroundGlowViewTop || self.backgroundGlowViewBottom) {
-        return;
-    }
-
-    UIView *topGlow = [[UIView alloc] init];
-    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.12 * 0.40 : 0.12;
-        return [UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:a];
-    }];
-    [topGlow pp_setShadowColor:[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0]];
-    topGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.10;
-    topGlow.layer.shadowRadius = 64.0;
-    topGlow.layer.shadowOffset = CGSizeZero;
-
-    UIView *bottomGlow = [[UIView alloc] init];
-    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 * 0.40 : 0.06;
-        return [UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:a];
-    }];
-    [bottomGlow pp_setShadowColor:[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0]];
-    bottomGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
-    bottomGlow.layer.shadowRadius = 72.0;
-    bottomGlow.layer.shadowOffset = CGSizeZero;
-
-    [self.view insertSubview:topGlow belowSubview:self.tableView];
-    [self.view insertSubview:bottomGlow belowSubview:self.tableView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:220.0],
-        [topGlow.heightAnchor constraintEqualToConstant:220.0],
-        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-72.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:84.0],
-
-        [bottomGlow.widthAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:48.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-64.0]
-    ]];
-
-    self.backgroundGlowViewTop = topGlow;
-    self.backgroundGlowViewBottom = bottomGlow;
-}
-
 - (void)setupHeaderUI
 {
     self.headerRoot = [[UIView alloc] init];
@@ -816,18 +1084,6 @@ static CGFloat PPProfileBottomBarClearance(void) {
     CAGradientLayer *materialGradientLayer = [CAGradientLayer layer];
     materialGradientLayer.drawsAsynchronously = YES;
     [tintView.layer insertSublayer:materialGradientLayer atIndex:0];
-
-    UIView *ambientGlow = [[UIView alloc] init];
-    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    ambientGlow.userInteractionEnabled = NO;
-    ambientGlow.layer.cornerRadius = 58.0;
-    [cardView addSubview:ambientGlow];
-
-    UIView *secondaryGlow = [[UIView alloc] init];
-    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.layer.cornerRadius = 66.0;
-    [cardView addSubview:secondaryGlow];
 
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
@@ -951,6 +1207,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     [avatarHalo addSubview:editBadge];
     self.addPhotoBtn = editBadge;
 
+    NSLayoutConstraint *accentBarWidthConstraint = [accentBar.widthAnchor constraintEqualToConstant:44.0];
     [NSLayoutConstraint activateConstraints:@[
         [cardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:10.0],
         [cardView.leadingAnchor constraintEqualToAnchor:self.headerRoot.leadingAnchor constant:20.0],
@@ -962,19 +1219,9 @@ static CGFloat PPProfileBottomBarClearance(void) {
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        [ambientGlow.widthAnchor constraintEqualToConstant:116.0],
-        [ambientGlow.heightAnchor constraintEqualToConstant:116.0],
-        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-34.0],
-        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:Language.isRTL ? 22.0 : -12.0],
-
-        [secondaryGlow.widthAnchor constraintEqualToConstant:132.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:132.0],
-        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:48.0],
-        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:Language.isRTL ? -26.0 : 28.0],
-
         [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor],
         [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:30.0],
-        [accentBar.widthAnchor constraintEqualToConstant:44.0],
+        accentBarWidthConstraint,
         [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
         [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:12.0],
@@ -1017,12 +1264,23 @@ static CGFloat PPProfileBottomBarClearance(void) {
         [editBadge.bottomAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:-1.0],
     ]];
 
+    CAGradientLayer *borderGradientLayer = [CAGradientLayer layer];
+    borderGradientLayer.drawsAsynchronously = YES;
+    borderGradientLayer.contentsScale = UIScreen.mainScreen.scale;
+    CAShapeLayer *borderMaskLayer = [CAShapeLayer layer];
+    borderMaskLayer.contentsScale = UIScreen.mainScreen.scale;
+    borderMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    borderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    borderGradientLayer.mask = borderMaskLayer;
+    [cardView.layer addSublayer:borderGradientLayer];
+
     self.headerCardView = cardView;
     self.headerMaterialView = tintView;
     self.headerMarketplaceGradientLayer = materialGradientLayer;
-    self.headerAmbientGlowView = ambientGlow;
-    self.headerSupportGlowView = secondaryGlow;
+    self.headerBorderGradientLayer = borderGradientLayer;
+    self.headerBorderMaskLayer = borderMaskLayer;
     self.headerAccentBarView = accentBar;
+    self.headerAccentBarWidthConstraint = accentBarWidthConstraint;
     self.headerEyebrowLabel = eyebrowLabel;
     self.headerNameLabel = nameLabel;
     self.headerHandleLabel = handleLabel;
@@ -1031,6 +1289,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     CGSize fittingSize = [self.headerRoot systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
     self.headerRoot.frame = CGRectMake(0, 0, CGRectGetWidth(self.view.bounds), fittingSize.height);
     [self pp_applyProfileHeroMarketplaceMaterial];
+    [self pp_updateProfileDraftChromeForPendingChanges:[self pp_hasPendingProfileChanges]];
     self.tableView.tableHeaderView = self.headerRoot;
 }
 
@@ -1155,9 +1414,9 @@ static CGFloat PPProfileBottomBarClearance(void) {
 {
     switch (section) {
         case PPProfileSectionDetails:
-            return PPProfileDetailRowCount;
+            return 1;
         case PPProfileSectionContact:
-            return PPProfileContactRowCount;
+            return 1;
         case PPProfileSectionAddresses:
             return self.addresses.count + 1;
         case PPProfileSectionPets:
@@ -1172,103 +1431,15 @@ static CGFloat PPProfileBottomBarClearance(void) {
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (indexPath.section == PPProfileSectionDetails) {
-        PPProfileTextFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileTextFieldCell" forIndexPath:indexPath];
-        switch (indexPath.row) {
-            case PPProfileDetailRowUserName:
-                [cell configureWithTitle:kLang(@"UserName_Palce")
-                                    text:self.draftUserName
-                             placeholder:kLang(@"UserName_Palce")
-                            keyboardType:UIKeyboardTypeDefault
-                         textContentType:UITextContentTypeNickname
-                           returnKeyType:UIReturnKeyNext
-                  autocapitalizationType:UITextAutocapitalizationTypeWords
-                               fieldKind:PPProfileFieldKindUserName
-                                  target:self
-                                  action:@selector(pp_textFieldEditingChanged:)
-                                delegate:self];
-                break;
-            case PPProfileDetailRowFirstName:
-                [cell configureWithTitle:kLang(@"firstName_Palce")
-                                    text:self.draftFirstName
-                             placeholder:kLang(@"Enter_First_Name")
-                            keyboardType:UIKeyboardTypeDefault
-                         textContentType:UITextContentTypeGivenName
-                           returnKeyType:UIReturnKeyNext
-                  autocapitalizationType:UITextAutocapitalizationTypeWords
-                               fieldKind:PPProfileFieldKindFirstName
-                                  target:self
-                                  action:@selector(pp_textFieldEditingChanged:)
-                                delegate:self];
-                break;
-            default:
-                [cell configureWithTitle:kLang(@"LastName_Palce")
-                                    text:self.draftLastName
-                             placeholder:kLang(@"Enter_Last_Name")
-                            keyboardType:UIKeyboardTypeDefault
-                         textContentType:UITextContentTypeFamilyName
-                           returnKeyType:UIReturnKeyNext
-                  autocapitalizationType:UITextAutocapitalizationTypeWords
-                               fieldKind:PPProfileFieldKindLastName
-                                  target:self
-                                  action:@selector(pp_textFieldEditingChanged:)
-                                delegate:self];
-                break;
-        }
+        PPProfileFormEngineCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileFormEngineCell" forIndexPath:indexPath];
+        [cell attachFormEngineView:self.detailsFormView];
         return cell;
     }
 
     if (indexPath.section == PPProfileSectionContact) {
-        switch (indexPath.row) {
-            case PPProfileContactRowCountry: {
-                PPProfileSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileSelectorCell" forIndexPath:indexPath];
-                NSString *countryName = [self pp_trimmedString:self.selectedCountry.country];
-                if (countryName.length == 0) {
-                    countryName = kLang(@"TapToSelect");
-                }
-                [cell configureWithTitle:kLang(@"code_Palce")
-                                   value:countryName
-                                    flag:self.selectedCountry.flag ?: @""];
-                return cell;
-            }
-            case PPProfileContactRowMobile: {
-                PPProfilePhoneCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfilePhoneCell" forIndexPath:indexPath];
-                [cell configureWithTitle:kLang(@"MobileNo_Palce")
-                                  prefix:[self pp_trimmedString:self.selectedCountry.phoneCode]
-                                    text:self.draftMobileLocal
-                             placeholder:kLang(@"MobileNo_Palce")
-                               fieldKind:PPProfileFieldKindMobile
-                                  target:self
-                                  action:@selector(pp_textFieldEditingChanged:)
-                                delegate:self];
-                return cell;
-            }
-            case PPProfileContactRowEmail: {
-                PPProfileTextFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileTextFieldCell" forIndexPath:indexPath];
-                [cell configureWithTitle:kLang(@"UserEmail_Palce")
-                                    text:self.draftUserEmail
-                             placeholder:kLang(@"UserEmail_Palce")
-                            keyboardType:UIKeyboardTypeEmailAddress
-                         textContentType:UITextContentTypeEmailAddress
-                           returnKeyType:UIReturnKeyNext
-                  autocapitalizationType:UITextAutocapitalizationTypeNone
-                               fieldKind:PPProfileFieldKindEmail
-                                  target:self
-                                  action:@selector(pp_textFieldEditingChanged:)
-                                delegate:self];
-                cell.textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
-                cell.textField.autocorrectionType = UITextAutocorrectionTypeNo;
-                return cell;
-            }
-            default: {
-                PPProfileTextViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileTextViewCell" forIndexPath:indexPath];
-                [cell configureWithTitle:kLang(@"UserAbout_Palce")
-                                    text:self.draftUserAbout
-                             placeholder:kLang(@"UserAbout_Palce")
-                               fieldKind:PPProfileFieldKindAbout
-                                delegate:self];
-                return cell;
-            }
-        }
+        PPProfileFormEngineCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileFormEngineCell" forIndexPath:indexPath];
+        [cell attachFormEngineView:self.contactFormView];
+        return cell;
     }
 
     if (indexPath.section == PPProfileSectionPets) {
@@ -1287,11 +1458,8 @@ static CGFloat PPProfileBottomBarClearance(void) {
     if (indexPath.section == PPProfileSectionLogout) {
         PPProfileActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileActionCell" forIndexPath:indexPath];
         [cell configureWithTitle:(kLang(@"logout") ?: @"Log Out") iconName:@"rectangle.portrait.and.arrow.right"];
-        cell.contentView.backgroundColor = UIColor.systemRedColor;
-        cell.contentView.layer.cornerRadius = 14;
-        cell.contentView.layer.masksToBounds = YES;
-        cell.titleLabel.textColor = AppForgroundColr;
-        cell.iconView.tintColor = AppForgroundColr;
+        cell.titleLabel.textColor = UIColor.systemRedColor;
+        cell.iconView.tintColor = UIColor.systemRedColor;
         cell.accessibilityIdentifier = @"profile_logout_button";
         cell.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
         return cell;
@@ -1310,25 +1478,89 @@ static CGFloat PPProfileBottomBarClearance(void) {
     return cell;
 }
 
+- (BOOL)pp_isFirstRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return indexPath.row == 0;
+}
+
+- (BOOL)pp_isLastRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (!indexPath) {
+        return YES;
+    }
+    NSInteger rowCount = [self tableView:self.tableView numberOfRowsInSection:indexPath.section];
+    return indexPath.row >= MAX(rowCount - 1, 0);
+}
+
+- (void)pp_applyProfileSurfaceToCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
+{
+    if (!cell || !indexPath) {
+        return;
+    }
+
+    if ([cell isKindOfClass:PPProfileFormEngineCell.class]) {
+        cell.backgroundColor = UIColor.clearColor;
+        cell.contentView.backgroundColor = UIColor.clearColor;
+        cell.contentView.layer.borderWidth = 0.0;
+        [cell.contentView pp_setBorderColor:UIColor.clearColor];
+        cell.layer.shadowOpacity = 0.0f;
+        cell.layer.shadowRadius = 0.0f;
+        cell.layer.shadowOffset = CGSizeZero;
+        return;
+    }
+
+    BOOL isFirst = [self pp_isFirstRowAtIndexPath:indexPath];
+    BOOL isLast = [self pp_isLastRowAtIndexPath:indexPath];
+    BOOL isDestructive = indexPath.section == PPProfileSectionLogout;
+    BOOL isAddressAction = [self pp_isAddressActionRow:indexPath];
+    UIColor *accent = [self pp_profileHeroAccentColor];
+    UIColor *surfaceColor = isDestructive
+        ? [self pp_profileDestructiveSurfaceColor]
+        : (isAddressAction
+           ? [accent colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.18 : 0.075]
+           : [self pp_profileSurfaceColor]);
+    UIColor *borderColor = isDestructive
+        ? [UIColor.systemRedColor colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.34 : 0.18]
+        : [self pp_profileSurfaceBorderColor];
+
+    cell.backgroundColor = UIColor.clearColor;
+    cell.clipsToBounds = NO;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.contentView.backgroundColor = surfaceColor;
+    cell.contentView.transform = CGAffineTransformIdentity;
+    cell.contentView.alpha = 1.0;
+    cell.contentView.layer.cornerRadius = 22.0;
+    if (@available(iOS 13.0, *)) {
+        cell.contentView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    if (@available(iOS 11.0, *)) {
+        CACornerMask corners = 0;
+        if (isFirst) {
+            corners |= kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
+        }
+        if (isLast) {
+            corners |= kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
+        }
+        cell.contentView.layer.maskedCorners = corners;
+    }
+    cell.contentView.layer.masksToBounds = YES;
+    cell.contentView.layer.borderWidth = 1.0;
+    [cell.contentView pp_setBorderColor:borderColor];
+
+    [cell pp_setShadowColor:UIColor.blackColor];
+    cell.layer.shadowOpacity = isLast ? (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.10f : 0.045f) : 0.0f;
+    cell.layer.shadowRadius = isLast ? 14.0f : 0.0f;
+    cell.layer.shadowOffset = isLast ? CGSizeMake(0.0, 7.0) : CGSizeZero;
+    cell.layer.masksToBounds = NO;
+}
+
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (!PPIOS26()) {
        // [Styling applyBackgroundStyleForTableView:tableView cell:cell indexPath:indexPath useRowCardMode:NO];
     }
 
-    cell.backgroundColor = UIColor.clearColor;
-    cell.clipsToBounds = NO;
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.contentView.backgroundColor = indexPath.section == PPProfileSectionLogout ? [UIColor.redColor colorWithAlphaComponent:0.82]  :  [self pp_profileSurfaceColor];
-    cell.contentView.layer.cornerRadius = 20.0;
-    cell.contentView.layer.masksToBounds = YES;
-    cell.contentView.layer.borderWidth = 1.0;
-    [cell.contentView pp_setBorderColor:[self pp_profileSurfaceBorderColor]];
-    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
-    cell.layer.shadowRadius = 12.0;
-    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    cell.layer.masksToBounds = NO;
+    [self pp_applyProfileSurfaceToCell:cell atIndexPath:indexPath];
 
     if (self.isRunningProfileEntranceAnimation) {
         return;
@@ -1340,6 +1572,33 @@ static CGFloat PPProfileBottomBarClearance(void) {
     }
 
     [self pp_animateProfileDisplayCell:cell atIndexPath:indexPath delay:0.0];
+}
+
+- (void)pp_setProfileCell:(UITableViewCell *)cell pressed:(BOOL)pressed
+{
+    if (!cell || [self pp_profileReduceMotionEnabled]) {
+        return;
+    }
+
+    [UIView animateWithDuration:pressed ? 0.10 : 0.18
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        cell.contentView.transform = pressed
+            ? CGAffineTransformMakeScale(0.985, 0.985)
+            : CGAffineTransformIdentity;
+        cell.contentView.alpha = pressed ? 0.92 : 1.0;
+    } completion:nil];
+}
+
+- (void)tableView:(UITableView *)tableView didHighlightRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [self pp_setProfileCell:[tableView cellForRowAtIndexPath:indexPath] pressed:YES];
+}
+
+- (void)tableView:(UITableView *)tableView didUnhighlightRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [self pp_setProfileCell:[tableView cellForRowAtIndexPath:indexPath] pressed:NO];
 }
 
 - (BOOL)tableView:(UITableView *)tableView shouldHighlightRowAtIndexPath:(NSIndexPath *)indexPath
@@ -1646,22 +1905,48 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (void)pp_focusFieldKind:(PPProfileFieldKind)fieldKind
 {
-    NSIndexPath *indexPath = [self pp_indexPathForFieldKind:fieldKind];
-    if (!indexPath) {
-        return;
+    NSString *identifier = nil;
+    PPFormEngineView *targetForm = nil;
+
+    switch (fieldKind) {
+        case PPProfileFieldKindUserName:
+            identifier = @"username";
+            targetForm = self.detailsFormView;
+            break;
+        case PPProfileFieldKindFirstName:
+            identifier = @"firstname";
+            targetForm = self.detailsFormView;
+            break;
+        case PPProfileFieldKindLastName:
+            identifier = @"lastname";
+            targetForm = self.detailsFormView;
+            break;
+        case PPProfileFieldKindMobile:
+            identifier = @"mobile";
+            targetForm = self.contactFormView;
+            break;
+        case PPProfileFieldKindEmail:
+            identifier = @"email";
+            targetForm = self.contactFormView;
+            break;
+        case PPProfileFieldKindAbout:
+            identifier = @"about";
+            targetForm = self.contactFormView;
+            break;
+        default:
+            break;
     }
 
-    [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-        if ([cell isKindOfClass:PPProfileTextFieldCell.class]) {
-            [((PPProfileTextFieldCell *)cell).textField becomeFirstResponder];
-        } else if ([cell isKindOfClass:PPProfilePhoneCell.class]) {
-            [((PPProfilePhoneCell *)cell).textField becomeFirstResponder];
-        } else if ([cell isKindOfClass:PPProfileTextViewCell.class]) {
-            [((PPProfileTextViewCell *)cell).textView becomeFirstResponder];
+    if (targetForm && identifier) {
+        PPFormFieldRowView *row = [targetForm rowForIdentifier:identifier];
+        if (row) {
+            if (row.textField) {
+                [row.textField becomeFirstResponder];
+            } else if (row.textView) {
+                [row.textView becomeFirstResponder];
+            }
         }
-    });
+    }
 }
 
 - (void)pp_presentCountryPicker
@@ -1697,10 +1982,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     self.selectedCountry = country;
     [self setformDataArray:@(country.ID) forKey:@"CountryID"];
     [self pp_refreshProfileHeaderContent];
-    [self pp_reloadRowsAtIndexPaths:@[
-        [NSIndexPath indexPathForRow:PPProfileContactRowCountry inSection:PPProfileSectionContact],
-        [NSIndexPath indexPathForRow:PPProfileContactRowMobile inSection:PPProfileSectionContact]
-    ]];
+    [self pp_rebuildFormEngineFields];
 
     if (userInitiated) {
         [self markFormAsEdited];
@@ -2271,6 +2553,42 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (void)pp_showValidationErrorForField:(PPProfileFieldKind)fieldKind subtitle:(NSString *)subtitle
 {
+    NSString *identifier = nil;
+    PPFormEngineView *targetForm = nil;
+
+    switch (fieldKind) {
+        case PPProfileFieldKindUserName:
+            identifier = @"username";
+            targetForm = self.detailsFormView;
+            break;
+        case PPProfileFieldKindFirstName:
+            identifier = @"firstname";
+            targetForm = self.detailsFormView;
+            break;
+        case PPProfileFieldKindLastName:
+            identifier = @"lastname";
+            targetForm = self.detailsFormView;
+            break;
+        case PPProfileFieldKindMobile:
+            identifier = @"mobile";
+            targetForm = self.contactFormView;
+            break;
+        case PPProfileFieldKindEmail:
+            identifier = @"email";
+            targetForm = self.contactFormView;
+            break;
+        case PPProfileFieldKindAbout:
+            identifier = @"about";
+            targetForm = self.contactFormView;
+            break;
+        default:
+            break;
+    }
+
+    if (targetForm && identifier) {
+        [targetForm setErrorText:subtitle forIdentifier:identifier];
+    }
+
     NSIndexPath *indexPath = [self pp_indexPathForFieldKind:fieldKind];
     if (indexPath) {
         [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
@@ -2284,7 +2602,8 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (void)pp_showCountryValidationError
 {
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:PPProfileContactRowCountry inSection:PPProfileSectionContact];
+    [self.contactFormView setErrorText:kLang(@"SelectCountry") forIdentifier:@"country"];
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:PPProfileSectionContact];
     [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         UITableViewCell *badCell = [self.tableView cellForRowAtIndexPath:indexPath];
@@ -2764,9 +3083,6 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
     [self pp_applyProfileCanvasBackground];
 
-    UITraitCollection *tc = self.traitCollection;
-    BOOL isDark = (tc.userInterfaceStyle == UIUserInterfaceStyleDark);
-
     // Avatar border
     UIColor *avatarBorderDyn = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *t) {
         CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.86 * 0.18 : 0.86;
@@ -2784,14 +3100,9 @@ static CGFloat PPProfileBottomBarClearance(void) {
     }];
     [self.addPhotoBtn pp_setBorderColor:photoBorderDyn];
 
-    // Backdrop glows
-    [self.backgroundGlowViewTop pp_setShadowColor:[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0]];
-    [self.backgroundGlowViewBottom pp_setShadowColor:[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0]];
-
-    // Refresh cell layer CGColors
     for (UITableViewCell *cell in self.tableView.visibleCells) {
-        [cell.contentView pp_setBorderColor:[self pp_profileSurfaceBorderColor]];
-        cell.layer.shadowOpacity = isDark ? 0.02 : 0.05;
+        NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+        [self pp_applyProfileSurfaceToCell:cell atIndexPath:indexPath];
     }
 }
 

@@ -31,6 +31,9 @@ final class PPPetAdViewerHostingController: UIViewController {
 
         super.init(nibName: nil, bundle: nil)
 
+        edgesForExtendedLayout = .all
+        extendedLayoutIncludesOpaqueBars = true
+        additionalSafeAreaInsets = .zero
         actions.presenter = self
         modalPresentationStyle = .fullScreen
         hidesBottomBarWhenPushed = true

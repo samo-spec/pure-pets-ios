@@ -89,6 +89,11 @@ private enum PPPaletteHex {
         static let brandPrimary   = "CB2654"
         static let pressedAction  = "A91E46"
         static let accentText     = "CB2654"
+        static let quickActionShopping  = "D14A61"
+        static let quickActionAnimals   = "9E5CAD"
+        static let quickActionServices  = "47929C"
+        static let quickActionCommunity = "618CB8"
+        static let quickActionAdoption  = "D17F63"
 
         // Surfaces and fields
         static let mainBackground   = "F8F8F9"
@@ -112,6 +117,11 @@ private enum PPPaletteHex {
         static let action     = "CB2654"
         static let pressed    = "A91E46"
         static let accentText = "E05A7E"
+        static let quickActionShopping  = "DF6A7D"
+        static let quickActionAnimals   = "B881C2"
+        static let quickActionServices  = "64AAB0"
+        static let quickActionCommunity = "7CA0C6"
+        static let quickActionAdoption  = "DB9278"
 
         // Surfaces and fields
         static let background       = "0E0B0C"
@@ -174,6 +184,41 @@ private enum PPPaletteHex {
 
     @objc static var ppAccentText: UIColor {
         dynamicHex(light: PPPaletteHex.Light.accentText, dark: PPPaletteHex.Dark.accentText)
+    }
+
+    @objc static var ppQuickActionShopping: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.quickActionShopping,
+            dark: PPPaletteHex.Dark.quickActionShopping
+        )
+    }
+
+    @objc static var ppQuickActionAnimals: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.quickActionAnimals,
+            dark: PPPaletteHex.Dark.quickActionAnimals
+        )
+    }
+
+    @objc static var ppQuickActionServices: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.quickActionServices,
+            dark: PPPaletteHex.Dark.quickActionServices
+        )
+    }
+
+    @objc static var ppQuickActionCommunity: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.quickActionCommunity,
+            dark: PPPaletteHex.Dark.quickActionCommunity
+        )
+    }
+
+    @objc static var ppQuickActionAdoption: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.quickActionAdoption,
+            dark: PPPaletteHex.Dark.quickActionAdoption
+        )
     }
 
     // MARK: Surfaces and fields
@@ -281,6 +326,11 @@ public extension Color {
     static var ppPrimaryShiner: Color  { Color(uiColor: .ppPrimaryShiner) }
     static var ppAccent: Color         { Color(uiColor: .ppAccent) }
     static var ppAccentText: Color     { Color(uiColor: .ppAccentText) }
+    static var ppQuickActionShopping: Color  { Color(uiColor: .ppQuickActionShopping) }
+    static var ppQuickActionAnimals: Color   { Color(uiColor: .ppQuickActionAnimals) }
+    static var ppQuickActionServices: Color  { Color(uiColor: .ppQuickActionServices) }
+    static var ppQuickActionCommunity: Color { Color(uiColor: .ppQuickActionCommunity) }
+    static var ppQuickActionAdoption: Color  { Color(uiColor: .ppQuickActionAdoption) }
 
     // MARK: Surfaces and fields
     static var ppBackground: Color       { Color(uiColor: .ppBackground) }

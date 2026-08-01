@@ -1170,6 +1170,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     [self stopOrdersRealtimeListener];
     self.ordersListenerUserID = safeUserID;
+    NSLog(@"PPLAB OrderHistory listener start | userIdLength=%lu pageSize=%ld",
+          (unsigned long)safeUserID.length,
+          (long)self.pageSize);
 
     __weak typeof(self) weakSelf = self;
     self.ordersListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
@@ -1177,6 +1180,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
             if (![strongSelf.ordersListenerUserID isEqualToString:safeUserID]) return;
+            NSLog(@"PPLAB OrderHistory listener snapshot | userIdLength=%lu count=%lu error=%@",
+                  (unsigned long)safeUserID.length,
+                  (unsigned long)snapshot.documents.count,
+                  error.localizedDescription ?: @"");
             [strongSelf handleOrdersSnapshot:snapshot error:error reset:YES];
         });
     }];

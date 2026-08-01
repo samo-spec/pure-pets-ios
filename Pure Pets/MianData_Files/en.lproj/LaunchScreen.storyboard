@@ -17,34 +17,18 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="splash_light" translatesAutoresizingMaskIntoConstraints="NO" id="dzt-rU-j9H">
-                                <rect key="frame" x="0.0" y="0.0" width="393" height="854"/>
-                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <color key="tintColor" name="AppPrimaryColor"/>
-                            </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" layoutMarginsFollowReadableWidth="YES" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="4Pq-Ym-1jc">
-                                <rect key="frame" x="0.0" y="773" width="393" height="45"/>
-                                <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
-                                <string key="text">Pure Pets © 2025 — All rights reserved.
-</string>
-                                <fontDescription key="fontDescription" type="system" weight="semibold" pointSize="18"/>
-                                <color key="textColor" name="SecondaryTextColor"/>
-                                <nil key="highlightedColor"/>
-                                <color key="shadowColor" white="0.33333333333333331" alpha="0.33130731177606176" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <size key="shadowOffset" width="0.0" height="0.0"/>
-                            </label>
-                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="PureIconTransFilledV3" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
-                                <rect key="frame" x="122" y="190" width="150" height="150"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <color key="tintColor" name="AppPrimaryColor"/>
-                                <preferredSymbolConfiguration key="preferredSymbolConfiguration" configurationType="pointSize" pointSize="17" scale="large" weight="ultraLight"/>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="PureIconTransFilledV3" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
+                                <rect key="frame" x="136.7" y="262.4" width="112.5" height="112.5"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+                        <constraints>
+                            <constraint firstItem="0qK-kL-r8Y" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" constant="-3.6" id="4fA-xA-8gN"/>
+                            <constraint firstItem="0qK-kL-r8Y" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-107.3" id="Bqw-gR-DjB"/>
+                            <constraint firstItem="0qK-kL-r8Y" firstAttribute="width" secondItem="0qK-kL-r8Y" secondAttribute="height" multiplier="1:1" id="RjL-GP-2gW"/>
+                            <constraint firstAttribute="width" constant="112.5" id="cE9-Dr-EFu" firstItem="0qK-kL-r8Y"/>
+                        </constraints>
                         <color key="backgroundColor" name="AppForegroundColor"/>
-                        <color key="tintColor" name="AppPrimaryColor"/>
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
@@ -54,15 +38,8 @@
     </scenes>
     <resources>
         <image name="PureIconTransFilledV3" width="1024" height="1024"/>
-        <image name="splash_light" width="200" height="355.33334350585938"/>
         <namedColor name="AppForegroundColor">
             <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
-        </namedColor>
-        <namedColor name="AppPrimaryColor">
-            <color red="0.78823529411764703" green="0.18823529411764706" blue="0.32156862745098042" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
-        </namedColor>
-        <namedColor name="SecondaryTextColor">
-            <color red="0.25882352941176473" green="0.25882352941176473" blue="0.25882352941176473" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>
     </resources>
 </document>

@@ -2926,94 +2926,33 @@ struct PPAccessorySuggestionShore: View {
     private func universalSuggestionCard(
         _ suggestion: PPAccessoryViewerSuggestion
     ) -> some View {
-        PPUniversalCardView(
-            model: universalModel(for: suggestion),
-            context: .market,
-            layout: .vertical,
-            discountStyle: .inline,
-            palette: universalPalette,
-            actions: PPUniversalCardActions(
-                onTap: { _ in
-                    store.openSuggestion(suggestion)
-                }
-            )
+        let cellContext: PPCellContext = suggestion.accessory.isFood ? .forFood : .forMarket
+        let viewModel = PPUniversalCellViewModel(
+            model: suggestion.accessory,
+            context: cellContext
+        )
+
+        return PPUniversalCardView(
+            viewModel: viewModel,
+            delegate: nil,
+            context: cellContext,
+            layoutMode: .cellLayoutModeVertical,
+            discountMode: .plain,
+            imageLoader: nil,
+            hideTopBadge: false,
+            showsSubtitle: true,
+            onTap: {
+                store.openSuggestion(suggestion)
+            }
         )
         .frame(width: compact ? 172 : 195)
         .accessibilityElement(children: .combine)
     }
 
-    private func universalModel(
-        for suggestion: PPAccessoryViewerSuggestion
-    ) -> PPUniversalCardModel {
-        let accessory = suggestion.accessory
-        let quantity = max(accessory.quantity, 0)
-        let unavailable =
-            PPAccessoryViewerLegacyBridge.isUnavailable(accessory)
-        let availabilityTone: PPUniversalAvailability.Tone = {
-            if unavailable || quantity <= 0 {
-                return .unavailable
-            }
-            return quantity <= 5 ? .limited : .available
-        }()
-
-        return PPUniversalCardModel(
-            id: suggestion.id,
-            title: suggestion.title,
-            subtitle: suggestion.subtitle,
-            imageURL: suggestion.imageURL.flatMap(URL.init(string:)),
-            placeholderImageName: "pawprint4",
-            placeholderSystemImage: "pawprint.fill",
-            priceText: suggestion.price,
-            currencyCode: PPAccessoryViewerL10n.text("Rials"),
-            availability: PPUniversalAvailability(
-                text: PPAccessoryViewerLegacyBridge.stockText(for: accessory),
-                tone: availabilityTone
-            ),
-            isOwner: PPAccessoryViewerLegacyBridge.isOwn(accessory),
-            isPubliclyVisible: !unavailable,
-            stock: quantity,
-            usesQuantityControl: false,
-            prefersEdgeToEdgeMedia: true,
-            prefersNavigationChevron: true,
-            preferredAspectRatio: 0.82
-        )
-    }
-
-    private var universalPalette: PPUniversalCardPalette {
-        PPUniversalCardPalette(
-            primary: PPAccessoryPalette.ink,
-            primaryDarker: PPAccessoryPalette.ink,
-            primaryShiner: PPAccessoryPalette.inkSecondary,
-            diffColor: PPAccessoryPalette.inkSecondary,
-            accent: PPAccessoryPalette.ink,
-            surface: PPAccessorySubviewBackground.quietFill,
-            cardColor: PPAccessorySubviewBackground.quietFill,
-            groupedSurface: PPAccessorySubviewBackground.clear,
-            ink: PPAccessoryPalette.ink,
-            secondaryInk: PPAccessoryPalette.inkSecondary,
-            success: PPAccessoryPalette.success,
-            warning: PPAccessoryPalette.warning,
-            destructive: PPAccessoryPalette.error
-        )
-    }
-
     private var suggestionSkeleton: some View {
         HStack(spacing: 12) {
             ForEach(["skeleton-0", "skeleton-1", "skeleton-2"], id: \.self) { itemID in
-                PPUniversalCardView(
-                    model: PPUniversalCardModel(
-                        id: itemID,
-                        title: "",
-                        isSkeleton: true,
-                        prefersEdgeToEdgeMedia: true,
-                        preferredAspectRatio: 0.82
-                    ),
-                    context: .market,
-                    layout: .vertical,
-                    discountStyle: .inline,
-                    palette: universalPalette
-                )
-                .frame(width: compact ? 172 : 195)
+                skeletonCard(itemID)
             }
         }
         .accessibilityLabel(
@@ -3021,6 +2960,20 @@ struct PPAccessorySuggestionShore: View {
                 "accessory_view_loading_suggestions"
             )
         )
+    }
+
+    private func skeletonCard(_ itemID: String) -> some View {
+        let skeletonVM = PPUniversalCellViewModel(model: nil, context: .forMarket)
+        skeletonVM.isSkeleton = true
+        return PPUniversalCardView(
+            viewModel: skeletonVM,
+            delegate: nil,
+            context: .forMarket,
+            layoutMode: .cellLayoutModeVertical,
+            discountMode: .plain,
+            showsSubtitle: true
+        )
+        .frame(width: compact ? 172 : 195)
     }
 }
 

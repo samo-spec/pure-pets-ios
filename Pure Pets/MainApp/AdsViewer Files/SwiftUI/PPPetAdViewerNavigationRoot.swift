@@ -27,6 +27,7 @@ struct PPPetAdViewerNavigationRoot: View {
             .ignoresSafeArea(edges: .top)
         }
         .navigationViewStyle(.stack)
+        .ignoresSafeArea(.container, edges: .top)
         .environment(
             \.layoutDirection,
             isRightToLeft ? .rightToLeft : .leftToRight

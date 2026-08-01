@@ -126,6 +126,7 @@ static NSString *PPOrderCustomerVisibleTimelineStatusKey(NSString *statusKey)
         return @"delivery_partner_assigned";
     }
     if ([normalized isEqualToString:@"ready_to_ship"] ||
+        [normalized isEqualToString:@"ready_for_pickup"] ||
         [normalized isEqualToString:@"delivery_requested"] ||
         [normalized isEqualToString:@"delivery_reassigned"]) {
         return @"ready_for_delivery";
@@ -3993,19 +3994,31 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [self stopRealtimeObservers];
     if (![self safeString:self.order.orderId].length) return;
     self.lastObservedOrderStatusKey = [self normalizedStatusKeyForOrder:self.order];
+    NSLog(@"PPLAB OrderDetails listener start | orderId=%@ status=%@",
+          self.order.orderId ?: @"",
+          self.lastObservedOrderStatusKey ?: @"");
 
     __weak typeof(self) weakSelf = self;
     FIRDocumentReference *orderRef = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:self.order.orderId];
     self.orderDocumentListener = [orderRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error || !snapshot.exists) return;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (error || !snapshot.exists) {
+            NSLog(@"PPLAB OrderDetails listener snapshot | orderId=%@ exists=%d error=%@",
+                  strongSelf.order.orderId ?: @"",
+                  snapshot.exists,
+                  error.localizedDescription ?: @"");
+            return;
+        }
         PPOrder *updatedOrder = [PPOrder orderFromSnapshot:snapshot];
         if (!updatedOrder) return;
 
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-
         NSString *nextStatusKey = [strongSelf normalizedStatusKeyForOrder:updatedOrder];
         NSString *previousStatusKey = [strongSelf safeString:strongSelf.lastObservedOrderStatusKey];
+        NSLog(@"PPLAB OrderDetails listener snapshot | orderId=%@ previousStatus=%@ nextStatus=%@",
+              updatedOrder.orderId ?: @"",
+              previousStatusKey ?: @"",
+              nextStatusKey ?: @"");
         BOOL shouldPlayStatusFeedback = strongSelf.isOrderDetailsScreenVisible &&
                                         previousStatusKey.length > 0 &&
                                         nextStatusKey.length > 0 &&

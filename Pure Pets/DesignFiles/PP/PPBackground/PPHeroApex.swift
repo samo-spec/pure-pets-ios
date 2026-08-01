@@ -400,6 +400,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let contactRingLayer = CAShapeLayer()
     private let signatureSweepLayer = CAGradientLayer()
     private let topSpecularLayer = CAGradientLayer()
+    private let outerStrokeGradientLayer = CAGradientLayer()
+    private let outerStrokeMaskLayer = CAShapeLayer()
     private let accentBarLayer = CAGradientLayer()
     private let accentGlowLayer = CAGradientLayer()
     private let innerStrokeLayer = CAShapeLayer()
@@ -605,6 +607,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         topSpecularLayer.drawsAsynchronously = true
         overlayView.layer.addSublayer(topSpecularLayer)
 
+        outerStrokeGradientLayer.drawsAsynchronously = true
+        outerStrokeGradientLayer.locations = [0, 0.52, 1]
+        outerStrokeMaskLayer.fillColor = UIColor.clear.cgColor
+        outerStrokeMaskLayer.strokeColor = UIColor.black.cgColor
+        outerStrokeMaskLayer.lineWidth = 1
+        outerStrokeGradientLayer.mask = outerStrokeMaskLayer
+        overlayView.layer.addSublayer(outerStrokeGradientLayer)
+
         accentGlowLayer.type = .radial
         accentGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
         accentGlowLayer.endPoint = CGPoint(x: 1, y: 1)
@@ -614,7 +624,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         accentBarLayer.startPoint = CGPoint(x: 0, y: 0.5)
         accentBarLayer.endPoint = CGPoint(x: 1, y: 0.5)
         accentBarLayer.locations = [0, 0.52, 1]
-        accentBarLayer.cornerRadius = 1.5
+        accentBarLayer.cornerRadius = 2
         overlayView.layer.addSublayer(accentBarLayer)
 
         innerStrokeLayer.fillColor = UIColor.clear.cgColor
@@ -632,6 +642,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let scale = resolvedDisplayScale
         particleLayers.forEach { $0.contentsScale = scale }
         contactRingLayer.contentsScale = scale
+        outerStrokeGradientLayer.contentsScale = scale
+        outerStrokeMaskLayer.contentsScale = scale
         innerStrokeLayer.contentsScale = scale
     }
 
@@ -705,6 +717,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         baseGradientLayer.endPoint = layoutDirection == .rightToLeft
             ? CGPoint(x: 0, y: 1)
             : CGPoint(x: 1, y: 1)
+        outerStrokeGradientLayer.startPoint = baseGradientLayer.startPoint
+        outerStrokeGradientLayer.endPoint = baseGradientLayer.endPoint
         depthGradientLayer.frame = materialBounds
         if storedAccentMode.isBaseBackground {
             depthGradientLayer.startPoint = resolvedFullScreenPoint(
@@ -753,9 +767,18 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         materialView.layer.cornerCurve = .continuous
 
         innerStrokeLayer.frame = overlayView.bounds
-        innerStrokeLayer.path = UIBezierPath(
+        outerStrokeGradientLayer.frame = overlayView.bounds
+        outerStrokeMaskLayer.frame = overlayView.bounds
+        outerStrokeMaskLayer.path = UIBezierPath(
             roundedRect: overlayView.bounds.insetBy(dx: 0.5, dy: 0.5),
             cornerRadius: max(radius - 0.5, 0)
+        ).cgPath
+
+        let innerStrokeInset: CGFloat = storedAccentMode == .bar ? 1.0 : 0.5
+        innerStrokeLayer.lineWidth = storedAccentMode == .bar ? 0.5 : 1
+        innerStrokeLayer.path = UIBezierPath(
+            roundedRect: overlayView.bounds.insetBy(dx: innerStrokeInset, dy: innerStrokeInset),
+            cornerRadius: max(radius - innerStrokeInset, 0)
         ).cgPath
 
         layer.shadowPath = UIBezierPath(
@@ -894,9 +917,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
         let barWidth: CGFloat = 44
-        let barLeading: CGFloat = 38
+        let barLeading: CGFloat = 30
         let barX = isRTL ? bounds.width - barLeading - barWidth : barLeading
-        accentBarLayer.frame = CGRect(x: barX, y: 0, width: barWidth, height: 3)
+        accentBarLayer.frame = CGRect(x: barX, y: 0, width: barWidth, height: 4)
+        accentBarLayer.cornerRadius = 2
 
         let useFlippedLayout = resolvesToFlippedLayout
         let glowDiameter = max(min(bounds.width * 0.74, 230), 168)
@@ -915,12 +939,13 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let palette = makePalette()
         let isDark = traitCollection.userInterfaceStyle == .dark
         let isBaseBackground = storedAccentMode.isBaseBackground
+        let isBarStyle = storedAccentMode == .bar
         let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
         let strongerContrast = traitCollection.accessibilityContrast == .high ||
             UIAccessibility.isDarkerSystemColorsEnabled
         let animatePalette = shouldAnimateVisualStateChange
 
-        materialView.effect = (reduceTransparency || isBaseBackground)
+        materialView.effect = (reduceTransparency || isBaseBackground || isBarStyle)
             ? nil
             : UIBlurEffect(
                 style: strongerContrast ? .systemThinMaterial : .systemUltraThinMaterial
@@ -934,21 +959,28 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         materialView.contentView.backgroundColor = .clear
 
         let surfaceAlpha: CGFloat
-        if isBaseBackground {
-            // A base surface must never reveal a dark view underneath while
-            // its light fields move.
+        if isBaseBackground || isBarStyle {
+            // These authored surfaces must never reveal a dark view underneath.
             surfaceAlpha = 1
         } else {
             surfaceAlpha = reduceTransparency
                 ? 1
                 : (strongerContrast ? 0.91 : (isDark ? 0.82 : 0.76))
         }
-        setGradientColors([
-            palette.surfaceHighlight.withAlphaComponent(surfaceAlpha).cgColor,
-            palette.surfaceMiddle.withAlphaComponent(surfaceAlpha).cgColor,
-            palette.surfaceTail.withAlphaComponent(surfaceAlpha).cgColor
-        ], on: baseGradientLayer, animated: animatePalette)
-        baseGradientLayer.locations = isBaseBackground ? [0, 0.44, 1] : [0, 0.52, 1]
+        let surfaceColors: [CGColor] = isBarStyle
+            ? [
+                palette.surfaceHighlight.withAlphaComponent(surfaceAlpha).cgColor,
+                palette.surfaceMiddle.withAlphaComponent(surfaceAlpha).cgColor,
+                palette.surfaceTail.withAlphaComponent(surfaceAlpha).cgColor,
+                palette.depth.withAlphaComponent(surfaceAlpha).cgColor
+            ]
+            : [
+                palette.surfaceHighlight.withAlphaComponent(surfaceAlpha).cgColor,
+                palette.surfaceMiddle.withAlphaComponent(surfaceAlpha).cgColor,
+                palette.surfaceTail.withAlphaComponent(surfaceAlpha).cgColor
+            ]
+        setGradientColors(surfaceColors, on: baseGradientLayer, animated: animatePalette)
+        baseGradientLayer.locations = isBaseBackground ? [0, 0.44, 1] : (isBarStyle ? [0, 0.44, 0.82, 1] : [0, 0.52, 1])
         baseGradientLayer.startPoint = isBaseBackground
             ? resolvedFullScreenPoint(CGPoint(x: 0.08, y: 0))
             : (effectiveUserInterfaceLayoutDirection == .rightToLeft
@@ -959,8 +991,22 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             : (effectiveUserInterfaceLayoutDirection == .rightToLeft
                 ? CGPoint(x: 0, y: 1)
                 : CGPoint(x: 1, y: 1))
+        outerStrokeGradientLayer.startPoint = baseGradientLayer.startPoint
+        outerStrokeGradientLayer.endPoint = baseGradientLayer.endPoint
 
-        if isBaseBackground {
+        if isBarStyle {
+            depthGradientLayer.type = .axial
+            depthGradientLayer.locations = [0, 1]
+            setGradientColors([
+                UIColor.clear.cgColor,
+                UIColor.clear.cgColor
+            ], on: depthGradientLayer, animated: animatePalette)
+            vignetteLayer.locations = [0, 1]
+            setGradientColors([
+                UIColor.clear.cgColor,
+                UIColor.clear.cgColor
+            ], on: vignetteLayer, animated: animatePalette)
+        } else if isBaseBackground {
             depthGradientLayer.type = .radial
             depthGradientLayer.startPoint = resolvedFullScreenPoint(
                 CGPoint(x: 0.18, y: 0.12)
@@ -1042,6 +1088,13 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                     UIColor.clear.cgColor
                 ], on: prismLayer, animated: animatePalette)
             }
+        } else if isBarStyle {
+            prismLayer.type = .axial
+            prismLayer.locations = [0, 1]
+            setGradientColors([
+                UIColor.clear.cgColor,
+                UIColor.clear.cgColor
+            ], on: prismLayer, animated: animatePalette)
         } else {
             let prismAlpha: CGFloat = isDark ? 0.032 : 0.020
             prismLayer.type = .conic
@@ -1057,7 +1110,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 UIColor.clear.cgColor
             ], on: prismLayer, animated: animatePalette)
         }
-        prismLayer.opacity = isBaseBackground ? 0.40 : 1
+        prismLayer.opacity = isBaseBackground ? 0.40 : (isBarStyle ? 0 : 1)
 
         let activeSpecs = activeAuroraSpecs
         for (index, layer) in auroraLayers.enumerated() {
@@ -1088,15 +1141,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 on: layer,
                 animated: animatePalette
             )
-            layer.opacity = restingOpacity
+            layer.opacity = isBarStyle ? 0 : restingOpacity
         }
 
         for (index, layer) in particleLayers.enumerated() {
             let color = palette.particle[index % palette.particle.count]
             layer.fillColor = color.cgColor
-            layer.opacity = isBaseBackground
+            layer.opacity = isBarStyle
+                ? 0
+                : (isBaseBackground
                 ? (isDark ? 0.095 : 0.058)
-                : (isDark ? 0.12 : 0.075)
+                : (isDark ? 0.12 : 0.075))
             layer.shadowOpacity = 0
             layer.shadowRadius = 0
             layer.shadowOffset = .zero
@@ -1113,7 +1168,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             palette.reactiveLight.withAlphaComponent(reactiveMiddleAlpha).cgColor,
             UIColor.clear.cgColor
         ], on: reactiveLightLayer, animated: animatePalette)
-        reactiveLightLayer.opacity = isBaseBackground ? 0.60 : 0.64
+        reactiveLightLayer.opacity = isBarStyle ? 0 : (isBaseBackground ? 0.60 : 0.64)
 
         setGradientColors([
             palette.specularLight.withAlphaComponent(isDark ? 0.30 : 0.38).cgColor,
@@ -1141,24 +1196,34 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ], on: signatureSweepLayer, animated: animatePalette)
         signatureSweepLayer.opacity = 0
 
-        let topSpecularSource = isBaseBackground ? palette.surfaceHighlight : UIColor.white
-        setGradientColors([
-            topSpecularSource.withAlphaComponent(
-                isBaseBackground ? (isDark ? 0.11 : 0.34) : (isDark ? 0.16 : 0.72)
-            ).cgColor,
-            palette.specularLight.withAlphaComponent(
-                isBaseBackground ? (isDark ? 0.060 : 0.14) : (isDark ? 0.075 : 0.22)
-            ).cgColor,
-            palette.specularLight.withAlphaComponent(
-                isBaseBackground ? (isDark ? 0.018 : 0.034) : (isDark ? 0.012 : 0.028)
-            ).cgColor,
-            UIColor.clear.cgColor
-        ], on: topSpecularLayer, animated: animatePalette)
+        if isBarStyle {
+            topSpecularLayer.locations = [0, 1]
+            setGradientColors([
+                UIColor.clear.cgColor,
+                UIColor.clear.cgColor
+            ], on: topSpecularLayer, animated: animatePalette)
+        } else {
+            topSpecularLayer.locations = [0, 0.055, 0.20, 1]
+            let topSpecularSource = isBaseBackground ? palette.surfaceHighlight : UIColor.white
+            setGradientColors([
+                topSpecularSource.withAlphaComponent(
+                    isBaseBackground ? (isDark ? 0.11 : 0.34) : (isDark ? 0.16 : 0.72)
+                ).cgColor,
+                palette.specularLight.withAlphaComponent(
+                    isBaseBackground ? (isDark ? 0.060 : 0.14) : (isDark ? 0.075 : 0.22)
+                ).cgColor,
+                palette.specularLight.withAlphaComponent(
+                    isBaseBackground ? (isDark ? 0.018 : 0.034) : (isDark ? 0.012 : 0.028)
+                ).cgColor,
+                UIColor.clear.cgColor
+            ], on: topSpecularLayer, animated: animatePalette)
+        }
 
+        let barAccentAlpha: CGFloat = isBarStyle ? 0.58 : 0.82
         setGradientColors([
-            palette.accent.withAlphaComponent(0.38).cgColor,
-            palette.accent.withAlphaComponent(0.82).cgColor,
-            palette.accent.withAlphaComponent(0.22).cgColor
+            palette.accent.withAlphaComponent(isBarStyle ? barAccentAlpha : 0.38).cgColor,
+            palette.accent.withAlphaComponent(barAccentAlpha).cgColor,
+            palette.accent.withAlphaComponent(isBarStyle ? barAccentAlpha : 0.22).cgColor
         ], on: accentBarLayer, animated: animatePalette)
 
         let glowStrength = storedCornerGlowOpacityMultiplier
@@ -1178,8 +1243,21 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             UIColor.clear.cgColor
         ], on: accentGlowLayer, animated: animatePalette)
 
-        innerStrokeLayer.strokeColor = palette.stroke.cgColor
+        if isBarStyle {
+            setGradientColors([
+                UIColor.white.withAlphaComponent(isDark ? 0.18 : 0.92).cgColor,
+                palette.accent.withAlphaComponent(isDark ? 0.25 : 0.18).cgColor,
+                UIColor.black.withAlphaComponent(isDark ? 0.24 : 0.075).cgColor
+            ], on: outerStrokeGradientLayer, animated: animatePalette)
+            outerStrokeGradientLayer.opacity = 1
+            innerStrokeLayer.strokeColor = UIColor.white.withAlphaComponent(isDark ? 0.055 : 0.62).cgColor
+        } else {
+            outerStrokeGradientLayer.opacity = 0
+            innerStrokeLayer.strokeColor = palette.stroke.cgColor
+        }
         layer.shadowOpacity = palette.shadowOpacity
+        layer.shadowRadius = isBarStyle ? (isDark ? 18 : 16) : 24
+        layer.shadowOffset = CGSize(width: 0, height: isBarStyle ? (isDark ? 9 : 8) : 12)
 
         CATransaction.commit()
 
@@ -1280,6 +1358,46 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let particleSecondary = blend(bottomTrailingGlow, with: .white, amount: isDark ? 0.68 : 0.74)
         let specular = blend(accent, with: .white, amount: isDark ? 0.86 : 0.94)
         let isFullScreen = storedAccentMode.isFullScreen
+        let isBarStyle = storedAccentMode == .bar
+
+        let canvas = resolvedColor(
+            UIColor(named: "AppBackgroundColor") ?? (isDark ? Chromatics.darkSurface : Chromatics.lightSurface)
+        )
+        let barLift = blend(
+            polishedSurfaceBase,
+            with: .white,
+            amount: isDark ? 0.055 : 0.24
+        )
+        let barBrandVeil = blend(
+            polishedSurfaceBase,
+            with: accent,
+            amount: isDark ? 0.105 : 0.038
+        )
+        let barPaperTail = blend(
+            polishedSurfaceBase,
+            with: canvas,
+            amount: isDark ? 0.34 : 0.16
+        )
+        let barEdgeShade = blend(
+            barPaperTail,
+            with: .black,
+            amount: isDark ? 0.12 : 0.018
+        )
+        if isBarStyle {
+            return Palette(
+                accent: accent,
+                surfaceHighlight: barLift,
+                surfaceMiddle: barBrandVeil,
+                surfaceTail: barPaperTail,
+                depth: barEdgeShade,
+                aurora: [barLift, barBrandVeil, barPaperTail],
+                particle: [barLift, barBrandVeil, barPaperTail],
+                reactiveLight: blend(barBrandVeil, with: accent, amount: isDark ? 0.055 : 0.024),
+                specularLight: blend(barLift, with: .white, amount: isDark ? 0.38 : 0.62),
+                stroke: UIColor.white.withAlphaComponent(isDark ? 0.055 : 0.62),
+                shadowOpacity: isDark ? 0.16 : 0.075
+            )
+        }
 
         // Full Screen deliberately stays inside the surface's own tonal
         // family. Brand color is a whisper in the material, never a hard
@@ -1574,6 +1692,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         isDark: Bool,
         reduceTransparency: Bool
     ) -> CGFloat {
+        if storedAccentMode == .bar {
+            return 0
+        }
         if storedAccentMode.isBaseBackground {
             return reduceTransparency
                 ? (isDark ? 0.25 : 0.28)
@@ -2291,6 +2412,11 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             return
         }
 
+        if storedAccentMode == .bar {
+            prismLayer.removeAnimation(forKey: prismAnimationKey)
+            return
+        }
+
         let rotation = CAKeyframeAnimation(keyPath: "transform.rotation.z")
         rotation.values = [-0.10, 1.48, 3.04, 4.62, CGFloat.pi * 2 - 0.10]
         rotation.keyTimes = [0, 0.25, 0.50, 0.75, 1]
@@ -2314,6 +2440,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func installAuroraAnimations() {
+        if storedAccentMode == .bar {
+            for layer in auroraLayers {
+                layer.removeAnimation(forKey: auroraAnimationKey)
+                layer.opacity = 0
+            }
+            return
+        }
+
         let compactPhaseOrder = storedAccentMode.isFullScreen
             ? []
             : compactAuroraPhaseOrder(palette: makePalette())
@@ -3729,6 +3863,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         if storedAccentMode.isBaseBackground {
             reactiveLightLayer.opacity = reduced ? 0.46 : 0.56
             prismLayer.opacity = reduced ? 0.30 : 0.38
+        } else if storedAccentMode == .bar {
+            reactiveLightLayer.opacity = 0
+            prismLayer.opacity = 0
+            auroraLayers.forEach { $0.opacity = 0 }
         } else if storedAccentMode == .fullScreen {
             reactiveLightLayer.opacity = reduced ? 0.44 : 0.58
             prismLayer.opacity = reduced ? 0.48 : 0.76
@@ -3751,8 +3889,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private func restoreFullMotionModelState() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        reactiveLightLayer.opacity = storedAccentMode.isBaseBackground ? 0.60 : 0.64
-        prismLayer.opacity = storedAccentMode.isBaseBackground ? 0.40 : 1
+        reactiveLightLayer.opacity = storedAccentMode == .bar
+            ? 0
+            : (storedAccentMode.isBaseBackground ? 0.60 : 0.64)
+        prismLayer.opacity = storedAccentMode == .bar
+            ? 0
+            : (storedAccentMode.isBaseBackground ? 0.40 : 1)
+        if storedAccentMode == .bar {
+            auroraLayers.forEach { $0.opacity = 0 }
+        }
         if storedAccentMode == .fullScreen {
             for (index, spec) in activeAuroraSpecs.enumerated()
                 where auroraLayers.indices.contains(index) {

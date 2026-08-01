@@ -1075,6 +1075,12 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
     NSString *orderId = PPAppDelegateOrderIDFromPayload(userInfo);
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
+    NSLog(@"PPLAB AppDelegate remote notification start | type=%@ orderId=%@ status=%@ paymentStatus=%@ threadID=%@",
+          type ?: @"",
+          orderId ?: @"",
+          status ?: @"",
+          paymentStatus ?: @"",
+          threadID ?: @"");
     NSLog(@"[Push] didReceiveRemoteNotification | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@ | threadID=%@",
           type ?: @"",
           orderId,
@@ -1131,6 +1137,11 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
     if (type.length > 0 || orderId.length > 0) {
+        NSLog(@"PPLAB AppDelegate will present notification start | type=%@ orderId=%@ status=%@ paymentStatus=%@",
+              type ?: @"",
+              orderId ?: @"",
+              status ?: @"",
+              paymentStatus ?: @"");
         NSLog(@"[Push] willPresentNotification | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@",
               type,
               orderId,
@@ -1170,6 +1181,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     NSString *orderId = PPAppDelegateOrderIDFromPayload(userInfo);
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
+    NSLog(@"PPLAB AppDelegate notification tap start | type=%@ orderId=%@ status=%@ paymentStatus=%@",
+          type ?: @"",
+          orderId ?: @"",
+          status ?: @"",
+          paymentStatus ?: @"");
     NSLog(@"[Push] Notification tapped | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@",
           type,
           orderId,

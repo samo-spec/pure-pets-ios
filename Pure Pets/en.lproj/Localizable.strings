@@ -4015,3 +4015,17 @@
 "home_provider_navigation_title" = "Trusted care";
 "home_pulse_location_context" = "Location context";
 "home_refresh_interrupted" = "Refresh was interrupted. Try again.";
+
+/* Splash — Living Mark */
+"splash_product_promise" = "Your pet’s world, closer to you.";
+"splash_loading_title" = "Preparing your pet’s world";
+"splash_continue_title" = "Let’s begin";
+"splash_ready_title" = "Welcome, both of you";
+"splash_loading_boot" = "Bringing care, shop, and services together";
+"splash_loading_categories" = "Arranging what your pet needs";
+"splash_loading_highlights" = "Adding the latest picks and offers";
+"splash_loading_ready" = "Your pet’s world is ready";
+"splash_loading_fallback" = "We’ll begin with what’s ready";
+"splash_footer_format" = "Pure Pets © %ld · All rights reserved";
+"splash_loading_accessibility_format" = "%1$@. %2$@";
+"splash_progress_accessibility_format" = "Launch step %1$ld of %2$ld";
