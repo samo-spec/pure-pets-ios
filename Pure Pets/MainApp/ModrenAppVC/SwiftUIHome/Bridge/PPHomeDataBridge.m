@@ -128,6 +128,9 @@
         fallbackSymbol = @"person.crop.circle.fill";
     } else if ([self.animationName isEqualToString:@"PetMedicine"]) {
         fallbackSymbol = @"pills.fill";
+    } else if ([self.animationName containsString:@"cart"] ||
+               [self.animationName containsString:@"shop"]) {
+        fallbackSymbol = @"cart.fill";
     }
     
     
@@ -233,6 +236,17 @@
 - (void)pp_loadExactStorageAnimation
 {
     NSString *storagePath = self.animationName ?: @"";
+    NSString *filename = [storagePath lastPathComponent];
+    LOTComposition *localComp = [LOTComposition animationNamed:storagePath inBundle:NSBundle.mainBundle] ?:
+                                [LOTComposition animationNamed:filename inBundle:NSBundle.mainBundle];
+    if (localComp) {
+        self.animationLoading = NO;
+        self.animationLoaded = YES;
+        [self.animationView setSceneModel:localComp];
+        [self pp_applyLoadedAnimationState];
+        return;
+    }
+
     __weak typeof(self) weakSelf = self;
     [AppClasses fetchLottieJSONFromFirebasePath:storagePath
                                      completion:^(NSDictionary *jsonDict,

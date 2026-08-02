@@ -525,6 +525,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     }
 
     func beginCategoryEditing() {
+        guard !isReplacingContext else { return }
         categoryDraftMainKindID = bridge.currentMainKindID
         categoryDraftSubKindID = bridge.currentSubKindID
         normalizeCategoryDraftSubKind()
@@ -601,7 +602,17 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         mainKindID nextMainKindID: Int,
         subKindID nextSubKindID: Int
     ) {
-
+        guard !isReplacingContext else { return }
+        guard mainKindChoices.contains(where: { $0.id == nextMainKindID }) else {
+            return
+        }
+        let validSubKind = nextSubKindID == 0 || (
+            nextMainKindID != 0 &&
+            bridge.subKindOptions(
+                mainKindIdentifier: nextMainKindID
+            ).contains(where: { $0.identifier == nextSubKindID })
+        )
+        guard validSubKind else { return }
         guard nextMainKindID != bridge.currentMainKindID ||
                 nextSubKindID != bridge.currentSubKindID else {
             return

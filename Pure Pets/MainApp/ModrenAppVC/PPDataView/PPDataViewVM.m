@@ -76,6 +76,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 @property (nonatomic, assign) BOOL didNotifyInitialSectionsDataLoaded;
 @property (nonatomic, copy, nullable) NSString *activeRequestSignature;
 @property (nonatomic, strong) NSMutableArray<void (^)(NSError * _Nullable)> *activeRequestCompletions;
+@property (nonatomic, strong) NSObject *requestStateLock;
 
 - (void)pp_buildViewModelsFromResults:(NSArray *)results
                               section:(PPDataSection)section
@@ -136,44 +137,52 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     }
 }
 
-- (void)pp_resolveActiveRequestCompletions:(NSError * _Nullable)error
-{
-    NSArray<void (^)(NSError * _Nullable)> *completions =
-        [self.activeRequestCompletions copy];
-    [self.activeRequestCompletions removeAllObjects];
-    for (void (^completion)(NSError * _Nullable) in completions) {
-        completion(error);
-    }
-}
-
 - (NSUInteger)pp_beginNetworkRequestWithCompletion:(void (^)(NSError * _Nullable))completion
 {
     NSString *signature = [self pp_currentRequestSignature];
-    if (self.isLoading &&
-        [self.activeRequestSignature isEqualToString:signature]) {
+    NSArray<void (^)(NSError * _Nullable)> *cancelledCompletions = @[];
+    NSUInteger requestToken = 0;
+    @synchronized (self.requestStateLock) {
+        if ([self.activeRequestSignature isEqualToString:signature]) {
+            [self pp_enqueueRequestCompletion:completion];
+            return 0;
+        }
+        if (self.activeRequestSignature.length > 0) {
+            cancelledCompletions = [self.activeRequestCompletions copy];
+            [self.activeRequestCompletions removeAllObjects];
+        }
+        self.activeRequestSignature = signature;
         [self pp_enqueueRequestCompletion:completion];
-        return 0;
+        requestToken = [self pp_beginRequest];
     }
 
-    if (self.activeRequestSignature.length > 0) {
+    if (cancelledCompletions.count > 0) {
         NSError *cancelled = [NSError errorWithDomain:NSURLErrorDomain
                                                  code:NSURLErrorCancelled
                                              userInfo:nil];
-        [self pp_resolveActiveRequestCompletions:cancelled];
+        for (void (^cancelledCompletion)(NSError * _Nullable) in
+             cancelledCompletions) {
+            cancelledCompletion(cancelled);
+        }
     }
-    self.activeRequestSignature = signature;
-    [self pp_enqueueRequestCompletion:completion];
-    return [self pp_beginRequest];
+    return requestToken;
 }
 
 - (void)pp_finishNetworkRequest:(NSUInteger)requestToken
                            error:(NSError * _Nullable)error
 {
-    if (![self pp_isCurrentRequest:requestToken]) {
-        return;
+    NSArray<void (^)(NSError * _Nullable)> *completions;
+    @synchronized (self.requestStateLock) {
+        if (![self pp_isCurrentRequest:requestToken]) {
+            return;
+        }
+        self.activeRequestSignature = nil;
+        completions = [self.activeRequestCompletions copy];
+        [self.activeRequestCompletions removeAllObjects];
     }
-    self.activeRequestSignature = nil;
-    [self pp_resolveActiveRequestCompletions:error];
+    for (void (^completion)(NSError * _Nullable) in completions) {
+        completion(error);
+    }
 }
 
 - (NSArray *)pp_resultsRespectingUsedAccessoryFlag:(NSArray *)results
@@ -210,6 +219,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     _filterVersionsBySection = [NSMutableDictionary dictionary];
     _activeRequestCompletions = [NSMutableArray array];
     _requestGate = [PPDataViewRequestGate new];
+    _requestStateLock = [NSObject new];
 
     _currentPage = 1;
     _hasMore = YES;

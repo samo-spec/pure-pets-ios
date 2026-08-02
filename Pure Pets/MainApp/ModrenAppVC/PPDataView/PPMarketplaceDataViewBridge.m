@@ -380,10 +380,9 @@ static NSString *PPMarketplaceTrimmedString(id value)
 
 - (UIColor *)accentColor
 {
-    UIColor *raw = [self pp_shouldUseBrandAccent]
+    return [self pp_shouldUseBrandAccent]
         ? ([GM appPrimaryColor] ?: UIColor.systemPinkColor)
         : self.input.accentColor;
-    return [MainKindsModel pp_softenedKindColorIfNeeded:raw forMainKind:self.input.mainKind];
 }
 
 - (BOOL)isUsingBrandAccent

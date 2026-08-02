@@ -17,7 +17,7 @@ private enum PPMainKindsCellMetrics {
     static let indicatorHeight: CGFloat = PPSpace.xs
     static let identitySpineWidth: CGFloat = PPSpace.xs
     static let identitySpineInset: CGFloat = PPSpace.sm
-    static let selectedBorderWidth: CGFloat = 0.65
+    static let selectedBorderWidth: CGFloat = 0.82
     static let regularBorderWidth: CGFloat = 0.65
     static let pressDuration: TimeInterval = 0.10
     static let releaseDuration: TimeInterval = 0.22
@@ -433,9 +433,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
             let appSurface = PPMainKindsCellPalette.appSurface
             let selectedBorderColor = accent.blended(
                 with: appSurface,
-                ratio: increasedContrast ? 0.72 : 0.30,
+                ratio: increasedContrast ? 0.72 : 0.52,
                 traitCollection: self.traitCollection
-            )
+            ).withAlphaComponent(increasedContrast ? 1.0 : 0.48)
 
             self.surfaceView.layer.borderColor = (
                 self.usesRestoredSelectionAppearance && selected
@@ -465,7 +465,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.selectionIndicatorView.layer.shadowColor = accent
                 .resolvedColor(with: self.traitCollection)
                 .cgColor
-            self.selectionIndicatorView.layer.shadowOpacity = selected && !increasedContrast ? 0.22 : 0
+            self.selectionIndicatorView.layer.shadowOpacity = selected && !increasedContrast ? 0.32 : 0
             self.selectionIndicatorView.layer.shadowRadius = 4
             self.selectionIndicatorView.layer.shadowOffset = .zero
             let glowSelected = self.rendersSelectedGlow
@@ -998,7 +998,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func restingGlowOpacity(selected: Bool) -> Float {
         guard selected else { return 0 }
-        return isAllOption ? 0.035 : 0.045
+        return isAllOption ? 0.065 : 0.088
     }
 
     private func pressedGlowOpacity(selected: Bool) -> Float {
@@ -1007,7 +1007,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
         if selected {
-            return pressing ? 0.055 : 0.045
+            return pressing ? 0.095 : 0.082
         }
         return pressing ? 0.025 : 0
     }
@@ -1026,10 +1026,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let identityLowAlpha = identityTopAlpha * 0.10
         let spineAlpha: CGFloat = increasedContrast ? 1 : 0.78
         let leadingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.14 : 0.16)
+            ? (isAll ? 0.20 : 0.245)
             : 0
         let trailingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.05 : 0.07)
+            ? (isAll ? 0.09 : 0.125)
             : 0
 
         CATransaction.begin()

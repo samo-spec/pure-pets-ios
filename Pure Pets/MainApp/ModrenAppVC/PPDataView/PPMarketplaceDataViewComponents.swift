@@ -311,27 +311,21 @@ struct PPMarketplaceHero: View {
                         sectionGlyphSurfaceOpacity
                     )
                 )
-            Image(systemName: context.systemImageName)
-                .font(.system(size: 27, weight: .semibold))
-                .foregroundStyle(Color(uiColor: store.accentColor))
-                .symbolRenderingMode(.hierarchical)
+            HomeHeroLottieRepresentable(
+                animationName: "Shop2.json",
+                loadsFromFirebase: true,
+                playbackEnabled: !reduceMotion,
+                tintColor: store.accentColor
+            )
+            .frame(
+                width: dynamicTypeSize.isAccessibilitySize ? 134 : 102,
+                height: dynamicTypeSize.isAccessibilitySize ? 134 : 102
+            )
         }
         .frame(
             width: dynamicTypeSize.isAccessibilitySize ? 70 : 58,
             height: dynamicTypeSize.isAccessibilitySize ? 70 : 58
         )
-        .overlay(alignment: .bottomTrailing) {
-            Circle()
-                .fill(Color.ppMarketplaceSurface)
-                .frame(width: 28, height: 28)
-                .overlay {
-                    Image(systemName: "arrow.down.forward")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color(uiColor: store.accentColor))
-                }
-                .offset(x: 4, y: 4)
-                .offset(x: store.isRightToLeft ? -8 : 0)
-        }
         .accessibilityHidden(true)
     }
 
@@ -426,6 +420,7 @@ struct PPMarketplaceHero: View {
         .accessibilityHint(
             PPMarketplaceText.localized("marketplace_category_main_kind_hint")
         )
+        .accessibilityIdentifier("pp.marketplace.category.main-kind")
     }
 
     private var subKindMenu: some View {
@@ -453,6 +448,7 @@ struct PPMarketplaceHero: View {
         .accessibilityHint(
             PPMarketplaceText.localized("marketplace_category_subkind_hint")
         )
+        .accessibilityIdentifier("pp.marketplace.category.subkind")
     }
 
     private func categoryMenuLabel(
@@ -734,7 +730,7 @@ struct PPMarketplaceCurrentDock: View {
         .padding(.bottom, PPSpace.md)
         .overlay(alignment: .bottom) {
             PPMarketplaceDockLiquidBottomBorder(
-                accent: Color(uiColor: store.accentColor),
+                accent: .ppSoftRose,
                 contrast: contrast
             )
         }
@@ -957,6 +953,7 @@ struct PPMarketplaceCurrentDock: View {
             .frame(maxWidth: .infinity)
         }
         .frame(minHeight: 44)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(
             PPMarketplaceText.localized("marketplace_browse_controls")
         )

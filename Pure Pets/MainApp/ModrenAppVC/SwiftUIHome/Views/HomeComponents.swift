@@ -1892,10 +1892,7 @@ struct HomePriorityGrid: View {
                 .foregroundStyle(Color.homeTextPrimary)
                 .multilineTextAlignment(.leading)
 
-                Image(systemName: "sparkle")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.homeBrand)
-                    .accessibilityHidden(true)
+                HomeSectionHeaderSparkleMotion()
             }
 
             Text(
@@ -1912,6 +1909,32 @@ struct HomePriorityGrid: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct HomeSectionHeaderSparkleMotion: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var isAnimating = false
+
+    var body: some View {
+        Image(systemName: "sparkle")
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(Color.homeBrand)
+            .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.16 : 0.90))
+            .rotationEffect(.degrees(reduceMotion ? 0 : (isAnimating ? 15 : -8)))
+            .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.78))
+            .shadow(color: Color.homeBrand.opacity(reduceMotion ? 0 : (isAnimating ? 0.35 : 0.0)), radius: 6)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(
+                    .easeInOut(duration: 2.2)
+                    .repeatForever(autoreverses: true)
+                ) {
+                    isAnimating = true
+                }
+            }
+            .accessibilityHidden(true)
     }
 }
 

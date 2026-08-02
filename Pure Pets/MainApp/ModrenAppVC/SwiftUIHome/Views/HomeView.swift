@@ -675,15 +675,7 @@ private struct HomePremiumSearchSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Image(systemName: "sparkles")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Color.homeBrand)
-                .frame(width: 42, height: 42)
-                .background(Color.homeRaisedSurface.opacity(0.86), in: Circle())
-                .overlay {
-                    Circle().stroke(Color.homeBrand.opacity(0.13), lineWidth: 0.8)
-                }
-                .accessibilityHidden(true)
+            HomeHeaderSparkleMotion()
         }
     }
 
@@ -838,6 +830,38 @@ private struct HomePremiumSearchButtonStyle: ButtonStyle {
                 reduceMotion ? nil : .easeOut(duration: 0.16),
                 value: configuration.isPressed
             )
+    }
+}
+
+@available(iOS 15.0, *)
+private struct HomeHeaderSparkleMotion: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var isAnimating = false
+
+    var body: some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(Color.homeBrand)
+            .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.12 : 0.94))
+            .rotationEffect(.degrees(reduceMotion ? 0 : (isAnimating ? 10 : -6)))
+            .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.82))
+            .frame(width: 42, height: 42)
+            .background(Color.homeRaisedSurface.opacity(0.86), in: Circle())
+            .overlay {
+                Circle().stroke(Color.homeBrand.opacity(isAnimating ? 0.28 : 0.13), lineWidth: 0.8)
+            }
+            .shadow(color: Color.homeBrand.opacity(reduceMotion ? 0 : (isAnimating ? 0.25 : 0.05)), radius: 8)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(
+                    .easeInOut(duration: 2.4)
+                    .repeatForever(autoreverses: true)
+                ) {
+                    isAnimating = true
+                }
+            }
+            .accessibilityHidden(true)
     }
 }
 
