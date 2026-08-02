@@ -311,20 +311,19 @@ struct PPMarketplaceHero: View {
                         sectionGlyphSurfaceOpacity
                     )
                 )
-            HomeHeroLottieRepresentable(
-                animationName: "Shop2.json",
-                loadsFromFirebase: true,
-                playbackEnabled: !reduceMotion,
-                tintColor: store.accentColor
-            )
-            .frame(
-                width: dynamicTypeSize.isAccessibilitySize ? 134 : 102,
-                height: dynamicTypeSize.isAccessibilitySize ? 134 : 102
-            )
+            Image(systemName: context.systemImageName.isEmpty
+                ? store.currentSectionDescriptor.iconName
+                : context.systemImageName)
+                .font(.system(
+                    size: dynamicTypeSize.isAccessibilitySize ? 24 : 20,
+                    weight: .semibold
+                ))
+                .foregroundStyle(Color(uiColor: store.accentColor))
+                .symbolRenderingMode(.hierarchical)
         }
         .frame(
-            width: dynamicTypeSize.isAccessibilitySize ? 70 : 58,
-            height: dynamicTypeSize.isAccessibilitySize ? 70 : 58
+            width: dynamicTypeSize.isAccessibilitySize ? 64 : 52,
+            height: dynamicTypeSize.isAccessibilitySize ? 64 : 52
         )
         .accessibilityHidden(true)
     }

@@ -17,7 +17,7 @@ private enum PPMainKindsCellMetrics {
     static let indicatorHeight: CGFloat = PPSpace.xs
     static let identitySpineWidth: CGFloat = PPSpace.xs
     static let identitySpineInset: CGFloat = PPSpace.sm
-    static let selectedBorderWidth: CGFloat = 0.82
+    static let selectedBorderWidth: CGFloat = 1
     static let regularBorderWidth: CGFloat = 0.65
     static let pressDuration: TimeInterval = 0.10
     static let releaseDuration: TimeInterval = 0.22
@@ -430,12 +430,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 reduceTransparency ? 1 : 0.94
             )
 
-            let appSurface = PPMainKindsCellPalette.appSurface
-            let selectedBorderColor = accent.blended(
-                with: appSurface,
-                ratio: increasedContrast ? 0.72 : 0.52,
-                traitCollection: self.traitCollection
-            ).withAlphaComponent(increasedContrast ? 1.0 : 0.48)
+            let selectedBorderColor = accent.withAlphaComponent(
+                self.selectedHeroBorderOpacity(
+                    increasedContrast: increasedContrast,
+                    darkMode: darkMode
+                )
+            )
 
             self.surfaceView.layer.borderColor = (
                 self.usesRestoredSelectionAppearance && selected
@@ -447,7 +447,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.surfaceView.layer.borderWidth = self.usesRestoredSelectionAppearance && selected
                 ? 0
                 : (selected
-                    ? (increasedContrast ? 1.0 : PPMainKindsCellMetrics.selectedBorderWidth)
+                    ? (increasedContrast ? 2.0 : PPMainKindsCellMetrics.selectedBorderWidth)
                     : (increasedContrast ? 1.0 : PPMainKindsCellMetrics.regularBorderWidth))
             self.surfaceView.layer.shadowColor = UIColor.black.cgColor
             self.surfaceView.layer.shadowOpacity = darkMode ? 0.08 : 0.035
@@ -1003,6 +1003,19 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func pressedGlowOpacity(selected: Bool) -> Float {
         min(1, restingGlowOpacity(selected: selected) + (selected ? 0.06 : 0.02))
+    }
+
+    private func selectedHeroBorderOpacity(
+        increasedContrast: Bool,
+        darkMode: Bool
+    ) -> CGFloat {
+        if increasedContrast {
+            return 1
+        }
+        if isAllOption {
+            return darkMode ? 0.15 : 0.09
+        }
+        return darkMode ? 0.22 : 0.14
     }
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
