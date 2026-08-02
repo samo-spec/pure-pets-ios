@@ -1,6 +1,444 @@
 import SwiftUI
 
 @available(iOS 15.0, *)
+struct PPMarketplaceCategorySheet: View {
+    @ObservedObject var store: PPMarketplaceDataViewStore
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        Group {
+            if #available(iOS 16.0, *) {
+                navigationContent
+                    .presentationDetents([.fraction(0.75), .large])
+                    .presentationDragIndicator(.visible)
+            } else {
+                navigationContent
+            }
+        }
+        .environment(
+            \.layoutDirection,
+            store.isRightToLeft ? .rightToLeft : .leftToRight
+        )
+    }
+
+    private var navigationContent: some View {
+        NavigationView {
+            ZStack(alignment: .bottom) {
+                Color.ppMarketplaceCanvas
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: PPSpace.xl) {
+                        categoryIdentity
+
+                        PPMarketplaceCategoryChoiceGroup(
+                            title: PPMarketplaceText.localized(
+                                "marketplace_category_main_kind_title"
+                            ),
+                            icon: "pawprint.fill",
+                            choices: store.mainKindChoices.map {
+                                PPMarketplaceCategoryChoice(
+                                    id: $0.id,
+                                    title: $0.title
+                                )
+                            },
+                            selectedID: store.categoryDraftMainKindID,
+                            accent: store.accentColor,
+                            select: { selected in
+                                guard let choice = store.mainKindChoices.first(
+                                    where: { $0.id == selected.id }
+                                ) else {
+                                    return
+                                }
+                                store.selectCategoryMainKind(choice)
+                            }
+                        )
+
+                        PPMarketplaceCategoryChoiceGroup(
+                            title: PPMarketplaceText.localized(
+                                "marketplace_category_subkind_title"
+                            ),
+                            icon: "circle.hexagongrid.fill",
+                            choices: store.categoryDraftSubKindChoices.map {
+                                PPMarketplaceCategoryChoice(
+                                    id: $0.id,
+                                    title: $0.title
+                                )
+                            },
+                            selectedID: store.categoryDraftSubKindID,
+                            accent: store.accentColor,
+                            select: { selected in
+                                guard let choice = store.categoryDraftSubKindChoices.first(
+                                    where: { $0.id == selected.id }
+                                ) else {
+                                    return
+                                }
+                                store.selectCategorySubKind(choice)
+                            }
+                        )
+
+                        Color.clear
+                            .frame(
+                                height: dynamicTypeSize.isAccessibilitySize
+                                    ? 196
+                                    : 116
+                            )
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.horizontal, PPSpace.screenMargin)
+                    .padding(.top, PPSpace.base)
+                }
+
+                categoryActionBar
+            }
+            .navigationTitle(
+                PPMarketplaceText.localized("marketplace_category_title")
+            )
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPMarketplaceText.localized("cancel")) {
+                        store.cancelCategoryEditing()
+                    }
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+    }
+
+    private var categoryIdentity: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            Image(systemName: "square.grid.2x2.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Color(uiColor: store.accentColor))
+                .frame(width: 44, height: 44)
+                .background(
+                    Color(uiColor: store.accentColor).opacity(0.11),
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                Text(
+                    PPMarketplaceText.localized(
+                        "marketplace_category_sheet_subtitle"
+                    )
+                )
+                .font(HomeFont.subheadline())
+                .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Text(
+                    PPMarketplaceText.formatted(
+                        "marketplace_category_main_kind_format",
+                        categoryDraftMainKindTitle
+                    )
+                )
+                .font(HomeFont.headline())
+                .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Text(
+                    PPMarketplaceText.formatted(
+                        "marketplace_category_subkind_format",
+                        categoryDraftSubKindTitle
+                    )
+                )
+                .font(HomeFont.footnote())
+                .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(PPSpace.base)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color.ppMarketplaceSurface,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .strokeBorder(
+                    Color.ppMarketplaceSeparator.opacity(0.20),
+                    lineWidth: 1
+                )
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var categoryActionBar: some View {
+        VStack(spacing: PPSpace.sm) {
+            Divider()
+
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(spacing: PPSpace.sm) {
+                        clearCategoryButton
+                        applyCategoryButton
+                    }
+                } else {
+                    HStack(spacing: PPSpace.md) {
+                        clearCategoryButton
+                        applyCategoryButton
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.bottom, PPSpace.sm)
+        .background(.ultraThinMaterial)
+    }
+
+    private var clearCategoryButton: some View {
+        Button(action: store.clearCategoryDraft) {
+            Text(
+                PPMarketplaceText.localized("marketplace_category_clear")
+            )
+            .font(HomeFont.bold(16))
+            .foregroundStyle(Color(uiColor: store.accentColor))
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(
+                Color.ppMarketplaceSurface,
+                in: RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+            )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+                .strokeBorder(
+                    Color(uiColor: store.accentColor).opacity(0.34),
+                    lineWidth: 1
+                )
+            }
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(
+            PPMarketplaceText.localized("marketplace_category_clear_hint")
+        )
+    }
+
+    private var applyCategoryButton: some View {
+        Button(action: store.applyCategoryDraft) {
+            Text(
+                PPMarketplaceText.localized("marketplace_category_apply")
+            )
+            .font(HomeFont.bold(16))
+            .foregroundStyle(store.accentPalette.onAccent)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(
+                store.accentPalette.fill,
+                in: RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+            )
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(
+            PPMarketplaceText.localized("marketplace_category_apply_hint")
+        )
+    }
+
+    private var categoryDraftMainKindTitle: String {
+        store.mainKindChoices.first(where: {
+            $0.id == store.categoryDraftMainKindID
+        })?.title ?? store.currentMainKindTitle
+    }
+
+    private var categoryDraftSubKindTitle: String {
+        store.categoryDraftSubKindChoices.first(where: {
+            $0.id == store.categoryDraftSubKindID
+        })?.title ?? store.currentSubKindTitle
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPMarketplaceCategoryChoice: Identifiable {
+    let id: Int
+    let title: String
+}
+
+@available(iOS 15.0, *)
+private struct PPMarketplaceCategoryChoiceGroup: View {
+    let title: String
+    let icon: String
+    let choices: [PPMarketplaceCategoryChoice]
+    let selectedID: Int
+    let accent: UIColor
+    let select: (PPMarketplaceCategoryChoice) -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            Label {
+                Text(title)
+                    .font(HomeFont.title2())
+                    .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color(uiColor: accent))
+            }
+            .accessibilityAddTraits(.isHeader)
+
+            if choices.isEmpty {
+                Text(
+                    PPMarketplaceText.localized(
+                        "marketplace_category_no_subkinds"
+                    )
+                )
+                .font(HomeFont.subheadline())
+                .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                .padding(PPSpace.md)
+                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                .background(
+                    Color(uiColor: .tertiarySystemBackground),
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
+                )
+            } else {
+                LazyVStack(spacing: PPSpace.sm) {
+                    ForEach(choices) { choice in
+                        choiceButton(choice)
+                    }
+                }
+            }
+        }
+        .padding(PPSpace.base)
+        .background(
+            Color.ppMarketplaceSurface,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .strokeBorder(
+                    Color.ppMarketplaceSeparator.opacity(0.18),
+                    lineWidth: 1
+                )
+        }
+    }
+
+    private func choiceButton(
+        _ choice: PPMarketplaceCategoryChoice
+    ) -> some View {
+        let selected = choice.id == selectedID
+        return Button {
+            select(choice)
+        } label: {
+            HStack(spacing: PPSpace.sm) {
+                Text(choice.title)
+                    .font(HomeFont.bold(15))
+                    .foregroundStyle(
+                        selected
+                            ? Color(uiColor: accent)
+                            : Color.ppMarketplaceTextPrimary
+                    )
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: PPSpace.sm)
+
+                Image(
+                    systemName: selected
+                        ? "checkmark.circle.fill"
+                        : "circle"
+                )
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(
+                    selected
+                        ? Color(uiColor: accent)
+                        : Color.ppMarketplaceTextSecondary
+                )
+                .accessibilityHidden(true)
+            }
+            .padding(.horizontal, PPSpace.md)
+            .padding(.vertical, PPSpace.sm)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .background(
+                selected
+                    ? Color(uiColor: accent).opacity(0.10)
+                    : Color(uiColor: .tertiarySystemBackground),
+                in: RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+            )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+                .strokeBorder(
+                    selected
+                        ? Color(uiColor: accent).opacity(0.50)
+                        : Color.ppMarketplaceSeparator.opacity(0.16),
+                    lineWidth: selected ? 1.5 : 1
+                )
+            }
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+            )
+            .animation(
+                selectionMotionIsDisabled
+                    ? nil
+                    : .easeOut(duration: 0.16),
+                value: selected
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(
+            PPMarketplaceText.localized(
+                selected
+                    ? "marketplace_selected"
+                    : "marketplace_not_selected"
+            )
+        )
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var selectionMotionIsDisabled: Bool {
+        reduceMotion || switchControlEnabled || voiceOverEnabled
+    }
+}
+
+@available(iOS 15.0, *)
 struct PPMarketplaceFilterSheet: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
 

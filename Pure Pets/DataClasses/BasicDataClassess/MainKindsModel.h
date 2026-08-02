@@ -63,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithDict:(NSDictionary *)data ;
 + (MainKindsModel *)allKind;
 -(UIColor *)kindColor;
++ (UIColor *_Nullable)pp_softenedKindColorIfNeeded:(UIColor *_Nullable)color forMainKind:(MainKindsModel *_Nullable)mainKind;
 @end
 
 NS_ASSUME_NONNULL_END

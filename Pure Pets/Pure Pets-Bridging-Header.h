@@ -23,5 +23,6 @@
 #import "ServiceModel.h"
 #import "PPHomeViewController.h"
 #import "PPHomeDataBridge.h"
+#import "PPDataViewVM.h"
 #import "PPMarketplaceDataViewBridge.h"
 #import "PPOrderStatusAppearance.h"

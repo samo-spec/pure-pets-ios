@@ -45,6 +45,7 @@
 		A5E100042FF1000100A5E004 /* PPBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */; };
 		A5E200022FF2000100A5E002 /* PPHeroApexMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */; };
 		A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */; };
+		B8CA00020000000000000002 /* PPMarketplaceDataViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8CA00010000000000000001 /* PPMarketplaceDataViewTests.swift */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
 		A6B710063020000100000001 /* PPMediaViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710053020000100000001 /* PPMediaViewer.swift */; };
@@ -996,6 +997,7 @@
 		A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBackgroundViewApexBridge.m; sourceTree = "<group>"; };
 		A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotion.swift; sourceTree = "<group>"; };
 		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
+		B8CA00010000000000000001 /* PPMarketplaceDataViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceDataViewTests.swift; sourceTree = "<group>"; };
 		A6B710003020000100000001 /* AppRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRemoteImage.swift; sourceTree = "<group>"; };
 		A6B710053020000100000001 /* PPMediaViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMediaViewer.swift; sourceTree = "<group>"; };
 		A8100002301E000100000002 /* PPMessagingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftUI/PPMessagingScreen.swift; sourceTree = "<group>"; };
@@ -5195,6 +5197,7 @@
 				F2D0C5F42C4BE1BB0023CE53 /* Pure_PetsTests.m */,
 				A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */,
 				F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */,
+				B8CA00010000000000000001 /* PPMarketplaceDataViewTests.swift */,
 			);
 			path = "Pure PetsTests";
 			sourceTree = "<group>";
@@ -6716,6 +6719,7 @@
 				F2D0C5F52C4BE1BB0023CE53 /* Pure_PetsTests.m in Sources */,
 				A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */,
 				F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */,
+				B8CA00020000000000000002 /* PPMarketplaceDataViewTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

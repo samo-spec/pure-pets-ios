@@ -90,11 +90,67 @@ struct PPMarketplaceAtmosphere: View {
 }
 
 @available(iOS 15.0, *)
+struct PPMarketplaceHeroControlLayoutMetrics: Equatable {
+    let spacing: CGFloat
+    let searchButtonSize: CGFloat
+    let categoryMinimumHeight: CGFloat
+    let usesCompactHeader: Bool
+}
+
+@available(iOS 15.0, *)
+enum PPMarketplaceHeroControlLayoutPolicy {
+    static func metrics(
+        availableWidth: CGFloat,
+        isAccessibilitySize: Bool,
+        layoutDirection: LayoutDirection
+    ) -> PPMarketplaceHeroControlLayoutMetrics {
+        // HStack keeps Category on the semantic leading edge and Search on
+        // the semantic trailing edge. RTL therefore mirrors placement while
+        // preserving the same independent tap targets and stable geometry.
+        _ = layoutDirection
+        return PPMarketplaceHeroControlLayoutMetrics(
+            spacing: PPSpace.md,
+            searchButtonSize: 50,
+            categoryMinimumHeight: isAccessibilitySize ? 76 : 58,
+            usesCompactHeader: isAccessibilitySize || availableWidth < 360
+        )
+    }
+}
+
+@available(iOS 15.0, *)
+enum PPMarketplaceContentGeometry {
+    static func mosaicColumnCount(
+        availableWidth: CGFloat,
+        horizontalSizeClass: UserInterfaceSizeClass?,
+        isAccessibilitySize: Bool
+    ) -> Int {
+        let perSideInset = horizontalSizeClass == .regular
+            ? PPSpace.xxl
+            : PPSpace.screenMargin
+        let usableWidth = max(0, availableWidth - (perSideInset * 2))
+        let minimumCardWidth = isAccessibilitySize ? usableWidth : 168
+        let proposedCount = Int(
+            (usableWidth + PPSpace.base) /
+                (max(1, minimumCardWidth) + PPSpace.base)
+        )
+        let maximumCount = horizontalSizeClass == .regular ? 4 : 2
+        return max(1, min(maximumCount, proposedCount))
+    }
+
+    static func focusHeight(isAccessibilitySize: Bool) -> CGFloat {
+        isAccessibilitySize ? 820 : 536
+    }
+
+    static func listSpacing(for layout: PPMarketplaceLayout) -> CGFloat {
+        layout == .showcase ? PPSpace.lg : PPSpace.md
+    }
+}
+
+@available(iOS 15.0, *)
 struct PPMarketplaceHero: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
     let availableWidth: CGFloat
     let showsBackControl: Bool
-    let currentFlowProgress: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -106,30 +162,14 @@ struct PPMarketplaceHero: View {
         ZStack(alignment: .bottomTrailing) {
             heroSurface
 
-            PPMarketplaceCurrentFlowShape()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(uiColor: store.accentColor)
-                                .opacity(heroFlowOpacity),
-                            Color(uiColor: store.accentColor)
-                                .opacity(heroFlowTailOpacity)
-                        ],
-                        startPoint: .topTrailing,
-                        endPoint: .bottomLeading
-                    )
-                )
-                .frame(height: dynamicTypeSize.isAccessibilitySize ? 156 : 96)
-                .mask {
-                    Rectangle()
-                        .scaleEffect(
-                            x: reduceMotion
-                                ? 1
-                                : min(max(currentFlowProgress, 0.001), 1),
-                            anchor: store.isRightToLeft ? .trailing : .leading
-                        )
-                }
-                .accessibilityHidden(true)
+            PPMarketplaceHeroWave(
+                accentColor: store.accentColor,
+                heroFlowOpacity: heroFlowOpacity,
+                heroFlowTailOpacity: heroFlowTailOpacity,
+                isRightToLeft: store.isRightToLeft
+            )
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? 156 : 96)
+            .accessibilityHidden(true)
 
             content
                 .padding(heroPadding)
@@ -155,7 +195,7 @@ struct PPMarketplaceHero: View {
 
     private var content: some View {
         Group {
-            if dynamicTypeSize.isAccessibilitySize || availableWidth < 360 {
+            if heroControlMetrics.usesCompactHeader {
                 VStack(alignment: .leading, spacing: PPSpace.base) {
                     HStack(alignment: .center, spacing: PPSpace.md) {
                         backControl
@@ -164,7 +204,7 @@ struct PPMarketplaceHero: View {
                     }
                     .frame(maxWidth: .infinity)
                     identity
-                    searchCommand
+                    browseCommands
                 }
             } else {
                 VStack(alignment: .leading, spacing: PPSpace.base) {
@@ -174,7 +214,7 @@ struct PPMarketplaceHero: View {
                         Spacer(minLength: PPSpace.base)
                         sectionGlyph
                     }
-                    searchCommand
+                    browseCommands
                 }
             }
         }
@@ -290,80 +330,205 @@ struct PPMarketplaceHero: View {
                         .foregroundStyle(Color(uiColor: store.accentColor))
                 }
                 .offset(x: 4, y: 4)
+                .offset(x: store.isRightToLeft ? -8 : 0)
         }
         .accessibilityHidden(true)
     }
 
+    private var browseCommands: some View {
+        HStack(alignment: .center, spacing: heroControlMetrics.spacing) {
+            categoryCommand
+                .frame(maxWidth: .infinity)
+
+            searchCommand
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var categoryCommand: some View {
+        HStack(spacing: PPSpace.xs) {
+            VStack(spacing: 0) {
+                mainKindMenu
+                Divider()
+                    .padding(.leading, PPSpace.sm)
+                subKindMenu
+            }
+
+            Divider()
+                .padding(.vertical, PPSpace.xs)
+
+            Button(action: store.beginCategoryEditing) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color(uiColor: store.accentColor))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PPMarketplacePressStyle(reduceMotion: reduceMotion))
+            .accessibilityLabel(
+                PPMarketplaceText.localized("marketplace_category_title")
+            )
+            .accessibilityHint(
+                PPMarketplaceText.localized("marketplace_category_open_hint")
+            )
+        }
+        .padding(.horizontal, PPSpace.xs)
+        .padding(.vertical, PPSpace.xxs)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: max(
+                heroControlMetrics.categoryMinimumHeight,
+                dynamicTypeSize.isAccessibilitySize ? 112 : 92
+            ),
+            alignment: .leading
+        )
+        .background(
+            heroCommandSurface,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+            .strokeBorder(heroBorder, lineWidth: 1)
+        }
+        .accessibilityIdentifier("pp.marketplace.category")
+        .disabled(store.isReplacingContext)
+    }
+
+    private var mainKindMenu: some View {
+        Menu {
+            ForEach(store.mainKindChoices) { choice in
+                Button {
+                    store.applyMainKindShortcut(choice)
+                } label: {
+                    if choice.id == store.currentMainKindID {
+                        Label(choice.title, systemImage: "checkmark")
+                    } else {
+                        Text(choice.title)
+                    }
+                }
+            }
+        } label: {
+            categoryMenuLabel(
+                text: PPMarketplaceText.formatted(
+                    "marketplace_category_main_kind_format",
+                    store.currentMainKindTitle
+                ),
+                primary: true
+            )
+        }
+        .accessibilityHint(
+            PPMarketplaceText.localized("marketplace_category_main_kind_hint")
+        )
+    }
+
+    private var subKindMenu: some View {
+        Menu {
+            ForEach(store.subKindChoices) { choice in
+                Button {
+                    store.applySubKindShortcut(choice)
+                } label: {
+                    if choice.id == store.currentSubKindID {
+                        Label(choice.title, systemImage: "checkmark")
+                    } else {
+                        Text(choice.title)
+                    }
+                }
+            }
+        } label: {
+            categoryMenuLabel(
+                text: PPMarketplaceText.formatted(
+                    "marketplace_category_subkind_format",
+                    store.currentSubKindTitle
+                ),
+                primary: false
+            )
+        }
+        .accessibilityHint(
+            PPMarketplaceText.localized("marketplace_category_subkind_hint")
+        )
+    }
+
+    private func categoryMenuLabel(
+        text: String,
+        primary: Bool
+    ) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            Text(text)
+                .font(primary ? HomeFont.headline() : HomeFont.footnote())
+                .foregroundStyle(
+                    primary
+                        ? Color.ppMarketplaceTextPrimary
+                        : Color.ppMarketplaceTextSecondary
+                )
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
     private var searchCommand: some View {
         Button(action: store.openSearch) {
-            HStack(spacing: PPSpace.md) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
-                        .fill(
-                            Color(uiColor: store.accentColor).opacity(
-                                heroAuxiliarySurfaceOpacity
-                            )
-                        )
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Color(uiColor: store.accentColor))
-                }
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Color(uiColor: store.accentColor))
                 .frame(
-                    width: dynamicTypeSize.isAccessibilitySize ? 40 : 34,
-                    height: dynamicTypeSize.isAccessibilitySize ? 40 : 34
+                    width: heroControlMetrics.searchButtonSize,
+                    height: heroControlMetrics.searchButtonSize
                 )
-
-                VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                    Text(PPMarketplaceText.localized("marketplace_search_title"))
-                        .font(HomeFont.headline())
-                        .foregroundStyle(Color.ppMarketplaceTextPrimary)
-                    Text(PPMarketplaceText.localized("marketplace_search_prompt"))
-                        .font(HomeFont.footnote())
-                        .foregroundStyle(Color.ppMarketplaceTextSecondary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                        .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    heroCommandSurface,
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.medium,
+                        style: .continuous
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(
+                        cornerRadius: PPCorner.medium,
+                        style: .continuous
+                    )
+                    .strokeBorder(heroBorder, lineWidth: 1)
                 }
-
-                Spacer(minLength: PPSpace.sm)
-
-                Image(systemName: "arrow.forward")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color(uiColor: store.accentColor))
-                    .flipsForRightToLeftLayoutDirection(true)
-                    .accessibilityHidden(true)
-            }
-            .padding(.horizontal, PPSpace.sm)
-            .padding(.vertical, PPSpace.xs)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: dynamicTypeSize.isAccessibilitySize ? 54 : 46
-            )
-            .background(
-                Color.ppMarketplaceSurface.opacity(
-                    colorScheme == .dark ? 0.92 : 0.97
-                ),
-                in: RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
+                .contentShape(
+                    RoundedRectangle(
+                        cornerRadius: PPCorner.medium,
+                        style: .continuous
+                    )
                 )
-            )
-            .overlay {
-                RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
-                )
-                .strokeBorder(heroBorder, lineWidth: 1)
-            }
-            .contentShape(
-                RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
-                )
-            )
         }
         .buttonStyle(PPMarketplacePressStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(PPMarketplaceText.localized("marketplace_search_title"))
         .accessibilityHint(PPMarketplaceText.localized("marketplace_search_hint"))
+        .accessibilityIdentifier("pp.marketplace.search")
+    }
+
+    private var heroCommandSurface: Color {
+        Color.ppMarketplaceSurface.opacity(
+            colorScheme == .dark ? 0.92 : 0.97
+        )
+    }
+
+    private var heroControlMetrics: PPMarketplaceHeroControlLayoutMetrics {
+        PPMarketplaceHeroControlLayoutPolicy.metrics(
+            availableWidth: availableWidth,
+            isAccessibilitySize: dynamicTypeSize.isAccessibilitySize,
+            layoutDirection: store.isRightToLeft ? .rightToLeft : .leftToRight
+        )
     }
 
     private var heroSurface: some View {
@@ -469,18 +634,56 @@ struct PPMarketplaceBackControl: View {
 
 @available(iOS 15.0, *)
 private struct PPMarketplaceCurrentFlowShape: Shape {
+    let isRightToLeft: Bool
+
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.maxY * 0.52))
-        path.addCurve(
-            to: CGPoint(x: rect.maxX, y: rect.minY),
-            control1: CGPoint(x: rect.width * 0.32, y: rect.maxY * 1.08),
-            control2: CGPoint(x: rect.width * 0.70, y: rect.maxY * 0.12)
-        )
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+
+        if isRightToLeft {
+            path.move(to: CGPoint(x: rect.maxX, y: rect.maxY * 0.52))
+            path.addCurve(
+                to: CGPoint(x: rect.minX, y: rect.minY),
+                control1: CGPoint(x: rect.width * 0.68, y: rect.maxY * 1.08),
+                control2: CGPoint(x: rect.width * 0.30, y: rect.maxY * 0.12)
+            )
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        } else {
+            path.move(to: CGPoint(x: rect.minX, y: rect.maxY * 0.52))
+            path.addCurve(
+                to: CGPoint(x: rect.maxX, y: rect.minY),
+                control1: CGPoint(x: rect.width * 0.32, y: rect.maxY * 1.08),
+                control2: CGPoint(x: rect.width * 0.70, y: rect.maxY * 0.12)
+            )
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        }
         path.closeSubpath()
         return path
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPMarketplaceHeroWave: View {
+    let accentColor: UIColor
+    let heroFlowOpacity: Double
+    let heroFlowTailOpacity: Double
+    let isRightToLeft: Bool
+
+    var body: some View {
+        PPMarketplaceCurrentFlowShape(isRightToLeft: isRightToLeft)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(uiColor: accentColor)
+                            .opacity(heroFlowOpacity),
+                        Color(uiColor: accentColor)
+                            .opacity(heroFlowTailOpacity)
+                    ],
+                    startPoint: isRightToLeft ? .topLeading : .topTrailing,
+                    endPoint: isRightToLeft ? .bottomTrailing : .bottomLeading
+                )
+            )
     }
 }
 
@@ -511,156 +714,6 @@ private struct PPMarketplaceMetricPill: View {
 }
 
 @available(iOS 15.0, *)
-struct PPMarketplaceTaxonomyCurrent: View {
-    @ObservedObject var store: PPMarketplaceDataViewStore
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: PPSpace.md) {
-                    mainKindSelector
-                    subKindSelector
-                }
-            } else {
-                HStack(spacing: PPSpace.md) {
-                    mainKindSelector
-                    subKindSelector
-                }
-            }
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private var mainKindSelector: some View {
-        Menu {
-            ForEach(store.mainKindChoices) { choice in
-                Button {
-                    store.selectMainKind(choice)
-                } label: {
-                    if choice.id == store.currentMainKindID {
-                        Label(choice.title, systemImage: "checkmark")
-                    } else {
-                        Text(choice.title)
-                    }
-                }
-            }
-        } label: {
-            PPMarketplaceContextSelectorLabel(
-                caption: PPMarketplaceText.localized("data_nav_species"),
-                title: store.currentMainKindTitle,
-                icon: "pawsmall",
-                accent: store.accentColor
-            )
-        }
-        .accessibilityLabel(
-            "\(PPMarketplaceText.localized("data_nav_species")), \(store.currentMainKindTitle)"
-        )
-    }
-
-    private var subKindSelector: some View {
-        Menu {
-            ForEach(store.subKindChoices) { choice in
-                Button {
-                    store.selectSubKind(choice)
-                } label: {
-                    if choice.id == store.currentSubKindID {
-                        Label(choice.title, systemImage: "checkmark")
-                    } else {
-                        Text(choice.title)
-                    }
-                }
-            }
-        } label: {
-            PPMarketplaceContextSelectorLabel(
-                caption: PPMarketplaceText.localized("data_nav_breed"),
-                title: store.currentSubKindTitle,
-                icon: "circle.hexagongrid.fill",
-                accent: store.accentColor
-            )
-        }
-        .disabled(store.subKindChoices.count <= 1)
-        .opacity(store.subKindChoices.count <= 1 ? 0.64 : 1)
-        .accessibilityLabel(
-            "\(PPMarketplaceText.localized("data_nav_breed")), \(store.currentSubKindTitle)"
-        )
-    }
-
-}
-
-@available(iOS 15.0, *)
-private struct PPMarketplaceContextSelectorLabel: View {
-    let caption: String
-    let title: String
-    let icon: String
-    let accent: UIColor
-
-    var body: some View {
-        HStack(spacing: PPSpace.md) {
-            Group {
-                if UIImage(systemName: icon) != nil {
-                    Image(systemName: icon)
-                        .font(.system(size: 15, weight: .bold))
-                } else {
-                    Image(icon)
-                        .renderingMode(.template)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 18, height: 18)
-                }
-            }
-            .foregroundStyle(Color(uiColor: accent))
-            .frame(width: 34, height: 34)
-            .background(
-                Color(uiColor: accent).opacity(0.10),
-                in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
-            )
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                Text(caption)
-                    .font(HomeFont.caption2())
-                    .foregroundStyle(Color.ppMarketplaceTextSecondary)
-                Text(title)
-                    .font(HomeFont.headline())
-                    .foregroundStyle(Color.ppMarketplaceTextPrimary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: PPSpace.sm)
-
-            Image(systemName: "chevron.down")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.ppMarketplaceTextSecondary)
-                .accessibilityHidden(true)
-        }
-        .padding(PPSpace.sm)
-        .frame(maxWidth: .infinity, minHeight: 58)
-        .background(
-            Color.ppMarketplaceSurface,
-            in: RoundedRectangle(
-                cornerRadius: PPCorner.medium,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.medium,
-                style: .continuous
-            )
-            .strokeBorder(
-                Color.ppMarketplaceSeparator.opacity(0.28),
-                lineWidth: 1
-            )
-        }
-        .contentShape(
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-        )
-    }
-}
-
-@available(iOS 15.0, *)
 struct PPMarketplaceCurrentDock: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
     let showsPinnedBackControl: Bool
@@ -671,7 +724,6 @@ struct PPMarketplaceCurrentDock: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Namespace private var sectionSelectionNamespace
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
@@ -682,9 +734,8 @@ struct PPMarketplaceCurrentDock: View {
         .padding(.bottom, PPSpace.md)
         .overlay(alignment: .bottom) {
             PPMarketplaceDockLiquidBottomBorder(
-                accent: store.accentColor,
-                contrast: contrast,
-                reduceMotion: reduceMotion
+                accent: Color(uiColor: store.accentColor),
+                contrast: contrast
             )
         }
         .background {
@@ -716,7 +767,6 @@ struct PPMarketplaceCurrentDock: View {
                     // edge and leaves the status-bar extension content-free.
                     .offset(y: -totalTopExtension)
             }
-            .animation(interactionMotionIsDisabled ? nil : .easeInOut(duration: 0.18), value: showsPinnedBackControl)
         }
         .zIndex(4)
     }
@@ -745,13 +795,8 @@ struct PPMarketplaceCurrentDock: View {
                         .padding(.horizontal, PPSpace.base)
                         .frame(minHeight: 44)
                         .background {
-                            if selected {
-                                selectedCurrentBackground
-                                    .matchedGeometryEffect(
-                                        id: "pp.marketplace.section.selection",
-                                        in: sectionSelectionNamespace
-                                    )
-                            }
+                            selectedCurrentBackground
+                                .opacity(selected ? 1 : 0)
                         }
                         .contentShape(Capsule(style: .continuous))
                     }
@@ -785,16 +830,16 @@ struct PPMarketplaceCurrentDock: View {
     }
 
     private var actionRail: some View {
-        HStack(spacing: showsPinnedBackControl ? PPSpace.sm : 0) {
-            if showsPinnedBackControl {
-                PPMarketplaceBackControl(
-                    accent: store.accentColor,
-                    isRightToLeft: store.isRightToLeft,
-                    action: store.goBack
-                )
-                .padding(.leading, horizontalInset)
-                .transition(.opacity)
-            }
+        HStack(spacing: PPSpace.sm) {
+            PPMarketplaceBackControl(
+                accent: store.accentColor,
+                isRightToLeft: store.isRightToLeft,
+                action: store.goBack
+            )
+            .padding(.leading, horizontalInset)
+            .opacity(showsPinnedBackControl ? 1 : 0)
+            .allowsHitTesting(showsPinnedBackControl)
+            .accessibilityHidden(!showsPinnedBackControl)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: PPSpace.sm) {
@@ -906,13 +951,12 @@ struct PPMarketplaceCurrentDock: View {
                             )
                     }
                 }
-                .padding(.leading, showsPinnedBackControl ? 0 : horizontalInset)
+                .padding(.leading, 0)
                 .padding(.trailing, horizontalInset)
             }
             .frame(maxWidth: .infinity)
         }
         .frame(minHeight: 44)
-        .animation(interactionMotionIsDisabled ? nil : .easeInOut(duration: 0.16), value: showsPinnedBackControl)
         .accessibilityLabel(
             PPMarketplaceText.localized("marketplace_browse_controls")
         )
@@ -953,7 +997,7 @@ struct PPMarketplaceCurrentDock: View {
     private var sectionSelectionAnimation: Animation? {
         interactionMotionIsDisabled
             ? nil
-            : .timingCurve(0.20, 0.82, 0.24, 1, duration: 0.22)
+            : .easeOut(duration: 0.16)
     }
 }
 
@@ -1005,13 +1049,9 @@ private struct PPMarketplacePinnedDockMaterial: View {
 private struct PPMarketplaceDockLiquidBottomBorder: View {
     let accent: UIColor
     let contrast: ColorSchemeContrast
-    let reduceMotion: Bool
-
-    @State private var phase: CGFloat = 0
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Liquid surface glow backdrop
             LinearGradient(
                 colors: [
                     Color.ppMarketplaceSurface.opacity(0.95),
@@ -1020,13 +1060,12 @@ private struct PPMarketplaceDockLiquidBottomBorder: View {
                     Color(uiColor: accent).opacity(0.28),
                     Color.ppMarketplaceSurface.opacity(0.95)
                 ],
-                startPoint: UnitPoint(x: 0 - phase, y: 0.5),
-                endPoint: UnitPoint(x: 1 - phase, y: 0.5)
+                startPoint: .leading,
+                endPoint: .trailing
             )
             .frame(height: contrast == .increased ? 2.5 : 1.5)
             .blur(radius: 0.5)
 
-            // Primary liquid surface border line
             LinearGradient(
                 colors: [
                     Color.ppMarketplaceSurface,
@@ -1035,18 +1074,12 @@ private struct PPMarketplaceDockLiquidBottomBorder: View {
                     Color(uiColor: accent).opacity(0.50),
                     Color.ppMarketplaceSurface
                 ],
-                startPoint: UnitPoint(x: 0 + phase, y: 0.5),
-                endPoint: UnitPoint(x: 1 + phase, y: 0.5)
+                startPoint: .leading,
+                endPoint: .trailing
             )
             .frame(height: contrast == .increased ? 2 : 1)
         }
         .shadow(color: Color.ppMarketplaceSurface.opacity(0.55), radius: 3, x: 0, y: 1)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: true)) {
-                phase = 0.25
-            }
-        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -1200,7 +1233,11 @@ struct PPMarketplaceFocusCarousel: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .automatic))
-        .frame(height: dynamicTypeSize.isAccessibilitySize ? 820 : 536)
+        .frame(
+            height: PPMarketplaceContentGeometry.focusHeight(
+                isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
+            )
+        )
         .onAppear {
             previousIDs = records.map(\.id)
             if selectedID == nil {
@@ -1230,6 +1267,10 @@ struct PPMarketplaceFocusCarousel: View {
 @available(iOS 15.0, *)
 struct PPMarketplaceLoadingState: View {
     let layout: PPMarketplaceLayout
+    let availableWidth: CGFloat
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
@@ -1243,25 +1284,65 @@ struct PPMarketplaceLoadingState: View {
             .accessibilityElement(children: .combine)
 
             if layout == .compact || layout == .showcase {
-                ForEach(PPMarketplaceSkeletonSlot.allCases.prefix(4)) { _ in
-                    PPMarketplaceSkeletonCard(horizontal: layout == .compact)
+                LazyVStack(
+                    spacing: PPMarketplaceContentGeometry.listSpacing(
+                        for: layout
+                    )
+                ) {
+                    ForEach(PPMarketplaceSkeletonSlot.allCases.prefix(4)) { _ in
+                        PPMarketplaceSkeletonCard(
+                            horizontal: layout == .compact
+                                && !dynamicTypeSize.isAccessibilitySize,
+                            minimumHeight: skeletonMinimumHeight
+                        )
+                    }
                 }
-            } else {
+            } else if layout == .mosaic {
                 LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: PPSpace.base),
-                        GridItem(.flexible(), spacing: PPSpace.base)
-                    ],
+                    columns: skeletonColumns,
                     spacing: PPSpace.base
                 ) {
                     ForEach(PPMarketplaceSkeletonSlot.allCases) { _ in
-                        PPMarketplaceSkeletonCard(horizontal: false)
+                        PPMarketplaceSkeletonCard(
+                            horizontal: false,
+                            minimumHeight: skeletonMinimumHeight
+                        )
                     }
                 }
+            } else {
+                PPMarketplaceSkeletonCard(
+                    horizontal: false,
+                    minimumHeight: skeletonMinimumHeight
+                )
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(PPMarketplaceText.localized("marketplace_loading_title"))
+    }
+
+    private var skeletonColumns: [GridItem] {
+        let count = PPMarketplaceContentGeometry.mosaicColumnCount(
+            availableWidth: availableWidth,
+            horizontalSizeClass: horizontalSizeClass,
+            isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
+        )
+        return Array(
+            repeating: GridItem(.flexible(), spacing: PPSpace.base),
+            count: count
+        )
+    }
+
+    private var skeletonMinimumHeight: CGFloat {
+        switch layout {
+        case .compact:
+            return dynamicTypeSize.isAccessibilitySize ? 540 : 184
+        case .showcase, .mosaic:
+            return dynamicTypeSize.isAccessibilitySize ? 520 : 340
+        case .focus:
+            return PPMarketplaceContentGeometry.focusHeight(
+                isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
+            )
+        }
     }
 }
 
@@ -1280,27 +1361,35 @@ private enum PPMarketplaceSkeletonSlot: String, CaseIterable, Identifiable {
 @available(iOS 15.0, *)
 private struct PPMarketplaceSkeletonCard: View {
     let horizontal: Bool
+    let minimumHeight: CGFloat
 
     var body: some View {
         Group {
             if horizontal {
                 HStack(spacing: PPSpace.md) {
                     skeletonMedia
-                        .frame(width: 128, height: 142)
+                        .frame(
+                            width: 128,
+                            height: max(1, minimumHeight - (PPSpace.sm * 2))
+                        )
                     skeletonCopy
                 }
                 .padding(PPSpace.sm)
-                .frame(maxWidth: .infinity, minHeight: 164)
             } else {
                 VStack(alignment: .leading, spacing: PPSpace.sm) {
                     skeletonMedia
-                        .frame(height: 190)
+                        .frame(height: max(190, minimumHeight * 0.68))
                     skeletonCopy
                         .padding(.horizontal, PPSpace.sm)
                         .padding(.bottom, PPSpace.sm)
                 }
             }
         }
+        .frame(
+            maxWidth: .infinity,
+            minHeight: minimumHeight,
+            alignment: .topLeading
+        )
         .background(
             Color.ppMarketplaceSurface,
             in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
@@ -1537,9 +1626,7 @@ private struct PPMarketplacePressStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(
-                reduceMotion || !configuration.isPressed ? 1 : 0.985
-            )
+            .opacity(configuration.isPressed ? 0.78 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

@@ -296,6 +296,37 @@ static NSString *PPMarketplaceTrimmedString(id value)
     return options;
 }
 
+- (NSArray<PPMarketplaceTaxonomyOption *> *)subKindOptionsForMainKindIdentifier:(NSInteger)mainKindIdentifier
+{
+    if (mainKindIdentifier == 0) {
+        return @[];
+    }
+
+    MainKindsModel *selectedMainKind = nil;
+    for (MainKindsModel *mainKind in self.mainKinds) {
+        if (mainKind.ID == mainKindIdentifier) {
+            selectedMainKind = mainKind;
+            break;
+        }
+    }
+    if (!selectedMainKind) {
+        return @[];
+    }
+
+    NSMutableArray<PPMarketplaceTaxonomyOption *> *options =
+        [NSMutableArray array];
+    for (SubKindModel *subKind in selectedMainKind.SubKindsArray ?: @[]) {
+        if (subKind.MainKindID != 0 &&
+            subKind.MainKindID != selectedMainKind.ID) {
+            continue;
+        }
+        [options addObject:[[PPMarketplaceTaxonomyOption alloc]
+            initWithIdentifier:[self identifierForSubKind:subKind]
+                         title:[self displayTitleForSubKind:subKind]]];
+    }
+    return options.copy;
+}
+
 - (NSInteger)currentMainKindID
 {
     if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
@@ -349,9 +380,10 @@ static NSString *PPMarketplaceTrimmedString(id value)
 
 - (UIColor *)accentColor
 {
-    return [self pp_shouldUseBrandAccent]
+    UIColor *raw = [self pp_shouldUseBrandAccent]
         ? ([GM appPrimaryColor] ?: UIColor.systemPinkColor)
         : self.input.accentColor;
+    return [MainKindsModel pp_softenedKindColorIfNeeded:raw forMainKind:self.input.mainKind];
 }
 
 - (BOOL)isUsingBrandAccent
@@ -584,6 +616,86 @@ static NSString *PPMarketplaceTrimmedString(id value)
             [self switchToSubKind:subKind];
             return;
         }
+    }
+}
+
+- (void)applyCategoryMainKindIdentifier:(NSInteger)mainKindIdentifier
+                      subKindIdentifier:(NSInteger)subKindIdentifier
+{
+    if (mainKindIdentifier == 0) {
+        [self switchToAllMainKinds];
+        return;
+    }
+
+    MainKindsModel *selectedMainKind = nil;
+    for (MainKindsModel *mainKind in self.mainKinds) {
+        if (mainKind.ID == mainKindIdentifier) {
+            selectedMainKind = mainKind;
+            break;
+        }
+    }
+    if (!selectedMainKind) {
+        return;
+    }
+
+    SubKindModel *selectedSubKind = nil;
+    if (subKindIdentifier > 0) {
+        SubKindModel *candidate =
+            [selectedMainKind subKindForID:subKindIdentifier];
+        if (candidate &&
+            (candidate.MainKindID == 0 ||
+             candidate.MainKindID == selectedMainKind.ID)) {
+            selectedSubKind = candidate;
+        }
+    }
+    NSInteger resolvedSubKindID = selectedSubKind ? selectedSubKind.ID : 0;
+    BOOL exitsAllCategories =
+        self.input.sourceTarget == PPDeepLinkTargetAllCategories;
+    BOOL changesMainKind =
+        exitsAllCategories || self.input.mainKind.ID != selectedMainKind.ID;
+
+    if (!changesMainKind) {
+        if (self.viewModel.currentSubKindID == resolvedSubKindID) {
+            return;
+        }
+        [self switchToSubKind:selectedSubKind];
+        return;
+    }
+
+    self.input.mainKind = selectedMainKind;
+    self.input.accentColor = selectedMainKind.kindColor;
+    [self.filterStates removeAllObjects];
+    if (exitsAllCategories) {
+        self.input.sourceTarget = PPDeepLinkTargetNone;
+    }
+    self.viewModel.currentDeepLinkTarget = self.input.sourceTarget;
+
+    NSString *sectionKey = [self pp_sectionKeyForMainKind:selectedMainKind];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    PPDataSection restoredSection = PPDataSectionAds;
+    if ([defaults objectForKey:sectionKey] != nil) {
+        restoredSection = (PPDataSection)[defaults integerForKey:sectionKey];
+    }
+    if (restoredSection < PPDataSectionAds ||
+        restoredSection > PPDataSectionServices) {
+        restoredSection = PPDataSectionAds;
+    }
+    self.viewModel.pendingRestoreSection = restoredSection;
+    [self.viewModel setFilterState:[self filterStateForSection:restoredSection]
+                        forSection:restoredSection];
+    [NSUserDefaults.standardUserDefaults
+        setInteger:resolvedSubKindID
+            forKey:[self pp_subKindKeyForMainKind:selectedMainKind]];
+    [self.viewModel switchToMainKind:selectedMainKind
+                             subKind:selectedSubKind];
+
+    NSString *analyticsCategory = selectedSubKind
+        ? selectedSubKind.SubKindName
+        : selectedMainKind.KindName;
+    [[NovaAmbientAssistantCoordinator sharedCoordinator]
+        categoryDidOpen:analyticsCategory ?: selectedMainKind.KindNameEn];
+    if (self.presentationStateDidChange) {
+        self.presentationStateDidChange();
     }
 }
 

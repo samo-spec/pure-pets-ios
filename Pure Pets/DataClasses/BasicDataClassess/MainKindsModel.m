@@ -381,25 +381,61 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
 }
 
 
++ (UIColor *)pp_softenedKindColorIfNeeded:(UIColor *)color forMainKind:(MainKindsModel *)mainKind
+{
+    if (!color) return nil;
+    
+    NSInteger kindID = mainKind ? mainKind.ID : 0;
+    NSString *name = mainKind ? [mainKind.KindName lowercaseString] : @"";
+    
+    BOOL isBird = (kindID == 1 || [name containsString:@"bird"] || [name containsString:@"طيور"] || [name containsString:@"عصفور"] || [name containsString:@"طير"]);
+    BOOL isCat = (kindID == 3 || kindID == 5 || [name containsString:@"cat"] || [name containsString:@"قط"]);
+    
+    if (isBird) {
+        // Lighter, luminous soft mint-teal (#38C6BC)
+        return [UIColor colorWithRed:0.22 green:0.78 blue:0.74 alpha:1.0];
+    }
+    if (isCat) {
+        // Lighter, elegant soft periwinkle-lavender (#7388FA)
+        return [UIColor colorWithRed:0.45 green:0.53 blue:0.98 alpha:1.0];
+    }
+    
+    CGFloat red = 0, green = 0, blue = 0, alpha = 0;
+    if ([color getRed:&red green:&green blue:&blue alpha:&alpha]) {
+        CGFloat luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+        if (luminance < 0.35) {
+            return [UIColor colorWithRed:red + (1.0 - red) * 0.40
+                                   green:green + (1.0 - green) * 0.40
+                                    blue:blue + (1.0 - blue) * 0.40
+                                   alpha:alpha];
+        }
+    }
+    return color;
+}
+
 -(UIColor *)kindColor
 {
+    UIColor *baseColor = nil;
     if (self.PetColor && self.PetColor.length > 0) {
-        return [UIColor colorWithHexString:self.PetColor];
+        baseColor = [UIColor colorWithHexString:self.PetColor];
     }
 
-    if(self.ID == 1)        return [UIColor colorWithRed:0.08 green:0.68 blue:0.68 alpha:1.0]; // Distinct Teal #14B8A6
-    else if(self.ID == 2)    return [UIColor colorWithHexString:@"#D57E3C"];
-    else if(self.ID == 3)    return [UIColor colorWithHexString:@"#491708"];
-    else if(self.ID == 4)    return [UIColor colorWithHexString:@"#A49179"];
-    else if(self.ID == 5)    return [UIColor colorWithRed:0.25 green:0.55 blue:0.95 alpha:1.0]; // Cat Blue
-    else if(self.ID == 6)    return [UIColor colorWithRed:0.95 green:0.55 blue:0.25 alpha:1.0]; //[UIColor colorWithHexString:@"#BFA779"];
-    else if(self.ID == 7)    return [UIColor colorWithHexString:@"#A4491F"]; //76D6FF
-    else if(self.ID == 8)    return [UIColor colorWithHexString:@"#D7606E"];
-    else if(self.ID == 9)    return [UIColor colorWithHexString:@"#D7606E"];
-    else if(self.ID == 10)    return [UIColor colorWithHexString:@"#B49F80"];
-    else if(self.ID == 11)    return [UIColor colorWithHexString:@"#A4937B"];
-    else  return [UIColor colorWithHexString:@"#"];
+    if (!baseColor) {
+        if(self.ID == 1)         baseColor = [UIColor colorWithRed:0.22 green:0.78 blue:0.74 alpha:1.0]; // Lighter Mint Teal for Birds
+        else if(self.ID == 2)   baseColor = [UIColor colorWithHexString:@"#E89A5A"];
+        else if(self.ID == 3)   baseColor = [UIColor colorWithRed:0.45 green:0.53 blue:0.98 alpha:1.0]; // Lighter Lavender Periwinkle for Cats
+        else if(self.ID == 4)   baseColor = [UIColor colorWithHexString:@"#C4B39C"];
+        else if(self.ID == 5)   baseColor = [UIColor colorWithRed:0.45 green:0.53 blue:0.98 alpha:1.0]; // Lighter Soft Blue for Cats
+        else if(self.ID == 6)   baseColor = [UIColor colorWithRed:0.98 green:0.70 blue:0.45 alpha:1.0];
+        else if(self.ID == 7)   baseColor = [UIColor colorWithHexString:@"#5ECBD2"];
+        else if(self.ID == 8)   baseColor = [UIColor colorWithHexString:@"#E58A95"];
+        else if(self.ID == 9)   baseColor = [UIColor colorWithHexString:@"#E58A95"];
+        else if(self.ID == 10)  baseColor = [UIColor colorWithHexString:@"#CDBCA2"];
+        else if(self.ID == 11)  baseColor = [UIColor colorWithHexString:@"#C4B39C"];
+        else                    baseColor = [UIColor colorWithHexString:@"#888888"];
+    }
 
+    return [MainKindsModel pp_softenedKindColorIfNeeded:baseColor forMainKind:self];
 }
 
 

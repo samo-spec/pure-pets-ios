@@ -30,6 +30,29 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     return queue;
 }
 
+@interface PPDataViewRequestGate ()
+@property (nonatomic, assign, readwrite) NSUInteger generation;
+@end
+
+@implementation PPDataViewRequestGate
+
+- (NSUInteger)beginRequest
+{
+    @synchronized (self) {
+        self.generation += 1;
+        return self.generation;
+    }
+}
+
+- (BOOL)isCurrentRequest:(NSUInteger)generation
+{
+    @synchronized (self) {
+        return generation == self.generation;
+    }
+}
+
+@end
+
 @interface PPDataViewVM ()
 
 // Input
@@ -49,8 +72,10 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 // Storage
 @property (nonatomic, strong) NSMutableArray<PPUniversalCellViewModel *> *mutableItems;
 @property (nonatomic, copy) NSArray *latestRawResults;
-@property (nonatomic, assign) NSUInteger requestVersion;
+@property (nonatomic, strong) PPDataViewRequestGate *requestGate;
 @property (nonatomic, assign) BOOL didNotifyInitialSectionsDataLoaded;
+@property (nonatomic, copy, nullable) NSString *activeRequestSignature;
+@property (nonatomic, strong) NSMutableArray<void (^)(NSError * _Nullable)> *activeRequestCompletions;
 
 - (void)pp_buildViewModelsFromResults:(NSArray *)results
                               section:(PPDataSection)section
@@ -85,13 +110,70 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
 - (NSUInteger)pp_beginRequest
 {
-    self.requestVersion += 1;
-    return self.requestVersion;
+    return [self.requestGate beginRequest];
 }
 
 - (BOOL)pp_isCurrentRequest:(NSUInteger)requestToken
 {
-    return requestToken == self.requestVersion;
+    return [self.requestGate isCurrentRequest:requestToken];
+}
+
+- (NSString *)pp_currentRequestSignature
+{
+    NSDictionary<NSString *, NSNumber *> *taxonomy =
+        [self currentTaxonomyParameters];
+    return [NSString stringWithFormat:@"%ld|%@|%@|%ld",
+            (long)self.currentSection,
+            taxonomy[@"speciesID"],
+            taxonomy[@"breedID"],
+            (long)self.currentDeepLinkTarget];
+}
+
+- (void)pp_enqueueRequestCompletion:(void (^)(NSError * _Nullable))completion
+{
+    if (completion) {
+        [self.activeRequestCompletions addObject:[completion copy]];
+    }
+}
+
+- (void)pp_resolveActiveRequestCompletions:(NSError * _Nullable)error
+{
+    NSArray<void (^)(NSError * _Nullable)> *completions =
+        [self.activeRequestCompletions copy];
+    [self.activeRequestCompletions removeAllObjects];
+    for (void (^completion)(NSError * _Nullable) in completions) {
+        completion(error);
+    }
+}
+
+- (NSUInteger)pp_beginNetworkRequestWithCompletion:(void (^)(NSError * _Nullable))completion
+{
+    NSString *signature = [self pp_currentRequestSignature];
+    if (self.isLoading &&
+        [self.activeRequestSignature isEqualToString:signature]) {
+        [self pp_enqueueRequestCompletion:completion];
+        return 0;
+    }
+
+    if (self.activeRequestSignature.length > 0) {
+        NSError *cancelled = [NSError errorWithDomain:NSURLErrorDomain
+                                                 code:NSURLErrorCancelled
+                                             userInfo:nil];
+        [self pp_resolveActiveRequestCompletions:cancelled];
+    }
+    self.activeRequestSignature = signature;
+    [self pp_enqueueRequestCompletion:completion];
+    return [self pp_beginRequest];
+}
+
+- (void)pp_finishNetworkRequest:(NSUInteger)requestToken
+                           error:(NSError * _Nullable)error
+{
+    if (![self pp_isCurrentRequest:requestToken]) {
+        return;
+    }
+    self.activeRequestSignature = nil;
+    [self pp_resolveActiveRequestCompletions:error];
 }
 
 - (NSArray *)pp_resultsRespectingUsedAccessoryFlag:(NSArray *)results
@@ -126,6 +208,8 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     _mutableItems = [NSMutableArray new];
     _filterStatesBySection = [NSMutableDictionary dictionary];
     _filterVersionsBySection = [NSMutableDictionary dictionary];
+    _activeRequestCompletions = [NSMutableArray array];
+    _requestGate = [PPDataViewRequestGate new];
 
     _currentPage = 1;
     _hasMore = YES;
@@ -303,6 +387,12 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
 - (void)switchToMainKind:(MainKindsModel *)mainKind
 {
+    [self switchToMainKind:mainKind subKind:nil];
+}
+
+- (void)switchToMainKind:(MainKindsModel *)mainKind
+                 subKind:(SubKindModel *)subKind
+{
     if (!mainKind) return;
 
     // The bridge owns duplicate-selection suppression. Reaching this method
@@ -319,7 +409,11 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     // Reset filters
     self.filterState = nil;
     [self.filterStatesBySection removeAllObjects];
-    self.currentSubKindID = 0;
+    SubKindModel *resolvedSubKind =
+        subKind && subKind.MainKindID == mainKind.ID
+            ? subKind
+            : [mainKind subKindForID:subKind.ID];
+    self.currentSubKindID = resolvedSubKind ? resolvedSubKind.ID : 0;
     self.latestRawResults = nil;
 
     // Clear current items
@@ -338,6 +432,17 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
     // Reload current section with new main kind
     [self refreshCurrentSection];
+}
+
+- (NSDictionary<NSString *,NSNumber *> *)currentTaxonomyParameters
+{
+    BOOL isGlobal =
+        self.currentDeepLinkTarget == PPDeepLinkTargetAllCategories ||
+        self.mainKind == nil;
+    return @{
+        @"speciesID": @(isGlobal ? 0 : self.mainKind.ID),
+        @"breedID": @(isGlobal ? 0 : MAX(0, self.currentSubKindID))
+    };
 }
 
 - (void)switchToAllMainKinds
@@ -491,7 +596,11 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
 - (void)refreshCurrentSection
 {
-    NSUInteger requestToken = [self pp_beginRequest];
+    NSUInteger requestToken =
+        [self pp_beginNetworkRequestWithCompletion:nil];
+    if (requestToken == 0) {
+        return;
+    }
     self.isLoading = YES;
     self.currentPage = 1;
     self.hasMore = YES;
@@ -516,6 +625,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 weakSelf.isLoading = NO;
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
                                          "data.request", "error=1");
+                [weakSelf pp_finishNetworkRequest:requestToken error:error];
                 if (weakSelf.onError) {
                     weakSelf.onError(error);
                 }
@@ -542,6 +652,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 [weakSelf.mutableItems addObjectsFromArray:viewModels];
                 weakSelf.currentPage = 1;
                 weakSelf.hasMore = NO;
+                [weakSelf pp_finishNetworkRequest:requestToken error:nil];
 
                 BOOL shouldNotifyInitialSectionsDataLoaded = !weakSelf.didNotifyInitialSectionsDataLoaded;
                 if (shouldNotifyInitialSectionsDataLoaded) {
@@ -567,7 +678,10 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                     completion:(void (^)(NSArray *results, NSError *error))completion
 {
     (void)page;
-   
+    NSDictionary<NSString *, NSNumber *> *taxonomy =
+        [self currentTaxonomyParameters];
+    NSInteger speciesID = [taxonomy[@"speciesID"] integerValue];
+    NSInteger breedID = [taxonomy[@"breedID"] integerValue];
     
     
     switch (section) {
@@ -583,10 +697,10 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 }];
 
             } else {
-                if (self.currentSubKindID > 0) {
+                if (breedID > 0) {
                     [[PetAdManager sharedManager]
                      fetchAdsForMainKind:self.mainKind
-                               subKindID:self.currentSubKindID
+                               subKindID:breedID
                               completion:^(NSArray<PetAd *> * _Nonnull ads) {
                         if (completion) completion(ads, nil);
                     }];
@@ -615,18 +729,18 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 }];
 
             } else {
-                if (self.currentSubKindID > 0) {
+                if (breedID > 0) {
                     [[PetAccessoryManager sharedManager]
                      fetchAccessoriesOfKind:AccessTypeAccessory
-                     MainCategory:self.mainKind.ID
-                     subKindID:self.currentSubKindID
+                     MainCategory:speciesID
+                     subKindID:breedID
                      completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
                         if (completion) completion(accessories, nil);
                      }];
                 } else {
                     [[PetAccessoryManager sharedManager]
                      fetchAccessoriesOfKind:AccessTypeAccessory
-                     MainCategory:self.mainKind.ID
+                     MainCategory:speciesID
                      completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
                         if (completion) completion(accessories, nil);
                      }];
@@ -651,18 +765,18 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 }];
 
             } else {
-                if (self.currentSubKindID > 0) {
+                if (breedID > 0) {
                     [[PetAccessoryManager sharedManager]
                      fetchAccessoriesOfKind:AccessTypeFood
-                     MainCategory:self.mainKind.ID
-                     subKindID:self.currentSubKindID
+                     MainCategory:speciesID
+                     subKindID:breedID
                      completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
                         if(completion) completion(accessories,nil);
                     }];
                 } else {
                     [[PetAccessoryManager sharedManager]
                      fetchAccessoriesOfKind:AccessTypeFood
-                     MainCategory:self.mainKind.ID
+                     MainCategory:speciesID
                      completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
                         if(completion) completion(accessories,nil);
                     }];
@@ -698,7 +812,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             } else {
 
                 [[ServicesManager sharedInstance]
-                 fetchServicesForPetMainKindID:self.mainKind.ID completion:^(NSArray<ServiceModel *> * _Nonnull services, NSError * _Nullable error) {
+                 fetchServicesForPetMainKindID:speciesID completion:^(NSArray<ServiceModel *> * _Nonnull services, NSError * _Nullable error) {
                     if (completion) completion(services ?: @[], error);
                 }];
             }
@@ -1135,7 +1249,11 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
         return;
     }
 
-    NSUInteger requestToken = [self pp_beginRequest];
+    NSUInteger requestToken =
+        [self pp_beginNetworkRequestWithCompletion:completion];
+    if (requestToken == 0) {
+        return;
+    }
     PPDataSection section = self.currentSection;
     os_signpost_id_t requestSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
     os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "data.request",
@@ -1167,11 +1285,6 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
                                          "data.request", "stale=1 reload=1");
-                if (completion) {
-                    completion([NSError errorWithDomain:NSURLErrorDomain
-                                                   code:NSURLErrorCancelled
-                                               userInfo:nil]);
-                }
                 return;
             }
 
@@ -1179,7 +1292,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 weakSelf.isLoading = NO;
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
                                          "data.request", "error=1 reload=1");
-                if (completion) completion(error);
+                [weakSelf pp_finishNetworkRequest:requestToken error:error];
                 return;
             }
 
@@ -1191,11 +1304,6 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
                     os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
                                              "data.request", "stale=2 reload=1");
-                    if (completion) {
-                        completion([NSError errorWithDomain:NSURLErrorDomain
-                                                       code:NSURLErrorCancelled
-                                                   userInfo:nil]);
-                    }
                     return;
                 }
                 weakSelf.latestRawResults = safeResults;
@@ -1210,7 +1318,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 if (weakSelf.onReloadData) {
                     weakSelf.onReloadData();
                 }
-                if (completion) completion(nil);
+                [weakSelf pp_finishNetworkRequest:requestToken error:nil];
             }];
         }];
     }];

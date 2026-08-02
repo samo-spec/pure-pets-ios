@@ -6,6 +6,15 @@
 @class SubKindModel;
 
 NS_ASSUME_NONNULL_BEGIN
+
+/// Thread-safe latest-wins request generation shared by network and
+/// background transform stages.
+@interface PPDataViewRequestGate : NSObject
+@property (nonatomic, assign, readonly) NSUInteger generation;
+- (NSUInteger)beginRequest;
+- (BOOL)isCurrentRequest:(NSUInteger)generation;
+@end
+
 @interface PPDataViewVM : NSObject
 
 

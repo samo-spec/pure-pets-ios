@@ -29,20 +29,13 @@ struct PPMarketplaceDataViewScreen: View {
                             PPMarketplaceHero(
                                 store: store,
                                 availableWidth: proxy.size.width,
-                                showsBackControl: !dockIsPinned,
-                                currentFlowProgress: entranceProgress
+                                showsBackControl: !dockIsPinned
+                            )
+                            .padding(.bottom, PPSpace.md)
+                            .ppMarketplaceEntrance(
+                                isPresented: hasPresentedEntrance
                             )
                             .zIndex(contextForegroundZIndex)
-
-                            PPMarketplaceTaxonomyCurrent(store: store)
-                                .padding(.horizontal, horizontalContentInset)
-                                .padding(.vertical, PPSpace.sm)
-                                .ppMarketplaceEntrance(
-                                    isPresented: hasPresentedEntrance,
-                                    layer: .context
-                                )
-                                .zIndex(contextForegroundZIndex)
-                                .allowsHitTesting(!store.isReplacingContext)
 
                             Section {
                                 PPMarketplaceContent(
@@ -53,6 +46,12 @@ struct PPMarketplaceDataViewScreen: View {
                                 .padding(.horizontal, horizontalContentInset)
                                 .padding(.top, PPSpace.md)
                                 .opacity(store.isReplacingContext ? 0.46 : 1)
+                                .animation(
+                                    contentMotionIsDisabled
+                                        ? nil
+                                        : .easeOut(duration: 0.18),
+                                    value: store.isReplacingContext
+                                )
                                 .allowsHitTesting(!store.isReplacingContext)
                                 .accessibilityHidden(store.isReplacingContext)
                                 .overlay(alignment: .top) {
@@ -65,8 +64,7 @@ struct PPMarketplaceDataViewScreen: View {
                                     }
                                 }
                                 .ppMarketplaceEntrance(
-                                    isPresented: hasPresentedEntrance,
-                                    layer: .results
+                                    isPresented: hasPresentedEntrance
                                 )
 
                                 Color.clear
@@ -83,8 +81,7 @@ struct PPMarketplaceDataViewScreen: View {
                                     statusBarHeight: proxy.safeAreaInsets.top
                                 )
                                 .ppMarketplaceEntrance(
-                                    isPresented: hasPresentedEntrance,
-                                    layer: .controls
+                                    isPresented: hasPresentedEntrance
                                 )
                                 .background {
                                     PPMarketplaceScrollStabilityController(
@@ -132,10 +129,7 @@ struct PPMarketplaceDataViewScreen: View {
                     ) { minY in
                         let nextPinned = minY <= 1
                         guard dockIsPinned != nextPinned else { return }
-                        DispatchQueue.main.async {
-                            guard dockIsPinned != nextPinned else { return }
-                            dockIsPinned = nextPinned
-                        }
+                        dockIsPinned = nextPinned
                     }
                     .onPreferenceChange(
                         PPMarketplaceScrollContentHeightPreferenceKey.self
@@ -193,6 +187,8 @@ struct PPMarketplaceDataViewScreen: View {
             onDismiss: store.sheetDidDismiss
         ) { sheet in
             switch sheet {
+            case .category:
+                PPMarketplaceCategorySheet(store: store)
             case .filters:
                 PPMarketplaceFilterSheet(store: store)
             case .providers:
@@ -208,12 +204,11 @@ struct PPMarketplaceDataViewScreen: View {
                 )
                 .padding(.horizontal, horizontalContentInset)
                 .padding(.top, PPSpace.sm)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.opacity)
                 .zIndex(10)
             }
         }
         .animation(contentMotionIsDisabled ? nil : .easeInOut(duration: 0.20), value: store.updateErrorMessage)
-        .animation(contentMotionIsDisabled ? nil : .easeInOut(duration: 0.16), value: dockIsPinned)
         .task {
             await presentEntranceIfNeeded()
         }
@@ -260,10 +255,6 @@ struct PPMarketplaceDataViewScreen: View {
         }
     }
 
-    private var entranceIsResolved: Bool {
-        entranceMotionIsDisabled || hasPresentedEntrance
-    }
-
     private var entranceMotionIsDisabled: Bool {
         reduceMotion || switchControlEnabled || voiceOverEnabled
     }
@@ -272,27 +263,14 @@ struct PPMarketplaceDataViewScreen: View {
         reduceMotion || switchControlEnabled || voiceOverEnabled
     }
 
-    private var entranceProgress: CGFloat {
-        entranceIsResolved ? 1 : 0
-    }
-
     @MainActor
     private func presentEntranceIfNeeded() async {
         guard !hasPresentedEntrance else { return }
 
-        if !entranceMotionIsDisabled {
-            do {
-                try await Task.sleep(nanoseconds: 24_000_000)
-            } catch {
-                return
-            }
-            guard !Task.isCancelled else { return }
-        }
-
         if entranceMotionIsDisabled {
             hasPresentedEntrance = true
         } else {
-            withAnimation(PPMarketplaceEntranceMotion.current) {
+            withAnimation(.easeOut(duration: 0.18)) {
                 hasPresentedEntrance = true
             }
         }
@@ -300,64 +278,8 @@ struct PPMarketplaceDataViewScreen: View {
 }
 
 @available(iOS 15.0, *)
-private enum PPMarketplaceEntranceMotion {
-    static let current = Animation.timingCurve(
-        0.16,
-        1,
-        0.30,
-        1,
-        duration: 0.42
-    )
-    static let context = Animation.timingCurve(
-        0.16,
-        1,
-        0.30,
-        1,
-        duration: 0.28
-    ).delay(0.05)
-    static let controls = Animation.timingCurve(
-        0.16,
-        1,
-        0.30,
-        1,
-        duration: 0.28
-    ).delay(0.10)
-    static let results = Animation.timingCurve(
-        0.16,
-        1,
-        0.30,
-        1,
-        duration: 0.28
-    ).delay(0.15)
-}
-
-@available(iOS 15.0, *)
-private enum PPMarketplaceEntranceLayer {
-    case context
-    case controls
-    case results
-
-    var offset: CGFloat {
-        switch self {
-        case .context: return 12
-        case .controls: return 10
-        case .results: return 14
-        }
-    }
-
-    var animation: Animation {
-        switch self {
-        case .context: return PPMarketplaceEntranceMotion.context
-        case .controls: return PPMarketplaceEntranceMotion.controls
-        case .results: return PPMarketplaceEntranceMotion.results
-        }
-    }
-}
-
-@available(iOS 15.0, *)
 private struct PPMarketplaceEntranceModifier: ViewModifier {
     let isPresented: Bool
-    let layer: PPMarketplaceEntranceLayer
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
@@ -367,10 +289,12 @@ private struct PPMarketplaceEntranceModifier: ViewModifier {
         let isResolved = entranceMotionIsDisabled || isPresented
         content
             .opacity(isResolved ? 1 : 0)
-            .offset(y: isResolved ? 0 : layer.offset)
             .allowsHitTesting(isResolved)
             .accessibilityHidden(!isResolved)
-            .animation(entranceMotionIsDisabled ? nil : layer.animation, value: isPresented)
+            .animation(
+                entranceMotionIsDisabled ? nil : .easeOut(duration: 0.18),
+                value: isPresented
+            )
     }
 
     private var entranceMotionIsDisabled: Bool {
@@ -381,13 +305,11 @@ private struct PPMarketplaceEntranceModifier: ViewModifier {
 @available(iOS 15.0, *)
 private extension View {
     func ppMarketplaceEntrance(
-        isPresented: Bool,
-        layer: PPMarketplaceEntranceLayer
+        isPresented: Bool
     ) -> some View {
         modifier(
             PPMarketplaceEntranceModifier(
-                isPresented: isPresented,
-                layer: layer
+                isPresented: isPresented
             )
         )
     }
@@ -743,7 +665,10 @@ private struct PPMarketplaceContent: View {
         Group {
             switch store.loadState {
             case .loading:
-                PPMarketplaceLoadingState(layout: store.layout)
+                PPMarketplaceLoadingState(
+                    layout: store.layout,
+                    availableWidth: availableWidth
+                )
 
             case .content:
                 content
@@ -844,25 +769,14 @@ private struct PPMarketplaceContent: View {
     }
 
     private var mosaicColumns: [GridItem] {
-        let usableWidth = max(0, availableWidth - horizontalOuterInsets)
-        let minimumCardWidth: CGFloat = dynamicTypeSize.isAccessibilitySize
-            ? usableWidth
-            : 168
-        let proposedCount = Int(
-            (usableWidth + PPSpace.base) / (minimumCardWidth + PPSpace.base)
+        let count = PPMarketplaceContentGeometry.mosaicColumnCount(
+            availableWidth: availableWidth,
+            horizontalSizeClass: horizontalSizeClass,
+            isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
         )
-        let maximumCount = horizontalSizeClass == .regular ? 4 : 2
-        let count = max(1, min(maximumCount, proposedCount))
         return Array(
             repeating: GridItem(.flexible(), spacing: PPSpace.base),
             count: count
         )
-    }
-
-    private var horizontalOuterInsets: CGFloat {
-        let perSide = horizontalSizeClass == .regular
-            ? PPSpace.xxl
-            : PPSpace.screenMargin
-        return perSide * 2
     }
 }

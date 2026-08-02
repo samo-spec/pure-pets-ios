@@ -241,6 +241,8 @@ enum PPMarketplaceContentTransitionIntent: Equatable {
 @MainActor
 final class PPMarketplaceDataViewStore: ObservableObject {
     let bridge: PPMarketplaceDataViewBridge
+    private let searchAction: () -> Void
+    private let categoryApplyAction: (Int, Int) -> Void
 
     @Published private(set) var loadState: PPMarketplaceLoadState = .loading
     @Published private(set) var records: [PPMarketplaceItemRecord] = []
@@ -276,8 +278,19 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     private var awaitsBridgeContentTransition = false
     private var bridgeContextCommitPending = false
 
-    init(bridge: PPMarketplaceDataViewBridge) {
+    init(
+        bridge: PPMarketplaceDataViewBridge,
+        searchAction: (() -> Void)? = nil,
+        categoryApplyAction: ((Int, Int) -> Void)? = nil
+    ) {
         self.bridge = bridge
+        self.searchAction = searchAction ?? { bridge.openSearch() }
+        self.categoryApplyAction = categoryApplyAction ?? { mainKindID, subKindID in
+            bridge.applyCategory(
+                mainKindIdentifier: mainKindID,
+                subKindIdentifier: subKindID
+            )
+        }
         currentSection = bridge.currentSection
         currentMainKindTitle = bridge.currentMainKindTitle
         currentSubKindTitle = bridge.currentSubKindTitle
@@ -540,6 +553,32 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         UISelectionFeedbackGenerator().selectionChanged()
     }
 
+    func applyMainKindShortcut(_ choice: PPMarketplaceMainKindChoice) {
+        let compatibleSubKindID: Int
+        if choice.id != 0,
+           bridge.subKindOptions(mainKindIdentifier: choice.id).contains(
+                where: { $0.identifier == currentSubKindID }
+           ) {
+            compatibleSubKindID = currentSubKindID
+        } else {
+            compatibleSubKindID = 0
+        }
+        applyCategorySelection(
+            mainKindID: choice.id,
+            subKindID: compatibleSubKindID
+        )
+    }
+
+    func applySubKindShortcut(_ choice: PPMarketplaceSubKindChoice) {
+        guard subKindChoices.contains(where: { $0.id == choice.id }) else {
+            return
+        }
+        applyCategorySelection(
+            mainKindID: currentMainKindID,
+            subKindID: choice.id
+        )
+    }
+
     func clearCategoryDraft() {
         categoryDraftMainKindID = 0
         categoryDraftSubKindID = 0
@@ -552,6 +591,17 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         let nextSubKindID = categoryDraftSubKindID
         activeSheet = nil
 
+        applyCategorySelection(
+            mainKindID: nextMainKindID,
+            subKindID: nextSubKindID
+        )
+    }
+
+    private func applyCategorySelection(
+        mainKindID nextMainKindID: Int,
+        subKindID nextSubKindID: Int
+    ) {
+
         guard nextMainKindID != bridge.currentMainKindID ||
                 nextSubKindID != bridge.currentSubKindID else {
             return
@@ -562,10 +612,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         providerOptions = []
         updateErrorMessage = nil
         prepareBridgeContentTransition(.refinement)
-        bridge.applyCategory(
-            mainKindIdentifier: nextMainKindID,
-            subKindIdentifier: nextSubKindID
-        )
+        categoryApplyAction(nextMainKindID, nextSubKindID)
         UISelectionFeedbackGenerator().selectionChanged()
     }
 
@@ -670,7 +717,9 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     }
 
     func openSearch() {
-        bridge.openSearch()
+        // Search is an external route. The retained bridge remains the sole
+        // owner of the active Main Kind/Subkind while it is presented.
+        searchAction()
     }
 
     func goBack() {
