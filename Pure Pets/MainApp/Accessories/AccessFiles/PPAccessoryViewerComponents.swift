@@ -1611,6 +1611,7 @@ struct PPAccessoryDecisionRibbon: View {
             )
         }
 
+        /* TEMPORARY: Hidden provider rate view in seller card
         if let owner = store.owner, owner.hasRating {
             result.append(
                 PPAccessoryReadinessFact(
@@ -1628,6 +1629,7 @@ struct PPAccessoryDecisionRibbon: View {
                 )
             )
         }
+        */
 
         if !snapshot.location.isEmpty {
             result.append(
@@ -2113,13 +2115,15 @@ struct PPAccessorySourceIsland: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: PPSpace.sm) {
                 sellerTrustCapsule(owner)
-                sellerRatingCapsule(owner)
+                // TEMPORARY: Hidden provider rate view in seller card
+                // sellerRatingCapsule(owner)
                 sellerLocationLabel
             }
 
             VStack(alignment: .leading, spacing: PPSpace.xs) {
                 sellerTrustCapsule(owner)
-                sellerRatingCapsule(owner)
+                // TEMPORARY: Hidden provider rate view in seller card
+                // sellerRatingCapsule(owner)
                 sellerLocationLabel
             }
         }

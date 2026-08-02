@@ -134,6 +134,20 @@ public final class PPRootObjCAdapter: PPRootActionHandling {
     }
 
     public func isEligibleFloatingCartSource(_ viewController: UIViewController) -> Bool {
+        let eligibilitySelector = NSSelectorFromString("pp_isFloatingCartEligible")
+        if viewController.responds(to: eligibilitySelector),
+           let implementation = viewController.method(for: eligibilitySelector) {
+            typealias EligibilityFunction = @convention(c) (
+                AnyObject,
+                Selector
+            ) -> Bool
+            let function = unsafeBitCast(
+                implementation,
+                to: EligibilityFunction.self
+            )
+            return function(viewController, eligibilitySelector)
+        }
+
         let className = NSStringFromClass(viewController.classForCoder)
         if className.isEmpty ||
            className.contains("PPHomeViewController") ||
@@ -144,7 +158,7 @@ public final class PPRootObjCAdapter: PPRootActionHandling {
            className.contains("Accessory") {
             return false
         }
-        return className.contains("PPDataViewVC") || className.contains("SellerProfileVC")
+        return className.contains("SellerProfileVC")
     }
 
     // MARK: - Bottom Surface

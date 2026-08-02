@@ -7,9 +7,21 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class MainKindsModel;
 @class PPUniversalCellViewModel;
-@class SubKindModel;
+
+/// Swift-safe, presentation-only taxonomy value. Backend model objects remain
+/// private to the Objective-C bridge so the SwiftUI surface cannot mutate
+/// request or cache state accidentally.
+@interface PPMarketplaceTaxonomyOption : NSObject
+
+@property (nonatomic, assign, readonly) NSInteger identifier;
+@property (nonatomic, copy, readonly) NSString *title;
+
+- (instancetype)initWithIdentifier:(NSInteger)identifier
+                              title:(NSString *)title NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
+
+@end
 
 /// Immutable provider identity consumed by the SwiftUI marketplace filter.
 /// Provider filtering remains presentation-only; the authoritative VM item
@@ -29,6 +41,24 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/// Immutable presentation snapshot of the legacy Smart Pill context. The
+/// Objective-C bridge composes it from authoritative taxonomy, section,
+/// provider-identity, and filter state so SwiftUI only renders the result.
+@interface PPMarketplaceNavigationContext : NSObject
+
+@property (nonatomic, copy, readonly) NSString *title;
+@property (nonatomic, copy, readonly) NSString *subtitle;
+@property (nonatomic, copy, readonly) NSString *systemImageName;
+@property (nonatomic, copy, readonly) NSString *accessibilityLabel;
+
+- (instancetype)initWithTitle:(NSString *)title
+                      subtitle:(NSString *)subtitle
+               systemImageName:(NSString *)systemImageName
+            accessibilityLabel:(NSString *)accessibilityLabel NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
+
+@end
+
 /// Narrow compatibility seam between the new SwiftUI DataViewer and the
 /// production Objective-C services. It deliberately contains no visible UI.
 ///
@@ -41,7 +71,6 @@ NS_ASSUME_NONNULL_BEGIN
 @interface PPMarketplaceDataViewBridge : NSObject <PPUniversalCellDelegate>
 
 @property (nonatomic, weak, nullable) UIViewController *presentingViewController;
-@property (nonatomic, strong, readonly) PPDataViewInput *input;
 
 @property (nonatomic, copy, nullable) void (^itemsDidChange)(void);
 @property (nonatomic, copy, nullable) void (^itemsDidAppend)(NSArray<NSIndexPath *> *indexPaths);
@@ -51,9 +80,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) void (^presentationStateDidChange)(void);
 
 @property (nonatomic, copy, readonly) NSArray<PPUniversalCellViewModel *> *items;
-@property (nonatomic, copy, readonly) NSArray<MainKindsModel *> *mainKinds;
-@property (nonatomic, copy, readonly) NSArray<SubKindModel *> *subKinds;
-@property (nonatomic, strong, readonly, nullable) MainKindsModel *currentMainKind;
+@property (nonatomic, copy, readonly) NSArray<PPMarketplaceTaxonomyOption *> *mainKindOptions;
+@property (nonatomic, copy, readonly) NSArray<PPMarketplaceTaxonomyOption *> *subKindOptions;
+@property (nonatomic, assign, readonly) NSInteger currentMainKindID;
 @property (nonatomic, assign, readonly) PPDataSection currentSection;
 @property (nonatomic, assign, readonly) NSInteger currentSubKindID;
 @property (nonatomic, assign, readonly, getter=isLoading) BOOL loading;
@@ -61,6 +90,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, readonly) NSString *currentMainKindTitle;
 @property (nonatomic, copy, readonly) NSString *currentSubKindTitle;
 @property (nonatomic, strong, readonly) UIColor *accentColor;
+/// `YES` when marketplace presentation is using the Pure Pets brand accent
+/// role. Presentation uses this semantic signal to keep the persistent brand
+/// wash quieter without reimplementing preference logic or comparing colors.
+@property (nonatomic, assign, readonly, getter=isUsingBrandAccent) BOOL usingBrandAccent;
 @property (nonatomic, assign, readonly) NSInteger cartItemCount;
 @property (nonatomic, assign, readonly) CGFloat bottomNavigationClearance;
 
@@ -72,23 +105,17 @@ NS_ASSUME_NONNULL_BEGIN
 /// explicit override, per-kind persisted section, then advertisements.
 - (void)start NS_SWIFT_NAME(start());
 - (void)reload NS_SWIFT_NAME(reload());
+- (void)reloadWithCompletion:
+    (void (^ _Nullable)(NSError * _Nullable error))completion
+    NS_SWIFT_NAME(reload(completion:));
 - (void)fetchNextPage NS_SWIFT_NAME(fetchNextPage());
 
 - (void)switchToSection:(PPDataSection)section
     NS_SWIFT_NAME(switchSection(_:));
-- (void)switchToMainKind:(MainKindsModel *)mainKind
-    NS_SWIFT_NAME(switchMainKind(_:));
-- (void)switchToSubKind:(nullable SubKindModel *)subKind
-    NS_SWIFT_NAME(switchSubKind(_:));
-
-- (NSInteger)identifierForMainKind:(MainKindsModel *)mainKind
-    NS_SWIFT_NAME(identifier(forMainKind:));
-- (NSString *)displayTitleForMainKind:(MainKindsModel *)mainKind
-    NS_SWIFT_NAME(displayTitle(forMainKind:));
-- (NSInteger)identifierForSubKind:(SubKindModel *)subKind
-    NS_SWIFT_NAME(identifier(forSubKind:));
-- (NSString *)displayTitleForSubKind:(SubKindModel *)subKind
-    NS_SWIFT_NAME(displayTitle(forSubKind:));
+- (void)switchToMainKindIdentifier:(NSInteger)identifier
+    NS_SWIFT_NAME(switchMainKind(identifier:));
+- (void)switchToSubKindIdentifier:(NSInteger)identifier
+    NS_SWIFT_NAME(switchSubKind(identifier:));
 
 - (PPFilterState *)filterStateForSection:(PPDataSection)section
     NS_SWIFT_NAME(filterState(for:));
@@ -99,6 +126,9 @@ NS_ASSUME_NONNULL_BEGIN
     NS_SWIFT_NAME(previewResultCount(for:));
 - (NSInteger)activeFilterCountForSection:(PPDataSection)section
     NS_SWIFT_NAME(activeFilterCount(for:));
+- (PPMarketplaceNavigationContext *)navigationContextForSection:(PPDataSection)section
+                                             selectedProviderID:(nullable NSString *)selectedProviderID
+    NS_SWIFT_NAME(navigationContext(for:selectedProviderID:));
 
 - (BOOL)sectionSupportsProviderFilter:(PPDataSection)section
     NS_SWIFT_NAME(sectionSupportsProviderFilter(_:));
@@ -113,6 +143,7 @@ NS_ASSUME_NONNULL_BEGIN
     NS_SWIFT_NAME(hydrateProviderIdentities(items:section:));
 
 - (void)openSearch NS_SWIFT_NAME(openSearch());
+- (void)goBack NS_SWIFT_NAME(goBack());
 - (void)openCart NS_SWIFT_NAME(openCart());
 - (void)openItem:(PPUniversalCellViewModel *)viewModel
     NS_SWIFT_NAME(open(item:));

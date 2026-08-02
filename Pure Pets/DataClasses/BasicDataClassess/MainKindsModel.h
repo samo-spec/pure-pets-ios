@@ -7,7 +7,7 @@
 
 
 #import "SubKindModel.h"
-@import FirebaseFirestore;
+#import <FirebaseFirestore/FirebaseFirestore.h>
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PPAccessoryCategoryModel : NSObject<XLFormOptionObject>

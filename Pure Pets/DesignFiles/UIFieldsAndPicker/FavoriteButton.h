@@ -27,6 +27,9 @@
 @property (nonatomic, strong) NSString *adID;
 @property (nonatomic, assign) BOOL isFavorite;
 @property (nonatomic, assign) BOOL hidesBackground;
+/// Defaults to the app brand. Marketplace cards override this with their
+/// selected main-kind accent without changing favorite persistence behavior.
+@property (nonatomic, strong) UIColor *favoriteAccentColor;
 - (void)toggleFavorite;
 @property (strong, nonatomic) NSString *collection;
 @end

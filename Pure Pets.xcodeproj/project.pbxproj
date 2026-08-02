@@ -515,8 +515,13 @@
 		F28DD5902F04323500FF2671 /* HJCarouselViewLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD58F2F04323500FF2671 /* HJCarouselViewLayout.m */; };
 		F28DD5A22F049C2A00FF2671 /* PPDataViewVM.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A12F049C0E00FF2671 /* PPDataViewVM.m */; };
 		F28DD5A62F04CC6500FF2671 /* PPDataViewInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */; };
-		F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */; };
-		F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */; };
+		B7DA10020000000000000002 /* PPMarketplaceDataViewBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00020000000000000002 /* PPMarketplaceDataViewBridge.m */; };
+		B7DA10030000000000000003 /* PPMarketplaceDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00030000000000000003 /* PPMarketplaceDataViewController.swift */; };
+		B7DA10040000000000000004 /* PPMarketplaceDataViewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00040000000000000004 /* PPMarketplaceDataViewStore.swift */; };
+		B7DA10050000000000000005 /* PPMarketplaceDataViewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00050000000000000005 /* PPMarketplaceDataViewScreen.swift */; };
+		B7DA10060000000000000006 /* PPMarketplaceDataViewComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00060000000000000006 /* PPMarketplaceDataViewComponents.swift */; };
+		B7DA10070000000000000007 /* PPMarketplaceFilterSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00070000000000000007 /* PPMarketplaceFilterSheets.swift */; };
+		B7DA10080000000000000008 /* PPMarketplaceCompatibilityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00080000000000000008 /* PPMarketplaceCompatibilityCard.swift */; };
 		F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */ = {isa = PBXBuildFile; fileRef = F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */; };
 		F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F290F54E2FD9E943008EADEE /* SellerProfileVC.m */; };
 		F2916F0B2D54A3E400FF0394 /* Beiruti-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */; };
@@ -723,8 +728,6 @@
 		F2BA434C2CCA489D00943394 /* ABCellMailStyleMenuView.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2BA43412CCA489D00943394 /* ABCellMailStyleMenuView.xib */; };
 		F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA434E2CCA4AC800943394 /* UIView+XIB.m */; };
 		F2BA97562DCE7C66007DE482 /* AddNewAd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA97552DCE7C65007DE482 /* AddNewAd.m */; };
-		F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */; };
-		F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */; };
 		F2BC30D62E43E385003F603D /* UIScreen.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC30D52E43E385003F603D /* UIScreen.m */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
 		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
@@ -1865,10 +1868,14 @@
 		F28DD5A12F049C0E00FF2671 /* PPDataViewVM.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewVM.m; sourceTree = "<group>"; };
 		F28DD5A42F04CC5D00FF2671 /* PPDataViewInput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDataViewInput.h; sourceTree = "<group>"; };
 		F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewInput.m; sourceTree = "<group>"; };
-		F28DD5A72F04D7FE00FF2671 /* PPDataViewVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDataViewVC.h; sourceTree = "<group>"; };
-		F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewVC.m; sourceTree = "<group>"; };
-		F28DD5AA2F04EE2C00FF2671 /* PPFilterSheetVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFilterSheetVC.h; sourceTree = "<group>"; };
-		F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFilterSheetVC.m; sourceTree = "<group>"; };
+		B7DA00010000000000000001 /* PPMarketplaceDataViewBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPMarketplaceDataViewBridge.h; sourceTree = "<group>"; };
+		B7DA00020000000000000002 /* PPMarketplaceDataViewBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPMarketplaceDataViewBridge.m; sourceTree = "<group>"; };
+		B7DA00030000000000000003 /* PPMarketplaceDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceDataViewController.swift; sourceTree = "<group>"; };
+		B7DA00040000000000000004 /* PPMarketplaceDataViewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceDataViewStore.swift; sourceTree = "<group>"; };
+		B7DA00050000000000000005 /* PPMarketplaceDataViewScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceDataViewScreen.swift; sourceTree = "<group>"; };
+		B7DA00060000000000000006 /* PPMarketplaceDataViewComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceDataViewComponents.swift; sourceTree = "<group>"; };
+		B7DA00070000000000000007 /* PPMarketplaceFilterSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceFilterSheets.swift; sourceTree = "<group>"; };
+		B7DA00080000000000000008 /* PPMarketplaceCompatibilityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceCompatibilityCard.swift; sourceTree = "<group>"; };
 		F28E28A62DEB2B5C00D774D0 /* MyItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyItemsViewController.h; sourceTree = "<group>"; };
 		F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyItemsViewControllerr.m; sourceTree = "<group>"; };
 		F28F03922D95E384008F962A /* Pure Pets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pure Pets.entitlements"; sourceTree = "<group>"; };
@@ -2223,10 +2230,6 @@
 		F2BA434E2CCA4AC800943394 /* UIView+XIB.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+XIB.m"; sourceTree = "<group>"; };
 		F2BA97542DCE7C65007DE482 /* AddNewAd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddNewAd.h; sourceTree = "<group>"; };
 		F2BA97552DCE7C65007DE482 /* AddNewAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddNewAd.m; sourceTree = "<group>"; };
-		F2BBD0012FFF000100ABCDEF /* BBDataViewFullDetailsCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsCell.h; sourceTree = "<group>"; };
-		F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsCell.m; sourceTree = "<group>"; };
-		F2BBD0032FFF000100ABCDEF /* BBDataViewFullDetailsLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsLayout.h; sourceTree = "<group>"; };
-		F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsLayout.m; sourceTree = "<group>"; };
 		F2BC30D42E43E37A003F603D /* UIScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIScreen.h; sourceTree = "<group>"; };
 		F2BC30D52E43E385003F603D /* UIScreen.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIScreen.m; sourceTree = "<group>"; };
 		F2C085532F935AF8001C27DA /* PPAuditLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuditLogger.h; sourceTree = "<group>"; };
@@ -4311,16 +4314,16 @@
 			isa = PBXGroup;
 			children = (
 				F233B447300C7E6700D55489 /* Helpers */,
+				B7DA00010000000000000001 /* PPMarketplaceDataViewBridge.h */,
+				B7DA00020000000000000002 /* PPMarketplaceDataViewBridge.m */,
+				B7DA00030000000000000003 /* PPMarketplaceDataViewController.swift */,
+				B7DA00040000000000000004 /* PPMarketplaceDataViewStore.swift */,
+				B7DA00050000000000000005 /* PPMarketplaceDataViewScreen.swift */,
+				B7DA00060000000000000006 /* PPMarketplaceDataViewComponents.swift */,
+				B7DA00070000000000000007 /* PPMarketplaceFilterSheets.swift */,
+				B7DA00080000000000000008 /* PPMarketplaceCompatibilityCard.swift */,
 				F23DDE642F8AC9AC0020D4F4 /* PPFilterModels.h */,
 				F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */,
-				F28DD5AA2F04EE2C00FF2671 /* PPFilterSheetVC.h */,
-				F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */,
-				F28DD5A72F04D7FE00FF2671 /* PPDataViewVC.h */,
-				F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */,
-				F2BBD0012FFF000100ABCDEF /* BBDataViewFullDetailsCell.h */,
-				F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */,
-				F2BBD0032FFF000100ABCDEF /* BBDataViewFullDetailsLayout.h */,
-				F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */,
 				F28DD5A42F04CC5D00FF2671 /* PPDataViewInput.h */,
 				F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */,
 				F28DD5A02F049BFE00FF2671 /* PPDataViewVM.h */,
@@ -5992,9 +5995,13 @@
 				F271466D2CCE6B5300F7F3BA /* XLFormSwitchCell.m in Sources */,
 				F271466E2CCE6B5300F7F3BA /* XLForm.m in Sources */,
 				F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */,
-				F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */,
-				F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */,
-				F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */,
+				B7DA10020000000000000002 /* PPMarketplaceDataViewBridge.m in Sources */,
+				B7DA10030000000000000003 /* PPMarketplaceDataViewController.swift in Sources */,
+				B7DA10040000000000000004 /* PPMarketplaceDataViewStore.swift in Sources */,
+				B7DA10050000000000000005 /* PPMarketplaceDataViewScreen.swift in Sources */,
+				B7DA10060000000000000006 /* PPMarketplaceDataViewComponents.swift in Sources */,
+				B7DA10070000000000000007 /* PPMarketplaceFilterSheets.swift in Sources */,
+				B7DA10080000000000000008 /* PPMarketplaceCompatibilityCard.swift in Sources */,
 				F2E33F6A3006C4FF005E31C6 /* PPOrderTimelineViewController.m in Sources */,
 				F22389903017C8CA001E5DBB /* CartLineController.swift in Sources */,
 				F28A0A0E2EEA3C3F00EE5055 /* AppDataListenerManager.m in Sources */,
@@ -6330,7 +6337,6 @@
 				F2AB48922C72CF3C00D88603 /* JGProgressHUDIndeterminateIndicatorView.m in Sources */,
 				F2B116B32C51E48E00A77F4A /* selectTableViewController.m in Sources */,
 				F2D99F7A2E2849E400CD4552 /* ServiceViewerViewController.m in Sources */,
-				F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */,
 				F26EDCEB2F26ECEF00AE10ED /* PPWaveformView.m in Sources */,
 				F2DEF00B2D6FEF2B0015B7FB /* ODRefreshControl.m in Sources */,
 				F2977D5D2E4ABB2E003A7005 /* AppSearchResultsVC.m in Sources */,

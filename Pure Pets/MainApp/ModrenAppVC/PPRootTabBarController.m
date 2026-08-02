@@ -940,12 +940,20 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return NO;
     }
 
+    SEL explicitEligibilitySelector = NSSelectorFromString(@"pp_isFloatingCartEligible");
+    if ([viewController respondsToSelector:explicitEligibilitySelector]) {
+        BOOL (*eligibilityImplementation)(id, SEL) =
+            (BOOL (*)(id, SEL))[viewController methodForSelector:explicitEligibilitySelector];
+        if (eligibilityImplementation) {
+            return eligibilityImplementation(viewController, explicitEligibilitySelector);
+        }
+    }
+
     for (Class candidateClass = viewController.class;
          candidateClass && candidateClass != UIViewController.class;
          candidateClass = class_getSuperclass(candidateClass)) {
         NSString *className = NSStringFromClass(candidateClass);
-        if ([className isEqualToString:@"PPDataViewVC"] ||
-            [className isEqualToString:@"SellerProfileVC"]) {
+        if ([className isEqualToString:@"SellerProfileVC"]) {
             return YES;
         }
     }

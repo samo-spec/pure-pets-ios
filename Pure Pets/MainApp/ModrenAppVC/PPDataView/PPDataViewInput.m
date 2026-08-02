@@ -8,6 +8,9 @@
 #import "PPDataViewInput.h"
 #import "MainKindsModel.h"
 
+NSString * const PPMarketplaceUsesMainKindAccentColorsPreferenceKey =
+    @"pp.marketplace.usesMainKindAccentColors";
+
 @implementation PPDataViewInput
 
 + (instancetype)inputWithMainKind:(MainKindsModel *)mainKind
@@ -45,13 +48,17 @@
     [mainKindsArr isKindOfClass:[NSArray class]] ? mainKindsArr : @[];
 
     input.mainKindsArr = safeKinds;
-    input.mainKind = safeKinds.firstObject;
+    input.mainKind = sourceTarget == PPDeepLinkTargetAllCategories
+        ? nil
+        : safeKinds.firstObject;
     input.sourceTarget = sourceTarget;
     input.source = source;
     input.title = (sourceTarget == PPDeepLinkTargetAllCategories)
         ? (kLang(@"AllCategories") ?: kLang(@"All") ?: @"")
         : (input.mainKind.KindName ?: @"");
-    input.accentColor = (input.mainKind && input.mainKind.kindColor) ? input.mainKind.kindColor : nil;
+    input.accentColor = (input.mainKind && input.mainKind.kindColor)
+        ? input.mainKind.kindColor
+        : nil;
     input.initialSectionOverride = nil;
     return input;
 }

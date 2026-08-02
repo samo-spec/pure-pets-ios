@@ -6,7 +6,7 @@
 //
 
 
-@import FirebaseFirestore;
+#import <FirebaseFirestore/FirebaseFirestore.h>
 #import "XLFormOptionsObject.h"
 #import "Language.h"
 

@@ -20,12 +20,6 @@ public final class PPCollectionLayoutManager: NSObject {
     public func layoutForMode(_ rawMode: Int) -> UICollectionViewLayout {
         let mode = PPLayoutMode(legacyRawValue: rawMode)
 
-        if mode == .dataViewFullDetails,
-           let layoutClass = NSClassFromString("BBDataViewFullDetailsLayout") as? NSObject.Type,
-           let layout = layoutClass.init() as? UICollectionViewLayout {
-            return layout
-        }
-
         if mode == .carousel {
             return makeCarouselLayout()
         }

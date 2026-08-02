@@ -89,6 +89,7 @@ struct PPPetAdHeroGallery: View {
                 .indexViewStyle(.page(backgroundDisplayMode: .never))
                 .ignoresSafeArea(edges: .top)
             }
+            .ignoresSafeArea(edges: .top)
         }
     }
 
@@ -727,6 +728,7 @@ private struct PPPetAdTopAnchoredFillImage: View {
                 .frame(width: renderedW, height: renderedH)
                 .offset(x: clampedX, y: clampedY)
         }
+        .ignoresSafeArea(edges: .top)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
         .onAppear {

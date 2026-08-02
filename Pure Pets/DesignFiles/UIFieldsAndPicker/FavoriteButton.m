@@ -206,6 +206,7 @@
     self.adjustsImageWhenHighlighted = NO;
     self.showsMenuAsPrimaryAction = NO;
     self.isFavorite = NO;
+    _favoriteAccentColor = AppPrimaryClr;
     self.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
     self.accessibilityHint  = NSLocalizedString(@"a11y_btn_favorite_hint", @"Double-tap to add or remove from favorites");
     self.accessibilityTraits = UIAccessibilityTraitButton;
@@ -249,7 +250,7 @@
     if (self.isFavorite) {
         // Active / favorited
         bgColor   = [AppForgroundColr colorWithAlphaComponent:0.85];
-        iconColor = AppPrimaryClr;
+        iconColor = self.favoriteAccentColor ?: AppPrimaryClr;
     } else {
         // Idle / unfavorited
         bgColor   = [AppForgroundColr colorWithAlphaComponent:0.72];
@@ -285,6 +286,11 @@
         [self setPreferredSymbolConfiguration:config
                          forImageInState:UIControlStateNormal];
     }
+}
+
+- (void)setFavoriteAccentColor:(UIColor *)favoriteAccentColor {
+    _favoriteAccentColor = favoriteAccentColor ?: AppPrimaryClr;
+    [self updateAppearance];
 }
 
 

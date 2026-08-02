@@ -18,7 +18,9 @@
 #import "PPAdSharingHelper.h"
 #import "PPAlertHelper.h"
 #import "PPAnalytics.h"
+#import "PPDataViewInput.h"
 #import "PPDataViewVM.h"
+#import "PPFunc.h"
 #import "PPHomeHelper.h"
 #import "PPHUD.h"
 #import "PPNavigationController.h"
@@ -34,9 +36,14 @@
 #import "SubKindModel.h"
 #import "UserManager.h"
 #import "UserModel.h"
+#import "UIViewController+PPBottomSurface.h"
 
 static NSString * const PPMarketplaceProviderIdentityTitleKey = @"title";
 static NSString * const PPMarketplaceProviderIdentityPhotoURLKey = @"photoURL";
+
+@interface UIViewController (PPMarketplaceDataViewBottomClearance)
+- (CGFloat)pp_bottomNavigationContentClearance;
+@end
 
 static NSString *PPMarketplaceTrimmedString(id value)
 {
@@ -49,23 +56,6 @@ static NSString *PPMarketplaceTrimmedString(id value)
             stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
     }
     return @"";
-}
-
-static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *selectorName)
-{
-    if (!object || selectorName.length == 0) {
-        return nil;
-    }
-    if ([object isKindOfClass:NSDictionary.class]) {
-        return ((NSDictionary *)object)[selectorName];
-    }
-    SEL selector = NSSelectorFromString(selectorName);
-    if (![object respondsToSelector:selector]) {
-        return nil;
-    }
-    id (*implementation)(id, SEL) =
-        (id (*)(id, SEL))[object methodForSelector:selector];
-    return implementation ? implementation(object, selector) : nil;
 }
 
 @implementation PPMarketplaceProviderOption
@@ -88,6 +78,42 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 @end
 
+@implementation PPMarketplaceTaxonomyOption
+
+- (instancetype)initWithIdentifier:(NSInteger)identifier
+                              title:(NSString *)title
+{
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+    _identifier = identifier;
+    _title = [title copy] ?: @"";
+    return self;
+}
+
+@end
+
+@implementation PPMarketplaceNavigationContext
+
+- (instancetype)initWithTitle:(NSString *)title
+                      subtitle:(NSString *)subtitle
+               systemImageName:(NSString *)systemImageName
+            accessibilityLabel:(NSString *)accessibilityLabel
+{
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+    _title = [title copy] ?: @"";
+    _subtitle = [subtitle copy] ?: @"";
+    _systemImageName = [systemImageName copy] ?: @"";
+    _accessibilityLabel = [accessibilityLabel copy] ?: @"";
+    return self;
+}
+
+@end
+
 @interface PPMarketplaceDataViewBridge ()
 
 @property (nonatomic, strong) PPDataViewVM *viewModel;
@@ -98,6 +124,14 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 @property (nonatomic, strong) NSMutableSet<NSString *> *hydratedProviderIDs;
 @property (nonatomic, assign) BOOL started;
 
+- (BOOL)pp_shouldUseBrandAccent;
+- (void)pp_submitReportForContentID:(NSString *)contentID
+                        contentType:(NSString *)contentType
+                         collection:(NSString *)collection
+                            ownerID:(NSString *)ownerID
+                         reporterID:(NSString *)reporterID
+                             reason:(NSString *)reason;
+
 @end
 
 @implementation PPMarketplaceDataViewBridge
@@ -106,7 +140,7 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 - (instancetype)initWithInput:(PPDataViewInput *)input
 {
-    NSParameterAssert(input);
+    NSParameterAssert(input != nil);
     self = [super init];
     if (!self) {
         return nil;
@@ -117,11 +151,6 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
     _providerIdentityCache = [NSMutableDictionary dictionary];
     _providerIdentityFetchesInFlight = [NSMutableSet set];
     _hydratedProviderIDs = [NSMutableSet set];
-
-    if (_input.sourceTarget == PPDeepLinkTargetAllCategories &&
-        !_input.mainKind && _input.mainKindsArr.count > 0) {
-        _input.mainKind = _input.mainKindsArr.firstObject;
-    }
 
     _viewModel = [[PPDataViewVM alloc] initWithMainKind:_input.mainKind
                                            sourceTarget:_input.sourceTarget];
@@ -197,11 +226,21 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 - (void)reload
 {
+    [self reloadWithCompletion:nil];
+}
+
+- (void)reloadWithCompletion:(void (^)(NSError * _Nullable))completion
+{
     __weak typeof(self) weakSelf = self;
     [self.viewModel reloadDataWithCompletion:^(NSError * _Nullable error) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (error && self.loadingDidFail) {
+        BOOL wasCancelled = [error.domain isEqualToString:NSURLErrorDomain] &&
+            error.code == NSURLErrorCancelled;
+        if (error && !wasCancelled && self.loadingDidFail) {
             self.loadingDidFail(error);
+        }
+        if (completion) {
+            completion(error);
         }
     }];
 }
@@ -229,12 +268,40 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 - (NSArray<SubKindModel *> *)subKinds
 {
+    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+        return @[];
+    }
     return [self.input.mainKind.SubKindsArray copy] ?: @[];
 }
 
-- (MainKindsModel *)currentMainKind
+- (NSArray<PPMarketplaceTaxonomyOption *> *)mainKindOptions
 {
-    return self.input.mainKind;
+    NSMutableArray<PPMarketplaceTaxonomyOption *> *options = [NSMutableArray array];
+    for (MainKindsModel *mainKind in self.mainKinds) {
+        [options addObject:[[PPMarketplaceTaxonomyOption alloc]
+            initWithIdentifier:[self identifierForMainKind:mainKind]
+                         title:[self displayTitleForMainKind:mainKind]]];
+    }
+    return options;
+}
+
+- (NSArray<PPMarketplaceTaxonomyOption *> *)subKindOptions
+{
+    NSMutableArray<PPMarketplaceTaxonomyOption *> *options = [NSMutableArray array];
+    for (SubKindModel *subKind in self.subKinds) {
+        [options addObject:[[PPMarketplaceTaxonomyOption alloc]
+            initWithIdentifier:[self identifierForSubKind:subKind]
+                         title:[self displayTitleForSubKind:subKind]]];
+    }
+    return options;
+}
+
+- (NSInteger)currentMainKindID
+{
+    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+        return 0;
+    }
+    return self.input.mainKind.ID;
 }
 
 - (PPDataSection)currentSection
@@ -282,7 +349,26 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 - (UIColor *)accentColor
 {
-    return self.input.accentColor ?: [GM appPrimaryColor] ?: UIColor.systemPinkColor;
+    return [self pp_shouldUseBrandAccent]
+        ? ([GM appPrimaryColor] ?: UIColor.systemPinkColor)
+        : self.input.accentColor;
+}
+
+- (BOOL)isUsingBrandAccent
+{
+    return [self pp_shouldUseBrandAccent];
+}
+
+- (BOOL)pp_shouldUseBrandAccent
+{
+    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+        return YES;
+    }
+
+    BOOL usesMainKindAccentColors =
+        [NSUserDefaults.standardUserDefaults
+            boolForKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
+    return !usesMainKindAccentColors || self.input.accentColor == nil;
 }
 
 - (NSInteger)cartItemCount
@@ -292,7 +378,7 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 - (CGFloat)bottomNavigationClearance
 {
-    SEL selector = NSSelectorFromString(@"pp_bottomNavigationContentClearance");
+    SEL selector = @selector(pp_bottomNavigationContentClearance);
     NSMutableOrderedSet<UIViewController *> *candidates = [NSMutableOrderedSet orderedSet];
     UIViewController *presenter = self.presentingViewController;
     if (presenter) {
@@ -391,11 +477,15 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 - (void)switchToMainKind:(MainKindsModel *)mainKind
 {
-    if (!mainKind || self.input.mainKind.ID == mainKind.ID) {
+    BOOL exitsAllCategories =
+        self.input.sourceTarget == PPDeepLinkTargetAllCategories;
+    if (!mainKind ||
+        (!exitsAllCategories && self.input.mainKind.ID == mainKind.ID)) {
         return;
     }
 
     self.input.mainKind = mainKind;
+    self.input.accentColor = mainKind.kindColor;
     [self.filterStates removeAllObjects];
     if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
         self.input.sourceTarget = PPDeepLinkTargetNone;
@@ -418,6 +508,39 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
     [self.viewModel switchToMainKind:mainKind];
     [[NovaAmbientAssistantCoordinator sharedCoordinator]
         categoryDidOpen:mainKind.KindName ?: mainKind.KindNameEn];
+    if (self.presentationStateDidChange) {
+        self.presentationStateDidChange();
+    }
+}
+
+- (void)switchToMainKindIdentifier:(NSInteger)identifier
+{
+    if (identifier == 0) {
+        [self switchToAllMainKinds];
+        return;
+    }
+    for (MainKindsModel *mainKind in self.mainKinds) {
+        if (mainKind.ID == identifier) {
+            [self switchToMainKind:mainKind];
+            return;
+        }
+    }
+}
+
+- (void)switchToAllMainKinds
+{
+    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+        return;
+    }
+
+    self.input.sourceTarget = PPDeepLinkTargetAllCategories;
+    self.input.mainKind = self.mainKinds.firstObject;
+    self.input.accentColor = [GM appPrimaryColor] ?: UIColor.systemPinkColor;
+    [self.filterStates removeAllObjects];
+    self.viewModel.currentSubKindID = 0;
+    [self.viewModel switchToAllMainKinds];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator]
+        categoryDidOpen:self.currentMainKindTitle];
     if (self.presentationStateDidChange) {
         self.presentationStateDidChange();
     }
@@ -447,6 +570,20 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
     }
     if (self.presentationStateDidChange) {
         self.presentationStateDidChange();
+    }
+}
+
+- (void)switchToSubKindIdentifier:(NSInteger)identifier
+{
+    if (identifier == 0) {
+        [self switchToSubKind:nil];
+        return;
+    }
+    for (SubKindModel *subKind in self.subKinds) {
+        if (subKind.ID == identifier) {
+            [self switchToSubKind:subKind];
+            return;
+        }
     }
 }
 
@@ -541,6 +678,11 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
     return [self.viewModel previewResultCountForFilterState:filterState];
 }
 
+- (NSInteger)activeFilterCountForSection:(PPDataSection)section
+{
+    return [self filterStateForSection:section].activeFilterCount;
+}
+
 #pragma mark - Provider presentation filter
 
 - (BOOL)sectionSupportsProviderFilter:(PPDataSection)section
@@ -560,13 +702,6 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
     if ([model isKindOfClass:ServiceModel.class]) {
         return PPMarketplaceTrimmedString(((ServiceModel *)model).serviceOwnerID);
     }
-    for (NSString *selectorName in @[@"ownerID", @"providerID", @"providerId", @"userID", @"sellerID"]) {
-        NSString *providerID = PPMarketplaceTrimmedString(
-            PPMarketplaceObjectValueForSelector(model, selectorName));
-        if (providerID.length > 0) {
-            return providerID;
-        }
-    }
     return @"";
 }
 
@@ -577,8 +712,7 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
         return @"";
     }
     NSMutableArray<NSString *> *candidates = [NSMutableArray array];
-    NSString *bestName = PPMarketplaceTrimmedString(
-        PPMarketplaceObjectValueForSelector(user, @"bestDisplayName"));
+    NSString *bestName = PPMarketplaceTrimmedString([user bestDisplayName]);
     if (bestName.length > 0) {
         [candidates addObject:bestName];
     }
@@ -638,19 +772,6 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
             return ownerName;
         }
     }
-    NSArray<NSString *> *selectors = @[
-        @"providerDisplayName", @"providerName", @"providerBusinessName",
-        @"ownerDisplayName", @"ownerName", @"sellerDisplayName", @"sellerName",
-        @"storeName", @"shopName", @"companyName", @"CompanyName",
-        @"businessName", @"legalName"
-    ];
-    for (NSString *selectorName in selectors) {
-        NSString *title = PPMarketplaceTrimmedString(
-            PPMarketplaceObjectValueForSelector(model, selectorName));
-        if (title.length > 0 && ![title isEqualToString:providerID]) {
-            return title;
-        }
-    }
     NSString *fallback = kLang(@"service_view_provider_title");
     return fallback.length > 0 ? fallback : providerID;
 }
@@ -662,21 +783,6 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
     NSString *cachedURL = PPMarketplaceTrimmedString(cached[PPMarketplaceProviderIdentityPhotoURLKey]);
     if (cachedURL.length > 0) {
         return cachedURL;
-    }
-    NSArray<NSString *> *selectors = @[
-        @"providerImageURL", @"providerImageUrl", @"providerPhotoURL", @"providerPhotoUrl",
-        @"providerLogoURL", @"providerLogoUrl", @"ownerImageURL", @"ownerImageUrl",
-        @"ownerPhotoURL", @"ownerPhotoUrl", @"ownerLogoURL", @"ownerLogoUrl",
-        @"sellerImageURL", @"sellerImageUrl", @"sellerPhotoURL", @"sellerPhotoUrl",
-        @"storeImageURL", @"storeImageUrl", @"storeLogoURL", @"storeLogoUrl",
-        @"companyLogoURL", @"companyLogoUrl"
-    ];
-    for (NSString *selectorName in selectors) {
-        NSString *photoURL = PPMarketplaceTrimmedString(
-            PPMarketplaceObjectValueForSelector(viewModel.ModelObject, selectorName));
-        if (photoURL.length > 0) {
-            return photoURL;
-        }
     }
     return @"";
 }
@@ -728,6 +834,318 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
                      itemCount:[entry[@"count"] integerValue]]];
     }
     return options.copy;
+}
+
+#pragma mark - Smart navigation context
+
+- (NSString *)pp_navigationSectionTitleForSection:(PPDataSection)section
+{
+    switch (section) {
+        case PPDataSectionAds:
+            return kLang(@"Ads") ?: @"";
+        case PPDataSectionAccessories:
+            return kLang(@"Accessories") ?: @"";
+        case PPDataSectionFood:
+            return kLang(@"Food") ?: @"";
+        case PPDataSectionServices:
+            return kLang(@"services") ?: @"";
+    }
+    return @"";
+}
+
+- (NSString *)pp_navigationSectionContextForSection:(PPDataSection)section
+{
+    NSString *key = @"dataview_filter_context_products";
+    if (section == PPDataSectionAds) {
+        key = @"dataview_filter_context_listings";
+    } else if (section == PPDataSectionServices) {
+        key = @"dataview_filter_context_services";
+    }
+    NSString *localized = PPMarketplaceTrimmedString(kLang(key));
+    return localized.length > 0
+        ? localized
+        : [self pp_navigationSectionTitleForSection:section];
+}
+
+- (NSString *)pp_navigationMainKindContextTitle
+{
+    NSString *title = PPMarketplaceTrimmedString(self.currentMainKindTitle);
+    NSString *allSpecies = PPMarketplaceTrimmedString(kLang(@"data_nav_all_species"));
+    NSString *all = PPMarketplaceTrimmedString(kLang(@"All"));
+    if (title.length == 0 ||
+        [title isEqualToString:allSpecies] ||
+        (all.length > 0 && [title isEqualToString:all])) {
+        return @"";
+    }
+    return title;
+}
+
+- (NSString *)pp_navigationSubKindContextTitle
+{
+    NSString *title = PPMarketplaceTrimmedString(self.currentSubKindTitle);
+    NSString *allBreed = PPMarketplaceTrimmedString(kLang(@"data_nav_all_breed"));
+    NSString *all = PPMarketplaceTrimmedString(kLang(@"All"));
+    if (title.length == 0 ||
+        [title isEqualToString:allBreed] ||
+        (all.length > 0 && [title isEqualToString:all])) {
+        return @"";
+    }
+    return title;
+}
+
+- (NSString *)pp_navigationPrimaryTitleForSection:(PPDataSection)section
+{
+    NSString *sectionTitle = PPMarketplaceTrimmedString(
+        [self pp_navigationSectionTitleForSection:section]);
+    NSString *kindTitle = [self pp_navigationMainKindContextTitle];
+    NSString *baseTitle = @"";
+    if (sectionTitle.length == 0) {
+        baseTitle = kindTitle.length > 0
+            ? kindTitle
+            : [self pp_navigationSectionContextForSection:section];
+    } else if (kindTitle.length == 0) {
+        baseTitle = sectionTitle;
+    } else if ([sectionTitle localizedCaseInsensitiveContainsString:kindTitle] ||
+               [kindTitle localizedCaseInsensitiveContainsString:sectionTitle]) {
+        baseTitle = sectionTitle;
+    } else {
+        baseTitle = Language.isRTL
+            ? [NSString stringWithFormat:@"%@ %@", sectionTitle, kindTitle]
+            : [NSString stringWithFormat:@"%@ %@", kindTitle, sectionTitle];
+    }
+
+    NSString *subKindTitle = [self pp_navigationSubKindContextTitle];
+    if (subKindTitle.length == 0 ||
+        [baseTitle localizedCaseInsensitiveContainsString:subKindTitle]) {
+        return baseTitle;
+    }
+    if (baseTitle.length == 0) {
+        return subKindTitle;
+    }
+    return [NSString stringWithFormat:@"%@ · %@", baseTitle, subKindTitle];
+}
+
+- (PPFilterGroup *)pp_navigationStrongestActiveFilterForSection:(PPDataSection)section
+{
+    PPFilterState *state = [self filterStateForSection:section];
+    NSArray<NSString *> *priority = @[
+        PPFilterIDAccessoryCategory,
+        PPFilterIDServiceType,
+        PPFilterIDPrice,
+        PPFilterIDHasOffer,
+        PPFilterIDAvailability,
+        PPFilterIDCondition,
+        PPFilterIDGender,
+        PPFilterIDSort
+    ];
+    for (NSString *filterID in priority) {
+        PPFilterGroup *group = [state groupForID:filterID];
+        if (group.isActive) {
+            return group;
+        }
+    }
+    for (PPFilterGroup *group in state.groups) {
+        if (group.isActive) {
+            return group;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)pp_navigationDisplayTitleForFilterGroup:(PPFilterGroup *)group
+{
+    NSString *selectedTitle = PPMarketplaceTrimmedString(group.selectedTitle);
+    NSString *groupTitle = PPMarketplaceTrimmedString(group.title);
+    if (selectedTitle.length == 0 || [selectedTitle isEqualToString:groupTitle]) {
+        return @"";
+    }
+    return selectedTitle;
+}
+
+- (NSString *)pp_navigationShortProviderIdentifier:(NSString *)providerID
+{
+    NSString *cleanID = PPMarketplaceTrimmedString(providerID);
+    return cleanID.length <= 6 ? cleanID : [cleanID substringToIndex:6];
+}
+
+- (BOOL)pp_navigationProviderTitleIsGeneric:(NSString *)title
+                                 providerID:(NSString *)providerID
+{
+    NSString *cleanTitle = PPMarketplaceTrimmedString(title);
+    NSString *cleanProviderID = PPMarketplaceTrimmedString(providerID);
+    if (cleanTitle.length == 0 ||
+        (cleanProviderID.length > 0 && [cleanTitle isEqualToString:cleanProviderID]) ||
+        (cleanProviderID.length > 0 &&
+         [cleanTitle isEqualToString:[self pp_navigationShortProviderIdentifier:cleanProviderID]])) {
+        return YES;
+    }
+
+    NSMutableArray<NSString *> *genericTitles = [@[
+        @"Provider", @"Service Provider", @"مقدم الخدمة", @"مزود"
+    ] mutableCopy];
+    for (NSString *key in @[@"service_view_provider_title", @"dataview_filter_by_provider"]) {
+        NSString *localized = PPMarketplaceTrimmedString(kLang(key));
+        if (localized.length > 0) {
+            [genericTitles addObject:localized];
+        }
+    }
+    for (NSString *generic in genericTitles) {
+        if ([cleanTitle localizedCaseInsensitiveCompare:generic] == NSOrderedSame) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (NSString *)pp_navigationProviderTitleForID:(NSString *)providerID
+                                      section:(PPDataSection)section
+{
+    NSString *cleanProviderID = PPMarketplaceTrimmedString(providerID);
+    if (cleanProviderID.length == 0 || ![self sectionSupportsProviderFilter:section]) {
+        return @"";
+    }
+
+    NSDictionary<NSString *, NSString *> *cached =
+        [self pp_cachedIdentityForProviderID:cleanProviderID];
+    NSString *cachedTitle = PPMarketplaceTrimmedString(
+        cached[PPMarketplaceProviderIdentityTitleKey]);
+    if (![self pp_navigationProviderTitleIsGeneric:cachedTitle providerID:cleanProviderID]) {
+        return cachedTitle;
+    }
+
+    NSArray<PPMarketplaceProviderOption *> *options =
+        [self providerOptionsForItems:self.items section:section];
+    for (PPMarketplaceProviderOption *option in options) {
+        if (![option.providerID isEqualToString:cleanProviderID]) {
+            continue;
+        }
+        NSString *title = PPMarketplaceTrimmedString(option.title);
+        if (![self pp_navigationProviderTitleIsGeneric:title providerID:cleanProviderID]) {
+            return title;
+        }
+    }
+
+    for (PPUniversalCellViewModel *viewModel in self.items) {
+        if (![[self pp_providerIDForViewModel:viewModel] isEqualToString:cleanProviderID]) {
+            continue;
+        }
+        NSString *title = [self pp_providerTitleForViewModel:viewModel
+                                                  providerID:cleanProviderID];
+        if (![self pp_navigationProviderTitleIsGeneric:title providerID:cleanProviderID]) {
+            return title;
+        }
+    }
+
+    NSString *shortIdentifier = [self pp_navigationShortProviderIdentifier:cleanProviderID];
+    NSString *fallbackFormat = kLang(@"dataview_provider_fallback_name_format");
+    return fallbackFormat.length > 0
+        ? [NSString stringWithFormat:fallbackFormat, shortIdentifier]
+        : shortIdentifier;
+}
+
+- (NSString *)pp_navigationSecondaryTitleForSection:(PPDataSection)section
+                                  selectedProviderID:(NSString *)selectedProviderID
+{
+    NSInteger activeCount = [self activeFilterCountForSection:section];
+    if (PPMarketplaceTrimmedString(selectedProviderID).length > 0 &&
+        [self sectionSupportsProviderFilter:section]) {
+        activeCount += 1;
+    }
+
+    NSString *candidate = [self pp_navigationProviderTitleForID:selectedProviderID
+                                                        section:section];
+    if (candidate.length == 0) {
+        candidate = [self pp_navigationDisplayTitleForFilterGroup:
+            [self pp_navigationStrongestActiveFilterForSection:section]];
+    }
+    if (candidate.length == 0) {
+        candidate = [self pp_navigationSectionContextForSection:section];
+    }
+    if (candidate.length == 0) {
+        return @"";
+    }
+
+    if (activeCount > 1) {
+        NSString *format = kLang(@"dataview_smart_filter_additional_count_format");
+        NSString *additional = format.length > 0
+            ? [NSString stringWithFormat:format, (long)(activeCount - 1)]
+            : [NSString stringWithFormat:@"+%ld", (long)(activeCount - 1)];
+        return [NSString stringWithFormat:@"%@ · %@", candidate, additional];
+    }
+    return candidate;
+}
+
+- (NSString *)pp_navigationIconNameForSection:(PPDataSection)section
+                           selectedProviderID:(NSString *)selectedProviderID
+{
+    if ([self sectionSupportsProviderFilter:section] &&
+        PPMarketplaceTrimmedString(selectedProviderID).length > 0) {
+        return @"storefront.fill";
+    }
+    PPFilterGroup *group = [self pp_navigationStrongestActiveFilterForSection:section];
+    if ([group.filterID isEqualToString:PPFilterIDAccessoryCategory]) {
+        return @"square.grid.2x2.fill";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDPrice]) {
+        return @"tag.fill";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDHasOffer]) {
+        return @"flame.fill";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDAvailability]) {
+        return @"calendar.badge.clock";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDGender]) {
+        return @"person.2.fill";
+    }
+    NSString *chipIcon = PPMarketplaceTrimmedString(group.chipIconName);
+    if (chipIcon.length > 0) {
+        return chipIcon;
+    }
+    switch (section) {
+        case PPDataSectionAds:
+            return @"megaphone.fill";
+        case PPDataSectionAccessories:
+            return @"bag.fill";
+        case PPDataSectionFood:
+            return @"cart.fill";
+        case PPDataSectionServices:
+            return @"cross.case.fill";
+    }
+    return @"line.3.horizontal.decrease.circle.fill";
+}
+
+- (PPMarketplaceNavigationContext *)navigationContextForSection:(PPDataSection)section
+                                             selectedProviderID:(NSString *)selectedProviderID
+{
+    NSString *title = [self pp_navigationPrimaryTitleForSection:section];
+    NSString *subtitle = [self pp_navigationSecondaryTitleForSection:section
+                                                   selectedProviderID:selectedProviderID];
+    NSInteger activeCount = [self activeFilterCountForSection:section];
+    if (PPMarketplaceTrimmedString(selectedProviderID).length > 0 &&
+        [self sectionSupportsProviderFilter:section]) {
+        activeCount += 1;
+    }
+
+    NSMutableArray<NSString *> *accessibilityParts = [NSMutableArray array];
+    if (title.length > 0) {
+        [accessibilityParts addObject:title];
+    }
+    if (subtitle.length > 0 && ![subtitle isEqualToString:title]) {
+        [accessibilityParts addObject:subtitle];
+    }
+    NSString *activeCountFormat = kLang(@"dataview_filters_active_count_accessibility_format");
+    if (activeCount > 0 && activeCountFormat.length > 0) {
+        [accessibilityParts addObject:
+            [NSString stringWithFormat:activeCountFormat, (long)activeCount]];
+    }
+
+    return [[PPMarketplaceNavigationContext alloc]
+        initWithTitle:title
+             subtitle:subtitle
+      systemImageName:[self pp_navigationIconNameForSection:section
+                                         selectedProviderID:selectedProviderID]
+   accessibilityLabel:[accessibilityParts componentsJoinedByString:@", "]];
 }
 
 - (NSArray<PPUniversalCellViewModel *> *)items:(NSArray<PPUniversalCellViewModel *> *)items
@@ -898,6 +1316,19 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
                                    completion:nil];
 }
 
+- (void)goBack
+{
+    UIViewController *presenter = self.presentingViewController;
+    UINavigationController *navigationController = presenter.navigationController;
+    if (navigationController &&
+        navigationController.viewControllers.firstObject != presenter &&
+        [navigationController.viewControllers containsObject:presenter]) {
+        [navigationController popViewControllerAnimated:YES];
+        return;
+    }
+    [presenter dismissViewControllerAnimated:YES completion:nil];
+}
+
 - (void)openCart
 {
     if (![UserManager sharedManager].isUserLoggedIn) {
@@ -1051,6 +1482,8 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
         }
         if (!didAdd) {
             [PPHUD showError:kLang(@"Out of stock")];
+            [[NSNotificationCenter defaultCenter]
+                postNotificationName:kCartUpdatedNotification object:nil];
             return;
         }
         if (safeQuantity == 1) {
@@ -1239,8 +1672,151 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 
 - (void)PPUniversalCell_tapReport:(PPUniversalCellViewModel *)universalModel
 {
-    (void)universalModel;
-    [PPHUD showSuccess:kLang(@"reported_successfully")];
+    FIRUser *authenticatedUser = [FIRAuth auth].currentUser;
+    if (authenticatedUser.uid.length == 0) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
+    NSString *contentID = @"";
+    NSString *ownerID = @"";
+    NSString *collection = @"";
+    NSString *contentType = @"";
+    if ([universalModel.ModelObject isKindOfClass:PetAd.class]) {
+        PetAd *ad = (PetAd *)universalModel.ModelObject;
+        contentID = PPMarketplaceTrimmedString(ad.adID);
+        ownerID = PPMarketplaceTrimmedString(ad.ownerID);
+        collection = kPetAdsCollection;
+        contentType = @"pet_ad";
+    } else if ([universalModel.ModelObject isKindOfClass:PetAccessory.class]) {
+        PetAccessory *accessory = (PetAccessory *)universalModel.ModelObject;
+        contentID = PPMarketplaceTrimmedString(accessory.accessoryID);
+        ownerID = PPMarketplaceTrimmedString(accessory.ownerID);
+        collection = @"petAccessories";
+        contentType = @"pet_accessory";
+    } else if ([universalModel.ModelObject isKindOfClass:ServiceModel.class]) {
+        ServiceModel *service = (ServiceModel *)universalModel.ModelObject;
+        contentID = PPMarketplaceTrimmedString(service.serviceID);
+        ownerID = PPMarketplaceTrimmedString(service.serviceOwnerID);
+        collection = @"serviceOffers";
+        contentType = @"service_offer";
+    } else {
+        [PPHUD showError:kLang(@"report_submit_failed_message")];
+        return;
+    }
+    NSString *reporterID = PPMarketplaceTrimmedString(authenticatedUser.uid);
+    if (contentID.length == 0 || reporterID.length == 0 ||
+        (ownerID.length > 0 && [ownerID isEqualToString:reporterID])) {
+        [PPHUD showError:kLang(@"report_submit_failed_message")];
+        return;
+    }
+
+    UIViewController *presenter = [self pp_resolvedPresenter];
+    if (!presenter || presenter.viewIfLoaded.window == nil ||
+        presenter.isBeingDismissed ||
+        [presenter isKindOfClass:UIAlertController.class]) {
+        [PPHUD showError:kLang(@"report_submit_failed_message")];
+        return;
+    }
+    UIAlertController *sheet = [UIAlertController
+        alertControllerWithTitle:kLang(@"report_alert_title")
+                         message:kLang(@"report_alert_message")
+                  preferredStyle:UIAlertControllerStyleActionSheet];
+    NSDictionary<NSString *, NSString *> *reasonTitles = @{
+        @"inappropriate_content": kLang(@"report_reason_inappropriate") ?: @"",
+        @"scam_fraud": kLang(@"report_reason_fraud") ?: @"",
+        @"wrong_category": kLang(@"report_reason_wrong_category") ?: @"",
+        @"spam": kLang(@"report_reason_spam") ?: @"",
+        @"other": kLang(@"report_reason_other") ?: @""
+    };
+    NSArray<NSString *> *orderedReasons = @[
+        @"inappropriate_content", @"scam_fraud", @"wrong_category",
+        @"spam", @"other"
+    ];
+    __weak typeof(self) weakSelf = self;
+    for (NSString *reason in orderedReasons) {
+        [sheet addAction:[UIAlertAction
+            actionWithTitle:reasonTitles[reason]
+                      style:UIAlertActionStyleDefault
+                    handler:^(__unused UIAlertAction *action) {
+            __strong typeof(weakSelf) self = weakSelf;
+            [self pp_submitReportForContentID:contentID
+                                   contentType:contentType
+                                    collection:collection
+                                       ownerID:ownerID
+                                    reporterID:reporterID
+                                        reason:reason];
+        }]];
+    }
+    [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                               style:UIAlertActionStyleCancel
+                                             handler:nil]];
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        sheet.popoverPresentationController.sourceView = presenter.view;
+        sheet.popoverPresentationController.sourceRect = CGRectMake(
+            CGRectGetMidX(presenter.view.bounds),
+            CGRectGetMidY(presenter.view.bounds),
+            1,
+            1
+        );
+        sheet.popoverPresentationController.permittedArrowDirections = 0;
+    }
+    [presenter presentViewController:sheet animated:YES completion:nil];
+}
+
+- (void)pp_submitReportForContentID:(NSString *)contentID
+                        contentType:(NSString *)contentType
+                         collection:(NSString *)collection
+                            ownerID:(NSString *)ownerID
+                         reporterID:(NSString *)reporterID
+                             reason:(NSString *)reason
+{
+    NSString *reportID = [NSString stringWithFormat:@"%@_%@", contentID, reporterID];
+    NSDictionary *reportData = @{
+        @"reportId": reportID,
+        @"contentId": contentID,
+        @"contentType": contentType,
+        @"collection": collection,
+        @"reason": reason,
+        @"reporterUid": reporterID,
+        @"reportedOwnerUid": ownerID ?: @"",
+        @"status": @"pending",
+        @"platform": @"ios",
+        @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
+        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+    };
+    FIRDocumentReference *reportReference =
+        [[[FIRFirestore firestore] collectionWithPath:@"reports"]
+            documentWithPath:reportID];
+    [PPHUD showLoading:kLang(@"Loading")];
+    [[FIRFirestore firestore]
+        runTransactionWithBlock:^id _Nullable(
+            FIRTransaction * _Nonnull transaction,
+            NSError * _Nullable __autoreleasing * _Nullable errorPointer
+        ) {
+            FIRDocumentSnapshot *snapshot =
+                [transaction getDocument:reportReference error:errorPointer];
+            if (!snapshot || (errorPointer && *errorPointer)) {
+                return nil;
+            }
+            if (snapshot.exists) {
+                // A report ID is deterministic per content/reporter. Never
+                // reopen a resolved case or rewrite its original timestamp.
+                return @NO;
+            }
+            [transaction setData:reportData forDocument:reportReference];
+            return @YES;
+        }
+        completion:^(__unused id _Nullable result, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [PPHUD dismiss];
+            if (error) {
+                [PPHUD showError:kLang(@"report_submit_failed_message")];
+                return;
+            }
+            [PPHUD showSuccess:kLang(@"reported_successfully")];
+        });
+    }];
 }
 
 - (void)PPUniversalCell_tapSaveForLater:(PPUniversalCellViewModel *)universalModel
@@ -1268,6 +1844,7 @@ static id _Nullable PPMarketplaceObjectValueForSelector(id object, NSString *sel
 - (void)screenWillAppear
 {
     [[NovaAmbientAssistantCoordinator sharedCoordinator] setSuppressedForCriticalFlow:YES];
+    [self.presentingViewController pp_applyBottomSurfaceAnimated:YES];
     NSString *category = PPMarketplaceTrimmedString(self.input.mainKind.KindNameEn);
     if (category.length == 0) {
         category = PPMarketplaceTrimmedString(self.currentMainKindTitle);

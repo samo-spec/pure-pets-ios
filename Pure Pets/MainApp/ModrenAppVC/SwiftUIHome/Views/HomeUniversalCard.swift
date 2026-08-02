@@ -50,6 +50,7 @@ private struct HomeUniversalDirectCard: View {
             imageLoader: nil,
             showsSubtitle: true,
             isHomePresentation: true,
+            borderMode: .pordersForHomeView,
             onTap: nil,
             onQuantityChange: onQuantityChange
         )

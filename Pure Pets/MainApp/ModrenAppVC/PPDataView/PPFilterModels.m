@@ -243,12 +243,12 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
     PPFilterGroup *gender = [PPFilterGroup
         groupWithID:PPFilterIDGender
               title:kLang(@"Gender")
-           chipIcon:@"gender"
+           chipIcon:@"person.2.fill"
             options:@[
                 [PPFilterOption optionWithTitle:kLang(@"all") value:PPFilterGenderAll icon:nil],
                 [PPFilterOption optionWithTitle:kLang(@"Male") value:PPFilterGenderMale icon:@"male"],
                 [PPFilterOption optionWithTitle:kLang(@"Female") value:PPFilterGenderFemale icon:@"female"],
-                [PPFilterOption optionWithTitle:kLang(@"no_value") value:PPFilterGenderUndefined icon:@"gender"],
+                [PPFilterOption optionWithTitle:kLang(@"no_value") value:PPFilterGenderUndefined icon:@"person.2.fill"],
             ]];
     [gender pp_setDefaultSelectedValue:PPFilterGenderAll];
 

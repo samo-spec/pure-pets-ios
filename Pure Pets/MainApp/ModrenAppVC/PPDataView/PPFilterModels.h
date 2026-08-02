@@ -2,7 +2,7 @@
 //  PPFilterModels.h
 //  Pure Pets
 //
-//  Data-driven filter architecture for PPDataViewVC.
+//  Data-driven filter architecture for the marketplace DataViewer.
 //  Each section (Ads, Accessories, Food, Services) gets its own PPFilterState
 //  built from PPFilterGroups. The UI (chips, sheet) is generated from this config.
 //

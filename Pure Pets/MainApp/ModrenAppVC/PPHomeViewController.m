@@ -16,7 +16,6 @@
 #import "PPBrowseHistoryManager.h"
 #import "PPChatsFunc.h"
 #import "PPDataViewInput.h"
-#import "PPDataViewVC.h"
 #import "PPFunc.h"
 #import "PPHomeHelper.h"
 #import "PPHomeLocationSheetViewController.h"
@@ -262,7 +261,8 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
     input.mainKindsArr = PPHomeShellMainKinds();
     input.initialSectionOverride = @(PPDataSectionAds);
 
-    PPDataViewVC *destination = [[PPDataViewVC alloc] initWithInput:input];
+    PPMarketplaceDataViewController *destination =
+        [[PPMarketplaceDataViewController alloc] initWithInput:input];
     destination.pp_transitionStyle = PPTransitionStyleNone;
     BOOL didPush =
         [PPHomeHelper pushViewControllerSafely:destination
@@ -277,7 +277,7 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
     );
 }
 
-- (PPDataViewVC *)buildDataViewVCForTarget:(PPDeepLinkTarget)target
+- (UIViewController *)buildDataViewVCForTarget:(PPDeepLinkTarget)target
                                   mainKind:(MainKindsModel *)mainKind
                                     source:(PPInputSource)source
 {
@@ -292,7 +292,8 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
     input.initialSectionOverride =
         @([PPHomeHelper sectionFromSourceTarget:target]);
 
-    PPDataViewVC *destination = [[PPDataViewVC alloc] initWithInput:input];
+    PPMarketplaceDataViewController *destination =
+        [[PPMarketplaceDataViewController alloc] initWithInput:input];
     destination.pp_transitionStyle = PPTransitionStyleNone;
     return destination;
 }
@@ -311,9 +312,8 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
             [PPDataViewInput inputWithMainKindsArr:PPHomeShellMainKinds()
                                       sourceTarget:target
                                             source:source];
-        destination = [[PPDataViewVC alloc] initWithInput:input];
-        ((PPDataViewVC *)destination).pp_transitionStyle =
-            PPTransitionStyleNone;
+        destination = [[PPMarketplaceDataViewController alloc] initWithInput:input];
+        destination.pp_transitionStyle = PPTransitionStyleNone;
     } else {
         destination =
             [self buildDataViewVCForTarget:target

@@ -2453,10 +2453,7 @@ private struct PPMessagingCanvas: View {
                 endRadius: 520
             )
         }
-        .animation(
-            reduceMotion ? nil : .easeInOut(duration: 0.25),
-            value: backgroundImage.map(ObjectIdentifier.init)
-        )
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: backgroundImage.map(ObjectIdentifier.init))
         .accessibilityHidden(true)
     }
 }

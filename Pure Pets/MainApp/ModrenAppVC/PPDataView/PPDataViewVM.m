@@ -41,6 +41,8 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 // Filters — data-driven
 @property (nonatomic, strong, nullable) PPFilterState *filterState;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStatesBySection;
+// Changes within one retained backend request do not advance requestVersion.
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *filterVersionsBySection;
 // Section
 //@property (nonatomic, assign) PPDataSection currentSection;
 
@@ -55,6 +57,10 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                          filterState:(PPFilterState *)filterState
                         requestToken:(NSUInteger)requestToken
                           completion:(void (^)(NSArray<PPUniversalCellViewModel *> *viewModels))completion;
+- (void)pp_buildLatestViewModelsFromResults:(NSArray *)results
+                                    section:(PPDataSection)section
+                               requestToken:(NSUInteger)requestToken
+                                 completion:(void (^)(NSArray<PPUniversalCellViewModel *> *viewModels))completion;
 - (NSArray *)pp_applyFiltersToResults:(NSArray *)results
                           filterState:(PPFilterState *)state
                              section:(PPDataSection)section;
@@ -119,6 +125,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     _mainKind = mainKind;
     _mutableItems = [NSMutableArray new];
     _filterStatesBySection = [NSMutableDictionary dictionary];
+    _filterVersionsBySection = [NSMutableDictionary dictionary];
 
     _currentPage = 1;
     _hasMore = YES;
@@ -298,11 +305,10 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 {
     if (!mainKind) return;
 
-    // Ignore if same main kind
-    if (self.mainKind && self.mainKind.ID == mainKind.ID) {
-        return;
-    }
-
+    // The bridge owns duplicate-selection suppression. Reaching this method
+    // can also mean an All Categories route is narrowing to its first real
+    // species, whose identifier may match a display-only seed. Always commit
+    // that route transition and refresh its scoped data.
     self.mainKind = mainKind;
 
     // Reset pagination
@@ -331,6 +337,32 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     }
 
     // Reload current section with new main kind
+    [self refreshCurrentSection];
+}
+
+- (void)switchToAllMainKinds
+{
+    if (self.currentDeepLinkTarget == PPDeepLinkTargetAllCategories) {
+        return;
+    }
+
+    self.currentDeepLinkTarget = PPDeepLinkTargetAllCategories;
+    self.mainKind = nil;
+    self.currentSubKindID = 0;
+    self.currentPage = 0;
+    self.hasMore = YES;
+    self.isLoading = YES;
+    self.filterState = nil;
+    [self.filterStatesBySection removeAllObjects];
+    self.latestRawResults = nil;
+    [self.mutableItems removeAllObjects];
+
+    [self pp_dispatchMain:^{
+        if (self.onReloadData) {
+            self.onReloadData();
+        }
+    }];
+
     [self refreshCurrentSection];
 }
 
@@ -382,6 +414,8 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     } else {
         [self.filterStatesBySection removeObjectForKey:key];
     }
+    NSUInteger filterVersion = [self.filterVersionsBySection[key] unsignedIntegerValue];
+    self.filterVersionsBySection[key] = @(filterVersion + 1);
 
     if (self.currentSection == section) {
         self.filterState = state;
@@ -462,7 +496,6 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     self.currentPage = 1;
     self.hasMore = YES;
     PPDataSection section = self.currentSection;
-    PPFilterState *filterState = [self.filterState copy];
     os_signpost_id_t requestSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
     os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "data.request",
                                "token=%lu section=%ld", (unsigned long)requestToken, (long)section);
@@ -490,12 +523,13 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             }
 
             NSArray *safeResults = [results isKindOfClass:[NSArray class]] ? results : @[];
-            [weakSelf pp_buildViewModelsFromResults:safeResults
-                                            section:section
-                                       filterState:filterState
-                                      requestToken:requestToken
-                                        completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
+            [weakSelf pp_buildLatestViewModelsFromResults:safeResults
+                                                  section:section
+                                             requestToken:requestToken
+                                               completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
                 if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+                    os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                             "data.request", "stale=2");
                     return;
                 }
 
@@ -681,6 +715,47 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
 #pragma mark - Background Result Processing
 
+- (void)pp_buildLatestViewModelsFromResults:(NSArray *)results
+                                    section:(PPDataSection)section
+                               requestToken:(NSUInteger)requestToken
+                                 completion:(void (^)(NSArray<PPUniversalCellViewModel *> *viewModels))completion
+{
+    if (!completion) {
+        return;
+    }
+    if (![self pp_isCurrentRequest:requestToken]) {
+        completion(@[]);
+        return;
+    }
+
+    NSNumber *sectionKey = @(section);
+    NSUInteger filterVersion = [self.filterVersionsBySection[sectionKey] unsignedIntegerValue];
+    PPFilterState *filterState = [self.filterStatesBySection[sectionKey] copy];
+    __weak typeof(self) weakSelf = self;
+    [self pp_buildViewModelsFromResults:results
+                               section:section
+                          filterState:filterState
+                         requestToken:requestToken
+                           completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
+        if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+            completion(@[]);
+            return;
+        }
+
+        NSUInteger latestFilterVersion =
+            [weakSelf.filterVersionsBySection[sectionKey] unsignedIntegerValue];
+        if (latestFilterVersion != filterVersion) {
+            // Reuse the returned snapshot; only the filter transform must catch up.
+            [weakSelf pp_buildLatestViewModelsFromResults:results
+                                                  section:section
+                                             requestToken:requestToken
+                                               completion:completion];
+            return;
+        }
+        completion(viewModels);
+    }];
+}
+
 - (void)pp_buildViewModelsFromResults:(NSArray *)results
                               section:(PPDataSection)section
                          filterState:(PPFilterState *)filterState
@@ -700,6 +775,9 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
         if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
             os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
                                      "DataViewVMBuild", "cancelled=1");
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(@[]);
+            });
             return;
         }
 
@@ -715,6 +793,9 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
         if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
             os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
                                      "DataViewVMBuild", "cancelled=2");
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(@[]);
+            });
             return;
         }
 
@@ -731,6 +812,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                                      "DataViewVMBuild", "filtered=%lu viewModels=%lu",
                                      (unsigned long)filtered.count, (unsigned long)viewModels.count);
             if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+                completion(@[]);
                 return;
             }
             // Callers perform the final token check before mutating state. This
@@ -1046,9 +1128,15 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 }
 - (void)reloadDataWithCompletion:(void (^)(NSError * _Nullable error))completion
 {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self reloadDataWithCompletion:completion];
+        });
+        return;
+    }
+
     NSUInteger requestToken = [self pp_beginRequest];
     PPDataSection section = self.currentSection;
-    PPFilterState *filterState = [self.filterState copy];
     os_signpost_id_t requestSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
     os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "data.request",
                                "token=%lu section=%ld reload=1", (unsigned long)requestToken, (long)section);
@@ -1062,6 +1150,13 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     [self.mutableItems removeAllObjects];
     self.latestRawResults = nil;
 
+    // Publish the cleared loading state before the retained fetch starts. This
+    // prevents records from the previous subkind remaining under a new title
+    // when the replacement request fails.
+    if (self.onReloadData) {
+        self.onReloadData();
+    }
+
     __weak typeof(self) weakSelf = self;
 
     // Fetch first page of current section
@@ -1072,6 +1167,11 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
                                          "data.request", "stale=1 reload=1");
+                if (completion) {
+                    completion([NSError errorWithDomain:NSURLErrorDomain
+                                                   code:NSURLErrorCancelled
+                                               userInfo:nil]);
+                }
                 return;
             }
 
@@ -1084,15 +1184,21 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             }
 
             NSArray *safeResults = [results isKindOfClass:[NSArray class]] ? results : @[];
-            weakSelf.latestRawResults = safeResults;
-            [weakSelf pp_buildViewModelsFromResults:safeResults
-                                            section:section
-                                       filterState:filterState
-                                      requestToken:requestToken
-                                        completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
+            [weakSelf pp_buildLatestViewModelsFromResults:safeResults
+                                                  section:section
+                                             requestToken:requestToken
+                                               completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
                 if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+                    os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                             "data.request", "stale=2 reload=1");
+                    if (completion) {
+                        completion([NSError errorWithDomain:NSURLErrorDomain
+                                                       code:NSURLErrorCancelled
+                                                   userInfo:nil]);
+                    }
                     return;
                 }
+                weakSelf.latestRawResults = safeResults;
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
                                          "data.request", "results=%lu reload=1",
                                          (unsigned long)safeResults.count);

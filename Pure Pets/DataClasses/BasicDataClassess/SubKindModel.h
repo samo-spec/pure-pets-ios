@@ -6,7 +6,7 @@
 //
 
 
-@import Firebase;
+#import <FirebaseFirestore/FirebaseFirestore.h>
 #import "subSubKindModel.h"
 #import "XLFormOptionsObject.h"
 NS_ASSUME_NONNULL_BEGIN

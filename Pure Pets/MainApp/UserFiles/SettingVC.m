@@ -8,6 +8,7 @@
 #import "LocationPickerViewController.h"
 #import "PPHomeLocationSheetViewController.h"
 #import "PPHomeLocationTitleView.h"
+#import "PPDataViewInput.h"
 #import <CoreLocation/CoreLocation.h>
 #import <SafariServices/SFSafariViewController.h>
 @import FirebaseFunctions;
@@ -726,6 +727,8 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 @property (nonatomic, assign) BOOL hasRequestedSettingsLocationAuthorization;
 @property (nonatomic, assign) BOOL isUsingManualSettingsLocationSelection;
 @property (nonatomic, assign) BOOL isPresentingSettingsLocationSheet;
+- (void)pp_presentMarketplaceAccentOptions;
+- (void)pp_applyMarketplaceUsesMainKindColors:(BOOL)usesMainKindColors;
 @end
 
 @implementation SettingVC
@@ -850,7 +853,25 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         themeRow.themeIndex = 2;
     }
     themeRow.onThemeTap = ^(NSInteger index) { [weakSelf pp_applyThemeAtIndex:index]; };
-    appearanceSection.rows = @[themeRow];
+
+    BOOL usesMainKindAccentColors =
+        [self.prefs boolForKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
+    PPSettingsRowModel *marketplaceAccentRow = [PPSettingsRowModel new];
+    marketplaceAccentRow.type = PPSettingsRowTypeNavigation;
+    marketplaceAccentRow.title =
+        PPSettingsLocalizedString(@"settings_marketplace_accent_title",
+                                  @"Marketplace accent color");
+    marketplaceAccentRow.subtitle = usesMainKindAccentColors
+        ? PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind",
+                                    @"Pet category colors")
+        : PPSettingsLocalizedString(@"settings_marketplace_accent_brand",
+                                    @"Pure Pets brand color");
+    marketplaceAccentRow.iconName = @"paintpalette.fill";
+    marketplaceAccentRow.iconTint = UIColor.whiteColor;
+    marketplaceAccentRow.iconBackground = AppPrimaryClr ?: UIColor.systemPinkColor;
+    marketplaceAccentRow.onTap = ^{ [weakSelf pp_presentMarketplaceAccentOptions]; };
+
+    appearanceSection.rows = @[themeRow, marketplaceAccentRow];
     [allSections addObject:appearanceSection];
 
     // Section: App Settings
@@ -2334,6 +2355,87 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
             [strongSelf.tableView reloadData];
         });
     }];
+}
+
+#pragma mark - Marketplace Appearance
+
+- (void)pp_presentMarketplaceAccentOptions
+{
+    BOOL usesMainKindColors =
+        [self.prefs boolForKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
+    NSString *brandTitle =
+        PPSettingsLocalizedString(@"settings_marketplace_accent_brand",
+                                  @"Pure Pets brand color");
+    NSString *mainKindTitle =
+        PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind",
+                                  @"Pet category colors");
+    NSString *currentTitle = usesMainKindColors ? mainKindTitle : brandTitle;
+    NSString *messageFormat =
+        PPSettingsLocalizedString(@"settings_marketplace_accent_message_format",
+                                  @"Currently using %@. Choose how marketplace accents should appear.");
+
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:
+            PPSettingsLocalizedString(@"settings_marketplace_accent_title",
+                                      @"Marketplace accent color")
+                                         message:[NSString stringWithFormat:messageFormat, currentTitle]
+                                  preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    UIAlertAction *brandAction =
+        [UIAlertAction actionWithTitle:brandTitle
+                                 style:UIAlertActionStyleDefault
+                               handler:^(__unused UIAlertAction *action) {
+        [weakSelf pp_applyMarketplaceUsesMainKindColors:NO];
+    }];
+    UIAlertAction *mainKindAction =
+        [UIAlertAction actionWithTitle:mainKindTitle
+                                 style:UIAlertActionStyleDefault
+                               handler:^(__unused UIAlertAction *action) {
+        [weakSelf pp_applyMarketplaceUsesMainKindColors:YES];
+    }];
+    [alert addAction:brandAction];
+    [alert addAction:mainKindAction];
+    [alert addAction:
+        [UIAlertAction actionWithTitle:(kLang(@"cancel") ?: @"Cancel")
+                                 style:UIAlertActionStyleCancel
+                               handler:nil]];
+    alert.preferredAction = usesMainKindColors ? mainKindAction : brandAction;
+
+    UIPopoverPresentationController *popover = alert.popoverPresentationController;
+    if (popover) {
+        popover.sourceView = self.view;
+        popover.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                        CGRectGetMidY(self.view.bounds),
+                                        1.0,
+                                        1.0);
+        popover.permittedArrowDirections = 0;
+    }
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)pp_applyMarketplaceUsesMainKindColors:(BOOL)usesMainKindColors
+{
+    BOOL currentValue =
+        [self.prefs boolForKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
+    if (currentValue == usesMainKindColors) {
+        return;
+    }
+
+    [self.prefs setBool:usesMainKindColors
+                 forKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
+    [self pp_emitSettingsSelectionHaptic];
+    [self pp_buildSections];
+    [self.tableView reloadData];
+
+    NSString *activeTitle = usesMainKindColors
+        ? PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind",
+                                    @"Pet category colors")
+        : PPSettingsLocalizedString(@"settings_marketplace_accent_brand",
+                                    @"Pure Pets brand color");
+    NSString *feedbackFormat =
+        PPSettingsLocalizedString(@"settings_marketplace_accent_updated_format",
+                                  @"Marketplace accents now use %@.");
+    [PPHUD showSuccess:[NSString stringWithFormat:feedbackFormat, activeTitle]];
 }
 
 #pragma mark - Messages Privacy

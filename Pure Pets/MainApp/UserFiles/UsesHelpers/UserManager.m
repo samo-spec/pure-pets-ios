@@ -3145,6 +3145,12 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         return;
     }
 
+    UserModel *cachedUser = [UserManager userModelForID:uid];
+    if (cachedUser) {
+        if (completion) completion(cachedUser, nil);
+        return;
+    }
+
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *userRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:uid];
     FIRDocumentReference *publicProfileRef = [[db collectionWithPath:@"PublicUserProfiles"] documentWithPath:uid];
@@ -3165,8 +3171,19 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         }
 
         UserModel *model = [[UserModel alloc] initWithSnapshot:snapshot];
+        if (model) {
+            [UserManager cacheUserModelInMemory:model];
+        }
         if (completion) completion(model, nil);
     };
+
+    // Guest-safe marketplace and chat previews are owned by the canonical
+    // PublicUserProfiles surface. Attempting UsersCol first as a guest always
+    // fails its signed-in rule and previously prevented this fallback entirely.
+    if (currentUID.length == 0) {
+        [publicProfileRef getDocumentWithCompletion:completeFromSnapshot];
+        return;
+    }
 
     [userRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {

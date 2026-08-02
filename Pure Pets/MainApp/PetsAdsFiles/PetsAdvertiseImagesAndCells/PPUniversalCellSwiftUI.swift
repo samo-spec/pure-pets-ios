@@ -40,12 +40,21 @@ public enum PPUniversalCardLayout: Equatable {
     case pinterest
     case vertical
     case market
+    case focus
     case fullWidth
     case horizontalRow
 
     var isHorizontal: Bool {
         self == .fullWidth || self == .horizontalRow
     }
+}
+
+/// Keeps border contrast specific to the surface hosting the shared card.
+/// The `porders` spelling is retained as the public presentation contract.
+public enum PPUniversalCardBorderMode: Equatable {
+    case pordersDefault
+    case pordersDataView
+    case pordersForHomeView
 }
 
 public enum PPUniversalCardDiscountStyle: Equatable {
@@ -63,6 +72,7 @@ public struct PPUniversalCardPalette {
     public var primary: Color
     public var primaryDarker: Color
     public var primaryShiner: Color
+    public var onPrimary: Color
     public var diffColor: Color
     public var accent: Color
     public var surface: Color
@@ -78,6 +88,7 @@ public struct PPUniversalCardPalette {
         primary: Color,
         primaryDarker: Color,
         primaryShiner: Color,
+        onPrimary: Color,
         diffColor: Color,
         accent: Color,
         surface: Color,
@@ -92,6 +103,7 @@ public struct PPUniversalCardPalette {
         self.primary = primary
         self.primaryDarker = primaryDarker
         self.primaryShiner = primaryShiner
+        self.onPrimary = onPrimary
         self.diffColor = diffColor
         self.accent = accent
         self.surface = surface
@@ -108,6 +120,7 @@ public struct PPUniversalCardPalette {
         primary: Color(uiColor: UIColor(named: "AppPrimaryColor") ?? UIColor(red: 0.54, green: 0.08, blue: 0.22, alpha: 1)),
         primaryDarker: Color(uiColor: UIColor(named: "AppPrimaryColorDarker") ?? UIColor(red: 0.50, green: 0.17, blue: 0.24, alpha: 1)),
         primaryShiner: Color(uiColor: UIColor(named: "AppPrimaryColorShainer") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
+        onPrimary: .white,
         diffColor: Color(uiColor: UIColor(named: "diffColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
         accent: Color(uiColor: .systemTeal),
         surface: Color(uiColor: .secondarySystemGroupedBackground),
@@ -499,6 +512,7 @@ extension View {
 @available(iOS 16.0, *)
 public struct PPUniversalCardView: View {
     @StateObject private var store: PPUniversalCardStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let legacyViewModel: PPUniversalCellViewModel?
     private let legacyDelegate: PPUniversalCellDelegate?
     private let legacyContext: PPCellContext?
@@ -518,6 +532,7 @@ public struct PPUniversalCardView: View {
         context: PPUniversalCardContext,
         layout: PPUniversalCardLayout,
         discountStyle: PPUniversalCardDiscountStyle = .badge,
+        borderMode: PPUniversalCardBorderMode = .pordersDefault,
         palette: PPUniversalCardPalette = .purePets,
         actions: PPUniversalCardActions = .init()
     ) {
@@ -527,6 +542,7 @@ public struct PPUniversalCardView: View {
                 context: context,
                 layout: layout,
                 discountStyle: discountStyle,
+                borderMode: borderMode,
                 palette: palette,
                 actions: actions
             )
@@ -558,6 +574,8 @@ public struct PPUniversalCardView: View {
         forceShowsOwnerMenuButton: Bool = false,
         dataViewPresentation: Bool = false,
         isHomePresentation: Bool = false,
+        borderMode: PPUniversalCardBorderMode = .pordersDefault,
+        palette: PPUniversalCardPalette = .purePets,
         onTap: (() -> Void)? = nil,
         onQuantityChange: ((Int) -> Void)? = nil
     ) {
@@ -571,13 +589,32 @@ public struct PPUniversalCardView: View {
             showsSubtitle: showsSubtitle,
             dataViewPresentation: dataViewPresentation
         )
+        let delegateUsesHomePresentation: Bool
+        if let delegate,
+           let object = delegate as? NSObject,
+           let homeClass = NSClassFromString("PPHomeViewController") {
+            delegateUsesHomePresentation = object.isKind(of: homeClass)
+        } else {
+            delegateUsesHomePresentation = false
+        }
+        let initiallySavedForLater =
+            snapshot.showsSaveForLater &&
+            !snapshot.model.isSkeleton &&
+            !snapshot.model.id.isEmpty &&
+            PPSaveForLaterManager.shared().isItemSaved(snapshot.model.id)
         let initialStore = PPUniversalCardStore(
             model: snapshot.model,
             context: snapshot.context,
             layout: snapshot.layout,
             discountStyle: snapshot.discountStyle,
-            palette: .purePets,
-            actions: .init()
+            borderMode: borderMode,
+            palette: palette,
+            actions: .init(),
+            initialIsSuggestionsAd: snapshot.isSuggestionsAd,
+            initialIsNearbyAdsSection: snapshot.isNearbyAdsSection,
+            initialIsHomePresentation:
+                isHomePresentation || delegateUsesHomePresentation,
+            initialIsSavedForLater: initiallySavedForLater
         )
         initialStore.viewModel = viewModel
         initialStore.delegate = delegate
@@ -591,9 +628,6 @@ public struct PPUniversalCardView: View {
             viewModel.isOwner && forceShowsOwnerMenuButton
         initialStore.cardTap = onTap
         initialStore.quantityChange = onQuantityChange
-        initialStore.isSuggestionsAd = snapshot.isSuggestionsAd
-        initialStore.isNearbyAdsSection = snapshot.isNearbyAdsSection
-        initialStore.isHomePresentation = isHomePresentation
         _store = StateObject(wrappedValue: initialStore)
         legacyViewModel = viewModel
         legacyDelegate = delegate
@@ -613,11 +647,14 @@ public struct PPUniversalCardView: View {
     public var body: some View {
         PPUniversalCardRenderer(store: store)
             .frame(minHeight: minimumHeight)
-            .onAppear {
-                syncLegacySource()
-            }
+            .modifier(PPUniversalCardDirectActionSurface(store: store))
             .onChange(of: legacySourceSignature) { _ in
-                syncLegacySource()
+                // The initializer is the first-render authority. Only a real
+                // legacy input change reaches configure, and the store moves
+                // that publication to the next main-run-loop turn.
+                store.scheduleLegacySourceSync {
+                    syncLegacySource()
+                }
             }
             .onReceive(
                 NotificationCenter.default.publisher(
@@ -636,8 +673,11 @@ public struct PPUniversalCardView: View {
     }
 
     private var minimumHeight: CGFloat {
+        if store.layout == .focus {
+            return dynamicTypeSize.isAccessibilitySize ? 780 : 500
+        }
         if store.layout.isHorizontal {
-            return 184
+            return dynamicTypeSize.isAccessibilitySize ? 540 : 184
         }
         if store.isHomePresentation {
             return 328
@@ -645,7 +685,7 @@ public struct PPUniversalCardView: View {
         if store.model.isSkeleton && store.context.isCatalogCommerce {
             return 292
         }
-        return 340
+        return dynamicTypeSize.isAccessibilitySize ? 520 : 340
     }
 
     private var legacySourceSignature: String {
@@ -921,6 +961,9 @@ private struct PPUniversalLegacyCardSnapshot {
         if isSuggestionsAd {
             return .market
         }
+        if layout.rawValue == 9_001 {
+            return dataViewPresentation ? .focus : .market
+        }
         if layout == .cellLayoutModeHorizontalRow && !dataViewPresentation {
             if PPUniversalCellSwiftUIBridge.isAccessoryViewModel(viewModel) {
                 return .market
@@ -1039,6 +1082,7 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var isContextFocused = false
     @Published var isSavedForLater = false
 
+    let borderMode: PPUniversalCardBorderMode
     let palette: PPUniversalCardPalette
     let uiReferences = PPUniversalUIKitReferences()
 
@@ -1059,29 +1103,54 @@ private final class PPUniversalCardStore: ObservableObject {
 
     private var collapseTask: Task<Void, Never>?
     private var notifyItemID: String?
+    private var legacySourceSyncGeneration: UInt = 0
 
     init(
         model: PPUniversalCardModel,
         context: PPUniversalCardContext,
         layout: PPUniversalCardLayout,
         discountStyle: PPUniversalCardDiscountStyle,
+        borderMode: PPUniversalCardBorderMode = .pordersDefault,
         palette: PPUniversalCardPalette,
-        actions: PPUniversalCardActions
+        actions: PPUniversalCardActions,
+        initialIsSuggestionsAd: Bool = false,
+        initialIsNearbyAdsSection: Bool = false,
+        initialIsHomePresentation: Bool = false,
+        initialIsSavedForLater: Bool = false
     ) {
         self.model = model
         self.context = context
         self.layout = layout
         self.discountStyle = discountStyle
+        self.borderMode = borderMode
         self.palette = palette
         self.actions = actions
         self.quantity = model.quantity
         self.isRightToLeft = PPUniversalCellSwiftUIBridge.isRightToLeft()
+        self.isSuggestionsAd = initialIsSuggestionsAd
+        self.isNearbyAdsSection = initialIsNearbyAdsSection
+        self.isHomePresentation = initialIsHomePresentation
+        self.isSavedForLater = initialIsSavedForLater
         self.imagePlaceholder =
             model.placeholderImageName.flatMap { UIImage(named: $0) }
     }
 
     deinit {
         collapseTask?.cancel()
+    }
+
+    func scheduleLegacySourceSync(
+        _ synchronization: @escaping () -> Void
+    ) {
+        legacySourceSyncGeneration &+= 1
+        let scheduledGeneration = legacySourceSyncGeneration
+        RunLoop.main.perform(inModes: [.common]) { [weak self] in
+            guard let self,
+                  self.legacySourceSyncGeneration == scheduledGeneration else {
+                return
+            }
+            synchronization()
+        }
     }
 
     func configure(
@@ -1346,14 +1415,21 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     func refreshSavedForLaterState() {
+        let nextIsSaved: Bool
         guard showsSaveForLater,
               !model.isSkeleton,
               !model.id.isEmpty else {
-            isSavedForLater = false
+            nextIsSaved = false
+            if isSavedForLater != nextIsSaved {
+                isSavedForLater = nextIsSaved
+            }
             return
         }
-        isSavedForLater =
+        nextIsSaved =
             PPSaveForLaterManager.shared().isItemSaved(model.id)
+        if isSavedForLater != nextIsSaved {
+            isSavedForLater = nextIsSaved
+        }
     }
 
     func refreshEnvironment() {
@@ -1407,6 +1483,137 @@ private final class PPUniversalCardStore: ObservableObject {
         refreshSavedForLaterState()
     }
 
+    func contextActions() -> [PPUniversalCardContextAction] {
+        guard viewModel != nil, !model.isSkeleton else {
+            return []
+        }
+
+        var items: [PPUniversalCardContextAction] = [
+            PPUniversalCardContextAction(
+                kind: .viewDetails,
+                title: Self.localized(
+                    "Details",
+                    fallback: "Details"
+                ),
+                systemImage: "arrow.up.right.square"
+            )
+        ]
+
+        if showsFavorite &&
+            delegateResponds(to: "PPUniversalCell_tapFavorite:") {
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .favorite,
+                    title: Self.localized(
+                        "showfav",
+                        fallback: "Favorite"
+                    ),
+                    systemImage: "heart"
+                )
+            )
+        }
+
+        if delegateResponds(to: "PPUniversalCell_tapShare:") {
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .share,
+                    title: Self.localized(
+                        "Share",
+                        fallback: "Share"
+                    ),
+                    systemImage: "square.and.arrow.up"
+                )
+            )
+        }
+
+        if model.usesQuantityControl &&
+            !isOutOfStock &&
+            delegateResponds(
+                to: "PPUniversalCell_changeQuantity:quantity:"
+            ) {
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .addToCart,
+                    title: Self.localized(
+                        "addToCart",
+                        fallback: "Add to Cart"
+                    ),
+                    systemImage: "cart.badge.plus"
+                )
+            )
+        }
+
+        if model.isOwner &&
+            delegateResponds(
+                to: "PPUniversalCell_tapVisibilityToggle:"
+            ) {
+            let hidesListing = model.isPubliclyVisible
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .visibility,
+                    title: Self.localized(
+                        hidesListing
+                            ? "listing_hide_action"
+                            : "listing_show_action",
+                        fallback: hidesListing ? "Hide" : "Show"
+                    ),
+                    systemImage: hidesListing ? "eye.slash" : "eye"
+                )
+            )
+        }
+
+        items.append(
+            PPUniversalCardContextAction(
+                kind: .saveForLater,
+                title: Self.localized(
+                    "saved_for_later",
+                    fallback: "Save for later"
+                ),
+                systemImage: "bookmark"
+            )
+        )
+
+        items.append(
+            PPUniversalCardContextAction(
+                kind: .report,
+                title: Self.localized(
+                    "report",
+                    fallback: "Report"
+                ),
+                systemImage: "flag",
+                attributes: .destructive
+            )
+        )
+
+        return items
+    }
+
+    func performContextAction(
+        _ kind: PPUniversalCardContextActionKind
+    ) {
+        PPUniversalHaptics.light()
+        switch kind {
+        case .viewDetails:
+            tapCard()
+        case .favorite:
+            tapFavorite()
+        case .share:
+            tapShare()
+        case .addToCart:
+            handlePrimaryAction()
+        case .visibility:
+            tapVisibility()
+        case .report:
+            if let viewModel {
+                delegate?.ppUniversalCell_tapReport?(viewModel)
+            }
+        case .saveForLater:
+            if let viewModel {
+                delegate?.ppUniversalCell_tapSave?(forLater: viewModel)
+            }
+        }
+    }
+
     private func pp_performTapHaloBurst() {
         guard !UIAccessibility.isReduceMotionEnabled,
               let container = uiReferences.imageContainer,
@@ -1414,7 +1621,7 @@ private final class PPUniversalCardStore: ObservableObject {
             return
         }
 
-        let accent = UIColor(named: "diffColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)
+        let accent = UIColor(palette.primary)
         haloLayer.colors = [
             accent.withAlphaComponent(0.30).cgColor,
             accent.withAlphaComponent(0.10).cgColor,
@@ -1581,6 +1788,15 @@ private final class PPUniversalCardStore: ObservableObject {
         setStepperExpanded(false, animated: animated)
     }
 
+    func collapseStepperAfterDisappearance() {
+        guard isEditingQuantity else { return }
+        collapseTask?.cancel()
+        collapseTask = nil
+        DispatchQueue.main.async { [weak self] in
+            self?.setStepperExpanded(false, animated: false)
+        }
+    }
+
     func toggleVideo() {
         guard let url = model.videoURL else {
             return
@@ -1713,6 +1929,7 @@ private final class PPUniversalCardStore: ObservableObject {
         _ expanded: Bool,
         animated: Bool = true
     ) {
+        guard isEditingQuantity != expanded else { return }
         let updates = {
             self.isEditingQuantity = expanded
         }
@@ -1744,6 +1961,9 @@ private final class PPUniversalCardStore: ObservableObject {
     ) -> PPUniversalCardLayout {
         if isSuggestionsAd {
             return .market
+        }
+        if layout.rawValue == 9_001 {
+            return dataViewPresentation ? .focus : .market
         }
         if layout == .cellLayoutModeHorizontalRow && !dataViewPresentation {
             if PPUniversalCellSwiftUIBridge.isAccessoryViewModel(viewModel) {
@@ -1860,6 +2080,7 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
 
@@ -1894,14 +2115,16 @@ private struct PPUniversalCardRenderer: View {
                                     .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
                             )
                             .transition(
-                                .asymmetric(
-                                    insertion: .scale(scale: 0.92, anchor: .top)
-                                        .combined(with: .opacity)
-                                        .combined(with: .offset(y: -6)),
-                                    removal: .scale(scale: 0.94, anchor: .top)
-                                        .combined(with: .opacity)
-                                        .combined(with: .offset(y: -4))
-                                )
+                                reduceMotion
+                                    ? .identity
+                                    : .asymmetric(
+                                        insertion: .scale(scale: 0.92, anchor: .top)
+                                            .combined(with: .opacity)
+                                            .combined(with: .offset(y: -6)),
+                                        removal: .scale(scale: 0.94, anchor: .top)
+                                            .combined(with: .opacity)
+                                            .combined(with: .offset(y: -4))
+                                    )
                             )
                     }
 
@@ -1910,11 +2133,23 @@ private struct PPUniversalCardRenderer: View {
                     }
                 }
                 .animation(
-                    .spring(response: 0.38, dampingFraction: 0.82, blendDuration: 0.08),
+                    reduceMotion
+                        ? nil
+                        : .spring(
+                            response: 0.38,
+                            dampingFraction: 0.82,
+                            blendDuration: 0.08
+                        ),
                     value: store.showsOwnerRow
                 )
                 .animation(
-                    .spring(response: 0.38, dampingFraction: 0.82, blendDuration: 0.08),
+                    reduceMotion
+                        ? nil
+                        : .spring(
+                            response: 0.38,
+                            dampingFraction: 0.82,
+                            blendDuration: 0.08
+                        ),
                     value: store.isContextFocused
                 )
             }
@@ -1926,17 +2161,72 @@ private struct PPUniversalCardRenderer: View {
             store.isRightToLeft ? .rightToLeft : .leftToRight
         )
         .onDisappear {
-            store.collapseStepper(animated: false)
+            store.collapseStepperAfterDisappearance()
         }
         .onAppear {
+            if store.showsOwnerRow {
+                fetchOwnerIfNeeded()
+            }
+        }
+        .onChange(of: store.showsOwnerRow) { showsOwnerRow in
+            guard showsOwnerRow else { return }
             fetchOwnerIfNeeded()
+        }
+        .onChange(of: ownerID ?? "") { _ in
+            ownerName = nil
+            ownerAvatarURL = nil
+            ownerRating = 0
+            hasFetchedOwner = false
+            if store.showsOwnerRow {
+                fetchOwnerIfNeeded()
+            }
         }
     }
 
     @ViewBuilder
     private func cardLayout(size: CGSize) -> some View {
+        let focusAvailableWidth = max(220, size.width - 8)
+        let focusPreferredRatio = min(
+            max(store.model.preferredAspectRatio, 0.74),
+            0.88
+        )
+        let focusPreferredHeight = focusAvailableWidth * focusPreferredRatio
+        let focusMaximumFraction: CGFloat = dynamicTypeSize.isAccessibilitySize
+            ? 0.48
+            : 0.55
+        let focusMaximumHeight = max(228, size.height * focusMaximumFraction)
+        let focusMediaHeight = min(
+            max(228, focusPreferredHeight),
+            focusMaximumHeight
+        )
         let card = Group {
-            if store.layout.isHorizontal {
+            if store.layout == .focus {
+                VStack(spacing: 0) {
+                    cardTapMedia
+                        .frame(maxWidth: .infinity)
+                        .frame(height: focusMediaHeight)
+                    focusInformation
+                        .layoutPriority(1)
+                        .padding(.horizontal, 14)
+                        .padding(
+                            .top,
+                            dynamicTypeSize.isAccessibilitySize ? 14 : 12
+                        )
+                        .padding(
+                            .bottom,
+                            dynamicTypeSize.isAccessibilitySize ? 14 : 12
+                        )
+                }
+                .padding(
+                    .horizontal,
+                    store.model.prefersEdgeToEdgeMedia ? 0 : 4
+                )
+                .padding(
+                    .top,
+                    store.model.prefersEdgeToEdgeMedia ? 0 : 4
+                )
+                .padding(.bottom, 4)
+            } else if store.layout.isHorizontal && !dynamicTypeSize.isAccessibilitySize {
                 HStack(spacing: 11) {
                     cardTapMedia
                         .frame(
@@ -2020,6 +2310,10 @@ private struct PPUniversalCardRenderer: View {
                 .onTapGesture {
                     store.tapCard()
                 }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction {
+                    store.tapCard()
+                }
         } else {
             content
         }
@@ -2062,6 +2356,10 @@ private struct PPUniversalCardRenderer: View {
         } else {
             decorated
                 .onTapGesture {
+                    store.tapCard()
+                }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction {
                     store.tapCard()
                 }
         }
@@ -2274,6 +2572,42 @@ private struct PPUniversalCardRenderer: View {
         .frame(maxWidth: .infinity, alignment: .bottomLeading)
     }
 
+    /// Focus is an editorial spotlight, not a stretched list row. Media owns
+    /// the upper field while the complete action stack stays dense below it.
+    private var focusInformation: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            titleContent
+            subtitleContent
+
+            if hasPrice {
+                priceRow
+                    .padding(.top, store.model.subtitle == nil ? 7 : 5)
+            }
+
+            Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 12 : 8)
+
+            if store.model.usesQuantityControl ||
+                store.context.isAdvertisement ||
+                store.context.isServiceLike {
+                if !store.isNearbyAdsSection && !store.isContextFocused {
+                    bottomCTA
+                }
+
+                if hasBottomBadges {
+                    bottomBadgesRow
+                        .padding(.top, 10)
+                }
+            } else {
+                detailsFooter
+            }
+        }
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .topLeading
+        )
+    }
+
     @ViewBuilder
     private func homeVerticalInformationGrid(
         metrics: PPUniversalHomeCardGridMetrics
@@ -2415,12 +2749,18 @@ private struct PPUniversalCardRenderer: View {
             .font(
                 .custom(
                     "Beiruti-Bold",
-                    size: store.layout.isHorizontal ? 17 : 15.5,
+                    size: store.layout == .focus
+                        ? 18
+                        : (store.layout.isHorizontal ? 17 : 15.5),
                     relativeTo: .headline
                 )
             )
             .foregroundStyle(store.palette.ink)
-            .lineLimit(1)
+            .lineLimit(
+                dynamicTypeSize.isAccessibilitySize
+                    ? (store.layout == .focus ? 4 : 3)
+                    : (store.layout == .focus ? 2 : 1)
+            )
             .multilineTextAlignment(.leading)
             .minimumScaleFactor(0.86)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -2449,7 +2789,13 @@ private struct PPUniversalCardRenderer: View {
                             )
                         )
                         .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : store.palette.secondaryInk)
-                        .lineLimit(store.layout.isHorizontal ? 2 : 1)
+                        .lineLimit(
+                            dynamicTypeSize.isAccessibilitySize
+                                ? 3
+                                : (store.layout == .focus
+                                    ? 2
+                                    : (store.layout.isHorizontal ? 2 : 1))
+                        )
                         .multilineTextAlignment(.leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -2464,7 +2810,13 @@ private struct PPUniversalCardRenderer: View {
                         )
                     )
                     .foregroundStyle(store.palette.secondaryInk)
-                    .lineLimit(store.layout.isHorizontal ? 2 : 1)
+                    .lineLimit(
+                        dynamicTypeSize.isAccessibilitySize
+                            ? 3
+                            : (store.layout == .focus
+                                ? 2
+                                : (store.layout.isHorizontal ? 2 : 1))
+                    )
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 5)
@@ -2690,13 +3042,16 @@ private struct PPUniversalCardRenderer: View {
                 }
             }
             .foregroundStyle(detailsActionForeground)
+            .frame(minWidth: 44, minHeight: 44)
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
         .accessibilityLabel(primaryActionTitle)
     }
 
     private var detailsActionForeground: Color {
-        store.context.isServiceLike ? .white : store.palette.primary
+        store.context.isServiceLike
+            ? store.palette.onPrimary
+            : store.palette.primary
     }
 
     private var detailsActionCircleSize: CGFloat {
@@ -3087,11 +3442,12 @@ private struct PPUniversalCardRenderer: View {
             PPUniversalFavoriteRepresentable(
                 itemID: store.model.id,
                 collection: store.favoriteCollection,
-                isRightToLeft: store.isRightToLeft
+                isRightToLeft: store.isRightToLeft,
+                accentColor: store.palette.primary
             )
             .frame(
-                width: store.isHomePresentation ? 44 : 40,
-                height: store.isHomePresentation ? 44 : 40
+                width: 44,
+                height: 44
             )
         } else {
             Button {
@@ -3112,8 +3468,8 @@ private struct PPUniversalCardRenderer: View {
                         : store.palette.ink
                 )
                 .frame(
-                    width: store.isHomePresentation ? 44 : 40,
-                    height: store.isHomePresentation ? 44 : 40
+                    width: 44,
+                    height: 44
                 )
                 .background(.ultraThinMaterial, in: Circle())
             }
@@ -3129,8 +3485,8 @@ private struct PPUniversalCardRenderer: View {
                 .font(.system(size: 15.5, weight: .semibold))
                 .foregroundStyle(saveForLaterIconColor)
                 .frame(
-                    width: store.isHomePresentation ? 40 : 38,
-                    height: store.isHomePresentation ? 40 : 38
+                    width: 44,
+                    height: 44
                 )
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay(
@@ -3146,7 +3502,9 @@ private struct PPUniversalCardRenderer: View {
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
         .animation(
-            .spring(response: 0.24, dampingFraction: 0.82),
+            reduceMotion
+                ? nil
+                : .spring(response: 0.24, dampingFraction: 0.82),
             value: store.isSavedForLater
         )
         .accessibilityElement(children: .ignore)
@@ -3165,10 +3523,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var saveForLaterIconColor: Color {
         if store.isSavedForLater {
-            return Color(
-                uiColor: UIColor(named: "AppPrimaryColor") ??
-                    UIColor(red: 0.54, green: 0.08, blue: 0.22, alpha: 1)
-            )
+            return store.palette.primary
         }
         return Color(
             uiColor: UIColor(named: "SecondaryTextColor") ??
@@ -3239,15 +3594,76 @@ private struct PPUniversalCardRenderer: View {
         )
     }
 
+    @ViewBuilder
     private var cardBorder: some View {
-        cardShape.stroke(
-            colorScheme == .dark && store.userBordersV2
-                ? (store.isSelected
-                    ? store.palette.primary.opacity(0.12)
-                   : store.palette.diffColor.opacity(0.08))
-                : Color.clear,
-            lineWidth: store.isSelected ? 0.75 : 0.75
-        )
+        switch store.borderMode {
+        case .pordersDefault:
+            cardShape.strokeBorder(
+                store.isSelected
+                    ? store.palette.primary.opacity(0.30)
+                    : store.palette.ink.opacity(
+                        colorScheme == .dark ? 0.15 : 0.10
+                    ),
+                lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.75
+            )
+
+        case .pordersDataView:
+            ZStack {
+                if store.isSelected || colorSchemeContrast == .increased {
+                    cardShape.strokeBorder(
+                        store.isSelected
+                            ? store.palette.primary.opacity(
+                                colorSchemeContrast == .increased ? 0.64 : 0.36
+                            )
+                            : store.palette.ink.opacity(
+                                colorScheme == .dark ? 0.50 : 0.34
+                            ),
+                        lineWidth:
+                            colorSchemeContrast == .increased ? 2.5 : 2
+                    )
+                }
+                cardShape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(
+                                colorScheme == .dark ? 0.92 : 1
+                            ),
+                            Color.white.opacity(
+                                colorScheme == .dark ? 0.40 : 0.56
+                            ),
+                            Color.white.opacity(
+                                colorScheme == .dark ? 0.80 : 0.96
+                            ),
+                            Color.white.opacity(
+                                colorScheme == .dark ? 0.28 : 0.38
+                            )
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth:
+                        colorSchemeContrast == .increased ? 1.75 : 1.25
+                )
+            }
+            .shadow(
+                color: Color.white.opacity(
+                    colorScheme == .dark ? 0.22 : 0.64
+                ),
+                radius: 1.25,
+                x: -0.5,
+                y: -0.5
+            )
+
+        case .pordersForHomeView:
+            cardShape.stroke(
+                colorScheme == .dark && store.userBordersV2
+                    ? (store.isSelected
+                        ? store.palette.primary.opacity(0.12)
+                       : store.palette.diffColor.opacity(0.08))
+                    : Color.clear,
+                lineWidth: 0.75
+            )
+        }
     }
 
     private var ownerID: String? {
@@ -3280,6 +3696,9 @@ private struct PPUniversalCardRenderer: View {
                 self.ownerName = name
                 self.ownerAvatarURL = avatarURL
                 self.ownerRating = rating
+                if name == nil {
+                    self.hasFetchedOwner = false
+                }
             }
         }
     }
@@ -3577,14 +3996,14 @@ private struct PPUniversalCardRenderer: View {
 
     private var primaryActionForeground: Color {
         if isAdAction {
-            return .white
+            return store.palette.onPrimary
         }
         if store.model.usesQuantityControl &&
             store.quantity > 0 &&
             !store.isOutOfStock {
             return store.palette.primary
         }
-        return .white
+        return store.isOutOfStock ? .white : store.palette.onPrimary
     }
 
     @ViewBuilder
@@ -3653,7 +4072,7 @@ private struct PPUniversalCardRenderer: View {
         _ availability: PPUniversalAvailability
     ) -> Color {
         if store.context.isAdvertisement || store.isSuggestionsAd {
-            return Color(red: 0.816, green: 0.142, blue: 0.349)
+            return store.palette.primary
         }
         if availability.metaSystemImage == "star.fill" {
             return Color(uiColor: .systemYellow)
@@ -3665,13 +4084,10 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var usesCompressedAccessibilityLayout: Bool {
-        !store.isHomePresentation && dynamicTypeSize >= .accessibility2
+        false
     }
 
     private var standardActionHeight: CGFloat {
-        guard store.isHomePresentation else {
-            return 42
-        }
         return dynamicTypeSize.isAccessibilitySize ? 52 : 44
     }
 
@@ -4008,6 +4424,7 @@ private struct PPUniversalFavoriteRepresentable: UIViewRepresentable {
     let itemID: String
     let collection: String
     let isRightToLeft: Bool
+    let accentColor: Color
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -4023,6 +4440,7 @@ private struct PPUniversalFavoriteRepresentable: UIViewRepresentable {
         _ button: FavoriteFloatingButton,
         context: Context
     ) {
+        button.favoriteAccentColor = UIColor(accentColor)
         button.semanticContentAttribute =
             isRightToLeft ? .forceRightToLeft : .forceLeftToRight
         let signature = "\(collection)|\(itemID)"
@@ -4317,10 +4735,10 @@ private enum PPUniversalHaptics {
     }
 }
 
-// MARK: - UICollectionView Bridge
+// MARK: - Shared Context Actions
 
 @available(iOS 16.0, *)
-private enum PPUniversalCardContextActionKind {
+private enum PPUniversalCardContextActionKind: Hashable {
     case viewDetails
     case favorite
     case share
@@ -4331,12 +4749,53 @@ private enum PPUniversalCardContextActionKind {
 }
 
 @available(iOS 16.0, *)
-private struct PPUniversalCardContextAction {
+private struct PPUniversalCardContextAction: Identifiable {
     let kind: PPUniversalCardContextActionKind
     let title: String
     let systemImage: String
     var attributes: UIMenuElement.Attributes = []
+
+    var id: PPUniversalCardContextActionKind {
+        kind
+    }
 }
+
+@available(iOS 16.0, *)
+private struct PPUniversalCardDirectActionSurface: ViewModifier {
+    @ObservedObject var store: PPUniversalCardStore
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        let actions = store.contextActions()
+        if actions.isEmpty {
+            content
+        } else {
+            content
+                .contextMenu {
+                    ForEach(actions) { action in
+                        Button(
+                            role: action.attributes.contains(.destructive)
+                                ? .destructive
+                                : nil
+                        ) {
+                            store.performContextAction(action.kind)
+                        } label: {
+                            Label(action.title, systemImage: action.systemImage)
+                        }
+                    }
+                }
+                .accessibilityActions {
+                    ForEach(actions) { action in
+                        Button(action.title) {
+                            store.performContextAction(action.kind)
+                        }
+                    }
+                }
+        }
+    }
+}
+
+// MARK: - UICollectionView Bridge
 
 @available(iOS 16.0, *)
 @objc(PPUniversalCardHostingCell)
@@ -4403,8 +4862,8 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         }
     }
 
-    /// PPDataViewVC sets this explicitly because layout normalization differs
-    /// from embedded carousels that reuse the same Objective-C API.
+    /// Marketplace browser surfaces set this explicitly because layout
+    /// normalization differs from embedded carousels that reuse the same API.
     @objc public var dataViewPresentation = false {
         didSet {
             reconfigureIfNeeded()
@@ -4624,142 +5083,11 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         contextMenuInteraction = interaction
     }
 
-    private func contextActions() -> [PPUniversalCardContextAction] {
-        guard bridgeViewModel != nil, !store.model.isSkeleton else {
-            return []
-        }
-
-        var items: [PPUniversalCardContextAction] = [
-            PPUniversalCardContextAction(
-                kind: .viewDetails,
-                title: PPUniversalCardStore.localized(
-                    "Details",
-                    fallback: "Details"
-                ),
-                systemImage: "arrow.up.right.square"
-            )
-        ]
-
-        if store.showsFavorite && delegateResponds(to: "PPUniversalCell_tapFavorite:") {
-            items.append(
-                PPUniversalCardContextAction(
-                    kind: .favorite,
-                    title: PPUniversalCardStore.localized(
-                        "showfav",
-                        fallback: "Favorite"
-                    ),
-                    systemImage: "heart"
-                )
-            )
-        }
-
-        if delegateResponds(to: "PPUniversalCell_tapShare:") {
-            items.append(
-                PPUniversalCardContextAction(
-                    kind: .share,
-                    title: PPUniversalCardStore.localized(
-                        "Share",
-                        fallback: "Share"
-                    ),
-                    systemImage: "square.and.arrow.up"
-                )
-            )
-        }
-
-        if store.model.usesQuantityControl &&
-            !store.isOutOfStock &&
-            delegateResponds(to: "PPUniversalCell_changeQuantity:quantity:") {
-            items.append(
-                PPUniversalCardContextAction(
-                    kind: .addToCart,
-                    title: PPUniversalCardStore.localized(
-                        "addToCart",
-                        fallback: "Add to Cart"
-                    ),
-                    systemImage: "cart.badge.plus"
-                )
-            )
-        }
-
-        if store.model.isOwner &&
-            delegateResponds(to: "PPUniversalCell_tapVisibilityToggle:") {
-            let hidesListing = store.model.isPubliclyVisible
-            items.append(
-                PPUniversalCardContextAction(
-                    kind: .visibility,
-                    title: PPUniversalCardStore.localized(
-                        hidesListing
-                            ? "listing_hide_action"
-                            : "listing_show_action",
-                        fallback: hidesListing ? "Hide" : "Show"
-                    ),
-                    systemImage: hidesListing ? "eye.slash" : "eye"
-                )
-            )
-        }
-
-        items.append(
-            PPUniversalCardContextAction(
-                kind: .saveForLater,
-                title: PPUniversalCardStore.localized(
-                    "saved_for_later",
-                    fallback: "Save for later"
-                ),
-                systemImage: "bookmark"
-            )
-        )
-
-        items.append(
-            PPUniversalCardContextAction(
-                kind: .report,
-                title: PPUniversalCardStore.localized(
-                    "report",
-                    fallback: "Report"
-                ),
-                systemImage: "flag",
-                attributes: .destructive
-            )
-        )
-
-        return items
-    }
-
-    private func delegateResponds(to selectorName: String) -> Bool {
-        guard let object = delegate else {
-            return false
-        }
-        return object.responds(to: NSSelectorFromString(selectorName))
-    }
-
-    private func performContextAction(_ kind: PPUniversalCardContextActionKind) {
-        PPUniversalHaptics.light()
-        switch kind {
-        case .viewDetails:
-            store.tapCard()
-        case .favorite:
-            store.tapFavorite()
-        case .share:
-            store.tapShare()
-        case .addToCart:
-            store.handlePrimaryAction()
-        case .visibility:
-            store.tapVisibility()
-        case .report:
-            if let vm = bridgeViewModel {
-                delegate?.ppUniversalCell_tapReport?(vm)
-            }
-        case .saveForLater:
-            if let vm = bridgeViewModel {
-                delegate?.ppUniversalCell_tapSave?(forLater: vm)
-            }
-        }
-    }
-
     private func updateAccessibilityContextActions() {
-        let actions = contextActions()
+        let actions = store.contextActions()
         let customActions = actions.map { action in
             UIAccessibilityCustomAction(name: action.title) { [weak self] _ in
-                self?.performContextAction(action.kind)
+                self?.store.performContextAction(action.kind)
                 return true
             }
         }
@@ -4771,7 +5099,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         _ interaction: UIContextMenuInteraction,
         configurationForMenuAtLocation location: CGPoint
     ) -> UIContextMenuConfiguration? {
-        let actions = contextActions()
+        let actions = store.contextActions()
         guard !actions.isEmpty else {
             return nil
         }
@@ -4792,7 +5120,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
                     image: UIImage(systemName: item.systemImage),
                     attributes: item.attributes
                 ) { [weak self] _ in
-                    self?.performContextAction(item.kind)
+                    self?.store.performContextAction(item.kind)
                 }
                 if #available(iOS 16.0, *) {
                     if let customFont = UIFont(name: "Beiruti-Medium", size: 16.0) {

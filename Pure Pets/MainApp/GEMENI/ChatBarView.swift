@@ -92,6 +92,15 @@ enum PPChatComposerPalette {
             return UIColor(white: 0.05, alpha: increasedContrast ? 0.30 : 0.14)
         }
     )
+
+    static let messagingOnAccent = Color(
+        uiColor: UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return UIColor(red: 0.035, green: 0.041, blue: 0.041, alpha: 1.0)
+            }
+            return .white
+        }
+    )
 }
 
 private extension Color {
@@ -143,10 +152,10 @@ struct ChatBarView: View {
     @State private var cancelArmed = false
     @State private var cancelThresholdFeedbackSent = false
     @State private var didLockDuringGesture = false
+    @State private var isViewVisible = false
 
     private enum VoiceMetrics {
-        static let controlSize: CGFloat = 44.0
-        static let controlVisualSize: CGFloat = 38.0
+        static let controlSize: CGFloat = 38.0
         static let cancelDistance: CGFloat = 84.0
         static let lockDistance: CGFloat = 66.0
         static let cancelDisarmFraction: CGFloat = 0.72
@@ -253,6 +262,10 @@ struct ChatBarView: View {
         resolvedChatBarHeight + PPSpace.xs + replyPreviewHeight
     }
 
+    private var containerHeight: CGFloat {
+        state.hasReply ? expandedComposerHeight : chatBarHeight
+    }
+
     private var usesMessagingPresentation: Bool {
         presentation == .messaging
     }
@@ -261,6 +274,24 @@ struct ChatBarView: View {
         usesMessagingPresentation
             ? PPChatComposerPalette.messagingAccent
             : PPChatComposerPalette.accent
+    }
+
+    private var composerOnAccent: Color {
+        usesMessagingPresentation
+            ? PPChatComposerPalette.messagingOnAccent
+            : .white
+    }
+
+    private var recordControlHitSize: CGFloat {
+        usesMessagingPresentation ? 44.0 : VoiceMetrics.controlSize
+    }
+
+    private var voiceActionHitSize: CGFloat {
+        usesMessagingPresentation ? 44.0 : 36.0
+    }
+
+    private var replyCancelHitSize: CGFloat {
+        usesMessagingPresentation ? 44.0 : 32.0
     }
 
     private var composerFieldSurfaceColor: Color {
@@ -350,12 +381,24 @@ struct ChatBarView: View {
             composerBody
         }
         .frame(
-            minHeight: state.hasReply ? expandedComposerHeight : resolvedChatBarHeight,
+            height: usesMessagingPresentation ? nil : containerHeight,
+            alignment: .bottom
+        )
+        .frame(
+            minHeight: usesMessagingPresentation
+                ? (state.hasReply ? expandedComposerHeight : resolvedChatBarHeight)
+                : nil,
             alignment: .bottom
         )
         .animation(stateAnimation, value: state.hasReply)
         .onAppear {
-            handleFocusRequest(state.isFocusedTrigger)
+            isViewVisible = true
+            if usesMessagingPresentation {
+                handleFocusRequest(state.isFocusedTrigger)
+            }
+        }
+        .onDisappear {
+            isViewVisible = false
         }
         .onChange(of: state.isFocusedTrigger) { shouldFocus in
             handleFocusRequest(shouldFocus)
@@ -378,7 +421,10 @@ struct ChatBarView: View {
                     .zIndex(4)
             }
         }
-        .frame(minHeight: resolvedChatBarHeight)
+        .frame(height: usesMessagingPresentation ? nil : chatBarHeight)
+        .frame(
+            minHeight: usesMessagingPresentation ? resolvedChatBarHeight : nil
+        )
         .background {
             if usesMessagingPresentation {
                 ZStack {
@@ -479,7 +525,7 @@ struct ChatBarView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 11.0, weight: .bold))
                     .frame(width: 32.0, height: 32.0)
-                    .frame(width: 44.0, height: 44.0)
+                    .frame(width: replyCancelHitSize, height: replyCancelHitSize)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -487,7 +533,12 @@ struct ChatBarView: View {
         }
         .padding(.leading, PPSpace.md)
         .padding(.trailing, PPSpace.xs)
-        .frame(minHeight: replyPreviewHeight)
+        .frame(
+            height: usesMessagingPresentation ? nil : replyPreviewHeight
+        )
+        .frame(
+            minHeight: usesMessagingPresentation ? replyPreviewHeight : nil
+        )
         .background {
             ZStack {
                 if reduceTransparency {
@@ -580,7 +631,7 @@ struct ChatBarView: View {
         .padding(.leading, PPSpace.xs)
         .padding(
             .trailing,
-            showsRecordControl ? VoiceMetrics.controlSize + PPSpace.md : PPSpace.sm
+            showsRecordControl ? recordControlHitSize + PPSpace.md : PPSpace.sm
         )
     }
 
@@ -657,7 +708,7 @@ struct ChatBarView: View {
             } else if !trimmedMessage.isEmpty {
                 voiceActionButton(
                     systemName: "arrow.up",
-                    foreground: .white,
+                    foreground: composerOnAccent,
                     background: composerAccent,
                     accessibilityLabel: localized("chat_send_message")
                 ) {
@@ -733,7 +784,7 @@ struct ChatBarView: View {
         .padding(.leading, PPSpace.md)
         .padding(
             .trailing,
-            VoiceMetrics.controlSize + PPSpace.lg
+            recordControlHitSize + PPSpace.lg
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
@@ -933,7 +984,7 @@ struct ChatBarView: View {
 
             voiceActionButton(
                 systemName: "arrow.up",
-                foreground: .white,
+                foreground: composerOnAccent,
                 background: composerAccent,
                 accessibilityLabel: localized("voice_send")
             ) {
@@ -1118,7 +1169,11 @@ struct ChatBarView: View {
             if recorder.state == .preparing {
                 Image(systemName: voiceSymbol(.preparing))
                     .font(.system(size: 18.0, weight: .semibold))
-                    .foregroundStyle(composerAccent)
+                    .foregroundStyle(
+                        usesMessagingPresentation
+                            ? composerOnAccent
+                            : composerAccent
+                    )
                     .opacity(reduceMotion ? 1.0 : 0.82)
             } else {
                 Image(
@@ -1129,7 +1184,7 @@ struct ChatBarView: View {
                        : voiceSymbol(.idle))
                 )
                     .font(.system(size: 18.0, weight: .semibold))
-                    .foregroundStyle(active ? Color.white : controlColor)
+                    .foregroundStyle(active ? composerOnAccent : controlColor)
             }
 
             if recorder.state == .recording {
@@ -1149,8 +1204,8 @@ struct ChatBarView: View {
             }
         }
         .frame(
-            width: VoiceMetrics.controlVisualSize,
-            height: VoiceMetrics.controlVisualSize
+            width: VoiceMetrics.controlSize,
+            height: VoiceMetrics.controlSize
         )
         .scaleEffect(pressedScale * audioScale)
         .offset(
@@ -1158,8 +1213,8 @@ struct ChatBarView: View {
             y: -min(lockProgress, 1.0) * 8.0
         )
         .frame(
-            width: VoiceMetrics.controlSize,
-            height: VoiceMetrics.controlSize
+            width: recordControlHitSize,
+            height: recordControlHitSize
         )
         .contentShape(Circle())
         .gesture(recordingGesture)
@@ -1520,7 +1575,7 @@ struct ChatBarView: View {
                 .foregroundStyle(foreground)
                 .frame(width: 36.0, height: 36.0)
                 .background(background, in: Circle())
-                .frame(width: 44.0, height: 44.0)
+                .frame(width: voiceActionHitSize, height: voiceActionHitSize)
                 .contentShape(Circle())
         }
         .buttonStyle(
@@ -1539,6 +1594,11 @@ struct ChatBarView: View {
 
     private func handleFocusRequest(_ shouldFocus: Bool) {
         guard shouldFocus else { return }
+        if !usesMessagingPresentation {
+            isTextFieldFocused = true
+            state.isFocusedTrigger = false
+            return
+        }
         guard recorder.state == .idle else {
             state.isFocusedTrigger = false
             return
@@ -1548,6 +1608,13 @@ struct ChatBarView: View {
             attachmentsExpanded = false
         }
         DispatchQueue.main.async {
+            guard isViewVisible,
+                  state.isFocusedTrigger,
+                  recorder.state == .idle,
+                  !state.thinking else {
+                state.isFocusedTrigger = false
+                return
+            }
             isTextFieldFocused = true
             state.isFocusedTrigger = false
         }

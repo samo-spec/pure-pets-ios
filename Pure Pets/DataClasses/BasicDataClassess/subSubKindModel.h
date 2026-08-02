@@ -9,7 +9,7 @@
 #import "Language.h"
 #import "subKindItemsModel.h"
 #import "XLFormOptionsObject.h"
-@import FirebaseFirestore;
+#import <FirebaseFirestore/FirebaseFirestore.h>
 
 
 NS_ASSUME_NONNULL_BEGIN

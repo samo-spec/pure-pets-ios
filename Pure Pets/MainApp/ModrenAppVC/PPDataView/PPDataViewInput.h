@@ -14,6 +14,11 @@
    
 NS_ASSUME_NONNULL_BEGIN
 
+/// User preference for marketplace accent ownership.
+/// Missing values intentionally resolve to `NO`, keeping the Pure Pets brand
+/// color as the default for both new and existing installs.
+FOUNDATION_EXPORT NSString * const PPMarketplaceUsesMainKindAccentColorsPreferenceKey;
+
 @interface PPDataViewInput : NSObject
 
 @property (nonatomic, strong, nullable) MainKindsModel *mainKind;

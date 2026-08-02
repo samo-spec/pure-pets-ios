@@ -99,6 +99,8 @@ final class PPPetAdViewerHostingController: UIViewController {
             true,
             animated: animated
         )
+        view.backgroundColor = .clear
+        navigationController?.view.backgroundColor = .clear
         applyViewerStatusBarAppearance()
         navigationController?.interactivePopGestureRecognizer?.isEnabled =
             true

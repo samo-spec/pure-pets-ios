@@ -8,7 +8,6 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol PPUniversalCellDelegate;
 @class MainKindsModel;
 @class PetAccessory;
-@class PPDataViewVC;
 @class PPHomePromoCarouselCard;
 @class PPOrder;
 @class PPPetProfile;
@@ -22,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface PPHomeViewController : UIViewController <PPUniversalCellDelegate>
 
 /// Existing public deep-link factory contract.
-- (PPDataViewVC *)buildDataViewVCForTarget:(PPDeepLinkTarget)target
+- (UIViewController *)buildDataViewVCForTarget:(PPDeepLinkTarget)target
                                   mainKind:(nullable MainKindsModel *)mainKind
                                     source:(PPInputSource)source;
 

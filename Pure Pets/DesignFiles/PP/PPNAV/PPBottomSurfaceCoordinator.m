@@ -197,8 +197,7 @@
          candidateClass && candidateClass != UIViewController.class;
          candidateClass = class_getSuperclass(candidateClass)) {
         NSString *className = NSStringFromClass(candidateClass);
-        if ([className isEqualToString:@"PPDataViewVC"] ||
-            [className isEqualToString:@"SellerProfileVC"]) {
+        if ([className isEqualToString:@"SellerProfileVC"]) {
             return YES;
         }
     }

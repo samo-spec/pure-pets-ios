@@ -26,9 +26,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign, readonly) NSInteger itemCount;
 - (void)reloadForSubKind:(SubKindModel *)subKind;
 // Init
-- (instancetype)initWithMainKind:(MainKindsModel *)mainKind
+- (instancetype)initWithMainKind:(nullable MainKindsModel *)mainKind
                     sourceTarget:(PPDeepLinkTarget)sourceTarget;
 - (void)switchToMainKind:(MainKindsModel *)mainKind;
+- (void)switchToAllMainKinds;
 // Actions
 - (void)fetchInitialData;
 - (void)fetchNextPage;
@@ -39,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setFilterState:(nullable PPFilterState *)state forSection:(PPDataSection)section;
 - (NSInteger)previewResultCountForFilterState:(PPFilterState *)state;
 
-- (NSString *)subKindKeyForMainKind:(MainKindsModel *)mainKind;
+- (NSString *)subKindKeyForMainKind:(nullable MainKindsModel *)mainKind;
 // Cell access
 - (PPUniversalCellViewModel *)viewModelAtIndex:(NSInteger)index;
 - (void)reloadDataWithCompletion:(void (^)(NSError * _Nullable error))completion;
