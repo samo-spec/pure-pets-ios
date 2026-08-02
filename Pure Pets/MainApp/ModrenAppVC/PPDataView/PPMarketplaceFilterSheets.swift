@@ -820,8 +820,8 @@ struct PPMarketplaceProviderSheet: View {
                 RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
                     .strokeBorder(
                         selected
-                            ? Color(uiColor: store.accentColor).opacity(0.50)
-                            : Color.ppMarketplaceSeparator.opacity(0.18),
+                            ? Color(uiColor: store.accentColor).opacity(0.68)
+                            : Color.ppMarketplaceSeparator.opacity(0.32),
                         lineWidth: selected ? 1.5 : 1
                     )
             }

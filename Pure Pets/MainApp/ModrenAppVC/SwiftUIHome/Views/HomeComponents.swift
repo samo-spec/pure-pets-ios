@@ -44,6 +44,14 @@ enum HomeFont {
         )
     }
 
+    static func semiBold(_ size: CGFloat) -> Font {
+        .custom(
+            "Beiruti-SemiBold",
+            size: size,
+            relativeTo: relativeStyle(for: size)
+        )
+    }
+
     static func medium(_ size: CGFloat) -> Font {
         .custom(
             "Beiruti-Medium",

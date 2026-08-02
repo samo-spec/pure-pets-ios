@@ -303,29 +303,12 @@ struct PPMarketplaceHero: View {
     }
 
     private var sectionGlyph: some View {
-        let context = store.navigationContext
-        return ZStack {
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .fill(
-                    Color(uiColor: store.accentColor).opacity(
-                        sectionGlyphSurfaceOpacity
-                    )
-                )
-            Image(systemName: context.systemImageName.isEmpty
-                ? store.currentSectionDescriptor.iconName
-                : context.systemImageName)
-                .font(.system(
-                    size: dynamicTypeSize.isAccessibilitySize ? 24 : 20,
-                    weight: .semibold
-                ))
-                .foregroundStyle(Color(uiColor: store.accentColor))
-                .symbolRenderingMode(.hierarchical)
-        }
-        .frame(
-            width: dynamicTypeSize.isAccessibilitySize ? 64 : 52,
-            height: dynamicTypeSize.isAccessibilitySize ? 64 : 52
+        PPMarketplaceSectionGlyphPlate(
+            store: store,
+            sectionGlyphSurfaceOpacity: sectionGlyphSurfaceOpacity,
+            reduceMotion: reduceMotion,
+            isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
         )
-        .accessibilityHidden(true)
     }
 
     private var browseCommands: some View {
@@ -683,6 +666,89 @@ private struct PPMarketplaceHeroWave: View {
 }
 
 @available(iOS 15.0, *)
+private struct PPMarketplaceSectionGlyphPlate: View {
+    @ObservedObject var store: PPMarketplaceDataViewStore
+    let sectionGlyphSurfaceOpacity: Double
+    let reduceMotion: Bool
+    let isAccessibilitySize: Bool
+
+    @State private var pulseScale: CGFloat = 1.0
+    @State private var pulseRotation: Double = 0.0
+    @State private var isGlowing: Bool = false
+
+    private var activeIconName: String {
+        let context = store.navigationContext
+        let name = context.systemImageName.isEmpty
+            ? store.currentSectionDescriptor.iconName
+            : context.systemImageName
+        return name.isEmpty ? "storefront.fill" : name
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .fill(
+                    Color(uiColor: store.accentColor).opacity(
+                        sectionGlyphSurfaceOpacity
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                        .strokeBorder(
+                            Color(uiColor: store.accentColor).opacity(isGlowing ? 0.38 : 0.14),
+                            lineWidth: 0.9
+                        )
+                }
+
+            Image(systemName: activeIconName)
+                .font(.system(
+                    size: isAccessibilitySize ? 24 : 20,
+                    weight: .semibold
+                ))
+                .foregroundStyle(Color(uiColor: store.accentColor))
+                .symbolRenderingMode(.hierarchical)
+                .id("\(activeIconName)_\(store.currentMainKindID)")
+                .transition(reduceMotion ? .opacity : .scale(scale: 0.75).combined(with: .opacity))
+        }
+        .frame(
+            width: isAccessibilitySize ? 64 : 52,
+            height: isAccessibilitySize ? 64 : 52
+        )
+        .scaleEffect(reduceMotion ? 1.0 : pulseScale)
+        .rotationEffect(.degrees(reduceMotion ? 0 : pulseRotation))
+        .shadow(
+            color: Color(uiColor: store.accentColor).opacity(reduceMotion ? 0 : (isGlowing ? 0.30 : 0.08)),
+            radius: isGlowing ? 10 : 4
+        )
+        .onChange(of: store.currentMainKindID) { _ in
+            triggerSectionChangeMotion()
+        }
+        .onChange(of: activeIconName) { _ in
+            triggerSectionChangeMotion()
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func triggerSectionChangeMotion() {
+        guard !reduceMotion else { return }
+        pulseScale = 0.82
+        pulseRotation = -12
+        isGlowing = true
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.58)) {
+            pulseScale = 1.15
+            pulseRotation = 6
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                pulseScale = 1.0
+                pulseRotation = 0
+                isGlowing = false
+            }
+        }
+    }
+}
+
+@available(iOS 15.0, *)
 private struct PPMarketplaceMetricPill: View {
     let icon: String
     let text: String
@@ -705,6 +771,13 @@ private struct PPMarketplaceMetricPill: View {
             Color(uiColor: accent).opacity(surfaceOpacity),
             in: Capsule(style: .continuous)
         )
+        .overlay {
+            Capsule(style: .continuous)
+                .strokeBorder(
+                    Color(uiColor: accent).opacity(0.26),
+                    lineWidth: 0.8
+                )
+        }
     }
 }
 
@@ -1134,7 +1207,7 @@ private struct PPMarketplaceActionChipLabel: View {
                 .strokeBorder(
                     selected
                         ? Color.clear
-                        : Color.ppMarketplaceSeparator.opacity(0.25),
+                        : Color.ppMarketplaceSeparator.opacity(0.38),
                     lineWidth: 1
                 )
         }
