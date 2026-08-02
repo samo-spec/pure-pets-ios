@@ -117,6 +117,18 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)switchToSubKindIdentifier:(NSInteger)identifier
     NS_SWIFT_NAME(switchSubKind(identifier:));
 
+/// Returns only subkinds owned by the requested main kind. Passing `0`
+/// represents All Main Kinds and intentionally returns no subkind choices.
+- (NSArray<PPMarketplaceTaxonomyOption *> *)subKindOptionsForMainKindIdentifier:(NSInteger)mainKindIdentifier
+    NS_SWIFT_NAME(subKindOptions(mainKindIdentifier:));
+
+/// Commits Main Kind (legacy Species) and Subkind (legacy Breed) together and
+/// starts at most one backend request. An incompatible subkind is resolved to
+/// `0` before the request is created.
+- (void)applyCategoryMainKindIdentifier:(NSInteger)mainKindIdentifier
+                      subKindIdentifier:(NSInteger)subKindIdentifier
+    NS_SWIFT_NAME(applyCategory(mainKindIdentifier:subKindIdentifier:));
+
 - (PPFilterState *)filterStateForSection:(PPDataSection)section
     NS_SWIFT_NAME(filterState(for:));
 - (void)applyFilterState:(PPFilterState *)filterState

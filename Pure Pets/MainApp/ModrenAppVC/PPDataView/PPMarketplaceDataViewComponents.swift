@@ -681,9 +681,11 @@ struct PPMarketplaceCurrentDock: View {
         .padding(.top, PPSpace.sm)
         .padding(.bottom, PPSpace.md)
         .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.ppMarketplaceSeparator.opacity(0.22))
-                .frame(height: contrast == .increased ? 2 : 0.5)
+            PPMarketplaceDockLiquidBottomBorder(
+                accent: store.accentColor,
+                contrast: contrast,
+                reduceMotion: reduceMotion
+            )
         }
         .background {
             GeometryReader { dockProxy in
@@ -917,7 +919,7 @@ struct PPMarketplaceCurrentDock: View {
     }
 
     private func isActive(_ group: PPFilterGroup) -> Bool {
-        group.isActive 
+        group.isActive()
     }
 
     private func filterChipTitle(_ group: PPFilterGroup) -> String {
@@ -996,6 +998,57 @@ private struct PPMarketplacePinnedDockMaterial: View {
             .ignoresSafeArea(.container, edges: .top)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPMarketplaceDockLiquidBottomBorder: View {
+    let accent: UIColor
+    let contrast: ColorSchemeContrast
+    let reduceMotion: Bool
+
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Liquid surface glow backdrop
+            LinearGradient(
+                colors: [
+                    Color.ppMarketplaceSurface.opacity(0.95),
+                    Color(uiColor: accent).opacity(0.35),
+                    Color.ppMarketplaceSurface,
+                    Color(uiColor: accent).opacity(0.28),
+                    Color.ppMarketplaceSurface.opacity(0.95)
+                ],
+                startPoint: UnitPoint(x: 0 - phase, y: 0.5),
+                endPoint: UnitPoint(x: 1 - phase, y: 0.5)
+            )
+            .frame(height: contrast == .increased ? 2.5 : 1.5)
+            .blur(radius: 0.5)
+
+            // Primary liquid surface border line
+            LinearGradient(
+                colors: [
+                    Color.ppMarketplaceSurface,
+                    Color(uiColor: accent).opacity(0.50),
+                    Color.ppMarketplaceSurface.opacity(0.90),
+                    Color(uiColor: accent).opacity(0.50),
+                    Color.ppMarketplaceSurface
+                ],
+                startPoint: UnitPoint(x: 0 + phase, y: 0.5),
+                endPoint: UnitPoint(x: 1 + phase, y: 0.5)
+            )
+            .frame(height: contrast == .increased ? 2 : 1)
+        }
+        .shadow(color: Color.ppMarketplaceSurface.opacity(0.55), radius: 3, x: 0, y: 1)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: true)) {
+                phase = 0.25
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

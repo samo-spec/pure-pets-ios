@@ -3,6 +3,7 @@
 
 @class MainKindsModel;
 @class PPUniversalCellViewModel;
+@class SubKindModel;
 
 NS_ASSUME_NONNULL_BEGIN
 @interface PPDataViewVM : NSObject
@@ -29,7 +30,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithMainKind:(nullable MainKindsModel *)mainKind
                     sourceTarget:(PPDeepLinkTarget)sourceTarget;
 - (void)switchToMainKind:(MainKindsModel *)mainKind;
+- (void)switchToMainKind:(MainKindsModel *)mainKind
+                 subKind:(nullable SubKindModel *)subKind;
 - (void)switchToAllMainKinds;
+/// Existing backend taxonomy parameters. `speciesID` maps to Main Kind and
+/// `breedID` maps to Subkind; zero preserves each legacy "All" contract.
+- (NSDictionary<NSString *, NSNumber *> *)currentTaxonomyParameters;
 // Actions
 - (void)fetchInitialData;
 - (void)fetchNextPage;

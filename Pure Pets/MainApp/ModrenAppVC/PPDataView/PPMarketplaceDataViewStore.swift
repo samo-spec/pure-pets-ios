@@ -29,6 +29,7 @@ enum PPMarketplaceLoadState: Equatable {
 
 @available(iOS 15.0, *)
 enum PPMarketplaceSheet: String, Identifiable {
+    case category
     case filters
     case providers
 
@@ -262,6 +263,8 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     @Published var activeSheet: PPMarketplaceSheet?
     @Published var filterDraft: PPFilterState?
     @Published private(set) var filterPreviewCount = 0
+    @Published private(set) var categoryDraftMainKindID = 0
+    @Published private(set) var categoryDraftSubKindID = 0
 
     private var rawItems: [PPUniversalCellViewModel] = []
     private var selectedProviderIDs: [Int: String] = [:]
@@ -355,6 +358,26 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         }
     }
 
+    var categoryDraftSubKindChoices: [PPMarketplaceSubKindChoice] {
+        let all = PPMarketplaceSubKindChoice(
+            id: 0,
+            title: PPMarketplaceText.localized("data_nav_all_breed")
+        )
+        guard categoryDraftMainKindID != 0 else {
+            return [all]
+        }
+        return [all] + bridge.subKindOptions(
+            mainKindIdentifier: categoryDraftMainKindID
+        )
+        .filter { $0.identifier != 0 }
+        .map { option in
+            PPMarketplaceSubKindChoice(
+                id: option.identifier,
+                title: option.title
+            )
+        }
+    }
+
     var currentMainKindID: Int {
         bridge.currentMainKindID
     }
@@ -399,7 +422,9 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     }
 
     func refresh() async {
-        guard !isReplacingContext else { return }
+        guard !isReplacingContext,
+              !isRefreshing,
+              !bridge.isLoading else { return }
         isRefreshing = true
         updateErrorMessage = nil
         await withCheckedContinuation {
@@ -414,6 +439,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     }
 
     func retry() {
+        guard !bridge.isLoading else { return }
         updateErrorMessage = nil
         if records.isEmpty {
             loadState = .loading
@@ -483,6 +509,64 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         filterDraft = currentFilterState.copy() as? PPFilterState
         updateFilterPreview()
         activeSheet = .filters
+    }
+
+    func beginCategoryEditing() {
+        categoryDraftMainKindID = bridge.currentMainKindID
+        categoryDraftSubKindID = bridge.currentSubKindID
+        normalizeCategoryDraftSubKind()
+        activeSheet = .category
+    }
+
+    func cancelCategoryEditing() {
+        categoryDraftMainKindID = bridge.currentMainKindID
+        categoryDraftSubKindID = bridge.currentSubKindID
+        activeSheet = nil
+    }
+
+    func selectCategoryMainKind(_ choice: PPMarketplaceMainKindChoice) {
+        guard categoryDraftMainKindID != choice.id else { return }
+        categoryDraftMainKindID = choice.id
+        normalizeCategoryDraftSubKind()
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    func selectCategorySubKind(_ choice: PPMarketplaceSubKindChoice) {
+        guard categoryDraftSubKindID != choice.id,
+              categoryDraftSubKindChoices.contains(where: {
+                  $0.id == choice.id
+              }) else { return }
+        categoryDraftSubKindID = choice.id
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    func clearCategoryDraft() {
+        categoryDraftMainKindID = 0
+        categoryDraftSubKindID = 0
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    func applyCategoryDraft() {
+        normalizeCategoryDraftSubKind()
+        let nextMainKindID = categoryDraftMainKindID
+        let nextSubKindID = categoryDraftSubKindID
+        activeSheet = nil
+
+        guard nextMainKindID != bridge.currentMainKindID ||
+                nextSubKindID != bridge.currentSubKindID else {
+            return
+        }
+
+        selectedProviderIDs.removeAll()
+        selectedProviderID = nil
+        providerOptions = []
+        updateErrorMessage = nil
+        prepareBridgeContentTransition(.refinement)
+        bridge.applyCategory(
+            mainKindIdentifier: nextMainKindID,
+            subKindIdentifier: nextSubKindID
+        )
+        UISelectionFeedbackGenerator().selectionChanged()
     }
 
     func cancelFilterEditing() {
@@ -572,11 +656,17 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         if activeSheet == .filters {
             filterDraft = nil
         }
+        if activeSheet == .category {
+            categoryDraftMainKindID = bridge.currentMainKindID
+            categoryDraftSubKindID = bridge.currentSubKindID
+        }
         activeSheet = nil
     }
 
     func sheetDidDismiss() {
         filterDraft = nil
+        categoryDraftMainKindID = bridge.currentMainKindID
+        categoryDraftSubKindID = bridge.currentSubKindID
     }
 
     func openSearch() {
@@ -705,6 +795,8 @@ final class PPMarketplaceDataViewStore: ObservableObject {
                     guard let self, self.currentSection.rawValue == 0 else {
                         return
                     }
+                    guard !self.bridge.isLoading,
+                          !self.isReplacingContext else { return }
                     self.bridge.reload()
                 }
             }
@@ -880,6 +972,15 @@ final class PPMarketplaceDataViewStore: ObservableObject {
             return
         }
         filterPreviewCount = bridge.previewResultCount(for: filterDraft)
+    }
+
+    private func normalizeCategoryDraftSubKind() {
+        guard categoryDraftSubKindChoices.contains(where: {
+            $0.id == categoryDraftSubKindID
+        }) else {
+            categoryDraftSubKindID = 0
+            return
+        }
     }
 
     private func prepareBridgeContentTransition(
