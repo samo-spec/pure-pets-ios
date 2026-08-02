@@ -917,7 +917,7 @@ struct PPMarketplaceCurrentDock: View {
     }
 
     private func isActive(_ group: PPFilterGroup) -> Bool {
-        group.isActive()
+        group.isActive 
     }
 
     private func filterChipTitle(_ group: PPFilterGroup) -> String {
