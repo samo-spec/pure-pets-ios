@@ -185,6 +185,7 @@ struct HomeHeroView: View {
                 secondaryButton(page)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, PPSpace.xs)
         }
     }
 
@@ -1154,7 +1155,7 @@ private struct HomeHeroCareCurrentLine: Shape {
     }
 }
 
-private struct HomeHeroBorder: View {
+struct HomeHeroBorder: View {
     let accent: Color
     let darkMode: Bool
     let increasedContrast: Bool

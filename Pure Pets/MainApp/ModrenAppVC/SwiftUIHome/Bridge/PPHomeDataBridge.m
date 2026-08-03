@@ -277,7 +277,7 @@
                 isEqualToString:@"shop2.json"];
         BOOL bagAnimation = [self.animationName containsString:@"bag"];
         if (marketplaceAnimation) {
-            self.animationView.animationSpeed = 0.78;
+            self.animationView.animationSpeed = 0.60;
         } else if (profileAnimation || bagAnimation) {
             self.animationView.animationSpeed = 0.85;
         } else {

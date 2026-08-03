@@ -107,6 +107,9 @@ private struct PPSectionHeaderState {
 
 private final class PPSectionHeaderStore: ObservableObject {
     @Published private(set) var state = PPSectionHeaderState()
+    private var pendingState: PPSectionHeaderState?
+    private var pendingAnimated = false
+    private var publicationScheduled = false
 
     func configure(
         subtitleVisible: Bool,
@@ -118,42 +121,78 @@ private final class PPSectionHeaderStore: ObservableObject {
         rightToLeft: Bool,
         animated: Bool
     ) {
-        mutate(animated: animated) {
-            state.subtitleVisible = subtitleVisible
-            state.showsAction = showsAction
-            state.usesCirclePresentation = usesCirclePresentation
-            state.usesMainKindsPresentation = usesMainKindsPresentation
-            state.surfaceDecorationActive = surfaceDecorationActive
-            state.headingAccentColor = headingAccentColor
-            state.rightToLeft = rightToLeft
+        mutate(animated: animated) { nextState in
+            nextState.subtitleVisible = subtitleVisible
+            nextState.showsAction = showsAction
+            nextState.usesCirclePresentation = usesCirclePresentation
+            nextState.usesMainKindsPresentation = usesMainKindsPresentation
+            nextState.surfaceDecorationActive = surfaceDecorationActive
+            nextState.headingAccentColor = headingAccentColor
+            nextState.rightToLeft = rightToLeft
         }
     }
 
     func setSurfaceDecorationActive(_ active: Bool, animated: Bool) {
-        mutate(animated: animated) {
-            state.surfaceDecorationActive = active
+        mutate(animated: animated) { nextState in
+            nextState.surfaceDecorationActive = active
         }
     }
 
     func setRightToLeft(_ rightToLeft: Bool) {
-        mutate(animated: false) {
-            state.rightToLeft = rightToLeft
+        mutate(animated: false) { nextState in
+            nextState.rightToLeft = rightToLeft
         }
     }
 
     func setPressed(_ pressed: Bool, animated: Bool) {
-        mutate(animated: animated) {
-            state.pressed = pressed
+        mutate(animated: animated) { nextState in
+            nextState.pressed = pressed
         }
     }
 
     func setExpanded(_ expanded: Bool, animated: Bool) {
-        mutate(animated: animated) {
-            state.expanded = expanded
+        mutate(animated: animated) { nextState in
+            nextState.expanded = expanded
         }
     }
 
-    private func mutate(animated: Bool, _ changes: () -> Void) {
+    private func mutate(
+        animated: Bool,
+        _ changes: (inout PPSectionHeaderState) -> Void
+    ) {
+        var nextState = pendingState ?? state
+        changes(&nextState)
+
+        guard !statesMatch(nextState, state) else {
+            pendingState = nil
+            pendingAnimated = false
+            return
+        }
+
+        pendingState = nextState
+        pendingAnimated = pendingAnimated || animated
+        guard !publicationScheduled else { return }
+
+        // The UIKit header is also driven by UIViewRepresentable.updateUIView.
+        // Publish after that render transaction and coalesce duplicate syncs.
+        publicationScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            self?.publishPendingState()
+        }
+    }
+
+    private func publishPendingState() {
+        publicationScheduled = false
+        guard let nextState = pendingState else { return }
+
+        let animated = pendingAnimated
+        pendingState = nil
+        pendingAnimated = false
+        guard !statesMatch(nextState, state) else { return }
+
+        let changes = { [weak self] in
+            self?.state = nextState
+        }
         guard animated else {
             var transaction = Transaction(animation: nil)
             transaction.disablesAnimations = true
@@ -165,6 +204,21 @@ private final class PPSectionHeaderStore: ObservableObject {
             ? .easeOut(duration: 0.12)
             : .spring(response: 0.24, dampingFraction: 0.88, blendDuration: 0)
         withAnimation(animation, changes)
+    }
+
+    private func statesMatch(
+        _ lhs: PPSectionHeaderState,
+        _ rhs: PPSectionHeaderState
+    ) -> Bool {
+        lhs.subtitleVisible == rhs.subtitleVisible &&
+        lhs.showsAction == rhs.showsAction &&
+        lhs.usesCirclePresentation == rhs.usesCirclePresentation &&
+        lhs.usesMainKindsPresentation == rhs.usesMainKindsPresentation &&
+        lhs.surfaceDecorationActive == rhs.surfaceDecorationActive &&
+        lhs.headingAccentColor.isEqual(rhs.headingAccentColor) &&
+        lhs.rightToLeft == rhs.rightToLeft &&
+        lhs.pressed == rhs.pressed &&
+        lhs.expanded == rhs.expanded
     }
 }
 

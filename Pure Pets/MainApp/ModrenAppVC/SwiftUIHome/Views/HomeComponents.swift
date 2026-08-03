@@ -1039,21 +1039,26 @@ struct HomeMyPetProfileCard: View {
 
     private var cardBody: some View {
         ZStack {
-            cardShape
-                .fill(cardGradient)
+            HomeHeroField(
+                accent: surfaceAccent,
+                increasedContrast: contrast == .increased
+            )
 
             decorativeLayer
-
-            cardShape.strokeBorder(
-                borderColor,
-                lineWidth: contrast == .increased ? 1.4 : 0.8
-            )
 
             contentLayer
                 .padding(PPSpace.lg)
         }
         .frame(maxWidth: .infinity)
         .frame(minHeight: cardMinHeight)
+        .clipShape(cardShape)
+        .overlay {
+            HomeHeroBorder(
+                accent: surfaceAccent,
+                darkMode: colorScheme == .dark,
+                increasedContrast: contrast == .increased
+            )
+        }
         .contentShape(cardShape)
         .shadow(
             color: PPShadow.card.color,
@@ -1072,31 +1077,18 @@ struct HomeMyPetProfileCard: View {
     }
 
     private var decorativeLayer: some View {
-        ZStack {
-            Rectangle()
-                .fill(
-                    RadialGradient(
-                        colors: [accentGlow, Color.clear],
-                        center: .topTrailing,
-                        startRadius: 0,
-                        endRadius: 170
-                    )
+        Image(systemName: "pawprint.fill")
+            .font(.system(size: 86, weight: .black))
+            .foregroundStyle(
+                Color.ppPrimary.opacity(
+                    colorScheme == .dark ? 0.05 : 0.06
                 )
-                .clipShape(cardShape)
-
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 86, weight: .black))
-                .foregroundStyle(
-                    Color.ppPrimary.opacity(
-                        colorScheme == .dark ? 0.05 : 0.06
-                    )
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity,
-                       alignment: .bottomTrailing)
-                .padding(.trailing, PPSpace.sm)
-                .padding(.bottom, PPSpace.sm)
-        }
-        .accessibilityHidden(true)
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                   alignment: .bottomTrailing)
+            .padding(.trailing, PPSpace.sm)
+            .padding(.bottom, PPSpace.sm)
+            .accessibilityHidden(true)
     }
 
     private var contentLayer: some View {
@@ -1580,49 +1572,14 @@ struct HomeMyPetProfileCard: View {
     }
 
     private var cardShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+        RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
     }
 
-    private var cardGradient: LinearGradient {
-        LinearGradient(
-            colors: gradientColors,
-            startPoint: UnitPoint(x: 0, y: 0),
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var gradientColors: [Color] {
-        if isLoading {
-            return colorScheme == .dark
-                ? [Color.ppSecondarySurface, Color.ppSurface.opacity(0.92)]
-                : [Color.ppSurface, Color.ppSecondarySurface]
-        }
-
+    private var surfaceAccent: Color {
         if errorMessage != nil {
-            return colorScheme == .dark
-                ? [Color.ppCard, Color.ppError.opacity(0.14)]
-                : [Color.ppSurface, Color.ppError.opacity(0.08)]
+            return Color.ppError
         }
-
-        if defaultPet != nil {
-            return colorScheme == .dark
-                ? [Color.ppCard, Color.ppPrimary.opacity(0.18)]
-                : [Color.ppSurface, Color.ppPrimary.opacity(0.10)]
-        }
-
-        if hasProfilesWithoutDefault {
-            return colorScheme == .dark
-                ? [Color.ppCard, Color.ppPrimary.opacity(0.14)]
-                : [Color.ppSurface, Color.ppPrimary.opacity(0.07)]
-        }
-
-        return colorScheme == .dark
-            ? [Color.ppCard, Color.ppPrimary.opacity(0.12)]
-            : [Color.ppSurface, Color.ppWarmPorcelain]
-    }
-
-    private var accentGlow: Color {
-        Color.ppPrimary.opacity(colorScheme == .dark ? 0.18 : 0.14)
+        return Color.homeBrand
     }
 
     private var borderColor: Color {

@@ -195,14 +195,23 @@ struct HomeView: View {
     }
 
     private var loadedContent: some View {
-        LazyVStack(alignment: .leading, spacing: 0) {
+        let sections = visibleSupportedSections
+
+        return LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(
-                Array(visibleSupportedSections.enumerated()),
+                Array(sections.enumerated()),
                 id: \.element.id
             ) { index, section in
                 configuredSection(section)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, sectionVerticalPadding(section.id))
+                    .padding(
+                        .top,
+                        heroToMainKindsBreathingRoom(
+                            in: sections,
+                            at: index
+                        )
+                    )
                     .background(sectionBand(for: section.id))
                     .homeSectionEntrance(
                         isVisible: loadedEntranceVisible,
@@ -440,6 +449,20 @@ struct HomeView: View {
              HomeSectionRawID.marketplaceHero: return PPSpace.md
         default: return PPSpace.lg
         }
+    }
+
+    private func heroToMainKindsBreathingRoom(
+        in sections: [HomeConfigSection],
+        at index: Int
+    ) -> CGFloat {
+        guard index > sections.startIndex,
+              sections.indices.contains(index),
+              sections[index].id == HomeSectionRawID.mainKinds,
+              sections[index - 1].id == HomeSectionRawID.hero
+        else {
+            return 0
+        }
+        return PPSpace.sm
     }
 
     private var bottomPadding: CGFloat {
