@@ -12,7 +12,7 @@
 #import <Pure_Pets-Swift.h>
 
 
-@interface SceneDelegate ()<UNUserNotificationCenterDelegate>
+@interface SceneDelegate ()
 @property (nonatomic, strong) ChManager *cm;
 @property (nonatomic, assign) BOOL didShowMainVC;
 @property (nonatomic, strong) id authListenerHandle;
@@ -228,7 +228,6 @@ static NSString *PPSceneOrderIDFromPayload(NSDictionary *payload)
 willConnectToSession:(UISceneSession *)session
       options:(UISceneConnectionOptions *)connectionOptions
 {
-    [UNUserNotificationCenter currentNotificationCenter].delegate = self;
     UNNotificationResponse *response =
             connectionOptions.notificationResponse;
 
@@ -281,10 +280,38 @@ willConnectToSession:(UISceneSession *)session
 - (void)tryHandlePendingChatNotification {
 
     if (!self.pendingChatNotification) return;
-    if (!self.window.rootViewController) return;
+    if (!self.window.rootViewController ||
+        [self.window.rootViewController isKindOfClass:SplashViewController.class]) return;
 
-    [self pp_handleNotificationTap:self.pendingChatNotification];
+    NSDictionary *pendingNotification = self.pendingChatNotification;
     self.pendingChatNotification = nil;
+    [self pp_handleNotificationTap:pendingNotification];
+}
+
+- (void)handleRemoteNotificationUserInfo:(NSDictionary *)userInfo {
+    NSDictionary *safeUserInfo = PPSceneSafeDictionary(userInfo);
+    if (!self.window.rootViewController ||
+        [self.window.rootViewController isKindOfClass:SplashViewController.class] ||
+        self.window.windowScene.activationState == UISceneActivationStateUnattached) {
+        self.pendingChatNotification = safeUserInfo;
+        NSLog(@"PPLAB Scene notification tap deferred | rootReady=%@ splashActive=%@",
+              self.window.rootViewController ? @"yes" : @"no",
+              [self.window.rootViewController isKindOfClass:SplashViewController.class] ? @"yes" : @"no");
+        return;
+    }
+    [self pp_handleNotificationTap:safeUserInfo];
+}
+
+- (void)notificationRoutingRootDidBecomeReady {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self notificationRoutingRootDidBecomeReady];
+        });
+        return;
+    }
+    NSLog(@"PPLAB Scene notification routing root ready | hasPending=%@",
+          self.pendingChatNotification ? @"yes" : @"no");
+    [self tryHandlePendingChatNotification];
 }
  
 
@@ -335,13 +362,26 @@ willConnectToSession:(UISceneSession *)session
             if (!strongSelf) return;
 
             if (error || !snapshot.exists) {
-                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @"Order data is unavailable right now."];
+                [PPHUD showError:kLang(@"order_support_unavailable_no_order")];
+                return;
+            }
+
+            NSString *authenticatedUID = PPSceneTrimmedString([FIRAuth auth].currentUser.uid);
+            NSDictionary *data = PPSceneSafeDictionary(snapshot.data);
+            NSString *orderOwnerUID = PPSceneFirstScalarForKeys(data, @[@"userId", @"uid"]);
+            if (authenticatedUID.length == 0 ||
+                orderOwnerUID.length == 0 ||
+                ![orderOwnerUID isEqualToString:authenticatedUID]) {
+                NSLog(@"PPLAB Scene order route rejected | orderId=%@ hasAuth=%@ ownerMatch=no",
+                      PPSceneTrimmedString(orderId),
+                      authenticatedUID.length > 0 ? @"yes" : @"no");
+                [PPHUD showError:kLang(@"order_support_unavailable_no_order")];
                 return;
             }
 
             PPOrder *order = [PPOrder orderFromSnapshot:snapshot];
             if (!order) {
-                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @"Order data is unavailable right now."];
+                [PPHUD showError:kLang(@"order_support_unavailable_no_order")];
                 return;
             }
 
@@ -548,18 +588,6 @@ willConnectToSession:(UISceneSession *)session
     [userRef setData:data merge:YES completion:^(NSError * _Nullable error) {
         if (error) NSLog(@"[SceneDelegate] User status update failed: %@", error.localizedDescription);
     }];
-}
-
-- (void)userNotificationCenter:(UNUserNotificationCenter *)center
-didReceiveNotificationResponse:(UNNotificationResponse *)response
-         withCompletionHandler:(void (^)(void))completionHandler {
-
-    NSDictionary *userInfo =
-        response.notification.request.content.userInfo;
-
-    [self pp_handleNotificationTap:userInfo];
-
-    completionHandler();
 }
 
 @end

@@ -1,273 +1,376 @@
 import SwiftUI
 
-enum PPPetAdDividerAxis {
-    case horizontal
-    case vertical
-}
+@available(iOS 16.0, *)
+struct PPPetAdTrustJourneyDetailsContent: View {
+    @ObservedObject var store: PPPetAdViewerStore
+    let hasAppeared: Bool
+    let bottomClearance: CGFloat
 
-struct PPPetAdFadingDivider: View {
-    let axis: PPPetAdDividerAxis
-
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    init(axis: PPPetAdDividerAxis) {
-        self.axis = axis
-    }
-
-    @ViewBuilder
     var body: some View {
-        let divider = LinearGradient(
-            colors: [
-                Color.clear,
-                dividerColor,
-                Color.clear
-            ],
-            startPoint: axis == .horizontal ? .leading : .top,
-            endPoint: axis == .horizontal ? .trailing : .bottom
+        let model = PPPetAdTrustJourneyModel(
+            snapshot: store.snapshot,
+            owner: store.owner
         )
 
-        if axis == .horizontal {
-            divider
-                .frame(maxWidth: .infinity)
-                .frame(height: dividerThickness)
-                .accessibilityHidden(true)
-        } else {
-            divider
-                .frame(
-                    width: dividerThickness,
-                    height: PPSpace.xxxxl
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                PPPetAdTrustJourneyHeader(
+                    snapshot: store.snapshot,
+                    facts: model.facts,
+                    isFavorite: store.isFavorite,
+                    isFavoriteWorking: store.favoriteState == .working,
+                    canFavorite:
+                        store.screenState == .content
+                        && !store.snapshot.ad.adID.isEmpty,
+                    onFavorite: store.toggleFavorite
                 )
+                .ppPetAdEntrance(
+                    isPresented: hasAppeared,
+                    delayIndex: 0
+                )
+
+                if store.isViewingOwnAdvertisement {
+                    ownerNotice
+                        .padding(.top, PPSpace.lg)
+                }
+
+                Rectangle()
+                    .fill(Color.ppSeparator)
+                    .frame(height: 1)
+                    .padding(.vertical, PPSpace.xxl)
+                    .accessibilityHidden(true)
+
+                PPPetAdTrustTimeline(
+                    model: model,
+                    ownerState: store.ownerState,
+                    isSignedIn: store.isSignedIn
+                )
+                .ppPetAdEntrance(
+                    isPresented: hasAppeared,
+                    delayIndex: 1
+                )
+            }
+            .padding(.horizontal, PPSpace.screenMargin)
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
+
+            PPPetAdRelatedSection(
+                kind: .pets,
+                title: PPPetAdLocalization.text(
+                    "Similar Ads",
+                    fallback: "Similar pets"
+                ),
+                subtitle: PPPetAdLocalization.text(
+                    "pet_ad_viewer_similar_detail",
+                    fallback:
+                        "More listings selected from this category."
+                ),
+                state: store.relatedAdsState,
+                items: store.relatedAds,
+                onRetry: store.retryRelatedAds,
+                onSelect: store.selectRelatedItem
+            )
+            .padding(.top, PPSpace.xxxxl)
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
+            .ppPetAdEntrance(
+                isPresented: hasAppeared,
+                delayIndex: 2
+            )
+
+            PPPetAdRelatedSection(
+                kind: .accessories,
+                title: PPPetAdLocalization.text(
+                    "Similar Accessories",
+                    fallback: "Related accessories"
+                ),
+                subtitle: PPPetAdLocalization.text(
+                    "pet_ad_viewer_accessories_detail",
+                    fallback:
+                        "Useful finds chosen for pets in this category."
+                ),
+                state: store.accessoriesState,
+                items: store.relatedAccessories,
+                onRetry: store.retryAccessories,
+                onSelect: store.selectRelatedItem
+            )
+            .padding(.top, PPSpace.xxxl)
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
+            .ppPetAdEntrance(
+                isPresented: hasAppeared,
+                delayIndex: 3
+            )
+
+            Color.clear
+                .frame(height: max(bottomClearance, PPSpace.xxxl))
                 .accessibilityHidden(true)
+        }
+        .padding(.top, PPSpace.sm)
+        .background(Color.ppBackground)
+    }
+
+    private var ownerNotice: some View {
+        HStack(alignment: .top, spacing: PPSpace.sm) {
+            Image(systemName: "person.crop.circle.badge.checkmark")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.ppAccentText)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(
+                    PPPetAdLocalization.text(
+                        "pet_ad_viewer_your_listing",
+                        fallback: "This is your advertisement"
+                    )
+                )
+                .font(PPPetAdTypography.calloutBold)
+                .foregroundStyle(Color.ppTextPrimary)
+
+                Text(
+                    PPPetAdLocalization.text(
+                        "pet_ad_viewer_your_listing_detail",
+                        fallback:
+                            "Contact actions are hidden when you view your own listing."
+                    )
+                )
+                .font(PPPetAdTypography.footnote)
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(PPSpace.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color.ppSoftRose.opacity(0.72),
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+        )
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct PPPetAdTrustTimeline: View {
+    let model: PPPetAdTrustJourneyModel
+    let ownerState: PPPetAdViewerSectionState
+    let isSignedIn: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PPPetAdTrustTimelineRow(
+                symbol: "text.quote",
+                title: PPPetAdLocalization.text(
+                    "pet_ad_trust_story_title",
+                    fallback: "Their story"
+                ),
+                isLast: false
+            ) {
+                PPPetAdTrustStorySection(story: model.story)
+            }
+
+            PPPetAdTrustTimelineRow(
+                symbol: "cross.case.fill",
+                title: PPPetAdLocalization.text(
+                    "pet_ad_trust_health_title",
+                    fallback: "Health & trust"
+                ),
+                isLast: false
+            ) {
+                VStack(spacing: PPSpace.sm) {
+                    ForEach(model.evidence) { evidence in
+                        PPPetAdTrustEvidenceRow(evidence: evidence)
+                    }
+                }
+            }
+
+            PPPetAdTrustTimelineRow(
+                symbol: "person.crop.circle.fill",
+                title: PPPetAdLocalization.text(
+                    "pet_ad_trust_seller_title",
+                    fallback: "The advertiser"
+                ),
+                isLast: false
+            ) {
+                PPPetAdTrustSellerSection(
+                    model: model,
+                    ownerState: ownerState,
+                    isSignedIn: isSignedIn
+                )
+            }
+
+            PPPetAdTrustTimelineRow(
+                symbol: "checklist",
+                title: PPPetAdLocalization.text(
+                    "pet_ad_trust_decision_title",
+                    fallback: "Before you decide"
+                ),
+                isLast: true
+            ) {
+                VStack(spacing: PPSpace.sm) {
+                    ForEach(model.decisionPrompts) { prompt in
+                        PPPetAdDecisionPromptRow(prompt: prompt)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct PPPetAdTrustTimelineRow<Content: View>: View {
+    let symbol: String
+    let title: String
+    let isLast: Bool
+    let content: Content
+
+    init(
+        symbol: String,
+        title: String,
+        isLast: Bool,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.symbol = symbol
+        self.title = title
+        self.isLast = isLast
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            timelineRail
+
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                Text(title)
+                    .font(PPPetAdTypography.title2)
+                    .foregroundStyle(Color.ppAccentText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, isLast ? 0 : PPSpace.xxxl)
         }
     }
 
-    private var dividerColor: Color {
-        Color.ppSeparator.opacity(
-            colorSchemeContrast == .increased ? 0.92 : 0.52
-        )
-    }
+    private var timelineRail: some View {
+        VStack(spacing: 0) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.ppAccentText)
+                .frame(width: 44, height: 44)
+                .background(Color.ppSoftRose, in: Circle())
+                .overlay {
+                    Circle()
+                        .stroke(
+                            Color.ppPrimary.opacity(0.24),
+                            lineWidth: 1
+                        )
+                }
 
-    private var dividerThickness: CGFloat {
-        colorSchemeContrast == .increased
-            ? 1
-            : PPPetAdViewerStyle.hairlineWidth
+            if !isLast {
+                Rectangle()
+                    .fill(Color.ppPrimary.opacity(0.40))
+                    .frame(width: 1.5)
+                    .frame(maxHeight: .infinity)
+                    .padding(.vertical, 2)
+            }
+        }
+        .frame(width: 44)
+        .accessibilityHidden(true)
     }
 }
 
-struct PPPetAdInfoGrid: View {
-    let type: String
-    let age: String
-    let gender: String
+private struct PPPetAdTrustEvidenceRow: View {
+    let evidence: PPPetAdTrustEvidence
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    @ViewBuilder
     var body: some View {
-        if allItems.isEmpty {
-            EmptyView()
-        } else {
-            ledger
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            Image(systemName: statusSymbol)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(statusColor)
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(evidence.title)
+                    .font(PPPetAdTypography.calloutBold)
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(evidence.detail)
+                    .font(PPPetAdTypography.footnote)
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, PPSpace.sm + 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color.ppElevatedSurface,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+            .stroke(
+                statusColor.opacity(
+                    colorSchemeContrast == .increased ? 0.66 : 0.20
+                ),
+                lineWidth:
+                    colorSchemeContrast == .increased ? 1.5 : 0.75
+            )
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var statusColor: Color {
+        switch evidence.kind {
+        case .verified: return .ppSuccess
+        case .reviewed: return .ppPrimary
+        case .provided: return .ppInfo
+        case .attention: return .ppWarning
+        }
+    }
+
+    private var statusSymbol: String {
+        switch evidence.kind {
+        case .verified: return "checkmark.seal.fill"
+        case .reviewed: return "checkmark.shield.fill"
+        case .provided: return "checkmark.circle.fill"
+        case .attention: return "exclamationmark.circle.fill"
+        }
+    }
+}
+
+private struct PPPetAdDecisionPromptRow: View {
+    let prompt: PPPetAdDecisionPrompt
+
+    var body: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            Image(systemName: prompt.symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.ppAccentText)
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+
+            Text(prompt.title)
+                .font(PPPetAdTypography.callout)
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityElement(children: .contain)
         }
-    }
-
-    private var ledger: some View {
-        VStack(spacing: 0) {
-            if let featuredItem {
-                infoView(
-                    for: featuredItem,
-                    emphasis: .featured,
-                    usesCompactColumn: false
-                )
-                .padding(.vertical, PPSpace.sm)
-            }
-
-            if !supportingItems.isEmpty {
-                if featuredItem != nil {
-                    horizontalDivider
-                }
-
-                if usesStackedLayout {
-                    stackedSupportingLedger
-                } else {
-                    compactSupportingLedger
-                }
-            }
-        }
-    }
-
-    private var compactSupportingLedger: some View {
-        HStack(alignment: .top, spacing: 0) {
-            ForEach(supportingItems) { item in
-                infoView(
-                    for: item,
-                    emphasis: .supporting,
-                    usesCompactColumn: true
-                )
-                .frame(maxWidth: .infinity)
-
-                if item.id != supportingItems.last?.id {
-                    verticalDivider
-                }
-            }
-        }
-    }
-
-    private var stackedSupportingLedger: some View {
-        VStack(spacing: 0) {
-            ForEach(supportingItems) { item in
-                infoView(
-                    for: item,
-                    emphasis: .supporting,
-                    usesCompactColumn: false
-                )
-
-                if item.id != supportingItems.last?.id {
-                    horizontalDivider
-                }
-            }
-        }
-    }
-
-    private var horizontalDivider: some View {
-        Rectangle()
-            .fill(dividerColor)
-            .frame(height: dividerThickness)
-            .accessibilityHidden(true)
-    }
-
-    private var verticalDivider: some View {
-        Rectangle()
-            .fill(dividerColor)
-            .frame(width: dividerThickness)
-            .padding(.vertical, PPSpace.md)
-            .accessibilityHidden(true)
-    }
-
-    private var dividerColor: Color {
-        Color.ppSeparator.opacity(
-            colorSchemeContrast == .increased ? 1 : 0.72
-        )
-    }
-
-    private var dividerThickness: CGFloat {
-        colorSchemeContrast == .increased
-            ? 1
-            : PPPetAdViewerStyle.hairlineWidth
-    }
-
-    private var usesStackedLayout: Bool {
-        dynamicTypeSize >= .xxLarge
-    }
-
-    private func infoView(
-        for item: PPPetAdInfoItem,
-        emphasis: PPPetAdInfoEmphasis,
-        usesCompactColumn: Bool
-    ) -> some View {
-        PPPetAdInfoPillView(
-            systemIcon: item.systemIcon,
-            assetIcon: item.assetIcon,
-            label: item.label,
-            value: item.value,
-            signature: item.signature,
-            emphasis: emphasis,
-            showsBottomAccent: emphasis == .featured,
-            usesCompactColumn: usesCompactColumn
-        )
-    }
-
-    private var allItems: [PPPetAdInfoItem] {
-        var items: [PPPetAdInfoItem] = []
-        if let featuredItem {
-            items.append(featuredItem)
-        }
-        items.append(contentsOf: supportingItems)
-        return items
-    }
-
-    private var featuredItem: PPPetAdInfoItem? {
-        guard !type.isEmpty else { return nil }
-        return PPPetAdInfoItem(
-            id: "breed",
-            systemIcon: nil,
-            assetIcon: "peeking_pets",
-            signature: .breed,
-            label: PPPetAdLocalization.text(
-                "pet_ad_viewer_breed_label",
-                fallback: "Breed"
-            ),
-            value: type
-        )
-    }
-
-    private var supportingItems: [PPPetAdInfoItem] {
-        var result: [PPPetAdInfoItem] = []
-
-        if !age.isEmpty {
-            result.append(
-                PPPetAdInfoItem(
-                    id: "age",
-                    systemIcon: "calendar",
-                    assetIcon: nil,
-                    signature: .age,
-                    label: PPPetAdLocalization.text("Age", fallback: "Age"),
-                    value: age
-                )
-            )
-        }
-
-        if !gender.isEmpty {
-            result.append(
-                PPPetAdInfoItem(
-                    id: "gender",
-                    systemIcon: "circle.lefthalf.filled",
-                    assetIcon: nil,
-                    signature: .gender,
-                    label: PPPetAdLocalization.text(
-                        "pet_ad_viewer_sex_label",
-                        fallback: "Sex"
-                    ),
-                    value: gender
-                )
-            )
-        }
-
-        return result
+        .padding(.vertical, PPSpace.sm)
+        .accessibilityElement(children: .combine)
     }
 }
-
-private struct PPPetAdInfoItem: Identifiable {
-    let id: String
-    let systemIcon: String?
-    let assetIcon: String?
-    let signature: PPPetAdInfoSignature
-    let label: String
-    let value: String
-}
-
-#if DEBUG
-#Preview("Unified info bills") {
-    PPPetAdInfoGrid(
-        type: "شيرازي أبيض طويل الشعر",
-        age: "سنة واحدة",
-        gender: "أنثى"
-    )
-    .padding()
-    .background(Color.ppBackground)
-    .environment(\.layoutDirection, .rightToLeft)
-}
-
-#Preview("Unified info bills AX5") {
-    PPPetAdInfoGrid(
-        type: "Persian longhair",
-        age: "One year and six months",
-        gender: "Female"
-    )
-    .padding()
-    .background(Color.ppBackground)
-    .dynamicTypeSize(.accessibility5)
-}
-#endif

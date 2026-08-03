@@ -211,6 +211,12 @@ struct PPAccessoryPressStyle: ButtonStyle {
     }
 }
 
+struct PPHero: View {
+    var body: some View {
+        WorldGlassBackground()
+    }
+}
+
 struct PPAccessoryBeachCanvas: View {
     var body: some View {
         PPHero()

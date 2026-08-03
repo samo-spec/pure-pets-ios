@@ -75,6 +75,7 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 @property (nonatomic, copy, nullable) NSString *qibSessionId;
 
 /// Per-owner fulfillment support (Phase 15 — additive, backward-compatible).
+@property (nonatomic, assign) NSInteger fulfillmentVersion;
 @property (nonatomic, copy, nullable) NSArray<NSString *> *fulfillmentOrderIDs;
 @property (nonatomic, strong, nullable) NSDictionary *fulfillmentSummary;
 - (BOOL)hasFulfillmentOrders;

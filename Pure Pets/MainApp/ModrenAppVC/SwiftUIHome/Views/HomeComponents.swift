@@ -2028,6 +2028,7 @@ private struct HomeFeaturedPetCard: View {
                         .minimumScaleFactor(0.93)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .padding(.top, PPSpace.md)
                 .padding(.horizontal, PPSpace.sm)
 
                 Spacer(minLength: PPSpace.xs)
@@ -2702,17 +2703,14 @@ struct HomeCategoryRail: View {
     }
 
     private var gridColumns: [GridItem] {
-        let fixedCardWidth = itemSize.width
-        return [
-            GridItem(
-                .adaptive(
-                    minimum: fixedCardWidth,
-                    maximum: fixedCardWidth
-                ),
+        Array(
+            repeating: GridItem(
+                .flexible(minimum: 0, maximum: .infinity),
                 spacing: RailLayout.cellSpacing,
                 alignment: .top
             ),
-        ]
+            count: 3
+        )
     }
 
     private var layoutActionTitle: String {

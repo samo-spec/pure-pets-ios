@@ -1,176 +1,192 @@
 import SwiftUI
 
-struct PPPetAdDescriptionCard: View {
-    let title: String
-    let description: String
+private struct PPPetAdStoryHeightMeasurement: Equatable {
+    let story: String
+    let height: CGFloat
 
-    @State private var isExpanded = false
+    static let empty = PPPetAdStoryHeightMeasurement(
+        story: "",
+        height: 0
+    )
+}
+
+private struct PPPetAdCollapsedStoryHeightPreferenceKey: PreferenceKey {
+    static var defaultValue = PPPetAdStoryHeightMeasurement.empty
+
+    static func reduce(
+        value: inout PPPetAdStoryHeightMeasurement,
+        nextValue: () -> PPPetAdStoryHeightMeasurement
+    ) {
+        value = nextValue()
+    }
+}
+
+private struct PPPetAdFullStoryHeightPreferenceKey: PreferenceKey {
+    static var defaultValue = PPPetAdStoryHeightMeasurement.empty
+
+    static func reduce(
+        value: inout PPPetAdStoryHeightMeasurement,
+        nextValue: () -> PPPetAdStoryHeightMeasurement
+    ) {
+        value = nextValue()
+    }
+}
+
+struct PPPetAdTrustStorySection: View {
+    let story: String
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @State private var isExpanded = false
+    @State private var collapsedStoryMeasurement =
+        PPPetAdStoryHeightMeasurement.empty
+    @State private var fullStoryMeasurement =
+        PPPetAdStoryHeightMeasurement.empty
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.base) {
-            storyHeading
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            if normalizedStory.isEmpty {
+                HStack(alignment: .top, spacing: PPSpace.sm) {
+                    Image(systemName: "text.badge.xmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.ppTextTertiary)
+                        .accessibilityHidden(true)
 
-            HStack(alignment: .top, spacing: PPSpace.md) {
-                Capsule(style: .continuous)
-                    .fill(
-                        Color.ppPrimary.opacity(
-                            colorSchemeContrast == .increased ? 0.90 : 0.58
+                    Text(
+                        PPPetAdLocalization.text(
+                            "pet_ad_trust_story_missing",
+                            fallback:
+                                "The advertiser has not added this pet’s story yet."
                         )
                     )
-                    .frame(width: 3)
-                    .accessibilityHidden(true)
-
-                Text(normalizedDescription)
                     .font(PPPetAdTypography.body)
-                    .foregroundStyle(Color.ppTextPrimary.opacity(0.86))
-                    .lineSpacing(PPSpace.xs)
-                    .lineLimit(isExpanded ? nil : 6)
+                    .foregroundStyle(Color.ppTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-            }
-            .padding(.leading, PPSpace.xs)
-
-            if shouldOfferExpansion {
-                Button {
-                    var transaction = Transaction(
-                        animation:
-                            reduceMotion
-                            ? nil
-                            : PPPetAdViewerMotion.expansion
-                    )
-                    transaction.disablesAnimations = reduceMotion
-                    withTransaction(transaction) {
-                        isExpanded.toggle()
-                    }
-                } label: {
-                    HStack(spacing: PPSpace.xs) {
-                        Text(
-                            isExpanded
-                                ? PPPetAdLocalization.text(
-                                    "ReadLess",
-                                    fallback: "Show less"
-                                )
-                                : PPPetAdLocalization.text(
-                                    "ReadMore",
-                                    fallback: "Read more"
-                                )
-                        )
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .rotationEffect(
-                                .degrees(isExpanded ? 180 : 0)
-                            )
-                            .accessibilityHidden(true)
-                    }
-                    .font(PPPetAdTypography.calloutBold)
-                    .foregroundStyle(PPPetAdViewerStyle.actionAccent)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(
-                    PPPetAdPressButtonStyle(pressedScale: 0.985)
-                )
-                .accessibilityValue(
-                    isExpanded
-                        ? PPPetAdLocalization.text(
-                            "Expanded",
-                            fallback: "Expanded"
+            } else {
+                storyText(lineLimit: isExpanded ? nil : 4)
+                    .background {
+                        storyHeightMeasurement(
+                            lineLimit: 4,
+                            key: PPPetAdCollapsedStoryHeightPreferenceKey.self
                         )
-                        : PPPetAdLocalization.text(
-                            "Collapsed",
-                            fallback: "Collapsed"
+                    }
+                    .background {
+                        storyHeightMeasurement(
+                            lineLimit: nil,
+                            key: PPPetAdFullStoryHeightPreferenceKey.self
                         )
-                )
+                    }
+
+                if shouldOfferExpansion {
+                    Button {
+                        if reduceMotion {
+                            isExpanded.toggle()
+                        } else {
+                            withAnimation(PPPetAdViewerMotion.expansion) {
+                                isExpanded.toggle()
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: PPSpace.xs) {
+                            Text(
+                                isExpanded
+                                    ? PPPetAdLocalization.text(
+                                        "pet_ad_trust_read_less",
+                                        fallback: "Read less"
+                                    )
+                                    : PPPetAdLocalization.text(
+                                        "pet_ad_trust_read_more",
+                                        fallback: "Read the full story"
+                                    )
+                            )
+                            .font(PPPetAdTypography.calloutBold)
+
+                            Image(
+                                systemName:
+                                    isExpanded
+                                    ? "chevron.up"
+                                    : "chevron.down"
+                            )
+                            .font(.system(size: 12, weight: .bold))
+                            .accessibilityHidden(true)
+                        }
+                        .foregroundStyle(Color.ppAccentText)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PPPetAdPressButtonStyle())
+                    .accessibilityValue(
+                        isExpanded
+                            ? PPPetAdLocalization.text(
+                                "pet_ad_trust_expanded",
+                                fallback: "Expanded"
+                            )
+                            : PPPetAdLocalization.text(
+                                "pet_ad_trust_collapsed",
+                                fallback: "Collapsed"
+                            )
+                    )
+                }
             }
         }
-        .padding(PPSpace.base)
-        .background(descriptionSurface)
-        .overlay {
-            descriptionShape
-                .stroke(
-                    Color.ppBorder.opacity(
-                        colorSchemeContrast == .increased ? 0.92 : 0.22
-                    ),
-                    lineWidth: colorSchemeContrast == .increased
-                        ? 1.5
-                        : PPPetAdViewerStyle.hairlineWidth
-                )
-                .accessibilityHidden(true)
-        }
-        .padding(.top, PPSpace.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: description) { _ in
+        .onPreferenceChange(
+            PPPetAdCollapsedStoryHeightPreferenceKey.self
+        ) { measurement in
+            guard measurement.story == normalizedStory else { return }
+            collapsedStoryMeasurement = measurement
+        }
+        .onPreferenceChange(
+            PPPetAdFullStoryHeightPreferenceKey.self
+        ) { measurement in
+            guard measurement.story == normalizedStory else { return }
+            fullStoryMeasurement = measurement
+        }
+        .onChange(of: normalizedStory) { _ in
             isExpanded = false
         }
     }
 
-    private var storyHeading: some View {
-        HStack(alignment: .center, spacing: PPSpace.md) {
-            Image(systemName: "text.quote")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
-                .frame(width: 34, height: 34)
-                .background(
-                    Color.ppPrimary.opacity(
-                        colorSchemeContrast == .increased ? 0.16 : 0.09
-                    ),
-                    in: RoundedRectangle(
-                        cornerRadius: PPPetAdViewerStyle.insetRadius,
-                        style: .continuous
-                    )
-                )
-                .accessibilityHidden(true)
-
-            Text(title)
-                .font(PPPetAdTypography.title3)
-                .foregroundStyle(Color.ppTextPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    private var normalizedDescription: String {
-        description
-            .components(separatedBy: .newlines)
-            .map {
-                $0.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            .filter { !$0.isEmpty }
-            .joined(separator: "\n\n")
+    private var normalizedStory: String {
+        story.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var shouldOfferExpansion: Bool {
-        normalizedDescription.count > 260 ||
-            normalizedDescription.components(separatedBy: "\n").count > 4
+        guard collapsedStoryMeasurement.story == normalizedStory,
+              fullStoryMeasurement.story == normalizedStory else {
+            return false
+        }
+        return fullStoryMeasurement.height
+            > collapsedStoryMeasurement.height + 0.5
     }
 
-    private var descriptionSurface: some View {
-        descriptionShape
-            .fill(
-                LinearGradient(
-                    colors: colorScheme == .dark
-                        ? [
-                            Color.ppWarmPorcelain.opacity(0.46),
-                            Color.ppElevatedSurface
-                        ]
-                        : [
-                            Color.ppWarmPorcelain.opacity(0.72),
-                            Color.ppCard
-                        ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+    private func storyText(lineLimit: Int?) -> some View {
+        Text(normalizedStory)
+            .font(PPPetAdTypography.body)
+            .foregroundStyle(Color.ppTextSecondary)
+            .lineSpacing(4)
+            .lineLimit(lineLimit)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var descriptionShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.descriptionRadius,
-            style: .continuous
-        )
+    private func storyHeightMeasurement<Key: PreferenceKey>(
+        lineLimit: Int?,
+        key: Key.Type
+    ) -> some View where Key.Value == PPPetAdStoryHeightMeasurement {
+        storyText(lineLimit: lineLimit)
+            .hidden()
+            .accessibilityHidden(true)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: key,
+                        value: PPPetAdStoryHeightMeasurement(
+                            story: normalizedStory,
+                            height: proxy.size.height
+                        )
+                    )
+                }
+            }
     }
 }

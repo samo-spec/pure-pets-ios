@@ -570,9 +570,9 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     if (!self.checkoutIdempotencyKey) {
         self.checkoutIdempotencyKey = [[NSUUID UUID] UUIDString];
     }
-    PPORDERLog(@"Checkout idempotency key | generation=%ld | key=%@",
-               (long)generation,
-               self.checkoutIdempotencyKey);
+    NSLog(@"PPLAB checkout command prepared | generation=%ld keyPresent=%d",
+          (long)generation,
+          self.checkoutIdempotencyKey.length > 0);
 
     CartManager *cart = CartManager.sharedManager;
 
@@ -1120,9 +1120,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     // Force next attempt to re-resolve order from Firestore.
     self.currentOrder = nil;
 
-    // Clear idempotency key so a retry starts with a fresh key.
-    // Without this, backend deduplication may return the old failed order.
-    self.checkoutIdempotencyKey = nil;
+    // Preserve the command identity after ambiguous failures. A lost callable
+    // response must replay the committed order instead of creating a duplicate.
 
     [self cleanup];
 

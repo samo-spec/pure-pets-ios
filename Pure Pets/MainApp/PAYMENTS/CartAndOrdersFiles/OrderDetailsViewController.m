@@ -3489,7 +3489,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)cancelOrderTapped
 {
     PPOrderEligibilityDecision *decision = [self decisionForAction:PPOrderCustomerActionTypeCancel];
-    NSLog(@"[PP_CANCEL_FLOW] cancelOrderTapped. orderId=%@, rawStatus=%@, isEligible=%d, message=%@", self.order.orderId, self.order.rawStatus, decision.isEligible, decision.message);
+    NSLog(@"PPLAB consumer cancellation prompt orderId=%@ status=%@ eligible=%d", self.order.orderId, self.order.rawStatus, decision.isEligible);
     if (!decision.isEligible) {
         [self showInfoMessage:decision.message.length > 0 ? decision.message : kLang(@"OrderCannotBeCanceled")];
         return;
@@ -3511,7 +3511,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)performCancelOrder
 {
     if (![self safeString:self.order.orderId].length) {
-        NSLog(@"[PP_CANCEL_FLOW] performCancelOrder aborted: missing order ID.");
+        NSLog(@"PPLAB consumer cancellation rejected reason=missingOrderId");
         [self showErrorMessage:kLang(@"order_missing_id")];
         return;
     }
@@ -3524,14 +3524,14 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         ![self.order hasCapturedPayment] &&
         ([statusKey isEqualToString:@"pending"] || [statusKey isEqualToString:@"failed"]);
 
-    NSLog(@"[PP_CANCEL_FLOW] performCancelOrder. orderId=%@, isCashOnDelivery=%d, hasCapturedPayment=%d, statusKey=%@, shouldCancelPendingCheckout=%d", self.order.orderId, [self.order isCashOnDelivery], [self.order hasCapturedPayment], statusKey, shouldCancelPendingCheckout);
+    NSLog(@"PPLAB consumer cancellation decision orderId=%@ status=%@ pendingCheckout=%d fulfillmentVersion=%ld", self.order.orderId, statusKey, shouldCancelPendingCheckout, (long)self.order.fulfillmentVersion);
 
     if (shouldCancelPendingCheckout) {
         __weak typeof(self) weakSelf = self;
-        NSLog(@"[PP_CANCEL_FLOW] Routing to cancelPendingCheckoutOrder");
+        NSLog(@"PPLAB consumer cancellation route=checkout-callable orderId=%@", self.order.orderId);
         [self.orderManager cancelPendingCheckoutOrder:self.order
                                            completion:^(BOOL success, BOOL alreadyCancelled, NSError * _Nullable error) {
-            NSLog(@"[PP_CANCEL_FLOW] cancelPendingCheckoutOrder completed. success=%d, alreadyCancelled=%d, error=%@", success, alreadyCancelled, error);
+            NSLog(@"PPLAB consumer checkout cancellation result orderId=%@ success=%d alreadyCancelled=%d code=%ld", self.order.orderId, success, alreadyCancelled, (long)error.code);
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) strongSelf = weakSelf;
                 if (!strongSelf) return;
@@ -3555,11 +3555,11 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     draft.reasonTitle = kLang(@"order_cancel_button");
 
     __weak typeof(self) weakSelf = self;
-    NSLog(@"[PP_CANCEL_FLOW] Routing to submitSupportDraft");
+    NSLog(@"PPLAB consumer cancellation route=support-callable orderId=%@ fulfillmentVersion=%ld", self.order.orderId, (long)self.order.fulfillmentVersion);
     [self.orderManager submitSupportDraft:draft
                                  forOrder:self.order
                                completion:^(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error) {
-        NSLog(@"[PP_CANCEL_FLOW] submitSupportDraft completed. requestID=%@, deduplicated=%d, error=%@", request.requestId, deduplicated, error);
+        NSLog(@"PPLAB consumer cancellation result orderId=%@ requestId=%@ deduplicated=%d code=%ld", self.order.orderId, request.requestId, deduplicated, (long)error.code);
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;

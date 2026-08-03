@@ -91,8 +91,7 @@
                   viewController:(UIViewController *)viewController
                            phone:(NSString *)phone
                          idToken:(NSString *)idToken
-                   appCheckToken:(NSString *)appCheckToken
-                allowQARFallback:(BOOL)allowQARFallback;
+                   appCheckToken:(NSString *)appCheckToken;
 - (void)pp_startHostedQIBCheckoutWithURLString:(NSString *)urlString
                                          order:(PPOrder *)order
                                 viewController:(UIViewController *)viewController;
@@ -662,26 +661,6 @@ static FIRFunctionsErrorCode PPPaymentFunctionsErrorCodeFromHTTPStatus(NSInteger
     return FIRFunctionsErrorCodeUnknown;
 }
 
-static BOOL PPPaymentShouldRetryWithQARForCallableError(NSError *error)
-{
-    if (!error) return NO;
-
-    if (error.code != FIRFunctionsErrorCodeInvalidArgument &&
-        error.code != FIRFunctionsErrorCodeFailedPrecondition) {
-        return NO;
-    }
-
-    NSString *message = PPPaymentFunctionsServerMessageFromError(error).lowercaseString;
-    if (message.length == 0) {
-        return NO;
-    }
-
-    return ([message containsString:@"currency"] &&
-            ([message containsString:@"unsupported"] ||
-             [message containsString:@"invalid"] ||
-             [message containsString:@"qar"]));
-}
-
 static NSString *PPPaymentFriendlyFunctionsErrorMessage(NSError *error)
 {
     if (!error) return @"";
@@ -1032,8 +1011,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
                         viewController:viewController
                                  phone:phone
                                idToken:@""
-                         appCheckToken:@""
-                      allowQARFallback:YES];
+                         appCheckToken:@""];
     }];
 }
 
@@ -1477,7 +1455,6 @@ static void PPQIBTryLoadFrameworkBundle(void)
                            phone:(NSString *)phone
                          idToken:(NSString *)idToken
                    appCheckToken:(NSString *)appCheckToken
-                allowQARFallback:(BOOL)allowQARFallback
 {
     NSString *safeCurrency = PPPaymentTrimmedString(currency).uppercaseString;
     if (safeCurrency.length != 3) {
@@ -1530,23 +1507,6 @@ static void PPQIBTryLoadFrameworkBundle(void)
                                   completion:^(NSDictionary *session, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error || ![session isKindOfClass:NSDictionary.class]) {
-                if (allowQARFallback &&
-                    ![safeCurrency isEqualToString:@"QAR"] &&
-                    PPPaymentShouldRetryWithQARForCallableError(error)) {
-                    PPORDERLog(@"Retrying QIB session creation with QAR fallback | orderId=%@ | failedCurrency=%@ | error=%@",
-                               order.orderId ?: @"",
-                               safeCurrency ?: @"",
-                               error.localizedDescription ?: @"");
-                    [self createQIBSessionForOrder:order
-                                          currency:@"QAR"
-                                    viewController:viewController
-                                             phone:phone
-                                           idToken:idToken
-                                     appCheckToken:appCheckToken
-                                  allowQARFallback:NO];
-                    return;
-                }
-
                 NSError *resolvedError = error;
                 if (resolvedError) {
                     NSString *friendly = PPPaymentFriendlyFunctionsErrorMessage(resolvedError);

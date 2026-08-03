@@ -9,18 +9,24 @@ struct PPPetAdHeroGallery: View {
     let interactionState: PPPetAdViewerInteractionState
     let onOpen: (Int) -> Void
     var bottomViewType: PPGarBottomViewType = .thumbRails
+    var showsTrustJourneyBottomFade = false
     var onFirstImageLoaded: ((UIImage) -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let thumbnailSize: CGFloat = 44
     private let thumbnailRailInset: CGFloat = 10
+    private let thumbnailRailMaximumHeight: CGFloat = 320
 
     var body: some View {
         ZStack(alignment: .bottom) {
             gallery
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             contrastLayers
+
+            if showsTrustJourneyBottomFade {
+                trustJourneyBottomFade
+            }
 
             if items.count > 1 {
                 switch bottomViewType {
@@ -36,9 +42,7 @@ struct PPPetAdHeroGallery: View {
                     PPPetAdGalleryHandoff(
                         interactionState: interactionState
                     ) {
-                        thumbnailFooter
-                            .padding(.horizontal, PPSpace.screenMargin)
-                            .padding(.bottom, PPSpace.xxxl + PPSpace.xs)
+                        thumbnailRailOverlay
                     }
                 case .contactPill:
                     EmptyView()
@@ -136,6 +140,26 @@ struct PPPetAdHeroGallery: View {
         PPPetAdHeroAtmosphere(interactionState: interactionState)
     }
 
+    private var trustJourneyBottomFade: some View {
+        LinearGradient(
+            colors: [
+                Color.clear,
+                Color.ppBackground.opacity(0.06),
+                Color.ppBackground.opacity(0.42),
+                Color.ppBackground.opacity(0.94)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(
+            height:
+                PPPetAdViewerLayoutMetrics
+                .trustJourneyHeroBottomGradientHeight
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
     private var videoPlayIndicator: some View {
         Image(systemName: "play.fill")
             .font(.system(size: 22, weight: .bold))
@@ -182,20 +206,28 @@ struct PPPetAdHeroGallery: View {
         )
     }
 
-    private var thumbnailFooter: some View {
+    private var thumbnailRailOverlay: some View {
         GeometryReader { proxy in
-            HStack(spacing: PPSpace.sm) {
-                thumbnailRail(maxWidth: proxy.size.width)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            thumbnailRail(
+                maxHeight: max(
+                    proxy.size.height - (PPSpace.base * 2),
+                    0
+                )
+            )
+            .padding(.trailing, PPSpace.md)
+            .padding(.vertical, PPSpace.base)
+            .frame(
+                width: proxy.size.width,
+                height: proxy.size.height,
+                alignment: .trailing
+            )
         }
-        .frame(height: thumbnailRailHeight)
     }
 
-    private func thumbnailRail(maxWidth: CGFloat) -> some View {
+    private func thumbnailRail(maxHeight: CGFloat) -> some View {
         ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: PPSpace.sm) {
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: PPSpace.sm) {
                     ForEach(Array(items.enumerated()), id: \.element.id) {
                         index,
                         item in
@@ -263,8 +295,8 @@ struct PPPetAdHeroGallery: View {
                 .padding(.vertical, thumbnailRailInset)
             }
             .frame(
-                width: thumbnailRailWidth(maxWidth: maxWidth),
-                height: thumbnailRailHeight
+                width: thumbnailRailWidth,
+                height: thumbnailRailHeight(maxHeight: maxHeight)
             )
             .ppGlassSurface(
                 in: RoundedRectangle(
@@ -288,16 +320,19 @@ struct PPPetAdHeroGallery: View {
         }
     }
 
-    private func thumbnailRailWidth(maxWidth: CGFloat) -> CGFloat {
-        let count = max(items.count, 1)
-        let spacing = PPSpace.sm * CGFloat(max(count - 1, 0))
-        let neededWidth =
-            (thumbnailSize * CGFloat(count)) + spacing + (thumbnailRailInset * 2)
-        return min(neededWidth, max(maxWidth, 0))
+    private var thumbnailRailWidth: CGFloat {
+        thumbnailSize + (thumbnailRailInset * 2)
     }
 
-    private var thumbnailRailHeight: CGFloat {
-        thumbnailSize + (thumbnailRailInset * 2)
+    private func thumbnailRailHeight(maxHeight: CGFloat) -> CGFloat {
+        let count = max(items.count, 1)
+        let spacing = PPSpace.sm * CGFloat(max(count - 1, 0))
+        let neededHeight =
+            (thumbnailSize * CGFloat(count)) + spacing + (thumbnailRailInset * 2)
+        return min(
+            neededHeight,
+            min(thumbnailRailMaximumHeight, max(maxHeight, 0))
+        )
     }
 
     private var emptyHero: some View {

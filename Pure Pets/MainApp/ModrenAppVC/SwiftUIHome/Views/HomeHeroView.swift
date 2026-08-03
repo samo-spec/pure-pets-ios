@@ -448,12 +448,12 @@ struct HomeHeroView: View {
                 )
             }
             return HomeHeroArtworkAsset(
-                animationName: "petstore",
+                animationName: "bag.json",
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
                 usesCategoryArtworkTreatment: false,
-                loadsFromFirebase: true,
+                loadsFromFirebase: false,
                 primarySymbol: "bag.fill",
                 secondarySymbol: "shippingbox.fill"
             )
@@ -656,35 +656,47 @@ private struct HomeHeroFloatingPlate: View {
             .clipShape(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
             )
-            .offset(y: -2)
+            .offset(y: floatingPhase ? -5 : -1)
+            .rotationEffect(
+                .degrees(floatingPhase ? 0.45 : -0.30)
+            )
+            .scaleEffect(floatingPhase ? 1.008 : 0.996)
             .shadow(
                 color: Color.black.opacity(contrast == .increased ? 0 : 0.08),
-                radius: 12,
-                y: 7
+                radius: floatingPhase ? 14 : 11,
+                y: floatingPhase ? 9 : 6
             )
+            .animation(plateMotion, value: floating)
 
             floatingTile(
                 symbol: primarySymbol,
                 side: 44
             )
-            .offset(x: 40, y: -39 + (floatingPhase ? -2 : 2))
+            .offset(
+                x: 40 + (floatingPhase ? 1 : -1),
+                y: -39 + (floatingPhase ? -3 : 2)
+            )
+            .rotationEffect(
+                .degrees(floatingPhase ? 0.9 : -0.6)
+            )
+            .scaleEffect(floatingPhase ? 1.015 : 0.99)
+            .animation(primaryTileMotion, value: floating)
 
             floatingTile(
                 symbol: secondarySymbol,
                 side: 38
             )
-            .offset(x: -43, y: 40 + (floatingPhase ? 2 : -2))
+            .offset(
+                x: -43 + (floatingPhase ? -1 : 1),
+                y: 40 + (floatingPhase ? 3 : -2)
+            )
+            .rotationEffect(
+                .degrees(floatingPhase ? -1.0 : 0.7)
+            )
+            .scaleEffect(floatingPhase ? 0.99 : 1.012)
+            .animation(secondaryTileMotion, value: floating)
         }
         .frame(width: 124, height: 146)
-        .offset(y: floatingPhase ? -4 : 0)
-        .animation(
-            allowsFloatingMotion
-                ? .easeInOut(duration: 3.8).repeatForever(
-                    autoreverses: true
-                )
-                : nil,
-            value: floating
-        )
         .onAppear {
             updateFloatingMotion()
         }
@@ -693,6 +705,9 @@ private struct HomeHeroFloatingPlate: View {
         }
         .onChange(of: usesCategoryArtworkTreatment) { _ in
             updateFloatingMotion()
+        }
+        .onDisappear {
+            floating = false
         }
         .accessibilityHidden(true)
     }
@@ -762,16 +777,19 @@ private struct HomeHeroFloatingPlate: View {
                 tintColor: lottieTintColor(for: animationName)
             )
             .scaleEffect(lottieScale(for: animationName))
-            .tint(Color(lottieTintColor(for: animationName)))
         }
     }
 
     private func lottieScale(for animationName: String) -> CGFloat {
-        animationName == "petstore" ? 0.78 : 1.30
+        if animationName == "bag.json" { return 0.95 }
+        return animationName == "petstore" ? 0.78 : 1.30
     }
 
-    private func lottieTintColor(for animationName: String) -> UIColor {
-        animationName == "petstore"
+    private func lottieTintColor(for animationName: String) -> UIColor? {
+        if animationName == "bag.json" {
+            return UIColor(accent)
+        }
+        return animationName == "petstore"
             ? UIColor(Color.ppPrimary)
             : UIColor.white
     }
@@ -796,11 +814,33 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private var allowsFloatingMotion: Bool {
-        false
+        !reduceMotion && !usesCategoryArtworkTreatment
     }
 
     private var floatingPhase: Bool {
-        false
+        allowsFloatingMotion && floating
+    }
+
+    private var plateMotion: Animation? {
+        guard allowsFloatingMotion else { return nil }
+        return .easeInOut(duration: 4.6).repeatForever(
+            autoreverses: true
+        )
+    }
+
+    private var primaryTileMotion: Animation? {
+        guard allowsFloatingMotion else { return nil }
+        return .easeInOut(duration: 3.8).repeatForever(
+            autoreverses: true
+        )
+    }
+
+    private var secondaryTileMotion: Animation? {
+        guard allowsFloatingMotion else { return nil }
+        return .easeInOut(duration: 4.4).repeatForever(
+            autoreverses: true
+        )
+        .delay(0.22)
     }
 
 
@@ -828,12 +868,13 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private func updateFloatingMotion() {
-        if !allowsFloatingMotion {
+        guard allowsFloatingMotion else {
             floating = false
-        } else {
-            DispatchQueue.main.async {
-                floating = true
-            }
+            return
+        }
+        guard !floating else { return }
+        DispatchQueue.main.async {
+            floating = true
         }
     }
 }
@@ -939,6 +980,7 @@ struct HomeHeroField: View {
                 )
             }
         }
+        .opacity(0.84)
     }
 
     private var careCurrent: some View {

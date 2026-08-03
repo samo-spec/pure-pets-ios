@@ -29,6 +29,7 @@
 
 @property (nonatomic, strong) LOTAnimationView *animationView;
 @property (nonatomic, strong) UIImageView *fallbackImageView;
+@property (nonatomic, strong) LOTColorValueCallback *colorValueCallback;
 @property (nonatomic, copy) NSString *animationName;
 @property (nonatomic, assign) BOOL loadsFromFirebase;
 @property (nonatomic, assign) BOOL animationLoaded;
@@ -36,6 +37,7 @@
 
 - (BOOL)pp_usesExactStoragePathForAnimationName;
 - (void)pp_loadExactStorageAnimation;
+- (void)pp_applyCustomTintIfNeeded;
 
 @end
 
@@ -43,8 +45,8 @@
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
-    return [self initWithAnimationName:@"petstore"
-                     loadsFromFirebase:YES];
+    return [self initWithAnimationName:@"bag.json"
+                     loadsFromFirebase:NO];
 }
 
 - (instancetype)initWithAnimationName:(NSString *)animationName
@@ -66,8 +68,8 @@
     if (!self) {
         return nil;
     }
-    _animationName = @"petstore";
-    _loadsFromFirebase = YES;
+    _animationName = @"bag.json";
+    _loadsFromFirebase = NO;
     [self pp_buildMarketplaceAnimation];
     return self;
 }
@@ -102,6 +104,19 @@
     if (customTintColor) {
         self.animationView.tintColor = customTintColor;
         self.fallbackImageView.tintColor = customTintColor;
+        [self pp_applyCustomTintIfNeeded];
+    }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        BOOL colorAppearanceChanged =
+            [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection];
+        if (colorAppearanceChanged) {
+            [self pp_applyCustomTintIfNeeded];
+        }
     }
 }
 
@@ -129,8 +144,9 @@
     } else if ([self.animationName isEqualToString:@"PetMedicine"]) {
         fallbackSymbol = @"pills.fill";
     } else if ([self.animationName containsString:@"cart"] ||
-               [self.animationName containsString:@"shop"]) {
-        fallbackSymbol = @"cart.fill";
+               [self.animationName containsString:@"shop"] ||
+               [self.animationName isEqualToString:@"bag.json"]) {
+        fallbackSymbol = @"bag.fill";
     }
     
     
@@ -154,7 +170,7 @@
     [self addSubview:animation];
     self.animationView = animation;
 
-    CGFloat inset = [self.animationName isEqualToString:@"petstore"] ? 9.0 : -2.0;
+    CGFloat inset = ([self.animationName isEqualToString:@"petstore"] || [self.animationName isEqualToString:@"bag.json"]) ? 9.0 : -2.0;
     [NSLayoutConstraint activateConstraints:@[
         [fallback.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [fallback.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
@@ -189,38 +205,43 @@
     }
 
     self.animationLoading = YES;
-    if (!self.loadsFromFirebase) {
-        LOTComposition *composition =
-            [LOTComposition animationNamed:self.animationName
-                                  inBundle:NSBundle.mainBundle];
+
+    NSString *sansExt = [self.animationName stringByDeletingPathExtension];
+    LOTComposition *composition =
+        [LOTComposition animationNamed:self.animationName inBundle:NSBundle.mainBundle] ?:
+        [LOTComposition animationNamed:sansExt inBundle:NSBundle.mainBundle];
+
+    if (composition) {
         self.animationLoading = NO;
-        self.animationLoaded = composition != nil;
-        if (composition) {
-            [self.animationView setSceneModel:composition];
-        }
+        self.animationLoaded = YES;
+        [self.animationView setSceneModel:composition];
         [self pp_applyLoadedAnimationState];
         return;
     }
 
-    if ([self pp_usesExactStoragePathForAnimationName]) {
-        [self pp_loadExactStorageAnimation];
-        return;
-    }
-
     __weak typeof(self) weakSelf = self;
-    [AppClasses setAnimationNamed:self.animationName
-                           ToView:self.animationView
-                        withSpeed:0.1f
-                       completion:^(BOOL success) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) {
-            return;
-        }
+    [AppClasses fetchLottieJSONFromFirebasePath:self.animationName
+                                     completion:^(NSDictionary *jsonDict, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                return;
+            }
 
-        strongSelf.animationLoading = NO;
-        strongSelf.animationLoaded =
-            success && strongSelf.animationView.sceneModel != nil;
-        [strongSelf pp_applyLoadedAnimationState];
+            strongSelf.animationLoading = NO;
+            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
+                strongSelf.animationLoaded = NO;
+                [strongSelf pp_applyLoadedAnimationState];
+                return;
+            }
+
+            LOTComposition *loadedComp = [LOTComposition animationFromJSON:jsonDict];
+            strongSelf.animationLoaded = loadedComp != nil;
+            if (loadedComp) {
+                [strongSelf.animationView setSceneModel:loadedComp];
+            }
+            [strongSelf pp_applyLoadedAnimationState];
+        });
     }];
 }
 
@@ -235,44 +256,7 @@
 
 - (void)pp_loadExactStorageAnimation
 {
-    NSString *storagePath = self.animationName ?: @"";
-    NSString *filename = [storagePath lastPathComponent];
-    LOTComposition *localComp = [LOTComposition animationNamed:storagePath inBundle:NSBundle.mainBundle] ?:
-                                [LOTComposition animationNamed:filename inBundle:NSBundle.mainBundle];
-    if (localComp) {
-        self.animationLoading = NO;
-        self.animationLoaded = YES;
-        [self.animationView setSceneModel:localComp];
-        [self pp_applyLoadedAnimationState];
-        return;
-    }
-
-    __weak typeof(self) weakSelf = self;
-    [AppClasses fetchLottieJSONFromFirebasePath:storagePath
-                                     completion:^(NSDictionary *jsonDict,
-                                                  NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) {
-                return;
-            }
-
-            strongSelf.animationLoading = NO;
-            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
-                strongSelf.animationLoaded = NO;
-                [strongSelf pp_applyLoadedAnimationState];
-                return;
-            }
-
-            LOTComposition *composition =
-                [LOTComposition animationFromJSON:jsonDict];
-            strongSelf.animationLoaded = composition != nil;
-            if (composition) {
-                [strongSelf.animationView setSceneModel:composition];
-            }
-            [strongSelf pp_applyLoadedAnimationState];
-        });
-    }];
+    [self pp_loadMarketplaceAnimationIfNeeded];
 }
 
 - (void)pp_applyLoadedAnimationState
@@ -283,14 +267,37 @@
         self.animationView.loopAnimation = YES;
         BOOL profileAnimation =
             [self.animationName isEqualToString:@"Profile.lottie"];
+        BOOL bagAnimation =
+            [self.animationName isEqualToString:@"bag.json"] ||
+            [self.animationName containsString:@"bag"];
         self.animationView.animationSpeed =
-            profileAnimation ? 0.85 : (self.loadsFromFirebase ? 0.3 : 0.8);
-        self.animationView.animationProgress = profileAnimation ? 0.0 : 0.32;
+            (profileAnimation || bagAnimation) ? 0.85 : (self.loadsFromFirebase ? 0.3 : 0.8);
+        self.animationView.animationProgress = (profileAnimation || bagAnimation) ? 0.0 : 0.32;
         if (self.customTintColor) {
             self.animationView.tintColor = self.customTintColor;
+            [self pp_applyCustomTintIfNeeded];
         }
     }
     [self pp_updateMarketplacePlayback];
+}
+
+- (void)pp_applyCustomTintIfNeeded
+{
+    BOOL isBagAnimation =
+        [self.animationName.lastPathComponent.lowercaseString isEqualToString:@"bag.json"];
+    if (!isBagAnimation || !self.animationLoaded || !self.customTintColor) {
+        return;
+    }
+
+    UIColor *resolvedTint =
+        [self.customTintColor resolvedColorWithTraitCollection:self.traitCollection];
+    LOTColorValueCallback *callback =
+        [LOTColorValueCallback withCGColor:resolvedTint.CGColor];
+    LOTKeypath *strokeColorKeypath =
+        [LOTKeypath keypathWithString:@"**.Stroke 1.Color"];
+    self.colorValueCallback = callback;
+    [self.animationView setValueDelegate:callback
+                              forKeypath:strokeColorKeypath];
 }
 
 - (void)pp_marketplaceEnvironmentDidChange:(NSNotification *)notification

@@ -1,8 +1,13 @@
 #import "PPSearchFilterView.h"
 
-static CGFloat const PPFilterChipHeight = 32.0;
+static CGFloat const PPFilterChipMinimumHeight = PPTouchTargetMin;
 static CGFloat const PPFilterSectionSpacing = 12.0;
 static CGFloat const PPFilterChipSpacing = 8.0;
+
+static UIFont *PPFilterScaledFont(UIFont *font, UIFontTextStyle textStyle) {
+    UIFont *resolvedFont = font ?: [UIFont preferredFontForTextStyle:textStyle];
+    return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:resolvedFont];
+}
 
 @interface PPFilterChip : UIButton
 @property (nonatomic, copy) NSString *filterKey;
@@ -59,14 +64,16 @@ static CGFloat const PPFilterChipSpacing = 8.0;
     UIView *sectionView = [[UIView alloc] init];
     sectionView.translatesAutoresizingMaskIntoConstraints = NO;
     sectionView.backgroundColor = [[GM AppForegroundColor] colorWithAlphaComponent:1];
-    sectionView.layer.cornerRadius = 20;
+    PPApplyContinuousCorners(sectionView, PPCornerCard);
     sectionView.layer.masksToBounds = NO;
     sectionView.layer.borderWidth = 0.75;
     [sectionView pp_setBorderColor:[GM.appPrimaryColor colorWithAlphaComponent:0.10]];
 
     UILabel *sectionLabel = [[UILabel alloc] init];
     sectionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    sectionLabel.font = [GM boldFontWithSize:13];
+    sectionLabel.font = PPFilterScaledFont([GM boldFontWithSize:PPFontFootnote], UIFontTextStyleFootnote);
+    sectionLabel.adjustsFontForContentSizeCategory = YES;
+    sectionLabel.numberOfLines = 0;
     sectionLabel.textColor = GM.SecondaryTextColor;
     sectionLabel.text = title;
     sectionLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -100,7 +107,7 @@ static CGFloat const PPFilterChipSpacing = 8.0;
         [chipScrollView.leadingAnchor constraintEqualToAnchor:sectionView.leadingAnchor constant:14],
         [chipScrollView.trailingAnchor constraintEqualToAnchor:sectionView.trailingAnchor constant:-14],
         [chipScrollView.bottomAnchor constraintEqualToAnchor:sectionView.bottomAnchor constant:-14],
-        [chipScrollView.heightAnchor constraintEqualToConstant:PPFilterChipHeight],
+        [chipScrollView.heightAnchor constraintGreaterThanOrEqualToConstant:PPFilterChipMinimumHeight],
 
         [chipRow.topAnchor constraintEqualToAnchor:chipScrollView.contentLayoutGuide.topAnchor],
         [chipRow.leadingAnchor constraintEqualToAnchor:chipScrollView.contentLayoutGuide.leadingAnchor],
@@ -113,18 +120,21 @@ static CGFloat const PPFilterChipSpacing = 8.0;
         PPFilterChip *chip = [PPFilterChip buttonWithType:UIButtonTypeCustom];
         chip.translatesAutoresizingMaskIntoConstraints = NO;
         [chip setTitle:item[@"title"] forState:UIControlStateNormal];
-        chip.titleLabel.font = [GM MidFontWithSize:13];
+        chip.titleLabel.font = PPFilterScaledFont([GM MidFontWithSize:PPFontFootnote], UIFontTextStyleFootnote);
+        chip.titleLabel.adjustsFontForContentSizeCategory = YES;
+        chip.titleLabel.numberOfLines = 0;
+        chip.titleLabel.textAlignment = NSTextAlignmentCenter;
         chip.filterKey = key;
         chip.filterValue = item[@"id"];
         chip.allowsMultipleSelection = allowMultiple;
-        chip.layer.cornerRadius = PPFilterChipHeight / 2.0;
+        PPApplyContinuousCorners(chip, PPCornerPill);
         chip.layer.masksToBounds = YES;
         chip.adjustsImageWhenHighlighted = NO;
-        chip.contentEdgeInsets = UIEdgeInsetsMake(0, 14, 0, 14);
+        chip.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceSM, PPSpaceMD, PPSpaceSM, PPSpaceMD);
         [chip addTarget:self action:@selector(pp_chipTapped:) forControlEvents:UIControlEventTouchUpInside];
         [chip addTarget:self action:@selector(pp_chipTouchDown:) forControlEvents:UIControlEventTouchDown];
         [chip addTarget:self action:@selector(pp_chipTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
-        [chip.heightAnchor constraintEqualToConstant:PPFilterChipHeight].active = YES;
+        [chip.heightAnchor constraintGreaterThanOrEqualToConstant:PPFilterChipMinimumHeight].active = YES;
 
         [self pp_styleChip:chip selected:NO];
         [chipRow addArrangedSubview:chip];
@@ -142,10 +152,12 @@ static CGFloat const PPFilterChipSpacing = 8.0;
     self.resetButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.resetButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.resetButton setTitle:title forState:UIControlStateNormal];
-    self.resetButton.titleLabel.font = [GM MidFontWithSize:14];
+    self.resetButton.titleLabel.font = PPFilterScaledFont([GM MidFontWithSize:PPFontSubheadline], UIFontTextStyleSubheadline);
+    self.resetButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.resetButton.titleLabel.numberOfLines = 0;
     [self.resetButton setTitleColor:GM.appPrimaryColor forState:UIControlStateNormal];
     self.resetButton.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.08];
-    self.resetButton.layer.cornerRadius = 16;
+    PPApplyContinuousCorners(self.resetButton, PPCornerPill);
     self.resetButton.layer.masksToBounds = YES;
     self.resetButton.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
     [self.resetButton addTarget:self action:@selector(pp_resetTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -158,6 +170,7 @@ static CGFloat const PPFilterChipSpacing = 8.0;
         [self.resetButton.topAnchor constraintEqualToAnchor:resetContainer.topAnchor],
         [self.resetButton.centerXAnchor constraintEqualToAnchor:resetContainer.centerXAnchor],
         [self.resetButton.bottomAnchor constraintEqualToAnchor:resetContainer.bottomAnchor],
+        [self.resetButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
     ]];
 
     [self.containerStack addArrangedSubview:resetContainer];
@@ -217,6 +230,7 @@ static CGFloat const PPFilterChipSpacing = 8.0;
 }
 
 - (void)pp_styleChip:(UIButton *)chip selected:(BOOL)selected {
+    chip.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
     if (selected) {
         chip.backgroundColor = GM.appPrimaryColor;
         [chip setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];

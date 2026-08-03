@@ -93,6 +93,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *issueCategory;
 @property (nonatomic, copy) NSString *subject;
 @property (nonatomic, copy) NSString *notes;
+@property (nonatomic, copy) NSString *idempotencyKey;
 @property (nonatomic, copy) NSArray<NSString *> *selectedItemIDs;
 @property (nonatomic, copy) NSArray<PPOrderSupportAttachment *> *attachments;
 

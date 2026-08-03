@@ -309,6 +309,9 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
           data[@"fulfillmentVersion"] ?: @"");
 
     // Per-owner fulfillment fields (Phase 15 — additive, backward-compatible)
+    order.fulfillmentVersion = [data[@"fulfillmentVersion"] respondsToSelector:@selector(integerValue)]
+        ? [data[@"fulfillmentVersion"] integerValue]
+        : 0;
     if ([data[@"fulfillmentOrderIDs"] isKindOfClass:NSArray.class]) {
         order.fulfillmentOrderIDs = data[@"fulfillmentOrderIDs"];
     }
@@ -362,7 +365,10 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
         @"qibSessionId": self.qibSessionId ?: @"",
         @"paymentAttemptId": self.paymentAttemptId ?: @"",
         @"paymentResponse": self.paymentResponse ?: @{},
-        @"failureReason": self.failureReason ?: @""
+        @"failureReason": self.failureReason ?: @"",
+        @"fulfillmentVersion": @(self.fulfillmentVersion),
+        @"fulfillmentOrderIDs": self.fulfillmentOrderIDs ?: @[],
+        @"fulfillmentSummary": self.fulfillmentSummary ?: @{}
     };
 }
 

@@ -2613,7 +2613,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         NSString *uid = authUser.uid;
         [[UserManager sharedManager] deleteUserDocumentForUID:uid completion:^(NSError * _Nullable docErr) {
             // Proceed to delete auth user even if doc deletion fails, to ensure account removal
-            [authUser deleteWithCompletion:^(NSError * _Nullable error) {
+            [[UserManager sharedManager] deleteCurrentUserAccountWithCompletion:^(NSError * _Nullable error) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     __strong typeof(weakSelf) strongSelf = weakSelf;
                     if (!strongSelf) return;
@@ -2634,14 +2634,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
                     [PPHUD dismiss];
                     [PPHUD showSuccess:PPSettingsLocalizedString(@"account_deleted", @"Account deleted")];
-                    [UserManager.sharedManager signOutCurrentUserWithCompletion:^(NSError * _Nullable signOutError) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            if (signOutError) {
-                                NSLog(@"[SettingVC] Account deleted, but local sign-out reported: %@", signOutError.localizedDescription ?: signOutError);
-                            }
-                            [strongSelf pp_finishLocalLogoutAndReloadUI];
-                        });
-                    }];
+                    [strongSelf pp_finishLocalLogoutAndReloadUI];
                 });
             }];
         }];

@@ -1,594 +1,149 @@
-import Foundation
 import SwiftUI
 
-struct PPPetAdContactCard: View {
-    @ObservedObject var store: PPPetAdViewerStore
-    let showsActions: Bool
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    init(
-        store: PPPetAdViewerStore,
-        showsActions: Bool = true
-    ) {
-        self.store = store
-        self.showsActions = showsActions
-    }
+struct PPPetAdTrustSellerSection: View {
+    let model: PPPetAdTrustJourneyModel
+    let ownerState: PPPetAdViewerSectionState
+    let isSignedIn: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.base) {
-            PPPetAdDetailSectionHeading(
-                title: PPPetAdLocalization.text(
-                    "Contact Advertiser",
-                    fallback: "Contact advertiser"
-                )
-            )
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            HStack(alignment: .center, spacing: PPSpace.md) {
+                sellerAvatar
 
-            Group {
-                if !store.isSignedIn {
-                    signedOutContent
-                } else if store.isViewingOwnAdvertisement {
-                    ownAdvertisementContent
-                } else {
-                    ownerContent
-                }
-            }
-            .id(contactStateIdentity)
-            .transition(
-                reduceMotion
-                    ? .opacity
-                    : .opacity.combined(with: .scale(scale: 0.994))
-            )
-        }
-        .padding(.top, PPSpace.xxl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Color.ppSeparator.opacity(
-                    colorSchemeContrast == .increased ? 1 : 0.72
-                ))
-                .frame(
-                    height: colorSchemeContrast == .increased ? 1.5 : 1
-                )
-                .accessibilityHidden(true)
-        }
-        .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: contactStateIdentity)
-    }
-
-    private var signedOutContent: some View {
-        VStack(alignment: .leading, spacing: PPSpace.lg) {
-            HStack(alignment: .top, spacing: PPSpace.md) {
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.ppPrimary)
-                    .frame(width: 42, height: 42)
-                    .background(
-                        Color.ppPrimary.opacity(0.09),
-                        in: RoundedRectangle(
-                            cornerRadius: 14,
-                            style: .continuous
-                        )
-                    )
-                    .accessibilityHidden(true)
-
-                Text(
-                    PPPetAdLocalization.text(
-                        "contact_gate_subtitle",
-                        fallback:
-                            "Sign in to see verified contact options and message the advertiser."
-                    )
-                )
-                .font(PPPetAdTypography.subheadline)
-                .foregroundStyle(Color.ppTextSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, PPSpace.xs)
-            }
-
-            if showsActions {
-                contactButton(
-                    title: PPPetAdLocalization.text(
-                        "Login",
-                        fallback: "Sign in"
-                    ),
-                    symbol: "person.crop.circle.badge.checkmark",
-                    tint: .ppPrimary,
-                    accessibilityLabel: PPPetAdLocalization.text(
-                        "Login",
-                        fallback: "Sign in"
-                    ),
-                    isEnabled: store.contactSignInState != .working,
-                    isLoading: store.contactSignInState == .working,
-                    emphasis: .primary,
-                    action: store.requireSignInForContact
-                )
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var ownAdvertisementContent: some View {
-        PPPetAdInlineStateView(
-            symbol: "checkmark.seal.fill",
-            title: PPPetAdLocalization.text(
-                "pet_ad_viewer_your_listing",
-                fallback: "This is your advertisement"
-            ),
-            message: PPPetAdLocalization.text(
-                "pet_ad_viewer_your_listing_detail",
-                fallback:
-                    "Contact actions are hidden when you view your own listing."
-            ),
-            actionTitle: nil,
-            tint: .ppSuccess,
-            action: nil
-        )
-    }
-
-    @ViewBuilder
-    private var ownerContent: some View {
-        switch store.ownerState {
-        case .idle, .loading:
-            loadingOwner
-        case .loaded:
-            if let owner = store.owner {
-                loadedOwner(owner)
-            } else {
-                unavailableOwner
-            }
-        case .empty:
-            unavailableOwner
-        case let .offline(message):
-            PPPetAdInlineStateView(
-                symbol: "wifi.slash",
-                title: PPPetAdLocalization.text(
-                    "pet_ad_viewer_owner_offline",
-                    fallback: "Contact details are offline"
-                ),
-                message: message,
-                actionTitle: PPPetAdLocalization.text(
-                    "Retry",
-                    fallback: "Retry"
-                ),
-                tint: .ppWarning,
-                action: store.retryOwner
-            )
-        case let .failed(message):
-            PPPetAdInlineStateView(
-                symbol: "person.crop.circle.badge.exclamationmark",
-                title: PPPetAdLocalization.text(
-                    "pet_ad_viewer_owner_unavailable",
-                    fallback: "Contact details are unavailable"
-                ),
-                message: message,
-                actionTitle: PPPetAdLocalization.text(
-                    "Retry",
-                    fallback: "Retry"
-                ),
-                tint: .ppError,
-                action: store.retryOwner
-            )
-        }
-    }
-
-    private var loadingOwner: some View {
-        VStack(spacing: PPSpace.lg) {
-            HStack(spacing: PPSpace.md) {
-                Circle()
-                    .fill(Color.ppTextTertiary.opacity(0.10))
-                    .frame(width: 56, height: 56)
-
-                VStack(alignment: .leading, spacing: PPSpace.sm) {
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(Color.ppTextTertiary.opacity(0.15))
-                        .frame(maxWidth: 164)
-                        .frame(height: 16)
-
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.ppTextTertiary.opacity(0.09))
-                        .frame(maxWidth: 116)
-                        .frame(height: 12)
-                }
-
-                Spacer(minLength: 0)
-            }
-
-            if showsActions {
-                RoundedRectangle(
-                    cornerRadius: PPPetAdViewerStyle.insetRadius,
-                    style: .continuous
-                )
-                .fill(Color.ppTextTertiary.opacity(0.09))
-                .frame(height: 52)
-
-                HStack(spacing: PPSpace.sm) {
-                    loadingActionPlaceholder
-                    loadingActionPlaceholder
-                }
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            PPPetAdLocalization.text(
-                "pet_ad_viewer_owner_loading",
-                fallback: "Loading advertiser details"
-            )
-        )
-    }
-
-    private var loadingActionPlaceholder: some View {
-        RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.insetRadius,
-            style: .continuous
-        )
-        .fill(Color.ppTextTertiary.opacity(0.065))
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
-    }
-
-    private func loadedOwner(_ owner: PPPetAdOwner) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.lg) {
-            HStack(spacing: PPSpace.md) {
-                PPPetAdRemoteImageView(
-                    urlString: owner.avatarURL,
-                    blurHash: nil,
-                    contentMode: .fit,
-                    accessibilityLabel: owner.displayName
-                )
-                .frame(width: 56, height: 56)
-                .clipShape(Circle())
-                .overlay {
-                    Circle()
-                        .strokeBorder(
-                            Color(uiColor: .separator).opacity(0.24),
-                            lineWidth: PPPetAdViewerStyle.hairlineWidth
-                        )
-                }
-                .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(owner.displayName)
-                        .font(PPPetAdTypography.headline)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(verbatim: "\u{2068}\(model.sellerDisplayName)\u{2069}")
+                        .font(PPPetAdTypography.title3)
                         .foregroundStyle(Color.ppTextPrimary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: PPSpace.xs) {
-                        if owner.isVerified {
+                        if model.isSellerVerified {
                             Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(Color.ppInfo)
+                                .foregroundStyle(Color.ppSuccess)
                                 .accessibilityHidden(true)
                         }
 
-                        Text(
-                            owner.isVerified
-                                ? PPPetAdLocalization.text(
-                                    "pet_ad_viewer_verified_owner",
-                                    fallback: "Verified Pure Pets member"
-                                )
-                                : PPPetAdLocalization.text(
-                                    "pet_ad_viewer_owner",
-                                    fallback: "Pure Pets member"
-                                )
-                        )
-                        .font(PPPetAdTypography.footnote)
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text(sellerRole)
+                            .font(PPPetAdTypography.subheadline)
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
-                Spacer(minLength: 0)
+                Spacer(minLength: PPSpace.sm)
+
+                if case .loading = ownerState {
+                    ProgressView()
+                        .tint(Color.ppPrimary)
+                        .accessibilityLabel(
+                            PPPetAdLocalization.text(
+                                "pet_ad_viewer_owner_loading",
+                                fallback: "Loading advertiser details"
+                            )
+                        )
+                }
             }
             .accessibilityElement(children: .combine)
 
-            if showsActions {
-                contactActions(for: owner)
-            } else if !store.canMessageOwner && !store.canCallOwner {
-                noContactChannelsMessage
-            }
+            Text(statusMessage)
+                .font(PPPetAdTypography.footnote)
+                .foregroundStyle(statusColor)
+                .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    @ViewBuilder
-    private func contactActions(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        if store.canMessageOwner {
-            VStack(spacing: PPSpace.sm) {
-                contactButton(
-                    title: PPPetAdLocalization.text(
-                        "Chat",
-                        fallback: "Chat"
-                    ),
-                    symbol: "message.fill",
-                    tint: .ppPrimary,
-                    accessibilityLabel: String(
-                        format: PPPetAdLocalization.text(
-                            "a11y_btn_chat_user_format",
-                            fallback: "Chat with %@"
-                        ),
-                        owner.displayName
-                    ),
-                    isEnabled: store.chatState != .working,
-                    isLoading: store.chatState == .working,
-                    emphasis: .primary,
-                    action: store.openChat
-                )
-
-                if store.canCallOwner {
-                    secondaryCallActions(for: owner)
-                }
-            }
-        } else if store.canCallOwner {
-            VStack(spacing: PPSpace.sm) {
-                contactButton(
-                    title: PPPetAdLocalization.text(
-                        "Call",
-                        fallback: "Call"
-                    ),
-                    symbol: "phone.fill",
-                    tint: .ppPrimary,
-                    accessibilityLabel: String(
-                        format: PPPetAdLocalization.text(
-                            "a11y_btn_call_user_format",
-                            fallback: "Call %@"
-                        ),
-                        owner.displayName
-                    ),
-                    emphasis: .primary,
-                    action: store.callOwner
-                )
-
-                contactButton(
-                    title: PPPetAdLocalization.text(
-                        "WhatsApp",
-                        fallback: "WhatsApp"
-                    ),
-                    symbol: "bubble.left.and.bubble.right.fill",
-                    tint: .ppSuccess,
-                    accessibilityLabel: String(
-                        format: PPPetAdLocalization.text(
-                            "a11y_btn_whatsapp_user_format",
-                            fallback: "WhatsApp %@"
-                        ),
-                        owner.displayName
-                    ),
-                    emphasis: .secondary,
-                    action: store.openWhatsApp
-                )
-            }
-        } else {
-            noContactChannelsMessage
-        }
-    }
-
-    private var noContactChannelsMessage: some View {
-        Text(
-            PPPetAdLocalization.text(
-                "pet_ad_viewer_no_contact_channels",
-                fallback:
-                    "This advertiser has no contact channel available right now."
-            )
-        )
-        .font(PPPetAdTypography.subheadline)
-        .foregroundStyle(Color.ppTextSecondary)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder
-    private func secondaryCallActions(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: PPSpace.sm) {
-                callButton(for: owner)
-                whatsAppButton(for: owner)
+    private var sellerAvatar: some View {
+        ZStack(alignment: .bottomTrailing) {
+            if let url = model.sellerAvatarURL, !url.isEmpty {
+                PPPetAdRemoteImageView(
+                    urlString: url,
+                    blurHash: nil,
+                    contentMode: .fill,
+                    accessibilityLabel: model.sellerDisplayName,
+                    showsRetryOnFailure: false,
+                    displaySize: CGSize(width: 72, height: 72)
+                )
+                .frame(width: 72, height: 72)
+                .clipShape(Circle())
+            } else {
+                Circle()
+                    .fill(Color.ppSoftRose)
+                    .overlay {
+                        Text(String(model.sellerDisplayName.prefix(1)))
+                            .font(PPPetAdTypography.title)
+                            .foregroundStyle(Color.ppAccentText)
+                    }
+                    .frame(width: 72, height: 72)
             }
-        } else {
-            HStack(spacing: PPSpace.sm) {
-                callButton(for: owner)
-                whatsAppButton(for: owner)
-            }
-        }
-    }
 
-    private func callButton(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        contactButton(
-            title: PPPetAdLocalization.text("Call", fallback: "Call"),
-            symbol: "phone.fill",
-            tint: .ppSuccess,
-            accessibilityLabel: String(
-                format: PPPetAdLocalization.text(
-                    "a11y_btn_call_user_format",
-                    fallback: "Call %@"
-                ),
-                owner.displayName
-            ),
-            emphasis: .secondary,
-            action: store.callOwner
-        )
-    }
-
-    private func whatsAppButton(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        contactButton(
-            title: PPPetAdLocalization.text(
-                "WhatsApp",
-                fallback: "WhatsApp"
-            ),
-            symbol: "bubble.left.and.bubble.right.fill",
-            tint: .ppSuccess,
-            accessibilityLabel: String(
-                format: PPPetAdLocalization.text(
-                    "a11y_btn_whatsapp_user_format",
-                    fallback: "WhatsApp %@"
-                ),
-                owner.displayName
-            ),
-            emphasis: .secondary,
-            action: store.openWhatsApp
-        )
-    }
-
-    private func contactButton(
-        title: String,
-        symbol: String,
-        tint: Color,
-        accessibilityLabel: String,
-        isEnabled: Bool = true,
-        isLoading: Bool = false,
-        emphasis: PPPetAdContactButtonEmphasis,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: PPSpace.sm) {
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
+            if model.isSellerVerified {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 22, height: 22)
+                    .background(Color.ppSuccess, in: Circle())
+                    .overlay {
+                        Circle().stroke(Color.ppBackground, lineWidth: 2)
+                    }
                     .accessibilityHidden(true)
-
-                Text(title)
-                    .font(PPPetAdTypography.calloutBold)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(
-                            emphasis == .primary
-                                ? Color.white
-                                : tint
-                        )
-                        .transition(.opacity.combined(with: .scale))
-                        .accessibilityHidden(true)
-                }
             }
-            .foregroundStyle(
-                emphasis == .primary
-                    ? Color.white
-                    : tint
-            )
-            .frame(
-                maxWidth: .infinity,
-                minHeight: emphasis == .primary ? 48 : 44
-            )
-            .padding(.horizontal, PPSpace.md)
-            .background {
-                contactButtonBackground(
-                    tint: tint,
-                    emphasis: emphasis
-                )
-            }
-            .contentShape(
-                RoundedRectangle(
-                    cornerRadius: PPPetAdViewerStyle.insetRadius,
-                    style: .continuous
-                )
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var sellerRole: String {
+        if model.isSellerVerified {
+            return PPPetAdLocalization.text(
+                "pet_ad_viewer_verified_seller_role",
+                fallback: "Verified advertiser"
             )
         }
-        .buttonStyle(
-            PPPetAdPressButtonStyle(
-                pressedScale: emphasis == .primary ? 0.982 : 0.97
-            )
-        )
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.58)
-        .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: isLoading)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue(
-            isLoading
-                ? PPPetAdLocalization.text(
-                    "Loading",
-                    fallback: "Loading"
-                )
-                : ""
+        return PPPetAdLocalization.text(
+            "pet_ad_viewer_seller_role",
+            fallback: "Advertiser"
         )
     }
 
-    @ViewBuilder
-    private func contactButtonBackground(
-        tint: Color,
-        emphasis: PPPetAdContactButtonEmphasis
-    ) -> some View {
-        let shape = RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.insetRadius,
-            style: .continuous
-        )
-
-        if emphasis == .primary {
-            shape
-                .fill(tint)
-                .shadow(
-                    color: tint.opacity(0.17),
-                    radius: 12,
-                    y: 5
-                )
-        } else {
-            shape
-                .fill(tint.opacity(0.075))
-                .overlay {
-                    shape.strokeBorder(
-                        tint.opacity(0.18),
-                        lineWidth: PPPetAdViewerStyle.hairlineWidth
-                    )
-                }
+    private var statusMessage: String {
+        guard isSignedIn else {
+            return PPPetAdLocalization.text(
+                "pet_ad_trust_sign_in_for_contact",
+                fallback:
+                    "Sign in before contacting the advertiser or sharing personal details."
+            )
         }
-    }
 
-    private var unavailableOwner: some View {
-        PPPetAdInlineStateView(
-            symbol: "person.crop.circle.badge.questionmark",
-            title: PPPetAdLocalization.text(
-                "pet_ad_viewer_owner_unavailable",
-                fallback: "Contact details are unavailable"
-            ),
-            message: PPPetAdLocalization.text(
+        switch ownerState {
+        case .idle, .loading, .loaded:
+            return PPPetAdLocalization.text(
+                "pet_ad_trust_seller_safety",
+                fallback:
+                    "Keep agreements and important details inside Pure Pets chat."
+            )
+        case .empty:
+            return PPPetAdLocalization.text(
                 "pet_ad_viewer_owner_unavailable_detail",
                 fallback:
                     "The advertiser profile could not be found for this listing."
-            ),
-            actionTitle: PPPetAdLocalization.text(
-                "Retry",
-                fallback: "Retry"
-            ),
-            tint: .ppWarning,
-            action: store.retryOwner
-        )
+            )
+        case let .offline(message), let .failed(message):
+            return message
+        }
     }
 
-    private var contactStateIdentity: Int {
-        if !store.isSignedIn {
-            return 0
-        }
-        if store.isViewingOwnAdvertisement {
-            return 1
-        }
-        switch store.ownerState {
-        case .idle:
-            return 2
-        case .loading:
-            return 3
-        case .loaded:
-            return 4
-        case .empty:
-            return 5
+    private var statusColor: Color {
+        switch ownerState {
         case .offline:
-            return 6
-        case .failed:
-            return 7
+            return .ppWarning
+        case .failed, .empty:
+            return .ppError
+        case .idle, .loading, .loaded:
+            return .ppTextSecondary
         }
     }
-}
-
-private enum PPPetAdContactButtonEmphasis {
-    case primary
-    case secondary
 }
 
 @available(iOS 16.0, *)
@@ -606,54 +161,12 @@ struct PPPetAdContactDock: View {
             .transition(
                 reduceMotion
                     ? .opacity
-                    : .opacity.combined(with: .scale(scale: 0.99))
+                    : .opacity.combined(with: .move(edge: .bottom))
             )
             .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: stateIdentity)
-            .animation(reduceMotion ? nil : PPPetAdViewerMotion.state, value: store.chatState)
-            .padding(.horizontal, PPSpace.base)
-            .padding(.vertical, PPSpace.md)
-            .background {
-                contactSurface
-            }
+            .padding(PPSpace.md)
+            .background(contactSurface)
             .fixedSize(horizontal: false, vertical: true)
-            .transaction { transaction in
-                if reduceMotion {
-                    transaction.disablesAnimations = true
-                    transaction.animation = nil
-                }
-            }
-    }
-
-    private var contactSurface: some View {
-        let shape = RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius,
-            style: .continuous
-        )
-
-        return shape
-            .fill(
-                LinearGradient(
-                    colors: colorScheme == .dark
-                        ? [
-                            Color.ppElevatedSurface,
-                            Color.ppWarmPorcelain.opacity(0.34)
-                        ]
-                        : [
-                            Color.ppElevatedSurface.opacity(0.98),
-                            Color.ppWarmPorcelain.opacity(0.76)
-                        ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay {
-                shape.stroke(
-                    Color.ppBorder.opacity(
-                        colorSchemeContrast == .increased ? 0.96 : 0.40
-                    ),
-                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.75
-                )
-            }
     }
 
     @ViewBuilder
@@ -661,16 +174,12 @@ struct PPPetAdContactDock: View {
         if !store.isSignedIn {
             primaryButton(
                 title: PPPetAdLocalization.text(
-                    "Login",
-                    fallback: "Sign in"
+                    "pet_ad_trust_sign_in_action",
+                    fallback: "Sign in to contact the advertiser"
                 ),
                 symbol: "person.crop.circle.badge.checkmark",
-                accessibilityLabel: PPPetAdLocalization.text(
-                    "Login",
-                    fallback: "Sign in"
-                ),
                 isLoading: store.contactSignInState == .working,
-                isSuccess: isContactSignInSucceeded,
+                isSuccess: isSignInSucceeded,
                 action: store.requireSignInForContact
             )
         } else {
@@ -678,46 +187,35 @@ struct PPPetAdContactDock: View {
             case .idle, .loading:
                 loadingDock
             case .loaded:
-                if let owner = store.owner {
-                    if store.canMessageOwner || store.canCallOwner {
-                        actionRow(for: owner)
-                    } else {
-                        recoveryDock(
-                            symbol: "phone.down.fill",
-                            title: PPPetAdLocalization.text(
-                                "pet_ad_viewer_owner_unavailable",
-                                fallback: "Contact details are unavailable"
-                            ),
-                            message: owner.displayName,
-                            tint: .ppWarning,
-                            retry: store.retryOwner
-                        )
-                    }
+                if store.canMessageOwner || store.canCallOwner {
+                    availableActions
                 } else {
-                    unavailableDock
+                    recoveryDock(
+                        title: PPPetAdLocalization.text(
+                            "pet_ad_viewer_no_contact_channels",
+                            fallback:
+                                "This advertiser has no contact channel available right now."
+                        ),
+                        symbol: "person.crop.circle.badge.questionmark",
+                        retry: store.retryOwner
+                    )
                 }
             case .empty:
-                unavailableDock
-            case let .offline(message):
                 recoveryDock(
-                    symbol: "wifi.slash",
-                    title: PPPetAdLocalization.text(
-                        "pet_ad_viewer_owner_offline",
-                        fallback: "Contact details are offline"
-                    ),
-                    message: message,
-                    tint: .ppWarning,
-                    retry: store.retryOwner
-                )
-            case let .failed(message):
-                recoveryDock(
-                    symbol: "person.crop.circle.badge.exclamationmark",
                     title: PPPetAdLocalization.text(
                         "pet_ad_viewer_owner_unavailable",
                         fallback: "Contact details are unavailable"
                     ),
-                    message: message,
-                    tint: .ppError,
+                    symbol: "person.crop.circle.badge.questionmark",
+                    retry: store.retryOwner
+                )
+            case let .offline(message), let .failed(message):
+                recoveryDock(
+                    title: message,
+                    symbol:
+                        store.ownerState.isOffline
+                        ? "wifi.slash"
+                        : "exclamationmark.triangle.fill",
                     retry: store.retryOwner
                 )
             }
@@ -725,154 +223,95 @@ struct PPPetAdContactDock: View {
     }
 
     @ViewBuilder
-    private func actionRow(for owner: PPPetAdOwner) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            if store.canMessageOwner &&
-                store.canCallOwner &&
-                !dynamicTypeSize.isAccessibilitySize {
-                HStack(alignment: .center, spacing: PPSpace.sm) {
-                    PPPetAdOwnerProfilePill(owner: owner)
-                        .layoutPriority(1)
-
-                    secondaryCallButton(for: owner)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-            } else {
-                PPPetAdOwnerProfilePill(owner: owner)
+    private var availableActions: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: PPSpace.sm) {
+                primaryContactAction
+                utilityActions
             }
-
-            if store.canMessageOwner {
-                chatPrimaryButton(for: owner)
-
-                if store.canCallOwner &&
-                    dynamicTypeSize.isAccessibilitySize {
-                    secondaryCallButton(
-                        for: owner,
-                        fillsWidth: true
-                    )
-                }
-            } else if store.canCallOwner {
-                callPrimaryButton(for: owner)
+        } else {
+            HStack(spacing: PPSpace.sm) {
+                primaryContactAction
+                utilityActions
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
     }
 
-    private func secondaryCallButton(
-        for owner: PPPetAdOwner,
-        fillsWidth: Bool = false
-    ) -> some View {
-        Button(action: store.callOwner) {
-            HStack(spacing: 6) {
-                Image(systemName: "phone.fill")
-                    .font(.system(size: 15, weight: .bold))
-                    .accessibilityHidden(true)
-                Text(PPPetAdLocalization.text("Call", fallback: "Call"))
-                    .font(PPPetAdTypography.calloutBold)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(Color.ppAccentText)
-            .padding(.horizontal, 14)
-            .frame(
-                maxWidth: fillsWidth ? .infinity : nil,
-                minHeight: PPBottomDecisionBarGeometry.utilityControlSize
+    @ViewBuilder
+    private var primaryContactAction: some View {
+        if store.canMessageOwner {
+            primaryButton(
+                title: chatTitle,
+                symbol: chatSymbol,
+                isLoading: store.chatState == .working,
+                isSuccess: isChatSucceeded,
+                action: store.openChat
             )
-            .background(
-                Color.ppPrimary.opacity(
-                    colorSchemeContrast == .increased ? 0.18 : 0.10
+            .accessibilityLabel(
+                PPPetAdLocalization.text(
+                    "a11y_btn_chat_advertiser",
+                    fallback: "Chat with advertiser"
+                )
+            )
+            .accessibilityValue(chatTitle)
+            .accessibilityHint(
+                PPPetAdLocalization.text(
+                    "a11y_btn_chat_advertiser_hint",
+                    fallback:
+                        "Double-tap to start a chat with this person"
+                )
+            )
+        } else if store.canCallOwner {
+            primaryButton(
+                title: PPPetAdLocalization.text(
+                    "Call",
+                    fallback: "Call"
                 ),
-                in: RoundedRectangle(
-                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
-                    style: .continuous
+                symbol: "phone.fill",
+                isLoading: false,
+                isSuccess: false,
+                action: store.callOwner
+            )
+            .accessibilityLabel(
+                PPPetAdLocalization.text(
+                    "a11y_btn_call_advertiser",
+                    fallback: "Call advertiser"
                 )
             )
-            .overlay(
-                RoundedRectangle(
-                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
-                    style: .continuous
-                )
-                .stroke(
-                    Color.ppPrimary.opacity(
-                        colorSchemeContrast == .increased ? 0.72 : 0.26
+        }
+    }
+
+    @ViewBuilder
+    private var utilityActions: some View {
+        HStack(spacing: PPSpace.sm) {
+            if store.canCallOwner && store.canMessageOwner {
+                utilityButton(
+                    symbol: "phone.fill",
+                    accessibilityLabel: PPPetAdLocalization.text(
+                        "a11y_btn_call_advertiser",
+                        fallback: "Call advertiser"
                     ),
-                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                    action: store.callOwner
                 )
-            )
-            .contentShape(
-                RoundedRectangle(
-                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
-                    style: .continuous
+            }
+
+            if store.canCallOwner {
+                utilityButton(
+                    symbol: "ellipsis.message.fill",
+                    accessibilityLabel: PPPetAdLocalization.text(
+                        "a11y_btn_whatsapp_advertiser",
+                        fallback: "WhatsApp advertiser"
+                    ),
+                    action: store.openWhatsApp
                 )
-            )
+            }
         }
-        .buttonStyle(PPBottomDecisionPressStyle())
-        .accessibilityLabel(
-            String(
-                format: PPPetAdLocalization.text(
-                    "a11y_btn_call_user_format",
-                    fallback: "Call %@"
-                ),
-                owner.displayName
-            )
-        )
-        .accessibilityHint(
-            PPPetAdLocalization.text(
-                "a11y_btn_call_advertiser_hint",
-                fallback: "Double-tap to call this person"
-            )
-        )
-        .accessibilitySortPriority(1)
-    }
-
-    private func chatPrimaryButton(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        primaryButton(
-            title: chatActionTitle,
-            symbol: chatActionSymbol,
-            accessibilityLabel: chatAccessibilityLabel(for: owner),
-            isLoading: isChatWorking,
-            isSuccess: isChatSucceeded,
-            action: store.openChat
-        )
-        .accessibilityHint(
-            PPPetAdLocalization.text(
-                "a11y_btn_chat_advertiser_hint",
-                fallback: "Double-tap to start a chat with this person"
-            )
-        )
-        .accessibilitySortPriority(2)
-    }
-
-    private func callPrimaryButton(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        primaryButton(
-            title: PPPetAdLocalization.text("Call", fallback: "Call"),
-            symbol: "phone.fill",
-            accessibilityLabel: String(
-                format: PPPetAdLocalization.text(
-                    "a11y_btn_call_user_format",
-                    fallback: "Call %@"
-                ),
-                owner.displayName
-            ),
-            isLoading: false,
-            isSuccess: false,
-            action: store.callOwner
-        )
-        .accessibilityHint(
-            PPPetAdLocalization.text(
-                "a11y_btn_call_advertiser_hint",
-                fallback: "Double-tap to call this person"
-            )
-        )
-        .accessibilitySortPriority(1)
     }
 
     private func primaryButton(
         title: String,
         symbol: String,
-        accessibilityLabel: String,
         isLoading: Bool,
         isSuccess: Bool,
         action: @escaping () -> Void
@@ -883,217 +322,145 @@ struct PPPetAdContactDock: View {
                     if isLoading {
                         ProgressView()
                             .controlSize(.small)
-                            .tint(primaryActionForeground)
+                            .tint(Color.white)
                     } else {
                         Image(
                             systemName:
-                                isSuccess
-                                ? "checkmark"
-                                : symbol
+                                isSuccess ? "checkmark" : symbol
                         )
                         .font(.system(size: 17, weight: .bold))
                     }
                 }
-                .frame(width: 22, height: 22)
-                .foregroundStyle(primaryActionForeground)
+                .frame(width: 23, height: 23)
                 .accessibilityHidden(true)
 
                 Text(title)
                     .font(PPPetAdTypography.calloutBold)
-                    .foregroundStyle(primaryActionForeground)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .foregroundStyle(Color.white)
             .padding(.horizontal, PPSpace.base)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: primaryButtonHeight)
+            .frame(
+                minHeight:
+                    dynamicTypeSize.isAccessibilitySize ? 64 : 58
+            )
             .background(
-                PPPetAdViewerStyle.actionAccent,
+                Color.ppPrimary,
                 in: RoundedRectangle(
-                    cornerRadius:
-                        PPBottomDecisionBarGeometry.controlRadius,
+                    cornerRadius: PPCorner.medium,
                     style: .continuous
                 )
             )
             .contentShape(
                 RoundedRectangle(
-                    cornerRadius:
-                        PPBottomDecisionBarGeometry.controlRadius,
+                    cornerRadius: PPCorner.medium,
                     style: .continuous
                 )
             )
         }
         .buttonStyle(PPBottomDecisionPressStyle())
         .disabled(isLoading)
-        .opacity(isLoading ? 0.88 : 1)
-        .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(
             isLoading
                 ? PPPetAdLocalization.text(
                     "Loading",
                     fallback: "Loading"
                 )
-                : (
-                    isSuccess
-                    ? PPPetAdLocalization.text(
-                        "Success",
-                        fallback: "Completed"
-                    )
-                    : ""
-                )
+                : ""
         )
     }
 
-    private var unavailableDock: some View {
-        recoveryDock(
-            symbol: "person.crop.circle.badge.questionmark",
-            title: PPPetAdLocalization.text(
-                "pet_ad_viewer_owner_unavailable",
-                fallback: "Contact details are unavailable"
-            ),
-            message: PPPetAdLocalization.text(
-                "pet_ad_viewer_owner_unavailable_detail",
-                fallback:
-                    "The advertiser profile could not be found for this listing."
-            ),
-            tint: .ppWarning,
-            retry: store.retryOwner
-        )
-    }
-
-    private func recoveryDock(
+    private func utilityButton(
         symbol: String,
-        title: String,
-        message: String,
-        tint: Color,
-        retry: @escaping () -> Void
-    ) -> some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: PPSpace.md) {
-                    recoveryLabel(
-                        symbol: symbol,
-                        title: title,
-                        message: message,
-                        tint: tint
-                    )
-                    retryButton(action: retry)
-                }
-            } else {
-                HStack(spacing: PPSpace.md) {
-                    recoveryLabel(
-                        symbol: symbol,
-                        title: title,
-                        message: message,
-                        tint: tint
-                    )
-                    retryButton(action: retry)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-            }
-        }
-    }
-
-    private func recoveryLabel(
-        symbol: String,
-        title: String,
-        message: String,
-        tint: Color
-    ) -> some View {
-        HStack(spacing: PPSpace.sm) {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 42, height: 42)
-                .background(
-                    tint.opacity(0.10),
-                    in: RoundedRectangle(
-                        cornerRadius: PPCorner.small,
-                        style: .continuous
-                    )
-                )
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                Text(title)
-                    .font(PPPetAdTypography.subheadlineBold)
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if !message.isEmpty {
-                    Text(message)
-                        .font(PPPetAdTypography.caption)
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(
-                            dynamicTypeSize.isAccessibilitySize ? nil : 2
-                        )
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func retryButton(
+        accessibilityLabel: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: PPSpace.sm) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 15, weight: .bold))
-                    .accessibilityHidden(true)
-                Text(
-                    PPPetAdLocalization.text(
-                        "Retry",
-                        fallback: "Retry"
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Color.ppAccentText)
+                .frame(width: 58, height: 58)
+                .background(
+                    Color.ppSoftRose.opacity(
+                        colorScheme == .dark ? 0.42 : 0.72
+                    ),
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.medium,
+                        style: .continuous
                     )
                 )
-                .font(PPPetAdTypography.calloutBold)
-            }
-            .foregroundStyle(primaryActionForeground)
-            .padding(.horizontal, PPSpace.base)
-            .frame(
-                maxWidth:
-                    dynamicTypeSize.isAccessibilitySize
-                    ? .infinity
-                    : nil,
-                minHeight: PPBottomDecisionBarGeometry.utilityControlSize
-            )
-            .background(
-                PPPetAdViewerStyle.actionAccent,
-                in: RoundedRectangle(
-                    cornerRadius:
-                        PPBottomDecisionBarGeometry.controlRadius,
-                    style: .continuous
+                .overlay {
+                    RoundedRectangle(
+                        cornerRadius: PPCorner.medium,
+                        style: .continuous
+                    )
+                    .stroke(
+                        Color.ppPrimary.opacity(
+                            colorSchemeContrast == .increased ? 0.76 : 0.22
+                        ),
+                        lineWidth:
+                            colorSchemeContrast == .increased ? 1.5 : 1
+                    )
+                }
+                .contentShape(
+                    RoundedRectangle(
+                        cornerRadius: PPCorner.medium,
+                        style: .continuous
+                    )
                 )
-            )
         }
         .buttonStyle(PPBottomDecisionPressStyle())
-        .accessibilityLabel(
-            PPPetAdLocalization.text(
-                "Retry",
-                fallback: "Retry"
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func recoveryDock(
+        title: String,
+        symbol: String,
+        retry: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: PPSpace.md) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.ppWarning)
+                .frame(width: 44, height: 44)
+                .background(Color.ppWarning.opacity(0.10), in: Circle())
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(PPPetAdTypography.subheadline)
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: retry) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 48, height: 48)
+                    .background(Color.ppPrimary, in: Circle())
+            }
+            .buttonStyle(PPBottomDecisionPressStyle())
+            .accessibilityLabel(
+                PPPetAdLocalization.text("Retry", fallback: "Retry")
             )
-        )
+        }
     }
 
     private var loadingDock: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            if dynamicTypeSize.isAccessibilitySize {
-                loadingOwnerIdentity
-            } else {
-                HStack(spacing: PPSpace.sm) {
-                    loadingOwnerIdentity
-                    loadingUtilityAction
-                }
-            }
+        HStack(spacing: PPSpace.sm) {
+            RoundedRectangle(cornerRadius: PPCorner.medium)
+                .fill(Color.ppTextTertiary.opacity(0.12))
+                .frame(maxWidth: .infinity)
+                .frame(height: 58)
 
-            loadingPrimaryAction
+            RoundedRectangle(cornerRadius: PPCorner.medium)
+                .fill(Color.ppTextTertiary.opacity(0.10))
+                .frame(width: 58, height: 58)
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             PPPetAdLocalization.text(
@@ -1103,60 +470,33 @@ struct PPPetAdContactDock: View {
         )
     }
 
-    private var loadingOwnerIdentity: some View {
-        HStack(spacing: PPSpace.sm) {
-            Circle()
-                .fill(Color.ppTextTertiary.opacity(0.12))
-                .frame(width: 40, height: 40)
-
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                RoundedRectangle(cornerRadius: PPSpace.xs)
-                    .fill(Color.ppTextTertiary.opacity(0.15))
-                    .frame(maxWidth: 112)
-                    .frame(height: 12)
-
-                RoundedRectangle(cornerRadius: PPSpace.xs)
-                    .fill(Color.ppTextTertiary.opacity(0.10))
-                    .frame(maxWidth: 76)
-                    .frame(height: 9)
+    private var contactSurface: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PPCorner.medium,
+            style: .continuous
+        )
+        return shape
+            .fill(Color.ppElevatedSurface)
+            .overlay {
+                shape.stroke(
+                    Color.ppBorder.opacity(
+                        colorSchemeContrast == .increased ? 0.94 : 0.54
+                    ),
+                    lineWidth:
+                        colorSchemeContrast == .increased ? 1.5 : 0.75
+                )
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+            .shadow(
+                color: Color.black.opacity(
+                    colorScheme == .dark ? 0.24 : 0.09
+                ),
+                radius: 24,
+                x: 0,
+                y: 12
+            )
     }
 
-    private var loadingUtilityAction: some View {
-        RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
-            style: .continuous
-        )
-        .fill(Color.ppTextTertiary.opacity(0.10))
-        .frame(
-            width: 88,
-            height: PPBottomDecisionBarGeometry.utilityControlSize
-        )
-    }
-
-    private var loadingPrimaryAction: some View {
-        RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
-            style: .continuous
-        )
-        .fill(Color.ppTextTertiary.opacity(0.12))
-        .frame(maxWidth: .infinity)
-        .frame(height: primaryButtonHeight)
-    }
-
-    private var primaryButtonHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize
-            ? 64
-            : PPBottomDecisionBarGeometry.controlHeight
-    }
-
-    private var primaryActionForeground: Color {
-        .white
-    }
-
-    private var chatActionTitle: String {
+    private var chatTitle: String {
         switch store.chatState {
         case .working:
             return PPPetAdLocalization.text(
@@ -1174,84 +514,41 @@ struct PPPetAdContactDock: View {
                 fallback: "Try chat again"
             )
         case .idle:
-            return askAboutPetTitle
+            return PPPetAdLocalization.text(
+                "pet_ad_trust_ask_seller",
+                fallback: "Ask about this pet"
+            )
         }
     }
 
-    private var chatActionSymbol: String {
+    private var chatSymbol: String {
         if case .failed = store.chatState {
             return "arrow.clockwise"
         }
         return "message.fill"
     }
 
-    private var askAboutPetTitle: String {
-        let petName = store.snapshot.title.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        guard !petName.isEmpty else {
-            return PPPetAdLocalization.text(
-                "pet_ad_viewer_contact_pet_fallback",
-                fallback: "Ask for this pet"
-            )
-        }
-
-        return String(
-            format: PPPetAdLocalization.text(
-                "pet_ad_viewer_contact_pet_format",
-                fallback: "Ask for %@"
-            ),
-            "\u{2068}\(petName)\u{2069}"
-        )
-    }
-
-    private func chatAccessibilityLabel(
-        for owner: PPPetAdOwner
-    ) -> String {
-        String(
-            format: PPPetAdLocalization.text(
-                "a11y_btn_chat_user_format",
-                fallback: "Chat with %@"
-            ),
-            owner.displayName
-        )
-    }
-
-    private var isChatWorking: Bool {
-        store.chatState == .working
-    }
-
     private var isChatSucceeded: Bool {
-        if case .succeeded = store.chatState {
-            return true
-        }
+        if case .succeeded = store.chatState { return true }
         return false
     }
 
-    private var isContactSignInSucceeded: Bool {
-        if case .succeeded = store.contactSignInState {
-            return true
-        }
+    private var isSignInSucceeded: Bool {
+        if case .succeeded = store.contactSignInState { return true }
         return false
     }
 
     private var stateIdentity: Int {
-        if !store.isSignedIn {
-            return 0
-        }
+        if !store.isSignedIn { return 0 }
         switch store.ownerState {
-        case .idle:
-            return 1
-        case .loading:
-            return 2
+        case .idle: return 1
+        case .loading: return 2
         case .loaded:
-            return store.canMessageOwner ? 3 : 4
-        case .empty:
-            return 5
-        case .offline:
-            return 6
-        case .failed:
-            return 7
+            if store.canMessageOwner { return 3 }
+            return store.canCallOwner ? 4 : 8
+        case .empty: return 5
+        case .offline: return 6
+        case .failed: return 7
         }
     }
 }
@@ -1259,97 +556,13 @@ struct PPPetAdContactDock: View {
 extension PPPetAdViewerStore {
     var ppShowsContactDock: Bool {
         guard case .content = screenState else { return false }
-        guard !isViewingOwnAdvertisement else { return false }
-        return true
-    }
-
-    var ppShowsInlineContactStatus: Bool {
-        guard case .content = screenState else { return false }
-        guard !ppShowsContactDock else { return false }
-
-        if isViewingOwnAdvertisement {
-            return true
-        }
-        guard isSignedIn else { return false }
-
-        switch ownerState {
-        case .idle, .loading:
-            return false
-        case .loaded, .empty, .offline, .failed:
-            return true
-        }
+        return !isViewingOwnAdvertisement
     }
 }
 
-struct PPPetAdOwnerProfilePill: View {
-    let owner: PPPetAdOwner
-
-    var body: some View {
-        HStack(spacing: PPSpace.sm) {
-            ZStack(alignment: .bottomTrailing) {
-                if let avatarURL = owner.avatarURL, !avatarURL.isEmpty {
-                    PPPetAdRemoteImageView(
-                        urlString: avatarURL,
-                        blurHash: nil,
-                        contentMode: .fit,
-                        accessibilityLabel: owner.displayName,
-                        showsRetryOnFailure: false
-                    )
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
-                } else {
-                    ZStack {
-                        Circle()
-                            .fill(Color.ppPrimary.opacity(0.12))
-
-                        Text(String(owner.displayName.prefix(1)))
-                            .font(PPPetAdTypography.subheadlineBold)
-                            .foregroundStyle(Color.ppPrimary)
-                    }
-                    .frame(width: 40, height: 40)
-                }
-
-                if owner.isVerified {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color.ppSuccess)
-                        .background(Color.white, in: Circle())
-                        .offset(x: 2, y: 2)
-                }
-            }
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(verbatim: "\u{2068}\(owner.displayName)\u{2069}")
-                    .font(PPPetAdTypography.subheadlineBold)
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(ownerRole)
-                    .font(PPPetAdTypography.caption)
-                    .foregroundStyle(Color.ppTextSecondary.opacity(0.85))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(owner.displayName), \(ownerRole)"
-        )
-        .accessibilitySortPriority(3)
-    }
-
-    private var ownerRole: String {
-        owner.isVerified
-            ? PPPetAdLocalization.text(
-                "pet_ad_viewer_verified_seller_role",
-                fallback: "Verified advertiser"
-            )
-            : PPPetAdLocalization.text(
-                "pet_ad_viewer_seller_role",
-                fallback: "Advertiser"
-            )
+private extension PPPetAdViewerSectionState {
+    var isOffline: Bool {
+        if case .offline = self { return true }
+        return false
     }
 }

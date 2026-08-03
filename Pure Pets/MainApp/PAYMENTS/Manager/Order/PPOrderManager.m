@@ -484,20 +484,6 @@ static NSString *PPOrderSupportSafeString(id value) {
 static NSString *const PPOrderSupportCallableAuthTokenKey = @"__ppAuthToken";
 static NSString *const PPOrderSupportCallablePlainAuthTokenKey = @"ppAuthToken";
 
-static NSDictionary *PPOrderSupportRedactedCallablePayload(NSDictionary *payload) {
-    if (![payload isKindOfClass:NSDictionary.class]) {
-        return @{};
-    }
-    NSMutableDictionary *redacted = [payload mutableCopy];
-    if ([redacted[PPOrderSupportCallableAuthTokenKey] isKindOfClass:NSString.class]) {
-        redacted[PPOrderSupportCallableAuthTokenKey] = @"<redacted>";
-    }
-    if ([redacted[PPOrderSupportCallablePlainAuthTokenKey] isKindOfClass:NSString.class]) {
-        redacted[PPOrderSupportCallablePlainAuthTokenKey] = @"<redacted>";
-    }
-    return redacted.copy;
-}
-
 static NSDictionary *PPOrderSupportPayloadByAddingAuthToken(NSDictionary *payload, NSString *idToken) {
     NSMutableDictionary *result = [payload isKindOfClass:NSDictionary.class]
         ? [payload mutableCopy]
@@ -817,7 +803,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                                amount:amount
                               address:address
                       paymentMethodId:paymentMethodId
-                       idempotencyKey:nil
+                       idempotencyKey:NSUUID.UUID.UUIDString
                            completion:completion];
 }
 
@@ -854,6 +840,10 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     NSString *shippingAddressID = PPOrderAddressEffectiveID(address);
     NSString *resolvedPaymentMethodID = PPOrderNormalizedPaymentMethodKey(paymentMethodId, nil);
     NSString *resolvedPaymentProvider = PPOrderResolvedPaymentProviderForMethod(resolvedPaymentMethodID);
+    NSString *resolvedIdempotencyKey = PPOrderTrimmedString(idempotencyKey);
+    if (resolvedIdempotencyKey.length == 0) {
+        resolvedIdempotencyKey = NSUUID.UUID.UUIDString;
+    }
 
     FIRFunctions *functions = PPOrderFunctionsClient();
     NSMutableDictionary *payload = [@{
@@ -863,9 +853,10 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         @"paymentProvider": resolvedPaymentProvider,
         @"paymentMethodId": resolvedPaymentMethodID
     } mutableCopy];
-    if (idempotencyKey.length > 0) {
-        payload[@"idempotencyKey"] = idempotencyKey;
-    }
+    payload[@"idempotencyKey"] = resolvedIdempotencyKey;
+    NSLog(@"PPLAB createPendingOrder route | addressId=%@ paymentMethod=%@ keyPresent=1",
+          shippingAddressID ?: @"",
+          resolvedPaymentMethodID ?: @"");
 
     PPORDERLog(@"Create pending order | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@ | provider=%@",
                (unsigned long)items.count,
@@ -986,7 +977,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                                       amount:amount
                                      address:address
                              paymentMethodId:paymentMethodId
-                              idempotencyKey:nil
+                              idempotencyKey:NSUUID.UUID.UUIDString
                                    completion:completion];
 }
 
@@ -1257,7 +1248,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                                                 NSError * _Nullable error))completion
 {
     NSString *orderID = PPOrderSupportSafeString(order.orderId);
-    NSLog(@"[PP_CANCEL_FLOW] pp_cancelPendingCheckoutOrder start. orderID=%@, forceSessionRefresh=%d, didRetryAuth=%d", orderID, forceSessionRefresh, didRetryAuth);
+    NSLog(@"PPLAB checkout cancellation start orderId=%@ forceRefresh=%d retry=%d", orderID, forceSessionRefresh, didRetryAuth);
     if (orderID.length == 0) {
         NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
                                              code:400
@@ -1268,10 +1259,10 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
 
     [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceSessionRefresh
                                                         completion:^(NSError * _Nullable sessionError) {
-        NSLog(@"[PP_CANCEL_FLOW] ensureFreshAuthSessionForcingRefresh completed. error=%@, didRetryAuth=%d", sessionError, didRetryAuth);
+        NSLog(@"PPLAB checkout cancellation auth result orderId=%@ code=%ld retry=%d", orderID, (long)sessionError.code, didRetryAuth);
         if (sessionError) {
             if (!didRetryAuth) {
-                NSLog(@"[PP_CANCEL_FLOW] Auth session refresh failed. Retrying with forceSessionRefresh=YES.");
+                NSLog(@"PPLAB checkout cancellation auth retry orderId=%@", orderID);
                 [self pp_cancelPendingCheckoutOrder:order
                                 forceSessionRefresh:YES
                                        didRetryAuth:YES
@@ -1280,18 +1271,18 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             }
             NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:sessionError
                                                                       fallbackKey:@"order_cancel_checkout_failed"];
-            NSLog(@"[PP_CANCEL_FLOW] Auth session refresh failed permanently. Returning error: %@", publicError);
+            NSLog(@"PPLAB checkout cancellation auth failed orderId=%@ code=%ld", orderID, (long)publicError.code);
             if (completion) completion(NO, NO, publicError);
             return;
         }
 
-        NSLog(@"[PP_CANCEL_FLOW] Calling cancelOrderCheckout Cloud Function for orderID=%@", orderID);
+        NSLog(@"PPLAB checkout cancellation route=callable orderId=%@", orderID);
         [[PPOrderFunctionsClient() HTTPSCallableWithName:@"cancelOrderCheckout"]
          callWithObject:@{ @"orderId": orderID }
          completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-            NSLog(@"[PP_CANCEL_FLOW] cancelOrderCheckout response received. error=%@, result.data=%@, didRetryAuth=%d", error, result.data, didRetryAuth);
+            NSLog(@"PPLAB checkout cancellation response orderId=%@ code=%ld retry=%d", orderID, (long)error.code, didRetryAuth);
             if (error && !didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
-                NSLog(@"[PP_CANCEL_FLOW] Cloud Function call returned auth error. Retrying with forceSessionRefresh=YES.");
+                NSLog(@"PPLAB checkout cancellation callable auth retry orderId=%@", orderID);
                 [self pp_cancelPendingCheckoutOrder:order
                                 forceSessionRefresh:YES
                                        didRetryAuth:YES
@@ -1305,7 +1296,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                            error.localizedDescription ?: @"Unknown");
                 NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:error
                                                                           fallbackKey:@"order_cancel_checkout_failed"];
-                NSLog(@"[PP_CANCEL_FLOW] Returning mapped public error: %@", publicError);
+                NSLog(@"PPLAB checkout cancellation failed orderId=%@ code=%ld", orderID, (long)publicError.code);
                 if (completion) completion(NO, NO, publicError);
                 return;
             }
@@ -1313,7 +1304,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             NSDictionary *data = [result.data isKindOfClass:NSDictionary.class]
                 ? (NSDictionary *)result.data
                 : @{};
-            NSLog(@"[PP_CANCEL_FLOW] Order cancelled successfully via checkout cancel. alreadyCancelled=%d", [data[@"alreadyCancelled"] boolValue]);
+            NSLog(@"PPLAB checkout cancellation accepted orderId=%@ alreadyCancelled=%d", orderID, [data[@"alreadyCancelled"] boolValue]);
             if (completion) {
                 completion(YES, [data[@"alreadyCancelled"] boolValue], nil);
             }
@@ -1769,11 +1760,11 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                                       didRetryAuth:(BOOL)didRetryAuth
                                         completion:(void (^)(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error))completion
 {
-    NSLog(@"[PP_CANCEL_FLOW] pp_callCreateOrderSupportRequestWithPayload start. orderId=%@, requestType=%@, forceCredentialRefresh=%d, didRetryAuth=%d", order.orderId, requestType, forceCredentialRefresh, didRetryAuth);
+    NSLog(@"PPLAB order request start orderId=%@ type=%@ forceRefresh=%d retry=%d", order.orderId, requestType, forceCredentialRefresh, didRetryAuth);
     void (^finishWithData)(NSDictionary *) = ^(NSDictionary *data) {
         NSString *requestID = PPOrderSupportSafeString(data[@"requestId"]);
         BOOL deduplicated = [data[@"deduplicated"] boolValue];
-        NSLog(@"[PP_CANCEL_FLOW] Support request created successfully. requestId=%@, deduplicated=%d", requestID, deduplicated);
+        NSLog(@"PPLAB order request accepted orderId=%@ requestId=%@ type=%@ deduplicated=%d", order.orderId, requestID, requestType, deduplicated);
 
         PPOrderSupportRequest *request = nil;
         if (requestID.length > 0) {
@@ -1800,15 +1791,14 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     };
 
     void (^callCreateRequest)(NSDictionary *) = ^(NSDictionary *callPayload) {
-        NSLog(@"[PP_CANCEL_FLOW] Calling createOrderSupportRequest Cloud Function. payload=%@",
-              PPOrderSupportRedactedCallablePayload(callPayload));
+        NSLog(@"PPLAB order request route=callable orderId=%@ type=%@ keyPresent=%d", order.orderId, requestType, payload[@"idempotencyKey"] != nil);
         [[PPOrderFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
          callWithObject:callPayload ?: @{}
          completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-            NSLog(@"[PP_CANCEL_FLOW] createOrderSupportRequest Cloud Function completed. error=%@, result.data=%@, didRetryAuth=%d", error, result.data, didRetryAuth);
+            NSLog(@"PPLAB order request response orderId=%@ type=%@ code=%ld retry=%d", order.orderId, requestType, (long)error.code, didRetryAuth);
             if (error) {
                 if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
-                    NSLog(@"[PP_CANCEL_FLOW] Cloud Function call returned auth error after session preflight. Retrying callable with embedded verified auth token.");
+                    NSLog(@"PPLAB order request callable auth retry orderId=%@ type=%@", order.orderId, requestType);
                     [self pp_callCreateOrderSupportRequestWithPayload:payload
                                                                 draft:draft
                                                                 order:order
@@ -1850,13 +1840,13 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
 
         void (^callWithToken)(NSString *) = ^(NSString *idToken) {
             NSDictionary *authenticatedPayload = PPOrderSupportPayloadByAddingAuthToken(payload, idToken);
-            NSLog(@"[PP_CANCEL_FLOW] Calling createOrderSupportRequest with embedded verified auth token fallback. forceCredentialRefresh=%d, uidPresent=%d, hadPreflightError=%d", shouldForceTokenRefresh, user.uid.length > 0, preflightError != nil);
+            NSLog(@"PPLAB order request token fallback orderId=%@ type=%@ forceRefresh=%d", order.orderId, requestType, shouldForceTokenRefresh);
             callCreateRequest(authenticatedPayload);
         };
 
         void (^retryOrFail)(NSError * _Nullable, NSError * _Nullable) = ^(NSError * _Nullable tokenError, NSError * _Nullable cachedError) {
             if (!didRetryAuth) {
-                NSLog(@"[PP_CANCEL_FLOW] Support callable auth token fetch failed before request. Retrying with forceCredentialRefresh=YES. preflightError=%@, tokenError=%@, cachedError=%@", preflightError, tokenError, cachedError);
+                NSLog(@"PPLAB order request token retry orderId=%@ type=%@ preflightCode=%ld tokenCode=%ld cachedCode=%ld", order.orderId, requestType, (long)preflightError.code, (long)tokenError.code, (long)cachedError.code);
                 [self pp_callCreateOrderSupportRequestWithPayload:payload
                                                             draft:draft
                                                             order:order
@@ -1876,9 +1866,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             }
 
             if (tokenError) {
-                NSLog(@"[PP_CANCEL_FLOW] Support callable ID token fetch failed. forceCredentialRefresh=%d, error=%@", shouldForceTokenRefresh, tokenError);
+                NSLog(@"PPLAB order request token failed orderId=%@ type=%@ forceRefresh=%d code=%ld", order.orderId, requestType, shouldForceTokenRefresh, (long)tokenError.code);
             } else {
-                NSLog(@"[PP_CANCEL_FLOW] Support callable ID token fetch failed. forceCredentialRefresh=%d, token was empty", shouldForceTokenRefresh);
+                NSLog(@"PPLAB order request token empty orderId=%@ type=%@ forceRefresh=%d", order.orderId, requestType, shouldForceTokenRefresh);
             }
 
             if (shouldForceTokenRefresh) {
@@ -1886,7 +1876,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 if (currentUser.uid.length > 0 && [currentUser.uid isEqualToString:user.uid]) {
                     [currentUser getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable cachedToken, NSError * _Nullable cachedError) {
                         if (!cachedError && cachedToken.length > 0) {
-                            NSLog(@"[PP_CANCEL_FLOW] Using cached ID token after forced refresh failure for createOrderSupportRequest.");
+                            NSLog(@"PPLAB order request cached token fallback orderId=%@ type=%@", order.orderId, requestType);
                             callWithToken(cachedToken);
                             return;
                         }
@@ -1900,11 +1890,11 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         }];
     };
 
-    NSLog(@"[PP_CANCEL_FLOW] Preparing credentials via ensureFreshAuthSessionForcingRefresh:%d.", forceCredentialRefresh);
+    NSLog(@"PPLAB order request auth preflight orderId=%@ type=%@ forceRefresh=%d", order.orderId, requestType, forceCredentialRefresh);
     [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceCredentialRefresh completion:^(NSError * _Nullable authError) {
-        NSLog(@"[PP_CANCEL_FLOW] ensureFreshAuthSessionForcingRefresh completed. authError=%@", authError);
+        NSLog(@"PPLAB order request auth result orderId=%@ type=%@ code=%ld", order.orderId, requestType, (long)authError.code);
         if (authError) {
-            NSLog(@"[PP_CANCEL_FLOW] Auth session preflight failed. Attempting verified cached token fallback before failing.");
+            NSLog(@"PPLAB order request auth fallback orderId=%@ type=%@", order.orderId, requestType);
             fetchTokenAndCall(NO, authError);
             return;
         }
@@ -1917,7 +1907,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                   forOrder:(PPOrder *)order
                 completion:(void (^)(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error))completion
 {
-    NSLog(@"[PP_CANCEL_FLOW] submitSupportDraft start. orderId=%@, actionType=%ld, reasonCode=%@, reasonTitle=%@", order.orderId, (long)draft.actionType, draft.reasonCode, draft.reasonTitle);
+    NSLog(@"PPLAB order request prepare orderId=%@ action=%ld", order.orderId, (long)draft.actionType);
     if (!order.orderId.length) {
         NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
                                              code:400
@@ -1927,7 +1917,10 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     }
 
     NSString *requestType = PPOrderRequestTypeForAction(draft.actionType);
-    NSDictionary *payload = @{
+    if (draft.actionType == PPOrderCustomerActionTypeCancel && draft.idempotencyKey.length == 0) {
+        draft.idempotencyKey = NSUUID.UUID.UUIDString;
+    }
+    NSMutableDictionary *payload = [@{
         @"orderId": order.orderId ?: @"",
         @"requestType": requestType ?: @"support",
         @"reasonCode": draft.reasonCode ?: @"other",
@@ -1937,18 +1930,21 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         @"notes": draft.notes ?: @"",
         @"itemIDs": draft.selectedItemIDs ?: @[],
         @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[]
-    };
+    } mutableCopy];
+    if (draft.idempotencyKey.length > 0) {
+        payload[@"idempotencyKey"] = draft.idempotencyKey;
+    }
 
     // Race safety: for cancel requests, verify current order status before submitting
     if (draft.actionType == PPOrderCustomerActionTypeCancel) {
         __weak typeof(self) weakSelf = self;
-        NSLog(@"[PP_CANCEL_FLOW] submitSupportDraft - fetching fresh order snapshot. orderID=%@", order.orderId);
+        NSLog(@"PPLAB order cancellation preflight orderId=%@", order.orderId);
         FIRDocumentReference *orderRef = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:order.orderId];
         [orderRef getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *fetchError) {
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
 
-            NSLog(@"[PP_CANCEL_FLOW] submitSupportDraft fresh order fetch completed. fetchError=%@, snapshot exists=%d", fetchError, snapshot.exists);
+            NSLog(@"PPLAB order cancellation preflight result orderId=%@ code=%ld exists=%d", order.orderId, (long)fetchError.code, snapshot.exists);
             if (fetchError) {
                 if (completion) completion(nil, NO, fetchError);
                 return;
@@ -1956,7 +1952,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
 
             PPOrder *freshOrder = [PPOrder orderFromSnapshot:snapshot];
             NSString *blockedReason = [PPOrderManager cancellationBlockedReasonForOrder:freshOrder ?: order];
-            NSLog(@"[PP_CANCEL_FLOW] submitSupportDraft fresh status key=%@, rawStatus=%@, cancellationBlockedReason=%@", [freshOrder customerVisibleStatusKey], freshOrder.rawStatus, blockedReason);
+            NSLog(@"PPLAB order cancellation eligibility orderId=%@ status=%@ allowed=%d", order.orderId, freshOrder.rawStatus, blockedReason == nil);
             if (blockedReason) {
                 NSError *stateError = [NSError errorWithDomain:PPOrderSupportErrorDomain
                                                          code:409
@@ -1965,7 +1961,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 return;
             }
 
-            NSLog(@"[PP_CANCEL_FLOW] submitSupportDraft - calling pp_callCreateOrderSupportRequestWithPayload");
+            NSLog(@"PPLAB order cancellation route=callable orderId=%@ fulfillmentVersion=%ld", order.orderId, (long)(freshOrder ?: order).fulfillmentVersion);
             [strongSelf pp_callCreateOrderSupportRequestWithPayload:payload
                                                              draft:draft
                                                              order:order

@@ -2,16 +2,8 @@
 //  AdoptPetsViewController.m
 //  Pure Pets
 //
-//  Adoption browse — redesigned from scratch.
-//  UIKit (Obj-C), code-only.
-//
-//  Defects fixed vs. previous revision:
-//  - Collection now sits BELOW filterView (pinned to filterView.bottomAnchor),
-//    so expanding filters pushes the grid down with zero overlap.
-//  - Search uses a UITextField (single icon, single border, single surface) —
-//    no more duplicate magnifying glasses or stacked borders from UISearchBar.
-//  - Hero rebuilt as an editorial brand-wash banner (watermark + eyebrow chip +
-//    bottom stat row), not a card-with-icon-plate.
+//  Adoption browse — "Open Shelter Journal".
+//  UIKit (Obj-C), code-only, with one scroll owner for every content state.
 //
 //  Behaviour contracts preserved:
 //  - Real-time AdoptPetManager listener (retained/removed on lifecycle).
@@ -33,6 +25,26 @@ static NSString * const PPAdoptFilterKindKey   = @"kindID";
 static NSString * const PPAdoptFilterGenderKey = @"gender";
 static NSString * const PPAdoptGenderMaleValue   = @"male";
 static NSString * const PPAdoptGenderFemaleValue = @"female";
+static NSString * const PPAdoptJournalHeaderReuseIdentifier = @"PPAdoptJournalHeader";
+static NSString * const PPAdoptJournalHeaderKind = @"PPAdoptJournalHeaderKind";
+
+static UIFont *PPAdoptScaledFont(UIFont *font, UIFontTextStyle textStyle) {
+    UIFont *resolvedFont = font ?: [UIFont preferredFontForTextStyle:textStyle];
+    return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:resolvedFont];
+}
+
+static BOOL PPAdoptIsOfflineError(NSError *error) {
+    if (!error) return NO;
+    if ([error.domain isEqualToString:NSURLErrorDomain]) {
+        return error.code == NSURLErrorNotConnectedToInternet ||
+               error.code == NSURLErrorNetworkConnectionLost ||
+               error.code == NSURLErrorDataNotAllowed ||
+               error.code == NSURLErrorTimedOut;
+    }
+    // Firestore uses the canonical gRPC UNAVAILABLE code (14) when no usable
+    // network path exists. Keep this local so the screen does not own transport.
+    return error.code == 14;
+}
 
 /// Normalises raw gender strings (en/ar) into a stable compare value.
 static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
@@ -57,9 +69,44 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     return normalized;
 }
 
+#pragma mark - Scroll-owned journal header
+
+@interface PPAdoptJournalHeaderView : UICollectionReusableView
+@property (nonatomic, weak) UIView *hostedView;
+- (void)hostView:(UIView *)view;
+@end
+
+@implementation PPAdoptJournalHeaderView
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    if (self.hostedView.superview == self) {
+        [self.hostedView removeFromSuperview];
+    }
+    self.hostedView = nil;
+}
+
+- (void)hostView:(UIView *)view {
+    if (self.hostedView == view && view.superview == self) return;
+    [self.hostedView removeFromSuperview];
+    self.hostedView = view;
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addSubview:view];
+    [NSLayoutConstraint activateConstraints:@[
+        [view.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [view.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [view.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [view.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+    ]];
+}
+
+@end
+
 @interface AdoptPetsViewController () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PPUniversalCellDelegate, UITextFieldDelegate, PPSearchFilterViewDelegate>
 
 #pragma mark - Surfaces
+@property (nonatomic, strong) UIView *journalContentView;
+@property (nonatomic, strong) UIStackView *journalStackView;
 @property (nonatomic, strong) UIView *heroHeaderView;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
 @property (nonatomic, strong) UIImageView *heroWatermarkView;
@@ -69,6 +116,9 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 @property (nonatomic, strong) UIView *heroStatContainer;
 @property (nonatomic, strong) UIImageView *heroStatIconView;
 @property (nonatomic, strong) UILabel *heroCountLabel;
+@property (nonatomic, strong) UIStackView *heroActionsStack;
+@property (nonatomic, strong) UIButton *addPetButton;
+@property (nonatomic, strong) UIButton *favoritesButton;
 
 @property (nonatomic, strong) UIView *searchSurfaceView;
 @property (nonatomic, strong) UITextField *searchField;
@@ -76,6 +126,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 @property (nonatomic, strong) UILabel *filterBadgeLabel;
 @property (nonatomic, strong) PPSearchFilterView *filterView;
 @property (nonatomic, strong) NSLayoutConstraint *filterHeightConstraint;
+@property (nonatomic, strong) UIButton *inlineStatusButton;
 
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UIView *emptyStateView;
@@ -96,8 +147,11 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, assign) BOOL hasReceivedInitialSnapshot;
 @property (nonatomic, assign) BOOL isShowingLoadError;
+@property (nonatomic, assign) BOOL isShowingOfflineError;
 @property (nonatomic, copy)   NSString *loadErrorMessage;
 @property (nonatomic, assign) NSInteger lastDisplayedCount;
+
+- (void)pp_updateJournalLayoutAnimated:(BOOL)animated completion:(void (^ _Nullable)(BOOL finished))completion;
 @end
 
 @implementation AdoptPetsViewController
@@ -120,6 +174,15 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     [self pp_setupEmptyState];
     [self pp_setupLoadingState];
     [self pp_prepareEntranceStateIfNeeded];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_reduceMotionStatusDidChange)
+                                                 name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_contentSizeCategoryDidChange)
+                                                 name:UIContentSizeCategoryDidChangeNotification
+                                               object:nil];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -144,17 +207,16 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     self.searchSurfaceView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.searchSurfaceView.bounds
                                    cornerRadius:self.searchSurfaceView.layer.cornerRadius].CGPath;
-    self.emptyStateView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.emptyStateView.bounds
-                                   cornerRadius:self.emptyStateView.layer.cornerRadius].CGPath;
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     [self pp_stopListening];
+    [self pp_stopMotionAndResolvePresentation];
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [self pp_stopListening];
 }
 
@@ -164,6 +226,46 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
             [self pp_updateChromeForCurrentTraits];
         }
+    }
+}
+
+- (void)pp_reduceMotionStatusDidChange {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopMotionAndResolvePresentation];
+    }
+}
+
+- (void)pp_contentSizeCategoryDidChange {
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self pp_updateJournalLayoutAnimated:NO completion:nil];
+}
+
+- (void)pp_updateJournalLayoutAnimated:(BOOL)animated completion:(void (^ _Nullable)(BOOL finished))completion {
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    if (animated) {
+        [UIView animateWithDuration:0.25 animations:^{
+            [self.view layoutIfNeeded];
+        } completion:completion];
+    } else {
+        [self.view layoutIfNeeded];
+        if (completion) {
+            completion(YES);
+        }
+    }
+}
+
+- (void)pp_stopMotionAndResolvePresentation {
+    NSArray<UIView *> *views = @[
+        self.journalContentView ?: UIView.new,
+        self.heroHeaderView ?: UIView.new,
+        self.heroStatContainer ?: UIView.new,
+        self.filterButton ?: UIView.new,
+        self.loadingStateIconView ?: UIView.new
+    ];
+    for (UIView *view in views) {
+        [view.layer removeAllAnimations];
+        view.transform = CGAffineTransformIdentity;
+        view.alpha = 1.0;
     }
 }
 

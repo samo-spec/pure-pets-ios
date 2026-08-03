@@ -239,6 +239,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 @property (nonatomic, strong) PPFormEngineView *infoFormView;
 @property (nonatomic, strong) UISwitch     *defaultSwitch;
 @property (nonatomic, assign) BOOL isSaving;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, strong) UIView       *backgroundGlowViewTop;
 @property (nonatomic, strong) UIView       *backgroundGlowViewBottom;
 @property (nonatomic, strong) NSArray<UIView *> *floatingCircles;
@@ -329,6 +330,35 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     PPPetsBeginFloatingAnimations(self.backgroundGlowViewTop, self.backgroundGlowViewBottom, self.floatingCircles);
+    [self pp_animateEntranceIfNeeded];
+}
+
+- (void)pp_animateEntranceIfNeeded {
+    if (self.didAnimateEntrance) {
+        return;
+    }
+    self.didAnimateEntrance = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.headerCardView.alpha = 1.0;
+        self.headerCardView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    self.headerCardView.alpha = 0.0;
+    CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0, 22.0);
+    transform = CGAffineTransformScale(transform, 0.96, 0.96);
+    self.headerCardView.transform = transform;
+
+    [UIView animateWithDuration:0.60
+                          delay:0.04
+         usingSpringWithDamping:0.82
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.headerCardView.alpha = 1.0;
+        self.headerCardView.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (void)viewDidLayoutSubviews {

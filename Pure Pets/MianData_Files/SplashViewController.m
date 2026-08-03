@@ -8,6 +8,7 @@
 #import "SplashViewController.h"
 #import <QuartzCore/QuartzCore.h>
 #import "PPBackgroundView.h"
+#import "SceneDelegate.h"
 
 @import FirebaseFirestore;
 
@@ -1737,6 +1738,10 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     coverView.backgroundColor = coverView.backgroundColor ?: self.view.backgroundColor ?: window.backgroundColor ?: UIColor.systemBackgroundColor;
 
     [self pp_swapRootViewController:rootVC onWindow:window];
+    id sceneDelegate = window.windowScene.delegate;
+    if ([sceneDelegate isKindOfClass:SceneDelegate.class]) {
+        [(SceneDelegate *)sceneDelegate notificationRoutingRootDidBecomeReady];
+    }
     coverView.frame = window.bounds;
     [[window viewWithTag:99182] removeFromSuperview];
     [window addSubview:coverView];

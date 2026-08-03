@@ -9,8 +9,9 @@
 
 @interface SceneDelegate : UIResponder <UIWindowSceneDelegate>
 - (void)reloadRootViewControllerForLanguageChange;
+- (void)handleRemoteNotificationUserInfo:(NSDictionary *)userInfo;
+- (void)notificationRoutingRootDidBecomeReady;
 @property (strong, nonatomic) UIWindow * window;
 
 
 @end
-

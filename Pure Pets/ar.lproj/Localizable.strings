@@ -2581,6 +2581,7 @@
 "ready_to_update"           = "جاهز للتحديث";
 "draft_ready"               = "المسودة جاهزة";
 "uploading_images"          = "جاري رفع الصور...";
+"please_wait"                = "يرجى الانتظار...";
 "please_wait_prefill"       = "يرجى الانتظار حتى انتهاء تحميل الصور.";
 "submit_failed"             = "تعذر حفظ إعلانك الآن. يرجى المحاولة مرة أخرى.";
 "basic_info_subtitle"       = "ابدأ بعنوان الإعلان والتصنيف.";
@@ -4151,3 +4152,35 @@
 "settings_marketplace_accent_main_kind" = "ألوان فئات الحيوانات";
 "settings_marketplace_accent_message_format" = "يُستخدم حاليًا %@. اختر طريقة ظهور ألوان الإبراز في السوق.";
 "settings_marketplace_accent_updated_format" = "تستخدم ألوان إبراز السوق الآن %@.";
+
+/* عارض إعلانات الحيوانات — رحلة الثقة */
+"pet_ad_trust_location_label" = "الموقع";
+"pet_ad_trust_age_label" = "العمر";
+"pet_ad_trust_type_label" = "النوع";
+"pet_ad_trust_price_accessibility" = "السعر: %@";
+"pet_ad_trust_price_on_request" = "السعر عند التواصل";
+"pet_ad_trust_story_title" = "قصة الحيوان";
+"pet_ad_trust_story_missing" = "لم يضف المعلن قصة هذا الحيوان بعد.";
+"pet_ad_trust_read_more" = "اقرأ القصة كاملة";
+"pet_ad_trust_read_less" = "عرض أقل";
+"pet_ad_trust_expanded" = "موسّع";
+"pet_ad_trust_collapsed" = "مطوي";
+"pet_ad_trust_health_title" = "الصحة والثقة";
+"pet_ad_trust_seller_title" = "المعلن";
+"pet_ad_trust_decision_title" = "قبل أن تقرر";
+"pet_ad_trust_seller_verified" = "هوية المعلن موثّقة";
+"pet_ad_trust_seller_verified_detail" = "تحققت بيور بتس من حساب هذا المعلن.";
+"pet_ad_trust_listing_reviewed" = "تمت مراجعة الإعلان";
+"pet_ad_trust_listing_reviewed_detail" = "اجتاز الإعلان مراجعة المنصة، وهذا لا يُعد شهادة بيطرية.";
+"pet_ad_trust_details_provided" = "التفاصيل الأساسية مضافة";
+"pet_ad_trust_details_provided_detail" = "يتوفر %d من أصل 3 تفاصيل أساسية.";
+"pet_ad_trust_health_missing" = "السجلات الصحية غير مرفقة";
+"pet_ad_trust_health_missing_detail" = "اطلب مستندات التطعيم والفحص البيطري والملكية قبل الاتفاق.";
+"pet_ad_trust_question_health" = "اطلب أحدث سجلات الفحص البيطري والتطعيمات.";
+"pet_ad_trust_question_behavior" = "اسأل عن السلوك والروتين والغذاء واحتياجات الرعاية.";
+"pet_ad_trust_question_handover" = "قابل المعلن في مكان آمن وتحقق من الملكية قبل الدفع.";
+"pet_ad_trust_seller_fallback" = "معلن في بيور بتس";
+"pet_ad_trust_sign_in_for_contact" = "سجّل الدخول قبل التواصل مع المعلن أو مشاركة بياناتك الشخصية.";
+"pet_ad_trust_seller_safety" = "احتفظ بالاتفاقات والتفاصيل المهمة داخل محادثة بيور بتس.";
+"pet_ad_trust_sign_in_action" = "سجّل الدخول للتواصل مع المعلن";
+"pet_ad_trust_ask_seller" = "اسأل عن هذا الحيوان";

@@ -2574,6 +2574,7 @@
 "ready_to_update"           = "Ready to update";
 "draft_ready"               = "Draft ready";
 "uploading_images"          = "Uploading images...";
+"please_wait"                = "Please wait...";
 "please_wait_prefill"       = "Please wait until images finish loading.";
 "submit_failed"             = "Unable to save your ad right now. Please try again.";
 "basic_info_subtitle"       = "Shape the listing title and taxonomy first.";
@@ -4150,3 +4151,35 @@
 "settings_marketplace_accent_main_kind" = "Pet category colors";
 "settings_marketplace_accent_message_format" = "Currently using %@. Choose how marketplace accents should appear.";
 "settings_marketplace_accent_updated_format" = "Marketplace accents now use %@.";
+
+/* Pet ad viewer — Trust Journey */
+"pet_ad_trust_location_label" = "Location";
+"pet_ad_trust_age_label" = "Age";
+"pet_ad_trust_type_label" = "Type";
+"pet_ad_trust_price_accessibility" = "Price: %@";
+"pet_ad_trust_price_on_request" = "Price on request";
+"pet_ad_trust_story_title" = "Their story";
+"pet_ad_trust_story_missing" = "The advertiser has not added this pet’s story yet.";
+"pet_ad_trust_read_more" = "Read the full story";
+"pet_ad_trust_read_less" = "Read less";
+"pet_ad_trust_expanded" = "Expanded";
+"pet_ad_trust_collapsed" = "Collapsed";
+"pet_ad_trust_health_title" = "Health & trust";
+"pet_ad_trust_seller_title" = "The advertiser";
+"pet_ad_trust_decision_title" = "Before you decide";
+"pet_ad_trust_seller_verified" = "Advertiser identity verified";
+"pet_ad_trust_seller_verified_detail" = "Pure Pets has verified this advertiser’s account.";
+"pet_ad_trust_listing_reviewed" = "Listing reviewed";
+"pet_ad_trust_listing_reviewed_detail" = "This listing passed platform moderation. This is not a veterinary certificate.";
+"pet_ad_trust_details_provided" = "Core details supplied";
+"pet_ad_trust_details_provided_detail" = "%d of 3 key details are available.";
+"pet_ad_trust_health_missing" = "Health records not attached";
+"pet_ad_trust_health_missing_detail" = "Ask for vaccination, veterinary, and ownership documents before agreeing.";
+"pet_ad_trust_question_health" = "Request the latest veterinary and vaccination records.";
+"pet_ad_trust_question_behavior" = "Ask about behavior, routine, diet, and care needs.";
+"pet_ad_trust_question_handover" = "Meet safely and verify ownership before payment.";
+"pet_ad_trust_seller_fallback" = "Pure Pets advertiser";
+"pet_ad_trust_sign_in_for_contact" = "Sign in before contacting the advertiser or sharing personal details.";
+"pet_ad_trust_seller_safety" = "Keep agreements and important details inside Pure Pets chat.";
+"pet_ad_trust_sign_in_action" = "Sign in to contact the advertiser";
+"pet_ad_trust_ask_seller" = "Ask about this pet";
