@@ -899,15 +899,15 @@ struct PPMarketplaceCurrentDock: View {
 
     private var actionRail: some View {
         HStack(spacing: PPSpace.sm) {
-            PPMarketplaceBackControl(
-                accent: store.accentColor,
-                isRightToLeft: store.isRightToLeft,
-                action: store.goBack
-            )
-            .padding(.leading, horizontalInset)
-            .opacity(showsPinnedBackControl ? 1 : 0)
-            .allowsHitTesting(showsPinnedBackControl)
-            .accessibilityHidden(!showsPinnedBackControl)
+            if showsPinnedBackControl {
+                PPMarketplaceBackControl(
+                    accent: store.accentColor,
+                    isRightToLeft: store.isRightToLeft,
+                    action: store.goBack
+                )
+                .padding(.leading, horizontalInset)
+                .transition(pinnedBackControlTransition)
+            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: PPSpace.sm) {
@@ -1025,6 +1025,7 @@ struct PPMarketplaceCurrentDock: View {
             .frame(maxWidth: .infinity)
         }
         .frame(minHeight: 44)
+        .animation(pinnedBackControlAnimation, value: showsPinnedBackControl)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             PPMarketplaceText.localized("marketplace_browse_controls")
@@ -1067,6 +1068,18 @@ struct PPMarketplaceCurrentDock: View {
         interactionMotionIsDisabled
             ? nil
             : .easeOut(duration: 0.16)
+    }
+
+    private var pinnedBackControlAnimation: Animation? {
+        interactionMotionIsDisabled
+            ? nil
+            : .easeOut(duration: 0.20)
+    }
+
+    private var pinnedBackControlTransition: AnyTransition {
+        interactionMotionIsDisabled
+            ? .identity
+            : .move(edge: .leading).combined(with: .opacity)
     }
 }
 

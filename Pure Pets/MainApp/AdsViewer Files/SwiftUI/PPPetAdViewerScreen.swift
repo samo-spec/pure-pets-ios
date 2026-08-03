@@ -235,6 +235,9 @@ struct PPPetAdViewerScreen: View {
 
                 VStack(spacing: 0) {
                     PPPetAdHeroContentBlend()
+                        .overlay(alignment: .top) {
+                            fadeThumbnailRail
+                        }
 
                     PPPetAdTrustJourneyDetailsContent(
                         store: store,
@@ -269,6 +272,31 @@ struct PPPetAdViewerScreen: View {
         )
         .animation(entranceAnimation, value: hasAppeared)
         .background(Color.ppBackground)
+    }
+
+    @ViewBuilder
+    private var fadeThumbnailRail: some View {
+        if store.snapshot.media.count > 1 {
+            GeometryReader { railProxy in
+                PPPetAdThumbnailRail(
+                    items: store.snapshot.media,
+                    selection: Binding(
+                        get: { store.selectedMediaIndex },
+                        set: { store.selectedMediaIndex = $0 }
+                    ),
+                    axis: .horizontal,
+                    maximumLength: min(railProxy.size.width, 520)
+                )
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .frame(height: PPPetAdThumbnailRail.thickness)
+            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.top, PPSpace.xl)
+            .ppPetAdEntrance(
+                isPresented: hasAppeared,
+                delayIndex: 0
+            )
+        }
     }
 
     private func navigationBar(topInset: CGFloat) -> some View {

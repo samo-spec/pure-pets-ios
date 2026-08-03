@@ -16,7 +16,7 @@ struct HomeHeroView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
-    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 224
+    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 212
 
     private var selectedPage: HomeHeroPage? {
         guard pages.indices.contains(selectedIndex) else { return nil }
@@ -328,6 +328,7 @@ struct HomeHeroView: View {
             remoteImageURL: asset.remoteImageURL,
             usesCategoryArtworkTreatment: asset.usesCategoryArtworkTreatment,
             loadsFromFirebase: asset.loadsFromFirebase,
+            stabilizesCentralArtworkScale: page.kind == .pet,
             primarySymbol: asset.primarySymbol,
             secondarySymbol: asset.secondarySymbol
         )
@@ -448,7 +449,7 @@ struct HomeHeroView: View {
                 )
             }
             return HomeHeroArtworkAsset(
-                animationName: "bag.json",
+                animationName: "Shop2.json",
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
@@ -616,6 +617,7 @@ private struct HomeHeroFloatingPlate: View {
     let remoteImageURL: String?
     let usesCategoryArtworkTreatment: Bool
     let loadsFromFirebase: Bool
+    let stabilizesCentralArtworkScale: Bool
     let primarySymbol: String
     let secondarySymbol: String
 
@@ -649,6 +651,9 @@ private struct HomeHeroFloatingPlate: View {
                             lineWidth: contrast == .increased ? 1.5 : 1
                         )
                     }
+                    .scaleEffect(
+                        stabilizesCentralArtworkScale ? plateScale : 1
+                    )
 
                 centralArtwork
             }
@@ -660,7 +665,9 @@ private struct HomeHeroFloatingPlate: View {
             .rotationEffect(
                 .degrees(floatingPhase ? 0.45 : -0.30)
             )
-            .scaleEffect(floatingPhase ? 1.008 : 0.996)
+            .scaleEffect(
+                stabilizesCentralArtworkScale ? 1 : plateScale
+            )
             .shadow(
                 color: Color.black.opacity(contrast == .increased ? 0 : 0.08),
                 radius: floatingPhase ? 14 : 11,
@@ -781,12 +788,12 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private func lottieScale(for animationName: String) -> CGFloat {
-        if animationName == "bag.json" { return 0.95 }
+        if animationName == "Shop2.json" { return 0.95 }
         return animationName == "petstore" ? 0.78 : 1.30
     }
 
     private func lottieTintColor(for animationName: String) -> UIColor? {
-        if animationName == "bag.json" {
+        if animationName == "Shop2.json" {
             return UIColor(accent)
         }
         return animationName == "petstore"
@@ -819,6 +826,10 @@ private struct HomeHeroFloatingPlate: View {
 
     private var floatingPhase: Bool {
         allowsFloatingMotion && floating
+    }
+
+    private var plateScale: CGFloat {
+        floatingPhase ? 1.008 : 0.996
     }
 
     private var plateMotion: Animation? {

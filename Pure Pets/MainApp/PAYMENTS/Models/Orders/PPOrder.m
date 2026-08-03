@@ -314,9 +314,13 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
         : 0;
     if ([data[@"fulfillmentOrderIDs"] isKindOfClass:NSArray.class]) {
         order.fulfillmentOrderIDs = data[@"fulfillmentOrderIDs"];
+    } else {
+        order.fulfillmentOrderIDs = @[];
     }
     if ([data[@"fulfillmentSummary"] isKindOfClass:NSDictionary.class]) {
         order.fulfillmentSummary = data[@"fulfillmentSummary"];
+    } else {
+        order.fulfillmentSummary = @{};
     }
 
     return order;

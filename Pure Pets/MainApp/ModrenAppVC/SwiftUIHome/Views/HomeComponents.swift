@@ -2605,6 +2605,7 @@ struct HomeCategoryRail: View {
                 actionTitle: layoutActionTitle,
                 action: toggleLayout,
                 sectionRawValue: 5,
+                headingAccentColor: selectedCategoryAccent,
                 isExpanded: isExpanded
             )
             .padding(.horizontal, PPSpace.screenMargin * 0.5)
@@ -2718,6 +2719,16 @@ struct HomeCategoryRail: View {
             isExpanded ? "ShowLess" : "ShowAll",
             fallback: isExpanded ? "Show less" : "Show all"
         )
+    }
+
+    private var selectedCategoryAccent: UIColor {
+        guard let selectedID,
+              let category = categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedID
+              }) else {
+            return .ppPrimary
+        }
+        return category.accent
     }
 
     private var layoutTransition: AnyTransition {

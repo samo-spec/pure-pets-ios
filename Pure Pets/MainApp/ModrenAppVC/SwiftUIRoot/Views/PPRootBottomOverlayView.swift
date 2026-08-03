@@ -98,10 +98,13 @@ public struct PPRootBottomOverlayView: View {
                 )
             }
             .onPreferenceChange(PPRootBottomOverlayHeightKey.self) { measuredHeight in
-                store.updateMeasuredBottomOverlayHeight(
-                    measuredHeight,
-                    safeAreaBottom: proxy.safeAreaInsets.bottom
-                )
+                let safeAreaBottom = proxy.safeAreaInsets.bottom
+                DispatchQueue.main.async {
+                    store.updateMeasuredBottomOverlayHeight(
+                        measuredHeight,
+                        safeAreaBottom: safeAreaBottom
+                    )
+                }
             }
         }
         .passthroughTouches(true)

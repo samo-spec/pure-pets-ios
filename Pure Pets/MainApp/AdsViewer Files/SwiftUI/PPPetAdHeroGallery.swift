@@ -14,8 +14,6 @@ struct PPPetAdHeroGallery: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let thumbnailSize: CGFloat = 44
-    private let thumbnailRailInset: CGFloat = 10
     private let thumbnailRailMaximumHeight: CGFloat = 320
 
     var body: some View {
@@ -208,10 +206,13 @@ struct PPPetAdHeroGallery: View {
 
     private var thumbnailRailOverlay: some View {
         GeometryReader { proxy in
-            thumbnailRail(
-                maxHeight: max(
-                    proxy.size.height - (PPSpace.base * 2),
-                    0
+            PPPetAdThumbnailRail(
+                items: items,
+                selection: $selection,
+                axis: .vertical,
+                maximumLength: min(
+                    thumbnailRailMaximumHeight,
+                    max(proxy.size.height - (PPSpace.base * 2), 0)
                 )
             )
             .padding(.trailing, PPSpace.md)
@@ -222,117 +223,6 @@ struct PPPetAdHeroGallery: View {
                 alignment: .trailing
             )
         }
-    }
-
-    private func thumbnailRail(maxHeight: CGFloat) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: PPSpace.sm) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) {
-                        index,
-                        item in
-                        Button {
-                            if reduceMotion {
-                                selection = index
-                            } else {
-                                withAnimation(
-                                    PPPetAdViewerMotion.gallerySlide
-                                ) {
-                                    selection = index
-                                }
-                            }
-                        } label: {
-                            PPPetAdRemoteImageView(
-                                urlString: item.imageURL,
-                                blurHash: item.blurHash,
-                                contentMode: .fill,
-                                accessibilityLabel:
-                                    mediaAccessibilityLabel(index: index),
-                                cacheKey: item.id
-                            )
-                            .frame(width: thumbnailSize, height: thumbnailSize)
-                            .clipShape(
-                                RoundedRectangle(
-                                    cornerRadius: 12,
-                                    style: .continuous
-                                )
-                            )
-                            .overlay {
-                                RoundedRectangle(
-                                    cornerRadius: 12,
-                                    style: .continuous
-                                )
-                                .strokeBorder(
-                                    index == selection
-                                        ? Color.white
-                                        : Color.white.opacity(0.24),
-                                    lineWidth: index == selection ? 2 : 0.75
-                                )
-                            }
-                            .opacity(index == selection ? 1 : 0.72)
-                            .scaleEffect(
-                                reduceMotion || index == selection
-                                    ? 1
-                                    : 0.94
-                            )
-                            .animation(reduceMotion ? nil : PPPetAdViewerMotion.galleryChrome, value: selection)
-                        }
-                        .buttonStyle(
-                            PPPetAdPressButtonStyle(pressedScale: 0.92)
-                        )
-                        .id(index)
-                        .accessibilityValue(
-                            index == selection
-                                ? PPPetAdLocalization.text(
-                                    "Selected",
-                                    fallback: "Selected"
-                                )
-                                : ""
-                        )
-                    }
-                }
-                .padding(.horizontal, thumbnailRailInset)
-                .padding(.vertical, thumbnailRailInset)
-            }
-            .frame(
-                width: thumbnailRailWidth,
-                height: thumbnailRailHeight(maxHeight: maxHeight)
-            )
-            .ppGlassSurface(
-                in: RoundedRectangle(
-                    cornerRadius: 18,
-                    style: .continuous
-                ),
-                tint: Color.black.opacity(0.20),
-                fallback: Color.black.opacity(0.82),
-                stroke: Color.white.opacity(0.24)
-            )
-            .onChange(of: selection) { value in
-                guard items.indices.contains(value) else { return }
-                if reduceMotion {
-                    proxy.scrollTo(value, anchor: .center)
-                } else {
-                    withAnimation(PPPetAdViewerMotion.gallerySlide) {
-                        proxy.scrollTo(value, anchor: .center)
-                    }
-                }
-            }
-        }
-    }
-
-    private var thumbnailRailWidth: CGFloat {
-        thumbnailSize + (thumbnailRailInset * 2)
-    }
-
-    private func thumbnailRailHeight(maxHeight: CGFloat) -> CGFloat {
-        let count = max(items.count, 1)
-        let spacing = PPSpace.sm * CGFloat(max(count - 1, 0))
-        let neededHeight =
-            (thumbnailSize * CGFloat(count)) + spacing + (thumbnailRailInset * 2)
-        return min(
-            neededHeight,
-            min(thumbnailRailMaximumHeight, max(maxHeight, 0))
-        )
     }
 
     private var emptyHero: some View {
@@ -406,6 +296,166 @@ struct PPPetAdHeroGallery: View {
             return items[value].imageURL
         }
         PPPetAdViewerLegacyBridge.prefetch(urls: urls)
+    }
+}
+
+enum PPPetAdThumbnailRailAxis: Equatable {
+    case vertical
+    case horizontal
+}
+
+struct PPPetAdThumbnailRail: View {
+    static let thumbnailSize: CGFloat = 44
+    static let contentInset: CGFloat = 10
+    static let thickness: CGFloat =
+        thumbnailSize + (contentInset * 2)
+
+    let items: [PPPetAdMediaItem]
+    @Binding var selection: Int
+    let axis: PPPetAdThumbnailRailAxis
+    let maximumLength: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(scrollAxes, showsIndicators: false) {
+                if axis == .vertical {
+                    LazyVStack(spacing: PPSpace.sm) {
+                        thumbnailButtons
+                    }
+                    .padding(Self.contentInset)
+                } else {
+                    LazyHStack(spacing: PPSpace.sm) {
+                        thumbnailButtons
+                    }
+                    .padding(Self.contentInset)
+                }
+            }
+            .frame(width: railWidth, height: railHeight)
+            .ppGlassSurface(
+                in: RoundedRectangle(
+                    cornerRadius: 18,
+                    style: .continuous
+                ),
+                tint: Color.black.opacity(0.20),
+                fallback: Color.black.opacity(0.82),
+                stroke: Color.white.opacity(0.24)
+            )
+            .onChange(of: selection) { value in
+                guard items.indices.contains(value) else { return }
+                if reduceMotion {
+                    proxy.scrollTo(value, anchor: .center)
+                } else {
+                    withAnimation(PPPetAdViewerMotion.gallerySlide) {
+                        proxy.scrollTo(value, anchor: .center)
+                    }
+                }
+            }
+            .onAppear {
+                guard items.indices.contains(selection) else { return }
+                proxy.scrollTo(selection, anchor: .center)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var thumbnailButtons: some View {
+        ForEach(Array(items.enumerated()), id: \.element.id) {
+            index,
+            item in
+            Button {
+                if reduceMotion {
+                    selection = index
+                } else {
+                    withAnimation(PPPetAdViewerMotion.gallerySlide) {
+                        selection = index
+                    }
+                }
+            } label: {
+                PPPetAdRemoteImageView(
+                    urlString: item.imageURL,
+                    blurHash: item.blurHash,
+                    contentMode: .fill,
+                    accessibilityLabel:
+                        mediaAccessibilityLabel(index: index),
+                    cacheKey: item.id
+                )
+                .frame(
+                    width: Self.thumbnailSize,
+                    height: Self.thumbnailSize
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 12,
+                        style: .continuous
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(
+                        cornerRadius: 12,
+                        style: .continuous
+                    )
+                    .strokeBorder(
+                        index == selection
+                            ? Color.white
+                            : Color.white.opacity(0.24),
+                        lineWidth: index == selection ? 2 : 0.75
+                    )
+                }
+                .opacity(index == selection ? 1 : 0.72)
+                .scaleEffect(
+                    reduceMotion || index == selection ? 1 : 0.94
+                )
+                .animation(selectionAnimation, value: selection)
+            }
+            .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.92))
+            .id(index)
+            .accessibilityValue(
+                index == selection
+                    ? PPPetAdLocalization.text(
+                        "Selected",
+                        fallback: "Selected"
+                    )
+                    : ""
+            )
+        }
+    }
+
+    private var scrollAxes: Axis.Set {
+        axis == .vertical ? .vertical : .horizontal
+    }
+
+    private var selectionAnimation: Animation? {
+        reduceMotion ? nil : PPPetAdViewerMotion.galleryChrome
+    }
+
+    private var railWidth: CGFloat {
+        axis == .vertical ? Self.thickness : resolvedLength
+    }
+
+    private var railHeight: CGFloat {
+        axis == .vertical ? resolvedLength : Self.thickness
+    }
+
+    private var resolvedLength: CGFloat {
+        let count = max(items.count, 1)
+        let spacing = PPSpace.sm * CGFloat(max(count - 1, 0))
+        let neededLength =
+            (Self.thumbnailSize * CGFloat(count))
+            + spacing
+            + (Self.contentInset * 2)
+        return min(neededLength, max(maximumLength, 0))
+    }
+
+    private func mediaAccessibilityLabel(index: Int) -> String {
+        let type =
+            items[index].isVideo
+            ? PPPetAdLocalization.text("Video", fallback: "Video")
+            : PPPetAdLocalization.text("Photo", fallback: "Photo")
+        return
+            "\(type) \(index + 1) \(PPPetAdLocalization.text("of", fallback: "of")) \(items.count)"
     }
 }
 

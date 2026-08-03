@@ -31,6 +31,27 @@ public struct PPLottieAnimationRepresentable: UIViewRepresentable {
         let containerView = UIView(frame: .zero)
         containerView.backgroundColor = .clear
         containerView.clipsToBounds = true
+
+        // The legacy `animationNamed:` API only accepts JSON resources. A
+        // `.lottie` resource is a ZIP container and must be decoded first by
+        // the shared archive-aware bridge.
+        if animationName.lowercased().hasSuffix(".lottie") {
+            let animationView = PPHomeHeroAnimationView(
+                animationName: animationName,
+                loadsFromFirebase: true
+            )
+            animationView.translatesAutoresizingMaskIntoConstraints = false
+            animationView.isPlaybackEnabled = true
+            animationView.customTintColor = tintColor
+            containerView.addSubview(animationView)
+            NSLayoutConstraint.activate([
+                animationView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+                animationView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+                animationView.topAnchor.constraint(equalTo: containerView.topAnchor),
+                animationView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
+            ])
+            return containerView
+        }
         
         // Dynamic instantiation of LOTAnimationView without unsafeBitCast
         if let lotClass = NSClassFromString("LOTAnimationView") as? NSObject.Type {
@@ -102,8 +123,18 @@ public struct PPLottieAnimationRepresentable: UIViewRepresentable {
     }
     
     public func updateUIView(_ uiView: UIView, context: Context) {
+        if let animationView = uiView.subviews.first as? PPHomeHeroAnimationView {
+            animationView.customTintColor = tintColor
+            animationView.isPlaybackEnabled = true
+            return
+        }
+
         if let tint = tintColor {
             uiView.subviews.forEach { $0.tintColor = tint }
         }
+    }
+
+    public static func dismantleUIView(_ uiView: UIView, coordinator: Void) {
+        (uiView.subviews.first as? PPHomeHeroAnimationView)?.isPlaybackEnabled = false
     }
 }

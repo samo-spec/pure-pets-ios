@@ -647,14 +647,18 @@ final class HomeStore: ObservableObject {
                 state.pets.first(where: \.isDefault)?.id ?? state.pets.first?.id
         }
 
-        if let petCategoryID = selectedPet?.categoryID,
-           petCategoryID > 0,
-           state.categories.contains(where: {
-               HomeModelAdapter.mainKindID($0.raw) == petCategoryID
-           }) {
+        if let savedMainKindID {
+            state.selectedMainKindID = savedMainKindID
+        } else if persistedCategory?.intValue == -1 {
+            state.selectedMainKindID = nil
+        } else if let petCategoryID = selectedPet?.categoryID,
+                  petCategoryID > 0,
+                  state.categories.contains(where: {
+                      HomeModelAdapter.mainKindID($0.raw) == petCategoryID
+                  }) {
             state.selectedMainKindID = petCategoryID
         } else {
-            state.selectedMainKindID = savedMainKindID
+            state.selectedMainKindID = nil
         }
         requestCategoryAccessoriesIfNeeded(for: state.selectedMainKindID)
 
@@ -754,8 +758,6 @@ final class HomeStore: ObservableObject {
                     )
                 )
             }
-        } else {
-            pages.append(buildPetOnboardingHeroPage())
         }
 
         return pages
@@ -933,37 +935,6 @@ final class HomeStore: ObservableObject {
             localImage: selectedCategory?.localImage,
             accentHex: selectedCategoryHex,
             action: .editPet(pet.raw)
-        )
-    }
-
-    private func buildPetOnboardingHeroPage() -> HomeHeroPage {
-        HomeHeroPage(
-            id: "pet-onboarding",
-            kind: .petOnboarding,
-            eyebrow: HomeModelAdapter.localized(
-                "home_pulse_make_it_yours",
-                fallback: "MAKE IT YOURS"
-            ),
-            title: HomeModelAdapter.localized(
-                "home_pulse_no_pet_title",
-                fallback: "Build a Home around your pet"
-            ),
-            subtitle: HomeModelAdapter.localized(
-                "home_pulse_no_pet_subtitle",
-                fallback: "Add a profile for relevant products, care organization, reminders, and faster discovery."
-            ),
-            primaryTitle: HomeModelAdapter.localized(
-                "home_pulse_create_pet",
-                fallback: "Create pet profile"
-            ),
-            secondaryTitle: HomeModelAdapter.localized(
-                "home_pulse_keep_browsing",
-                fallback: "Keep browsing"
-            ),
-            imageURL: nil,
-            localImage: UIImage(named: "petcare_placeholder"),
-            accentHex: "CB2654",
-            action: .openPetProfiles
         )
     }
 

@@ -314,7 +314,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     }
 
     private func actionBackgroundConfiguration(circlePresentation: Bool) -> UIBackgroundConfiguration {
-        let accent = PPSectionHeaderPalette.accent
+        let accent = actionForegroundColor()
         let darkMode = traitCollection.userInterfaceStyle == .dark
         let increasedContrast =
             traitCollection.accessibilityContrast == .high
@@ -353,7 +353,13 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     }
 
     private func actionForegroundColor() -> UIColor {
-        PPSectionHeaderPalette.accent
+        isMainKindsSection
+            ? headingAccentColor
+            : PPSectionHeaderPalette.accent
+    }
+
+    private func actionTitleColor() -> UIColor {
+        isMainKindsSection ? headingAccentColor : titleColor()
     }
 
     private func titleColor() -> UIColor {
@@ -549,7 +555,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
                 var outgoing = incoming
                 outgoing.font = self?.actionFont()
                     ?? UIFont.systemFont(ofSize: 13, weight: .semibold)
-                outgoing.foregroundColor = self?.titleColor() ?? .label
+                outgoing.foregroundColor = self?.actionTitleColor() ?? .label
                 return outgoing
             }
         }

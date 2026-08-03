@@ -154,15 +154,17 @@ struct HomeView: View {
 
     private var loadingContent: some View {
         VStack(alignment: .leading, spacing: PPSpace.xl) {
-            HomeHeroView(
-                pages: [],
-                selectedIndex: 0,
-                onSelect: { _ in },
-                onPrimaryAction: {},
-                onSecondaryAction: {},
-                onInteractionChanged: { _ in }
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
+            if !store.state.heroPages.isEmpty {
+                HomeHeroView(
+                    pages: store.state.heroPages,
+                    selectedIndex: store.state.selectedHeroIndex,
+                    onSelect: store.selectHero,
+                    onPrimaryAction: store.performSelectedHeroAction,
+                    onSecondaryAction: store.performSelectedHeroSecondaryAction,
+                    onInteractionChanged: store.setHeroInteractionActive
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+            }
 
             HomePriorityGrid(
                 actions: placeholderActions,
@@ -214,8 +216,17 @@ struct HomeView: View {
     }
 
     private var visibleSupportedSections: [HomeConfigSection] {
-        store.state.config.sections.filter {
-            $0.isVisible && HomeSectionRawID.supported.contains($0.id)
+        store.state.config.sections.filter { section in
+            guard section.isVisible,
+                  HomeSectionRawID.supported.contains(section.id)
+            else {
+                return false
+            }
+            if section.id == HomeSectionRawID.hero {
+                return !store.state.pets.isEmpty
+                    && !store.state.heroPages.isEmpty
+            }
+            return true
         }
     }
 
@@ -248,15 +259,17 @@ struct HomeView: View {
             .padding(.horizontal, PPSpace.screenMargin)
 
         case HomeSectionRawID.hero:
-            HomeHeroView(
-                pages: store.state.heroPages,
-                selectedIndex: store.state.selectedHeroIndex,
-                onSelect: store.selectHero,
-                onPrimaryAction: store.performSelectedHeroAction,
-                onSecondaryAction: store.performSelectedHeroSecondaryAction,
-                onInteractionChanged: store.setHeroInteractionActive
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
+            if !store.state.heroPages.isEmpty {
+                HomeHeroView(
+                    pages: store.state.heroPages,
+                    selectedIndex: store.state.selectedHeroIndex,
+                    onSelect: store.selectHero,
+                    onPrimaryAction: store.performSelectedHeroAction,
+                    onSecondaryAction: store.performSelectedHeroSecondaryAction,
+                    onInteractionChanged: store.setHeroInteractionActive
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+            }
 
         case HomeSectionRawID.mainKinds:
             if !store.state.categories.isEmpty {

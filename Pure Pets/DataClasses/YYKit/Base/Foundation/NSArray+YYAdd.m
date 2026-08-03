@@ -127,10 +127,12 @@ YYSYNTH_DUMMY_CLASS(NSArray_YYAdd)
 }
 
 - (void)appendObject:(id)anObject {
+    if (!anObject) return;
     [self addObject:anObject];
 }
 
 - (void)prependObject:(id)anObject {
+    if (!anObject) return;
     [self insertObject:anObject atIndex:0];
 }
 
@@ -143,13 +145,16 @@ YYSYNTH_DUMMY_CLASS(NSArray_YYAdd)
     if (!objects) return;
     NSUInteger i = 0;
     for (id obj in objects) {
+        if (!obj) continue;
         [self insertObject:obj atIndex:i++];
     }
 }
 
 - (void)insertObjects:(NSArray *)objects atIndex:(NSUInteger)index {
+    if (!objects) return;
     NSUInteger i = index;
     for (id obj in objects) {
+        if (!obj) continue;
         [self insertObject:obj atIndex:i++];
     }
 }

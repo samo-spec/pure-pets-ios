@@ -222,10 +222,12 @@ dispatch_semaphore_signal(_lock);
 #pragma mark - mutable
 
 - (void)addObject:(id)anObject {
+    if (!anObject) return;
     LOCK([_arr addObject:anObject]);
 }
 
 - (void)insertObject:(id)anObject atIndex:(NSUInteger)index {
+    if (!anObject) return;
     LOCK([_arr insertObject:anObject atIndex:index]);
 }
 

@@ -713,8 +713,8 @@ static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
  #pragma mark - Helper Methods for Updating Arrays
 
  - (void)handleBuyerAdded:(BuyerModel *)b_Model {
-     
-     
+     if (!b_Model) return;
+
      if ([b_Model.UserID isEqualToString:PPCurrentUser.ID])
      {
          //    NSLog(@"TRIGER ------>>>>>> Buyer: %@  PPCurrentUser.ID: %@  ADEEEEEEEEEEEEEEED", b_Model.UserID,PPCurrentUser.ID);
@@ -730,7 +730,8 @@ static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
  }
 
  - (void)handleBuyerModified:(BuyerModel *)b_Model {
-     
+     if (!b_Model) return;
+
      // Modify in UserCardsDocs (if applicable) // && modifiedCardModel.cardInfo == 1
      if ([b_Model.UserID isEqualToString:PPCurrentUser.ID]) {
          BOOL foundInUserCards = NO;
@@ -769,7 +770,8 @@ static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
  #pragma mark - Helper Methods for Updating Arrays
 
  - (void)handleCardAdded:(CardModel *)cardModel {
-     
+     if (!cardModel) return;
+
      if(![self.AllCardsDocs containsObject:cardModel] && [self.AllCardsDocs filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF.ID == %@", cardModel.ID]].count == 0)
          [self.AllCardsDocs insertObject:cardModel atIndex:0];
      

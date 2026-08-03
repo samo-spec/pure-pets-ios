@@ -45,7 +45,7 @@
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
-    return [self initWithAnimationName:@"bag.json"
+    return [self initWithAnimationName:@"Shop2.json"
                      loadsFromFirebase:NO];
 }
 
@@ -68,7 +68,7 @@
     if (!self) {
         return nil;
     }
-    _animationName = @"bag.json";
+    _animationName = @"Shop2.json";
     _loadsFromFirebase = NO;
     [self pp_buildMarketplaceAnimation];
     return self;
@@ -145,7 +145,7 @@
         fallbackSymbol = @"pills.fill";
     } else if ([self.animationName containsString:@"cart"] ||
                [self.animationName containsString:@"shop"] ||
-               [self.animationName isEqualToString:@"bag.json"]) {
+               [self.animationName isEqualToString:@"Shop2.json"]) {
         fallbackSymbol = @"bag.fill";
     }
     
@@ -170,7 +170,7 @@
     [self addSubview:animation];
     self.animationView = animation;
 
-    CGFloat inset = ([self.animationName isEqualToString:@"petstore"] || [self.animationName isEqualToString:@"bag.json"]) ? 9.0 : -2.0;
+    CGFloat inset = ([self.animationName isEqualToString:@"petstore"] || [self.animationName isEqualToString:@"Shop2.json"]) ? 9.0 : -2.0;
     [NSLayoutConstraint activateConstraints:@[
         [fallback.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [fallback.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
@@ -206,10 +206,15 @@
 
     self.animationLoading = YES;
 
-    NSString *sansExt = [self.animationName stringByDeletingPathExtension];
-    LOTComposition *composition =
-        [LOTComposition animationNamed:self.animationName inBundle:NSBundle.mainBundle] ?:
-        [LOTComposition animationNamed:sansExt inBundle:NSBundle.mainBundle];
+    NSString *lowercaseExtension = self.animationName.pathExtension.lowercaseString;
+    BOOL isDotLottieArchive = [lowercaseExtension isEqualToString:@"lottie"];
+    LOTComposition *composition = nil;
+    if (!isDotLottieArchive) {
+        NSString *sansExt = [self.animationName stringByDeletingPathExtension];
+        composition =
+            [LOTComposition animationNamed:self.animationName inBundle:NSBundle.mainBundle] ?:
+            [LOTComposition animationNamed:sansExt inBundle:NSBundle.mainBundle];
+    }
 
     if (composition) {
         self.animationLoading = NO;
@@ -267,11 +272,16 @@
         self.animationView.loopAnimation = YES;
         BOOL profileAnimation =
             [self.animationName isEqualToString:@"Profile.lottie"];
-        BOOL bagAnimation =
-            [self.animationName isEqualToString:@"bag.json"] ||
+        BOOL marketplaceAnimation =
+            [self.animationName.lastPathComponent.lowercaseString
+                isEqualToString:@"shop2.json"];
+        BOOL bagAnimation = marketplaceAnimation ||
             [self.animationName containsString:@"bag"];
-        self.animationView.animationSpeed =
-            (profileAnimation || bagAnimation) ? 0.85 : (self.loadsFromFirebase ? 0.3 : 0.8);
+        self.animationView.animationSpeed = marketplaceAnimation
+            ? 0.78
+            : ((profileAnimation || bagAnimation)
+                ? 0.85
+                : (self.loadsFromFirebase ? 0.3 : 0.8));
         self.animationView.animationProgress = (profileAnimation || bagAnimation) ? 0.0 : 0.32;
         if (self.customTintColor) {
             self.animationView.tintColor = self.customTintColor;
@@ -283,14 +293,21 @@
 
 - (void)pp_applyCustomTintIfNeeded
 {
-    BOOL isBagAnimation =
-        [self.animationName.lastPathComponent.lowercaseString isEqualToString:@"bag.json"];
-    if (!isBagAnimation || !self.animationLoaded || !self.customTintColor) {
+    BOOL isMarketplaceAnimation =
+        [self.animationName.lastPathComponent.lowercaseString
+            isEqualToString:@"shop2.json"];
+    if (!isMarketplaceAnimation ||
+        !self.animationLoaded ||
+        !self.customTintColor) {
         return;
     }
 
-    UIColor *resolvedTint =
-        [self.customTintColor resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *resolvedTint = self.customTintColor;
+    if (@available(iOS 13.0, *)) {
+        resolvedTint = [self.customTintColor resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    self.animationView.tintColor = resolvedTint;
+
     LOTColorValueCallback *callback =
         [LOTColorValueCallback withCGColor:resolvedTint.CGColor];
     LOTKeypath *strokeColorKeypath =
