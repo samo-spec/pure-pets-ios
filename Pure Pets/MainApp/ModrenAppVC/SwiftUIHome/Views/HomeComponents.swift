@@ -2565,6 +2565,7 @@ struct HomeCategoryRail: View {
                 headingAccentColor: selectedCategoryAccent,
                 isExpanded: isExpanded
             )
+            .padding(.top, PPSpace.md)
             .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
             if isExpanded {

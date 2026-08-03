@@ -205,13 +205,6 @@ struct HomeView: View {
                 configuredSection(section)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, sectionVerticalPadding(section.id))
-                    .padding(
-                        .top,
-                        heroToMainKindsBreathingRoom(
-                            in: sections,
-                            at: index
-                        )
-                    )
                     .background(sectionBand(for: section.id))
                     .homeSectionEntrance(
                         isVisible: loadedEntranceVisible,
@@ -449,20 +442,6 @@ struct HomeView: View {
              HomeSectionRawID.marketplaceHero: return PPSpace.md
         default: return PPSpace.lg
         }
-    }
-
-    private func heroToMainKindsBreathingRoom(
-        in sections: [HomeConfigSection],
-        at index: Int
-    ) -> CGFloat {
-        guard index > sections.startIndex,
-              sections.indices.contains(index),
-              sections[index].id == HomeSectionRawID.mainKinds,
-              sections[index - 1].id == HomeSectionRawID.hero
-        else {
-            return 0
-        }
-        return PPSpace.sm
     }
 
     private var bottomPadding: CGFloat {
