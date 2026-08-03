@@ -275,14 +275,19 @@
         BOOL marketplaceAnimation =
             [self.animationName.lastPathComponent.lowercaseString
                 isEqualToString:@"shop2.json"];
-        BOOL bagAnimation = marketplaceAnimation ||
-            [self.animationName containsString:@"bag"];
-        self.animationView.animationSpeed = marketplaceAnimation
-            ? 0.78
-            : ((profileAnimation || bagAnimation)
-                ? 0.85
-                : (self.loadsFromFirebase ? 0.3 : 0.8));
-        self.animationView.animationProgress = (profileAnimation || bagAnimation) ? 0.0 : 0.32;
+        BOOL bagAnimation = [self.animationName containsString:@"bag"];
+        if (marketplaceAnimation) {
+            self.animationView.animationSpeed = 0.78;
+        } else if (profileAnimation || bagAnimation) {
+            self.animationView.animationSpeed = 0.85;
+        } else {
+            self.animationView.animationSpeed =
+                self.loadsFromFirebase ? 0.3 : 0.8;
+        }
+        self.animationView.animationProgress =
+            (profileAnimation || marketplaceAnimation || bagAnimation)
+                ? 0.0
+                : 0.32;
         if (self.customTintColor) {
             self.animationView.tintColor = self.customTintColor;
             [self pp_applyCustomTintIfNeeded];
