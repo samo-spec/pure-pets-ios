@@ -9,6 +9,8 @@ struct PPPetAdHeroGallery: View {
     let interactionState: PPPetAdViewerInteractionState
     let onOpen: (Int) -> Void
     var bottomViewType: PPGarBottomViewType = .thumbRails
+    // The sheet owns the persistent horizontal media rail.
+    var showsVerticalThumbnailRail = false
     var showsTrustJourneyBottomFade = false
     var onFirstImageLoaded: ((UIImage) -> Void)? = nil
 
@@ -37,10 +39,12 @@ struct PPPetAdHeroGallery: View {
                             .padding(.bottom, PPSpace.xxxxl)
                     }
                 case .thumbRails:
-                    PPPetAdGalleryHandoff(
-                        interactionState: interactionState
-                    ) {
-                        thumbnailRailOverlay
+                    if showsVerticalThumbnailRail {
+                        PPPetAdGalleryHandoff(
+                            interactionState: interactionState
+                        ) {
+                            thumbnailRailOverlay
+                        }
                     }
                 case .contactPill:
                     EmptyView()

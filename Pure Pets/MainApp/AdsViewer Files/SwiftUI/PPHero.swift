@@ -19,6 +19,7 @@ struct PPPetAdTrustJourneyHero: View {
                 interactionState: interactionState,
                 onOpen: onOpen,
                 bottomViewType: .thumbRails,
+                showsVerticalThumbnailRail: true,
                 showsTrustJourneyBottomFade: true
             )
             .frame(height: stretchedHeight)

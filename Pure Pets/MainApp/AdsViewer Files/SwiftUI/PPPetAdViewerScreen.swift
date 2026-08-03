@@ -32,6 +32,7 @@ struct PPPetAdViewerScreen: View {
     private let repository: PPPetAdViewerRepository
     private let hostActions: PPPetAdViewerHostActions
     private let contactDockBottomInset = PPSpace.base
+    private let showsHorizontalThumbnailRail = false
 
     init(
         ad: PetAd,
@@ -276,7 +277,7 @@ struct PPPetAdViewerScreen: View {
 
     @ViewBuilder
     private var fadeThumbnailRail: some View {
-        if store.snapshot.media.count > 1 {
+        if showsHorizontalThumbnailRail && store.snapshot.media.count > 1 {
             GeometryReader { railProxy in
                 PPPetAdThumbnailRail(
                     items: store.snapshot.media,
