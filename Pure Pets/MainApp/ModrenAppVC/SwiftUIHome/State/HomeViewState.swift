@@ -215,6 +215,7 @@ struct HomeConfigModel {
     var premiumCareVisible: Bool
     var novaFloatingVisible: Bool
     var backgroundGlowsFaded: Bool
+    var pureLensVisible: Bool
     var cameFromCache: Bool
 
     var orderedSectionIDs: [Int] {
@@ -251,6 +252,7 @@ struct HomeConfigModel {
         premiumCareVisible: true,
         novaFloatingVisible: true,
         backgroundGlowsFaded: false,
+        pureLensVisible: true,
         cameFromCache: false
     )
 

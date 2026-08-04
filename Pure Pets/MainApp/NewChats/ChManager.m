@@ -25,7 +25,11 @@ static NSString * const kPPSupportContextType = @"user_support";
 static NSInteger const kPPChatV2SchemaVersion = 2;
 static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
 static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
+@import FirebaseFunctions;
 #import "ChManager.h"
 #import <UIKit/UIKit.h>
 #import "PPOverlayCoordinator.h"

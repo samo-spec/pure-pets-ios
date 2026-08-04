@@ -8,7 +8,7 @@
 
 #import "ChildModel.h"
 
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 #import "XLFormOptionsObject.h"
 /*
        

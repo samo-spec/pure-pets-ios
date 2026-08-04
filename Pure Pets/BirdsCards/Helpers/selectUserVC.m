@@ -12,6 +12,7 @@
 #import "PPModernAvatarRenderer.h"
 
 #import "AppDelegate.h"
+@import FirebaseStorage;
 
 @interface selectUserVC ()<UITableViewDelegate,UITableViewDataSource,UISearchBarDelegate>
 {

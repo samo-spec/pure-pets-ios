@@ -6,9 +6,6 @@
 //
 
 /*
- #import <FirebaseAuth/FirebaseAuth.h>
- #import <FirebaseFirestore/FirebaseFirestore.h>
-
  + (void)updateUserWithDisplayName:(NSString *)displayName
                           photoURL:(NSURL *)photoURL
                        completion:(void (^ _Nullable)(NSError * _Nullable authError,
@@ -54,8 +51,14 @@
  }
 
  */
-@import FirebaseAuth;
-@import FirebaseFirestore;
+@class FIRUser;
+@class FIRFirestore;
+@class FIRDocumentSnapshot;
+@class FIRQuerySnapshot;
+@class FIRQuery;
+@class FIRAuthDataResult;
+@class FIRFunctions;
+@protocol FIRListenerRegistration;
 #import "PPUserSigningController.h"
 #import "PPUserSigningManager.h"
 @class UserModel;
@@ -71,14 +74,6 @@ typedef NS_ENUM(NSInteger, ProfileGreetingShorteningMode) {
     ProfileGreetingShorteningModeBoth,
     ProfileGreetingShorteningModeShotNameOnly  // Shorten both greeting + username
 };
-
-
-@import FirebaseCore;
-@import Firebase;
-@import FirebaseFunctions;
-@class UserModel;
-@class FIRQuery;
-@protocol FIRListenerRegistration;
 
 NS_ASSUME_NONNULL_BEGIN
 

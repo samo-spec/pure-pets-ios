@@ -14,13 +14,17 @@
 #else
 #define PP_HAS_FIREBASE_APPCHECK 0
 #endif
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 @import FirebaseAnalytics;
 @import FirebaseAuth;
 @import FirebaseCrashlytics;
 @import FirebaseFunctions;
+@import FirebaseMessaging;
 @import GoogleSignIn;
-@interface AppDelegate ()
+@interface AppDelegate () <FIRMessagingDelegate>
 @property (nonatomic, assign) FIRAuthStateDidChangeListenerHandle notificationV2AuthHandle;
 @property (nonatomic, copy) NSString *pp_apnsTokenHexString;
 @property (nonatomic, assign) BOOL notificationV2RegistrationDebounceScheduled;

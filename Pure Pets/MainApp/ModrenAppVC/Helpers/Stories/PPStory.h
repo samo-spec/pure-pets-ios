@@ -7,7 +7,6 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import <FirebaseFirestore/FirebaseFirestore.h>
 #import <AVFoundation/AVFoundation.h>
 @class PPStoryItem;
 

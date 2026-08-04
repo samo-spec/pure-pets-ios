@@ -211,6 +211,13 @@ struct HomeView: View {
                         sectionIndex: index,
                         reduceMotion: reduceMotion
                     )
+                    .homeVerticalSectionReveal(
+                        entranceAlreadyPlayed: loadedEntranceVisible
+                    )
+                    .homeSectionDataReload(
+                        revision: store.sectionDataRevision(for: section.id),
+                        accent: sectionReloadAccent(for: section.id)
+                    )
                     .id("home-section-\(section.id)")
             }
         }
@@ -358,7 +365,8 @@ struct HomeView: View {
                     selectedID: store.state.selectedPetID,
                     isLoading: store.state.phase.isLoading,
                     errorMessage: nil,
-                    action: store.openPetProfiles
+                    action: store.openPetProfiles,
+                    onOpenPureLens: pureLensAction
                 )
                 .padding(.horizontal, PPSpace.screenMargin)
             }
@@ -421,16 +429,64 @@ struct HomeView: View {
 
     private func sectionBand(for rawID: Int) -> Color {
         switch rawID {
-        case HomeSectionRawID.suggestions:
+        case HomeSectionRawID.suggestions,
+             HomeSectionRawID.suggestionAds,
+             HomeSectionRawID.suggestionAccessories:
             return .ppQuietLilac
         case HomeSectionRawID.premiumCare:
             return .homeSectionBand
-        case HomeSectionRawID.suggestionAds,
-             HomeSectionRawID.suggestionAccessories,
-             HomeSectionRawID.nearbyServices:
+        case HomeSectionRawID.nearbyServices:
             return .homeAmbientField
         default:
             return .clear
+        }
+    }
+
+    private func sectionReloadAccent(for rawID: Int) -> Color {
+        switch rawID {
+        case HomeSectionRawID.mainKinds,
+             HomeSectionRawID.marketplaceHero,
+             HomeSectionRawID.suggestions,
+             HomeSectionRawID.accessories,
+             HomeSectionRawID.lastFood,
+             HomeSectionRawID.adsNearby,
+             HomeSectionRawID.suggestionAds,
+             HomeSectionRawID.suggestionAccessories:
+            return selectedMainKindAccent
+        case HomeSectionRawID.petProfile,
+             HomeSectionRawID.quickActions:
+            return .homeStatusSuccess
+        case HomeSectionRawID.premiumCare:
+            return .homeVeterinary
+        case HomeSectionRawID.nearbyServices,
+             HomeSectionRawID.providerCategoryNav:
+            return .homeServices
+        case HomeSectionRawID.currentOrders,
+             HomeSectionRawID.buyAgain:
+            return .homeFocus
+        default:
+            return .homeBrand
+        }
+    }
+
+    private var selectedMainKindAccent: Color {
+        guard let selectedID = store.state.selectedMainKindID,
+              let category = store.state.categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedID
+              })
+        else {
+            return .homeBrand
+        }
+        return Color(uiColor: category.accent)
+    }
+
+    private var pureLensAction: (() -> Void)? {
+        guard store.state.config.pureLensVisible else {
+            return nil
+        }
+        let homeStore = store
+        return {
+            homeStore.openPureLens()
         }
     }
 
@@ -510,100 +566,83 @@ private struct HomePromotionCarousel: View {
     let primaryAction: (HomeHeroPage) -> Void
     let secondaryAction: (HomeHeroPage) -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var selectedPageID: String?
-    @State private var interactionActive = false
-    @State private var voiceOverRunning = UIAccessibility.isVoiceOverRunning
+    @State private var selection = 0
 
-    private var selectedIndex: Int {
-        guard let selectedPageID,
-              let index = pages.firstIndex(where: { $0.id == selectedPageID })
-        else {
-            return 0
+    private var cards: [PPPromoCard] {
+        pages.enumerated().map { index, page in
+            PPPromoCard(homeHeroPage: page, position: index, totalCount: pages.count)
         }
-        return index
     }
 
     private var selectedPage: HomeHeroPage? {
-        guard pages.indices.contains(selectedIndex) else { return nil }
-        return pages[selectedIndex]
-    }
-
-    private var taskIdentity: String {
-        [
-            pages.map(\.id).joined(separator: "|"),
-            selectedPageID ?? "",
-            String(scenePhase == .active),
-            String(reduceMotion),
-            String(voiceOverRunning),
-            String(interactionActive),
-        ].joined(separator: ":")
+        guard pages.indices.contains(selection) else { return nil }
+        return pages[selection]
     }
 
     var body: some View {
-        HomeHeroView(
-            pages: pages,
-            selectedIndex: selectedIndex,
-            onSelect: select,
-            onPrimaryAction: {
-                if let selectedPage {
-                    primaryAction(selectedPage)
-                }
-            },
-            onSecondaryAction: {
-                if let selectedPage {
-                    secondaryAction(selectedPage)
-                }
-            },
-            onInteractionChanged: { interactionActive = $0 }
+        PPPeekCarousel(
+            cards: cards,
+            isActive: !pages.isEmpty,
+            onAction: performPromoAction,
+            selection: $selection
         )
         .onAppear(perform: resolveSelection)
         .onChange(of: pages.map(\.id)) { _ in resolveSelection() }
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: UIAccessibility.voiceOverStatusDidChangeNotification
-            )
-        ) { _ in
-            voiceOverRunning = UIAccessibility.isVoiceOverRunning
-        }
-        .task(id: taskIdentity) {
-            guard pages.count > 1,
-                  scenePhase == .active,
-                  !reduceMotion,
-                  !voiceOverRunning,
-                  !interactionActive
-            else {
-                return
-            }
-            while !Task.isCancelled {
-                let interval = max(2.0, selectedPage?.autoScrollInterval ?? 4.8)
-                do {
-                    try await Task.sleep(
-                        nanoseconds: UInt64(interval * 1_000_000_000)
-                    )
-                } catch {
-                    return
-                }
-                guard !Task.isCancelled else { return }
-                select((selectedIndex + 1) % pages.count)
-            }
-        }
     }
 
     private func resolveSelection() {
         guard !pages.isEmpty else {
-            selectedPageID = nil
+            selection = 0
             return
         }
-        if !pages.contains(where: { $0.id == selectedPageID }) {
-            selectedPageID = pages[0].id
+        selection = min(max(selection, 0), pages.count - 1)
+    }
+
+    private func performPromoAction(_ action: PPPromoAction) {
+        guard let page = page(for: action.cardID) else { return }
+        switch action.source {
+        case .card, .primaryButton:
+            primaryAction(page)
+        case .secondaryButton:
+            secondaryAction(page)
         }
     }
 
-    private func select(_ index: Int) {
-        guard pages.indices.contains(index) else { return }
-        selectedPageID = pages[index].id
+    private func page(for cardID: String) -> HomeHeroPage? {
+        pages.first(where: { $0.id == cardID })
+    }
+}
+
+private extension PPPromoCard {
+    init(homeHeroPage page: HomeHeroPage, position: Int, totalCount: Int) {
+        let primaryTitle =
+            page.primaryTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let secondaryTitle =
+            page.secondaryTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        self.init(
+            id: page.id,
+            position: position,
+            totalCount: totalCount,
+            badgeText: page.eyebrow,
+            title: page.title,
+            subtitle: page.subtitle,
+            primaryButtonTitle: primaryTitle,
+            secondaryButtonTitle: secondaryTitle,
+            showsPrimaryButton: !primaryTitle.isEmpty,
+            showsSecondaryButton: !secondaryTitle.isEmpty,
+            artworkURL: page.imageURL.flatMap(URL.init(string:)),
+            localArtworkName: nil,
+            startColorHex: page.accentHex,
+            endColorHex: page.accentHex,
+            accentColorHex: page.accentHex,
+            cardActionRawValue: 0,
+            cardActionValue: "",
+            primaryActionRawValue: 0,
+            primaryActionValue: "",
+            secondaryActionRawValue: 0,
+            secondaryActionValue: "",
+            autoScrollInterval: page.autoScrollInterval
+        )
     }
 }
 
@@ -625,33 +664,8 @@ private struct HomePremiumSearchSection: View {
 
             VStack(spacing: 0) {
                 searchButton
-
-                if showsNova {
-                    Rectangle()
-                        .fill(Color.homeSeparator.opacity(contrast == .increased ? 0.92 : 0.70))
-                        .frame(height: contrast == .increased ? 1.5 : 0.8)
-                        .padding(.horizontal, PPSpace.base)
-
-                    novaButton
-                }
             }
-            .background(Color.homeRaisedSurface, in: consoleShape)
-            .clipShape(consoleShape)
-            .overlay {
-                consoleShape.stroke(
-                    contrast == .increased
-                        ? Color.homeTextPrimary.opacity(0.68)
-                        : Color.homeBrand.opacity(colorScheme == .dark ? 0.24 : 0.12),
-                    lineWidth: contrast == .increased ? 1.5 : 0.9
-                )
-            }
-            .shadow(
-                color: contrast == .increased
-                    ? .clear
-                    : Color.black.opacity(colorScheme == .dark ? 0.20 : 0.065),
-                radius: colorScheme == .dark ? 12 : 18,
-                y: colorScheme == .dark ? 5 : 9
-            )
+            .ppElevation(.floating, cornerRadius: PPCorner.card)
         }
         .padding(PPSpace.base)
         .background(sectionAtmosphere, in: outerShape)
@@ -690,7 +704,22 @@ private struct HomePremiumSearchSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            HomeHeaderSparkleMotion()
+            if showsNova {
+                Button(action: novaAction) {
+                    HomeHeaderSparkleMotion()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(HomeModelAdapter.localized(
+                    "nova_empty_title",
+                    fallback: "Ask Nova"
+                ))
+                .accessibilityHint(HomeModelAdapter.localized(
+                    "nova_empty_subtitle",
+                    fallback: "Smart shopping assistant from Pure Pets"
+                ))
+            } else {
+                HomeHeaderSparkleMotion()
+            }
         }
     }
 
@@ -702,7 +731,7 @@ private struct HomePremiumSearchSection: View {
                         cornerRadius: PPCorner.small,
                         style: .continuous
                     )
-                    .fill(Color.homeBrand)
+                    .fill(Color.ppAdoptionAccent)
 
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 17, weight: .bold))
@@ -712,7 +741,7 @@ private struct HomePremiumSearchSection: View {
                     Circle()
                         .fill(Color.homeRaisedSurface)
                         .frame(width: 10, height: 10)
-                        .overlay(Circle().fill(Color.homeBrand).padding(3))
+                        .overlay(Circle().fill(Color.ppAdoptionAccent).padding(3))
                         .offset(x: 2, y: 2)
                 }
                 .frame(width: 46, height: 46)
@@ -751,86 +780,23 @@ private struct HomePremiumSearchSection: View {
         ))
     }
 
-    private var novaButton: some View {
-        Button(action: novaAction) {
-            HStack(spacing: PPSpace.md) {
-                Text(verbatim: "N")
-                    .font(HomeFont.bold(20))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 46, height: 46)
-                    .background(Color.homeBrandDeep, in: RoundedRectangle(
-                        cornerRadius: PPCorner.small,
-                        style: .continuous
-                    ))
-                    .overlay {
-                        RoundedRectangle(
-                            cornerRadius: PPCorner.small,
-                            style: .continuous
-                        )
-                        .stroke(Color.white.opacity(0.24), lineWidth: 0.8)
-                    }
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(HomeModelAdapter.localized(
-                        "nova_empty_title",
-                        fallback: "Ask Nova"
-                    ))
-                    .font(HomeFont.headline())
-                    .foregroundStyle(Color.homeBrandDeep)
-                    .multilineTextAlignment(.leading)
-
-                    Text(HomeModelAdapter.localized(
-                        "nova_subtitle",
-                        fallback: "Pure Pets smart shopping assistant"
-                    ))
-                    .font(HomeFont.footnote())
-                    .foregroundStyle(Color.homeTextSecondary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                directionalArrow
-            }
-            .padding(.horizontal, PPSpace.base)
-            .padding(.vertical, PPSpace.md)
-            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-            .background(Color.homeBrand.opacity(colorScheme == .dark ? 0.12 : 0.055))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(HomePremiumSearchButtonStyle(reduceMotion: reduceMotion))
-        .accessibilityLabel(HomeModelAdapter.localized(
-            "home_pulse_nova_a11y",
-            fallback: "Open Nova assistant"
-        ))
-        .accessibilityHint(HomeModelAdapter.localized(
-            "home_pulse_nova_hint_a11y",
-            fallback: "Ask Pure Pets for help"
-        ))
-    }
-
     private var directionalArrow: some View {
         Image(systemName: isRightToLeft ? "arrow.left" : "arrow.right")
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(Color.homeBrand)
-            .frame(width: 36, height: 36)
-            .background(Color.homeAmbientField.opacity(0.78), in: Circle())
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color.ppAdoptionAccent)
+            .frame(width: 32, height: 32)
+            .background(Color.ppAdoptionAccent.opacity(0.12), in: Circle())
             .accessibilityHidden(true)
     }
 
     private var sectionAtmosphere: Color {
-        Color.homeAmbientField.opacity(colorScheme == .dark ? 0.42 : 0.72)
+        Color.ppAdoptionAccent.opacity(colorScheme == .dark ? 0.12 : 0.08)
     }
 
     private var outerShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+        RoundedRectangle(cornerRadius: PPCorner.section, style: .continuous)
     }
 
-    private var consoleShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-    }
 }
 
 @available(iOS 15.0, *)
@@ -857,16 +823,16 @@ private struct HomeHeaderSparkleMotion: View {
     var body: some View {
         Image(systemName: "sparkles")
             .font(.system(size: 18, weight: .semibold))
-            .foregroundStyle(Color.homeBrand)
+            .foregroundStyle(Color.ppAdoptionAccent)
             .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.12 : 0.94))
             .rotationEffect(.degrees(reduceMotion ? 0 : (isAnimating ? 10 : -6)))
             .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.82))
             .frame(width: 42, height: 42)
             .background(Color.homeRaisedSurface.opacity(0.86), in: Circle())
             .overlay {
-                Circle().stroke(Color.homeBrand.opacity(isAnimating ? 0.28 : 0.13), lineWidth: 0.8)
+                Circle().stroke(Color.ppAdoptionAccent.opacity(isAnimating ? 0.28 : 0.13), lineWidth: 0.8)
             }
-            .shadow(color: Color.homeBrand.opacity(reduceMotion ? 0 : (isAnimating ? 0.25 : 0.05)), radius: 8)
+            .shadow(color: Color.ppAdoptionAccent.opacity(reduceMotion ? 0 : (isAnimating ? 0.25 : 0.05)), radius: 8)
             .onAppear {
                 guard !reduceMotion else { return }
                 withAnimation(
@@ -950,7 +916,6 @@ private struct HomeProviderCategoryNavigation: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .modifier(HomeScrollCellReveal(ordinal: index))
                 }
             }
         }
@@ -1084,13 +1049,14 @@ private struct HomeAdoptionSection: View {
         .padding(dynamicTypeSize.isAccessibilitySize ? PPSpace.lg : PPSpace.base)
         .background {
             HomeHeroField(
-                accent: Color.homeBrand,
-                increasedContrast: contrast == .increased
+                accent: Color.ppAdoptionAccent,
+                increasedContrast: contrast == .increased,
+                cornerGlowOpacityScale: 1
             )
         }
         .overlay {
             cardShape.stroke(
-                Color.homeBrand.opacity(
+                Color.ppAdoptionAccent.opacity(
                     contrast == .increased
                         ? 0.58
                         : (colorScheme == .dark ? 0.34 : 0.20)
@@ -1100,7 +1066,7 @@ private struct HomeAdoptionSection: View {
         }
         .clipShape(cardShape)
         .shadow(
-            color: Color.homeBrand.opacity(colorScheme == .dark ? 0.07 : 0.055),
+            color: Color.ppAdoptionAccent.opacity(colorScheme == .dark ? 0.07 : 0.055),
             radius: contrast == .increased ? 0 : 10,
             y: contrast == .increased ? 0 : 4
         )
@@ -1162,7 +1128,7 @@ private struct HomeAdoptionSection: View {
                     style: .continuous
                 ))
                 .shadow(
-                    color: Color.homeBrand.opacity(
+                    color: Color.ppBrandPrimary.opacity(
                         contrast == .increased
                             ? 0
                             : (colorScheme == .dark ? 0.08 : 0.10)
@@ -1189,19 +1155,19 @@ private struct HomeAdoptionSection: View {
                 .fill(Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.72 : 0.90))
 
             Circle()
-                .fill(Color.homeBrand.opacity(colorScheme == .dark ? 0.15 : 0.09))
+                .fill(Color.ppAdoptionAccent.opacity(colorScheme == .dark ? 0.15 : 0.09))
                 .padding(PPSpace.sm)
 
             Circle()
                 .stroke(
-                    Color.homeBrand.opacity(contrast == .increased ? 0.62 : 0.24),
+                    Color.ppAdoptionAccent.opacity(contrast == .increased ? 0.62 : 0.24),
                     lineWidth: contrast == .increased ? 1.5 : 1
                 )
 
             if reduceMotion {
                 Image(systemName: "heart.circle.fill")
                     .font(.system(size: 58, weight: .regular))
-                    .foregroundStyle(Color.homeBrand)
+                    .foregroundStyle(Color.ppAdoptionAccent)
             } else {
                 HomeHeroLottieRepresentable(
                     animationName: "LottieAnimations/WomanPlayingWithCat.json",
@@ -1219,13 +1185,13 @@ private struct HomeAdoptionSection: View {
         .overlay(alignment: .topTrailing) {
             Image(systemName: "heart.fill")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.homeBrand)
+                .foregroundStyle(Color.ppAdoptionAccent)
                 .frame(width: 36, height: 36)
                 .background(Color.homeRaisedSurface, in: Circle())
                 .overlay {
                     Circle()
                         .stroke(
-                            Color.homeBrand.opacity(contrast == .increased ? 0.58 : 0.20),
+                            Color.ppAdoptionAccent.opacity(contrast == .increased ? 0.58 : 0.20),
                             lineWidth: contrast == .increased ? 1.5 : 1
                         )
                 }
@@ -1387,6 +1353,302 @@ private struct HomeSectionEntranceModifier: ViewModifier {
     }
 }
 
+// MARK: - HomeVerticalSectionReveal — willDisplaySection equivalent
+
+/// World-class scroll-in animation for sections inside the vertical home feed.
+///
+/// This is the SwiftUI equivalent of `collectionView(_:willDisplaySupplementaryView:…)`
+/// or a section-scoped `willDisplay`. `.onAppear` in a `LazyVStack` fires only
+/// when the view enters the visible viewport — exactly matching `willDisplay`.
+///
+/// **Dual-phase intelligence** (mirrors `HomeHorizontalCellReveal`):
+/// - `entranceAlreadyPlayed == false`: born during the initial stagger window.
+///   `HomeSectionEntranceModifier` owns these. This modifier is a no-op.
+/// - `entranceAlreadyPlayed == true`: section scrolled in after first load.
+///   Stages the section (opacity 0, scaled from the top, offset below) then
+///   springs it into its settled pose with no delay.
+///
+/// **Motion design:**
+///   • Anchor: `.top` — the header stays pinned while the body rises
+///   • y offset: +26 pt — section surfaces from just below the fold
+///   • scale: 0.976 from `.top` — subtle perspective of distance
+///   • Spring: response 0.44, dampingFraction 0.82 — slightly faster than the
+///     initial entrance so scroll-in feels immediate and rewarding, not sluggish
+///   • No artificial stagger — only one section appears at a time vertically
+///   • Reduce Motion: opacity crossfade only; no spatial transforms
+private struct HomeVerticalSectionReveal: ViewModifier {
+    let entranceAlreadyPlayed: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var revealed = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacityValue)
+            .scaleEffect(scaleValue, anchor: .top)
+            .offset(y: offsetY)
+            .animation(revealAnimation, value: revealed)
+            .onAppear { handleAppear() }
+    }
+
+    // MARK: Render values
+
+    private var isStaged: Bool { !revealed && !reduceMotion }
+
+    private var opacityValue: Double {
+        guard entranceAlreadyPlayed else { return 1 }
+        return revealed ? 1 : 0
+    }
+
+    private var scaleValue: CGFloat {
+        guard entranceAlreadyPlayed, isStaged else { return 1 }
+        return 0.976
+    }
+
+    private var offsetY: CGFloat {
+        guard entranceAlreadyPlayed, isStaged else { return 0 }
+        return 26
+    }
+
+    private var revealAnimation: Animation {
+        guard entranceAlreadyPlayed else { return .easeOut(duration: 0) }
+        if reduceMotion { return .easeOut(duration: 0.18) }
+        return .spring(
+            response: 0.44,
+            dampingFraction: 0.82,
+            blendDuration: 0.06
+        )
+    }
+
+    // MARK: onAppear
+
+    private func handleAppear() {
+        guard !revealed else { return }
+        if !entranceAlreadyPlayed {
+            // Initial entrance window — HomeSectionEntranceModifier owns this.
+            // Mark ourselves settled so we stay transparent.
+            revealed = true
+            return
+        }
+        // Scroll-in: defer one run-loop to ensure the staged pose is committed
+        // to the render tree before the spring begins.
+        DispatchQueue.main.async {
+            guard !revealed else { return }
+            revealed = true
+        }
+    }
+}
+
+/// A one-shot data-arrival signal that never transforms or fades shelf content.
+/// Rapid revisions coalesce before presentation, and cancellation always leaves
+/// the section itself in its stable rendered pose.
+private struct HomeSectionDataReloadModifier: ViewModifier {
+    let revision: Int
+    let accent: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var observedRevision: Int?
+    @State private var traceProgress: CGFloat = 0
+    @State private var bloomProgress: CGFloat = 0
+    @State private var signalOpacity: Double = 0
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .topLeading) {
+                HomeSectionReloadSignal(
+                    accent: accent,
+                    traceProgress: traceProgress,
+                    bloomProgress: bloomProgress,
+                    signalOpacity: signalOpacity,
+                    lineAnchor: semanticLineAnchor
+                )
+                .padding(.leading, PPSpace.screenMargin)
+            }
+            .task(id: revision) {
+                await presentReloadSignalIfNeeded()
+            }
+            .onChange(of: reduceMotion) { enabled in
+                if enabled {
+                    resetSignal()
+                }
+            }
+            .onDisappear(perform: resetSignal)
+    }
+
+    @MainActor
+    private func presentReloadSignalIfNeeded() async {
+        guard let previousRevision = observedRevision else {
+            observedRevision = revision
+            resetSignal()
+            return
+        }
+        guard previousRevision != revision else { return }
+        observedRevision = revision
+
+        guard !motionIsSuppressed else {
+            resetSignal()
+            return
+        }
+
+        guard await wait(HomeSectionReloadMotion.coalescingDelay) else {
+            return
+        }
+
+        if signalOpacity > 0.001 {
+            withAnimation(.easeOut(
+                duration: HomeSectionReloadMotion.interruptionDuration
+            )) {
+                signalOpacity = 0
+            }
+            guard await wait(HomeSectionReloadMotion.interruptionDelay) else {
+                return
+            }
+        }
+
+        resetSignal()
+        withAnimation(HomeSectionReloadMotion.arrivalAnimation) {
+            traceProgress = 1
+            bloomProgress = 1
+            signalOpacity = 1
+        }
+
+        guard await wait(HomeSectionReloadMotion.arrivalDelay) else {
+            return
+        }
+
+        withAnimation(.easeOut(
+            duration: HomeSectionReloadMotion.departureDuration
+        )) {
+            signalOpacity = 0
+        }
+
+        guard await wait(HomeSectionReloadMotion.departureDelay) else {
+            return
+        }
+        resetSignal()
+    }
+
+    @MainActor
+    private func wait(_ nanoseconds: UInt64) async -> Bool {
+        do {
+            try await Task<Never, Never>.sleep(nanoseconds: nanoseconds)
+            return !Task.isCancelled
+        } catch {
+            return false
+        }
+    }
+
+    private func resetSignal() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            traceProgress = 0
+            bloomProgress = 0
+            signalOpacity = 0
+        }
+    }
+
+    private var motionIsSuppressed: Bool {
+        reduceMotion ||
+        UIAccessibility.isVoiceOverRunning ||
+        UIAccessibility.isSwitchControlRunning
+    }
+
+    private var semanticLineAnchor: UnitPoint {
+        layoutDirection == .rightToLeft ? .trailing : .leading
+    }
+}
+
+private struct HomeSectionReloadSignal: View {
+    let accent: Color
+    let traceProgress: CGFloat
+    let bloomProgress: CGFloat
+    let signalOpacity: Double
+    let lineAnchor: UnitPoint
+
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        HStack(spacing: PPSpace.xs) {
+            ZStack {
+                Circle()
+                    .stroke(
+                        accent.opacity(contrast == .increased ? 0.88 : 0.46),
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
+                    .frame(
+                        width: HomeSectionReloadMotion.bloomDiameter,
+                        height: HomeSectionReloadMotion.bloomDiameter
+                    )
+                    .scaleEffect(
+                        HomeSectionReloadMotion.bloomStartScale +
+                            (HomeSectionReloadMotion.bloomTravel * bloomProgress)
+                    )
+                    .opacity(
+                        signalOpacity * (1 - Double(bloomProgress))
+                    )
+
+                Circle()
+                    .fill(accent)
+                    .frame(
+                        width: HomeSectionReloadMotion.originDiameter,
+                        height: HomeSectionReloadMotion.originDiameter
+                    )
+            }
+            .frame(
+                width: HomeSectionReloadMotion.bloomDiameter,
+                height: HomeSectionReloadMotion.bloomDiameter
+            )
+
+            Capsule()
+                .fill(accent.opacity(contrast == .increased ? 1 : 0.68))
+                .frame(
+                    width: HomeSectionReloadMotion.traceWidth,
+                    height: contrast == .increased
+                        ? HomeSectionReloadMotion.increasedTraceHeight
+                        : HomeSectionReloadMotion.traceHeight
+                )
+                .scaleEffect(
+                    x: max(HomeSectionReloadMotion.minimumTraceScale, traceProgress),
+                    y: 1,
+                    anchor: lineAnchor
+                )
+        }
+        .frame(height: PPSpace.sm)
+        .opacity(signalOpacity)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private enum HomeSectionReloadMotion {
+    static let coalescingDelay: UInt64 = 90_000_000
+    static let interruptionDelay: UInt64 = 80_000_000
+    static let arrivalDelay: UInt64 = 260_000_000
+    static let departureDelay: UInt64 = 200_000_000
+
+    static let interruptionDuration = 0.08
+    static let arrivalDuration = 0.24
+    static let departureDuration = 0.20
+    static let arrivalAnimation = Animation.timingCurve(
+        0.2,
+        0,
+        0,
+        1,
+        duration: arrivalDuration
+    )
+
+    static let bloomDiameter: CGFloat = 8
+    static let originDiameter: CGFloat = 3
+    static let bloomStartScale: CGFloat = 0.56
+    static let bloomTravel: CGFloat = 0.72
+    static let traceWidth: CGFloat = 40
+    static let traceHeight: CGFloat = 1.5
+    static let increasedTraceHeight: CGFloat = 2
+    static let minimumTraceScale: CGFloat = 0.02
+}
+
 private extension View {
     func homeEntrance(
         isVisible: Bool,
@@ -1412,6 +1674,24 @@ private extension View {
         ))
     }
 
+    func homeVerticalSectionReveal(
+        entranceAlreadyPlayed: Bool
+    ) -> some View {
+        modifier(HomeVerticalSectionReveal(
+            entranceAlreadyPlayed: entranceAlreadyPlayed
+        ))
+    }
+
+    func homeSectionDataReload(
+        revision: Int,
+        accent: Color
+    ) -> some View {
+        modifier(HomeSectionDataReloadModifier(
+            revision: revision,
+            accent: accent
+        ))
+    }
+
     @ViewBuilder
     func scrollDismissesKeyboardCompat() -> some View {
         if #available(iOS 16.0, *) {
@@ -1424,11 +1704,15 @@ private extension View {
 
 extension Color {
     static var homeCanvas: Color {
-        .ppBackground
+        .ppSurfaceBase
     }
 
     static var homeAmbientField: Color {
-        .ppSoftRose
+        .ppSurfaceOverlay
+    }
+
+    static var homeAtmosphere: Color {
+        .homeAmbientField
     }
 
     static var homeSectionBand: Color {
@@ -1436,11 +1720,11 @@ extension Color {
     }
 
     static var homeSurface: Color {
-        .ppSurface
+        .ppSurfaceRaised
     }
 
     static var homeRaisedSurface: Color {
-        .ppElevatedSurface
+        .ppSurfaceElevated
     }
 
     static var homeTextPrimary: Color {
@@ -1460,15 +1744,15 @@ extension Color {
     }
 
     static var homeVeterinary: Color {
-        .ppInfo
+        .ppCareAccent
     }
 
     static var homePharmacy: Color {
-        .ppSuccess
+        .ppCareAccent
     }
 
     static var homeServices: Color {
-        .ppWarning
+        .ppCareAccent
     }
 
     static var homeStatusSuccess: Color {

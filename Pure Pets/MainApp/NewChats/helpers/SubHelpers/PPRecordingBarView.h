@@ -7,6 +7,7 @@
 
 
 #import <UIKit/UIKit.h>
+#import "PPInsetLabel.h"
 #import "PPWaveformView.h"
 typedef NS_ENUM(NSUInteger, PPRecordingBarState) {
     PPRecordingBarStateHidden,

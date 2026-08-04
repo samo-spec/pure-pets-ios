@@ -26,7 +26,8 @@ typedef NS_ENUM(NSInteger, RefType) {
 
 
 #import <Foundation/Foundation.h>
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
+@class FIRQuerySnapshot;
 
 NS_ASSUME_NONNULL_BEGIN
 

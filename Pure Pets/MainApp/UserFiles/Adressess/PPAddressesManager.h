@@ -7,7 +7,8 @@
 
 #import <Foundation/Foundation.h>
 #import "PPAddressModel.h"
-@import FirebaseFirestore;
+@class FIRCollectionReference;
+@protocol FIRListenerRegistration;
 
 NS_ASSUME_NONNULL_BEGIN
 

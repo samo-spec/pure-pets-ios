@@ -8,7 +8,10 @@
 #import "NewCageVC.h"
 #import "AppDelegate.h"
 #import "eggDatesCell.h"
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 @interface NewCageVC ()<getdataback, UITextFieldDelegate>
 {
     NSArray<SubKindModel *> *SubKindsArrayLocal;

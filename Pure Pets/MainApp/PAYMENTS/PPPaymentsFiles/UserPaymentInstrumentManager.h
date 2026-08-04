@@ -14,7 +14,7 @@
 #import <Foundation/Foundation.h>
 
 
-@import FirebaseFirestore;
+@protocol FIRListenerRegistration;
 
 @class UserPaymentInstrument;
 NS_ASSUME_NONNULL_BEGIN

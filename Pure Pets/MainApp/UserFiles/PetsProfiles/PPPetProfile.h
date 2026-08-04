@@ -7,7 +7,7 @@
 
 
 #import <Foundation/Foundation.h>
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 
 NS_ASSUME_NONNULL_BEGIN
 

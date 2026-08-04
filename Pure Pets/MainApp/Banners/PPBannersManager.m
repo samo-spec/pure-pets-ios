@@ -1,18 +1,14 @@
 //
-//  PPBannersManager 2.h
+//  PPBannersManager.m
 //  Pure Pets
 //
 //  Created by Mohammed Ahmed on 09/09/2025.
 //
 
-
-// PPBannersManager.m
-
 #import "PPBannersManager.h"
 #import "PPBannerViewModel.h"
 #import "MainBannerModel.h"
 #import "Language.h"
-
 
 static NSString * const kCachedBannerGroupsKey = @"cachedBannerGroups";
 @interface PPBannersManager ()
@@ -190,7 +186,12 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         _hideSecondaryButton = !PPHomePromoBoolValue(dict[@"showSecondaryButton"], NO);
     }
 
-    _characterImageURL = [PPHomePromoURLValue(dict[@"characterImageURL"] ?: dict[@"foregroundImageURL"] ?: dict[@"sampleImageURL"] ?: dict[@"badgeImageURL"]) copy];
+    NSURL *imageURL = PPHomePromoURLValue(dict[@"productImageURL"]);
+    if (!imageURL) imageURL = PPHomePromoURLValue(dict[@"characterImageURL"]);
+    if (!imageURL) imageURL = PPHomePromoURLValue(dict[@"foregroundImageURL"]);
+    if (!imageURL) imageURL = PPHomePromoURLValue(dict[@"sampleImageURL"]);
+    if (!imageURL) imageURL = PPHomePromoURLValue(dict[@"badgeImageURL"]);
+    _characterImageURL = [imageURL copy];
     _backgroundImageURL = [PPHomePromoURLValue(dict[@"backgroundImageURL"]) copy];
 
     _startColorHex = PPHomePromoSafeString(dict[@"startColorHex"] ?: dict[@"backgroundStartColorHex"] ?: dict[@"gradientStartHex"]);
@@ -202,7 +203,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     _textStyle = PPHomePromoTextStyleValue(dict[@"pannerTextStyle"] ?: dict[@"textStyle"] ?: dict[@"bannerTextStyle"],
                                            _textStyle);
 
-    _cardTapAction = PPHomePromoTapActionValue(dict[@"cardTapAction"], PPBannerOnTapOpenUrl);
+    _cardTapAction = PPHomePromoTapActionValue(dict[@"cardTapAction"], _cardTapAction);
     if (dict[@"pannerOnTapAction"] != nil) {
         _cardTapAction = PPHomePromoTapActionValue(dict[@"pannerOnTapAction"], _cardTapAction);
     }
@@ -218,6 +219,19 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     _secondaryButtonTapValue = [PPHomePromoSafeString(dict[@"secondaryButtonTapValue"]) copy];
     if (_secondaryButtonTapValue.length == 0) {
         _secondaryButtonTapValue = [_cardTapValue copy];
+    }
+
+    // PPBannerOnTapViewAccessory requires a non-empty value (accessory ID).
+    // If the value is empty, fall back to PPBannerOnTapOpenUrl so taps never
+    // navigate to a non-existent accessory.
+    if (_cardTapAction == PPBannerOnTapViewAccessory && _cardTapValue.length == 0) {
+        _cardTapAction = PPBannerOnTapOpenUrl;
+    }
+    if (_primaryButtonTapAction == PPBannerOnTapViewAccessory && _primaryButtonTapValue.length == 0) {
+        _primaryButtonTapAction = PPBannerOnTapOpenUrl;
+    }
+    if (_secondaryButtonTapAction == PPBannerOnTapViewAccessory && _secondaryButtonTapValue.length == 0) {
+        _secondaryButtonTapAction = PPBannerOnTapOpenUrl;
     }
 
     if (dict[@"autoScrollInterval"] != nil) {
@@ -251,6 +265,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     d[@"secondaryButtonTitleAr"] = PPHomePromoSafeString(self.secondaryButtonTitleAr);
     d[@"hidePrimaryButton"] = @(self.hidePrimaryButton);
     d[@"hideSecondaryButton"] = @(self.hideSecondaryButton);
+    d[@"productImageURL"] = self.productImageURL.absoluteString ?: @"";
     d[@"characterImageURL"] = self.characterImageURL.absoluteString ?: @"";
     d[@"backgroundImageURL"] = self.backgroundImageURL.absoluteString ?: @"";
     d[@"startColorHex"] = PPHomePromoSafeString(self.startColorHex);
@@ -265,6 +280,16 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     d[@"secondaryButtonTapValue"] = PPHomePromoSafeString(self.secondaryButtonTapValue);
     d[@"autoScrollInterval"] = @(MAX(2.0, self.autoScrollInterval));
     return d;
+}
+
+- (NSURL *)productImageURL
+{
+    return self.characterImageURL;
+}
+
+- (void)setProductImageURL:(NSURL *)productImageURL
+{
+    self.characterImageURL = productImageURL;
 }
 
 - (NSString *)localizedBadgeText { return PPHomePromoLocalizedString(self.badgeTextEn, self.badgeTextAr); }
@@ -508,8 +533,6 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     return out;
 }
 
-
-// MARK: - Users cache
 - (void)savebannerGroupsToCache {
     NSMutableArray *arr = [NSMutableArray array];
     for (MainBannerModel *mainKind in self.bannerGroups) {
@@ -519,9 +542,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     }
     [[NSUserDefaults standardUserDefaults] setObject:arr forKey:kCachedBannerGroupsKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
-    ////NSLog(@"[Cache] 💾 Saved %lu users.", (unsigned long)arr.count);
 }
-
 
 + (instancetype)sharedManager {
     static PPBannersManager *instance;
@@ -532,7 +553,6 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     return instance;
 }
 
-// Private initializer for singleton.
 - (instancetype)initPrivate {
     if (self = [super init]) {
         _db = [FIRFirestore firestore];
@@ -541,7 +561,6 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     return self;
 }
 
-// Prevent direct init/use of new for singleton.
 - (instancetype)init {
     @throw [NSException exceptionWithName:@"Singleton"
                                    reason:@"Use +[PPBannersManager sharedManager] to get the singleton instance."
@@ -550,41 +569,26 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
 }
 
 - (void)startListeningForBannersWithCompletion:(void (^)(NSArray<MainBannerModel *> * _Nullable bannerGroups, NSError * _Nullable error))completion {
-    
-    
-    self.bannerGroups =  [self loadbannerGroupsFromCache].mutableCopy;
-    NSLog(@"Initial bannerGroups Complete From %@",self.bannerGroups.count > 0 ? @"::CACHE::" :  @"::SERVER::");
+    self.bannerGroups = [self loadbannerGroupsFromCache].mutableCopy;
     if (!self.bannerGroups) {
         self.bannerGroups = [NSMutableArray array];
     }
-    else
-    {
-       
-        
-    }
     
-    // If we already have cached MainKinds data, return it immediately.
     BOOL hasCache = (self.bannerGroups.count > 0);
     if (hasCache) {
         if (completion) {
-            
-            NSLog(@"completionHandler MainKindsArray Because it complete from cache ✅✅✅✅✅✅");
-            completion(self.bannerGroups,nil);  // Return success with cached data
+            completion(self.bannerGroups, nil);
         }
     }
     
-    
-    // If already listening, remove old listener first to avoid duplicates
     [self stopListening];
     
     __weak typeof(self) weakSelf = self;
-    // Set up real-time listener on the "MainBannersViewsCol" collection
     self.bannersListener = [[_db collectionWithPath:@"MainBannersViewsCol"] 
         addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
             if (error) {
-                NSLog(@"Error fetching banner documents: %@", error);
                 NSArray<MainBannerModel *> *cachedGroups = [strongSelf loadbannerGroupsFromCache];
                 if (cachedGroups.count > 0) {
                     strongSelf.bannerGroups = cachedGroups;
@@ -602,82 +606,25 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 NSDictionary *data = doc.data;
                 if (!data) continue;
-                // Merge the document ID into data if needed
-               // NSLog(@"startListeningForBannersWithCompletion : %@", doc.data);
-                // Create model from dictionary
                 MainBannerModel *model = [[MainBannerModel alloc] initWithDictionary:doc.data];
                 model.bannerViewID = doc.documentID;
-                // Only include if the admin set BannerViewVisible = true (or include all and filter later)
                 if (model.bannerViewVisible) {
                     [fetchedGroups addObject:model];
                 }
             }
             strongSelf.bannerGroups = [fetchedGroups copy];
-        
-        [self savebannerGroupsToCache];
+            [self savebannerGroupsToCache];
             if (completion) {
                 completion(strongSelf.bannerGroups, nil);
             }
     }];
-    // The above uses Firestore's snapshot listener to get real-time updates:contentReference[oaicite:3]{index=3}.
-    // On any change (add/modify/delete in the collection), this block will execute, updating bannerGroups.
 }
 
-
-/*
-- (void)startListeningForBannersWithCompletion:(void (^)(NSArray<MainBannerModel *> * _Nullable bannerGroups, NSError * _Nullable error))completion {
-    
-    // 🔹 Stop old listener to prevent duplicates
-    [self stopListening];
-    
-    __weak typeof(self) weakSelf = self;
-    self.bannersListener = [[_db collectionWithPath:@"MainBannersViewsCol"]
-        addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
-            
-            if (error) {
-                NSLog(@"❌ Error fetching banners: %@", error);
-                if (completion) completion(nil, error);
-                return;
-            }
-            
-            NSMutableArray<MainBannerModel *> *updatedGroups = [NSMutableArray array];
-            for (FIRDocumentSnapshot *doc in snapshot.documents) {
-                NSDictionary *data = doc.data;
-                if (!data) continue;
-                
-                MainBannerModel *model = [[MainBannerModel alloc] initWithDictionary:data];
-                model.bannerViewID = doc.documentID;
-                
-                if (model.bannerViewVisible) {
-                    [updatedGroups addObject:model];
-                }
-            }
-            
-            // 🔹 Update internal state
-            strongSelf.bannerGroups = [updatedGroups copy];
-            
-            // 🔹 Optional: Save cache for offline fallback
-            [strongSelf savebannerGroupsToCache];
-            
-            // 🔹 Notify UI on main thread
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(strongSelf.bannerGroups, nil);
-            });
-        }];
-    
-    NSLog(@"✅ Firestore banner listener started (no cache prefill).");
-}
-*/
-
-#pragma mark - One-time Fetch (no listener)
 - (void)fetchBannersOnceWithCompletion:(void (^)(NSArray<MainBannerModel *> * _Nullable bannerGroups, NSError * _Nullable error))completion {
     FIRCollectionReference *collection = [self.db collectionWithPath:@"MainBannersViewsCol"];
     
     [collection getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"❌ Error fetching banners once: %@", error);
             NSArray<MainBannerModel *> *cachedGroups = [self loadbannerGroupsFromCache];
             if (cachedGroups.count > 0) {
                 self.bannerGroups = cachedGroups;
@@ -703,14 +650,9 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         self.bannerGroups = [fetchedGroups copy];
         [self savebannerGroupsToCache];
         
-        NSLog(@"✅ One-time banner fetch complete: %lu items", (unsigned long)self.bannerGroups.count);
         if (completion) completion(self.bannerGroups, nil);
     }];
 }
-
-
-
-
 
 - (void)stopListening {
     if (self.bannersListener) {
@@ -720,14 +662,12 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
 }
 
 - (void)addBannerGroup:(MainBannerModel *)bannerGroup completion:(void (^)(NSError * _Nullable))completion {
-    // Prepare data dictionary from MainBannerModel (including children as an array of dictionaries)
     NSMutableDictionary *data = [NSMutableDictionary dictionary];
     data[@"BannerViewID"] = bannerGroup.bannerViewID;
     data[@"BannerViewVisible"] = @(bannerGroup.bannerViewVisible);
     data[@"BannerViewHolder"] = @(bannerGroup.bannerViewHolder);
     data[@"BannerViewPosition"] = @(bannerGroup.bannerViewPosition);
     data[@"BannerViewTransaction"] = @(bannerGroup.bannerViewTransaction);
-    // Convert child banners to array of dictionaries for Firestore storage
     NSMutableArray *childDicts = [NSMutableArray array];
     for (PPBannerViewModel *banner in bannerGroup.childBanners) {
         NSMutableDictionary *childData = [NSMutableDictionary dictionary];
@@ -745,11 +685,9 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         childData[@"pannerTapsCount"]    = @(banner.tapCount);
         childData[@"pannerTextStyle"]    = @(banner.textStyle);
         if (banner.expireInDateTime) {
-            // Store expiration as timestamp (seconds since 1970)
             childData[@"expireInDateTime"] = @([banner.expireInDateTime timeIntervalSince1970]);
         }
         if (banner.pannerValidity) {
-            // Store validity as string e.g. "Xd Yh Zm"
             NSMutableString *valStr = [NSMutableString string];
             if (banner.pannerValidity.day)   { [valStr appendFormat:@"%dd", (int)banner.pannerValidity.day]; }
             if (banner.pannerValidity.hour)  { [valStr appendFormat:@"%dh", (int)banner.pannerValidity.hour]; }
@@ -761,67 +699,39 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     }
     data[@"ChildsPannersModels"] = childDicts;
    
-    // Add document to Firestore. Use setData with specified ID if provided, else addDocument for auto-ID.
     FIRCollectionReference *collection = [_db collectionWithPath:@"MainBannersViewsCol"];
     if (bannerGroup.bannerViewID.length > 0) {
-        // If an ID is specified, create document with that ID
         FIRDocumentReference *docRef = [collection documentWithPath:bannerGroup.bannerViewID];
         [docRef setData:data completion:^(NSError * _Nullable error) {
-            if (error) {
-                NSLog(@"Error adding banner group: %@", error);
-            } else {
-                NSLog(@"Banner group added with ID: %@", bannerGroup.bannerViewID);
-            }
             if (completion) completion(error);
         }];
     } else {
-        // No specific ID, use auto-generated ID
         __block FIRDocumentReference *ref =
         [collection addDocumentWithData:data completion:^(NSError * _Nullable error) {
-            if (error) {
-                NSLog(@"Error adding banner group: %@", error);
-            } else {
-                NSLog(@"Banner group added with generated ID: %@", ref.documentID);
-            }
             if (completion) completion(error);
         }];
     }
 }
 
 - (void)updateBannerGroup:(MainBannerModel *)bannerGroup completion:(void (^)(NSError * _Nullable))completion {
-    // Prepare updated fields dictionary. Only include fields that might change.
     NSMutableDictionary *updateData = [NSMutableDictionary dictionary];
     updateData[@"BannerViewVisible"] = @(bannerGroup.bannerViewVisible);
     updateData[@"BannerViewHolder"] = @(bannerGroup.bannerViewHolder);
     updateData[@"BannerViewPosition"] = @(bannerGroup.bannerViewPosition);
     updateData[@"BannerViewTransaction"] = @(bannerGroup.bannerViewTransaction);
-    // You might update the children array as well if needed (here we assume children updates handled separately or entire array replaced).
-    updateData[@"ChildsPannersModels"] = @[]; // (In a real scenario, might rebuild child array if children changed)
+    updateData[@"ChildsPannersModels"] = @[];
     
     FIRDocumentReference *docRef = [[_db collectionWithPath:@"MainBannersViewsCol"] documentWithPath:bannerGroup.bannerViewID];
     [docRef setData:updateData merge:YES completion:^(NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"Error updating banner group %@: %@", bannerGroup.bannerViewID, error);
-        } else {
-            NSLog(@"Banner group %@ successfully updated", bannerGroup.bannerViewID);
-        }
         if (completion) completion(error);
     }];
-    // The above uses Firestore's updateData to update specific fields in the document:contentReference[oaicite:4]{index=4}.
 }
 
 - (void)deleteBannerGroup:(MainBannerModel *)bannerGroup completion:(void (^)(NSError * _Nullable))completion {
     FIRDocumentReference *docRef = [[_db collectionWithPath:@"MainBannersViewsCol"] documentWithPath:bannerGroup.bannerViewID];
     [docRef deleteDocumentWithCompletion:^(NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"Error deleting banner group %@: %@", bannerGroup.bannerViewID, error);
-        } else {
-            NSLog(@"Banner group %@ deleted.", bannerGroup.bannerViewID);
-        }
         if (completion) completion(error);
     }];
-    // Note: In Objective-C, FIRDocumentReference's deletion method is named 'deleteDocumentWithCompletion:' 
-    // (since 'delete' is a reserved word in Obj-C++).
 }
 
 @end

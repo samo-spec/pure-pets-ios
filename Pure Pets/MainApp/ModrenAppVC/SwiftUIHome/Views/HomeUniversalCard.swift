@@ -124,15 +124,15 @@ private struct HomeUniversalCompatibilityCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
                     Text(viewModel.priceText)
                         .font(HomeFont.bold(17))
-                        .foregroundStyle(Color.ppTextPrimary)
+                        .foregroundStyle(Color.ppBrandPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
 
                     if viewModel.hasOffer, !viewModel.discountText.isEmpty {
-                        Text(viewModel.discountText)
-                            .font(HomeFont.caption1())
-                            .foregroundStyle(Color.ppPrimary)
-                            .lineLimit(1)
+                        PPDiscountBadge(
+                            localizedText: viewModel.discountText,
+                            style: .inline
+                        )
                     }
                     Spacer(minLength: 0)
                 }
@@ -140,20 +140,7 @@ private struct HomeUniversalCompatibilityCard: View {
                 action
         }
         .padding(.bottom, PPSpace.md)
-        .background(Color.ppCard)
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            )
-            .stroke(Color.ppBorder, lineWidth: 0.6)
-        }
+        .ppElevation(.raised, cornerRadius: PPCorner.card)
         .contentShape(
             RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
         )

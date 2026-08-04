@@ -8,6 +8,12 @@
 #import "PPProviderCompanyPremiumCardCell.h"
 #import <QuartzCore/QuartzCore.h>
 #import "PPImageLoaderManager.h"
+
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
+
 static CGFloat PPProviderPremiumClamp(CGFloat value, CGFloat minValue, CGFloat maxValue)
 {
     return MIN(MAX(value, minValue), maxValue);

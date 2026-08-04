@@ -6,7 +6,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 @class AdoptPetModel;
-@import FirebaseFirestore;
+@protocol FIRListenerRegistration;
 
 NS_ASSUME_NONNULL_BEGIN
 

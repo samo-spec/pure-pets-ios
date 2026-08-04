@@ -6,7 +6,7 @@
 //  Refactored to use ChildsCol subcollection
 //
 
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 #import "XLFormOptionsObject.h"
 
 typedef NS_ENUM(NSInteger, CameFrom)

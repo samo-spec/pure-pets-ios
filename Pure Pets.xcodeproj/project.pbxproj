@@ -515,9 +515,11 @@
 		F28CB3842E4C6735009DD547 /* AdoptPetManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3832E4C6735009DD547 /* AdoptPetManager.m */; };
 		F28CB3872E4C67B5009DD547 /* HXPhotosFormCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3862E4C67A5009DD547 /* HXPhotosFormCell.m */; };
 		F28CB38A2E4C685C009DD547 /* AddAdoptPetViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3892E4C6849009DD547 /* AddAdoptPetViewController.m */; };
-		F28CB3902E4C68A6009DD547 /* AdoptPetsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB38F2E4C688D009DD547 /* AdoptPetsViewController.m */; };
-		F28CB3932E4C68D7009DD547 /* AdoptPetDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3922E4C68C1009DD547 /* AdoptPetDetailsViewController.m */; };
 		F28CB3962E4C9749009DD547 /* OptionTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3952E4C973A009DD547 /* OptionTableViewCell.m */; };
+		F28CB4052E4C6901009DD547 /* AdoptPetSwiftUIStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4012E4C6901009DD547 /* AdoptPetSwiftUIStore.swift */; };
+		F28CB4062E4C6902009DD547 /* AdoptPetListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */; };
+		F28CB4072E4C6903009DD547 /* AdoptPetDetailsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */; };
+		F28CB4082E4C6904009DD547 /* AdoptPetsHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */; };
 		F28CBB5F2D30044D002993F0 /* GSIndeterminateProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB5D2D30044D002993F0 /* GSIndeterminateProgressView.m */; };
 		F28CBB642D302899002993F0 /* JPCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB612D302899002993F0 /* JPCell.m */; };
 		F28CBB682D30298C002993F0 /* JPCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F28CBB672D30298C002993F0 /* JPCell.xib */; };
@@ -601,6 +603,8 @@
 		F29CA1D42E94F4DE000C50BD /* DetailsTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29CA1D32E94F4DE000C50BD /* DetailsTableViewCell.m */; };
 		F29E72652CBD23CE00CF441B /* SKSplashIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F29E72612CBD23CE00CF441B /* SKSplashIcon.m */; };
 		F29E72662CBD23CE00CF441B /* SKSplashView.m in Sources */ = {isa = PBXBuildFile; fileRef = F29E72632CBD23CE00CF441B /* SKSplashView.m */; };
+		F29EFFAC3020EFFA00125FB9 /* PureLens in Frameworks */ = {isa = PBXBuildFile; productRef = F29EFFAB3020EFFA00125FB9 /* PureLens */; };
+		F29EFFAE3020EFFA00125FB9 /* PurePetsEyes in Frameworks */ = {isa = PBXBuildFile; productRef = F29EFFAD3020EFFA00125FB9 /* PurePetsEyes */; };
 		F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D02D0D08CB00FF2180 /* StepperCell.m */; };
 		F29F01D52D0D08FD00FF2180 /* PKYStepper.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D32D0D08FD00FF2180 /* PKYStepper.m */; };
 		F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */; };
@@ -732,6 +736,24 @@
 		F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA434E2CCA4AC800943394 /* UIView+XIB.m */; };
 		F2BA97562DCE7C66007DE482 /* AddNewAd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA97552DCE7C65007DE482 /* AddNewAd.m */; };
 		F2BC30D62E43E385003F603D /* UIScreen.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC30D52E43E385003F603D /* UIScreen.m */; };
+		F2BCA1013022000000000101 /* PPHomePromoCarouselBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0023022000000000002 /* PPHomePromoCarouselBridge.m */; };
+		F2BCA1023022000000000102 /* PPHomePromoCarouselDataSource.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0043022000000000004 /* PPHomePromoCarouselDataSource.m */; };
+		F2BCA1033022000000000103 /* PPHomePromoCarouselHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0073022000000000007 /* PPHomePromoCarouselHostingController.swift */; };
+		F2BCA1043022000000000104 /* PPPromoAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0083022000000000008 /* PPPromoAction.swift */; };
+		F2BCA1053022000000000105 /* PPPromoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0093022000000000009 /* PPPromoCard.swift */; };
+		F2BCA1063022000000000106 /* PPPromoCarouselDisplayItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA00A302200000000000A /* PPPromoCarouselDisplayItem.swift */; };
+		F2BCA1073022000000000107 /* PPHomePromoCarouselStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA00B302200000000000B /* PPHomePromoCarouselStore.swift */; };
+		F2BCA1083022000000000108 /* PPPromoCarouselMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA00C302200000000000C /* PPPromoCarouselMetrics.swift */; };
+		F2BCA1093022000000000109 /* PPPromoGlassModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA00D302200000000000D /* PPPromoGlassModifier.swift */; };
+		F2BCA10A302200000000010A /* PPPromoTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA00E302200000000000E /* PPPromoTheme.swift */; };
+		F2BCA10B302200000000010B /* Color+PPHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA00F302200000000000F /* Color+PPHex.swift */; };
+		F2BCA10C302200000000010C /* PPPromoHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0103022000000000010 /* PPPromoHaptics.swift */; };
+		F2BCA10D302200000000010D /* PPHomePromoCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0113022000000000011 /* PPHomePromoCarouselView.swift */; };
+		F2BCA10E302200000000010E /* PPPeekCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0123022000000000012 /* PPPeekCarousel.swift */; };
+		F2BCA10F302200000000010F /* PPPromoCardBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0133022000000000013 /* PPPromoCardBackground.swift */; };
+		F2BCA1103022000000000110 /* PPPromoCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0143022000000000014 /* PPPromoCardView.swift */; };
+		F2BCA1113022000000000111 /* PPPromoPageIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0153022000000000015 /* PPPromoPageIndicator.swift */; };
+		F2BCA1123022000000000112 /* PPPromoRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0163022000000000016 /* PPPromoRemoteImage.swift */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
 		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
 		F2C0BA4B2FF09FCB009D1C33 /* PPProviderCompanyCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */; };
@@ -1862,12 +1884,12 @@
 		F28CB3862E4C67A5009DD547 /* HXPhotosFormCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotosFormCell.m; sourceTree = "<group>"; };
 		F28CB3882E4C683F009DD547 /* AddAdoptPetViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddAdoptPetViewController.h; sourceTree = "<group>"; };
 		F28CB3892E4C6849009DD547 /* AddAdoptPetViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddAdoptPetViewController.m; sourceTree = "<group>"; };
-		F28CB38E2E4C6885009DD547 /* AdoptPetsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AdoptPetsViewController.h; sourceTree = "<group>"; };
-		F28CB38F2E4C688D009DD547 /* AdoptPetsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AdoptPetsViewController.m; sourceTree = "<group>"; };
-		F28CB3912E4C68B2009DD547 /* AdoptPetDetailsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AdoptPetDetailsViewController.h; sourceTree = "<group>"; };
-		F28CB3922E4C68C1009DD547 /* AdoptPetDetailsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AdoptPetDetailsViewController.m; sourceTree = "<group>"; };
 		F28CB3942E4C9731009DD547 /* OptionTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OptionTableViewCell.h; sourceTree = "<group>"; };
 		F28CB3952E4C973A009DD547 /* OptionTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OptionTableViewCell.m; sourceTree = "<group>"; };
+		F28CB4012E4C6901009DD547 /* AdoptPetSwiftUIStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdoptPetSwiftUIStore.swift; sourceTree = "<group>"; };
+		F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdoptPetListScreen.swift; sourceTree = "<group>"; };
+		F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdoptPetDetailsScreen.swift; sourceTree = "<group>"; };
+		F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdoptPetsHostingControllers.swift; sourceTree = "<group>"; };
 		F28CBB5C2D30044D002993F0 /* GSIndeterminateProgressView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GSIndeterminateProgressView.h; sourceTree = "<group>"; };
 		F28CBB5D2D30044D002993F0 /* GSIndeterminateProgressView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GSIndeterminateProgressView.m; sourceTree = "<group>"; };
 		F28CBB602D302899002993F0 /* JPCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = JPCell.h; sourceTree = "<group>"; };
@@ -2238,6 +2260,26 @@
 		F2BA97552DCE7C65007DE482 /* AddNewAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddNewAd.m; sourceTree = "<group>"; };
 		F2BC30D42E43E37A003F603D /* UIScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIScreen.h; sourceTree = "<group>"; };
 		F2BC30D52E43E385003F603D /* UIScreen.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIScreen.m; sourceTree = "<group>"; };
+		F2BCA0013022000000000001 /* PPHomePromoCarouselBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePromoCarouselBridge.h; sourceTree = "<group>"; };
+		F2BCA0023022000000000002 /* PPHomePromoCarouselBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePromoCarouselBridge.m; sourceTree = "<group>"; };
+		F2BCA0033022000000000003 /* PPHomePromoCarouselDataSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePromoCarouselDataSource.h; sourceTree = "<group>"; };
+		F2BCA0043022000000000004 /* PPHomePromoCarouselDataSource.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePromoCarouselDataSource.m; sourceTree = "<group>"; };
+		F2BCA0073022000000000007 /* PPHomePromoCarouselHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomePromoCarouselHostingController.swift; sourceTree = "<group>"; };
+		F2BCA0083022000000000008 /* PPPromoAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoAction.swift; sourceTree = "<group>"; };
+		F2BCA0093022000000000009 /* PPPromoCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoCard.swift; sourceTree = "<group>"; };
+		F2BCA00A302200000000000A /* PPPromoCarouselDisplayItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoCarouselDisplayItem.swift; sourceTree = "<group>"; };
+		F2BCA00B302200000000000B /* PPHomePromoCarouselStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomePromoCarouselStore.swift; sourceTree = "<group>"; };
+		F2BCA00C302200000000000C /* PPPromoCarouselMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoCarouselMetrics.swift; sourceTree = "<group>"; };
+		F2BCA00D302200000000000D /* PPPromoGlassModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoGlassModifier.swift; sourceTree = "<group>"; };
+		F2BCA00E302200000000000E /* PPPromoTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoTheme.swift; sourceTree = "<group>"; };
+		F2BCA00F302200000000000F /* Color+PPHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+PPHex.swift"; sourceTree = "<group>"; };
+		F2BCA0103022000000000010 /* PPPromoHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoHaptics.swift; sourceTree = "<group>"; };
+		F2BCA0113022000000000011 /* PPHomePromoCarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomePromoCarouselView.swift; sourceTree = "<group>"; };
+		F2BCA0123022000000000012 /* PPPeekCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPeekCarousel.swift; sourceTree = "<group>"; };
+		F2BCA0133022000000000013 /* PPPromoCardBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoCardBackground.swift; sourceTree = "<group>"; };
+		F2BCA0143022000000000014 /* PPPromoCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoCardView.swift; sourceTree = "<group>"; };
+		F2BCA0153022000000000015 /* PPPromoPageIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoPageIndicator.swift; sourceTree = "<group>"; };
+		F2BCA0163022000000000016 /* PPPromoRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPromoRemoteImage.swift; sourceTree = "<group>"; };
 		F2C085532F935AF8001C27DA /* PPAuditLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuditLogger.h; sourceTree = "<group>"; };
 		F2C085542F935AF8001C27DA /* PPAuditLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuditLogger.m; sourceTree = "<group>"; };
 		F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NovaConfirmationCell.h; sourceTree = "<group>"; };
@@ -2544,6 +2586,7 @@
 				F2AF3841300AB06200FBF82D /* PurePetsLayoutKit in Frameworks */,
 				F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */,
 				F25100932F73C2D8008F6AFE /* FirebasePerformance in Frameworks */,
+				F29EFFAC3020EFFA00125FB9 /* PureLens in Frameworks */,
 				F2FFDA1B2FCDCFC00025B5A9 /* FirebaseRemoteConfig in Frameworks */,
 				F251008D2F73C2D8008F6AFE /* FirebaseInstallations in Frameworks */,
 				F25100952F73C2D8008F6AFE /* FirebaseRemoteConfig in Frameworks */,
@@ -2553,6 +2596,7 @@
 				F25100872F73C2D8008F6AFE /* FirebaseCrashlytics in Frameworks */,
 				F25100832F73C2D8008F6AFE /* FirebaseAuth in Frameworks */,
 				E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */,
+				F29EFFAE3020EFFA00125FB9 /* PurePetsEyes in Frameworks */,
 				F2AF3852300AC46E00FBF82D /* MatchedTransitions in Frameworks */,
 				61093601FFE9E54316BA4680 /* Speech.framework in Frameworks */,
 			);
@@ -4293,10 +4337,10 @@
 		F28CB3792E4C56C0009DD547 /* AdoptPet */ = {
 			isa = PBXGroup;
 			children = (
-				F28CB3912E4C68B2009DD547 /* AdoptPetDetailsViewController.h */,
-				F28CB3922E4C68C1009DD547 /* AdoptPetDetailsViewController.m */,
-				F28CB38E2E4C6885009DD547 /* AdoptPetsViewController.h */,
-				F28CB38F2E4C688D009DD547 /* AdoptPetsViewController.m */,
+				F28CB4012E4C6901009DD547 /* AdoptPetSwiftUIStore.swift */,
+				F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */,
+				F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */,
+				F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */,
 				F28CB3882E4C683F009DD547 /* AddAdoptPetViewController.h */,
 				F28CB3892E4C6849009DD547 /* AddAdoptPetViewController.m */,
 				F28CB3822E4C6728009DD547 /* AdoptPetManager.h */,
@@ -5001,6 +5045,37 @@
 			path = MainApp;
 			sourceTree = "<group>";
 		};
+		F2BCA0053022000000000005 /* PromoCarousel */ = {
+			isa = PBXGroup;
+			children = (
+				F2BCA0063022000000000006 /* Swift */,
+			);
+			path = PromoCarousel;
+			sourceTree = "<group>";
+		};
+		F2BCA0063022000000000006 /* Swift */ = {
+			isa = PBXGroup;
+			children = (
+				F2BCA0073022000000000007 /* PPHomePromoCarouselHostingController.swift */,
+				F2BCA0083022000000000008 /* PPPromoAction.swift */,
+				F2BCA0093022000000000009 /* PPPromoCard.swift */,
+				F2BCA00A302200000000000A /* PPPromoCarouselDisplayItem.swift */,
+				F2BCA00B302200000000000B /* PPHomePromoCarouselStore.swift */,
+				F2BCA00C302200000000000C /* PPPromoCarouselMetrics.swift */,
+				F2BCA00D302200000000000D /* PPPromoGlassModifier.swift */,
+				F2BCA00E302200000000000E /* PPPromoTheme.swift */,
+				F2BCA00F302200000000000F /* Color+PPHex.swift */,
+				F2BCA0103022000000000010 /* PPPromoHaptics.swift */,
+				F2BCA0113022000000000011 /* PPHomePromoCarouselView.swift */,
+				F2BCA0123022000000000012 /* PPPeekCarousel.swift */,
+				F2BCA0133022000000000013 /* PPPromoCardBackground.swift */,
+				F2BCA0143022000000000014 /* PPPromoCardView.swift */,
+				F2BCA0153022000000000015 /* PPPromoPageIndicator.swift */,
+				F2BCA0163022000000000016 /* PPPromoRemoteImage.swift */,
+			);
+			path = Swift;
+			sourceTree = "<group>";
+		};
 		F2C391512DE7073900AE432C /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
@@ -5586,6 +5661,11 @@
 				F2F807CE2E8BECA10034FF2D /* Banners.h */,
 				F233B442300C557F00D55489 /* PPBannerCell.h */,
 				F233B443300C557F00D55489 /* PPBannerCell.m */,
+				F2BCA0013022000000000001 /* PPHomePromoCarouselBridge.h */,
+				F2BCA0023022000000000002 /* PPHomePromoCarouselBridge.m */,
+				F2BCA0033022000000000003 /* PPHomePromoCarouselDataSource.h */,
+				F2BCA0043022000000000004 /* PPHomePromoCarouselDataSource.m */,
+				F2BCA0053022000000000005 /* PromoCarousel */,
 			);
 			path = Banners;
 			sourceTree = "<group>";
@@ -5725,10 +5805,11 @@
 			mainGroup = F2D0C5CC2C4BE1B80023CE53;
 			packageReferences = (
 				F20CB1402EF50E1500CDD5AD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
-				F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */,
 				F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */,
 				F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+				F29EFFAA3020EFFA00125FB9 /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */,
+				F22D551630215DE700A5EC3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
@@ -6568,8 +6649,25 @@
 				F2AB48D32C72D43D00D88603 /* KafkaNativeFooter.m in Sources */,
 				F2D0C5DA2C4BE1B80023CE53 /* AppDelegate.m in Sources */,
 				F2E0E8742E7A3A3E00F0C084 /* UserModel.m in Sources */,
-				F28CB3932E4C68D7009DD547 /* AdoptPetDetailsViewController.m in Sources */,
 				F2F807D12E8BEE5D0034FF2D /* PPBannerCollectionCell.m in Sources */,
+				F2BCA1013022000000000101 /* PPHomePromoCarouselBridge.m in Sources */,
+				F2BCA1023022000000000102 /* PPHomePromoCarouselDataSource.m in Sources */,
+				F2BCA1033022000000000103 /* PPHomePromoCarouselHostingController.swift in Sources */,
+				F2BCA1043022000000000104 /* PPPromoAction.swift in Sources */,
+				F2BCA1053022000000000105 /* PPPromoCard.swift in Sources */,
+				F2BCA1063022000000000106 /* PPPromoCarouselDisplayItem.swift in Sources */,
+				F2BCA1073022000000000107 /* PPHomePromoCarouselStore.swift in Sources */,
+				F2BCA1083022000000000108 /* PPPromoCarouselMetrics.swift in Sources */,
+				F2BCA1093022000000000109 /* PPPromoGlassModifier.swift in Sources */,
+				F2BCA10A302200000000010A /* PPPromoTheme.swift in Sources */,
+				F2BCA10B302200000000010B /* Color+PPHex.swift in Sources */,
+				F2BCA10C302200000000010C /* PPPromoHaptics.swift in Sources */,
+				F2BCA10D302200000000010D /* PPHomePromoCarouselView.swift in Sources */,
+				F2BCA10E302200000000010E /* PPPeekCarousel.swift in Sources */,
+				F2BCA10F302200000000010F /* PPPromoCardBackground.swift in Sources */,
+				F2BCA1103022000000000110 /* PPPromoCardView.swift in Sources */,
+				F2BCA1113022000000000111 /* PPPromoPageIndicator.swift in Sources */,
+				F2BCA1123022000000000112 /* PPPromoRemoteImage.swift in Sources */,
 				F276E5CA2DE3363E00926D56 /* FavoriteButton.m in Sources */,
 				F2B6F7AF2E37CECE00AC0DAE /* ChatMessageCell.m in Sources */,
 				F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */,
@@ -6664,7 +6762,10 @@
 				F27FAEAE2D2F363200EA6B56 /* JPVideoPlayerManager.m in Sources */,
 				F2AB48CA2C72D43D00D88603 /* KafkaCategories.m in Sources */,
 				F27D662B2E1FD8D90081943A /* BottomOptionsViewController.m in Sources */,
-				F28CB3902E4C68A6009DD547 /* AdoptPetsViewController.m in Sources */,
+				F28CB4052E4C6901009DD547 /* AdoptPetSwiftUIStore.swift in Sources */,
+				F28CB4062E4C6902009DD547 /* AdoptPetListScreen.swift in Sources */,
+				F28CB4072E4C6903009DD547 /* AdoptPetDetailsScreen.swift in Sources */,
+				F28CB4082E4C6904009DD547 /* AdoptPetsHostingControllers.swift in Sources */,
 				F2AB48D42C72D43D00D88603 /* KafkaReplicatorFooter.m in Sources */,
 				F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */,
 				F229DCC02D3B0D070015B67D /* FileUploadManager.m in Sources */,
@@ -6970,7 +7071,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -7083,7 +7184,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -7141,7 +7242,7 @@
 				CURRENT_PROJECT_VERSION = 220;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -7159,7 +7260,7 @@
 				CURRENT_PROJECT_VERSION = 220;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -7176,7 +7277,7 @@
 				CURRENT_PROJECT_VERSION = 220;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -7193,7 +7294,7 @@
 				CURRENT_PROJECT_VERSION = 220;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -7245,6 +7346,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		F29EFFAA3020EFFA00125FB9 /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = MyFrames/PureLensPackage;
+		};
 		F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PurePetsLayoutKit;
@@ -7258,6 +7363,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 9.0.0;
+			};
+		};
+		F22D551630215DE700A5EC3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.17.0;
 			};
 		};
 		F251007D2F73C2D8008F6AFE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
@@ -7364,6 +7477,14 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F251007D2F73C2D8008F6AFE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		F29EFFAB3020EFFA00125FB9 /* PureLens */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PureLens;
+		};
+		F29EFFAD3020EFFA00125FB9 /* PurePetsEyes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PurePetsEyes;
 		};
 		F2ACA9FE301ACF4A00F55032 /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;

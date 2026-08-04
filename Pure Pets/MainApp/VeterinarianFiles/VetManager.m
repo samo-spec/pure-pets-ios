@@ -7,7 +7,11 @@
 
 #import "VetManager.h"
 #import "VetModel.h"
-
+@import Firebase;
+@import FirebaseAuth;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 static NSString *PPVetManagerSafeString(id value) {
     if ([value isKindOfClass:NSString.class]) {
         return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];

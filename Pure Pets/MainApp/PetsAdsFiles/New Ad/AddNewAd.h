@@ -4,6 +4,7 @@
 #import <CoreLocation/CoreLocation.h>
 
 #import "importantFiles.h"
+#import "MainKindsModel.h"
 #import "RelativeDateDescriptor.h"
 @class PetAd;
 @class PetImageItem;
@@ -63,4 +64,3 @@ typedef NS_ENUM(NSUInteger, AdEditorMode) {
 @end
 
 NS_ASSUME_NONNULL_END
-

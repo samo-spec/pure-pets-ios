@@ -17,7 +17,10 @@
 #import "PPFirestoreErrorNotifier.h"
 #import "PPFunc.h"
 #import "PPImageCollection.h"
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 #pragma mark - Hidden-Category Filtering (Accessories) — REMOVED
 // Visibility filtering has been replaced by positive accessKindType == X
 // Firestore queries. The PPVisibleMainKindIDsForAccessories() and

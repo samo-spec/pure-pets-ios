@@ -14,7 +14,11 @@
 @import FirebaseFunctions;
 @import UserNotifications;
 
-
+@import Firebase;
+@import FirebaseAuth;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 
 
 static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";

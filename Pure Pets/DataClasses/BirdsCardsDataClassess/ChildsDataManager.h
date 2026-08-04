@@ -3,9 +3,6 @@
 //  Pure Pets
 //
 //  Refactored: ChildsCol subcollection only
-//
-
-@import FirebaseFirestore;
 
 @class ChildModel;
 

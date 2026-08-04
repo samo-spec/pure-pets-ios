@@ -6,7 +6,7 @@
 //
 
 
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 
 typedef NS_ENUM(NSInteger, FileType)
 {

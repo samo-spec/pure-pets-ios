@@ -82,7 +82,10 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
     
     // Basic info
-    if (self.name) dict[@"name"] = self.name;
+    if (self.name)
+    {
+        dict[@"name"] = self.name;
+    }
     dict[@"searchTitle"] = [ArabicNormalizer normalize:self.name ?: @""];
     if (self.desc) dict[@"desc"] = self.desc;
     if (self.price) dict[@"price"] = self.price;
@@ -213,11 +216,6 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
 }
 
 
-
-
-
-
-
 /*
  
  
@@ -286,7 +284,7 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     
     if (self = [super init]) {
         _accessoryID = docID ?: @"";
-        _name = dict[@"name"] ?: @"";
+        _name = Language.isRTL ? dict[@"name"] : dict[@"nameEn"]  ?: @"";
         _desc = dict[@"desc"] ?: @"";
         _price = dict[@"price"] ?: @(0);
         id finalPriceValue = dict[@"finalPrice"];

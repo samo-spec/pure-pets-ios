@@ -540,17 +540,17 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
     [self refresh];
 }
 
-- (void)refresh
+- (BOOL)refresh
 {
     if (!self.started) {
         [self start];
-        return;
+        return YES;
     }
 
     NSDate *now = [NSDate date];
     if (self.lastRefreshDate &&
         [now timeIntervalSinceDate:self.lastRefreshDate] < PPHomeBridgeMinimumRefreshInterval) {
-        return;
+        return NO;
     }
     self.lastRefreshDate = now;
     NSInteger generation = [self advanceRefreshGeneration];
@@ -563,6 +563,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
     [self refreshPetContextForGeneration:generation];
     [self refreshOrdersListenerIfNeededForce:NO];
     [self refreshNearbyAdvertisements];
+    return YES;
 }
 
 - (void)stop
@@ -1264,6 +1265,11 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
             payload[PPHomeBridgeConfigBackgroundGlowsFadedKey],
             NO
         );
+    BOOL pureLensVisible =
+        PPHomeBridgeBoolValue(
+            payload[@"pureLensVisible"],
+            YES
+        );
     BOOL novaUseGenkit =
         PPHomeBridgeBoolValue(
             payload[PPHomeBridgeConfigNovaUseGenkitKey],
@@ -1285,7 +1291,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
                                           forKey:@"pp_nova_use_genkit"];
     if (self.homeConfigDidChange) {
         self.homeConfigDidChange(merged, titleMode, premiumCareVisible,
-                                 novaVisible, glowsFaded, payload != nil);
+                                 novaVisible, glowsFaded, pureLensVisible, payload != nil);
     }
 }
 
@@ -1335,6 +1341,8 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
         PPHomeBridgeBoolValue(data[@"novaFloatingVisible"], YES);
     BOOL glowsFaded =
         PPHomeBridgeBoolValue(data[@"backgroundGlowsFaded"], NO);
+    BOOL pureLensVisible =
+        PPHomeBridgeBoolValue(data[@"pureLensVisible"], YES);
     BOOL novaUseGenkit =
         PPHomeBridgeBoolValue(data[@"novaUseGenkit"], YES);
     NSString *titleMode = [data[@"titleViewMode"] isKindOfClass:NSString.class]
@@ -1354,6 +1362,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
             PPHomeBridgeConfigPremiumCareVisibleKey : @(premiumCareVisible),
             PPHomeBridgeConfigNovaFloatingVisibleKey : @(novaVisible),
             PPHomeBridgeConfigBackgroundGlowsFadedKey : @(glowsFaded),
+            @"pureLensVisible" : @(pureLensVisible),
             PPHomeBridgeConfigNovaUseGenkitKey : @(novaUseGenkit),
         };
         [NSUserDefaults.standardUserDefaults setObject:cachePayload
@@ -1366,7 +1375,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
 
     if (self.homeConfigDidChange) {
         self.homeConfigDidChange(merged, titleMode, premiumCareVisible,
-                                 novaVisible, glowsFaded, fromCache);
+                                 novaVisible, glowsFaded, pureLensVisible, fromCache);
     }
 }
 

@@ -4184,3 +4184,14 @@
 "pet_ad_trust_seller_safety" = "احتفظ بالاتفاقات والتفاصيل المهمة داخل محادثة بيور بتس.";
 "pet_ad_trust_sign_in_action" = "سجّل الدخول للتواصل مع المعلن";
 "pet_ad_trust_ask_seller" = "اسأل عن هذا الحيوان";
+
+"pp_promo_shop_now" = "تسوق الآن";
+"pp_promo_offer" = "عرض";
+"pp_promo_page_format" = "الصفحة %ld من %ld";
+"pp_promo_loading" = "جارٍ تحميل العروض";
+"pp_promo_unavailable" = "العروض غير متاحة مؤقتًا.";
+"pp_promo_retry" = "حاول مجددًا";
+"pp_promo_carousel" = "العروض الترويجية";
+"home_pure_lens_title" = "بيور لينس";
+"home_pure_lens_a11y" = "افتح كاميرا بيور لينس";
+"pp_promo_carousel" = "العروض الترويجية";

@@ -3,6 +3,7 @@
 // for Pure Pets iOS. The actual app is Objective-C/UIKit, but these structures
 // serve as a design reference and can be bridged via UIHostingController.
 
+import Foundation
 import SwiftUI
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -34,6 +35,7 @@ enum PPCorner {
     static let small: CGFloat   = 12
     static let medium: CGFloat  = 18
     static let card: CGFloat    = 22
+    static let section: CGFloat = card
     static let hero: CGFloat    = 28
     static let large: CGFloat   = 42
     static let pill: CGFloat    = 9999
@@ -74,6 +76,52 @@ struct PPShadow {
     static let icon     = PPShadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
 }
 
+// MARK: Surface elevation
+
+enum PPElevationLevel: Equatable {
+    case flat
+    case raised
+    case floating
+    case overlay
+
+    fileprivate var defaultCornerRadius: CGFloat {
+        switch self {
+        case .flat:
+            return 0
+        case .raised, .floating:
+            return PPCorner.card
+        case .overlay:
+            return PPCorner.hero
+        }
+    }
+
+    fileprivate var defaultSurface: Color {
+        switch self {
+        case .flat:
+            return .ppSurfaceBase
+        case .raised:
+            return .ppSurfaceRaised
+        case .floating:
+            return .ppSurfaceElevated
+        case .overlay:
+            return .ppSurfaceOverlay
+        }
+    }
+
+    fileprivate var shadowToken: PPShadow {
+        switch self {
+        case .flat:
+            return PPShadow(color: .clear, radius: 0, x: 0, y: 0)
+        case .raised:
+            return .subtle
+        case .floating:
+            return .card
+        case .overlay:
+            return .elevated
+        }
+    }
+}
+
 // MARK: Colors
 
 /// Canonical light-palette values.
@@ -88,6 +136,8 @@ private enum PPPaletteHex {
         // Brand & Action
         static let brandPrimary   = "CB2654"
         static let pressedAction  = "A91E46"
+        static let premiumGold    = "E6C87D"
+        static let discountCoral  = "D63A50"
         static let accentText     = "CB2654"
         static let quickActionShopping  = "D14A61"
         static let quickActionAnimals   = "9E5CAD"
@@ -99,6 +149,8 @@ private enum PPPaletteHex {
         static let mainBackground   = "F8F8F9"
         static let surface          = "FFFFFF"
         static let elevatedSurface  = "FFFDFC"//FFFDFC
+        static let surfaceOverlay   = "FDF3F6"
+        static let surfaceBorder    = "EEDDE3"
         static let secondarySurface = "F7F1ED"
         static let warmPorcelain    = "F7F1ED"
         static let mineralBeige     = "EEE3DA"
@@ -166,6 +218,10 @@ private enum PPPaletteHex {
         dynamicHex(light: PPPaletteHex.Light.brandPrimary, dark: PPPaletteHex.Dark.action)
     }
 
+    @objc static var ppBrandPrimary: UIColor {
+        ppPrimary
+    }
+
     @objc static var ppPressedAction: UIColor {
         dynamicHex(light: PPPaletteHex.Light.pressedAction, dark: PPPaletteHex.Dark.pressed)
     }
@@ -176,6 +232,23 @@ private enum PPPaletteHex {
 
     @objc static var ppPrimaryShiner: UIColor {
         dynamicHex(light: PPPaletteHex.Light.softRose, dark: PPPaletteHex.Dark.secondarySurface)
+    }
+
+    /// Approved premium gold remains fixed across appearances until a reviewed
+    /// dark-specific counterpart is added to the palette.
+    @objc static var ppPremiumAccent: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.premiumGold,
+            dark: PPPaletteHex.Light.premiumGold
+        )
+    }
+
+    /// Discount coral is intentionally independent from destructive/error red.
+    @objc static var ppDiscount: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.discountCoral,
+            dark: PPPaletteHex.Light.discountCoral
+        )
     }
 
     @objc static var ppAccent: UIColor {
@@ -207,6 +280,14 @@ private enum PPPaletteHex {
         )
     }
 
+    @objc static var ppCareAccent: UIColor {
+        ppQuickActionServices
+    }
+
+    @objc static var ppAdoptionAccent: UIColor {
+        ppQuickActionAnimals
+    }
+
     @objc static var ppQuickActionCommunity: UIColor {
         dynamicHex(
             light: PPPaletteHex.Light.quickActionCommunity,
@@ -226,12 +307,38 @@ private enum PPPaletteHex {
         dynamicHex(light: PPPaletteHex.Light.mainBackground, dark: PPPaletteHex.Dark.background)
     }
 
+    @objc static var ppSurfaceBase: UIColor {
+        ppBackground
+    }
+
     @objc static var ppSurface: UIColor {
         dynamicHex(light: PPPaletteHex.Light.surface, dark: PPPaletteHex.Dark.surface)
     }
 
+    @objc static var ppSurfaceRaised: UIColor {
+        ppSurface
+    }
+
     @objc static var ppElevatedSurface: UIColor {
         dynamicHex(light: PPPaletteHex.Light.elevatedSurface, dark: PPPaletteHex.Dark.elevatedSurface)
+    }
+
+    @objc static var ppSurfaceElevated: UIColor {
+        ppElevatedSurface
+    }
+
+    @objc static var ppSurfaceOverlay: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.surfaceOverlay,
+            dark: PPPaletteHex.Dark.secondarySurface
+        )
+    }
+
+    @objc static var ppSurfaceBorder: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.surfaceBorder,
+            dark: PPPaletteHex.Dark.border
+        )
     }
 
     @objc static var ppSecondarySurface: UIColor {
@@ -321,21 +428,31 @@ private enum PPPaletteHex {
 public extension Color {
     // MARK: Brand & Action
     static var ppPrimary: Color        { Color(uiColor: .ppPrimary) }
+    static var ppBrandPrimary: Color   { Color(uiColor: .ppBrandPrimary) }
     static var ppPressedAction: Color  { Color(uiColor: .ppPressedAction) }
     static var ppPrimaryDarker: Color  { Color(uiColor: .ppPrimaryDarker) }
     static var ppPrimaryShiner: Color  { Color(uiColor: .ppPrimaryShiner) }
+    static var ppPremiumAccent: Color  { Color(uiColor: .ppPremiumAccent) }
+    static var ppDiscount: Color       { Color(uiColor: .ppDiscount) }
     static var ppAccent: Color         { Color(uiColor: .ppAccent) }
     static var ppAccentText: Color     { Color(uiColor: .ppAccentText) }
     static var ppQuickActionShopping: Color  { Color(uiColor: .ppQuickActionShopping) }
     static var ppQuickActionAnimals: Color   { Color(uiColor: .ppQuickActionAnimals) }
     static var ppQuickActionServices: Color  { Color(uiColor: .ppQuickActionServices) }
+    static var ppCareAccent: Color           { Color(uiColor: .ppCareAccent) }
+    static var ppAdoptionAccent: Color       { Color(uiColor: .ppAdoptionAccent) }
     static var ppQuickActionCommunity: Color { Color(uiColor: .ppQuickActionCommunity) }
     static var ppQuickActionAdoption: Color  { Color(uiColor: .ppQuickActionAdoption) }
 
     // MARK: Surfaces and fields
     static var ppBackground: Color       { Color(uiColor: .ppBackground) }
+    static var ppSurfaceBase: Color      { Color(uiColor: .ppSurfaceBase) }
     static var ppSurface: Color          { Color(uiColor: .ppSurface) }
+    static var ppSurfaceRaised: Color    { Color(uiColor: .ppSurfaceRaised) }
     static var ppElevatedSurface: Color  { Color(uiColor: .ppElevatedSurface) }
+    static var ppSurfaceElevated: Color  { Color(uiColor: .ppSurfaceElevated) }
+    static var ppSurfaceOverlay: Color   { Color(uiColor: .ppSurfaceOverlay) }
+    static var ppSurfaceBorder: Color    { Color(uiColor: .ppSurfaceBorder) }
     static var ppSecondarySurface: Color { Color(uiColor: .ppSecondarySurface) }
     static var ppForeground: Color       { Color(uiColor: .ppForeground) }
     static var ppCard: Color             { Color(uiColor: .ppCard) }
@@ -360,15 +477,23 @@ public extension Color {
 
 extension ShapeStyle where Self == Color {
     static var ppPrimary: Color { Color.ppPrimary }
+    static var ppBrandPrimary: Color { Color.ppBrandPrimary }
     static var ppPressedAction: Color { Color.ppPressedAction }
     static var ppPrimaryDarker: Color { Color.ppPrimaryDarker }
     static var ppPrimaryShiner: Color { Color.ppPrimaryShiner }
+    static var ppPremiumAccent: Color { Color.ppPremiumAccent }
+    static var ppDiscount: Color { Color.ppDiscount }
     static var ppAccent: Color { Color.ppAccent }
     static var ppAccentText: Color { Color.ppAccentText }
 
     static var ppBackground: Color { Color.ppBackground }
+    static var ppSurfaceBase: Color { Color.ppSurfaceBase }
     static var ppSurface: Color { Color.ppSurface }
+    static var ppSurfaceRaised: Color { Color.ppSurfaceRaised }
     static var ppElevatedSurface: Color { Color.ppElevatedSurface }
+    static var ppSurfaceElevated: Color { Color.ppSurfaceElevated }
+    static var ppSurfaceOverlay: Color { Color.ppSurfaceOverlay }
+    static var ppSurfaceBorder: Color { Color.ppSurfaceBorder }
     static var ppSecondarySurface: Color { Color.ppSecondarySurface }
     static var ppForeground: Color { Color.ppForeground }
     static var ppCard: Color { Color.ppCard }
@@ -477,6 +602,48 @@ enum PPFont {
 // MARK: - 2. REUSABLE MODIFIERS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+private struct PPElevationStyle: ViewModifier {
+    let level: PPElevationLevel
+    let cornerRadius: CGFloat?
+    let surface: Color?
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(
+            cornerRadius: cornerRadius ?? level.defaultCornerRadius,
+            style: .continuous
+        )
+        let borderColor =
+            colorSchemeContrast == .increased
+            ? Color.ppTextPrimary.opacity(0.48)
+            : Color.ppSurfaceBorder.opacity(colorScheme == .dark ? 0.88 : 0.72)
+        let resolvedSurface: Color = surface ?? level.defaultSurface
+        let shadow = colorSchemeContrast == .increased
+            ? PPShadow(color: .clear, radius: 0, x: 0, y: 0)
+            : level.shadowToken
+
+        return content
+            .background(shape.fill(resolvedSurface))
+            .clipShape(shape)
+            .overlay {
+                if level != .flat {
+                    shape.strokeBorder(
+                        borderColor,
+                        lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.75
+                    )
+                }
+            }
+            .shadow(
+                color: shadow.color,
+                radius: shadow.radius,
+                x: shadow.x,
+                y: shadow.y
+            )
+    }
+}
+
 struct PPCardStyle: ViewModifier {
     var cornerRadius: CGFloat = PPCorner.card
     var shadowToken: PPShadow = .card
@@ -580,6 +747,18 @@ struct PPTapFeedback: ViewModifier {
 }
 
 extension View {
+    func ppElevation(
+        _ level: PPElevationLevel,
+        cornerRadius: CGFloat? = nil,
+        surface: Color? = nil
+    ) -> some View {
+        modifier(PPElevationStyle(
+            level: level,
+            cornerRadius: cornerRadius,
+            surface: surface
+        ))
+    }
+
     func ppCard(cornerRadius: CGFloat = PPCorner.card, shadow: PPShadow = .card) -> some View {
         modifier(PPCardStyle(cornerRadius: cornerRadius, shadowToken: shadow))
     }
@@ -1006,17 +1185,66 @@ struct PPOrderTrackingCard: View {
 
 // MARK: PPDiscountBadge
 
+enum PPDiscountBadgeStyle: Equatable {
+    case badge
+    case inline
+}
+
 struct PPDiscountBadge: View {
-    let percentage: Int
+    private enum Content {
+        case percentage(Int)
+        case localizedText(String)
+    }
+
+    private let content: Content
+    private let style: PPDiscountBadgeStyle
+
+    @Environment(\.locale) private var locale
+
+    init(percentage: Int, style: PPDiscountBadgeStyle = .badge) {
+        content = .percentage(percentage)
+        self.style = style
+    }
+
+    /// Use for backend-provided, already localized discount and savings text.
+    /// The badge deliberately formats no price deltas or promotional copy.
+    init(localizedText: String, style: PPDiscountBadgeStyle = .badge) {
+        content = .localizedText(localizedText)
+        self.style = style
+    }
+
+    /// Currency savings are passed through as fully localized text so the
+    /// caller remains responsible for pricing and localization policy.
+    init(currencyText: String, style: PPDiscountBadgeStyle = .inline) {
+        self.init(localizedText: currencyText, style: style)
+    }
 
     var body: some View {
-        Text("-%\(percentage)")
-            .font(PPFont.bold(11))
+        Text(displayText)
+            .font(style == .badge ? PPFont.bold(11) : PPFont.bold(10.5))
             .foregroundStyle(.white)
-            .padding(.horizontal, PPSpace.sm)
-            .padding(.vertical, PPSpace.xs)
-            .background(PPGradient.hero)
-            .clipShape(Capsule())
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
+            .padding(.horizontal, style == .badge ? PPSpace.sm : PPSpace.xs)
+            .padding(.vertical, style == .badge ? PPSpace.xs : 2)
+            .background(Color.ppDiscount, in: Capsule())
+            .accessibilityLabel(displayText)
+    }
+
+    private var displayText: String {
+        switch content {
+        case let .percentage(percentage):
+            let formatter = NumberFormatter()
+            formatter.locale = locale
+            formatter.numberStyle = .percent
+            formatter.maximumFractionDigits = 0
+            let fraction = Double(max(0, percentage)) / 100
+            let formatted = formatter.string(from: NSNumber(value: fraction))
+                ?? "\(percentage)%"
+            return "-\(formatted)"
+        case let .localizedText(text):
+            return text
+        }
     }
 }
 

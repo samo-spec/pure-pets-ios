@@ -8,11 +8,13 @@
 
 // AppDelegate.h  30/06/2026
 #import <UIKit/UIKit.h>
+#import <UserNotifications/UserNotifications.h>
  
 @class OIDExternalUserAgentSession;
 @class FileUploadManager;
+@class AVAudioPlayer;
 
-@interface AppDelegate : UIResponder <UIApplicationDelegate, UNUserNotificationCenterDelegate, FIRMessagingDelegate>
+@interface AppDelegate : UIResponder <UIApplicationDelegate, UNUserNotificationCenterDelegate>
 
 @property (nonatomic, strong, nullable) id<OIDExternalUserAgentSession> currentAuthorizationFlow;
 @property (nonatomic, strong) FileUploadManager * _Nullable uploadManager;

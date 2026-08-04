@@ -117,20 +117,20 @@ public struct PPUniversalCardPalette {
     }
 
     public static let purePets = PPUniversalCardPalette(
-        primary: Color(uiColor: UIColor(named: "AppPrimaryColor") ?? UIColor(red: 0.54, green: 0.08, blue: 0.22, alpha: 1)),
-        primaryDarker: Color(uiColor: UIColor(named: "AppPrimaryColorDarker") ?? UIColor(red: 0.50, green: 0.17, blue: 0.24, alpha: 1)),
-        primaryShiner: Color(uiColor: UIColor(named: "AppPrimaryColorShainer") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
+        primary: .ppBrandPrimary,
+        primaryDarker: .ppPressedAction,
+        primaryShiner: .ppPrimaryShiner,
         onPrimary: .white,
-        diffColor: Color(uiColor: UIColor(named: "diffColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
-        accent: Color(uiColor: .systemTeal),
-        surface: Color(uiColor: .secondarySystemGroupedBackground),
-        cardColor: Color(uiColor: UIColor(named: "cardColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
-        groupedSurface: Color(uiColor: .tertiarySystemGroupedBackground),
-        ink: Color(uiColor: .label),
-        secondaryInk: Color(uiColor: .secondaryLabel),
-        success: Color(uiColor: .systemGreen),
-        warning: Color(uiColor: .systemOrange),
-        destructive: Color(uiColor: .systemRed)
+        diffColor: .ppPrimaryShiner,
+        accent: .ppBrandPrimary,
+        surface: .ppSurfaceRaised,
+        cardColor: .ppSurfaceRaised,
+        groupedSurface: .ppSurfaceElevated,
+        ink: .ppTextPrimary,
+        secondaryInk: .ppTextTertiary,
+        success: .ppSuccess,
+        warning: .ppWarning,
+        destructive: .ppError
     )
 }
 
@@ -2111,7 +2111,7 @@ private struct PPUniversalCardRenderer: View {
                             .padding(.vertical, 6)
                             .background(
                                 RoundedRectangle(cornerRadius: 18)
-                                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                                    .fill(Color.ppSurfaceElevated)
                                     .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
                             )
                             .transition(
@@ -2326,14 +2326,12 @@ private struct PPUniversalCardRenderer: View {
     ) -> some View {
         let decorated = card
             .frame(width: size.width, height: size.height)
-            .background(cardBackground)
-            .clipShape(cardShape)
-            .overlay(cardBorder)
-            .shadow(
-                color: .black.opacity(colorScheme == .dark ? 0.10 : 0.030),
-                radius: colorScheme == .dark ? 7 : 5,
-                y: colorScheme == .dark ? 3 : 2
+            .ppElevation(
+                .raised,
+                cornerRadius: cardRadius,
+                surface: cardSurface
             )
+            .overlay(cardBorder)
             .scaleEffect(
                 store.isHighlighted && !reduceMotion ? 0.98 : 1
             )
@@ -2385,6 +2383,7 @@ private struct PPUniversalCardRenderer: View {
                     fillsEmptyAreaWithImageBackground:
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
+                    focusesPetFace: mediaFocusesPetFace,
                     imageLoader: store.imageLoader
                 )
                 .padding(mediaContentInset)
@@ -2417,6 +2416,10 @@ private struct PPUniversalCardRenderer: View {
         )
         .clipped()
         .accessibilityElement(children: .contain)
+    }
+
+    private var mediaFocusesPetFace: Bool {
+        store.context.isAdvertisement || store.isSuggestionsAd
     }
 
     private var emptyMedia: some View {
@@ -2462,8 +2465,8 @@ private struct PPUniversalCardRenderer: View {
                         PPUniversalPill(
                             text: badge,
                             foreground: .white,
-                            background: store.palette.accent,
-                            border: store.palette.accent.opacity(0.3)
+                            background: semanticAccent,
+                            border: semanticAccent.opacity(0.3)
                         )
                     }
                     if let reason = store.model.reasonText,
@@ -2480,12 +2483,7 @@ private struct PPUniversalCardRenderer: View {
                     if store.discountStyle == .badge,
                        let discount = store.model.discountText,
                        !discount.isEmpty {
-                        PPUniversalPill(
-                            text: discount,
-                            foreground: .white,
-                            background: store.palette.destructive,
-                            border: .clear
-                        )
+                        PPDiscountBadge(localizedText: discount)
                     }
                 }
             }
@@ -2778,7 +2776,7 @@ private struct PPUniversalCardRenderer: View {
                 HStack(spacing: 4) {
                     Image(systemName: isPlaceholder ? "mappin.slash" : "mappin.and.ellipse")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : store.palette.accent)
+                        .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : semanticAccent)
 
                     Text("\(PPUniversalCardStore.localized("location", fallback: "Location")): \(subtitle)")
                         .font(
@@ -2835,7 +2833,7 @@ private struct PPUniversalCardRenderer: View {
                             relativeTo: .title3
                         )
                     )
-                    .foregroundStyle(store.palette.primary)
+                    .foregroundStyle(Color.ppBrandPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.92)
 
@@ -2847,7 +2845,7 @@ private struct PPUniversalCardRenderer: View {
                             relativeTo: .caption
                         )
                     )
-                    .foregroundStyle(store.palette.primary.opacity(0.82))
+                    .foregroundStyle(Color.ppBrandPrimary.opacity(0.82))
                     .lineLimit(1)
             } else {
                 Text(displayPrice)
@@ -2858,7 +2856,7 @@ private struct PPUniversalCardRenderer: View {
                             relativeTo: .title3
                         )
                     )
-                    .foregroundStyle(store.palette.primary)
+                    .foregroundStyle(Color.ppBrandPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.88)
             }
@@ -2873,7 +2871,7 @@ private struct PPUniversalCardRenderer: View {
                         )
                     )
                     .strikethrough()
-                    .foregroundStyle(store.palette.secondaryInk)
+                    .foregroundStyle(Color.ppTextTertiary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
@@ -2883,16 +2881,10 @@ private struct PPUniversalCardRenderer: View {
             if store.discountStyle == .inline,
                let discount = store.model.discountText,
                !discount.isEmpty {
-                Text(discount)
-                    .font(
-                        .custom(
-                            "Beiruti-Bold",
-                            size: 12,
-                            relativeTo: .caption
-                        )
-                    )
-                    .foregroundStyle(store.palette.destructive)
-                    .lineLimit(1)
+                PPDiscountBadge(
+                    localizedText: discount,
+                    style: .inline
+                )
             }
         }
         .accessibilityElement(children: .combine)
@@ -3302,14 +3294,14 @@ private struct PPUniversalCardRenderer: View {
             if let badgeText = store.model.badgeText, !badgeText.isEmpty {
                 PPUniversalPill(
                     text: badgeText,
-                    foreground: store.palette.accent,
+                    foreground: semanticAccent,
                     background: metadataPillBackground(
-                        store.palette.accent,
+                        semanticAccent,
                         darkOpacity: 0.18,
                         lightOpacity: 0.12
                     ),
                     border: metadataPillBorder(
-                        store.palette.accent,
+                        semanticAccent,
                         semanticOpacity: 0.24
                     ),
                     calm: store.context.isCatalogCommerce
@@ -3588,24 +3580,37 @@ private struct PPUniversalCardRenderer: View {
         )
     }
 
-    private var cardBackground: some View {
+    private var cardSurface: Color {
         store.palette.cardColor.opacity(
             reduceTransparency || colorScheme == .dark ? 0.98 : 1.0
         )
+    }
+
+    private var semanticAccent: Color {
+        switch store.context {
+        case .services, .vets:
+            return .ppCareAccent
+        case .ads, .homeAds, .adopt:
+            return .ppAdoptionAccent
+        case .market, .food, .accessory, .savedForLater:
+            return store.palette.accent
+        }
     }
 
     @ViewBuilder
     private var cardBorder: some View {
         switch store.borderMode {
         case .pordersDefault:
-            cardShape.strokeBorder(
-                store.isSelected
-                    ? store.palette.primary.opacity(0.30)
-                    : store.palette.ink.opacity(
-                        colorScheme == .dark ? 0.15 : 0.10
-                    ),
-                lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.75
-            )
+            if store.isSelected || colorSchemeContrast == .increased {
+                cardShape.strokeBorder(
+                    store.isSelected
+                        ? store.palette.primary.opacity(0.30)
+                        : store.palette.ink.opacity(
+                            colorScheme == .dark ? 0.15 : 0.10
+                        ),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.75
+                )
+            }
 
         case .pordersDataView:
             ZStack {
@@ -3616,7 +3621,7 @@ private struct PPUniversalCardRenderer: View {
                                 colorSchemeContrast == .increased ? 0.64 : 0.36
                             )
                             : store.palette.ink.opacity(
-                                colorScheme == .dark ? 0.50 : 0.34
+                                colorScheme == .dark ? 0.18 : 0.34
                             ),
                         lineWidth:
                             colorSchemeContrast == .increased ? 2.5 : 2
@@ -3626,16 +3631,16 @@ private struct PPUniversalCardRenderer: View {
                     LinearGradient(
                         colors: [
                             Color.white.opacity(
-                                colorScheme == .dark ? 0.92 : 1
+                                colorScheme == .dark ? 0.16 : 1
                             ),
                             Color.white.opacity(
-                                colorScheme == .dark ? 0.40 : 0.56
+                                colorScheme == .dark ? 0.12 : 0.56
                             ),
                             Color.white.opacity(
-                                colorScheme == .dark ? 0.80 : 0.96
+                                colorScheme == .dark ? 0.14 : 0.96
                             ),
                             Color.white.opacity(
-                                colorScheme == .dark ? 0.28 : 0.38
+                                colorScheme == .dark ? 0.10 : 0.38
                             )
                         ],
                         startPoint: .topLeading,
@@ -3647,7 +3652,7 @@ private struct PPUniversalCardRenderer: View {
             }
             .shadow(
                 color: Color.white.opacity(
-                    colorScheme == .dark ? 0.22 : 0.64
+                    colorScheme == .dark ? 0.05 : 0.64
                 ),
                 radius: 1.25,
                 x: -0.5,
@@ -4062,7 +4067,7 @@ private struct PPUniversalCardRenderer: View {
         case .unavailable:
             return store.palette.destructive
         case .used:
-            return store.palette.accent
+            return semanticAccent
         case .neutral:
             return store.palette.secondaryInk
         }
@@ -4079,7 +4084,7 @@ private struct PPUniversalCardRenderer: View {
         } else if availability.metaSystemImage == "mappin.slash" {
             return Color(uiColor: .secondaryLabel)
         } else {
-            return store.palette.accent
+            return semanticAccent
         }
     }
 
@@ -4112,21 +4117,148 @@ private struct PPUniversalCardRenderer: View {
 @available(iOS 16.0, *)
 private final class PPUniversalMirroredImageView: UIImageView {
     weak var mirroredBackgroundImageView: UIImageView?
+    private var petFaceFocusEnabled = false
+    private var petFaceFocusSignature: String?
+    private var petFaceFocusPlaceholder: UIImage?
+    private var petFaceFocusImage: UIImage?
+    private var petFaceFocusPoint: CGPoint?
 
     override var image: UIImage? {
         didSet {
-            guard let mirroredBackgroundImageView else { return }
-            let duration: TimeInterval = image == nil ? 0.0 : 0.25
-            UIView.transition(
-                with: mirroredBackgroundImageView,
-                duration: duration,
-                options: .transitionCrossDissolve,
-                animations: {
-                    mirroredBackgroundImageView.image = self.image
-                },
-                completion: nil
-            )
+            if let mirroredBackgroundImageView {
+                let duration: TimeInterval = image == nil ? 0.0 : 0.25
+                UIView.transition(
+                    with: mirroredBackgroundImageView,
+                    duration: duration,
+                    options: .transitionCrossDissolve,
+                    animations: {
+                        mirroredBackgroundImageView.image = self.image
+                    },
+                    completion: nil
+                )
+            }
+            requestPetFaceFocus(for: image)
         }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        applyPetFaceFocusIfPossible()
+    }
+
+    func configurePetFaceFocus(
+        enabled: Bool,
+        signature: String,
+        placeholder: UIImage?
+    ) {
+        let signatureChanged = petFaceFocusSignature != signature
+        let configurationChanged =
+            petFaceFocusEnabled != enabled ||
+            signatureChanged
+
+        petFaceFocusEnabled = enabled
+        petFaceFocusSignature = signature
+        petFaceFocusPlaceholder = placeholder
+
+        guard configurationChanged else { return }
+        petFaceFocusImage = nil
+        petFaceFocusPoint = nil
+        resetPetFaceFocusCrop()
+        if !signatureChanged {
+            requestPetFaceFocus(for: image)
+        }
+    }
+
+    private func requestPetFaceFocus(for image: UIImage?) {
+        guard petFaceFocusEnabled,
+              let image
+        else {
+            resetPetFaceFocusCrop()
+            return
+        }
+
+        if let placeholder = petFaceFocusPlaceholder,
+           image === placeholder {
+            resetPetFaceFocusCrop()
+            return
+        }
+
+        if let focusedImage = petFaceFocusImage,
+           focusedImage === image,
+           petFaceFocusPoint != nil {
+            applyPetFaceFocusIfPossible()
+            return
+        }
+
+        petFaceFocusImage = image
+        petFaceFocusPoint = nil
+        resetPetFaceFocusCrop()
+        let signature = petFaceFocusSignature
+
+        // Reuse the pet-ad gallery's Vision detector and cache for the same framing logic.
+        PPPetFaceFocusDetector.shared.detectFocusPoint(for: image) { [weak self] focusPoint in
+            guard let self,
+                  self.petFaceFocusEnabled,
+                  self.petFaceFocusSignature == signature,
+                  let displayedImage = self.image,
+                  displayedImage === image
+            else {
+                return
+            }
+            self.petFaceFocusImage = image
+            self.petFaceFocusPoint = focusPoint
+            self.applyPetFaceFocusIfPossible()
+        }
+    }
+
+    private func applyPetFaceFocusIfPossible() {
+        guard petFaceFocusEnabled,
+              let image = petFaceFocusImage,
+              let displayedImage = self.image,
+              displayedImage === image,
+              let focusPoint = petFaceFocusPoint,
+              image.size.width > 0,
+              image.size.height > 0,
+              bounds.width > 0,
+              bounds.height > 0
+        else {
+            return
+        }
+
+        let imageAspect = image.size.width / image.size.height
+        let viewAspect = bounds.width / bounds.height
+        var cropWidth: CGFloat = 1
+        var cropHeight: CGFloat = 1
+
+        if imageAspect > viewAspect {
+            cropWidth = viewAspect / imageAspect
+        } else {
+            cropHeight = imageAspect / viewAspect
+        }
+
+        let centerX = min(max(focusPoint.x, 0), 1)
+        let centerY = min(max(focusPoint.y, 0), 1)
+        let originX = min(max(centerX - (cropWidth * 0.5), 0), 1 - cropWidth)
+        let originY = min(max(centerY - (cropHeight * 0.5), 0), 1 - cropHeight)
+        let contentsRect = CGRect(
+            x: originX,
+            y: originY,
+            width: cropWidth,
+            height: cropHeight
+        )
+
+        layer.contentsGravity = CALayerContentsGravity.resizeAspectFill
+        layer.contentsRect = contentsRect
+        mirroredBackgroundImageView?.layer.contentsGravity = CALayerContentsGravity.resizeAspectFill
+        mirroredBackgroundImageView?.layer.contentsRect = contentsRect
+    }
+
+    private func resetPetFaceFocusCrop() {
+        let fullImageRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        layer.contentsGravity = CALayerContentsGravity.resizeAspectFill
+        layer.contentsRect = fullImageRect
+        mirroredBackgroundImageView?.layer.contentsGravity = CALayerContentsGravity.resizeAspectFill
+        mirroredBackgroundImageView?.layer.contentsRect = fullImageRect
     }
 }
 
@@ -4253,6 +4385,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     let bottomCornerRadius: CGFloat
     let contained: Bool
     let fillsEmptyAreaWithImageBackground: Bool
+    let focusesPetFace: Bool
     let imageLoader: PPImageLoader?
 
     func makeCoordinator() -> Coordinator {
@@ -4338,7 +4471,14 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         _ container: PPUniversalGradientView,
         context: Context
     ) {
-        guard let imageView = context.coordinator.imageView ?? references.imageView else {
+        let resolvedImageView: PPUniversalMirroredImageView?
+        if let coordinatedImageView = context.coordinator.imageView {
+            resolvedImageView = coordinatedImageView
+        } else {
+            resolvedImageView = references.imageView as? PPUniversalMirroredImageView
+        }
+
+        guard let imageView = resolvedImageView else {
             return
         }
         if let mediaContainer = container as? PPUniversalMediaContainerView {
@@ -4352,7 +4492,14 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         }
         let fillsEmptyArea =
             contained && fillsEmptyAreaWithImageBackground
+        let resolvedPlaceholder: UIImage? =
+            placeholder ?? UIImage(systemName: placeholderSystemImage)
         imageView.contentMode = .scaleAspectFill
+        imageView.configurePetFaceFocus(
+            enabled: focusesPetFace,
+            signature: signature,
+            placeholder: resolvedPlaceholder
+        )
         context.coordinator.setImageBackgroundVisible(fillsEmptyArea)
 
         guard context.coordinator.signature != signature else {
@@ -4362,8 +4509,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         context.coordinator.task?.cancel()
         context.coordinator.task = nil
         imageView.image =
-            placeholder ??
-            UIImage(systemName: placeholderSystemImage)
+            resolvedPlaceholder
 
         if let imageLoader {
             imageLoader(imageView, imageURL, placeholder, container)
@@ -4401,7 +4547,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     final class Coordinator {
         var signature: String?
         var task: AppRemoteImageTask?
-        weak var imageView: UIImageView?
+        weak var imageView: PPUniversalMirroredImageView?
         weak var backgroundImageView: UIImageView?
         weak var washView: UIView?
 
@@ -4579,7 +4725,7 @@ private struct PPUniversalSkeletonCard: View {
                 style: .continuous
             )
             .fill(
-                Color(uiColor: .secondarySystemGroupedBackground)
+                Color.ppSurfaceRaised
                     .opacity(colorScheme == .dark ? 0.58 : 0.42)
             )
         )
@@ -4589,7 +4735,7 @@ private struct PPUniversalSkeletonCard: View {
                 style: .continuous
             )
             .stroke(
-                Color.primary.opacity(colorScheme == .dark ? 0.09 : 0.045),
+                Color.ppSurfaceBorder.opacity(colorScheme == .dark ? 0.62 : 0.72),
                 lineWidth: 0.6
             )
         )

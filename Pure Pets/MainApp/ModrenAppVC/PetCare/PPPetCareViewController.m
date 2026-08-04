@@ -2019,7 +2019,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
                                                                         indexPath:indexPath];
             [cell applyViewModel:vm
                          context:PPCellForMarket
-                       layoutMode:PPCellLayoutModeHorizontalRow
+                       layoutMode:PPCellLayoutModeMarket
                      discountMode:PPDiscountStylePlain
                       imageLoader:^(UIImageView *imageView,
                                     NSString *url,

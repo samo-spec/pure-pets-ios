@@ -8,7 +8,7 @@
 
 #import "ChildModel.h"
 
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 NS_ASSUME_NONNULL_BEGIN
 
 @interface ArchiveDetailsModel : NSObject <NSMutableCopying>

@@ -11,11 +11,13 @@
 #import "UserPaymentInstrumentManager.h"
 #import "InstallationManager.h"
 #import "AppDelegate.h"
-
-
+@import Firebase;
 @import FirebaseAuth;
 @import FirebaseFirestore;
 @import FirebaseStorage;
+@import FirebaseFirestore;
+
+
 @import FirebaseFunctions;
 @import FirebaseAnalytics;
 @import FirebaseMessaging;

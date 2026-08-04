@@ -14,6 +14,12 @@
 //
 
 #import "InstallationManager.h"
+
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
+
 @implementation InstallationManager {
     NSString *_cachedInstallationID;
     NSString *_cachedAuthToken;

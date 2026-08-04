@@ -8,6 +8,9 @@
 #ifndef EnumValues_h
 #define EnumValues_h
 
+#import <UIKit/UIKit.h>
+#import "DesignFiles/MostUsed/Language/Language.h"
+
 #pragma mark - Chat Audio Colors (2026)
 
 @class PPDefaultLocationView;

@@ -10,6 +10,7 @@
 #import "AppDelegate.h"
 #import "BKCircularLoadingButton.h"
 #import "FileUploadManager.h"
+@import FirebaseStorage;
 
 
 #import "selectTableViewController.h"

@@ -2658,7 +2658,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     UIFont *normalTitleFont = [self pp_rootTabBarTitleFontSelected:NO];
     UIFont *selectedTitleFont = [self pp_rootTabBarTitleFontSelected:YES];
     UIColor *normalIconColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) colorWithAlphaComponent:0.74];
-    UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *selectedIconColor = UIColor.systemGrayColor;
+    UIColor *selectedAccentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     if (@available(iOS 13.0, *)) {
         UITabBarAppearance *appearance = [UITabBarAppearance new];
         [self pp_configureFloatingBackgroundForAppearance:appearance];
@@ -2669,7 +2670,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         appearance.stackedItemPositioning = UITabBarItemPositioningFill;
         
         NSDictionary<NSAttributedStringKey, id> *selectedTitle =
-        @{ NSForegroundColorAttributeName: selectedIconColor,
+        @{ NSForegroundColorAttributeName: selectedAccentColor,
            NSFontAttributeName: selectedTitleFont};
         
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = selectedTitle;
@@ -2724,14 +2725,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
            NSFontAttributeName: normalTitleFont };
         [[UITabBarItem appearance] setTitleTextAttributes:normalTitle forState:UIControlStateNormal];
         NSDictionary<NSAttributedStringKey, id> *clearSelectedTitle =
-        @{ NSForegroundColorAttributeName: selectedIconColor,
+        @{ NSForegroundColorAttributeName: selectedAccentColor,
            NSFontAttributeName: selectedTitleFont };
         [[UITabBarItem appearance] setTitleTextAttributes:clearSelectedTitle forState:UIControlStateSelected];
     }
 
     self.tabBar.tintColor = selectedIconColor;
     self.tabBar.unselectedItemTintColor = normalIconColor;
-    self.rootTabSelectionMarker.backgroundColor = selectedIconColor;
+    self.rootTabSelectionMarker.backgroundColor = selectedAccentColor;
     [self pp_updateRootTabSelectionMarkerAnimated:NO];
 }
 
@@ -3298,7 +3299,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected
 {
     CGFloat canvas = 32.0;
-    CGFloat avatarSize = selected ? 26.0 : 24.0;
+    CGFloat avatarSize = selected ? 22.0 : 24.0;
     CGRect avatarRect = CGRectMake((canvas - avatarSize) * 0.5,
                                    (canvas - avatarSize) * 0.5,
                                    avatarSize,

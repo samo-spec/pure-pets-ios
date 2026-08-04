@@ -277,7 +277,7 @@ struct HomeCommandBar: View {
             Circle()
                 .fill(Color.ppPrimary)
                 .frame(width: 7, height: 7)
-                .overlay(Circle().stroke(Color.ppElevatedSurface, lineWidth: 2))
+                .overlay(Circle().stroke(Color.ppSurfaceElevated, lineWidth: 2))
                 .offset(x: 2, y: 2)
         }
         .frame(width: 38, height: 38)
@@ -297,7 +297,7 @@ struct HomeCommandBar: View {
             style: .continuous
         )
         .fill(
-            Color.ppElevatedSurface.opacity(
+            Color.ppSurfaceElevated.opacity(
                 contrast == .increased
                     ? 1
                     : (colorScheme == .dark ? 0.96 : 0.92)
@@ -431,7 +431,7 @@ struct HomeAnimatedSearchSuggestionView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.ppTextPrimary)
                     .frame(width: 48, height: 48)
-                    .background(Color.ppSurface.opacity(0.9), in: Circle())
+                    .background(Color.ppSurfaceRaised.opacity(0.9), in: Circle())
                     .overlay(Circle().stroke(Color.ppBorder, lineWidth: 0.7))
 
                 if state.cartCount > 0 {
@@ -441,7 +441,7 @@ struct HomeAnimatedSearchSuggestionView: View {
                         .padding(.horizontal, state.cartCount > 9 ? 5 : 0)
                         .frame(minWidth: 20, minHeight: 20)
                         .background(Color.ppPrimary, in: Capsule())
-                        .overlay(Capsule().stroke(Color.ppSurface, lineWidth: 2))
+                        .overlay(Capsule().stroke(Color.ppSurfaceRaised, lineWidth: 2))
                         .offset(x: 3, y: -3)
                 }
             }
@@ -542,7 +542,7 @@ struct HomeLocationContextButton: View {
             .padding(.vertical, PPSpace.xs)
             .frame(minHeight: 48)
             .background(
-                Color.ppSurface.opacity(contrast == .increased ? 1 : 0.82),
+                Color.ppSurfaceRaised.opacity(contrast == .increased ? 1 : 0.82),
                 in: Capsule()
             )
             .overlay {
@@ -769,7 +769,7 @@ private struct HomePetIdentityPill: View {
                 .clipShape(Circle())
                 .overlay {
                     Circle().strokeBorder(
-                        Color.ppSurface.opacity(
+                        Color.ppSurfaceRaised.opacity(
                             contrast == .increased ? 1 : 0.92
                         ),
                         lineWidth: 2
@@ -799,7 +799,7 @@ private struct HomePetIdentityPill: View {
                     .frame(width: 21, height: 21)
                     .background(Color.ppPrimary, in: Circle())
                     .overlay {
-                        Circle().strokeBorder(Color.ppSurface, lineWidth: 2)
+                        Circle().strokeBorder(Color.ppSurfaceRaised, lineWidth: 2)
                     }
                     .transition(selectionBadgeTransition)
             }
@@ -830,8 +830,10 @@ private struct HomePetIdentityPill: View {
 
     private var selectedBadge: some View {
         HStack(spacing: 5) {
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 9, weight: .bold))
+            Image("pawsmall")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 12, height: 12)
                 .accessibilityHidden(true)
 
             Text(
@@ -909,7 +911,7 @@ private struct HomePetIdentityPill: View {
                         Color.ppSoftRose.opacity(
                             colorScheme == .dark ? 0.42 : 0.92
                         ),
-                        Color.ppSurface.opacity(
+                        Color.ppSurfaceRaised.opacity(
                             colorScheme == .dark ? 0.96 : 0.98
                         ),
                     ],
@@ -918,7 +920,7 @@ private struct HomePetIdentityPill: View {
                 )
             )
         }
-        return AnyShapeStyle(Color.ppSurface)
+        return AnyShapeStyle(Color.ppSurfaceRaised)
     }
 
     private var borderColor: Color {
@@ -1015,6 +1017,7 @@ struct HomeMyPetProfileCard: View {
     let isLoading: Bool
     let errorMessage: String?
     let action: () -> Void
+    var onOpenPureLens: (() -> Void)? = nil
 
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.colorScheme) private var colorScheme
@@ -1025,26 +1028,73 @@ struct HomeMyPetProfileCard: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        Button(action: action) {
-            cardBody
+        ZStack {
+            // Primary card tap — navigates to pet profiles.
+            Button(action: action) {
+                cardBody
+            }
+            .buttonStyle(HomeMyPetProfileCardPressStyle())
+            .disabled(isLoading)
+            .focused($isFocused)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint(accessibilityHint)
+            .accessibilityAddTraits(.isButton)
+
+            // Lens button lives OUTSIDE the card Button so its taps are
+            // never swallowed by the outer ButtonStyle gesture recognizer.
+            // It is a ZStack sibling: hit-testing hits the topmost view
+            // first, so only the capsule-shaped area routes to lens; all
+            // other card areas fall through to the card Button below.
+            if let onOpenPureLens {
+                VStack(spacing: 0) {
+                    Spacer()
+                    HStack(spacing: PPSpace.sm) {
+                        Spacer()
+                        Button(action: onOpenPureLens) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "camera.viewfinder")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text(HomeModelAdapter.localized(
+                                    "home_pure_lens_title",
+                                    fallback: "بيور لينس"
+                                ))
+                                .font(HomeFont.bold(12))
+                            }
+                            // Transparent — the visual pill in ctaView shows through.
+                            .foregroundStyle(Color.clear)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(HomeModelAdapter.localized(
+                            "home_pure_lens_a11y",
+                            fallback: "افتح كاميرا بيور لينس"
+                        ))
+                        .accessibilityAddTraits(.isButton)
+                        // Fixed spacer matching the chevron width so the
+                        // invisible hit target sits exactly over the pill.
+                        Spacer().frame(width: 21)
+                    }
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: dynamicTypeSize.isAccessibilitySize ? 52 : 44
+                    )
+                    .padding(.horizontal, PPSpace.lg + PPSpace.md)
+                }
+                .padding(.bottom, PPSpace.lg)
+            }
         }
-        .buttonStyle(HomeMyPetProfileCardPressStyle())
-        .disabled(isLoading)
-        .focused($isFocused)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint(accessibilityHint)
-        .accessibilityAddTraits(.isButton)
     }
 
     private var cardBody: some View {
         ZStack {
             HomeHeroField(
                 accent: surfaceAccent,
-                increasedContrast: contrast == .increased
+                increasedContrast: contrast == .increased,
+                cornerGlowOpacityScale: 0.72
             )
-
-            decorativeLayer
 
             contentLayer
                 .padding(PPSpace.lg)
@@ -1077,17 +1127,17 @@ struct HomeMyPetProfileCard: View {
     }
 
     private var decorativeLayer: some View {
-        Image(systemName: "pawprint.fill")
+        Image("pawprint")
             .font(.system(size: 86, weight: .black))
             .foregroundStyle(
                 Color.ppPrimary.opacity(
-                    colorScheme == .dark ? 0.05 : 0.06
+                    colorScheme == .dark ? 0.03 : 0.04
                 )
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity,
                    alignment: .bottomTrailing)
-            .padding(.trailing, PPSpace.sm)
-            .padding(.bottom, PPSpace.sm)
+            .padding(.trailing, -PPSpace.sm)
+            .padding(.bottom, -PPSpace.sm)
             .accessibilityHidden(true)
     }
 
@@ -1178,7 +1228,7 @@ struct HomeMyPetProfileCard: View {
             avatarContent
                 .frame(width: 64, height: 64)
                 .background(
-                    Color.ppSurface.opacity(
+                    Color.ppSurfaceRaised.opacity(
                         colorScheme == .dark ? 0.10 : 0.70
                     ),
                     in: Circle()
@@ -1215,10 +1265,18 @@ struct HomeMyPetProfileCard: View {
                 accent: Color.ppPrimary
             )
         } else {
-            Image(systemName: avatarSymbol)
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(Color.ppPrimary.opacity(0.86))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Group {
+                if UIImage(named: avatarSymbol) != nil {
+                    Image(avatarSymbol)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: avatarSymbol)
+                        .font(.system(size: 30, weight: .semibold))
+                }
+            }
+            .foregroundStyle(Color.ppPrimary.opacity(0.86))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -1275,6 +1333,30 @@ struct HomeMyPetProfileCard: View {
 
             Spacer(minLength: PPSpace.sm)
 
+            if onOpenPureLens != nil {
+                // Visual-only pill. Interaction is handled by the ZStack
+                // sibling Button in `body` — see the TODO resolution above.
+                HStack(spacing: 5) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 12, weight: .bold))
+                    Text(HomeModelAdapter.localized(
+                        "home_pure_lens_title",
+                        fallback: "بيور لينس"
+                    ))
+                    .font(HomeFont.bold(12))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Color.ppPrimary)
+                        .shadow(color: Color.ppPrimary.opacity(0.35), radius: 4, x: 0, y: 2)
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+
             Image(systemName: forwardSymbol)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Color.ppPrimary)
@@ -1288,10 +1370,10 @@ struct HomeMyPetProfileCard: View {
         )
         .background(
             Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.10),
-            in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+            in: RoundedRectangle(cornerRadius: PPCorner.small + 4, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+            RoundedRectangle(cornerRadius: PPCorner.small + 4, style: .continuous)
                 .strokeBorder(
                     Color.ppPrimary.opacity(colorScheme == .dark ? 0.22 : 0.16),
                     lineWidth: 1
@@ -1555,11 +1637,11 @@ struct HomeMyPetProfileCard: View {
             return "exclamationmark.triangle.fill"
         }
         if hasProfilesWithoutDefault {
-            return "pawprint.circle.fill"
+            return "pawprint"
         }
         return "sparkles"
     }
-
+    //Image("pawprint")
     private var forwardSymbol: String {
         layoutDirection == .rightToLeft ? "arrow.left" : "arrow.right"
     }
@@ -1707,17 +1789,11 @@ private enum HomeQuickActionTone {
             // Shopping: a warmer, grounded rose.
             return .ppQuickActionShopping
         case "pet":
-            // Animals: a quieter magenta-lilac.
-            return .ppQuickActionAnimals
-        case "pharmacy":
-            // Services: muted cyan.
-            return .ppQuickActionServices
-        case "vet":
-            // Community: pale, composed blue.
-            return .ppQuickActionCommunity
+            return .ppAdoptionAccent
+        case "pharmacy", "vet":
+            return .ppCareAccent
         case "ads":
-            // Adoption: warm peach.
-            return .ppQuickActionAdoption
+            return .ppAdoptionAccent
         default:
             return Color(uiColor: action.accent)
         }
@@ -1798,7 +1874,6 @@ struct HomePriorityGrid: View {
                             onSelect: onSelect
                         )
                         .frame(width: Layout.featuredCardWidth)
-                        .modifier(HomeScrollCellReveal(ordinal: 0))
                     }
 
                     secondaryGrid
@@ -1834,7 +1909,6 @@ struct HomePriorityGrid: View {
                             onSelect: onSelect
                         )
                         .frame(maxWidth: .infinity)
-                        .modifier(HomeScrollCellReveal(ordinal: item.index + 1))
                     }
                     if row.count == 1 {
                         Spacer(minLength: 0)
@@ -2777,6 +2851,10 @@ struct HomeCategoryRail: View {
                 isAllCategory: category == nil
             )
         )
+        .homeHorizontalCellReveal(
+            ordinal: entranceOrdinal,
+            entranceAlreadyPlayed: entrancePresented
+        )
     }
 
     private func responsiveGridCell(
@@ -3295,7 +3373,10 @@ struct HomeFeedSection: View {
                                     entranceOrdinal: ordinal
                                 )
                                 .frame(width: resolvedCardWidth)
-                                .modifier(HomeScrollCellReveal(ordinal: ordinal))
+                                .homeHorizontalCellReveal(
+                                    ordinal: ordinal,
+                                    entranceAlreadyPlayed: entrancePresented
+                                )
                             }
                         }
                         .padding(.leading, PPSpace.screenMargin)
@@ -3520,7 +3601,7 @@ struct HomeInlineState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(PPSpace.lg)
-        .background(Color.ppSurface)
+        .background(Color.ppSurfaceRaised)
         .clipShape(
             RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
         )
@@ -3558,7 +3639,7 @@ private struct HomeCardSkeletonRail: View {
                     }
                     .padding(PPSpace.sm)
                     .frame(width: cardWidth, height: 328)
-                    .background(Color.ppSurface)
+                    .background(Color.ppSurfaceRaised)
                     .overlay {
                         HomeSkeletonShimmer(phaseOffset: Double(index) * 0.18)
                             .clipShape(
@@ -3689,45 +3770,6 @@ private struct HomePetPillCascade: ViewModifier {
     }
 }
 
-/// Scroll-triggered reveal for universal feed-section cards.
-/// When a card lazy-loads during horizontal scrolling, it lifts gently from
-/// below with a brief opacity ramp — making the appearance feel intentional
-/// rather than abrupt. Cards already visible at layout time still benefit
-/// from the one-shot entrance.
-struct HomeScrollCellReveal: ViewModifier {
-    let ordinal: Int
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var appeared = false
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(reduceMotion || appeared ? 1 : 0)
-            .offset(y: reduceMotion || appeared ? 0 : 10)
-            .scaleEffect(
-                reduceMotion || appeared ? 1 : 0.97,
-                anchor: .bottom
-            )
-            .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.12)
-                    : .spring(
-                        response: 0.48,
-                        dampingFraction: 0.84,
-                        blendDuration: 0.06
-                    )
-                    .delay(Double(min(ordinal, 3)) * 0.035),
-                value: appeared
-            )
-            .onAppear {
-                guard !appeared else { return }
-                DispatchQueue.main.async {
-                    appeared = true
-                }
-            }
-    }
-}
-
 /// Traveling shimmer overlay for skeleton placeholder cards.
 /// A translucent gradient sweeps across the card surface to communicate
 /// loading progress. Each card receives a phase offset so the wave
@@ -3770,6 +3812,132 @@ private struct HomeSkeletonShimmer: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
+    }
+}
+
+// MARK: - HomeHorizontalCellReveal — willDisplayCell equivalent
+
+/// World-class scroll-in animation for cells inside horizontal rails.
+///
+/// This is the SwiftUI equivalent of `collectionView(_:willDisplay:forItemAt:)`.
+/// It fires on `.onAppear`, which is guaranteed to trigger only when a
+/// `LazyHStack` cell is about to become visible — exactly the right moment.
+///
+/// **Dual-phase intelligence:**
+/// - If `entranceAlreadyPlayed == false` the cell is being born during the
+///   initial section entrance stagger; the existing `ppUniversalHomeShelfEntrance` /
+///   `HomeMainKindShelfEntrance` systems own those cells. This modifier
+///   immediately marks itself revealed and stays fully transparent.
+/// - If `entranceAlreadyPlayed == true` the cell has lazily entered during
+///   horizontal scrolling. This modifier stages it at the leading edge
+///   (opacity 0, scaled down, offset toward the leading side) and then
+///   springs it into its settled pose with a brief staggered delay.
+///
+/// **Motion design:**
+///   • Scale anchor is semantic-leading so cards "grow" from where they enter
+///   • Horizontal offset follows layout direction (LTR: cell enters from right → right offset; RTL: left offset)
+///   • Slight upward lift (+7 pt) so the card feels like it surfaces
+///   • Spring: response 0.40, damping 0.76 — snappy, alive, never bouncy enough to clash with content
+///   • Stagger cap: ordinal % 3 * 0.032s — fast scroll stays fluid
+///   • Reduce Motion: opacity-only crossfade, no spatial transforms
+private struct HomeHorizontalCellReveal: ViewModifier {
+    let ordinal: Int
+    /// Pass `entrancePresented` from the parent section. When it's `true`,
+    /// the one-shot entrance has completed and this modifier handles reveals.
+    let entranceAlreadyPlayed: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var revealed = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacityValue)
+            .scaleEffect(scaleValue, anchor: semanticLeadingAnchor)
+            .offset(x: offsetX, y: offsetY)
+            .animation(revealAnimation, value: revealed)
+            .onAppear { handleAppear() }
+    }
+
+    // MARK: Render values
+
+    private var isStaged: Bool { !revealed && !reduceMotion }
+
+    private var opacityValue: Double {
+        guard entranceAlreadyPlayed else { return 1 }
+        return revealed ? 1 : 0
+    }
+
+    private var scaleValue: CGFloat {
+        guard entranceAlreadyPlayed, isStaged else { return 1 }
+        return 0.95
+    }
+
+    private var offsetX: CGFloat {
+        guard entranceAlreadyPlayed, isStaged else { return 0 }
+        // Cards enter from the leading direction, so they start offset
+        // toward the trailing edge and slide into place.
+        let sign: CGFloat = layoutDirection == .rightToLeft ? -1 : 1
+        return sign * 14
+    }
+
+    private var offsetY: CGFloat {
+        0
+    }
+
+    private var semanticLeadingAnchor: UnitPoint {
+        layoutDirection == .rightToLeft
+            ? UnitPoint(x: 1, y: 0.5)
+            : UnitPoint(x: 0, y: 0.5)
+    }
+
+    private var revealAnimation: Animation {
+        guard entranceAlreadyPlayed else { return .easeOut(duration: 0) }
+        if reduceMotion { return .easeOut(duration: 0.18) }
+        let staggerDelay = Double(ordinal % 3) * 0.032
+        return .spring(
+            response: 0.40,
+            dampingFraction: 0.76,
+            blendDuration: 0.06
+        )
+        .delay(staggerDelay)
+    }
+
+    // MARK: onAppear
+
+    private func handleAppear() {
+        guard !revealed else { return }
+        if !entranceAlreadyPlayed {
+            // Initial entrance window — the section entrance modifier owns
+            // this cell. Mark ourselves settled so we stay transparent.
+            revealed = true
+            return
+        }
+        // Scroll-in: fire on the next run-loop to guarantee the staged pose
+        // is committed to the render tree before the spring begins.
+        DispatchQueue.main.async {
+            guard !revealed else { return }
+            revealed = true
+        }
+    }
+}
+
+private extension View {
+    /// Apply the scroll-in reveal animation to a horizontal rail cell.
+    /// - Parameters:
+    ///   - ordinal: The cell's index inside its `ForEach`. Used for stagger.
+    ///   - entranceAlreadyPlayed: Pass the parent section's `entrancePresented`
+    ///     flag. When `true`, this modifier handles scroll-in reveals.
+    func homeHorizontalCellReveal(
+        ordinal: Int,
+        entranceAlreadyPlayed: Bool
+    ) -> some View {
+        modifier(
+            HomeHorizontalCellReveal(
+                ordinal: ordinal,
+                entranceAlreadyPlayed: entranceAlreadyPlayed
+            )
+        )
     }
 }
 

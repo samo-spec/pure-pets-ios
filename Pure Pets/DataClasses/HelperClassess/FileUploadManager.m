@@ -10,7 +10,10 @@
 
 #import <UserNotifications/UserNotifications.h>
 
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 @implementation FileUploadManager
 
 - (instancetype)init {

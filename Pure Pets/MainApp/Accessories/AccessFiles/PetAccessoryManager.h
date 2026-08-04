@@ -9,7 +9,7 @@
 // PetAccessoryManager.h
 
 #import <Foundation/Foundation.h>
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 #import "PetAccessory.h"
 #import "CartItem.h"
 NS_ASSUME_NONNULL_BEGIN

@@ -1019,7 +1019,7 @@ struct PPMarketplaceCurrentDock: View {
                             )
                     }
                 }
-                .padding(.leading, 0)
+                .padding(.leading, showsPinnedBackControl ? 0 : horizontalInset)
                 .padding(.trailing, horizontalInset)
             }
             .frame(maxWidth: .infinity)

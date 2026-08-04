@@ -6,8 +6,9 @@
 //
 
 #import "AppClasses.h"
-
-#if __has_include(<SSZipArchive/SSZipArchive.h>)
+@import Firebase;
+ @import FirebaseStorage;
+ #if __has_include(<SSZipArchive/SSZipArchive.h>)
 #import <SSZipArchive/SSZipArchive.h>
 #endif
 

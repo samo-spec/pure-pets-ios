@@ -19,6 +19,7 @@ enum HomeRepositoryEvent {
         premiumCareVisible: Bool,
         novaFloatingVisible: Bool,
         backgroundGlowsFaded: Bool,
+        pureLensVisible: Bool,
         fromCache: Bool
     )
     case location(
@@ -75,7 +76,8 @@ final class HomeRepository {
         bridge.start()
     }
 
-    func refresh() {
+    @discardableResult
+    func refresh() -> Bool {
         bridge.refresh()
     }
 
@@ -163,6 +165,7 @@ final class HomeRepository {
             premiumCareVisible,
             novaFloatingVisible,
             backgroundGlowsFaded,
+            pureLensVisible,
             fromCache in
             self?.forward(
                 .homeConfig(
@@ -171,6 +174,7 @@ final class HomeRepository {
                     premiumCareVisible: premiumCareVisible,
                     novaFloatingVisible: novaFloatingVisible,
                     backgroundGlowsFaded: backgroundGlowsFaded,
+                    pureLensVisible: pureLensVisible,
                     fromCache: fromCache
                 )
             )

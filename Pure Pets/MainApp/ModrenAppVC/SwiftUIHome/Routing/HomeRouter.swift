@@ -1,5 +1,7 @@
 import Foundation
 import UIKit
+import PureLens
+
 
 @MainActor
 final class HomeRouter {
@@ -51,6 +53,40 @@ final class HomeRouter {
 
     func openPetProfiles() {
         owner?.pp_homeOpenPetProfiles()
+    }
+
+    func openPureLens(pet: HomePetModel? = nil) {
+        if #available(iOS 16.0, *) {
+            guard let owner = owner else { return }
+            let petName = pet?.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let petID = pet?.id.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !petID.isEmpty
+            else {
+                owner.pp_homeOpenPetProfiles()
+                return
+            }
+            let localeIdentifier = Language.currentLanguageCode() ?? Locale.current.identifier
+
+            let module: PurePetsEyesModule = .purePetsCameraPreview(
+                localeIdentifier: localeIdentifier,
+                contextProvider: {
+                    LensContext(
+                        activePetID: petID,
+                        activePetName: (petName?.isEmpty == false) ? petName : nil,
+                        petIdentityConfidence: nil,
+                        proactiveHint: nil,
+                        proactiveHintExpiresAt: nil,
+                        localeIdentifier: localeIdentifier
+                    )
+                }
+            )
+
+            let eyesVC = PurePetsEyesUIKit.makeViewController(module: module)
+            eyesVC.modalPresentationStyle = .fullScreen
+            owner.present(eyesVC, animated: true, completion: nil)
+        } else {
+            owner?.pp_homeOpenPetProfiles()
+        }
     }
 
     func editPet(_ pet: HomePetModel) {

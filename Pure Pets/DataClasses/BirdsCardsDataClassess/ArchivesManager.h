@@ -4,7 +4,6 @@
 //
 
 #import <Foundation/Foundation.h>
-@import FirebaseFirestore;
 
 @class ArchiveModel;
 @class ArchiveDetailsModel;

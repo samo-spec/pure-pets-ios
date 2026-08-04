@@ -10,7 +10,6 @@
 
 #import <Foundation/Foundation.h>
 #import "EnumValues.h"
-#import "PPBannerCell.h"
 NS_ASSUME_NONNULL_BEGIN
 
 @class MainBannerModel;
@@ -36,6 +35,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL hideSecondaryButton;
 
 @property (nonatomic, copy, nullable) NSURL *characterImageURL;
+/// Product-first alias used by the SwiftUI carousel. Kept separate from the legacy field name at the API boundary.
+@property (nonatomic, copy, nullable) NSURL *productImageURL;
 @property (nonatomic, copy, nullable) NSURL *backgroundImageURL;
 @property (nonatomic, copy) NSString *startColorHex;
 @property (nonatomic, copy) NSString *endColorHex;

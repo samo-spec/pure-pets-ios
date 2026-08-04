@@ -9,6 +9,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
 #import "AddNewAd.h"
+#import "MainKindsModel.h"
 #import "PetAd.h"
 NS_ASSUME_NONNULL_BEGIN
 

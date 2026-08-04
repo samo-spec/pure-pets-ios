@@ -58,6 +58,7 @@ typedef NS_ENUM(NSInteger, PPHomeBridgeLocationState) {
                                                                     BOOL premiumCareVisible,
                                                                     BOOL novaFloatingVisible,
                                                                     BOOL backgroundGlowsFaded,
+                                                                    BOOL pureLensVisible,
                                                                     BOOL fromCache);
 @property (nonatomic, copy, nullable) void (^locationDidChange)(PPHomeBridgeLocationState state,
                                                                   NSString *areaName,
@@ -77,8 +78,9 @@ typedef NS_ENUM(NSInteger, PPHomeBridgeLocationState) {
 - (void)start;
 
 /// Performs deduplicated one-shot refreshes and restarts the order listener
-/// only when the authenticated UID changed.
-- (void)refresh;
+/// only when the authenticated UID changed. Returns `NO` when an equivalent
+/// refresh is already inside the bridge's short deduplication window.
+- (BOOL)refresh;
 
 /// Removes all listener registrations, notification observers, and location
 /// work owned by this bridge.

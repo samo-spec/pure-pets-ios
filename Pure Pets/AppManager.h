@@ -4,7 +4,8 @@
 //
 //  Created by Mohammed Ahmed on 14/12/2024.
 //
-#import <FirebaseFirestore/FirebaseFirestore.h>
+@class FIRFirestore;
+@protocol FIRListenerRegistration;
  
  
 #import <UserNotifications/UserNotifications.h>

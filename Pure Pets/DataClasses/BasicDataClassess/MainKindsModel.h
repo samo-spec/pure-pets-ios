@@ -7,7 +7,8 @@
 
 
 #import "SubKindModel.h"
-#import <FirebaseFirestore/FirebaseFirestore.h>
+@class FIRDocumentSnapshot;
+@protocol FIRListenerRegistration;
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PPAccessoryCategoryModel : NSObject<XLFormOptionObject>

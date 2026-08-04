@@ -124,6 +124,7 @@ enum HomeModelAdapter {
         premiumCareVisible: Bool,
         novaFloatingVisible: Bool,
         backgroundGlowsFaded: Bool,
+        pureLensVisible: Bool,
         fromCache: Bool
     ) -> HomeConfigModel {
         var seen = Set<Int>()
@@ -169,6 +170,7 @@ enum HomeModelAdapter {
             premiumCareVisible: premiumCareVisible,
             novaFloatingVisible: novaFloatingVisible,
             backgroundGlowsFaded: backgroundGlowsFaded,
+            pureLensVisible: pureLensVisible,
             cameFromCache: fromCache
         )
     }

@@ -3,7 +3,10 @@
 #import "PetAccessoryManager.h"
 #import "UserManager.h"
 @import FirebaseFunctions;
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpdatedNotification";
 static NSString * const PPSaveForLaterErrorDomain = @"com.purepets.savedForLater";
 

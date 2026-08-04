@@ -15,6 +15,13 @@
 #import "PPFunc.h"
 #import "PPImageCollection.h"
 
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
+
+
+
 static NSString * const PPAdManagerErrorDomain = @"PetAdManagerError";
 static NSString * const PPGeoHashAlphabet = @"0123456789bcdefghjkmnpqrstuvwxyz";
 static CLLocationDistance const PPNearbyEarthRadiusMeters = 6371000.0;

@@ -654,9 +654,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     // card radius. A sub-point explicit value keeps the full-screen field square.
     ambientBackgroundView.overrideCornerRadius = 0.51;
     ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleBBBaseBackground;
-    // Seed the field with Home's quiet-lilac atmosphere. The theme pass below
-    // resolves it into a lighter lilac mist for the current appearance.
-    ambientBackgroundView.accentColorOverride = [UIColor ppQuietLilac];
+    ambientBackgroundView.accentColorOverride = [UIColor ppPremiumAccent];
     ambientBackgroundView.overrideSurfaceColor = [UIColor ppElevatedSurface];
     // Begin on the exact solid LaunchScreen canvas. The authored atmosphere
     // arrives only after UIKit owns the frame, avoiding a launch-boundary flash.
@@ -844,16 +842,17 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     UIColor *secondaryTextColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
     UIColor *elevatedSurface = [[UIColor ppElevatedSurface]
         resolvedColorWithTraitCollection:self.traitCollection];
-    UIColor *homeQuietLilac = [[UIColor ppQuietLilac]
+    UIColor *homeSoftRose = [[UIColor ppSoftRose]
         resolvedColorWithTraitCollection:self.traitCollection];
-    // 58% Home lilac + 42% elevated surface keeps the hue recognizable while
-    // lifting it into the near-white range requested for this identity screen.
-    UIColor *lightLilacMist = [PPColorUtils blendColor:homeQuietLilac
-                                             withColor:elevatedSurface
-                                                factor:0.58];
+    UIColor *premiumGold = [[UIColor ppPremiumAccent]
+        resolvedColorWithTraitCollection:self.traitCollection];
+    // Blend premium gold accent into elevated surface mist for splash identity
+    UIColor *goldMist = [PPColorUtils blendColor:premiumGold
+                                       withColor:homeSoftRose
+                                          factor:0.58];
 
     self.view.backgroundColor = canvasColor;
-    self.ambientBackgroundView.accentColorOverride = lightLilacMist;
+    self.ambientBackgroundView.accentColorOverride = goldMist;
     self.ambientBackgroundView.overrideSurfaceColor = elevatedSurface;
     [self.ambientBackgroundView reapplyPalette];
     [self.livingMarkView pp_applyTheme];

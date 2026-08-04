@@ -29,7 +29,6 @@
 #import "PetAdManager.h"
 #import "AdoptPetManager.h"
 #import "AdoptPetModel.h"
-#import "AdoptPetDetailsViewController.h"
 #import "PPPetCareVetViewrVC.h"
 #import "PPOverlayCoordinator.h"
 #import "PPChatFeedbackManager.h"

@@ -24,7 +24,7 @@
 #import "AddNewAd.h"
 #import "AddNewAccessory.h"
 #import "AccessViewerVC.h"
-#import "AdoptPetDetailsViewController.h"
+#import <Pure_Pets-Swift.h>
 
 static CGFloat const PPMyItemsColumnHeight = 332.0;
 static CGFloat const PPMyItemsGridInteritemSpacing = 10.0;

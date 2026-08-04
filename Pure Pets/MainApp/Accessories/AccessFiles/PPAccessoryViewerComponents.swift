@@ -211,9 +211,16 @@ struct PPAccessoryPressStyle: ButtonStyle {
     }
 }
 
+/// Accessory viewer's atmospheric canvas.
+///
+/// Overrides the shared `WorldGlassBackground` dominant tint with the adoption
+/// quick-action accent (`ppQuickActionAdoption`) so the viewer's ambient glow
+/// reads in the same warm terracotta-coral as the adoption surfaces it links to.
+/// Companion environmental hues (teal, champagne, mist) are intentionally left
+/// to the component defaults to preserve the layered, living-canvas depth.
 struct PPHero: View {
     var body: some View {
-        WorldGlassBackground()
+        WorldGlassBackground(tint: .ppQuickActionAdoption)
     }
 }
 

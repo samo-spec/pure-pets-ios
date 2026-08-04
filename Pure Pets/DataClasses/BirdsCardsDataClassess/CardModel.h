@@ -7,7 +7,7 @@
 
 #import "ImageModel.h"
 #import "SubKindModel.h"
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 #import "XLFormOptionsObject.h"
 #import "subKindItemsModel.h"
 #import "FileModel.h"

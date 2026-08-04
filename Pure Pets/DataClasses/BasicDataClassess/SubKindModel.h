@@ -6,7 +6,8 @@
 //
 
 
-#import <FirebaseFirestore/FirebaseFirestore.h>
+@class FIRDocumentSnapshot;
+@protocol FIRListenerRegistration;
 #import "subSubKindModel.h"
 #import "XLFormOptionsObject.h"
 NS_ASSUME_NONNULL_BEGIN

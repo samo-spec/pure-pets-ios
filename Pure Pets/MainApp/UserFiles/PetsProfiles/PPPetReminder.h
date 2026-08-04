@@ -7,7 +7,7 @@
 
 
 #import <Foundation/Foundation.h>
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
 
 typedef NS_ENUM(NSInteger, PPPetReminderType) {
     PPPetReminderTypeVaccination = 0,

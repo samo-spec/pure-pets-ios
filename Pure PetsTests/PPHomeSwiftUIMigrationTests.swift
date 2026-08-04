@@ -16,6 +16,7 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
             premiumCareVisible: true,
             novaFloatingVisible: false,
             backgroundGlowsFaded: true,
+            pureLensVisible: true,
             fromCache: false
         )
 
@@ -40,6 +41,7 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
             premiumCareVisible: true,
             novaFloatingVisible: true,
             backgroundGlowsFaded: false,
+            pureLensVisible: true,
             fromCache: true
         )
 
@@ -64,6 +66,7 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
             premiumCareVisible: true,
             novaFloatingVisible: true,
             backgroundGlowsFaded: false,
+            pureLensVisible: true,
             fromCache: false
         )
 
@@ -88,6 +91,7 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
             premiumCareVisible: false,
             novaFloatingVisible: true,
             backgroundGlowsFaded: true,
+            pureLensVisible: true,
             fromCache: false
         )
 

@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-@import FirebaseFirestore;
+@protocol FIRListenerRegistration;
 #import "CageModel.h"
 #import "ChildModel.h"
 

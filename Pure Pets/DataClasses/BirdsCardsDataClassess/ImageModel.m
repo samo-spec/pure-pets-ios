@@ -6,7 +6,10 @@
 //
 
 #import "ImageModel.h"
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 
 @implementation ImageModel
 

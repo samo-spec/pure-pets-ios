@@ -53,7 +53,8 @@ struct HomeHeroView: View {
         return ZStack {
             HomeHeroField(
                 accent: accent,
-                increasedContrast: contrast == .increased
+                increasedContrast: contrast == .increased,
+                cornerGlowOpacityScale: 0.72
             )
 
             VStack(spacing: 0) {
@@ -182,7 +183,6 @@ struct HomeHeroView: View {
 
             VStack(alignment: .leading, spacing: PPSpace.xs) {
                 primaryButton(page, accent: accent)
-                secondaryButton(page)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, PPSpace.xs)
@@ -307,12 +307,6 @@ struct HomeHeroView: View {
                 identity: HomeHeroPagePhase.identity
             )
         )
-    }
-
-    @ViewBuilder
-    private func secondaryButton(_ page: HomeHeroPage) -> some View {
-        // Temporarily hidden per user request
-        EmptyView()
     }
 
     @ViewBuilder
@@ -623,6 +617,7 @@ private struct HomeHeroFloatingPlate: View {
     let secondarySymbol: String
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var floating = false
 
@@ -634,7 +629,7 @@ private struct HomeHeroFloatingPlate: View {
                         LinearGradient(
                             colors: [
                                 accent.opacity(0.30),
-                                Color.ppSurface.opacity(0.94),
+                                Color.ppSurfaceRaised.opacity(0.94),
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -648,7 +643,7 @@ private struct HomeHeroFloatingPlate: View {
                         .stroke(
                             contrast == .increased
                                 ? Color.ppTextPrimary.opacity(0.62)
-                                : Color.white.opacity(0.82),
+                                : (colorScheme == .dark ? Color.white.opacity(0.16) : Color.white.opacity(0.82)),
                             lineWidth: contrast == .increased ? 1.5 : 1
                         )
                     }
@@ -864,13 +859,18 @@ private struct HomeHeroFloatingPlate: View {
             .font(.system(size: 15, weight: .bold))
             .foregroundStyle(accent)
             .frame(width: side, height: side)
-            .background(Color.ppSurface.opacity(0.92), in: RoundedRectangle(
+            .background(Color.ppSurfaceRaised.opacity(0.92), in: RoundedRectangle(
                 cornerRadius: 14,
                 style: .continuous
             ))
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.white.opacity(0.78), lineWidth: 1)
+                    .stroke(
+                        contrast == .increased
+                            ? Color.ppTextPrimary.opacity(0.62)
+                            : (colorScheme == .dark ? Color.white.opacity(0.14) : Color.white.opacity(0.78)),
+                        lineWidth: 1
+                    )
             }
             .shadow(
                 color: Color.black.opacity(contrast == .increased ? 0 : 0.08),
@@ -894,6 +894,7 @@ private struct HomeHeroFloatingPlate: View {
 struct HomeHeroField: View {
     let accent: Color
     let increasedContrast: Bool
+    let cornerGlowOpacityScale: Double
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -957,10 +958,10 @@ struct HomeHeroField: View {
                             colorScheme == .dark ? 0.12 : 0.34
                         ),
                         accent.opacity(
-                            colorScheme == .dark ? 0.22 : 0.16
+                            (colorScheme == .dark ? 0.22 : 0.16) * cornerGlowOpacityScale
                         ),
                         accent.opacity(
-                            colorScheme == .dark ? 0.075 : 0.052
+                            (colorScheme == .dark ? 0.075 : 0.052) * cornerGlowOpacityScale
                         ),
                         Color.clear,
                     ],
@@ -977,10 +978,10 @@ struct HomeHeroField: View {
                             colorScheme == .dark ? 0.10 : 0.30
                         ),
                         accent.opacity(
-                            colorScheme == .dark ? 0.19 : 0.14
+                            (colorScheme == .dark ? 0.19 : 0.14) * cornerGlowOpacityScale
                         ),
                         accent.opacity(
-                            colorScheme == .dark ? 0.065 : 0.044
+                            (colorScheme == .dark ? 0.065 : 0.044) * cornerGlowOpacityScale
                         ),
                         Color.clear,
                     ],
@@ -1184,11 +1185,11 @@ struct HomeHeroBorder: View {
         return AnyShapeStyle(
             LinearGradient(
                 colors: [
-                    Color.white.opacity(darkMode ? 0.66 : 0.98),
-                    Color.white.opacity(darkMode ? 0.52 : 0.90),
-                    accent.opacity(darkMode ? 0.12 : 0.07),
-                    Color.white.opacity(darkMode ? 0.46 : 0.84),
-                    Color.white.opacity(darkMode ? 0.60 : 0.96),
+                    darkMode ? Color.white.opacity(0.16) : Color.white.opacity(0.98),
+                    darkMode ? Color.white.opacity(0.12) : Color.white.opacity(0.90),
+                    accent.opacity(darkMode ? 0.18 : 0.07),
+                    darkMode ? Color.white.opacity(0.10) : Color.white.opacity(0.84),
+                    darkMode ? Color.white.opacity(0.14) : Color.white.opacity(0.96),
                 ],
                 startPoint: layoutDirection == .rightToLeft
                     ? .topTrailing

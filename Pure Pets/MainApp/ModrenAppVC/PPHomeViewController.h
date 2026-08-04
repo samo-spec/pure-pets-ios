@@ -45,6 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
                            source:(PPInputSource)source
     NS_SWIFT_NAME(pp_homeOpenDeepLinkTarget(_:mainKind:source:));
 - (void)pp_homeOpenPetProfiles;
+- (void)pp_homeOpenPureLens;
 - (void)pp_homeOpenPetEditor:(nullable NSObject *)pet
     NS_SWIFT_NAME(pp_homeOpenPetEditor(_:));
 - (void)pp_homeOpenOrder:(NSObject *)order

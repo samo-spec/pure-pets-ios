@@ -9,15 +9,13 @@
 #import <Security/Security.h> // Required for Key management
 #import "FTPopOverMenu.h"
 #import "CountryCodeModel.h"
-@import Firebase;
-@import FirebaseCore;
-@import FirebaseStorage;
 #import "Watermark.h"
 
 #import "ChatThreadModel.h"
 @class CountryCodeModel;
 @class ArchiveModel;
 @class CityModel;
+@class FIRStorageReference;
 
 // PPShortNSLog.h
 #ifdef DEBUG

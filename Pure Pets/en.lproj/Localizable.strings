@@ -4183,3 +4183,14 @@
 "pet_ad_trust_seller_safety" = "Keep agreements and important details inside Pure Pets chat.";
 "pet_ad_trust_sign_in_action" = "Sign in to contact the advertiser";
 "pet_ad_trust_ask_seller" = "Ask about this pet";
+
+"pp_promo_shop_now" = "Shop now";
+"pp_promo_offer" = "Offer";
+"pp_promo_page_format" = "Page %ld of %ld";
+"pp_promo_loading" = "Loading offers";
+"pp_promo_unavailable" = "Offers are temporarily unavailable.";
+"pp_promo_retry" = "Try again";
+"pp_promo_carousel" = "Promotional offers";
+"home_pure_lens_title" = "Pure Lens";
+"home_pure_lens_a11y" = "Open Pure Lens camera";
+"pp_promo_carousel" = "Promotional offers";

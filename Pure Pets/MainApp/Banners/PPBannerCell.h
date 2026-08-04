@@ -6,6 +6,11 @@
 //
 
 
+#import <UIKit/UIKit.h>
+
+@class PPBannerView;
+@class PPBannerViewModel;
+
 @protocol BannerTapsCellDelegate <NSObject>
 -(void)didTapOnBanner_cell:(PPBannerViewModel *)pannerViewModel;
 @end

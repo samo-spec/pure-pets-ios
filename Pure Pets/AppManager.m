@@ -9,7 +9,10 @@
 #import "AppDelegate.h"
 #import "FBLPromises.h"
 #import "Pure_Pets-Swift.h"
-
+ @import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 @interface AppManager()
 
 @end

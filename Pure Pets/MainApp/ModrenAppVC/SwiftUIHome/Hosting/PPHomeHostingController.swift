@@ -94,6 +94,10 @@ public final class PPHomeHostingController: UIViewController {
         store.handleReselection()
     }
 
+    @objc public func openPureLens() {
+        store.openPureLens()
+    }
+
     @objc public func useAutomaticLocation() {
         store.requestAutomaticLocation()
     }

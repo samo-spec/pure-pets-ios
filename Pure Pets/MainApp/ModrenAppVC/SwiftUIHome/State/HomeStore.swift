@@ -1,11 +1,12 @@
 import Foundation
+import os
 import SwiftUI
 import UIKit
 
 /// Stable raw values from the legacy `PPHomeSection` contract. Swift imports
 /// that Objective-C enum differently across toolchains, while HomeConfig
 /// persists these exact numeric identifiers.
-private enum HomeLegacySectionID: Int {
+private enum HomeLegacySectionID: Int, CaseIterable {
     case hero = 0
     case quickActions = 1
     case currentOrders = 2
@@ -56,6 +57,7 @@ private struct HomeSectionCopy {
 final class HomeStore: ObservableObject {
     @Published private(set) var state: HomeViewState
     @Published private(set) var scrollToTopGeneration = 0
+    @Published private(set) var sectionDataRevisions: [Int: Int] = [:]
 
     let router: HomeRouter
 
@@ -73,6 +75,7 @@ final class HomeStore: ObservableObject {
     private var buyAgainAccessories: [PetAccessory] = []
     private var categoryAccessories: [Int: [PetAccessory]] = [:]
     private var categoryAccessoryRequests = Set<Int>()
+    private var staleCategoryAccessoryIDs = Set<Int>()
     private var showingRecentNearbyFallback = false
 
     private var loadedSources = Set<Int>()
@@ -91,9 +94,27 @@ final class HomeStore: ObservableObject {
     private var hasPublishedLoadedState = false
     private var refreshRequestGeneration = 0
     private var refreshCompletionPending = false
+    private var refreshPendingSources = Set<Int>()
+    private var refreshUpdatedSectionIDs = Set<Int>()
+    private var refreshTimeoutTask: Task<Void, Never>?
+    private var refreshSignpostID: OSSignpostID?
 
     private static let selectedMainKindKey = "PPHome.lastSelectedMainKindID.v1"
     private static let selectedPetKey = "pp.home.selectedPetID.v2"
+    private static let refreshLog = OSLog(
+        subsystem: "com.purepets.ios",
+        category: "HomeReload"
+    )
+    private static let trackedRefreshSources: Set<Int> = [
+        PPHomeBridgeSource.mainKinds.rawValue,
+        PPHomeBridgeSource.accessories.rawValue,
+        PPHomeBridgeSource.food.rawValue,
+        PPHomeBridgeSource.advertisements.rawValue,
+        PPHomeBridgeSource.nearbyAdvertisements.rawValue,
+        PPHomeBridgeSource.services.rawValue,
+        PPHomeBridgeSource.petProfiles.rawValue,
+        PPHomeBridgeSource.petReminders.rawValue,
+    ]
 
     init(
         owner: PPHomeViewController,
@@ -118,6 +139,7 @@ final class HomeStore: ObservableObject {
 
     deinit {
         heroRotationTask?.cancel()
+        refreshTimeoutTask?.cancel()
         observers.forEach(NotificationCenter.default.removeObserver)
     }
 
@@ -176,46 +198,29 @@ final class HomeStore: ObservableObject {
     }
 
     func refresh() async {
-        guard state.phase != .refreshing else { return }
-        refreshRequestGeneration += 1
-        let generation = refreshRequestGeneration
-        refreshCompletionPending = true
-        state.phase = .refreshing
-        repository.refresh()
-
-        let timeout = Date().addingTimeInterval(8)
-        while refreshCompletionPending,
-              generation == refreshRequestGeneration,
-              Date() < timeout,
-              !Task.isCancelled {
-            try? await Task<Never, Never>.sleep(nanoseconds: 100_000_000)
-        }
-
-        guard !Task.isCancelled else {
-            if generation == refreshRequestGeneration {
-                refreshCompletionPending = false
-            }
-            return
-        }
-        guard generation == refreshRequestGeneration,
-              refreshCompletionPending
+        guard !refreshCompletionPending,
+              let generation = beginTrackedRefresh()
         else {
             return
         }
-        refreshCompletionPending = false
-        state.phase = hasAnyContent
-            ? .partial
-            : .failed(message: HomeModelAdapter.localized(
-                "home_refresh_interrupted",
-                fallback: "Refresh was interrupted. Try again."
-            ))
+
+        while refreshCompletionPending,
+              generation == refreshRequestGeneration,
+              !Task.isCancelled {
+            try? await Task<Never, Never>.sleep(nanoseconds: 100_000_000)
+        }
     }
 
     func retryAll() {
+        guard !refreshCompletionPending else { return }
+        let previousErrors = sourceErrors
         sourceErrors.removeAll()
         rebuildState()
-        state.phase = hasAnyContent ? .refreshing : .coldLoading
-        repository.refresh()
+        guard beginTrackedRefresh() != nil else {
+            sourceErrors = previousErrors
+            rebuildState()
+            return
+        }
     }
 
     func retry(section: HomeSectionID) {
@@ -229,6 +234,10 @@ final class HomeStore: ObservableObject {
     func handleReselection() {
         scrollToTopGeneration += 1
         repository.refresh()
+    }
+
+    func sectionDataRevision(for rawSectionID: Int) -> Int {
+        sectionDataRevisions[rawSectionID, default: 0]
     }
 
     func selectHero(index: Int) {
@@ -354,6 +363,11 @@ final class HomeStore: ObservableObject {
         router.openPetProfiles()
     }
 
+    @objc func openPureLens() {
+        let pet = selectedPet
+        router.openPureLens(pet: pet)
+    }
+
     func editSelectedPet() {
         guard let pet = selectedPet else {
             router.openPetProfiles()
@@ -476,13 +490,11 @@ final class HomeStore: ObservableObject {
     }
 
     private func handle(_ event: HomeRepositoryEvent) {
-        let completesRefresh: Bool
-        switch event {
-        case .connectivity:
-            completesRefresh = false
-        default:
-            completesRefresh = true
-        }
+        let settledSource = sourceRawValue(for: event)
+        let affectedSectionIDs = settledSource.map(sectionIDsAffected) ?? []
+        let previousFingerprints = sectionPresentationFingerprints(
+            for: affectedSectionIDs
+        )
 
         switch event {
         case let .mainKinds(models):
@@ -493,7 +505,11 @@ final class HomeStore: ObservableObject {
             markLoaded(PPHomeBridgeSource.promotions.rawValue)
         case let .accessories(models):
             accessories = models
-            categoryAccessories.removeAll()
+            // Keep scoped category results visible while refreshing them.
+            // Clearing this cache here caused Home to oscillate from the
+            // scoped shelf back to generic products after returning from
+            // Marketplace.
+            staleCategoryAccessoryIDs.formUnion(categoryAccessories.keys)
             markLoaded(PPHomeBridgeSource.accessories.rawValue)
             resolveBuyAgain()
         case let .food(models):
@@ -525,6 +541,7 @@ final class HomeStore: ObservableObject {
             premiumCareVisible,
             novaFloatingVisible,
             backgroundGlowsFaded,
+            pureLensVisible,
             fromCache
         ):
             state.config = HomeModelAdapter.config(
@@ -533,6 +550,7 @@ final class HomeStore: ObservableObject {
                 premiumCareVisible: premiumCareVisible,
                 novaFloatingVisible: novaFloatingVisible,
                 backgroundGlowsFaded: backgroundGlowsFaded,
+                pureLensVisible: pureLensVisible,
                 fromCache: fromCache
             )
             if fromCache && !hasPublishedLoadedState {
@@ -562,13 +580,12 @@ final class HomeStore: ObservableObject {
         state.languageCode = Language.currentLanguageCode() ?? "ar"
         state.isRightToLeft = Language.isRTL()
         rebuildState()
-        if completesRefresh && refreshCompletionPending {
-            refreshCompletionPending = false
-            UIAccessibility.post(
-                notification: .announcement,
-                argument: HomeModelAdapter.localized(
-                    "home_pulse_refresh_complete_a11y",
-                    fallback: "Home refreshed"
+        if let settledSource {
+            publishOrQueueSectionReloads(
+                for: settledSource,
+                changedSectionIDs: changedSectionIDs(
+                    in: affectedSectionIDs,
+                    comparedWith: previousFingerprints
                 )
             )
         }
@@ -579,19 +596,410 @@ final class HomeStore: ObservableObject {
         sourceErrors.removeValue(forKey: source)
     }
 
+    private func beginTrackedRefresh() -> Int? {
+        refreshRequestGeneration += 1
+        let generation = refreshRequestGeneration
+        refreshCompletionPending = true
+        refreshPendingSources = Self.trackedRefreshSources
+        refreshUpdatedSectionIDs.removeAll(keepingCapacity: true)
+        state.phase = .refreshing
+
+        let signpostID = OSSignpostID(log: Self.refreshLog)
+        refreshSignpostID = signpostID
+        os_signpost(
+            .begin,
+            log: Self.refreshLog,
+            name: "home.reload",
+            signpostID: signpostID,
+            "generation=%d sources=%d",
+            generation,
+            refreshPendingSources.count
+        )
+
+        guard repository.refresh() else {
+            refreshCompletionPending = false
+            refreshPendingSources.removeAll(keepingCapacity: true)
+            updateScreenPhase()
+            os_signpost(
+                .end,
+                log: Self.refreshLog,
+                name: "home.reload",
+                signpostID: signpostID,
+                "generation=%d accepted=0",
+                generation
+            )
+            refreshSignpostID = nil
+            return nil
+        }
+
+        refreshTimeoutTask?.cancel()
+        refreshTimeoutTask = Task { [weak self] in
+            try? await Task<Never, Never>.sleep(
+                nanoseconds: 8_000_000_000
+            )
+            guard !Task.isCancelled,
+                  let self,
+                  generation == self.refreshRequestGeneration,
+                  self.refreshCompletionPending
+            else {
+                return
+            }
+            self.finishTrackedRefresh(timedOut: true)
+        }
+        return generation
+    }
+
+    private func publishOrQueueSectionReloads(
+        for source: Int,
+        changedSectionIDs: Set<Int>
+    ) {
+        if refreshCompletionPending,
+           source == PPHomeBridgeSource.accessories.rawValue,
+           hasPendingSelectedCategoryAccessoryRequest {
+            // The visible marketplace shelves are category-scoped. Keep the
+            // accessories source pending until that authoritative request
+            // settles instead of completing on the generic inventory fetch.
+            refreshUpdatedSectionIDs.formUnion(changedSectionIDs)
+            return
+        }
+
+        guard refreshCompletionPending,
+              refreshPendingSources.remove(source) != nil
+        else {
+            publishSectionDataReload(changedSectionIDs)
+            return
+        }
+
+        refreshUpdatedSectionIDs.formUnion(changedSectionIDs)
+        if refreshPendingSources.isEmpty {
+            finishTrackedRefresh(timedOut: false)
+        }
+    }
+
+    private func finishTrackedRefresh(timedOut: Bool) {
+        guard refreshCompletionPending else { return }
+
+        let generation = refreshRequestGeneration
+        let pendingCount = refreshPendingSources.count
+        let updatedSectionIDs = refreshUpdatedSectionIDs
+        let signpostID = refreshSignpostID
+
+        refreshCompletionPending = false
+        refreshPendingSources.removeAll(keepingCapacity: true)
+        refreshUpdatedSectionIDs.removeAll(keepingCapacity: true)
+        refreshTimeoutTask?.cancel()
+        refreshTimeoutTask = nil
+        refreshSignpostID = nil
+
+        if timedOut {
+            state.phase = hasAnyContent
+                ? .partial
+                : .failed(message: HomeModelAdapter.localized(
+                    "home_refresh_interrupted",
+                    fallback: "Refresh was interrupted. Try again."
+                ))
+        } else {
+            updateScreenPhase()
+        }
+        publishSectionDataReload(updatedSectionIDs)
+
+        if let signpostID {
+            os_signpost(
+                .end,
+                log: Self.refreshLog,
+                name: "home.reload",
+                signpostID: signpostID,
+                "generation=%d pending=%d timedOut=%d",
+                generation,
+                pendingCount,
+                timedOut ? 1 : 0
+            )
+        }
+
+        guard !timedOut else { return }
+        UIAccessibility.post(
+            notification: .announcement,
+            argument: HomeModelAdapter.localized(
+                "home_pulse_refresh_complete_a11y",
+                fallback: "Home refreshed"
+            )
+        )
+    }
+
+    private func publishSectionDataReload(_ rawSectionIDs: Set<Int>) {
+        guard !rawSectionIDs.isEmpty else { return }
+        var revisions = sectionDataRevisions
+        for rawSectionID in rawSectionIDs {
+            let current = revisions[rawSectionID, default: 0]
+            revisions[rawSectionID] = current == Int.max ? 1 : current + 1
+        }
+        sectionDataRevisions = revisions
+
+        for rawSectionID in rawSectionIDs.sorted() {
+            os_signpost(
+                .event,
+                log: Self.refreshLog,
+                name: "home.section.reload",
+                "rawID=%d revision=%d",
+                rawSectionID,
+                revisions[rawSectionID, default: 0]
+            )
+        }
+    }
+
+    private func queueOrPublishSectionDataReload(
+        _ rawSectionIDs: Set<Int>
+    ) {
+        if refreshCompletionPending {
+            refreshUpdatedSectionIDs.formUnion(rawSectionIDs)
+        } else {
+            publishSectionDataReload(rawSectionIDs)
+        }
+    }
+
+    private var hasPendingSelectedCategoryAccessoryRequest: Bool {
+        guard let selectedMainKindID = state.selectedMainKindID else {
+            return false
+        }
+        return categoryAccessoryRequests.contains(selectedMainKindID)
+    }
+
+    private func sourceRawValue(for event: HomeRepositoryEvent) -> Int? {
+        switch event {
+        case .mainKinds:
+            return PPHomeBridgeSource.mainKinds.rawValue
+        case .promotions:
+            return PPHomeBridgeSource.promotions.rawValue
+        case .accessories:
+            return PPHomeBridgeSource.accessories.rawValue
+        case .food:
+            return PPHomeBridgeSource.food.rawValue
+        case .advertisements:
+            return PPHomeBridgeSource.advertisements.rawValue
+        case .nearbyAdvertisements:
+            return PPHomeBridgeSource.nearbyAdvertisements.rawValue
+        case .services:
+            return PPHomeBridgeSource.services.rawValue
+        case .petProfiles:
+            return PPHomeBridgeSource.petProfiles.rawValue
+        case .petReminders:
+            return PPHomeBridgeSource.petReminders.rawValue
+        case .orders:
+            return PPHomeBridgeSource.orders.rawValue
+        case .homeConfig:
+            return PPHomeBridgeSource.homeConfig.rawValue
+        case .location:
+            return PPHomeBridgeSource.location.rawValue
+        case .connectivity:
+            return nil
+        case let .failure(sourceRawValue, _):
+            return sourceRawValue
+        }
+    }
+
+    private func sectionIDsAffected(by source: Int) -> Set<Int> {
+        let contextualMarketplaceSections: Set<Int> = [
+            HomeLegacySectionID.suggestions.rawValue,
+            HomeLegacySectionID.accessories.rawValue,
+            HomeLegacySectionID.lastFood.rawValue,
+            HomeLegacySectionID.nearbyServices.rawValue,
+            HomeLegacySectionID.adsNearby.rawValue,
+            HomeLegacySectionID.suggestionAds.rawValue,
+            HomeLegacySectionID.suggestionAccessories.rawValue,
+        ]
+
+        switch source {
+        case PPHomeBridgeSource.mainKinds.rawValue:
+            return contextualMarketplaceSections.union([
+                HomeLegacySectionID.hero.rawValue,
+                HomeLegacySectionID.mainKinds.rawValue,
+                HomeLegacySectionID.marketplaceHero.rawValue,
+            ])
+        case PPHomeBridgeSource.promotions.rawValue:
+            return [HomeLegacySectionID.carousel.rawValue]
+        case PPHomeBridgeSource.accessories.rawValue:
+            return [
+                HomeLegacySectionID.suggestions.rawValue,
+                HomeLegacySectionID.accessories.rawValue,
+                HomeLegacySectionID.suggestionAccessories.rawValue,
+            ]
+        case PPHomeBridgeSource.food.rawValue:
+            return [HomeLegacySectionID.lastFood.rawValue]
+        case PPHomeBridgeSource.advertisements.rawValue:
+            return [
+                HomeLegacySectionID.suggestions.rawValue,
+                HomeLegacySectionID.suggestionAds.rawValue,
+            ]
+        case PPHomeBridgeSource.nearbyAdvertisements.rawValue,
+             PPHomeBridgeSource.location.rawValue:
+            return [HomeLegacySectionID.adsNearby.rawValue]
+        case PPHomeBridgeSource.services.rawValue:
+            return [
+                HomeLegacySectionID.suggestions.rawValue,
+                HomeLegacySectionID.nearbyServices.rawValue,
+            ]
+        case PPHomeBridgeSource.petProfiles.rawValue:
+            return contextualMarketplaceSections.union([
+                HomeLegacySectionID.hero.rawValue,
+                HomeLegacySectionID.quickActions.rawValue,
+                HomeLegacySectionID.petProfile.rawValue,
+                HomeLegacySectionID.marketplaceHero.rawValue,
+            ])
+        case PPHomeBridgeSource.petReminders.rawValue:
+            return [HomeLegacySectionID.hero.rawValue]
+        case PPHomeBridgeSource.orders.rawValue:
+            return [HomeLegacySectionID.currentOrders.rawValue]
+        case PPHomeBridgeSource.homeConfig.rawValue:
+            return Set(HomeLegacySectionID.allCases.map(\.rawValue))
+        default:
+            return []
+        }
+    }
+
+    private func changedSectionIDs(
+        in candidates: Set<Int>,
+        comparedWith previous: [Int: String]
+    ) -> Set<Int> {
+        let current = sectionPresentationFingerprints(for: candidates)
+        return Set(candidates.filter { previous[$0] != current[$0] })
+    }
+
+    private func sectionPresentationFingerprints(
+        for rawSectionIDs: Set<Int>
+    ) -> [Int: String] {
+        Dictionary(uniqueKeysWithValues: rawSectionIDs.map {
+            ($0, sectionPresentationFingerprint(for: $0))
+        })
+    }
+
+    private func sectionPresentationFingerprint(for rawSectionID: Int) -> String {
+        switch rawSectionID {
+        case HomeLegacySectionID.hero.rawValue:
+            return heroPagesFingerprint(state.heroPages)
+        case HomeLegacySectionID.quickActions.rawValue:
+            return ([state.selectedPetID ?? ""] + state.priorityActions.map {
+                [$0.id, $0.title, $0.subtitle].joined(separator: "|")
+            }).joined(separator: "^")
+        case HomeLegacySectionID.currentOrders.rawValue:
+            guard let order = state.featuredOrder else { return "none" }
+            return [
+                order.id,
+                order.statusKey,
+                order.statusTitle,
+                order.statusHint,
+                String(order.progress),
+                String(order.itemCount),
+                order.amount,
+            ].joined(separator: "|")
+        case HomeLegacySectionID.carousel.rawValue:
+            return heroPagesFingerprint(state.promotionPages)
+        case HomeLegacySectionID.mainKinds.rawValue:
+            return state.categories.map {
+                [$0.id, $0.title, $0.imageURL ?? ""].joined(separator: "|")
+            }.joined(separator: "^")
+        case HomeLegacySectionID.petProfile.rawValue:
+            return state.pets.map {
+                [
+                    $0.id,
+                    $0.name,
+                    $0.breedOrCategory,
+                    $0.age,
+                    $0.imageURL ?? "",
+                    String($0.isDefault),
+                ].joined(separator: "|")
+            }.joined(separator: "^")
+        case HomeLegacySectionID.marketplaceHero.rawValue:
+            guard let page = state.marketplaceHeroPage else { return "none" }
+            return heroPagesFingerprint([page])
+        case HomeLegacySectionID.suggestions.rawValue,
+             HomeLegacySectionID.accessories.rawValue,
+             HomeLegacySectionID.lastFood.rawValue,
+             HomeLegacySectionID.nearbyServices.rawValue,
+             HomeLegacySectionID.adsNearby.rawValue,
+             HomeLegacySectionID.buyAgain.rawValue,
+             HomeLegacySectionID.suggestionAds.rawValue,
+             HomeLegacySectionID.suggestionAccessories.rawValue:
+            guard let section = state.sections.first(where: {
+                $0.id == rawSectionID
+            }) else {
+                return "absent"
+            }
+            return sectionFingerprint(section)
+        default:
+            let config = state.config.section(withID: rawSectionID)
+            return config.map {
+                "\($0.type)|\($0.isVisible)"
+            } ?? "absent"
+        }
+    }
+
+    private func heroPagesFingerprint(_ pages: [HomeHeroPage]) -> String {
+        pages.map {
+            [
+                $0.id,
+                $0.title,
+                $0.subtitle,
+                $0.imageURL ?? "",
+                $0.accentHex,
+            ].joined(separator: "|")
+        }.joined(separator: "^")
+    }
+
+    private func sectionFingerprint(_ section: HomeSectionModel) -> String {
+        let stateFingerprint: String
+        switch section.state {
+        case .loading:
+            stateFingerprint = "loading"
+        case let .content(cards):
+            stateFingerprint = "content:" + cards.map(\.id).joined(separator: ",")
+        case let .empty(title, message, actionTitle):
+            stateFingerprint = [
+                "empty",
+                title,
+                message,
+                actionTitle ?? "",
+            ].joined(separator: "|")
+        case let .failed(title, message, retryTitle):
+            stateFingerprint = [
+                "failed",
+                title,
+                message,
+                retryTitle,
+            ].joined(separator: "|")
+        }
+        return [
+            section.title,
+            section.subtitle ?? "",
+            stateFingerprint,
+        ].joined(separator: "^")
+    }
+
     private func resolveBuyAgain() {
         orderResolutionGeneration += 1
         let generation = orderResolutionGeneration
         let itemIDs = HomeModelAdapter.orderItemIDs(from: recentOrders, limit: 8)
+        let affectedSectionIDs: Set<Int> = [
+            HomeLegacySectionID.buyAgain.rawValue,
+        ]
         guard !itemIDs.isEmpty else {
+            let previousFingerprints = sectionPresentationFingerprints(
+                for: affectedSectionIDs
+            )
             buyAgainAccessories = []
             rebuildState()
+            queueOrPublishSectionDataReload(changedSectionIDs(
+                in: affectedSectionIDs,
+                comparedWith: previousFingerprints
+            ))
             return
         }
         repository.resolveAccessories(ids: itemIDs) { [weak self] resolved in
             guard let self, generation == self.orderResolutionGeneration else {
                 return
             }
+            let previousFingerprints = self.sectionPresentationFingerprints(
+                for: affectedSectionIDs
+            )
             let order = Dictionary(
                 itemIDs.enumerated().map { ($1, $0) },
                 uniquingKeysWith: { first, _ in first }
@@ -602,13 +1010,18 @@ final class HomeStore: ObservableObject {
                 return lhs < rhs
             }
             self.rebuildState()
+            self.queueOrPublishSectionDataReload(self.changedSectionIDs(
+                in: affectedSectionIDs,
+                comparedWith: previousFingerprints
+            ))
         }
     }
 
     private func requestCategoryAccessoriesIfNeeded(for categoryID: Int?) {
         guard let categoryID,
               categoryID > 0,
-              categoryAccessories[categoryID] == nil,
+              categoryAccessories[categoryID] == nil ||
+                staleCategoryAccessoryIDs.contains(categoryID),
               categoryAccessoryRequests.insert(categoryID).inserted
         else {
             return
@@ -616,9 +1029,34 @@ final class HomeStore: ObservableObject {
 
         repository.loadAccessories(mainCategoryID: categoryID) { [weak self] items in
             guard let self else { return }
+            let affectedSectionIDs: Set<Int> = [
+                HomeLegacySectionID.suggestions.rawValue,
+                HomeLegacySectionID.accessories.rawValue,
+                HomeLegacySectionID.suggestionAccessories.rawValue,
+            ]
+            let previousFingerprints = self.sectionPresentationFingerprints(
+                for: affectedSectionIDs
+            )
             self.categoryAccessoryRequests.remove(categoryID)
             self.categoryAccessories[categoryID] = items
+            self.staleCategoryAccessoryIDs.remove(categoryID)
+            guard self.state.selectedMainKindID == categoryID else { return }
             self.rebuildState()
+            let changedSectionIDs = self.changedSectionIDs(
+                in: affectedSectionIDs,
+                comparedWith: previousFingerprints
+            )
+            if self.refreshCompletionPending,
+               self.refreshPendingSources.contains(
+                   PPHomeBridgeSource.accessories.rawValue
+               ) {
+                self.publishOrQueueSectionReloads(
+                    for: PPHomeBridgeSource.accessories.rawValue,
+                    changedSectionIDs: changedSectionIDs
+                )
+            } else {
+                self.queueOrPublishSectionDataReload(changedSectionIDs)
+            }
         }
     }
 
@@ -710,6 +1148,8 @@ final class HomeStore: ObservableObject {
             } else {
                 state.phase = .empty
             }
+        } else if refreshCompletionPending {
+            state.phase = .refreshing
         } else if hasFailures {
             state.phase = .partial
         } else {

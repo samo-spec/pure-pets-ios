@@ -8,7 +8,8 @@
 
 #import "ArchiveDetailsModel.h"
 
-@import FirebaseFirestore;
+@class FIRDocumentSnapshot;
+@class FIRQuerySnapshot;
 NS_ASSUME_NONNULL_BEGIN
 
 
@@ -68,11 +69,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-/*
+ /*
  
- @import FirebaseFirestore;
-
- @interface ArchiveModel : NSObject
+  @interface ArchiveModel : NSObject
  @property (nonatomic, strong) NSString *ID;
  @property (nonatomic, strong) NSString *archiveTitle;
  @property (nonatomic, strong) NSDate *archiveDate;

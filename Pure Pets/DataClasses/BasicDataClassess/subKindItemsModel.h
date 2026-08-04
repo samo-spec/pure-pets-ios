@@ -6,7 +6,7 @@
 //
 
 
-#import <FirebaseFirestore/FirebaseFirestore.h>
+@class FIRDocumentSnapshot;
 #import "XLFormOptionsObject.h"
 #import "Language.h"
 

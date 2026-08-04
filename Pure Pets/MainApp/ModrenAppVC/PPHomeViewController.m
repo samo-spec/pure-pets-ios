@@ -2,7 +2,6 @@
 
 #import "AddNewAccessory.h"
 #import "AddNewAd.h"
-#import "AdoptPetsViewController.h"
 #import "AppClasses.h"
 #import "CartManager.h"
 #import "CartViewController.h"
@@ -333,6 +332,11 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
     [PPHomeHelper pushViewControllerSafely:destination
                                       from:self
                                   animated:YES];
+}
+
+- (void)pp_homeOpenPureLens
+{
+    [self.homeHostingController openPureLens];
 }
 
 - (void)pp_homeOpenPetEditor:(NSObject *)object

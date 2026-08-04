@@ -22,7 +22,12 @@
 #import "YYDiskCache.h"
 #import "PPFirebaseSessionBridge.h"
 //64605 1621158
- 
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
+
+
 #import <CoreTelephony/CTTelephonyNetworkInfo.h>
 @import FirebaseFunctions;
 

@@ -12,7 +12,10 @@
 #import "PPSelectOptionViewController.h"
 #import "PPModrenSegmrnted.h"
 #import <Pure_Pets-Swift.h>
-
+@import Firebase;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+@import FirebaseFirestore;
 // =============================================================================
 #pragma mark - Design Tokens
 // =============================================================================
