@@ -13,6 +13,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPOverlayCoordinator.h"
 #import "PPHUD.h"
+// PPChatCellBridge (Swift) replaces ChCell — auto-imported via bridging.
 #import "PPChatsFunc.h"
 #import "PPSelectOptionViewController.h"
 #import "PPStoriesViewController.h"
@@ -50,6 +51,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 @property (nonatomic, strong) PPStoriesViewController *storiesViewController;
 @property (nonatomic, strong) NSMutableSet<NSString *> *resolvingOtherUserIDs;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedThreadIDs;
+@property (nonatomic, strong) PPChatCellBridge *chatCellBridge;
 @property (nonatomic, assign) BOOL storiesHeaderVisible;
 @property (nonatomic, assign) BOOL isLoading;
 @property (nonatomic, assign) BOOL isObserving;
@@ -74,6 +76,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     self.state = UserChatsStateLoading;
     self.resolvingOtherUserIDs = [NSMutableSet set];
     self.animatedThreadIDs = [NSMutableSet set];
+    self.chatCellBridge = [PPChatCellBridge new];
 
     [self pp_configureAppearance];
     [self pp_configureTableView];
@@ -146,11 +149,8 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
         self.inboxHeaderView.transform = CGAffineTransformIdentity;
         self.composeButton.transform = CGAffineTransformIdentity;
         self.inboxAccentRailView.transform = CGAffineTransformIdentity;
-        for (UITableViewCell *candidate in self.tableView.visibleCells) {
-            if ([candidate isKindOfClass:ChCell.class]) {
-                [(ChCell *)candidate playEntranceWithOrdinal:0 animated:NO];
-            }
-        }
+        // PPExpandableChatCell handles Reduce Motion internally;
+        // no entrance replay needed.
     }
     [self pp_updateEmptyState];
 }
@@ -202,7 +202,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAlways;
     self.tableView.tableFooterView = [UIView new];
     self.tableView.accessibilityIdentifier = @"userChatsTableView";
-    [self.tableView registerClass:ChCell.class forCellReuseIdentifier:ChCell.reuseID];
+    [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:PPChatCellBridge.reuseID];
 
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
@@ -729,23 +729,8 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
         }
 
         self.didRunListEntrance = YES;
-        NSInteger ordinal = 0;
-        for (NSIndexPath *indexPath in visibleRows) {
-            if (ordinal >= 5) {
-                break;
-            }
-            ChatThreadModel *thread = [self pp_threadAtIndexPath:indexPath];
-            ChCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-            if (thread.ID.length == 0 ||
-                [self.animatedThreadIDs containsObject:thread.ID] ||
-                ![cell isKindOfClass:ChCell.class]) {
-                continue;
-            }
-            [self.animatedThreadIDs addObject:thread.ID];
-            [cell playEntranceWithOrdinal:ordinal
-                                 animated:!UIAccessibilityIsReduceMotionEnabled()];
-            ordinal += 1;
-        }
+        // PPExpandableChatCell handles its own entrance transitions
+        // via SwiftUI .transition(); no ordinal-based entrance needed.
     });
 }
 
@@ -1122,10 +1107,10 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
         user.isOnline = online;
         user.lastSeen = lastSeen;
 
-        ChCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-        if ([cell isKindOfClass:ChCell.class]) {
-            [cell applyPresenceOnline:online lastSeen:lastSeen];
-        }
+        // PPExpandableChatCell reads presence from the snapshot at
+        // configure time.  Reload the row to pick up new state.
+        [self.tableView reloadRowsAtIndexPaths:@[indexPath]
+                              withRowAnimation:UITableViewRowAnimationNone];
     }
 }
 
@@ -1144,12 +1129,10 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     thread.otherUser = user;
 
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:0];
-    ChCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-    if (![cell isKindOfClass:ChCell.class]) {
-        return;
-    }
-
-    [cell applyPresenceOnline:online lastSeen:lastSeen];
+    // PPExpandableChatCell reads presence from the snapshot at
+    // configure time.  Reload the row to pick up new state.
+    [self.tableView reloadRowsAtIndexPaths:@[indexPath]
+                          withRowAnimation:UITableViewRowAnimationNone];
 }
 
 - (NSInteger)indexForThreadWithUserID:(NSString *)uid {
@@ -1245,10 +1228,17 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 - (UITableViewCell *)tableView:(UITableView *)tableView
          cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    ChCell *cell = [tableView dequeueReusableCellWithIdentifier:ChCell.reuseID forIndexPath:indexPath];
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:PPChatCellBridge.reuseID forIndexPath:indexPath];
     ChatThreadModel *thread = [self pp_threadAtIndexPath:indexPath];
     if (thread) {
-        [cell configureWithThread:thread];
+        __weak typeof(self) weakSelf = self;
+        [self.chatCellBridge configureCell:cell
+                                     with:thread
+                               onOpenChat:^(ChatThreadModel * _Nonnull chatThread) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [PPOverlayCoordinator pp_openChatThread:chatThread fromVC:self];
+        }];
     }
     return cell;
 }

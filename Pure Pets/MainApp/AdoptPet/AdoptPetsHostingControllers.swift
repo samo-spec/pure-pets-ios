@@ -60,9 +60,19 @@ final class AdoptPetsViewController: UIViewController {
         hc.didMove(toParent: self)
     }
 
+    private var previousNavigationBarHidden = false
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        previousNavigationBarHidden = navigationController?.isNavigationBarHidden ?? false
         navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if !previousNavigationBarHidden {
+            navigationController?.setNavigationBarHidden(false, animated: animated)
+        }
     }
 
     private func openDetails(for pet: AdoptPetModel) {
@@ -103,6 +113,7 @@ final class AdoptPetDetailsViewController: UIViewController {
     private var hostingController: UIHostingController<AdoptPetDetailsScreen>?
     private let petModel: AdoptPetModel?
     private let isOwner: Bool
+    private var previousNavigationBarHidden = false
 
     @objc(initWithModel:)
     init(model: AdoptPetModel?) {
@@ -169,19 +180,48 @@ final class AdoptPetDetailsViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        previousNavigationBarHidden = navigationController?.isNavigationBarHidden ?? false
         navigationController?.setNavigationBarHidden(true, animated: animated)
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if !previousNavigationBarHidden {
+            navigationController?.setNavigationBarHidden(false, animated: animated)
+        }
+    }
+
     private func showEmptyFallback() {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
         let label = UILabel()
         label.text = PPAdoptLang("adopt_list_error_title")
         label.textColor = .secondaryLabel
         label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
+
+        let closeBtn = UIButton(type: .system)
+        closeBtn.setTitle(PPAdoptLang("Close"), for: .normal)
+        closeBtn.addTarget(self, action: #selector(handleCloseFallback), for: .touchUpInside)
+
+        stack.addArrangedSubview(label)
+        stack.addArrangedSubview(closeBtn)
+
+        view.addSubview(stack)
         NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
+    }
+
+    @objc private func handleCloseFallback() {
+        if let nav = navigationController, nav.viewControllers.first != self {
+            nav.popViewController(animated: true)
+        } else {
+            dismiss(animated: true)
+        }
     }
 }

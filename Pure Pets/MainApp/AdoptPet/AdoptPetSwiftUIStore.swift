@@ -226,9 +226,21 @@ final class AdoptPetDetailsStore: ObservableObject {
         impact.impactOccurred()
 
         if isFavorited {
-            PetAdManager.addFavoriteAd(withID: pet.documentID, collection: collectionName, forUserID: currentUID)
+            PetAdManager.addFavoriteAd(withID: pet.documentID, collection: collectionName, forUserID: currentUID) { [weak self] error in
+                if error != nil {
+                    Task { @MainActor in
+                        self?.isFavorited = previousState
+                    }
+                }
+            }
         } else {
-            PetAdManager.removeFavoriteAd(withID: pet.documentID, collection: collectionName, forUserID: currentUID)
+            PetAdManager.removeFavoriteAd(withID: pet.documentID, collection: collectionName, forUserID: currentUID) { [weak self] error in
+                if error != nil {
+                    Task { @MainActor in
+                        self?.isFavorited = previousState
+                    }
+                }
+            }
         }
     }
 

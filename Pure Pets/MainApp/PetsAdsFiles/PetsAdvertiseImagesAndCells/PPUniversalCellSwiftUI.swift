@@ -4197,6 +4197,22 @@ private final class PPUniversalMirroredImageView: UIImageView {
 
         // Reuse the pet-ad gallery's Vision detector and cache for the same framing logic.
         PPPetFaceFocusDetector.shared.detectFocusPoint(for: image) { [weak self] focusPoint in
+            guard Thread.isMainThread else {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self,
+                          self.petFaceFocusEnabled,
+                          self.petFaceFocusSignature == signature,
+                          let displayedImage = self.image,
+                          displayedImage === image
+                    else {
+                        return
+                    }
+                    self.petFaceFocusImage = image
+                    self.petFaceFocusPoint = focusPoint
+                    self.applyPetFaceFocusIfPossible()
+                }
+                return
+            }
             guard let self,
                   self.petFaceFocusEnabled,
                   self.petFaceFocusSignature == signature,

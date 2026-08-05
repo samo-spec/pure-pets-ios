@@ -208,7 +208,7 @@ struct PPPeekCarousel: View {
     selection = logicalIndex
 
     withAnimation(activeAnimation) {
-      visualPage = logicalIndex + 1
+      visualPage = cards.count > 1 ? logicalIndex + 1 : logicalIndex
     }
   }
 
@@ -278,7 +278,8 @@ struct PPPeekCarousel: View {
     }
 
     let interval = cards[selection].autoScrollInterval
-    let nanoseconds = UInt64(interval * 1_000_000_000)
+    guard interval.isFinite, interval > 0 else { return }
+    let nanoseconds = UInt64(min(interval, 60.0) * 1_000_000_000)
 
     do {
       try await Task.sleep(nanoseconds: nanoseconds)

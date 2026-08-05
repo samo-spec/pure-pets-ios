@@ -16,7 +16,7 @@
     CGFloat cardHeight = cardWidth / 1.42;
     BOOL usesAccessibilityType = UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
     CGFloat accessibilityBoost = usesAccessibilityType ? 92.0 : 0.0;
-    return ceil(cardHeight + accessibilityBoost + 48.0);
+    return MAX(250.0, ceil(cardHeight + accessibilityBoost + 48.0));
 }
 
 @end

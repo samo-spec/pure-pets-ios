@@ -27,20 +27,6 @@
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    [self.tableView registerClass:[ChatMessageCell class]
-           forCellReuseIdentifier:@"ChatMessageCell"];
-    [self.tableView registerClass:[ChatAudioMessageCell class]
-           forCellReuseIdentifier:@"ChatAudioMessageCell"];
-    [self.tableView registerClass:ChatImageMessageCell.class
-           forCellReuseIdentifier:@"ChatImageMessageCell"];
-    [self.tableView registerClass:ChatVideoMessageCell.class
-           forCellReuseIdentifier:@"ChatVideoMessageCell"];
-    [self.tableView registerClass:ChatStickerMessageCell.class
-           forCellReuseIdentifier:@"ChatStickerMessageCell"];
-
-    
-  
 
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 64;

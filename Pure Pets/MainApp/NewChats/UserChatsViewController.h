@@ -14,7 +14,6 @@
 
 #import <UIKit/UIKit.h>
 #import "selectUserVC.h"
-#import "ChCell.h"
 
 
 typedef NS_ENUM(NSInteger, UserChatsState) {

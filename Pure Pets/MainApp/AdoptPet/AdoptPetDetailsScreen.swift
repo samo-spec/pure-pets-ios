@@ -85,7 +85,6 @@ struct AdoptPetDetailsScreen: View {
             Text(PPAdoptLang("Your report has been submitted successfully."))
         }
         .onAppear {
-            store.loadOwnerAndFavoriteState()
             if reduceMotion {
                 hasAppeared = true
             } else {
@@ -187,9 +186,9 @@ struct AdoptPetDetailsScreen: View {
             Group {
                 if hasImages {
                     TabView(selection: $currentImageIndex) {
-                        ForEach(imageURLs, id: \.self) { url in
+                        ForEach(Array(imageURLs.enumerated()), id: \.offset) { index, url in
                             AdoptPetRemoteImageView(urlString: url)
-                                .tag(url)
+                                .tag(index)
                         }
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
@@ -668,6 +667,10 @@ struct AdoptPetRemoteImageView: View {
             }
         }
         .onAppear {
+            loadImage()
+        }
+        .onChange(of: urlString) { _ in
+            loadedImage = nil
             loadImage()
         }
     }

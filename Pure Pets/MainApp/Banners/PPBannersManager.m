@@ -613,7 +613,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
                 }
             }
             strongSelf.bannerGroups = [fetchedGroups copy];
-            [self savebannerGroupsToCache];
+            [strongSelf savebannerGroupsToCache];
             if (completion) {
                 completion(strongSelf.bannerGroups, nil);
             }
@@ -719,7 +719,15 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     updateData[@"BannerViewHolder"] = @(bannerGroup.bannerViewHolder);
     updateData[@"BannerViewPosition"] = @(bannerGroup.bannerViewPosition);
     updateData[@"BannerViewTransaction"] = @(bannerGroup.bannerViewTransaction);
-    updateData[@"ChildsPannersModels"] = @[];
+    if (bannerGroup.childBanners && bannerGroup.childBanners.count > 0) {
+        NSMutableArray *childDicts = [NSMutableArray array];
+        for (ChildBannerModel *child in bannerGroup.childBanners) {
+            if ([child respondsToSelector:@selector(dictionaryRepresentation)]) {
+                [childDicts addObject:[child dictionaryRepresentation]];
+            }
+        }
+        updateData[@"ChildsPannersModels"] = childDicts;
+    }
     
     FIRDocumentReference *docRef = [[_db collectionWithPath:@"MainBannersViewsCol"] documentWithPath:bannerGroup.bannerViewID];
     [docRef setData:updateData merge:YES completion:^(NSError * _Nullable error) {

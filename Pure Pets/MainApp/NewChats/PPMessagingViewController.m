@@ -26,10 +26,9 @@ do { \
 
 
 #import "PPMessagingViewController.h"
-#import "ChatImageMessageCell.h"
-#import "ChatVideoMessageCell.h"
-#import "ChatStickerMessageCell.h"
 #import "PPChatsFunc.h"
+
+
  
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "PPFullscreenVideoController.h"
@@ -242,7 +241,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                                      UITextFieldDelegate,
                                      UITextViewDelegate, AVAudioPlayerDelegate,PPChatInputBarViewDelegate, AVAudioRecorderDelegate, AVAudioPlayerDelegate,
                                      UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIGestureRecognizerDelegate,
-                                     ChatMessageCellDelegate, ChatImageMessageCellDelegate, PPNovaSwiftUIChatBarViewControllerDelegate,
+                                     PPNovaSwiftUIChatBarViewControllerDelegate,
                                      PPMessagingSwiftUIHostControllerDelegate, PPAudioPlaybackControllerDelegate>
 
 @property (nonatomic, strong) PPMessagingSwiftUIHostController *messagingHostController;
@@ -1760,109 +1759,14 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     }
 }
 
-- (void)pp_applyReplyPreviewForMessage:(ChatMessageModel *)message
-                              toBubble:(ChatBubbleView *)bubble
-                            isIncoming:(BOOL)isIncoming
-{
-    NSString *title = nil;
-    NSString *subtitle = nil;
-    [self pp_replyPreviewPartsForMessage:message title:&title subtitle:&subtitle];
-    if (title.length == 0 && subtitle.length == 0) {
-        [bubble clearReplyPreview];
-        return;
-    }
-    [bubble setReplyPreviewTitle:title subtitle:subtitle isIncoming:isIncoming];
-}
 
-- (void)pp_applyReplyPreviewForMessage:(ChatMessageModel *)message
-                            toImageCell:(ChatImageMessageCell *)cell
-                             isIncoming:(BOOL)isIncoming
-{
-    NSString *title = nil;
-    NSString *subtitle = nil;
-    [self pp_replyPreviewPartsForMessage:message title:&title subtitle:&subtitle];
-    if (title.length == 0 && subtitle.length == 0) {
-        [cell clearReplyPreview];
-        return;
-    }
-    [cell setReplyPreviewTitle:title subtitle:subtitle isIncoming:isIncoming];
-}
 
-- (void)pp_applyReplyPreviewForMessage:(ChatMessageModel *)message
-                            toVideoCell:(ChatVideoMessageCell *)cell
-                             isIncoming:(BOOL)isIncoming
-{
-    NSString *title = nil;
-    NSString *subtitle = nil;
-    [self pp_replyPreviewPartsForMessage:message title:&title subtitle:&subtitle];
-    if (title.length == 0 && subtitle.length == 0) {
-        [cell clearReplyPreview];
-        return;
-    }
-    [cell setReplyPreviewTitle:title subtitle:subtitle isIncoming:isIncoming];
-}
 
-- (void)pp_applyReplyPreviewForMessage:(ChatMessageModel *)message
-                            toAudioCell:(ChatAudioMessageCell *)cell
-                             isIncoming:(BOOL)isIncoming
-{
-    NSString *title = nil;
-    NSString *subtitle = nil;
-    [self pp_replyPreviewPartsForMessage:message title:&title subtitle:&subtitle];
-    if (title.length == 0 && subtitle.length == 0) {
-        [cell clearReplyPreview];
-        return;
-    }
-    [cell setReplyPreviewTitle:title subtitle:subtitle isIncoming:isIncoming];
-}
-
-- (void)chatMessageCellDidRequestCopy:(ChatMessageCell *)cell
-{
-    [PPHUD showSuccess:kLang(@"chat_copied")];
-}
-
-- (void)chatMessageCellDidRequestReply:(ChatMessageCell *)cell
-{
-    [self pp_selectReplyMessage:[self pp_messageForCell:cell]];
-}
-
-- (void)chatImageMessageCellDidRequestReply:(ChatImageMessageCell *)cell
-{
-    [self pp_selectReplyMessage:[self pp_messageForCell:cell]];
-}
-
-- (void)chatImageMessageCellDidTapView:(ChatImageMessageCell *)cell
-{
-    ChatMessageModel *message = [self pp_messageForCell:cell];
-    [self pp_openImageMessage:message fromCell:cell];
-}
-
-- (void)chatImageMessageCellDidTapDownload:(ChatImageMessageCell *)cell
-{
-    ChatMessageModel *message = [self pp_messageForCell:cell];
-    UIImage *visibleImage = message.localImage ?: cell.imageViewMsg.image;
-    [self pp_downloadImageMessage:message visibleImage:visibleImage];
-}
 
 #pragma mark - Premium Message Interaction
 
 - (UIView *)pp_messageInteractionViewForCell:(UITableViewCell *)cell
 {
-    if ([cell isKindOfClass:ChatMessageCell.class]) {
-        return [(ChatMessageCell *)cell messageInteractionView];
-    }
-    if ([cell isKindOfClass:ChatImageMessageCell.class]) {
-        return [(ChatImageMessageCell *)cell messageInteractionView];
-    }
-    if ([cell isKindOfClass:ChatVideoMessageCell.class]) {
-        return [(ChatVideoMessageCell *)cell messageInteractionView];
-    }
-    if ([cell isKindOfClass:ChatAudioMessageCell.class]) {
-        return [(ChatAudioMessageCell *)cell messageInteractionView];
-    }
-    if ([cell isKindOfClass:ChatStickerMessageCell.class]) {
-        return [(ChatStickerMessageCell *)cell messageInteractionView];
-    }
     return cell.contentView;
 }
 
@@ -2141,9 +2045,6 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0]];
     UIView *surface = [self pp_messageInteractionViewForCell:cell];
     if (!surface.window) return nil;
-    if ([cell isKindOfClass:ChatMessageCell.class]) {
-        [[(ChatMessageCell *)cell bubbleView] setContextMenuPresentationActive:YES];
-    }
 
     UIPreviewParameters *parameters = [UIPreviewParameters new];
     parameters.backgroundColor = UIColor.clearColor;
@@ -2159,33 +2060,15 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
           animator:(nullable id<UIContextMenuInteractionAnimating>)animator
 {
     (void)animator;
-    ChatMessageModel *message = [self pp_messageWithID:(NSString *)configuration.identifier];
-    NSInteger row = [self.messages indexOfObjectIdenticalTo:message];
-    if (!message || row == NSNotFound) return;
-    UITableViewCell *cell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0]];
-    if ([cell isKindOfClass:ChatMessageCell.class]) {
-        [[(ChatMessageCell *)cell bubbleView] setContextMenuPresentationActive:YES];
-    }
 }
 
 - (void)tableView:(UITableView *)tableView
  willEndContextMenuInteractionWithConfiguration:(UIContextMenuConfiguration *)configuration
           animator:(nullable id<UIContextMenuInteractionAnimating>)animator
 {
-    void (^restoreBubble)(void) = ^{
-        ChatMessageModel *message = [self pp_messageWithID:(NSString *)configuration.identifier];
-        NSInteger row = [self.messages indexOfObjectIdenticalTo:message];
-        if (!message || row == NSNotFound) return;
-        UITableViewCell *cell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0]];
-        if ([cell isKindOfClass:ChatMessageCell.class]) {
-            [[(ChatMessageCell *)cell bubbleView] setContextMenuPresentationActive:NO];
-        }
-    };
-    if (animator) {
-        [animator addCompletion:restoreBubble];
-    } else {
-        restoreBubble();
-    }
+    (void)animator;
+    (void)configuration;
+    (void)tableView;
 }
 
 - (nullable UITargetedPreview *)tableView:(UITableView *)tableView
@@ -2329,13 +2212,13 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
 #pragma mark - Media Viewer And Download
 
-- (void)pp_openImageMessage:(ChatMessageModel *)message fromCell:(ChatImageMessageCell *)cell
+- (void)pp_openImageMessage:(ChatMessageModel *)message fromCell:(nullable UITableViewCell *)cell
 {
     if (!message) return;
 
-    UIImage *visibleImage = message.localImage ?: cell.imageViewMsg.image;
+    UIImage *visibleImage = message.localImage;
     if (message.fileURL.length == 0 && visibleImage) {
-        [self pp_presentImageViewerWithImage:visibleImage fromImageView:cell.imageViewMsg];
+        [self pp_presentImageViewerWithImage:visibleImage fromImageView:nil];
         return;
     }
 
@@ -2352,17 +2235,13 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
             [PPHUD dismiss];
-            if (cell.boundMessageID.length > 0 &&
-                ![cell.boundMessageID isEqualToString:message.ID]) {
-                return;
-            }
             UIImage *resolvedImage = image ?: visibleImage;
             if (!resolvedImage) {
                 [PPHUD showError:kLang(@"chat_media_unavailable")];
                 return;
             }
             [strongSelf pp_presentImageViewerWithImage:resolvedImage
-                                         fromImageView:cell.imageViewMsg];
+                                         fromImageView:nil];
         });
     }];
 }
@@ -2779,30 +2658,6 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                                               duration:duration
                                              isPlaying:isPlaying
                                              isLoading:NO];
-
-    NSInteger row =
-        [self.messages indexOfObjectPassingTest:^BOOL(ChatMessageModel *obj,
-                                                      NSUInteger idx,
-                                                      BOOL *stop) {
-            return [obj.ID isEqualToString:messageID];
-        }];
-
-    if (row == NSNotFound) return;
-
-    NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-
-    ChatAudioMessageCell *cell =
-        (ChatAudioMessageCell *)[self.tableView cellForRowAtIndexPath:ip];
-
-    if (![cell isKindOfClass:ChatAudioMessageCell.class]) return;
-
-    // 🔁 Update UI
-    [cell applyPlaybackStateForMessageID:messageID
-                                progress:progress
-                                isPlaying:isPlaying
-                                 duration:duration];
-    
-    [cell setLoading:NO];
 }
 
 #pragma mark - PPRecordingBarViewDelegate
@@ -3224,19 +3079,6 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
         }
         [strongSelf pp_publishMessagesAnimated:NO];
 
-        NSInteger row = [strongSelf.messages indexOfObject:msg];
-        if (row == NSNotFound) return;
-
-        NSIndexPath *ip =
-            [NSIndexPath indexPathForRow:row inSection:0];
-
-        ChatAudioMessageCell *cell =
-            (ChatAudioMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-
-        if ([cell isKindOfClass:ChatAudioMessageCell.class]) {
-            [cell setLoading:YES];
-        }
-
     }];
 
     [task observeStatus:FIRStorageTaskStatusFailure handler:^(FIRStorageTaskSnapshot *snap) {
@@ -3300,15 +3142,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                         strongSelf.currentRecordingURL = nil;
                     }
 
-                    NSInteger row = [strongSelf.messages indexOfObject:msg];
-                    if (row == NSNotFound) return;
-                    NSIndexPath *ip =
-                        [NSIndexPath indexPathForRow:row inSection:0];
-                    ChatAudioMessageCell *cell =
-                        (ChatAudioMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-                    if ([cell isKindOfClass:ChatAudioMessageCell.class]) {
-                        [cell setLoading:NO];
-                    }
+                    [strongSelf pp_publishMessagesAnimated:NO];
                  }];
             }];
             
@@ -3676,16 +3510,6 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                     msg.isLocalPending = YES;
                     msg.transferProgress = MAX(0.0, MIN(progress, 1.0));
                     [strongSelf pp_publishMessagesAnimated:NO];
-
-                    NSInteger row = [strongSelf.messages indexOfObject:msg];
-                    if (row == NSNotFound) return;
-
-                    NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-                    ChatImageMessageCell *cell =
-                        (ChatImageMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-                    if ([cell isKindOfClass:ChatImageMessageCell.class]) {
-                        [cell updateUploadingState:msg];
-                    }
                 });
              }
              completion:^(NSError * _Nullable error) {
@@ -3704,15 +3528,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
                     msg.transferProgress = 1.0;
                     msg.status = ChatMessageStatusSent;
                     [strongSelf updateMessageStatus:msg];
-
-                    NSInteger row = [strongSelf.messages indexOfObject:msg];
-                    if (row == NSNotFound) return;
-                    NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-                    ChatImageMessageCell *cell =
-                        (ChatImageMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-                    if ([cell isKindOfClass:ChatImageMessageCell.class]) {
-                        [cell updateUploadingState:msg];
-                    }
+                    [strongSelf pp_publishMessagesAnimated:NO];
                 });
              }];
         }];
@@ -4116,13 +3932,8 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
                 NSIndexPath *ip =
                     [NSIndexPath indexPathForRow:row inSection:0];
                 msg.status = ChatMessageStatusSending;
-                ChatVideoMessageCell *cell =
-                    (ChatVideoMessageCell *)
-                    [strongSelf.tableView cellForRowAtIndexPath:ip];
                 [strongSelf updateMessageStatus:msg];
-                if ([cell isKindOfClass:ChatVideoMessageCell.class]) {
-                    [cell updateThumbnail:thumb];
-                }
+                [strongSelf pp_publishMessagesAnimated:NO];
 
                 [ChManager.sharedManager uploadVideoThumbnail:thumb
                                                     messageID:msg.ID
@@ -4201,13 +4012,13 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 
 // Deprecated: replaced by closure block with BlurHash
 
-- (void)openVideoFullscreen:(ChatVideoMessageCell *)cell
+- (void)openVideoFullscreen:(nullable UITableViewCell *)cell
                     message:(ChatMessageModel *)msg
 {
     NSURL *url = [NSURL URLWithString:msg.fileURL];
     if (!url) return;
 
-    CGRect fromFrame = [cell thumbnailFrameInWindow];
+    CGRect fromFrame = CGRectZero;
 
     PPFullscreenVideoController *vc =
     [[PPFullscreenVideoController alloc] initWithURL:url
@@ -4302,15 +4113,6 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 
         dispatch_async(dispatch_get_main_queue(), ^{
             [strongSelf pp_publishMessagesAnimated:NO];
-            NSInteger row = [strongSelf.messages indexOfObject:msg];
-            if (row == NSNotFound) return;
-
-            NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-            ChatVideoMessageCell *cell =
-                (ChatVideoMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-            if (!cell) return;
-            [cell setLoading:YES];
-            [cell setProgress:progress];
         });
     }];
 
@@ -4364,14 +4166,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
                     [strongSelf updateMessageStatus:msg];
 
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        NSInteger row = [strongSelf.messages indexOfObject:msg];
-                        if (row == NSNotFound) return;
-                        NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-                        ChatVideoMessageCell *cell =
-                            (ChatVideoMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-                        if (!cell) return;
-                        [cell setLoading:NO];
-                        [cell setProgress:1.0];
+                        [strongSelf pp_publishMessagesAnimated:NO];
                     });
 
                     [activeUploads removeObject:msg.ID];
@@ -4730,19 +4525,6 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         msg.isLocalPending = YES;
         [self updateMessageStatus:msg];
 
-        NSInteger row = [self.messages indexOfObject:msg];
-        if (row != NSNotFound) {
-            NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-            UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:ip];
-            if ([cell isKindOfClass:ChatVideoMessageCell.class]) {
-                [(ChatVideoMessageCell *)cell setLoading:NO];
-            } else if ([cell isKindOfClass:ChatAudioMessageCell.class]) {
-                [(ChatAudioMessageCell *)cell setLoading:NO];
-            } else if ([cell isKindOfClass:ChatImageMessageCell.class]) {
-                [(ChatImageMessageCell *)cell updateUploadingState:msg];
-            }
-        }
-
         if (self.messagingHostController) {
             if (retryAction && msg.ID.length > 0) {
                 self.messageRetryActions[msg.ID] = [retryAction copy];
@@ -4825,244 +4607,11 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 }
 
  
+// Legacy cellForRow — table is hidden by pp_installSwiftUIPresentation.
+// Stub retained to prevent UITableView assertion failures.
 - (UITableViewCell *)tableView:(UITableView *)tableView
          cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    __weak typeof(self) weakSelf = self;
-    if (indexPath.row >= (NSInteger)self.messages.count) {
-        NSLog(@"❌ [Chat] messages out of bounds: row=%ld count=%lu", (long)indexPath.row, (unsigned long)self.messages.count);
-        return [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    }
-    ChatMessageModel *msg = self.messages[indexPath.row];
-    BOOL isIncoming = ![msg.senderID
-                        isEqualToString:UserManager.sharedManager.currentUser.ID];
-   
-   
-   
-    PPChatGroupPosition groupPos =
-        [self groupPositionForMessageAtIndex:indexPath.row];
-
-    if (msg.isDeleted) {
-        ChatMessageCell *cell =
-            [tableView dequeueReusableCellWithIdentifier:@"ChatMessageCell"
-                                            forIndexPath:indexPath];
-        [cell configureWithMessage:kLang(@"chat_message_unsent")
-                              date:msg.timestamp
-                        isIncoming:isIncoming
-                          maxWidth:MAX_BUBBLE_WIDTH(self.view)
-                            status:msg.status
-                      messageModel:msg
-                     groupPosition:groupPos];
-        cell.delegate = self;
-        [cell.bubbleView clearReplyPreview];
-        [self pp_prepareInteractionsForCell:cell message:msg];
-        return cell;
-    }
-    
-    // 🔊 AUDIO MESSAGE
-    switch (msg.messageType) {
-
-        case ChatMessageTypeAudio: {
-            ChatAudioMessageCell *cell =
-            [tableView dequeueReusableCellWithIdentifier:@"ChatAudioMessageCell"
-                                            forIndexPath:indexPath];
-
-            ChatMessageModel *msg = self.messages[indexPath.row];
-            BOOL isIncoming = ![msg.senderID
-                                isEqualToString:UserManager.sharedManager.currentUser.ID];
-
-     
-            
-            // Layout
-            [cell setIncoming:isIncoming
-                     maxWidth:MAX_BUBBLE_WIDTH(self.view)
-                       status:msg.status msg:msg groupPosition:groupPos];
-
-            // Initial UI state
-            BOOL isPlaying =
-            [self.audioController.currentMessageID isEqualToString:msg.ID];
-
-            [cell applyPlaybackStateForMessageID:msg.ID
-                                        progress:msg.transferProgress
-                                        isPlaying:isPlaying
-                                        duration:msg.mediaDuration];
-            
-            [cell setTotalDuration:msg.mediaDuration];
-            [self pp_applyReplyPreviewForMessage:msg
-                                     toAudioCell:cell
-                                      isIncoming:isIncoming];
-
-            [cell setBottomTimeText:msg.timestamp]; // e.g. "12:41 PM" or "0:05"
-                                                    // 🔥 BLOCK WIRING (THIS SOLVES EVERYTHING)
-            __weak typeof(self) weakSelf = self;
-            cell.onScrubToProgress = ^(CGFloat progress) {
-                // Only allow scrubbing on currently playing message
-                if (![weakSelf.audioController.currentMessageID
-                      isEqualToString:msg.ID]) {
-                    return;
-                }
-
-                NSTimeInterval duration = weakSelf.audioController.playerDuration;
-                NSTimeInterval newTime = duration * progress;
-
-                // Seek safely
-                [weakSelf.audioController seekToTime:newTime];
-
-                // Update resume cache
-                weakSelf.audioResumeTimes[msg.ID] = @(newTime);
-            };
-            __weak typeof(cell) weakCell = cell;
-            cell.onPlayPauseTapped = ^{
-                NSString *msgID = msg.ID;
-
-                // 🔁 Same message → toggle
-                if ([weakSelf.audioController.currentMessageID
-                     isEqualToString:msgID]) {
-                    [weakSelf.audioController togglePlayPause];
-                    return;
-                }
-
-                // ⛔ Stop previous message & update its UI
-                NSString *oldID = weakSelf.audioController.currentMessageID;
-                if (oldID.length) {
-
-                    // Save resume time
-                    weakSelf.audioResumeTimes[oldID] =
-                    @(weakSelf.audioController.currentPlaybackTime);
-
-                    // Reset old cell button UI
-                    NSInteger oldRow = [weakSelf.messages
-                                        indexOfObjectPassingTest:^BOOL(ChatMessageModel *o,
-                                                                       NSUInteger idx, BOOL *stop) {
-                        return [o.ID isEqualToString:oldID];
-                    }];
-
-                    if (oldRow != NSNotFound) {
-                        NSIndexPath *oldIP = [NSIndexPath indexPathForRow:oldRow
-                                                                inSection:0];
-
-                        ChatAudioMessageCell *oldCell =
-                        (ChatAudioMessageCell *)[weakSelf.tableView
-                                                 cellForRowAtIndexPath:oldIP];
-
-                        if ([oldCell isKindOfClass:ChatAudioMessageCell.class]) {
-                            [oldCell setPlaying:NO];
-                        }
-                    }
-                }
-                [weakCell setLoading:YES];
-                // ▶️ Play new message
-                [weakSelf prepareLocalAudioForMessage:msg
-                                           completion:^(NSURL *localURL) {
-                    if (!localURL) {
-                        [weakCell setLoading:NO];
-                        return;
-                    }
-
-                    NSTimeInterval resume =
-                    weakSelf.audioResumeTimes[msgID].doubleValue;
-
-                    [weakSelf.audioController
-                     playMessageID:msgID
-                     url:localURL];
-
-                    if (resume > 0) {
-                        [weakSelf.audioController
-                         seekToTime:resume];
-                    }
-                }];
-            };
-            [self pp_prepareInteractionsForCell:cell message:msg];
-            return cell;
-        }
-//1628 =
-            
-        case ChatMessageTypeImage: {
-            ChatImageMessageCell *cell =
-            [tableView dequeueReusableCellWithIdentifier:@"ChatImageMessageCell"
-                                            forIndexPath:indexPath];
-            CGSize mediaSize = [self bubbleSizeForMediaMessage:msg];
-            
-            PPChatGroupPosition groupPos =
-                [self groupPositionForMessageAtIndex:indexPath.row];
-            
-            [cell configureWithImageURL:msg.fileURL
-                             isIncoming:isIncoming
-                               maxWidth:mediaSize.width
-                               message:msg
-                         groupPosition:groupPos];
-            cell.delegate = self;
-            [self pp_applyReplyPreviewForMessage:msg
-                                      toImageCell:cell
-                                       isIncoming:isIncoming];
-            [self pp_prepareInteractionsForCell:cell message:msg];
-            return cell;
-        }
-
-        case ChatMessageTypeVideo: {
-            ChatVideoMessageCell *cell =
-            [tableView dequeueReusableCellWithIdentifier:@"ChatVideoMessageCell"
-                                            forIndexPath:indexPath];
-            __weak typeof(cell) weakCell = cell;
-            CGSize mediaSize = [self bubbleSizeForMediaMessage:msg];
-           
-            
-            [cell configureWithMessage:msg
-                            isIncoming:isIncoming
-                              maxWidth:mediaSize.width
-                         groupPosition:groupPos];
-            [self pp_applyReplyPreviewForMessage:msg
-                                      toVideoCell:cell
-                                       isIncoming:isIncoming];
-        
-            cell.onPlayTapped = ^{
-                __strong typeof(weakCell) cell = weakCell;
-                [weakSelf openVideoFullscreen:cell message:msg];
-            };
-            cell.onViewTapped = ^{
-                __strong typeof(weakCell) cell = weakCell;
-                [weakSelf openVideoFullscreen:cell message:msg];
-            };
-            cell.onDownloadTapped = ^{
-                [weakSelf pp_downloadVideoMessage:msg];
-            };
-            cell.onReplyRequested = ^{
-                [weakSelf pp_selectReplyMessage:msg];
-            };
-            [self pp_prepareInteractionsForCell:cell message:msg];
-            return cell;
-        }
-
-        case ChatMessageTypeSticker: {
-            ChatStickerMessageCell *cell =
-                [tableView dequeueReusableCellWithIdentifier:@"ChatStickerMessageCell"
-                                                forIndexPath:indexPath];
-            BOOL stickerIsIncoming = ![self pp_currentUserOwnsMessage:msg];
-            [cell configureWithMessage:msg isIncoming:stickerIsIncoming];
-            [self pp_prepareInteractionsForCell:cell message:msg];
-            return cell;
-        }
-
-        case ChatMessageTypeText:
-        default:
-            break;
-    }
-
-    // 💬 TEXT MESSAGE (unchanged)
-    ChatMessageCell *cell =
-    [tableView dequeueReusableCellWithIdentifier:@"ChatMessageCell"
-                                    forIndexPath:indexPath];
-
-    [cell configureWithMessage:msg.text
-                          date:msg.timestamp
-                    isIncoming:isIncoming
-                      maxWidth:MAX_BUBBLE_WIDTH(self.view)
-                        status:msg.status messageModel:msg groupPosition:groupPos];
-    cell.delegate = self;
-    [self pp_applyReplyPreviewForMessage:msg
-                                toBubble:cell.bubbleView
-                              isIncoming:isIncoming];
-    [self pp_prepareInteractionsForCell:cell message:msg];
-    return cell;
+    return [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPLegacyStub"];
 }
 
 - (void)tableView:(UITableView *)tableView
@@ -5234,7 +4783,7 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
     }
 
     if (message.messageType == ChatMessageTypeSticker) {
-        return [ChatStickerMessageCell preferredCellHeight] + [self spacingForRowAtIndexPath:indexPath];
+        return 120.0 + [self spacingForRowAtIndexPath:indexPath];
     }
 
     // 🖼 Media
@@ -5270,7 +4819,7 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
                 break;
 
             case ChatMessageTypeSticker:
-                baseHeight = [ChatStickerMessageCell preferredCellHeight];
+                baseHeight = 120.0;
                 break;
                 
             case ChatMessageTypeText:

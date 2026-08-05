@@ -7,19 +7,13 @@
 #import "PPMessagingViewController.h"
 #import "PPChatHeaderView.h"
 #import "TypingIndicatorView.h"
-#import "ChatAudioMessageCell.h"
-#import "ChatImageMessageCell.h"
-#import "ChatVideoMessageCell.h"
-#import "ChatStickerMessageCell.h"
 #import "PPChatsFunc.h"
 
 @import Firebase;
 @import FirebaseFirestore;
 @import FirebaseStorage;
-@import FirebaseFirestore;
 
 @interface PPMessagingViewController (CHHelper)
-//- (void)markMessagesAsReadForThreadID:(NSString *)threadID currentUserID:(NSString *)myID;
 
  
  @property(nonatomic, assign) FIRAuthStateDidChangeListenerHandle authListenerHandle;

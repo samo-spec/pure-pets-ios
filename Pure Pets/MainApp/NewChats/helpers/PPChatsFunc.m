@@ -1,7 +1,6 @@
 #import "PPChatsFunc.h"
 #import "CitiesManager.h"
 #import "CountryModel.h"
-#import "ChatBubbleView.h"
 
 static NSString * const PPChatBubbleGradientLayerName = @"pp.chat.bubble.gradient";
 static NSString * const PPChatBubbleStrokeLayerName = @"pp.chat.bubble.stroke";
@@ -411,11 +410,6 @@ bubble.layer.mask = mask;
     [path closePath];
 
     BOOL rendersSurface = YES;
-    if ([bubble isKindOfClass:[ChatBubbleView class]]) {
-        ChatBubbleView *cb = (ChatBubbleView *)bubble;
-        BOOL emojiOnly = !cb.isDeleted && [cb pp_isEmojiOnlyText:cb.messageLabel.text];
-        rendersSurface = !emojiOnly;
-    }
 
     CAGradientLayer *gradientLayer = nil;
     CAShapeLayer *strokeLayer = nil;

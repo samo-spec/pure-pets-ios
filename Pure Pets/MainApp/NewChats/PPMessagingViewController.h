@@ -10,7 +10,7 @@
 // Pure Pets
 //
 // Created by Mohammed Ahmed on 28/07/2025.
-#import "ChatMessageCell.h"
+#import "ChatMessageModel.h"
 #import "ChatThreadModel.h"
 #import "PPChatHeaderView.h"
 #import "TypingIndicatorView.h"
@@ -86,7 +86,6 @@ NS_ASSUME_NONNULL_END
  #import "PPMessagingViewController.h"
  #import "PPChatHeaderView.h"
  #import "PPAudioPlaybackController.h"
- #import "ChatAudioMessageCell.h"
  #import "PPChatsFunc.h"
   
  @interface PPMessagingViewController (PPRecordHelper)<PPAudioPlaybackControllerDelegate,AVAudioPlayerDelegate,AVAudioPlayerDelegate,

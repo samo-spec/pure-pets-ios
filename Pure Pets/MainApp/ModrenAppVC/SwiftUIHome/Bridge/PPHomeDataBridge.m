@@ -145,7 +145,7 @@
         fallbackSymbol = @"pills.fill";
     } else if ([self.animationName containsString:@"cart"] ||
                [self.animationName containsString:@"shop"] ||
-               [self.animationName isEqualToString:@"Shop2.json"]) {
+               [self pp_isMarketplaceAnimationName]) {
         fallbackSymbol = @"bag.fill";
     }
     
@@ -170,7 +170,7 @@
     [self addSubview:animation];
     self.animationView = animation;
 
-    CGFloat inset = ([self.animationName isEqualToString:@"petstore"] || [self.animationName isEqualToString:@"Shop2.json"]) ? 9.0 : -2.0;
+    CGFloat inset = ([self.animationName isEqualToString:@"petstore"] || [self pp_isMarketplaceAnimationName]) ? 9.0 : -2.0;
     [NSLayoutConstraint activateConstraints:@[
         [fallback.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [fallback.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
@@ -264,6 +264,16 @@
     [self pp_loadMarketplaceAnimationIfNeeded];
 }
 
+- (BOOL)pp_isMarketplaceAnimationName
+{
+    return [self.animationName.lastPathComponent.lowercaseString isEqualToString:@"shop2.json"];
+}
+
+- (BOOL)pp_isBagAnimationName
+{
+    return [self.animationName.lastPathComponent.lowercaseString isEqualToString:@"bag.json"];
+}
+
 - (void)pp_applyLoadedAnimationState
 {
     self.animationView.hidden = !self.animationLoaded;
@@ -272,10 +282,8 @@
         self.animationView.loopAnimation = YES;
         BOOL profileAnimation =
             [self.animationName isEqualToString:@"Profile.lottie"];
-        BOOL marketplaceAnimation =
-            [self.animationName.lastPathComponent.lowercaseString
-                isEqualToString:@"shop2.json"];
-        BOOL bagAnimation = [self.animationName containsString:@"bag"];
+        BOOL marketplaceAnimation = [self pp_isMarketplaceAnimationName];
+        BOOL bagAnimation = [self pp_isBagAnimationName];
         if (marketplaceAnimation) {
             self.animationView.animationSpeed = 0.60;
         } else if (profileAnimation || bagAnimation) {

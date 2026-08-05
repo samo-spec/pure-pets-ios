@@ -9,6 +9,8 @@
 
 import AVKit
 import Combine
+import PurePetsMessagingCore
+import PurePetsMessagingUI
 import SwiftUI
 import UIKit
 
@@ -295,7 +297,7 @@ private final class PPMessagingScreenState: ObservableObject {
         }
 
         let snapshots = payloads.map { payload -> PPMessagingMessageSnapshot in
-            let messageID = payload.ppString("id") ?? UUID().uuidString
+            let messageID = payload.ppString("id") ?? "unknown-\(payload.count)"
             return PPMessagingMessageSnapshot(
                 payload: payload,
                 currentUserID: currentUserID,
@@ -439,7 +441,15 @@ private struct PPMessagingMessageSnapshot: Identifiable {
         failureText: String?,
         animatesEntrance: Bool
     ) {
-        id = payload.ppString("id") ?? UUID().uuidString
+        let fallbackID = [
+            payload.ppString("senderID") ?? "",
+            payload.ppString("kind") ?? "text",
+            payload.ppString("text") ?? "",
+            String(payload.ppDouble("duration")),
+            String(payload.ppDouble("mediaWidth")),
+            String(payload.ppDouble("mediaHeight"))
+        ].joined(separator: "|")
+        id = payload.ppString("id") ?? "unknown-\(fallbackID)"
         text = payload.ppString("text") ?? ""
         senderID = payload.ppString("senderID") ?? ""
         timestamp = payload["timestamp"] as? Date ?? Date()
@@ -577,6 +587,7 @@ private struct PPMessagingScreen: View {
     @State private var unseenMessageCount = 0
     @State private var paginationAnchorID: String?
     @State private var highlightedMessageID: String?
+    @State private var packageAudioCoordinator = ConversationAudioCoordinator()
 
     var body: some View {
         GeometryReader { proxy in
@@ -697,22 +708,27 @@ private struct PPMessagingScreen: View {
                                     .padding(.vertical, 8)
                             }
 
-                            PPMessagingMessageRow(
-                                message: message,
-                                grouping: grouping(at: index),
-                                replySource: replySource(for: message),
-                                availableWidth: availableWidth,
-                                highlighted: highlightedMessageID == message.id,
-                                audioState: audioState(for: message),
-                                onAction: { action in
-                                    handleMessageAction(action, message: message, proxy: proxy)
-                                },
-                                onSeekAudio: { progress in
-                                    relay.delegate?.messagingHostDidSeekAudioMessageID(
-                                        message.id,
-                                        progress: progress
-                                    )
-                                }
+                            SmartMessageCell(
+                                message: PPMessagingAdapter.chatMessage(
+                                    from: message,
+                                    groupPosition: packageGroupPosition(at: index),
+                                    replySource: replySource(for: message),
+                                    audioState: audioState(for: message)
+                                ),
+                                showsAvatar: grouping(at: index) == .single || grouping(at: index) == .last,
+                                audioCoordinator: packageAudioCoordinator,
+                                actions: SmartMessageCell.Actions(
+                                    onReply: { handleMessageAction(.reply, message: message, proxy: proxy) },
+                                    onCopy: { handleMessageAction(.copy, message: message, proxy: proxy) },
+                                    onForward: {},
+                                    onDelete: { handleMessageAction(.unsend, message: message, proxy: proxy) },
+                                    onRetry: { handleMessageAction(.retry, message: message, proxy: proxy) },
+                                    onOpenReply: { _ in handleMessageAction(.openReplySource, message: message, proxy: proxy) },
+                                    onOpenImage: { _ in handleMessageAction(.openMedia, message: message, proxy: proxy) },
+                                    onOpenVideo: { _ in handleMessageAction(.openMedia, message: message, proxy: proxy) },
+                                    onReactionTap: { _ in },
+                                    onUpdateApp: {}
+                                )
                             )
                             .id(message.id)
                             .accessibilityIdentifier("pp.messaging.message.\(message.id)")
@@ -888,6 +904,15 @@ private struct PPMessagingScreen: View {
         case (false, true): return .first
         case (true, true): return .middle
         case (true, false): return .last
+        }
+    }
+
+    private func packageGroupPosition(at index: Int) -> MessageGroupPosition {
+        switch grouping(at: index) {
+        case .single: return .isolated
+        case .first: return .first
+        case .middle: return .middle
+        case .last: return .last
         }
     }
 
@@ -1347,342 +1372,187 @@ private struct PPMessagingAudioState {
     let isLoading: Bool
 }
 
-private struct PPMessagingMessageRow: View {
-    let message: PPMessagingMessageSnapshot
-    let grouping: PPMessagingGrouping
-    let replySource: PPMessagingMessageSnapshot?
-    let availableWidth: CGFloat
-    let highlighted: Bool
-    let audioState: PPMessagingAudioState
-    let onAction: (PPMessagingRowAction) -> Void
-    let onSeekAudio: (Double) -> Void
+// MARK: - Snapshot → Package ChatMessage Adapter
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.layoutDirection) private var layoutDirection
-    @State private var appeared = false
-    @State private var replyDragOffset: CGFloat = 0
-    @State private var replyThresholdFeedbackSent = false
+private enum PPMessagingAdapter {
+    /// Create a deterministic UUID from any string (Firestore doc IDs are not UUIDs).
+    /// Uses XOR-folded hashing to produce stable identity across renders.
 
-    var body: some View {
-        bubble
-            .frame(maxWidth: maximumBubbleWidth, alignment: rowAlignment)
-            .frame(maxWidth: .infinity, alignment: rowAlignment)
-            .offset(x: replyDragOffset)
-            .opacity(appeared ? 1 : 0.01)
-            .scaleEffect(appeared ? 1 : 0.985, anchor: scaleAnchor)
-            .overlay {
-                if highlighted {
-                    PPMessagingBubbleShape(
-                        isOutgoing: message.isOutgoing,
-                        grouping: grouping
-                    )
-                    .stroke(PPMessagingPalette.highlight, lineWidth: 2)
-                    .padding(-3)
-                    .transition(.opacity)
-                }
-            }
-            .contextMenu { contextMenu }
-            .simultaneousGesture(replyGesture)
-            .onAppear {
-                guard !appeared else { return }
-                if message.animatesEntrance && !reduceMotion {
-                    withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 0.32)) {
-                        appeared = true
-                    }
-                } else {
-                    appeared = true
-                }
-            }
-            .accessibilityElement(children: accessibilityChildBehavior)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityValue(accessibilityValue)
-            .accessibilityHint(message.isDeleted ? "" : localized("chat_message_actions_hint"))
-            .ppMessagingAccessibilityAction(
-                enabled: !message.isDeleted,
-                label: localized("reply"),
-                action: { onAction(.reply) }
-            )
-            .ppMessagingAccessibilityAction(
-                enabled: !message.isDeleted && message.kind == "text" && !message.text.isEmpty,
-                label: localized("copy"),
-                action: { onAction(.copy) }
-            )
-            .ppMessagingAccessibilityAction(
-                enabled: !message.isDeleted && message.isMedia,
-                label: localized("chat_media_download"),
-                action: { onAction(.save) }
-            )
-            .ppMessagingAccessibilityAction(
-                enabled: !message.isDeleted && message.canUnsend,
-                label: localized("chat_unsend"),
-                action: { onAction(.unsend) }
-            )
+    private static func deterministicUUID(from string: String) -> UUID {
+        guard !string.isEmpty else { return UUID() }
+        // Try parsing as UUID first (handles already-valid UUIDs)
+        if let parsed = UUID(uuidString: string) { return parsed }
+        // Produce a stable UUID from the string via XOR-folded hash
+        let sourceBytes = [UInt8](Data(string.utf8))
+        var hash = [UInt8](repeating: 0, count: 16)
+        for (i, byte) in sourceBytes.enumerated() {
+            hash[i % 16] ^= byte
+        }
+        // Set version 5 and variant bits
+        hash[6] = (hash[6] & 0x0F) | 0x50 // version 5
+        hash[8] = (hash[8] & 0x3F) | 0x80 // variant
+        return UUID(uuid: (hash[0], hash[1], hash[2], hash[3],
+                           hash[4], hash[5], hash[6], hash[7],
+                           hash[8], hash[9], hash[10], hash[11],
+                           hash[12], hash[13], hash[14], hash[15]))
     }
 
-    private var bubble: some View {
-        VStack(alignment: contentAlignment, spacing: 5) {
-            if let replyID = message.replyToMessageID {
-                Button {
-                    onAction(.openReplySource)
-                } label: {
-                    PPMessagingReplyPreview(
-                        source: replySource,
-                        sourceID: replyID,
-                        isOutgoing: message.isOutgoing
-                    )
-                }
-                .buttonStyle(.plain)
+    static func chatMessage(
+        from snapshot: PPMessagingMessageSnapshot,
+        groupPosition: MessageGroupPosition,
+        replySource: PPMessagingMessageSnapshot?,
+        audioState: PPMessagingAudioState
+    ) -> ChatMessage {
+        let senderUUID = deterministicUUID(from: snapshot.senderID)
+        let displayName = snapshot.senderID.isEmpty ? "?" : snapshot.senderID
+        let initials: String = {
+            let id = snapshot.senderID
+            if id.isEmpty { return "?" }
+            // If it looks like a name (contains spaces), use name initials
+            let parts = id.split(separator: " ").prefix(2)
+            if parts.count >= 2 {
+                return parts.compactMap(\.first).map(String.init).joined().uppercased()
             }
+            // Otherwise use first two characters
+            return String(id.prefix(2)).uppercased()
+        }()
 
-            messageContent
-
-            if let failureText = message.failureText {
-                HStack(spacing: 7) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                    Text(failureText.isEmpty ? localized("chat_message_failed_title") : failureText)
-                        .lineLimit(2)
-                    Spacer(minLength: 3)
-                    Button(localized("KLang_Retry")) {
-                        onAction(.retry)
-                    }
-                    .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                }
-                .font(.custom("Beiruti-Medium", size: 11.5, relativeTo: .caption))
-                .foregroundColor(PPMessagingPalette.failure)
-            }
-
-            if shouldShowMetadata {
-                PPMessagingMetadataRow(message: message)
-            }
-        }
-        .padding(.horizontal, message.kind == "sticker" ? 5 : 12)
-        .padding(.vertical, message.kind == "sticker" ? 5 : 8)
-        .background(
-            PPMessagingBubbleShape(
-                isOutgoing: message.isOutgoing,
-                grouping: grouping
-            )
-            .fill(bubbleFill)
+        let sender = MessageSender(
+            id: senderUUID,
+            displayName: displayName,
+            avatarURL: nil,
+            initials: initials
         )
-        .overlay {
-            PPMessagingBubbleShape(
-                isOutgoing: message.isOutgoing,
-                grouping: grouping
-            )
-            .stroke(message.failureText == nil ? bubbleStroke : PPMessagingPalette.failure.opacity(0.7), lineWidth: 0.8)
-        }
-    }
 
-    @ViewBuilder
-    private var messageContent: some View {
-        if message.isDeleted {
-            Label(localized("chat_message_unsent"), systemImage: "arrow.uturn.backward.circle")
-                .font(.custom("Beiruti-Medium", size: 15, relativeTo: .body))
-                .foregroundColor(contentSecondary)
-        } else {
-            switch message.kind {
-            case "image":
-                PPMessagingImageContent(message: message, isSticker: false) {
-                    onAction(.openMedia)
-                }
-            case "video":
-                PPMessagingVideoContent(message: message) {
-                    onAction(.openMedia)
-                }
-            case "audio":
-                PPMessagingAudioContent(
-                    message: message,
-                    state: audioState,
-                    foreground: contentPrimary,
-                    secondary: contentSecondary,
-                    onToggle: { onAction(.toggleAudio) },
-                    onSeek: onSeekAudio
-                )
-            case "sticker":
-                PPMessagingImageContent(message: message, isSticker: true) {
-                    onAction(.openMedia)
-                }
-            case "file":
-                PPMessagingFileContent(message: message, foreground: contentPrimary)
-            default:
-                Text(message.text)
-                    .font(.custom("Beiruti-Regular", size: 16.5, relativeTo: .body))
-                    .foregroundColor(contentPrimary)
-                    .multilineTextAlignment(.leading)
-                    .environment(\.layoutDirection, messageTextDirection)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+        let direction: MessageDirection = {
+            if snapshot.isOutgoing {
+                return .outgoing(outgoingState(from: snapshot))
+            } else {
+                return .incoming(receivedAt: snapshot.timestamp)
             }
-        }
-    }
+        }()
 
-    @ViewBuilder
-    private var contextMenu: some View {
-        if !message.isDeleted {
-            Button {
-                onAction(.reply)
-            } label: {
-                Label(localized("reply"), systemImage: "arrowshape.turn.up.left")
-            }
+        let payload = messagePayload(from: snapshot, audioState: audioState)
 
-            if message.kind == "text", !message.text.isEmpty {
-                Button {
-                    onAction(.copy)
-                } label: {
-                    Label(localized("copy"), systemImage: "doc.on.doc")
-                }
-            }
-
-            if message.isMedia {
-                Button {
-                    onAction(.save)
-                } label: {
-                    Label(localized("chat_media_download"), systemImage: "square.and.arrow.down")
-                }
-            }
-
-            if message.canUnsend {
-                Button(role: .destructive) {
-                    onAction(.unsend)
-                } label: {
-                    Label(localized("chat_unsend"), systemImage: "arrow.uturn.backward")
-                }
-            }
-        }
-    }
-
-    private var replyGesture: some Gesture {
-        DragGesture(minimumDistance: 14, coordinateSpace: .local)
-            .onChanged { value in
-                guard !message.isDeleted,
-                      abs(value.translation.width) > abs(value.translation.height) else { return }
-                let direction = replyPhysicalDirection
-                let directional = value.translation.width * direction
-                let clamped = min(max(directional, 0), 82)
-                replyDragOffset = clamped * direction
-                if clamped >= 60, !replyThresholdFeedbackSent {
-                    UISelectionFeedbackGenerator().selectionChanged()
-                    replyThresholdFeedbackSent = true
-                } else if clamped < 26 {
-                    replyThresholdFeedbackSent = false
-                }
-            }
-            .onEnded { _ in
-                let shouldReply = abs(replyDragOffset) >= 60
-                if shouldReply {
-                    onAction(.reply)
-                }
-                let reset = { replyDragOffset = 0 }
-                if reduceMotion {
-                    reset()
+        let replyRef: ReplyReference? = {
+            guard let replyID = snapshot.replyToMessageID else { return nil }
+            let preview: ReplyPreview
+            if let src = replySource {
+                if src.isDeleted {
+                    preview = .deleted
                 } else {
-                    withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 0.28), reset)
+                    switch src.kind {
+                    case "image": preview = .image
+                    case "video": preview = .video
+                    case "audio": preview = .voice
+                    case "sticker": preview = .sticker(description: "Sticker")
+                    default: preview = .text(src.text)
+                    }
                 }
-                replyThresholdFeedbackSent = false
+            } else {
+                preview = .unsupported
             }
+            return ReplyReference(
+                messageID: MessageID(deterministicUUID(from: replyID)),
+                senderDisplayName: replySource?.senderID ?? "",
+                preview: preview
+            )
+        }()
+
+        return ChatMessage(
+            id: MessageID(deterministicUUID(from: snapshot.id)),
+            sender: sender,
+            direction: direction,
+            payload: payload,
+            replyReference: replyRef,
+            reactions: [],
+            sentAt: snapshot.timestamp,
+            groupPosition: groupPosition
+        )
     }
 
-    private var replyPhysicalDirection: CGFloat {
-        message.isOutgoing ? 1 : -1
-    }
-
-    private var rowAlignment: Alignment {
-        if layoutDirection == .rightToLeft {
-            return message.isOutgoing ? .leading : .trailing
+    private static func outgoingState(from snapshot: PPMessagingMessageSnapshot) -> OutgoingDeliveryState {
+        if snapshot.failureText != nil {
+            return .failed(.unknown(code: nil))
         }
-        return message.isOutgoing ? .trailing : .leading
-    }
-
-    private var contentAlignment: HorizontalAlignment {
-        if layoutDirection == .rightToLeft {
-            return message.isOutgoing ? .leading : .trailing
+        if snapshot.isUploading {
+            return .uploading(progress: snapshot.transferProgress)
         }
-        return message.isOutgoing ? .trailing : .leading
-    }
-
-    private var scaleAnchor: UnitPoint {
-        if layoutDirection == .rightToLeft {
-            return message.isOutgoing ? .leading : .trailing
+        if snapshot.isLocalPending {
+            return .queued
         }
-        return message.isOutgoing ? .trailing : .leading
-    }
-
-    private var maximumBubbleWidth: CGFloat {
-        let widthFraction = dynamicTypeSize.isAccessibilitySize ? 0.90 : 0.79
-        return min(max(availableWidth * widthFraction, 0), 440)
-    }
-
-    private var shouldShowMetadata: Bool {
-        if message.failureText != nil || message.isUploading || message.isLocalPending {
-            return true
-        }
-        return grouping == .single || grouping == .last
-    }
-
-    private var accessibilityChildBehavior: AccessibilityChildBehavior {
-        if message.replyToMessageID != nil ||
-            message.failureText != nil ||
-            message.kind == "audio" ||
-            message.isMedia {
-            return .contain
-        }
-        return .combine
-    }
-
-    private var messageTextDirection: LayoutDirection {
-        PPMessagingTextDirection.resolve(message.text, fallback: layoutDirection)
-    }
-
-    private var bubbleFill: Color {
-        message.isOutgoing ? PPMessagingPalette.outgoingBubble : PPMessagingPalette.incomingBubble
-    }
-
-    private var bubbleStroke: Color {
-        message.isOutgoing ? PPMessagingPalette.outgoingStroke : PPMessagingPalette.incomingStroke
-    }
-
-    private var contentPrimary: Color {
-        message.isOutgoing ? PPMessagingPalette.outgoingText : PPMessagingPalette.primaryText
-    }
-
-    private var contentSecondary: Color {
-        message.isOutgoing ? PPMessagingPalette.outgoingSecondary : PPMessagingPalette.secondaryText
-    }
-
-    private var accessibilityLabel: String {
-        let direction = localized(message.isOutgoing ? "chat_accessibility_outgoing" : "chat_accessibility_incoming")
-        let content: String
-        if message.isDeleted {
-            content = localized("chat_message_unsent")
-        } else {
-            switch message.kind {
-            case "image": content = localized("chat_reply_image")
-            case "video": content = localized("chat_reply_video")
-            case "audio": content = localized("chat_reply_audio")
-            case "sticker": content = localized("chat_reply_sticker")
-            default: content = message.text
-            }
-        }
-        return "\(direction). \(content). \(PPMessagingFormatters.accessibleDate(message.timestamp))"
-    }
-
-    private var accessibilityValue: String {
-        if message.failureText != nil {
-            return localized("chat_message_failed_title")
-        }
-        guard message.isOutgoing else { return "" }
-
-        switch message.status {
-        case 3: return localized("chat_status_read")
-        case 2: return localized("chat_status_delivered")
-        case 1: return localized("chat_status_sent")
-        default: return localized("chat_status_sending")
+        switch snapshot.status {
+        case 3: return .read(at: nil)
+        case 2: return .delivered
+        case 1: return .sent
+        default: return .queued
         }
     }
 
-    private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+    private static func messagePayload(
+        from snapshot: PPMessagingMessageSnapshot,
+        audioState: PPMessagingAudioState
+    ) -> MessagePayload {
+        if snapshot.isDeleted {
+            return .deleted(DeletedPayload(deletedBy: .sender))
+        }
+
+        switch snapshot.kind {
+        case "text":
+            return .text(TextPayload(text: snapshot.text))
+
+        case "image":
+            return .image(ImagePayload(
+                imageURL: snapshot.mediaURL,
+                thumbnailURL: snapshot.thumbnailURL,
+                dimensions: MediaDimensions(
+                    width: max(snapshot.mediaWidth, 200),
+                    height: max(snapshot.mediaHeight, 200)
+                ),
+                accessibilityDescription: NSLocalizedString("chat_reply_image", comment: "")
+            ))
+
+        case "video":
+            return .video(VideoPayload(
+                videoURL: snapshot.mediaURL,
+                thumbnailURL: snapshot.thumbnailURL,
+                duration: snapshot.duration,
+                dimensions: MediaDimensions(
+                    width: max(snapshot.mediaWidth, 200),
+                    height: max(snapshot.mediaHeight, 200)
+                ),
+                accessibilityDescription: NSLocalizedString("chat_reply_video", comment: "")
+            ))
+
+        case "audio":
+            return .voice(VoicePayload(
+                audioURL: snapshot.mediaURL,
+                duration: audioState.duration > 0 ? audioState.duration : snapshot.duration,
+                waveform: snapshot.waveformSamples.isEmpty
+                    ? Array(repeating: 0.4, count: 24)
+                    : snapshot.waveformSamples,
+                transcript: nil
+            ))
+
+        case "sticker":
+            // swiftlint:disable:next force_try
+            let desc = try! NonEmptyText("Sticker")
+            return .sticker(StickerPayload(
+                assetURL: snapshot.mediaURL,
+                fallbackEmoji: "🐾",
+                accessibilityDescription: desc,
+                isAnimated: false
+            ))
+
+        case "file":
+            return .unsupported(UnsupportedPayload(
+                typeIdentifier: "file",
+                schemaVersion: nil
+            ))
+
+        default:
+            return .text(TextPayload(text: snapshot.text))
+        }
     }
 }
 
@@ -1798,90 +1668,6 @@ private struct PPMessagingMetadataRow: View {
     }
 }
 
-private struct PPMessagingImageContent: View {
-    let message: PPMessagingMessageSnapshot
-    let isSticker: Bool
-    let open: () -> Void
-
-    var body: some View {
-        Button(action: open) {
-            ZStack {
-                PPMessagingRemoteImage(
-                    localImage: message.localImage,
-                    url: message.mediaURL,
-                    contentMode: isSticker ? .fit : .fill
-                )
-                .frame(height: mediaHeight)
-                .clipShape(RoundedRectangle(cornerRadius: isSticker ? 14 : 16, style: .continuous))
-
-                if message.isUploading {
-                    PPMessagingTransferOverlay(progress: message.transferProgress)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(localized(isSticker ? "chat_reply_sticker" : "chat_reply_image"))
-        .accessibilityHint(localized("chat_media_view"))
-    }
-
-    private var mediaHeight: CGFloat {
-        if isSticker { return 154 }
-        guard message.mediaWidth > 0, message.mediaHeight > 0 else { return 210 }
-        let ratio = message.mediaHeight / message.mediaWidth
-        return min(max(250 * ratio, 150), 330)
-    }
-
-    private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
-    }
-}
-
-private struct PPMessagingVideoContent: View {
-    let message: PPMessagingMessageSnapshot
-    let open: () -> Void
-
-    var body: some View {
-        Button(action: open) {
-            ZStack {
-                PPMessagingRemoteImage(
-                    localImage: message.thumbnailImage,
-                    url: message.thumbnailURL,
-                    contentMode: .fill
-                )
-                .frame(height: mediaHeight)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 54, height: 54)
-                    .overlay {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 19, weight: .semibold))
-                            .foregroundColor(.white)
-                            .offset(x: 1)
-                    }
-
-                if message.isUploading {
-                    PPMessagingTransferOverlay(progress: message.transferProgress)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(localized("chat_reply_video"))
-        .accessibilityHint(localized("chat_media_view"))
-    }
-
-    private var mediaHeight: CGFloat {
-        guard message.mediaWidth > 0, message.mediaHeight > 0 else { return 210 }
-        let ratio = message.mediaHeight / message.mediaWidth
-        return min(max(250 * ratio, 150), 330)
-    }
-
-    private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
-    }
-}
-
 private struct PPMessagingRemoteImage: View {
     let localImage: UIImage?
     let url: URL?
@@ -1922,161 +1708,6 @@ private struct PPMessagingRemoteImage: View {
                 .font(.system(size: 24, weight: .medium))
                 .foregroundColor(PPMessagingPalette.secondaryText)
         }
-    }
-}
-
-private struct PPMessagingTransferOverlay: View {
-    let progress: Double
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.28)
-            VStack(spacing: 7) {
-                ProgressView(value: progress)
-                    .progressViewStyle(.circular)
-                    .tint(.white)
-                Text("\(Int(progress * 100))%")
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(.white)
-            }
-        }
-        .accessibilityLabel(NSLocalizedString("Uploading…", comment: ""))
-        .accessibilityValue("\(Int(progress * 100))%")
-    }
-}
-
-private struct PPMessagingAudioContent: View {
-    let message: PPMessagingMessageSnapshot
-    let state: PPMessagingAudioState
-    let foreground: Color
-    let secondary: Color
-    let onToggle: () -> Void
-    let onSeek: (Double) -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onToggle) {
-                ZStack {
-                    Circle()
-                        .fill(foreground.opacity(0.10))
-                        .frame(width: 40, height: 40)
-                    if state.isLoading {
-                        ProgressView().tint(foreground)
-                    } else {
-                        Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(foreground)
-                            .offset(x: state.isPlaying ? 0 : 1)
-                    }
-                }
-                .frame(width: 44, height: 44)
-            }
-            .buttonStyle(PPMessagingPressButtonStyle())
-            .accessibilityLabel(
-                localized(state.isPlaying ? "voice_pause" : "voice_play")
-            )
-
-            VStack(alignment: .leading, spacing: 5) {
-                PPMessagingWaveform(
-                    samples: message.waveformSamples,
-                    progress: state.progress,
-                    active: foreground,
-                    inactive: secondary.opacity(0.34)
-                )
-                .frame(height: 26)
-
-                Slider(
-                    value: Binding(
-                        get: { state.progress },
-                        set: { onSeek($0) }
-                    ),
-                    in: 0...1
-                )
-                .tint(foreground)
-                .frame(height: 12)
-                .accessibilityLabel(localized("voice_preview_progress"))
-
-                HStack {
-                    Text(formatDuration(state.progress * state.duration))
-                    Spacer()
-                    Text(formatDuration(state.duration))
-                }
-                .font(.custom("Beiruti-Medium", size: 10.5, relativeTo: .caption2))
-                .monospacedDigit()
-                .foregroundColor(secondary)
-            }
-            .frame(minWidth: 150)
-        }
-    }
-
-    private func formatDuration(_ duration: Double) -> String {
-        let safe = max(duration, 0)
-        return String(format: "%d:%02d", Int(safe) / 60, Int(safe) % 60)
-    }
-
-    private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
-    }
-}
-
-private struct PPMessagingWaveform: View {
-    let samples: [Double]
-    let progress: Double
-    let active: Color
-    let inactive: Color
-
-    var body: some View {
-        GeometryReader { proxy in
-            let normalized = samples.isEmpty ? fallbackSamples : samples
-            let count = max(normalized.count, 1)
-            let spacing: CGFloat = 2
-            let width = max(1, (proxy.size.width - CGFloat(count - 1) * spacing) / CGFloat(count))
-            HStack(alignment: .center, spacing: spacing) {
-                ForEach(Array(normalized.enumerated()), id: \.offset) { index, value in
-                    Capsule()
-                        .fill(Double(index) / Double(count) <= progress ? active : inactive)
-                        .frame(width: width, height: max(3, proxy.size.height * min(max(value, 0.12), 1)))
-                }
-            }
-            .frame(maxHeight: .infinity, alignment: .center)
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var fallbackSamples: [Double] {
-        [0.26, 0.48, 0.74, 0.38, 0.88, 0.55, 0.32, 0.68, 0.43, 0.82, 0.36, 0.58,
-         0.29, 0.72, 0.46, 0.64, 0.34, 0.78, 0.52, 0.30, 0.62, 0.42, 0.70, 0.37]
-    }
-}
-
-private struct PPMessagingFileContent: View {
-    let message: PPMessagingMessageSnapshot
-    let foreground: Color
-    @Environment(\.layoutDirection) private var layoutDirection
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "doc.fill")
-                .font(.system(size: 22, weight: .semibold))
-                .frame(width: 42, height: 42)
-                .background(foreground.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Text(message.text.isEmpty ? localized("chat_notification_file") : message.text)
-                .font(.custom("Beiruti-Medium", size: 15, relativeTo: .body))
-                .lineLimit(3)
-                .multilineTextAlignment(.leading)
-                .environment(
-                    \.layoutDirection,
-                    PPMessagingTextDirection.resolve(
-                        message.text,
-                        fallback: layoutDirection
-                    )
-                )
-        }
-        .foregroundColor(foreground)
-    }
-
-    private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
     }
 }
 
