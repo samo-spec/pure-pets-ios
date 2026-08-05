@@ -70,6 +70,9 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         relay.onSendText = { [weak self] text in
             self?.sendTextThroughExistingPipeline(text)
         }
+        relay.onStickerSelected = { [weak self] sticker in
+            self?.sendStickerThroughExistingPipeline(sticker)
+        }
         relay.onContextRequested = { [weak self] contextID in
             self?.presentSupportContextDetails(contextID: contextID)
         }
@@ -311,6 +314,70 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         screenState.appendOptimisticText(
             messageID: message.id,
             text: text,
+            senderID: senderID
+        )
+
+        ChManager.shared().sendMessage(
+            message,
+            inThread: threadID,
+            senderID: senderID
+        ) { [weak self] error in
+            guard let self else { return }
+            self.onMain {
+                if let error {
+                    self.screenState.setFailure(
+                        messageID: message.id,
+                        message: NSLocalizedString(
+                            "chat_message_failed_title",
+                            comment: "Public message-send failure label"
+                        )
+                    )
+                } else {
+                    self.screenState.markMessageSent(messageID: message.id)
+                }
+            }
+        }
+    }
+
+    private func sendStickerThroughExistingPipeline(_ sticker: PPChatSticker) {
+        guard let thread = chatThread,
+              !thread.id.isEmpty else {
+            return
+        }
+
+        let downloadURLString = sticker.downloadURLString
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !downloadURLString.isEmpty,
+              URL(string: downloadURLString) != nil else {
+            NSLog("[Chat] Refusing sticker without a valid download URL")
+            return
+        }
+
+        let threadID = thread.id
+        let senderID = UserManager.shared().currentUser?.id ?? ""
+        let receiverID = Self.outgoingReceiverID(for: thread, senderID: senderID)
+        guard !senderID.isEmpty,
+              !receiverID.isEmpty,
+              senderID != receiverID else {
+            NSLog("[Chat] Refusing sticker without a valid sender/receiver identity")
+            return
+        }
+
+        let message = ChatMessageModel()
+        message.id = UUID().uuidString
+        message.text = ""
+        message.senderID = senderID
+        message.receiverID = receiverID
+        message.timestamp = Date()
+        message.messageType = .sticker
+        message.fileURL = downloadURLString
+        message.stickerStoragePath = sticker.storagePath
+        message.mimeType = "image/png"
+        message.mediaWidth = 1.0
+
+        screenState.appendOptimisticSticker(
+            messageID: message.id,
+            sticker: sticker,
             senderID: senderID
         )
 
@@ -730,6 +797,36 @@ private final class PPMessagingScreenState: ObservableObject {
         messageRevision &+= 1
     }
 
+    func appendOptimisticSticker(
+        messageID: String,
+        sticker: PPChatSticker,
+        senderID: String
+    ) {
+        guard !messages.contains(where: { $0.id == messageID }) else { return }
+
+        let snapshot = PPMessagingMessageSnapshot(
+            payload: [
+                "id": messageID,
+                "text": "",
+                "senderID": senderID,
+                "timestamp": Date(),
+                "kind": "sticker",
+                "status": 0,
+                "fileURL": sticker.downloadURLString,
+                "isLocalPending": true,
+                "isOutgoing": true
+            ],
+            currentUserID: senderID,
+            failureText: nil,
+            animatesEntrance: true
+        )
+        messages.append(snapshot)
+        knownMessageIDs.insert(messageID)
+        latestAppendedCount = 1
+        latestAppendContainsOutgoing = true
+        messageRevision &+= 1
+    }
+
     func markMessageSent(messageID: String) {
         messages = messages.map {
             guard $0.id == messageID else { return $0 }
@@ -938,6 +1035,7 @@ private extension Dictionary where Key == String, Value == Any {
 private final class PPMessagingActionRelay {
     weak var delegate: PPMessagingSwiftUIHostControllerDelegate?
     var onSendText: ((String) -> Void)?
+    var onStickerSelected: ((PPChatSticker) -> Void)?
     var onContextRequested: ((String?) -> Void)?
     var onActionRequested: ((PPMessagingAction, String?) -> Void)?
 
@@ -946,6 +1044,14 @@ private final class PPMessagingActionRelay {
             delegate.messagingHostDidSendText(text)
         } else {
             onSendText?(text)
+        }
+    }
+
+    func selectSticker(_ sticker: PPChatSticker) {
+        if let delegate {
+            delegate.messagingHostDidSelectSticker(sticker)
+        } else {
+            onStickerSelected?(sticker)
         }
     }
 
@@ -1052,7 +1158,7 @@ private struct PPMessagingScreen: View {
                     onCameraTap: { relay.delegate?.messagingHostDidTapPhoto() },
                     onVideoTap: { relay.delegate?.messagingHostDidTapVideo() },
                     onContactTap: { relay.delegate?.messagingHostDidTapContact() },
-                    onStickerTap: { relay.delegate?.messagingHostDidSelectSticker($0) },
+                    onStickerTap: { relay.selectSticker($0) },
                     onSendAudio: { url, duration in
                         relay.delegate?.messagingHostDidSendAudio(url, duration: duration)
                     },
