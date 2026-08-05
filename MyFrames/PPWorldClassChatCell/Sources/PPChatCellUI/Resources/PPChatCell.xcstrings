@@ -1,630 +1,666 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "chat.cell.online_now": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Online now"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "chat.cell.away" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بعيد"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "متصل الآن"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Away"
           }
         }
       }
     },
-    "chat.cell.away": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Away"
+    "chat.cell.collapse_reply" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إخفاء الرد السريع"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "بعيد"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapse quick reply"
           }
         }
       }
     },
-    "chat.cell.offline": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offline"
+    "chat.cell.collapsed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مطوي"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "غير متصل"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapsed"
           }
         }
       }
     },
-    "chat.cell.open_full_chat": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open full chat"
+    "chat.cell.conversation_context" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سياق المحادثة"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "فتح المحادثة كاملة"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation context"
           }
         }
       }
     },
-    "chat.cell.latest_message": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Latest message"
+    "chat.cell.deleted_message" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم حذف الرسالة"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "آخر رسالة"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message deleted"
           }
         }
       }
     },
-    "chat.cell.conversation_context": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conversation context"
+    "chat.cell.disabled" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "غير متاح"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "سياق المحادثة"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disabled"
           }
         }
       }
     },
-    "chat.cell.quick_replies": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quick replies"
+    "chat.cell.error.closed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "هذه المحادثة مغلقة."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ردود سريعة"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This conversation is closed."
           }
         }
       }
     },
-    "chat.cell.reply_placeholder": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Write a quick reply…"
+    "chat.cell.error.offline" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يبدو أنك غير متصل بالإنترنت. لم يتم إرسال ردك."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "اكتب ردًا سريعًا…"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You appear to be offline. Your reply wasn’t sent."
           }
         }
       }
     },
-    "chat.cell.expand_reply": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Expand quick reply"
+    "chat.cell.error.permission" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم يعد بإمكانك الرد على هذه المحادثة."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إظهار الرد السريع"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can no longer reply to this conversation."
           }
         }
       }
     },
-    "chat.cell.collapse_reply": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Collapse quick reply"
+    "chat.cell.error.rate_limited" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم إرسال عدد كبير من الردود. حاول مرة أخرى بعد قليل."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إخفاء الرد السريع"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Too many replies were sent. Try again shortly."
           }
         }
       }
     },
-    "chat.cell.send_reply": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Send quick reply"
+    "chat.cell.error.server" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الخدمة غير متاحة مؤقتًا."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إرسال الرد السريع"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The service is temporarily unavailable."
           }
         }
       }
     },
-    "chat.cell.sending": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sending…"
+    "chat.cell.error.unknown" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذر إرسال ردك."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جارٍ الإرسال…"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your reply couldn’t be sent."
           }
         }
       }
     },
-    "chat.cell.sent": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reply sent"
+    "chat.cell.expand_reply" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إظهار الرد السريع"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تم إرسال الرد"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expand quick reply"
           }
         }
       }
     },
-    "chat.cell.retry": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try again"
+    "chat.cell.expanded" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "موسّع"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "حاول مرة أخرى"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expanded"
           }
         }
       }
     },
-    "chat.cell.no_messages": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No messages yet"
+    "chat.cell.inline_hint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يعرض مربع رد سريع داخل بطاقة المحادثة."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا توجد رسائل بعد"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows a compact reply composer inside this conversation card."
           }
         }
       }
     },
-    "chat.cell.photo": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Photo"
+    "chat.cell.latest_message" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "آخر رسالة"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "صورة"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest message"
           }
         }
       }
     },
-    "chat.cell.video": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Video"
+    "chat.cell.no_messages" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا توجد رسائل بعد"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "فيديو"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No messages yet"
           }
         }
       }
     },
-    "chat.cell.voice_message": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voice message"
+    "chat.cell.offline" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "غير متصل"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "رسالة صوتية"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline"
           }
         }
       }
     },
-    "chat.cell.deleted_message": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Message deleted"
+    "chat.cell.online_now" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "متصل الآن"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تم حذف الرسالة"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Online now"
           }
         }
       }
     },
-    "chat.cell.typing": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Typing…"
+    "chat.cell.open_full_chat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح المحادثة كاملة"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يكتب الآن…"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open full chat"
           }
         }
       }
     },
-    "chat.cell.verified": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verified"
+    "chat.cell.open_hint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يفتح شاشة المحادثة الكاملة."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "حساب موثّق"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the complete messaging screen."
           }
         }
       }
     },
-    "chat.cell.open_hint": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Opens the complete messaging screen."
+    "chat.cell.pending" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "قيد الإرسال"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يفتح شاشة المحادثة الكاملة."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending"
           }
         }
       }
     },
-    "chat.cell.inline_hint": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shows a compact reply composer inside this conversation card."
+    "chat.cell.photo" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "صورة"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يعرض مربع رد سريع داخل بطاقة المحادثة."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo"
           }
         }
       }
     },
-    "chat.cell.expanded": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Expanded"
+    "chat.cell.quick_replies" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ردود سريعة"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "موسّع"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick replies"
           }
         }
       }
     },
-    "chat.cell.collapsed": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Collapsed"
+    "chat.cell.reply_placeholder" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اكتب ردًا سريعًا…"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مطوي"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a quick reply…"
           }
         }
       }
     },
-    "chat.cell.disabled": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disabled"
+    "chat.cell.retry" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حاول مرة أخرى"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "غير متاح"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
           }
         }
       }
     },
-    "chat.cell.pending": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pending"
+    "chat.cell.send_reply" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إرسال الرد السريع"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "قيد الإرسال"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send quick reply"
           }
         }
       }
     },
-    "chat.cell.yesterday": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Yesterday"
+    "chat.cell.sending" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ الإرسال…"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "أمس"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending…"
           }
         }
       }
     },
-    "chat.cell.you": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You"
+    "chat.cell.sent" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم إرسال الرد"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "أنت"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply sent"
           }
         }
       }
     },
-    "chat.cell.error.offline": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You appear to be offline. Your reply wasn’t sent."
+    "chat.cell.typing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يكتب الآن…"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يبدو أنك غير متصل بالإنترنت. لم يتم إرسال ردك."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing…"
           }
         }
       }
     },
-    "chat.cell.error.permission": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You can no longer reply to this conversation."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لم يعد بإمكانك الرد على هذه المحادثة."
-          }
-        }
-      }
-    },
-    "chat.cell.error.closed": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This conversation is closed."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "هذه المحادثة مغلقة."
-          }
-        }
-      }
-    },
-    "chat.cell.error.rate_limited": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Too many replies were sent. Try again shortly."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تم إرسال عدد كبير من الردود. حاول مرة أخرى بعد قليل."
-          }
-        }
-      }
-    },
-    "chat.cell.error.server": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The service is temporarily unavailable."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الخدمة غير متاحة مؤقتًا."
-          }
-        }
-      }
-    },
-    "chat.cell.error.unknown": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your reply couldn’t be sent."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تعذر إرسال ردك."
-          }
-        }
-      }
-    },
-    "chat.cell.unread_count": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%ld unread message"
+    "chat.cell.unread_count" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%ld رسائل غير مقروءة"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%ld unread messages"
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%ld رسالة غير مقروءة"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "رسالة واحدة غير مقروءة"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%ld رسالة غير مقروءة"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "رسالتان غير مقروءتين"
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "لا توجد رسائل غير مقروءة"
                 }
               }
             }
           }
         },
-        "ar": {
-          "variations": {
-            "plural": {
-              "zero": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "لا توجد رسائل غير مقروءة"
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%ld unread message"
                 }
               },
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "رسالة واحدة غير مقروءة"
-                }
-              },
-              "two": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "رسالتان غير مقروءتين"
-                }
-              },
-              "few": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%ld رسائل غير مقروءة"
-                }
-              },
-              "many": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%ld رسالة غير مقروءة"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%ld رسالة غير مقروءة"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%ld unread messages"
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "chat.cell.verified" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حساب موثّق"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verified"
+          }
+        }
+      }
+    },
+    "chat.cell.video" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فيديو"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video"
+          }
+        }
+      }
+    },
+    "chat.cell.voice_message" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "رسالة صوتية"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice message"
+          }
+        }
+      }
+    },
+    "chat.cell.yesterday" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أمس"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday"
+          }
+        }
+      }
+    },
+    "chat.cell.you" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أنت"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

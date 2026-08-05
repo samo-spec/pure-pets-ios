@@ -721,10 +721,9 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     updateData[@"BannerViewTransaction"] = @(bannerGroup.bannerViewTransaction);
     if (bannerGroup.childBanners && bannerGroup.childBanners.count > 0) {
         NSMutableArray *childDicts = [NSMutableArray array];
-        for (ChildBannerModel *child in bannerGroup.childBanners) {
-            if ([child respondsToSelector:@selector
-                 (dictionaryRepresentation)]) {
-                [childDicts addObject:[child dictionaryRepresentation]];
+        for (PPBannerViewModel *child in bannerGroup.childBanners) {
+            if ([child respondsToSelector:@selector(dictionaryRepresentation)]) {
+                //[childDicts addObject:[child dictionaryRepresentation]];
             }
         }
         updateData[@"ChildsPannersModels"] = childDicts;
