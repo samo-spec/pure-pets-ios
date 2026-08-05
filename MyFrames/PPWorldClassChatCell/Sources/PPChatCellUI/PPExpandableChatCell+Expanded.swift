@@ -8,81 +8,128 @@ extension PPExpandableChatCell {
     // MARK: - Expanded content
 
     var expandedContent: some View {
-        VStack(alignment: .leading, spacing: style.sectionSpacing) {
+        VStack(spacing: 0) {
+            Divider()
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(style.brand.opacity(0.78))
+                        .frame(width: 34, height: differentiateWithoutColor ? 3 : 2)
+                }
+                .padding(.horizontal, style.horizontalPadding)
+
+            VStack(alignment: .leading, spacing: style.sectionSpacing) {
+                expandedToolbar
+
+                if let message = detailedMessage {
+                    latestMessageBlock(message)
+                }
+
+                if let contextText = thread.contextText?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !contextText.isEmpty {
+                    contextBlock(contextText)
+                }
+
+                if !thread.quickReplies.isEmpty {
+                    quickReplies
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    composer
+                    sendStatus
+                }
+            }
+            .padding(.horizontal, style.horizontalPadding)
+            .padding(.top, 12)
+            .padding(.bottom, style.horizontalPadding)
+        }
+    }
+
+    var expandedToolbar: some View {
+        ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) {
                 presenceLabel
 
                 Spacer(minLength: 8)
 
-                Button(action: openChat) {
-                    Label(copy.openFullChat, systemImage: "bubble.left.and.bubble.right.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(style.brand)
-                        .frame(minHeight: style.minimumTouchTarget)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PPChatSurfaceButtonStyle(reduceMotion: reduceMotion))
-                .accessibilityHint(copy.openConversationHint)
-                .accessibilityIdentifier("pp.chat.open.expanded.\(thread.id.rawValue)")
+                openFullChatButton
             }
 
-            if let message = detailedMessage {
-                Button(action: openChat) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 6) {
-                            Text(copy.latestMessage)
-                                .font(.caption)
-                                .foregroundStyle(Color.secondary)
-
-                            if replyState.phase.isSending {
-                                Label(copy.pending, systemImage: "clock")
-                                    .font(.caption2.weight(.medium))
-                                    .foregroundStyle(Color.secondary)
-                            }
-                        }
-
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            if replyState.optimisticMessage != nil {
-                                Text(copy.you)
-                                    .font(.subheadline.weight(.semibold))
-                            }
-
-                            Text(message)
-                                .font(.subheadline)
-                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
-                        }
-                        .foregroundStyle(Color.primary)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.leading, 12)
-                    .frame(maxWidth: .infinity, minHeight: style.minimumTouchTarget, alignment: .leading)
-                    .overlay(alignment: .leading) {
-                        Capsule()
-                            .fill(style.brand.opacity(0.46))
-                            .frame(width: differentiateWithoutColor ? 4 : 2.5)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PPChatSurfaceButtonStyle(reduceMotion: reduceMotion))
-                .accessibilityHint(copy.openConversationHint)
+            VStack(alignment: .leading, spacing: 6) {
+                presenceLabel
+                openFullChatButton
             }
-
-            if let contextText = thread.contextText?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !contextText.isEmpty {
-                contextBlock(contextText)
-            }
-
-            if !thread.quickReplies.isEmpty {
-                quickReplies
-            }
-
-            composer
-            sendStatus
         }
-        .padding(.horizontal, style.horizontalPadding)
-        .padding(.top, style.sectionSpacing)
-        .padding(.bottom, style.horizontalPadding)
+    }
+
+    var openFullChatButton: some View {
+        Button(action: openChat) {
+            Label(copy.openFullChat, systemImage: "bubble.left.and.bubble.right.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(style.brand)
+                .padding(.horizontal, 12)
+                .frame(minHeight: style.minimumTouchTarget)
+                .background {
+                    Capsule().fill(style.brandSoft)
+                }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(PPChatSurfaceButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityHint(copy.openConversationHint)
+        .accessibilityIdentifier("pp.chat.open.expanded.\(thread.id.rawValue)")
+    }
+
+    func latestMessageBlock(_ message: String) -> some View {
+        Button(action: openChat) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 6) {
+                    Text(copy.latestMessage)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+
+                    if replyState.phase.isSending {
+                        Label(copy.pending, systemImage: "clock")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(Color.secondary)
+                            .transition(.opacity)
+                    }
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    if replyState.optimisticMessage != nil {
+                        Text(copy.you)
+                            .font(.subheadline.weight(.semibold))
+                    }
+
+                    Text(message)
+                        .font(.subheadline)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
+                }
+                .foregroundStyle(Color.primary)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 12)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: style.minimumTouchTarget, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: style.compactCornerRadius, style: .continuous)
+                    .fill(style.elevatedSurface.opacity(colorScheme == .dark ? 0.54 : 0.76))
+            }
+            .overlay(alignment: .leading) {
+                Capsule()
+                    .fill(style.brand.opacity(0.68))
+                    .frame(width: differentiateWithoutColor ? 5 : 3)
+                    .padding(.vertical, 11)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: style.compactCornerRadius, style: .continuous)
+                    .stroke(style.separator.opacity(borderOpacity * 0.68), lineWidth: borderWidth)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: style.compactCornerRadius, style: .continuous))
+        }
+        .buttonStyle(PPChatSurfaceButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityHint(copy.openConversationHint)
     }
 
     var presenceLabel: some View {
@@ -111,7 +158,8 @@ extension PPExpandableChatCell {
             Image(systemName: "info.circle.fill")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(style.brand)
-                .frame(width: 18)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(style.brandSoft))
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -125,17 +173,8 @@ extension PPExpandableChatCell {
                     .multilineTextAlignment(.leading)
             }
         }
-        .padding(11)
-        .background {
-            RoundedRectangle(cornerRadius: style.compactCornerRadius, style: .continuous)
-                .fill(style.brand.opacity(colorScheme == .dark ? 0.09 : 0.055))
-        }
-        .overlay {
-            if colorSchemeContrast == .increased {
-                RoundedRectangle(cornerRadius: style.compactCornerRadius, style: .continuous)
-                    .stroke(style.brand.opacity(0.42), lineWidth: 1.2)
-            }
-        }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 3)
     }
 
     var quickReplies: some View {
@@ -147,26 +186,41 @@ extension PPExpandableChatCell {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(thread.quickReplies) { reply in
+                        let isSelected = isQuickReplySelected(reply)
+
                         Button {
                             chooseQuickReply(reply)
                         } label: {
-                            Text(reply.title)
-                                .font(.subheadline.weight(.medium))
-                                .lineLimit(1)
-                                .padding(.horizontal, 13)
+                            HStack(spacing: 6) {
+                                if isSelected {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption2.weight(.bold))
+                                        .accessibilityHidden(true)
+                                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                                }
+
+                                Text(reply.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                            }
+                                .foregroundStyle(isSelected ? style.brand : Color.primary)
+                                .padding(.horizontal, 14)
                                 .frame(minHeight: style.minimumTouchTarget)
-                                .background(Capsule().fill(style.quietFill))
+                                .background(Capsule().fill(isSelected ? style.brandSoft : style.quietFill))
                                 .overlay {
                                     Capsule()
                                         .stroke(
-                                            style.separator.opacity(borderOpacity),
-                                            lineWidth: borderWidth
+                                            isSelected
+                                            ? style.brand.opacity(0.42)
+                                            : style.separator.opacity(borderOpacity),
+                                            lineWidth: isSelected ? max(1.2, borderWidth) : borderWidth
                                         )
                                 }
                                 .contentShape(Capsule())
                         }
                         .buttonStyle(PPChatSurfaceButtonStyle(reduceMotion: reduceMotion))
                         .disabled(replyState.phase.isSending)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .accessibilityIdentifier(
                             "pp.chat.quickReply.\(thread.id.rawValue).\(reply.id)"
                         )
@@ -178,7 +232,7 @@ extension PPExpandableChatCell {
     }
 
     var composer: some View {
-        HStack(spacing: 6) {
+        HStack(alignment: .bottom, spacing: 6) {
             TextField(copy.replyPlaceholder, text: $replyState.draft, axis: .vertical)
                 .focused($composerFocused)
                 .font(.body)
@@ -194,9 +248,16 @@ extension PPExpandableChatCell {
 
             Button(action: sendDraft) {
                 ZStack {
-                    Circle()
-                        .fill(canSend ? style.brand : Color(uiColor: .systemGray3))
-                        .frame(width: 38, height: 38)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(sendButtonFill)
+                        .frame(width: 42, height: 42)
+
+                    if replyState.phase.isSending && !reduceMotion {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.white.opacity(0.42), lineWidth: 1.5)
+                            .frame(width: 42, height: 42)
+                            .transition(.opacity)
+                    }
 
                     sendButtonSymbol
                         .foregroundStyle(Color.white)
@@ -210,73 +271,104 @@ extension PPExpandableChatCell {
             .accessibilityValue(sendButtonAccessibilityValue)
             .accessibilityIdentifier("pp.chat.reply.send.\(thread.id.rawValue)")
         }
-        .padding(.leading, 15)
-        .padding(.trailing, 4)
+        .padding(.leading, 16)
+        .padding(.trailing, 6)
+        .padding(.vertical, 5)
         .frame(minHeight: style.composerHeight)
         .background {
-            Capsule()
-                .fill(
-                    reduceTransparency
-                    ? style.opaqueSurface
-                    : Color(uiColor: .systemBackground).opacity(colorScheme == .dark ? 0.50 : 0.76)
-                )
+            RoundedRectangle(cornerRadius: style.compactCornerRadius + 2, style: .continuous)
+                .fill(composerFill)
         }
         .overlay {
-            Capsule()
+            RoundedRectangle(cornerRadius: style.compactCornerRadius + 2, style: .continuous)
                 .stroke(
-                    composerFocused
-                    ? style.brand.opacity(colorSchemeContrast == .increased ? 0.85 : 0.58)
-                    : style.separator.opacity(borderOpacity),
-                    lineWidth: composerFocused ? 1.6 : borderWidth
+                    composerStroke,
+                    lineWidth: composerStrokeWidth
                 )
         }
+        .animation(feedbackAnimation, value: composerFocused)
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.18),
+            value: canSend
+        )
     }
 
     @ViewBuilder
     var sendButtonSymbol: some View {
-        switch replyState.phase {
-        case .sending:
-            ProgressView()
-                .tint(.white)
-                .controlSize(.small)
-        case .sent:
-            Image(systemName: "checkmark")
-                .font(.system(size: 15, weight: .bold))
-        case .idle, .failed:
-            Image(systemName: "arrow.up")
-                .font(.system(size: 15, weight: .bold))
+        ZStack {
+            switch replyState.phase {
+            case .sending:
+                ProgressView()
+                    .tint(.white)
+                    .controlSize(.small)
+                    .transition(.opacity)
+            case .sent:
+                Image(systemName: "checkmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .transition(
+                        reduceMotion
+                        ? .opacity
+                        : .opacity.combined(with: .scale(scale: 0.72))
+                    )
+            case .idle, .failed:
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .bold))
+                    .transition(.opacity)
+            }
         }
+        .animation(feedbackAnimation, value: replyState.phase)
     }
 
     @ViewBuilder
     var sendStatus: some View {
         switch replyState.phase {
-        case .idle, .sending:
+        case .idle:
             EmptyView()
+
+        case .sending:
+            Label(copy.sending, systemImage: "arrow.up.circle")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Color.secondary)
+                .frame(minHeight: 20)
+                .transition(.opacity)
 
         case .sent:
             Label(copy.sent, systemImage: "checkmark.circle.fill")
                 .font(.caption.weight(.medium))
-                .foregroundStyle(Color(uiColor: .systemGreen))
+                .foregroundStyle(style.success)
                 .frame(minHeight: 20)
                 .transition(.opacity)
 
         case let .failed(_, failure):
-            HStack(alignment: .center, spacing: 8) {
-                Label(copy.failureMessage(for: failure), systemImage: "exclamationmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(Color(uiColor: .systemRed))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 8) {
+                    failureLabel(failure)
+                    retryButton
+                }
 
-                Button(copy.retry, action: sendDraft)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(style.brand)
-                    .frame(minHeight: style.minimumTouchTarget)
-                    .contentShape(Rectangle())
-                    .disabled(!canSend)
+                VStack(alignment: .leading, spacing: 4) {
+                    failureLabel(failure)
+                    retryButton
+                }
             }
             .transition(.opacity)
         }
+    }
+
+    func failureLabel(_ failure: PPQuickReplyFailure) -> some View {
+        Label(copy.failureMessage(for: failure), systemImage: "exclamationmark.circle.fill")
+            .font(.caption)
+            .foregroundStyle(style.danger)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    var retryButton: some View {
+        Button(copy.retry, action: sendDraft)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(style.brand)
+            .frame(minHeight: style.minimumTouchTarget)
+            .contentShape(Rectangle())
+            .disabled(!canSend)
     }
 
 }

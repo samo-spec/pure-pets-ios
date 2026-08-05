@@ -22,14 +22,25 @@ public struct SpearDefaultAvatarContent: View {
         .font(.subheadline.weight(.bold))
         .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(
+          LinearGradient(
+            colors: [
+              Color(uiColor: .secondarySystemBackground),
+              Color(uiColor: .tertiarySystemBackground),
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+        )
 
     case .systemImage(let name):
       Image(systemName: name)
         .font(.title3.weight(.semibold))
         .foregroundStyle(brandColor)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(
+          brandColor.opacity(0.08)
+        )
     }
   }
 }
@@ -76,7 +87,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
   }
 
   private var identityContent: some View {
-    HStack(spacing: compact ? 9 : 11) {
+    HStack(spacing: compact ? 10 : 12) {
       SpearAvatarFrame(
         trust: model.trust,
         presence: model.presence,
@@ -86,7 +97,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
         content: avatarContent
       )
 
-      VStack(alignment: .leading, spacing: 3) {
+      VStack(alignment: .leading, spacing: 2) {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
           Text(model.name)
             .font(.headline.weight(.semibold))
@@ -106,15 +117,16 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
           presence: model.presence,
           call: call,
           copy: copy,
-          motionMode: motionMode
+          motionMode: motionMode,
+          brandColor: brandColor
         )
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
       if canExpand {
         Image(systemName: "chevron.down")
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(.secondary)
+          .font(.caption2.weight(.bold))
+          .foregroundStyle(.tertiary)
           .rotationEffect(.degrees(isExpanded ? 180 : 0))
           .accessibilityHidden(true)
       }

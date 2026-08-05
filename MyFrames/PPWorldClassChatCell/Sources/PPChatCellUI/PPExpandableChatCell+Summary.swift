@@ -13,11 +13,12 @@ extension PPExpandableChatCell {
                 HStack(spacing: style.rowSpacing) {
                     PPChatAvatarView(
                         thread: thread,
+                        isUnread: effectiveUnreadCount > 0,
                         style: style,
                         pipeline: avatarPipeline
                     )
 
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: 7) {
                         identityRow
 
                         PPChatActivityPreviewView(
@@ -33,6 +34,11 @@ extension PPExpandableChatCell {
 
                     if effectiveUnreadCount > 0 {
                         PPUnreadBadge(count: effectiveUnreadCount, brand: style.brand)
+                            .transition(
+                                reduceMotion
+                                ? .opacity
+                                : .opacity.combined(with: .scale(scale: 0.82))
+                            )
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: style.minimumSummaryHeight)
@@ -46,25 +52,25 @@ extension PPExpandableChatCell {
 
             Button(action: toggleExpanded) {
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(
                             isExpanded
-                            ? style.brand.opacity(0.11)
+                            ? style.brandSoft
                             : style.quietFill
                         )
-                        .frame(width: 36, height: 36)
+                        .frame(width: 40, height: 40)
 
-                    Circle()
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(
                             isExpanded
-                            ? style.brand.opacity(0.34)
+                            ? style.brand.opacity(0.40)
                             : style.separator.opacity(borderOpacity),
                             lineWidth: borderWidth
                         )
-                        .frame(width: 36, height: 36)
+                        .frame(width: 40, height: 40)
 
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(isExpanded ? style.brand : Color.secondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
@@ -78,8 +84,8 @@ extension PPExpandableChatCell {
             .accessibilityIdentifier("pp.chat.expand.\(thread.id.rawValue)")
         }
         .padding(.leading, style.horizontalPadding)
-        .padding(.trailing, 8)
-        .padding(.vertical, 3)
+        .padding(.trailing, 10)
+        .padding(.vertical, 6)
     }
 
     var identityRow: some View {
@@ -102,7 +108,7 @@ extension PPExpandableChatCell {
     var displayName: some View {
         HStack(spacing: 5) {
             Text(thread.displayName)
-                .font(.headline.weight(effectiveUnreadCount > 0 ? .semibold : .medium))
+                .font(.headline.weight(effectiveUnreadCount > 0 ? .bold : .semibold))
                 .foregroundStyle(Color.primary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .multilineTextAlignment(.leading)
@@ -110,7 +116,7 @@ extension PPExpandableChatCell {
             if thread.isVerified {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color(uiColor: .systemBlue))
+                    .foregroundStyle(style.brand)
                     .accessibilityLabel(copy.verified)
             }
         }

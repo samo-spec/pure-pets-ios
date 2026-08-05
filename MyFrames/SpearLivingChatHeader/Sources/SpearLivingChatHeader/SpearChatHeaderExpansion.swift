@@ -1,15 +1,23 @@
 import SwiftUI
 
+// MARK: - Identity Expansion (Frosted Sheet Style)
+
+/// Expansion panel that unfolds as a warm frosted material sheet,
+/// extending the gradient atmosphere of the header.
 @available(iOS 17.0, *)
 internal struct SpearIdentityExpansion: View {
   let trust: SpearTrustState
   let metrics: [SpearIdentityMetric]
   let copy: SpearChatHeaderCopy
+  let brandColor: Color
   let profileAction: SpearHeaderAction
   let safetyAction: SpearHeaderAction
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.colorSchemeContrast) private var contrast
 
   var body: some View {
     VStack(spacing: 12) {
@@ -22,13 +30,52 @@ internal struct SpearIdentityExpansion: View {
       actionsLayout
     }
     .padding(.horizontal, 16)
-    .padding(.bottom, 12)
+    .padding(.vertical, 14)
+    .background(expansionBackground)
+    .padding(.horizontal, 12)
+    .padding(.bottom, 8)
     .transition(
       reduceMotion
         ? .opacity
-        : .opacity.combined(with: .move(edge: .top))
+        : .asymmetric(
+          insertion: .opacity
+            .combined(with: .scale(scale: 0.96, anchor: .top))
+            .combined(with: .offset(y: -6)),
+          removal: .opacity
+            .combined(with: .scale(scale: 0.98, anchor: .top))
+        )
     )
   }
+
+  // MARK: - Frosted Background
+
+  @ViewBuilder
+  private var expansionBackground: some View {
+    if reduceTransparency {
+      RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .fill(Color(uiColor: .secondarySystemGroupedBackground))
+        .overlay {
+          RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.2 : 0.08), lineWidth: 1)
+        }
+    } else {
+      RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .fill(.ultraThinMaterial)
+        .overlay {
+          RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(brandColor.opacity(colorScheme == .dark ? 0.04 : 0.02))
+        }
+        .overlay {
+          RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .strokeBorder(
+              Color.primary.opacity(contrast == .increased ? 0.18 : 0.06),
+              lineWidth: contrast == .increased ? 1.5 : 0.5
+            )
+        }
+    }
+  }
+
+  // MARK: - Trust Detail
 
   @ViewBuilder
   private var trustDetail: some View {
@@ -42,6 +89,8 @@ internal struct SpearIdentityExpansion: View {
         .accessibilityHidden(true)
     }
   }
+
+  // MARK: - Metrics
 
   @ViewBuilder
   private var metricsLayout: some View {
@@ -58,14 +107,16 @@ internal struct SpearIdentityExpansion: View {
   private var horizontalMetrics: some View {
     HStack(spacing: 0) {
       ForEach(Array(metrics.enumerated()), id: \.element.id) { index, metric in
-        SpearMetricView(metric: metric)
+        SpearMetricView(metric: metric, brandColor: brandColor)
 
         if index < metrics.count - 1 {
-          Divider().frame(height: 34)
+          Divider()
+            .frame(height: 30)
+            .opacity(0.5)
         }
       }
     }
-    .padding(.vertical, 2)
+    .padding(.vertical, 4)
   }
 
   private var verticalMetrics: some View {
@@ -75,6 +126,8 @@ internal struct SpearIdentityExpansion: View {
       }
     }
   }
+
+  // MARK: - Actions
 
   @ViewBuilder
   private var actionsLayout: some View {
@@ -126,13 +179,17 @@ internal struct SpearIdentityExpansion: View {
   }
 }
 
+// MARK: - Metric View (Horizontal)
+
 internal struct SpearMetricView: View {
   let metric: SpearIdentityMetric
+  let brandColor: Color
 
   var body: some View {
-    VStack(spacing: 2) {
+    VStack(spacing: 3) {
       Text(metric.value)
-        .font(.subheadline.weight(.semibold))
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(.primary)
         .contentTransition(.numericText())
 
       Text(metric.label)
@@ -145,6 +202,8 @@ internal struct SpearMetricView: View {
     .accessibilityElement(children: .combine)
   }
 }
+
+// MARK: - Metric Row (Vertical)
 
 internal struct SpearMetricRow: View {
   let metric: SpearIdentityMetric

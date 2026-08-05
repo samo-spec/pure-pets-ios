@@ -5,7 +5,7 @@ A production SwiftUI chat-inbox component for iOS 16+.
 ## Interaction contract
 
 - Tap the conversation surface to open the messaging controller.
-- Tap only the circular chevron to expand or collapse inline reply.
+- Tap only the dedicated chevron control to expand or collapse inline reply.
 - Quick replies, text entry, send, and retry never trigger navigation.
 - The parent inbox owns navigation and which single conversation is expanded.
 

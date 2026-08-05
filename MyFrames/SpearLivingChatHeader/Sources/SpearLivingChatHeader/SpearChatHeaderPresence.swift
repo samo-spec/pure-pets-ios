@@ -12,40 +12,82 @@ internal struct SpearAvatarFrame<Content: View>: View {
   let brandColor: Color
   let content: Content
 
-  @ScaledMetric(relativeTo: .body) private var scaledSize = 46
+  @ScaledMetric(relativeTo: .body) private var scaledSize = 44
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    let size = min(scaledSize, 54)
+    let size = min(scaledSize, 52)
 
     ZStack(alignment: .bottomTrailing) {
+      // Atmospheric glow ring — responds to presence state
       Circle()
-        .strokeBorder(ringColor, lineWidth: 2)
-        .frame(width: size + 5, height: size + 5)
+        .fill(presenceGlowColor.opacity(glowOpacity))
+        .frame(width: size + 8, height: size + 8)
+        .blur(radius: 4)
+        .opacity(reduceMotion ? 0.6 : 1)
 
+      // Avatar content
       content
         .frame(width: size, height: size)
         .clipShape(Circle())
         .overlay {
-          Circle().strokeBorder(Color.white.opacity(0.7), lineWidth: 1)
+          Circle()
+            .strokeBorder(ringStrokeColor, lineWidth: 1.5)
         }
+        .shadow(
+          color: presenceGlowColor.opacity(colorScheme == .dark ? 0.3 : 0.15),
+          radius: 6,
+          y: 2
+        )
 
+      // Presence badge
       SpearPresenceBadge(
         presence: presence,
         callIsActive: call.isActive,
         animateOnline: motionMode == .onlinePresence && !reduceMotion
       )
     }
-    .frame(width: size + 7, height: size + 7)
+    .frame(width: size + 8, height: size + 8)
     .accessibilityHidden(true)
   }
 
-  private var ringColor: Color {
-    if trust.isRestricted { return .orange.opacity(0.65) }
-    if trust.isVerified { return brandColor.opacity(0.68) }
-    return Color.primary.opacity(0.14)
+  private var presenceGlowColor: Color {
+    if call.isActive { return .green }
+    switch presence {
+    case .online, .typing, .viewingOffer:
+      return .green
+    case .offline:
+      return .clear
+    }
+  }
+
+  private var glowOpacity: Double {
+    if call.isActive { return 0.25 }
+    switch presence {
+    case .online:
+      return 0.15
+    case .typing, .viewingOffer:
+      return 0.2
+    case .offline:
+      return 0
+    }
+  }
+
+  private var ringStrokeColor: Color {
+    if trust.isRestricted { return .orange.opacity(0.7) }
+    if trust.isVerified { return brandColor.opacity(0.6) }
+
+    switch presence {
+    case .online, .typing, .viewingOffer:
+      return .green.opacity(0.4)
+    case .offline:
+      return Color.primary.opacity(0.1)
+    }
   }
 }
+
+// MARK: - Presence Badge
 
 @available(iOS 17.0, *)
 internal struct SpearPresenceBadge: View {
@@ -57,9 +99,9 @@ internal struct SpearPresenceBadge: View {
   var body: some View {
     if callIsActive {
       Image(systemName: "waveform")
-        .font(.system(size: 8, weight: .bold))
+        .font(.system(size: 7, weight: .bold))
         .foregroundStyle(.white)
-        .frame(width: 18, height: 18)
+        .frame(width: 16, height: 16)
         .background(.green, in: Circle())
         .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
     } else {
@@ -68,14 +110,13 @@ internal struct SpearPresenceBadge: View {
         SpearOnlineBadge(isAnimated: animateOnline)
 
       case .offline:
-        Circle()
-          .fill(.secondary)
-          .frame(width: 12, height: 12)
-          .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
+        EmptyView()
       }
     }
   }
 }
+
+// MARK: - Online Badge
 
 @available(iOS 17.0, *)
 internal struct SpearOnlineBadge: View {
@@ -85,22 +126,24 @@ internal struct SpearOnlineBadge: View {
     ZStack {
       if isAnimated {
         Circle()
-          .fill(.green.opacity(0.28))
+          .fill(.green.opacity(0.3))
           .phaseAnimator([false, true]) { circle, phase in
             circle
-              .scaleEffect(phase ? 1.75 : 1)
+              .scaleEffect(phase ? 1.8 : 1)
               .opacity(phase ? 0 : 0.7)
           } animation: { _ in
-            .easeOut(duration: 1.35)
+            .easeOut(duration: 1.5)
           }
       }
 
       Circle().fill(.green)
     }
-    .frame(width: 12, height: 12)
+    .frame(width: 10, height: 10)
     .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
   }
 }
+
+// MARK: - Presence Line (atmospheric text color)
 
 @available(iOS 17.0, *)
 internal struct SpearPresenceLine: View {
@@ -108,9 +151,10 @@ internal struct SpearPresenceLine: View {
   let call: SpearCallControl
   let copy: SpearChatHeaderCopy
   let motionMode: SpearMotionMode
+  let brandColor: Color
 
   var body: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: 5) {
       Text(displayText)
         .font(.caption)
         .foregroundStyle(semanticColor)
@@ -143,13 +187,19 @@ internal struct SpearPresenceLine: View {
     if call.isActive { return .green }
 
     switch presence {
-    case .online, .typing, .viewingOffer:
+    case .online:
       return .green
+    case .typing:
+      return brandColor
+    case .viewingOffer:
+      return brandColor
     case .offline:
       return .secondary
     }
   }
 }
+
+// MARK: - Typing Dots
 
 @available(iOS 17.0, *)
 internal struct SpearTypingDots: View {
@@ -162,25 +212,27 @@ internal struct SpearTypingDots: View {
       PhaseAnimator([0, 1, 2]) { activeIndex in
         dots(activeIndex: activeIndex)
       } animation: { _ in
-        .easeInOut(duration: 0.28)
+        .easeInOut(duration: 0.32)
       }
     }
   }
 
   private func dots(activeIndex: Int?) -> some View {
-    HStack(spacing: 2) {
+    HStack(spacing: 2.5) {
       ForEach(0..<3, id: \.self) { index in
         Circle()
           .fill(.secondary)
           .frame(width: 4, height: 4)
           .offset(y: activeIndex == index ? -3 : 0)
-          .opacity(activeIndex == nil || activeIndex == index ? 1 : 0.35)
+          .opacity(activeIndex == nil || activeIndex == index ? 1 : 0.3)
       }
     }
     .frame(height: 8)
     .accessibilityHidden(true)
   }
 }
+
+// MARK: - Call Waveform
 
 @available(iOS 17.0, *)
 internal struct SpearCallWaveform: View {
@@ -193,7 +245,7 @@ internal struct SpearCallWaveform: View {
       PhaseAnimator([0, 1, 2, 3]) { phase in
         bars(phase: phase)
       } animation: { _ in
-        .easeInOut(duration: 0.24)
+        .easeInOut(duration: 0.26)
       }
     }
   }

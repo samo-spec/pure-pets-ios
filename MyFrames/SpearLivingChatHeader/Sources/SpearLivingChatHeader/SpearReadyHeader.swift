@@ -1,9 +1,14 @@
 import SwiftUI
 
+// MARK: - Seamless Ready Header
+
+/// The ready state of the living chat header. Uses atmospheric presence
+/// indicators and seamless expansion instead of compartmentalized sections.
 @available(iOS 17.0, *)
 internal struct SpearReadyHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.colorScheme) private var colorScheme
 
   let model: SpearChatHeaderModel
   let style: SpearChatHeaderStyle
@@ -23,6 +28,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           trust: model.trust,
           metrics: model.metrics,
           copy: copy,
+          brandColor: style.brandColor,
           profileAction: actionWithFeedback(actions.profile),
           safetyAction: actionWithFeedback(actions.safety)
         )
@@ -40,17 +46,22 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
         .transition(
           reduceMotion
             ? .opacity
-            : .opacity.combined(with: .move(edge: .top))
+            : .asymmetric(
+              insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .top)),
+              removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
+            )
         )
         .animation(
-          reduceMotion ? nil : .smooth(duration: 0.28),
+          reduceMotion ? nil : .smooth(duration: 0.32),
           value: context.id
         )
       }
     }
     .sensoryFeedback(.selection, trigger: isExpanded)
-    .sensoryFeedback(.impact, trigger: actionFeedback)
+    .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.6), trigger: actionFeedback)
   }
+
+  // MARK: - Top Section
 
   @ViewBuilder
   private var topSection: some View {
@@ -64,20 +75,25 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
   }
 
+  // MARK: - Regular Layout (floating capsule actions)
+
   private var regularLayout: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 10) {
       backButton
       identityButton(compact: false)
-      regularActionCluster
+      Spacer(minLength: 4)
+      actionCapsule
     }
     .padding(.horizontal, style.horizontalPadding)
     .padding(.top, 10)
-    .padding(.bottom, 8)
+    .padding(.bottom, 10)
   }
+
+  // MARK: - Compact Layout
 
   private var compactLayout: some View {
     VStack(spacing: 8) {
-      HStack(spacing: 8) {
+      HStack(spacing: 10) {
         backButton
         identityButton(compact: true)
       }
@@ -92,8 +108,39 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
     .padding(.horizontal, style.horizontalPadding)
     .padding(.top, 10)
-    .padding(.bottom, 8)
+    .padding(.bottom, 10)
   }
+
+  // MARK: - Action Capsule (floating pill with grouped actions)
+
+  private var actionCapsule: some View {
+    HStack(spacing: 2) {
+      SpearHeaderCapsuleButton(
+        systemName: callSystemName,
+        accessibilityLabel: callAccessibilityLabel,
+        accessibilityIdentifier: SpearChatHeaderAccessibilityID.call,
+        action: callActionWithFeedback,
+        tint: actions.call.isActive ? .red : .primary,
+        isActive: actions.call.isActive
+      )
+
+      SpearHeaderCapsuleButton(
+        systemName: "ellipsis",
+        accessibilityLabel: copy.moreAccessibilityLabel,
+        accessibilityIdentifier: SpearChatHeaderAccessibilityID.more,
+        action: actionWithFeedback(actions.more),
+        tint: .primary,
+        isActive: false
+      )
+    }
+    .padding(4)
+    .background {
+      Capsule(style: .continuous)
+        .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+    }
+  }
+
+  // MARK: - Buttons
 
   private var backButton: some View {
     SpearHeaderIconActionButton(
@@ -120,25 +167,6 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     .layoutPriority(1)
   }
 
-  private var regularActionCluster: some View {
-    HStack(spacing: 8) {
-      SpearHeaderIconActionButton(
-        systemName: callSystemName,
-        accessibilityLabel: callAccessibilityLabel,
-        accessibilityIdentifier: SpearChatHeaderAccessibilityID.call,
-        action: callActionWithFeedback,
-        tint: actions.call.isActive ? .red : .primary
-      )
-
-      SpearHeaderIconActionButton(
-        systemName: "ellipsis",
-        accessibilityLabel: copy.moreAccessibilityLabel,
-        accessibilityIdentifier: SpearChatHeaderAccessibilityID.more,
-        action: actionWithFeedback(actions.more)
-      )
-    }
-  }
-
   private var compactCallButton: some View {
     SpearHeaderLabeledActionButton(
       title: actions.call.isActive
@@ -161,6 +189,8 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       action: actionWithFeedback(actions.more)
     )
   }
+
+  // MARK: - Computed Properties
 
   private var callSystemName: String {
     actions.call.isActive ? "phone.down.fill" : "phone.fill"
@@ -193,6 +223,8 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
   }
 
+  // MARK: - Actions
+
   private func actionWithFeedback(_ action: SpearHeaderAction) -> SpearHeaderAction {
     SpearHeaderAction(availability: action.availability) {
       guard action.availability.isEnabled else { return }
@@ -212,7 +244,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     if reduceMotion {
       isExpanded.toggle()
     } else {
-      withAnimation(.snappy(duration: 0.34, extraBounce: 0.04)) {
+      withAnimation(.smooth(duration: 0.38, extraBounce: 0.02)) {
         isExpanded.toggle()
       }
     }

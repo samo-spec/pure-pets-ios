@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Loading State (Seamless Skeleton)
+
 @available(iOS 17.0, *)
 internal struct SpearHeaderLoadingRow: View {
   let copy: SpearChatHeaderCopy
@@ -8,7 +10,7 @@ internal struct SpearHeaderLoadingRow: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 12) {
       SpearHeaderIconActionButton(
         systemName: "chevron.backward",
         accessibilityLabel: copy.backAccessibilityLabel,
@@ -24,49 +26,56 @@ internal struct SpearHeaderLoadingRow: View {
     }
     .padding(.horizontal, 12)
     .padding(.top, 10)
-    .padding(.bottom, 8)
+    .padding(.bottom, 10)
   }
 
   @ViewBuilder
   private var skeletonContent: some View {
-    let content = HStack(spacing: 11) {
+    let content = HStack(spacing: 12) {
+      // Avatar skeleton with warm tint
       Circle()
         .fill(.quaternary)
-        .frame(width: 52, height: 52)
+        .frame(width: 48, height: 48)
+        .overlay {
+          Circle()
+            .strokeBorder(Color.primary.opacity(0.04), lineWidth: 1)
+        }
 
-      VStack(alignment: .leading, spacing: 7) {
+      VStack(alignment: .leading, spacing: 8) {
         Capsule()
           .fill(.quaternary)
-          .frame(maxWidth: 150)
-          .frame(height: 13)
+          .frame(maxWidth: 140)
+          .frame(height: 12)
 
         Capsule()
           .fill(.quaternary)
-          .frame(maxWidth: 104)
-          .frame(height: 9)
+          .frame(maxWidth: 90)
+          .frame(height: 8)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
+      // Action skeleton pills
       if actions.call.isVisible && !actions.call.isActive {
-        Circle()
-          .fill(.quaternary)
-          .frame(width: 36, height: 36)
-      }
-
-      if actions.more.availability.isVisible {
-        Circle()
-          .fill(.quaternary)
-          .frame(width: 36, height: 36)
+        HStack(spacing: 2) {
+          Circle()
+            .fill(.quaternary)
+            .frame(width: 28, height: 28)
+          Circle()
+            .fill(.quaternary)
+            .frame(width: 28, height: 28)
+        }
+        .padding(4)
+        .background(Color.primary.opacity(0.02), in: Capsule(style: .continuous))
       }
     }
 
     if reduceMotion {
-      content.opacity(0.58)
+      content.opacity(0.55)
     } else {
-      content.phaseAnimator([0.42, 0.72]) { view, opacity in
+      content.phaseAnimator([0.35, 0.65]) { view, opacity in
         view.opacity(opacity)
       } animation: { _ in
-        .easeInOut(duration: 0.95)
+        .easeInOut(duration: 1.0)
       }
     }
   }
@@ -84,6 +93,8 @@ internal struct SpearHeaderLoadingRow: View {
     }
   }
 }
+
+// MARK: - Unavailable State
 
 @available(iOS 17.0, *)
 internal struct SpearHeaderUnavailableRow: View {
@@ -108,11 +119,11 @@ internal struct SpearHeaderUnavailableRow: View {
     }
     .padding(.horizontal, 12)
     .padding(.top, 10)
-    .padding(.bottom, 8)
+    .padding(.bottom, 10)
   }
 
   private var regularLayout: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 12) {
       backButton
       unavailableIdentity
       retryButton
@@ -122,7 +133,7 @@ internal struct SpearHeaderUnavailableRow: View {
 
   private var compactLayout: some View {
     VStack(alignment: .leading, spacing: 8) {
-      HStack(spacing: 10) {
+      HStack(spacing: 12) {
         backButton
         unavailableIdentity
       }
@@ -172,7 +183,7 @@ internal struct SpearHeaderUnavailableRow: View {
       Button(retryTitle, action: actions.retry.perform)
         .buttonStyle(SpearBrandButtonStyle(color: brandColor))
         .disabled(!actions.retry.availability.isEnabled)
-        .opacity(actions.retry.availability.isEnabled ? 1 : 0.48)
+        .opacity(actions.retry.availability.isEnabled ? 1 : 0.42)
         .accessibilityIdentifier(SpearChatHeaderAccessibilityID.retry)
         .modifier(
           SpearDisabledReasonModifier(reason: actions.retry.availability.disabledReason)

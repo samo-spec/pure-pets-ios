@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Style Configuration
+
 public struct SpearChatHeaderStyle {
   public var brandColor: Color
   public var cornerRadius: CGFloat
@@ -21,6 +23,8 @@ public struct SpearChatHeaderStyle {
 
   public static let spear = SpearChatHeaderStyle()
 }
+
+// MARK: - Motion Mode
 
 internal enum SpearMotionMode: Equatable {
   case none

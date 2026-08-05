@@ -1,6 +1,11 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Seamless Chat Header
+
+/// A living chat header that dissolves into the message surface.
+/// Uses a warm gradient field instead of a hard divider, with presence
+/// communicated through color atmosphere rather than explicit decoration.
 @available(iOS 17.0, *)
 public struct SpearChatHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -53,24 +58,58 @@ public struct SpearChatHeader<AvatarContent: View>: View {
         )
       }
     }
-    .background(headerBackground)
-    .overlay(alignment: .bottom) {
-      Divider()
-        .opacity(contrast == .increased ? 1 : (colorScheme == .dark ? 0.55 : 0.72))
-    }
+    .background(seamlessBackground)
     .accessibilityIdentifier(SpearChatHeaderAccessibilityID.root)
   }
 
-  private var headerBackground: some View {
+  /// The seamless gradient dissolve — replaces the hard divider with a
+  /// warm gradient that fades into the conversation background.
+  private var seamlessBackground: some View {
     Group {
       if reduceTransparency {
+        // Accessibility: opaque surface with subtle tint
         Color(uiColor: .systemBackground)
+          .overlay(alignment: .bottom) {
+            Rectangle()
+              .fill(Color.primary.opacity(contrast == .increased ? 0.12 : 0.04))
+              .frame(height: 1)
+          }
       } else {
-        Rectangle().fill(.bar)
+        ZStack {
+          // Base material for navigation-level context
+          Rectangle().fill(.bar)
+
+          // Warm atmosphere gradient that dissolves downward
+          LinearGradient(
+            stops: gradientStops,
+            startPoint: .top,
+            endPoint: .bottom
+          )
+        }
       }
     }
   }
+
+  private var gradientStops: [Gradient.Stop] {
+    let brandTint = style.brandColor
+
+    if colorScheme == .dark {
+      return [
+        .init(color: brandTint.opacity(0.06), location: 0),
+        .init(color: brandTint.opacity(0.03), location: 0.5),
+        .init(color: .clear, location: 1.0),
+      ]
+    } else {
+      return [
+        .init(color: brandTint.opacity(0.04), location: 0),
+        .init(color: brandTint.opacity(0.02), location: 0.6),
+        .init(color: .clear, location: 1.0),
+      ]
+    }
+  }
 }
+
+// MARK: - Default Avatar Convenience
 
 @available(iOS 17.0, *)
 extension SpearChatHeader where AvatarContent == SpearDefaultAvatarContent {

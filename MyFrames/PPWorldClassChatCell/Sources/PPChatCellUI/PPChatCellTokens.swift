@@ -7,6 +7,8 @@ public struct PPChatCellStyle {
     public var cornerRadius: CGFloat
     public var compactCornerRadius: CGFloat
     public var avatarSize: CGFloat
+    public var outerHorizontalInset: CGFloat
+    public var outerVerticalInset: CGFloat
     public var horizontalPadding: CGFloat
     public var verticalPadding: CGFloat
     public var rowSpacing: CGFloat
@@ -17,21 +19,25 @@ public struct PPChatCellStyle {
 
     public init(
         brand: Color,
-        cornerRadius: CGFloat = 22,
-        compactCornerRadius: CGFloat = 15,
-        avatarSize: CGFloat = 52,
-        horizontalPadding: CGFloat = 14,
-        verticalPadding: CGFloat = 12,
-        rowSpacing: CGFloat = 10,
-        sectionSpacing: CGFloat = 14,
-        minimumSummaryHeight: CGFloat = 76,
+        cornerRadius: CGFloat = 28,
+        compactCornerRadius: CGFloat = 17,
+        avatarSize: CGFloat = 54,
+        outerHorizontalInset: CGFloat = 14,
+        outerVerticalInset: CGFloat = 5,
+        horizontalPadding: CGFloat = 16,
+        verticalPadding: CGFloat = 13,
+        rowSpacing: CGFloat = 12,
+        sectionSpacing: CGFloat = 16,
+        minimumSummaryHeight: CGFloat = 78,
         minimumTouchTarget: CGFloat = 44,
-        composerHeight: CGFloat = 52
+        composerHeight: CGFloat = 54
     ) {
         self.brand = brand
         self.cornerRadius = cornerRadius
         self.compactCornerRadius = compactCornerRadius
         self.avatarSize = avatarSize
+        self.outerHorizontalInset = outerHorizontalInset
+        self.outerVerticalInset = outerVerticalInset
         self.horizontalPadding = horizontalPadding
         self.verticalPadding = verticalPadding
         self.rowSpacing = rowSpacing
@@ -42,7 +48,23 @@ public struct PPChatCellStyle {
     }
 
     public static let purePets = PPChatCellStyle(
-        brand: Color(red: 203 / 255, green: 38 / 255, blue: 84 / 255)
+        brand: Color(uiColor: UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                return UIColor(
+                    red: 255 / 255,
+                    green: 155 / 255,
+                    blue: 150 / 255,
+                    alpha: 1
+                )
+            }
+
+            return UIColor(
+                red: 203 / 255,
+                green: 38 / 255,
+                blue: 84 / 255,
+                alpha: 1
+            )
+        })
     )
 }
 
@@ -51,12 +73,32 @@ extension PPChatCellStyle {
         Color(uiColor: .secondarySystemGroupedBackground)
     }
 
+    var elevatedSurface: Color {
+        Color(uiColor: .systemBackground)
+    }
+
+    var replyDockSurface: Color {
+        Color(uiColor: .tertiarySystemGroupedBackground)
+    }
+
     var quietFill: Color {
         Color(uiColor: .tertiarySystemFill)
     }
 
+    var brandSoft: Color {
+        brand.opacity(0.10)
+    }
+
     var separator: Color {
         Color(uiColor: .separator)
+    }
+
+    var success: Color {
+        Color(uiColor: .systemGreen)
+    }
+
+    var danger: Color {
+        Color(uiColor: .systemRed)
     }
 }
 #endif

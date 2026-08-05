@@ -28,6 +28,6 @@ Only one row should compare equal to this ID at a time. Set it to `nil` when the
 Do not add a row-level `onTapGesture` around `PPExpandableChatCell`. The component already exposes two independent semantic buttons:
 
 1. Conversation surface → messaging controller.
-2. Circular chevron → inline composer.
+2. Dedicated chevron control → inline composer.
 
 Adding an outer gesture will reintroduce accidental navigation from quick replies and the composer.

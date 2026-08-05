@@ -17,6 +17,40 @@ import SwiftUI
 import PPChatCellCore
 import PPChatCellUI
 
+// MARK: - SwiftUI Host State
+
+@MainActor
+private final class PPChatCellExpansionStore: ObservableObject {
+    @Published var expandedConversationID: String?
+}
+
+@MainActor
+private struct PPChatCellHost: View {
+    let thread: PPChatThreadSnapshot
+    let style: PPChatCellStyle
+    @ObservedObject var expansionStore: PPChatCellExpansionStore
+    let onOpenChat: () -> Void
+    let sendQuickReply: PPExpandableChatCell.SendReplyAction
+
+    var body: some View {
+        PPExpandableChatCell(
+            thread: thread,
+            isExpanded: Binding(
+                get: { expansionStore.expandedConversationID == thread.id.rawValue },
+                set: { expanded in
+                    expansionStore.expandedConversationID = expanded ? thread.id.rawValue : nil
+                }
+            ),
+            style: style,
+            onOpenChat: { _ in onOpenChat() },
+            onOptimisticReply: { _, _ in },
+            onReplyCommitted: { _ in },
+            onReplyFailed: { _, _ in },
+            sendQuickReply: sendQuickReply
+        )
+    }
+}
+
 // MARK: - Bridge
 
 /// Bridges the SwiftUI `PPExpandableChatCell` into a UIKit `UITableViewCell`
@@ -31,18 +65,22 @@ final class PPChatCellBridge: NSObject {
 
     // MARK: - Expansion State
 
+    private let expansionStore = PPChatCellExpansionStore()
+
     /// Which conversation (if any) is currently expanded.
     /// Only one at a time — matches `MIGRATION_FROM_CHCELL.md` contract.
-    private(set) var expandedConversationID: String?
+    var expandedConversationID: String? {
+        expansionStore.expandedConversationID
+    }
 
     /// Collapse any expanded row.
     func collapseExpanded() {
-        expandedConversationID = nil
+        expansionStore.expandedConversationID = nil
     }
 
     /// Whether a given conversation is the expanded one.
     func isExpanded(_ conversationID: String) -> Bool {
-        expandedConversationID == conversationID
+        expansionStore.expandedConversationID == conversationID
     }
 
     // MARK: - Cell Configuration
@@ -54,44 +92,20 @@ final class PPChatCellBridge: NSObject {
     ///   - cell: The dequeued `UITableViewCell`.
     ///   - thread: The ObjC `ChatThreadModel`.
     ///   - onOpenChat: Called when the user taps the conversation surface.
-    ///   - onPresenceRefresh: Optional closure the caller provides so the
-    ///     bridge can re-query presence at configure time.
     func configureCell(
         _ cell: UITableViewCell,
         with thread: ChatThreadModel,
         onOpenChat: @escaping (ChatThreadModel) -> Void
     ) {
         let snapshot = Self.makeSnapshot(from: thread)
-        let threadID = snapshot.id.rawValue
-
-        // Expansion binding: read/write expandedConversationID
-        let expansionBinding = Binding<Bool>(
-            get: { [weak self] in
-                self?.expandedConversationID == threadID
-            },
-            set: { [weak self] newValue in
-                self?.expandedConversationID = newValue ? threadID : nil
-            }
-        )
 
         cell.contentConfiguration = UIHostingConfiguration {
-            PPExpandableChatCell(
+            PPChatCellHost(
                 thread: snapshot,
-                isExpanded: expansionBinding,
-                onOpenChat: { _ in
-                    onOpenChat(thread)
-                },
-                onOptimisticReply: { message, conversationID in
-                    // Optimistic: the cell shows the message instantly.
-                    // No external action needed for now.
-                },
-                onReplyCommitted: { receipt in
-                    // The send succeeded — the cell already updated.
-                },
-                onReplyFailed: { failure, conversationID in
-                    // The cell shows inline error + retry.
-                },
-                sendQuickReply: { [weak self] message, conversationID in
+                style: Self.liveStyle,
+                expansionStore: expansionStore,
+                onOpenChat: { onOpenChat(thread) },
+                sendQuickReply: { message, conversationID in
                     try await Self.sendQuickReplyBridge(
                         message: message,
                         conversationID: conversationID
@@ -104,6 +118,18 @@ final class PPChatCellBridge: NSObject {
 
         cell.backgroundColor = .clear
         cell.selectionStyle = .none
+    }
+
+    /// Resolve the live app color asset so light/dark brand behavior stays
+    /// aligned with Pure Pets instead of freezing the package preview color.
+    private static var liveStyle: PPChatCellStyle {
+        let fallback = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+            ? UIColor(red: 1.0, green: 155 / 255, blue: 150 / 255, alpha: 1)
+            : UIColor(red: 203 / 255, green: 38 / 255, blue: 84 / 255, alpha: 1)
+        }
+        let brand = UIColor(named: "AppPrimaryColor") ?? fallback
+        return PPChatCellStyle(brand: Color(uiColor: brand))
     }
 
     // MARK: - Snapshot Mapping

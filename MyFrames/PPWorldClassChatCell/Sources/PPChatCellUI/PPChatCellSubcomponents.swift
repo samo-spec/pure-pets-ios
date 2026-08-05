@@ -5,6 +5,7 @@ import PPChatCellCore
 
 struct PPChatAvatarView: View {
     let thread: PPChatThreadSnapshot
+    let isUnread: Bool
     let style: PPChatCellStyle
 
     @Environment(\.colorScheme) private var colorScheme
@@ -14,10 +15,12 @@ struct PPChatAvatarView: View {
 
     init(
         thread: PPChatThreadSnapshot,
+        isUnread: Bool,
         style: PPChatCellStyle,
         pipeline: any PPAvatarImageProviding
     ) {
         self.thread = thread
+        self.isUnread = isUnread
         self.style = style
         _loader = StateObject(wrappedValue: PPAvatarImageLoader(pipeline: pipeline))
     }
@@ -26,7 +29,7 @@ struct PPChatAvatarView: View {
         ZStack {
             Circle()
                 .fill(haloColor)
-                .frame(width: style.avatarSize + 4, height: style.avatarSize + 4)
+                .frame(width: style.avatarSize + 6, height: style.avatarSize + 6)
 
             avatarContent
                 .frame(width: style.avatarSize, height: style.avatarSize)
@@ -34,8 +37,10 @@ struct PPChatAvatarView: View {
                 .overlay {
                     Circle()
                         .stroke(
-                            Color.white.opacity(colorScheme == .dark ? 0.10 : 0.72),
-                            lineWidth: 1
+                            isUnread
+                            ? style.brand.opacity(colorScheme == .dark ? 0.72 : 0.52)
+                            : Color.white.opacity(colorScheme == .dark ? 0.12 : 0.76),
+                            lineWidth: isUnread ? 1.5 : 1
                         )
                 }
         }
@@ -90,11 +95,15 @@ struct PPChatAvatarView: View {
     }
 
     private var haloColor: Color {
+        if isUnread {
+            return style.brand.opacity(colorScheme == .dark ? 0.18 : 0.09)
+        }
+
         switch thread.presence {
         case .online:
-            return Color(uiColor: .systemGreen).opacity(colorScheme == .dark ? 0.15 : 0.09)
+            return Color(uiColor: .systemGreen).opacity(colorScheme == .dark ? 0.12 : 0.07)
         case .away:
-            return Color(uiColor: .systemOrange).opacity(colorScheme == .dark ? 0.14 : 0.08)
+            return Color(uiColor: .systemOrange).opacity(colorScheme == .dark ? 0.11 : 0.06)
         case .offline:
             return style.quietFill
         }
@@ -167,6 +176,8 @@ struct PPChatActivityPreviewView: View {
     let brand: Color
     var lineLimit: Int = 1
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         HStack(spacing: 6) {
             if let iconName {
@@ -191,7 +202,17 @@ struct PPChatActivityPreviewView: View {
                 .lineLimit(lineLimit)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .id(displayedMessage)
+                .transition(
+                    reduceMotion
+                    ? .opacity
+                    : .opacity.combined(with: .move(edge: .bottom))
+                )
         }
+        .animation(
+            reduceMotion ? .easeOut(duration: 0.12) : .easeOut(duration: 0.20),
+            value: displayedMessage
+        )
         .accessibilityElement(children: .combine)
     }
 
@@ -267,9 +288,13 @@ struct PPUnreadBadge: View {
             .font(.caption2.weight(.bold))
             .foregroundStyle(Color.white)
             .monospacedDigit()
-            .padding(.horizontal, 7)
-            .frame(minWidth: 22, minHeight: 22)
+            .padding(.horizontal, 8)
+            .frame(minWidth: 24, minHeight: 24)
             .background(Capsule().fill(brand))
+            .overlay {
+                Capsule()
+                    .stroke(Color.white.opacity(0.22), lineWidth: 1)
+            }
             .accessibilityHidden(true)
     }
 }

@@ -6,7 +6,7 @@ import PPChatCellCore
 
 /// A production chat-inbox cell with explicit gesture ownership:
 /// - conversation surface → open the messaging controller;
-/// - circular chevron → expand/collapse inline reply;
+/// - dedicated chevron → expand/collapse inline reply;
 /// - inline controls → remain inside the cell.
 @MainActor
 public struct PPExpandableChatCell: View {
@@ -75,30 +75,24 @@ public struct PPExpandableChatCell: View {
             summaryRow
 
             if isExpanded {
-                Divider()
-                    .padding(.leading, style.horizontalPadding)
-                    .transition(.opacity)
-
                 expandedContent
-                    .transition(
-                        reduceMotion
-                        ? .opacity
-                        : .asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .top)),
-                            removal: .opacity
-                        )
-                    )
+                    .transition(expandedContentTransition)
             }
         }
         .background { surfaceBackground }
         .overlay { surfaceBorder }
+        .overlay(alignment: .leading) { conversationSignal }
         .clipShape(surfaceShape)
         .shadow(
             color: Color.black.opacity(isExpanded ? expandedShadowOpacity : 0),
-            radius: isExpanded ? 18 : 0,
+            radius: isExpanded ? 22 : 0,
             x: 0,
-            y: isExpanded ? 8 : 0
+            y: isExpanded ? 12 : 0
         )
+        .padding(.horizontal, style.outerHorizontalInset)
+        .padding(.vertical, style.outerVerticalInset)
+        .animation(expansionAnimation, value: isExpanded)
+        .animation(feedbackAnimation, value: replyState.phase)
         .accessibilityIdentifier("pp.chat.thread.\(thread.id.rawValue)")
         .onChange(of: isExpanded) { expanded in
             if !expanded { composerFocused = false }

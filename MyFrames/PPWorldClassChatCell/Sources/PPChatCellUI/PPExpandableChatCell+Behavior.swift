@@ -17,12 +17,12 @@ extension PPExpandableChatCell {
         composerFocused = false
         let next = !isExpanded
 
-        if reduceMotion {
-            isExpanded = next
-        } else {
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.88, blendDuration: 0.08)) {
+        if let expansionAnimation {
+            withAnimation(expansionAnimation) {
                 isExpanded = next
             }
+        } else {
+            isExpanded = next
         }
 
         PPChatHaptics.impact(.light)
@@ -31,7 +31,15 @@ extension PPExpandableChatCell {
     func chooseQuickReply(_ reply: PPQuickReply) {
         var next = replyState
         next.selectQuickReply(reply)
-        replyState = next
+
+        if let feedbackAnimation {
+            withAnimation(feedbackAnimation) {
+                replyState = next
+            }
+        } else {
+            replyState = next
+        }
+
         composerFocused = true
         PPChatHaptics.selection()
     }
@@ -55,7 +63,14 @@ extension PPExpandableChatCell {
         var next = replyState
         guard let message = next.beginSend() else { return }
 
-        replyState = next
+        if let feedbackAnimation {
+            withAnimation(feedbackAnimation) {
+                replyState = next
+            }
+        } else {
+            replyState = next
+        }
+
         composerFocused = false
         feedbackTask?.cancel()
         sendTask?.cancel()
@@ -73,7 +88,13 @@ extension PPExpandableChatCell {
 
                 var succeeded = replyState
                 succeeded.succeed(with: receipt)
-                replyState = succeeded
+                if let feedbackAnimation {
+                    withAnimation(feedbackAnimation) {
+                        replyState = succeeded
+                    }
+                } else {
+                    replyState = succeeded
+                }
                 onReplyCommitted(receipt)
                 PPChatHaptics.notification(.success)
                 scheduleFeedbackReset()
@@ -83,7 +104,13 @@ extension PPExpandableChatCell {
                 let failure = classify(error)
                 var failed = replyState
                 failed.fail(failure)
-                replyState = failed
+                if let feedbackAnimation {
+                    withAnimation(feedbackAnimation) {
+                        replyState = failed
+                    }
+                } else {
+                    replyState = failed
+                }
                 onReplyFailed(failure, thread.id)
                 composerFocused = true
                 PPChatHaptics.notification(.error)
@@ -175,6 +202,58 @@ extension PPExpandableChatCell {
         !replyState.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    func isQuickReplySelected(_ reply: PPQuickReply) -> Bool {
+        !replyState.phase.isSending &&
+        !replyState.draft.isEmpty &&
+        replyState.draft == reply.message
+    }
+
+    var sendButtonFill: Color {
+        switch replyState.phase {
+        case .sending:
+            return style.brand
+        case .sent:
+            return style.success
+        case .idle, .failed:
+            return canSend ? style.brand : Color(uiColor: .systemGray3)
+        }
+    }
+
+    var composerFill: Color {
+        if reduceTransparency {
+            return style.opaqueSurface
+        }
+
+        return style.replyDockSurface.opacity(colorScheme == .dark ? 0.78 : 0.94)
+    }
+
+    var composerStroke: Color {
+        switch replyState.phase {
+        case .sent:
+            return style.success.opacity(colorSchemeContrast == .increased ? 0.92 : 0.62)
+        case .failed:
+            return style.danger.opacity(colorSchemeContrast == .increased ? 0.94 : 0.68)
+        case .idle, .sending:
+            if composerFocused || replyState.phase.isSending {
+                return style.brand.opacity(colorSchemeContrast == .increased ? 0.92 : 0.62)
+            }
+            return style.separator.opacity(borderOpacity)
+        }
+    }
+
+    var composerStrokeWidth: CGFloat {
+        if composerFocused || replyState.phase.isSending {
+            return colorSchemeContrast == .increased ? 2 : 1.5
+        }
+
+        switch replyState.phase {
+        case .sent, .failed:
+            return colorSchemeContrast == .increased ? 2 : 1.5
+        case .idle, .sending:
+            return borderWidth
+        }
+    }
+
     var presenceText: String {
         switch thread.presence {
         case .online:
@@ -226,18 +305,45 @@ extension PPExpandableChatCell {
     }
 
     var expandedShadowOpacity: Double {
-        colorScheme == .dark ? 0.22 : 0.08
+        colorScheme == .dark ? 0.26 : 0.10
+    }
+
+    var expansionAnimation: Animation? {
+        reduceMotion
+        ? nil
+        : .interactiveSpring(response: 0.42, dampingFraction: 0.90, blendDuration: 0.10)
+    }
+
+    var feedbackAnimation: Animation? {
+        reduceMotion
+        ? .easeOut(duration: 0.14)
+        : .spring(response: 0.28, dampingFraction: 0.92, blendDuration: 0.06)
+    }
+
+    var expandedContentTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+
+        return .asymmetric(
+            insertion: .opacity
+                .combined(with: .move(edge: .top))
+                .combined(with: .scale(scale: 0.985, anchor: .top)),
+            removal: .opacity.combined(with: .scale(scale: 0.992, anchor: .top))
+        )
     }
 
     var summaryAccessibilityLabel: String {
         let items = [
             thread.displayName,
+            thread.isVerified ? copy.verified : nil,
             presenceText,
             accessibilityActivityText,
             timestampText
         ]
+        .compactMap { $0 }
         .filter { !$0.isEmpty }
-        
+
         return ListFormatter.localizedString(byJoining: items)
     }
 
@@ -280,5 +386,6 @@ extension PPExpandableChatCell {
         case let .failed(_, failure):
             return copy.failureMessage(for: failure)
         }
-    }}
+    }
+}
 #endif
