@@ -64,7 +64,7 @@ extension PPExpandableChatCell {
     var openFullChatButton: some View {
         Button(action: openChat) {
             Label(copy.openFullChat, systemImage: "bubble.left.and.bubble.right.fill")
-                .font(.caption.weight(.semibold))
+                .font(Font.ppBeirutiSemiBold(size: 12, relativeTo: .caption))
                 .foregroundStyle(style.brand)
                 .padding(.horizontal, 12)
                 .frame(minHeight: style.minimumTouchTarget)
@@ -83,12 +83,12 @@ extension PPExpandableChatCell {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 6) {
                     Text(copy.latestMessage)
-                        .font(.caption)
+                        .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
                         .foregroundStyle(Color.secondary)
 
                     if replyState.phase.isSending {
                         Label(copy.pending, systemImage: "clock")
-                            .font(.caption2.weight(.medium))
+                            .font(Font.ppBeirutiMedium(size: 11, relativeTo: .caption2))
                             .foregroundStyle(Color.secondary)
                             .transition(.opacity)
                     }
@@ -97,11 +97,11 @@ extension PPExpandableChatCell {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     if replyState.optimisticMessage != nil {
                         Text(copy.you)
-                            .font(.subheadline.weight(.semibold))
+                            .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
                     }
 
                     Text(message)
-                        .font(.subheadline)
+                        .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 3)
                 }
                 .foregroundStyle(Color.primary)
@@ -147,7 +147,7 @@ extension PPExpandableChatCell {
             }
 
             Text(presenceText)
-                .font(.caption)
+                .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
                 .foregroundStyle(isOnline ? Color.primary : Color.secondary)
         }
         .accessibilityElement(children: .combine)
@@ -164,11 +164,11 @@ extension PPExpandableChatCell {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(copy.conversationContext)
-                    .font(.caption)
+                    .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
                     .foregroundStyle(Color.secondary)
 
                 Text(text)
-                    .font(.subheadline)
+                    .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
                     .foregroundStyle(Color.primary)
                     .multilineTextAlignment(.leading)
             }
@@ -180,7 +180,7 @@ extension PPExpandableChatCell {
     var quickReplies: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(copy.quickReplies)
-                .font(.caption)
+                .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
                 .foregroundStyle(Color.secondary)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -200,7 +200,7 @@ extension PPExpandableChatCell {
                                 }
 
                                 Text(reply.title)
-                                    .font(.subheadline.weight(.medium))
+                                    .font(Font.ppBeirutiMedium(size: 14, relativeTo: .subheadline))
                                     .lineLimit(1)
                             }
                                 .foregroundStyle(isSelected ? style.brand : Color.primary)
@@ -232,11 +232,12 @@ extension PPExpandableChatCell {
     }
 
     var composer: some View {
-        HStack(alignment: .bottom, spacing: 6) {
+        HStack(alignment: .center, spacing: 6) {
             TextField(copy.replyPlaceholder, text: $replyState.draft, axis: .vertical)
                 .focused($composerFocused)
-                .font(.body)
+                .font(Font.ppBeirutiRegular(size: 16, relativeTo: .body))
                 .lineLimit(1...3)
+                .frame(maxHeight: .infinity, alignment: .center)
                 .submitLabel(.send)
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(false)
@@ -273,7 +274,7 @@ extension PPExpandableChatCell {
         }
         .padding(.leading, 16)
         .padding(.trailing, 6)
-        .padding(.vertical, 5)
+        .padding(.vertical, 2)
         .frame(minHeight: style.composerHeight)
         .background {
             RoundedRectangle(cornerRadius: style.compactCornerRadius + 2, style: .continuous)
@@ -327,14 +328,14 @@ extension PPExpandableChatCell {
 
         case .sending:
             Label(copy.sending, systemImage: "arrow.up.circle")
-                .font(.caption.weight(.medium))
+                .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
                 .foregroundStyle(Color.secondary)
                 .frame(minHeight: 20)
                 .transition(.opacity)
 
         case .sent:
             Label(copy.sent, systemImage: "checkmark.circle.fill")
-                .font(.caption.weight(.medium))
+                .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
                 .foregroundStyle(style.success)
                 .frame(minHeight: 20)
                 .transition(.opacity)
@@ -357,14 +358,14 @@ extension PPExpandableChatCell {
 
     func failureLabel(_ failure: PPQuickReplyFailure) -> some View {
         Label(copy.failureMessage(for: failure), systemImage: "exclamationmark.circle.fill")
-            .font(.caption)
+            .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
             .foregroundStyle(style.danger)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     var retryButton: some View {
         Button(copy.retry, action: sendDraft)
-            .font(.caption.weight(.semibold))
+            .font(Font.ppBeirutiSemiBold(size: 12, relativeTo: .caption))
             .foregroundStyle(style.brand)
             .frame(minHeight: style.minimumTouchTarget)
             .contentShape(Rectangle())

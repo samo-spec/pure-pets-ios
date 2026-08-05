@@ -156,7 +156,7 @@ internal struct SpearPresenceLine: View {
   var body: some View {
     HStack(spacing: 5) {
       Text(displayText)
-        .font(.caption)
+        .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
         .foregroundStyle(semanticColor)
         .lineLimit(2)
         .multilineTextAlignment(.leading)

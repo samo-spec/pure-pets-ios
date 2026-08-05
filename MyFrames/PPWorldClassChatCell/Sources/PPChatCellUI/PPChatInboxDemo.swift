@@ -54,7 +54,7 @@ public struct PPChatInboxDemo: View {
                             Image(systemName: "bubble.left.and.exclamationmark.bubble.right")
                                 .font(.largeTitle)
                             Text("Conversation unavailable")
-                                .font(.headline)
+                                .font(Font.ppBeirutiSemiBold(size: 16, relativeTo: .headline))
                         }
                         .foregroundStyle(Color.secondary)
                     }
@@ -102,7 +102,7 @@ private struct PPChatDemoConversationView: View {
     var body: some View {
         VStack(spacing: 14) {
             Text(thread.initials)
-                .font(.title2.weight(.semibold))
+                .font(Font.ppBeirutiSemiBold(size: 22, relativeTo: .title2))
                 .foregroundStyle(PPChatCellStyle.purePets.brand)
                 .frame(width: 72, height: 72)
                 .background {
@@ -110,10 +110,10 @@ private struct PPChatDemoConversationView: View {
                 }
 
             Text(thread.displayName)
-                .font(.title3.weight(.semibold))
+                .font(Font.ppBeirutiSemiBold(size: 19, relativeTo: .title3))
 
             Text("Replace this demo destination with your production MessagingController route.")
-                .font(.subheadline)
+                .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
                 .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)

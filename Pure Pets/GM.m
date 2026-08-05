@@ -13,7 +13,7 @@
 
 #import <Foundation/Foundation.h>
 #import <CommonCrypto/CommonCrypto.h>
-#import "PPChatsFunc.h"
+#import "PPOverlayCoordinator.h"
 #import "YYWebImageManager.h"
 #import "YYImageCache.h"
 #import "YYWebImageOperation.h"
@@ -21,6 +21,7 @@
 #import "YYMemoryCache.h"
 #import "YYDiskCache.h"
 #import "PPFirebaseSessionBridge.h"
+#import "MainApp/NewChats/helpers/PPChatsFunc.h"
 //64605 1621158
 @import Firebase;
 @import FirebaseFirestore;
@@ -2348,10 +2349,7 @@ CGSize getImageSizeSafely(UIImage *image) {
 
 +(void)showMessagingWithChat:(ChatThreadModel *)chat FromController:(UIViewController *)controller
 {
-    PPMessagingViewController *chatVC = [[PPMessagingViewController alloc] initWithChatThread:chat];
-    [PPFunc presentSheetFrom:controller
-                     sheetVC:chatVC
-                 detentStyle:PPSheetDetentStyleSemiLargAndLarge];
+    [PPOverlayCoordinator pp_openChatThread:chat fromVC:controller];
 }
 
 

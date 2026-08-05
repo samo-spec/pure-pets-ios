@@ -48,6 +48,16 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
 
     private let screenState = PPMessagingScreenState()
     private var hostingController: UIHostingController<PPMessagingScreen>?
+    private var chatThread: ChatThreadModel?
+
+    @objc(configureWithChatThread:)
+    public func configure(with thread: ChatThreadModel) {
+        onMain { [weak self] in
+            guard let self = self else { return }
+            self.chatThread = thread
+            self.screenState.configure(thread: thread, isModal: true)
+        }
+    }
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -55,6 +65,12 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
 
         let relay = PPMessagingActionRelay()
         relay.delegate = delegate
+        relay.onSendText = { [weak self] text in
+            self?.sendTextThroughExistingPipeline(text)
+        }
+        relay.onContextRequested = { [weak self] contextID in
+            self?.presentSupportContextDetails(contextID: contextID)
+        }
 
         let screen = PPMessagingScreen(state: screenState, relay: relay)
         let host = UIHostingController(rootView: screen)
@@ -73,11 +89,112 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         hostingController = host
     }
 
+    private func presentSupportContextDetails(contextID: String?) {
+        guard let thread = chatThread,
+              screenState.isSupportThread,
+              let contextID = contextID,
+              contextID == thread.id,
+              viewIfLoaded?.window != nil else {
+            return
+        }
+
+        let title = thread.supportDisplayName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let alert = UIAlertController(
+            title: title.isEmpty ? NSLocalizedString("Support", comment: "") : title,
+            message: PPMessagingSupportContextFormatter.detailsMessage(
+                status: thread.supportStatus
+            ),
+            preferredStyle: .alert
+        )
+        alert.addAction(
+            UIAlertAction(
+                title: NSLocalizedString("OK", comment: ""),
+                style: .default
+            )
+        )
+        present(alert, animated: true)
+    }
+
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         if let root = hostingController?.rootView {
             root.relay.delegate = delegate
         }
+    }
+
+    private func sendTextThroughExistingPipeline(_ rawText: String) {
+        let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty,
+              let thread = chatThread else {
+            return
+        }
+        let threadID = thread.id
+        guard !threadID.isEmpty else { return }
+
+        let senderID = UserManager.shared().currentUser?.id ?? ""
+        let receiverID = Self.outgoingReceiverID(for: thread, senderID: senderID)
+        guard !senderID.isEmpty,
+              !receiverID.isEmpty,
+              senderID != receiverID else {
+            NSLog("[Chat] Refusing outgoing message without a valid sender/receiver identity")
+            return
+        }
+
+        let message = ChatMessageModel()
+        message.id = UUID().uuidString
+        message.text = text
+        message.senderID = senderID
+        message.receiverID = receiverID
+        message.timestamp = Date()
+        message.messageType = .text
+
+        screenState.appendOptimisticText(
+            messageID: message.id,
+            text: text,
+            senderID: senderID
+        )
+
+        ChManager.shared().sendMessage(
+            message,
+            inThread: threadID,
+            senderID: senderID
+        ) { [weak self] error in
+            guard let self else { return }
+            self.onMain {
+                if let error {
+                    self.screenState.setFailure(
+                        messageID: message.id,
+                        message: NSLocalizedString(
+                            "chat_message_failed_title",
+                            comment: "Public message-send failure label"
+                        )
+                    )
+                } else {
+                    self.screenState.markMessageSent(messageID: message.id)
+                }
+            }
+        }
+    }
+
+    private static func outgoingReceiverID(
+        for thread: ChatThreadModel,
+        senderID: String
+    ) -> String {
+        let resolvedOtherUserID =
+            ChatThreadModel.resolveOtherUser(fromThread: thread)?.id ?? ""
+        if !resolvedOtherUserID.isEmpty, resolvedOtherUserID != senderID {
+            return resolvedOtherUserID
+        }
+
+        let supportUserID = thread.supportUserID
+        if !supportUserID.isEmpty, supportUserID != senderID {
+            return supportUserID
+        }
+
+        return thread.memberIDs.first {
+            !$0.isEmpty && $0 != senderID
+        } ?? ""
     }
 
     @objc(applyMessagePayloads:currentUserID:initialLoadCompleted:canLoadOlder:animated:)
@@ -99,7 +216,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         }
     }
 
-    @objc(configureConversationWithName:status:avatarURLString:isOnline:usesSupportLogo:isModal:unreadCount:isPinned:isMuted:isBinned:isReported:)
+    @objc(configureConversationWithName:status:avatarURLString:isOnline:usesSupportLogo:isModal:unreadCount:isPinned:isMuted:isBinned:isReported:supportThread:supportThreadID:supportDisplayName:supportStatus:)
     public func configureConversation(
         name: String,
         status: String,
@@ -111,7 +228,11 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         isPinned: Bool,
         isMuted: Bool,
         isBinned: Bool,
-        isReported: Bool
+        isReported: Bool,
+        supportThread: Bool,
+        supportThreadID: String,
+        supportDisplayName: String,
+        supportStatus: String
     ) {
         onMain { [weak self] in
             self?.screenState.configureConversation(
@@ -125,7 +246,11 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
                 isPinned: isPinned,
                 isMuted: isMuted,
                 isBinned: isBinned,
-                isReported: isReported
+                isReported: isReported,
+                supportThread: supportThread,
+                supportThreadID: supportThreadID,
+                supportDisplayName: supportDisplayName,
+                supportStatus: supportStatus
             )
         }
     }
@@ -263,6 +388,10 @@ private final class PPMessagingScreenState: ObservableObject {
     @Published var isMuted = false
     @Published var isBinned = false
     @Published var isReported = false
+    @Published var isSupportThread = false
+    @Published var supportThreadID = ""
+    @Published var supportDisplayName = ""
+    @Published var supportStatus = ""
     @Published var bottomNavigationClearance: CGFloat = 0
     @Published var backgroundImage: UIImage?
     @Published private(set) var messageRevision = 0
@@ -352,7 +481,11 @@ private final class PPMessagingScreenState: ObservableObject {
         isPinned: Bool,
         isMuted: Bool,
         isBinned: Bool,
-        isReported: Bool
+        isReported: Bool,
+        supportThread: Bool,
+        supportThreadID: String,
+        supportDisplayName: String,
+        supportStatus: String
     ) {
         conversationName = name
         presenceText = status
@@ -365,10 +498,85 @@ private final class PPMessagingScreenState: ObservableObject {
         self.isMuted = isMuted
         self.isBinned = isBinned
         self.isReported = isReported
+        self.isSupportThread = supportThread
+        self.supportThreadID = supportThreadID
+        self.supportDisplayName = supportDisplayName
+        self.supportStatus = supportStatus
         if !didResolveUnreadBoundary {
             requestedInitialUnreadCount = max(0, unreadCount)
             resolveUnreadBoundaryIfNeeded()
         }
+    }
+
+    func configure(thread: ChatThreadModel, isModal: Bool) {
+        let user = ChatThreadModel.resolveOtherUser(fromThread: thread) ?? thread.otherUser
+        let isSupportThread = ChatThreadModel.isSupportThread(thread)
+        let displayName: String = {
+            if let bestName = user?.ppBestDisplayName(), !bestName.isEmpty {
+                return bestName
+            }
+            if let userName = user?.userName, !userName.isEmpty {
+                return userName
+            }
+            return NSLocalizedString(isSupportThread ? "Support" : "Chat", comment: "")
+        }()
+        let isOnline = user?.isOnline ?? false
+
+        configureConversation(
+            name: displayName,
+            status: NSLocalizedString(isOnline ? "chat.online" : "chat.offline", comment: ""),
+            avatarURLString: user?.userImageUrl?.absoluteString ?? "",
+            isOnline: isOnline,
+            usesSupportLogo: isSupportThread,
+            isModal: isModal,
+            unreadCount: max(0, thread.unreadCount),
+            isPinned: thread.isPinned != 0,
+            isMuted: thread.isMuted,
+            isBinned: thread.isBinned,
+            isReported: thread.isReportedByMe,
+            supportThread: isSupportThread,
+            supportThreadID: thread.id,
+            supportDisplayName: thread.supportDisplayName,
+            supportStatus: thread.supportStatus
+        )
+        lastActiveAt = user?.lastSeen
+    }
+
+    func appendOptimisticText(
+        messageID: String,
+        text: String,
+        senderID: String
+    ) {
+        guard !messages.contains(where: { $0.id == messageID }) else { return }
+
+        let snapshot = PPMessagingMessageSnapshot(
+            payload: [
+                "id": messageID,
+                "text": text,
+                "senderID": senderID,
+                "timestamp": Date(),
+                "kind": "text",
+                "status": 0,
+                "isLocalPending": true,
+                "isOutgoing": true
+            ],
+            currentUserID: senderID,
+            failureText: nil,
+            animatesEntrance: true
+        )
+        messages.append(snapshot)
+        knownMessageIDs.insert(messageID)
+        latestAppendedCount = 1
+        latestAppendContainsOutgoing = true
+        messageRevision &+= 1
+    }
+
+    func markMessageSent(messageID: String) {
+        messages = messages.map {
+            guard $0.id == messageID else { return $0 }
+            return $0.withDelivery(status: 1, isLocalPending: false)
+        }
+        messageRevision &+= 1
     }
 
     func setFailure(messageID: String, message: String) {
@@ -484,13 +692,18 @@ private struct PPMessagingMessageSnapshot: Identifiable {
         self.animatesEntrance = animatesEntrance
     }
 
-    private init(copying source: Self, failureText: String?) {
+    private init(
+        copying source: Self,
+        failureText: String?,
+        status: Int? = nil,
+        isLocalPending: Bool? = nil
+    ) {
         id = source.id
         text = source.text
         senderID = source.senderID
         timestamp = source.timestamp
         kind = source.kind
-        status = source.status
+        self.status = status ?? source.status
         fileURLString = source.fileURLString
         thumbnailURLString = source.thumbnailURLString
         localImage = source.localImage
@@ -500,7 +713,7 @@ private struct PPMessagingMessageSnapshot: Identifiable {
         mediaHeight = source.mediaHeight
         waveformSamples = source.waveformSamples
         isUploading = source.isUploading
-        isLocalPending = source.isLocalPending
+        self.isLocalPending = isLocalPending ?? source.isLocalPending
         transferProgress = source.transferProgress
         isDeleted = source.isDeleted
         replyToMessageID = source.replyToMessageID
@@ -512,6 +725,15 @@ private struct PPMessagingMessageSnapshot: Identifiable {
 
     func withFailure(_ failureText: String?) -> Self {
         Self(copying: self, failureText: failureText)
+    }
+
+    func withDelivery(status: Int, isLocalPending: Bool) -> Self {
+        Self(
+            copying: self,
+            failureText: failureText,
+            status: status,
+            isLocalPending: isLocalPending
+        )
     }
 
     var mediaURL: URL? {
@@ -556,8 +778,22 @@ private extension Dictionary where Key == String, Value == Any {
 
 private final class PPMessagingActionRelay {
     weak var delegate: PPMessagingSwiftUIHostControllerDelegate?
+    var onSendText: ((String) -> Void)?
+    var onContextRequested: ((String?) -> Void)?
+
+    func sendText(_ text: String) {
+        if let delegate {
+            delegate.messagingHostDidSendText(text)
+        } else {
+            onSendText?(text)
+        }
+    }
 
     func request(_ action: PPMessagingAction, messageID: String? = nil) {
+        if action == .context {
+            onContextRequested?(messageID)
+            return
+        }
         delegate?.messagingHostDidRequestAction(action.rawValue, messageID: messageID)
     }
 }
@@ -566,6 +802,7 @@ private enum PPMessagingAction: String {
     case close
     case more
     case profile
+    case context
     case pin
     case mute
     case background
@@ -583,6 +820,34 @@ private enum PPMessagingAction: String {
     case composerCancelledReply
 }
 
+private enum PPMessagingSupportContextFormatter {
+    static func statusText(_ rawStatus: String) -> String {
+        let key: String
+        switch rawStatus.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "waiting_for_agent":
+            key = "chat_support_context_status_waiting_for_agent"
+        case "waiting_for_provider":
+            key = "chat_support_context_status_waiting_for_provider"
+        case "active":
+            key = "chat_support_context_status_active"
+        case "resolved":
+            key = "chat_support_context_status_resolved"
+        case "closed":
+            key = "chat_support_context_status_closed"
+        default:
+            key = "chat_support_context_status_unavailable"
+        }
+        return NSLocalizedString(key, comment: "")
+    }
+
+    static func detailsMessage(status: String) -> String {
+        String(
+            format: NSLocalizedString("chat_support_context_detail_format", comment: ""),
+            statusText(status)
+        )
+    }
+}
+
 // MARK: - Screen
 
 private struct PPMessagingScreen: View {
@@ -592,6 +857,7 @@ private struct PPMessagingScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
+    @State private var languageCode = Language.currentLanguageCode() ?? "en"
     @State private var presentedMedia: PPMessagingMessageSnapshot?
     @State private var hasPositionedInitially = false
     @State private var isAtLatest = true
@@ -618,7 +884,7 @@ private struct PPMessagingScreen: View {
                     state: state.composerState,
                     presentation: .messaging,
                     chatBarHeight: 54,
-                    onSendText: { relay.delegate?.messagingHostDidSendText($0) },
+                    onSendText: { relay.sendText($0) },
                     onCameraTap: { relay.delegate?.messagingHostDidTapPhoto() },
                     onVideoTap: { relay.delegate?.messagingHostDidTapVideo() },
                     onContactTap: { relay.delegate?.messagingHostDidTapContact() },
@@ -634,16 +900,20 @@ private struct PPMessagingScreen: View {
                 .onReceive(state.composerState.$message.dropFirst()) { text in
                     relay.delegate?.messagingHostDidChangeText(text)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 22)
                 .padding(.top, 9)
                 .padding(
                     .bottom,
-                    max(8, state.bottomNavigationClearance)
+                    max(22, state.bottomNavigationClearance)
                 )
                 .background {
                     PPMessagingComposerBackdrop()
                 }
             }
+            // SpearChatHeader owns the status-bar inset internally. Let the
+            // host stack reach the physical edges so that inset is applied
+            // once and the composer can rest 22pt above the real bottom.
+            .ignoresSafeArea(.container, edges: [.top, .bottom])
             .background {
                 PPMessagingCanvas(backgroundImage: state.backgroundImage)
                     .ignoresSafeArea()
@@ -652,8 +922,26 @@ private struct PPMessagingScreen: View {
         }
         .environment(
             \.layoutDirection,
-            Language.isRTL() ? .rightToLeft : .leftToRight
+            languageCode == "ar" ? .rightToLeft : .leftToRight
         )
+        .environment(\.locale, Locale(identifier: languageCode))
+        .onAppear {
+            refreshLanguage()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Notification.Name("LanguageDidChangeNotification")
+            )
+        ) { _ in
+            refreshLanguage()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Notification.Name("PPLanguageDidChangeNotification")
+            )
+        ) { _ in
+            refreshLanguage()
+        }
         .fullScreenCover(item: $presentedMedia) { message in
             PPMessagingMediaViewer(message: message) {
                 presentedMedia = nil
@@ -661,6 +949,12 @@ private struct PPMessagingScreen: View {
                 relay.request(.saveMedia, messageID: message.id)
             }
         }
+    }
+
+    private func refreshLanguage() {
+        let nextLanguageCode = Language.currentLanguageCode() ?? "en"
+        guard nextLanguageCode != languageCode else { return }
+        languageCode = nextLanguageCode
     }
 
     @ViewBuilder
@@ -684,8 +978,8 @@ private struct PPMessagingScreen: View {
     }
 
     private func messageScroller(availableWidth: CGFloat) -> some View {
-        ZStack(alignment: .bottom) {
-            ScrollViewReader { proxy in
+        ScrollViewReader { proxy in
+            ZStack(alignment: .bottom) {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         Color.clear
@@ -782,6 +1076,20 @@ private struct PPMessagingScreen: View {
                     guard typing, isAtLatest else { return }
                     scrollToLatest(using: proxy, animated: true)
                 }
+                .onReceive(
+                    NotificationCenter.default.publisher(
+                        for: UIResponder.keyboardWillChangeFrameNotification
+                    )
+                ) { _ in
+                    // The composer is edge-to-edge and changes the available
+                    // viewport when the keyboard moves. Preserve the user's
+                    // position when they are reading older content, but keep
+                    // the latest row visible for the normal send flow.
+                    guard hasPositionedInitially, isAtLatest else { return }
+                    DispatchQueue.main.async {
+                        scrollToLatest(using: proxy, animated: !reduceMotion)
+                    }
+                }
                 .onAppear {
                     if state.initialLoadCompleted {
                         positionInitially(using: proxy)
@@ -792,7 +1100,10 @@ private struct PPMessagingScreen: View {
                     PPMessagingLatestButton(count: unseenMessageCount) {
                         scrollToLatest(using: proxy, animated: true)
                     }
-                    .padding(.bottom, 14)
+                    // Overlay-only placement keeps the button above the date
+                    // and composer without changing message scroll insets.
+                    .padding(.bottom, 18)
+                    .zIndex(2)
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
                 }
             }
@@ -1041,17 +1352,46 @@ private struct PPMessagingHeader: View {
             trust: .standard(role: nil),
             presence: presence,
             metrics: [],
-            context: nil,
+            context: supportContext,
             isModal: state.isModal
         )
         return .ready(model)
     }
 
+    private var supportContext: SpearConversationContext? {
+        guard state.isSupportThread else { return nil }
+
+        let threadID = state.supportThreadID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !threadID.isEmpty else { return nil }
+
+        let displayName = state.supportDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return .support(
+            SpearSupportContext(
+                id: threadID,
+                eyebrow: localized("Support"),
+                title: displayName.isEmpty ? localized("Support") : displayName,
+                detail: localizedSupportStatus(state.supportStatus),
+                actionTitle: localized("details")
+            )
+        )
+    }
+
+    private func localizedSupportStatus(_ rawStatus: String) -> String {
+        PPMessagingSupportContextFormatter.statusText(rawStatus)
+    }
+
     private var spearActions: SpearChatHeaderActions {
-        SpearChatHeaderActions(
+        let contextAction: SpearContextHeaderAction = supportContext == nil
+            ? .hidden
+            : .enabled { context in
+                relay.request(.context, messageID: context.id)
+            }
+
+        return SpearChatHeaderActions(
             onBack: { relay.request(.close) },
             more: .enabled { relay.request(.more) },
-            profile: .enabled { relay.request(.profile) }
+            profile: .enabled { relay.request(.profile) },
+            context: contextAction
         )
     }
 
@@ -1790,7 +2130,7 @@ private struct PPMessagingLatestButton: View {
                     .font(.system(size: 13, weight: .bold))
                 if count > 0 {
                     Text("\(count)")
-                        .font(.caption.bold().monospacedDigit())
+                        .font(Font.ppBeirutiBold(size: 11, relativeTo: .caption).monospacedDigit())
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(PPMessagingPalette.highlight, in: Capsule())
@@ -1800,8 +2140,24 @@ private struct PPMessagingLatestButton: View {
             .foregroundColor(PPMessagingPalette.primaryText)
             .frame(minWidth: 44, minHeight: 44)
             .padding(.horizontal, count > 0 ? 8 : 0)
-            .background(PPMessagingPalette.headerSurface, in: Capsule())
-            .overlay(Capsule().stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8))
+            .background {
+                if count > 0 {
+                    Capsule(style: .continuous)
+                        .fill(PPMessagingPalette.headerSurface)
+                } else {
+                    Circle()
+                        .fill(PPMessagingPalette.headerSurface)
+                }
+            }
+            .overlay {
+                if count > 0 {
+                    Capsule(style: .continuous)
+                        .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
+                } else {
+                    Circle()
+                        .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
+                }
+            }
             .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
         }
         .buttonStyle(PPMessagingPressButtonStyle())
@@ -1984,7 +2340,9 @@ private struct PPMessagingCanvas: View {
 
     var body: some View {
         ZStack {
-            PPMessagingPalette.canvas
+            WorldGlassBackground(
+                intensity: colorScheme == .dark ? 0.72 : 0.88
+            )
 
             if let backgroundImage {
                 GeometryReader { proxy in
@@ -2003,25 +2361,6 @@ private struct PPMessagingCanvas: View {
                 PPMessagingPalette.canvas
                     .opacity(colorScheme == .dark ? 0.34 : 0.42)
             }
-
-            RadialGradient(
-                colors: [
-                    PPMessagingPalette.canvasWarmField,
-                    .clear
-                ],
-                center: .topTrailing,
-                startRadius: 8,
-                endRadius: 430
-            )
-            RadialGradient(
-                colors: [
-                    PPMessagingPalette.canvasCoolField,
-                    .clear
-                ],
-                center: .bottomLeading,
-                startRadius: 12,
-                endRadius: 520
-            )
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: backgroundImage.map(ObjectIdentifier.init))
         .accessibilityHidden(true)

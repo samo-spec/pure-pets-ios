@@ -3,7 +3,7 @@
 #import "AccessViewerVC.h"
 #import "AppClasses.h"
 #import "ChManager.h"
-#import "PPMessagingViewController.h"
+#import "PPOverlayCoordinator.h"
 #import "CitiesManager.h"
 #import "EnumValues.h"
 #import "GM.h"
@@ -533,35 +533,8 @@ fromViewController:(UIViewController *)viewController
                 return;
             }
 
-            PPMessagingViewController *chat =
-                [[PPMessagingViewController alloc] initWithChatThread:thread];
-            UIViewController *presenter =
-                PPPetAdViewerResolvedPresenter(viewController);
-            if (!presenter ||
-                presenter.isBeingDismissed ||
-                presenter.isBeingPresented) {
-                NSError *presentationError = [NSError
-                    errorWithDomain:PPPetAdViewerBridgeErrorDomain
-                               code:1006
-                           userInfo:@{
-                    NSLocalizedDescriptionKey:
-                        [Language get:@"pet_ad_viewer_chat_failed"
-                               alter:@"The chat could not be opened."]
-                }];
-                completion(presentationError);
-                return;
-            }
-
-            PPNavigationController *navigation =
-                [[PPNavigationController alloc]
-                 initWithRootViewController:chat];
-            navigation.modalPresentationStyle =
-                UIModalPresentationFullScreen;
-            [presenter presentViewController:navigation
-                                    animated:YES
-                                  completion:^{
-                completion(nil);
-            }];
+            [PPOverlayCoordinator pp_openChatThread:thread fromVC:viewController];
+            completion(nil);
         });
     }];
 }

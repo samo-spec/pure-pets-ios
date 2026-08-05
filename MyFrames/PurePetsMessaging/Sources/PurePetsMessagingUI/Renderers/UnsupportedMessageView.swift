@@ -7,10 +7,10 @@ struct UnsupportedMessageView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       Label("Message unavailable", systemImage: "exclamationmark.triangle")
-        .font(.subheadline.weight(.semibold))
+        .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
 
       Text("This message type requires a newer app version.")
-        .font(.subheadline)
+        .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
         .foregroundStyle(.secondary)
 
       Button("Update app", action: onUpdateApp)

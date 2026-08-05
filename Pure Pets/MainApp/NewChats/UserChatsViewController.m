@@ -172,6 +172,12 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIAccessibilityReduceMotionStatusDidChangeNotification
                                                   object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:@"LanguageDidChangeNotification"
+                                                  object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:PPLanguageDidChangeNotification
+                                                  object:nil];
 }
 
 #pragma mark - Setup
@@ -430,6 +436,41 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
                                              selector:@selector(pp_reduceMotionStatusDidChange:)
                                                  name:UIAccessibilityReduceMotionStatusDidChangeNotification
                                                object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_languageDidChange:)
+                                                 name:@"LanguageDidChangeNotification"
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_languageDidChange:)
+                                                 name:PPLanguageDidChangeNotification
+                                               object:nil];
+}
+
+- (void)pp_languageDidChange:(NSNotification *)notification {
+    (void)notification;
+
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.tableHeaderContainer.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.inboxHeaderView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.storiesHeaderContainer.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    self.inboxEyebrowLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.inboxEyebrowLabel.text = kLang(@"notifications_hub_hero_eyebrow");
+    self.inboxTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.inboxTitleLabel.text = kLang(@"pet_chats_tab");
+    self.inboxSummaryLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.composeButton.accessibilityLabel = kLang(@"empty_chats_button");
+    self.composeButton.accessibilityHint = kLang(@"chat_inbox_compose_hint");
+    self.loadingIndicator.accessibilityLabel = kLang(@"chat_inbox_loading");
+
+    [self pp_configureEmptyState];
+    [self pp_updateInboxSummaryAnimated:NO];
+    [self pp_updateEmptyState];
+    [self pp_layoutTableHeaderIfNeeded];
+    [self.tableView reloadData];
 }
 
 - (void)pp_forceReloadThreadsNotification:(NSNotification *)notification {

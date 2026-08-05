@@ -12,7 +12,7 @@ struct MessageReactionsView: View {
             onReactionTap(reaction)
           } label: {
             Text("\(reaction.emoji) \(reaction.count)")
-              .font(.caption)
+              .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
               .padding(.horizontal, 8)
               .padding(.vertical, 4)
               .background(

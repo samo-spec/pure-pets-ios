@@ -19,7 +19,7 @@ public struct SpearDefaultAvatarContent: View {
     switch fallback {
     case .initials(let value):
       Text(value)
-        .font(.subheadline.weight(.bold))
+        .font(Font.ppBeirutiBold(size: 14, relativeTo: .subheadline))
         .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
@@ -100,7 +100,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
       VStack(alignment: .leading, spacing: 2) {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
           Text(model.name)
-            .font(.headline.weight(.semibold))
+            .font(Font.ppBeirutiSemiBold(size: 16, relativeTo: .headline))
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
             .multilineTextAlignment(.leading)
             .layoutPriority(1)

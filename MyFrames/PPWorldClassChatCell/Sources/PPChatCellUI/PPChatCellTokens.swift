@@ -30,7 +30,7 @@ public struct PPChatCellStyle {
         sectionSpacing: CGFloat = 16,
         minimumSummaryHeight: CGFloat = 78,
         minimumTouchTarget: CGFloat = 44,
-        composerHeight: CGFloat = 54
+        composerHeight: CGFloat = 48
     ) {
         self.brand = brand
         self.cornerRadius = cornerRadius
@@ -99,6 +99,45 @@ extension PPChatCellStyle {
 
     var danger: Color {
         Color(uiColor: .systemRed)
+    }
+}
+
+public extension Font {
+    static func ppBeirutiBold(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
+        if UIFont(name: "Beiruti-Bold", size: size) != nil {
+            return .custom("Beiruti-Bold", size: size, relativeTo: textStyle)
+        }
+        return .system(size: size, weight: .bold)
+    }
+
+    static func ppBeirutiSemiBold(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
+        if UIFont(name: "Beiruti-SemiBold", size: size) != nil {
+            return .custom("Beiruti-SemiBold", size: size, relativeTo: textStyle)
+        } else if UIFont(name: "Beiruti-Bold", size: size) != nil {
+            return .custom("Beiruti-Bold", size: size, relativeTo: textStyle)
+        }
+        return .system(size: size, weight: .semibold)
+    }
+
+    static func ppBeirutiMedium(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
+        if UIFont(name: "Beiruti-Medium", size: size) != nil {
+            return .custom("Beiruti-Medium", size: size, relativeTo: textStyle)
+        }
+        return .system(size: size, weight: .medium)
+    }
+
+    static func ppBeirutiRegular(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
+        if UIFont(name: "Beiruti-Regular", size: size) != nil {
+            return .custom("Beiruti-Regular", size: size, relativeTo: textStyle)
+        }
+        return .system(size: size, weight: .regular)
+    }
+
+    static func ppBeirutiBlack(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
+        if UIFont(name: "Beiruti-Black", size: size) != nil {
+            return .custom("Beiruti-Black", size: size, relativeTo: textStyle)
+        }
+        return .system(size: size, weight: .black)
     }
 }
 #endif

@@ -10,25 +10,25 @@ import UIKit
 
 /// Custom font extension mapping Beiruti brand typography for SwiftUI views.
 public extension Font {
-    static func ppBeirutiBold(size: CGFloat) -> Font {
+    static func ppBeirutiBold(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
         if UIFont(name: "Beiruti-Bold", size: size) != nil {
-            return .custom("Beiruti-Bold", size: size)
+            return .custom("Beiruti-Bold", size: size, relativeTo: textStyle)
         }
         return .system(size: size, weight: .bold)
     }
     
-    static func ppBeirutiMedium(size: CGFloat) -> Font {
+    static func ppBeirutiMedium(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
         if UIFont(name: "Beiruti-Medium", size: size) != nil {
-            return .custom("Beiruti-Medium", size: size)
+            return .custom("Beiruti-Medium", size: size, relativeTo: textStyle)
         }
         return .system(size: size, weight: .medium)
     }
     
-    static func ppBeirutiSemiBold(size: CGFloat) -> Font {
+    static func ppBeirutiSemiBold(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
         if UIFont(name: "Beiruti-SemiBold", size: size) != nil {
-            return .custom("Beiruti-SemiBold", size: size)
+            return .custom("Beiruti-SemiBold", size: size, relativeTo: textStyle)
         } else if UIFont(name: "Beiruti-Bold", size: size) != nil {
-            return .custom("Beiruti-Bold", size: size)
+            return .custom("Beiruti-Bold", size: size, relativeTo: textStyle)
         }
         return .system(size: size, weight: .semibold)
     }

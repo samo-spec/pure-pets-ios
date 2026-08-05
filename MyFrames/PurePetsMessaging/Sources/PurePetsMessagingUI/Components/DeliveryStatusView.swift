@@ -18,7 +18,7 @@ struct DeliveryStatusView: View {
         outgoingStateView(state)
       }
     }
-    .font(.caption2)
+    .font(Font.ppBeirutiRegular(size: 11, relativeTo: .caption2))
     .foregroundStyle(.secondary)
     .accessibilityElement(children: .combine)
   }

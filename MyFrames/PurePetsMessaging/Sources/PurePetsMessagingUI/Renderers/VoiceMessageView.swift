@@ -72,7 +72,7 @@ struct VoiceMessageView: View {
         Spacer()
         Text(durationText)
       }
-      .font(.caption)
+      .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
       .foregroundStyle(.secondary)
     }
     .accessibilityElement(children: .ignore)

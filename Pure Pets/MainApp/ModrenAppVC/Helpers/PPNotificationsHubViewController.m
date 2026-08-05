@@ -7,13 +7,13 @@
 
 #import "PPNotificationsHubViewController.h"
 #import "PPPetRemindersViewController.h"
-#import "PPBackgroundView.h"
 #import "UserChatsViewController.h"
 #import "OrderDetailsViewController.h"
 #import "PPOrder.h"
 #import "ChNotificationRouter.h"
 #import "AppClasses.h"
 #import "Language.h"
+#import <Pure_Pets-Swift.h>
 @import FirebaseFirestore;
 @import UserNotifications;
 
@@ -1242,7 +1242,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) PPBackgroundView *heroGlassBackground;
+@property (nonatomic, strong) UIViewController *homeHeroBackgroundController;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -1300,13 +1300,11 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super viewDidAppear:animated];
     [self pp_playHeroEntranceIfNeeded];
-    [self.heroGlassBackground startAnimations];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
-    [self.heroGlassBackground stopAnimations];
     if (self.hasStoredPreviousNavigationBarHidden) {
         [self.navigationController setNavigationBarHidden:self.previousNavigationBarHidden animated:animated];
     }
@@ -1453,9 +1451,6 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
-    [self.heroGlassBackground stopAnimations];
-    [self.heroGlassBackground reapplyPalette];
-    [self.heroGlassBackground startAnimations];
     if (@available(iOS 13.0, *)) {
         if (self.traitCollection.userInterfaceStyle != previousTraitCollection.userInterfaceStyle) {
             [self pp_updateGlowAppearance];
@@ -1493,16 +1488,21 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     }
     [self.heroContainerView addSubview:self.heroSurfaceView];
 
-    PPBackgroundView *glass = [PPBackgroundView new];
-    glass.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.heroSurfaceView insertSubview:glass atIndex:0];
-    self.heroGlassBackground = glass;
+    PPHomeHeroBackgroundHostingController *homeBackground =
+        [[PPHomeHeroBackgroundHostingController alloc] init];
+    [self addChildViewController:homeBackground];
+    UIView *backgroundView = homeBackground.view;
+    backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
+    backgroundView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.heroSurfaceView insertSubview:backgroundView atIndex:0];
+    self.homeHeroBackgroundController = homeBackground;
     [NSLayoutConstraint activateConstraints:@[
-        [glass.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
-        [glass.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
-        [glass.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
-        [glass.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor]
+        [backgroundView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
+        [backgroundView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
+        [backgroundView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
+        [backgroundView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor]
     ]];
+    [homeBackground didMoveToParentViewController:self];
 
     self.heroEyebrowLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1843,11 +1843,6 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
     [target performSelector:selector];
 #pragma clang diagnostic pop
-}
-
-- (void)dealloc
-{
-    [self.heroGlassBackground stopAnimations];
 }
 
 @end

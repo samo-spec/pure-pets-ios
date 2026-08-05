@@ -5,7 +5,7 @@ struct TextMessageView: View {
 
   var body: some View {
     Text(payload.text)
-      .font(.body)
+      .font(Font.ppBeirutiRegular(size: 16, relativeTo: .body))
       .foregroundStyle(.primary)
       .textSelection(.enabled)
       .accessibilityTextContentType(.messaging)

@@ -21,7 +21,7 @@ internal struct SpearHeaderCapsuleButton: View {
           .foregroundStyle(tint)
           .frame(width: 38, height: 38)
           .contentShape(Circle())
-          .background(activeGlow, in: Circle())
+          .background { activeGlow }
       }
       .buttonStyle(SpearCapsuleItemStyle())
       .disabled(!action.availability.isEnabled)
@@ -88,7 +88,7 @@ internal struct SpearHeaderLabeledActionButton: View {
     if action.availability.isVisible {
       Button(action: action.perform) {
         Label(title, systemImage: systemName)
-          .font(.subheadline.weight(.semibold))
+          .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
           .foregroundStyle(tint)
           .frame(maxWidth: .infinity)
           .frame(minHeight: 44)
@@ -234,6 +234,7 @@ internal struct SpearSecondaryButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
+      .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
       .frame(maxWidth: .infinity)
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
@@ -266,7 +267,7 @@ internal struct SpearBrandButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.subheadline.weight(.semibold))
+      .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
       .foregroundStyle(.white)
       .padding(.horizontal, 14)
       .padding(.vertical, 9)

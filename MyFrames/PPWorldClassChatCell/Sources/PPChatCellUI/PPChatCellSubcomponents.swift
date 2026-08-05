@@ -86,7 +86,7 @@ struct PPChatAvatarView: View {
                 .fill(style.brand.opacity(colorScheme == .dark ? 0.18 : 0.10))
 
             Text(thread.initials)
-                .font(.subheadline.weight(.semibold))
+                .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
                 .foregroundStyle(style.brand)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
@@ -189,7 +189,7 @@ struct PPChatActivityPreviewView: View {
 
             if let sender = displayedSender, !sender.isEmpty {
                 Text(sender)
-                    .font(.subheadline.weight(.semibold))
+                    .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
                     .foregroundStyle(textColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -197,7 +197,7 @@ struct PPChatActivityPreviewView: View {
             }
 
             Text(displayedMessage)
-                .font(.subheadline.weight(isUnread ? .medium : .regular))
+                .font(isUnread ? Font.ppBeirutiMedium(size: 14, relativeTo: .subheadline) : Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
                 .foregroundStyle(textColor)
                 .lineLimit(lineLimit)
                 .multilineTextAlignment(.leading)
@@ -285,7 +285,7 @@ struct PPUnreadBadge: View {
 
     var body: some View {
         Text(count > 99 ? "99+" : "\(count)")
-            .font(.caption2.weight(.bold))
+            .font(Font.ppBeirutiBold(size: 11, relativeTo: .caption2))
             .foregroundStyle(Color.white)
             .monospacedDigit()
             .padding(.horizontal, 8)

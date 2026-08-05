@@ -84,12 +84,12 @@ public struct ChatHeaderView: View {
 
         VStack(alignment: .leading, spacing: 2) {
           Text(presentation.participant.displayName)
-            .font(.headline)
+            .font(Font.ppBeirutiSemiBold(size: 16, relativeTo: .headline))
             .foregroundStyle(.primary)
             .lineLimit(1)
 
           Text(statusText)
-            .font(.subheadline)
+            .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
             .foregroundStyle(statusColor)
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
         }
@@ -192,7 +192,7 @@ private struct ParticipantAvatarView: View {
         .frame(width: 40, height: 40)
         .overlay {
           Text(sender.initials)
-            .font(.caption.weight(.bold))
+            .font(Font.ppBeirutiBold(size: 12, relativeTo: .caption))
             .foregroundStyle(PurePetsMessagingTheme.brand)
         }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Combine
 
 private let homeHeroShowsSelectedMainKindArtwork = false
 
@@ -1282,5 +1283,79 @@ private struct HomeHeroSkeleton: View {
                     fallback: "Loading Home"
                 )
             )
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPHomeHeroBackgroundRootView: View {
+    @Environment(\.colorSchemeContrast) private var contrast
+    @State private var isRightToLeft = Language.isRTL()
+
+    var body: some View {
+        HomeHeroField(
+            accent: .homeBrand,
+            increasedContrast: contrast == .increased,
+            cornerGlowOpacityScale: 0.72
+        )
+        .environment(
+            \.layoutDirection,
+            isRightToLeft ? .rightToLeft : .leftToRight
+        )
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Notification.Name("LanguageDidChangeNotification")
+            )
+        ) { _ in
+            isRightToLeft = Language.isRTL()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Notification.Name("PPLanguageDidChangeNotification")
+            )
+        ) { _ in
+            isRightToLeft = Language.isRTL()
+        }
+    }
+}
+
+/// UIKit bridge for the live Home hero field so legacy UIKit hero surfaces can
+/// reuse the same background owner without duplicating its material or motion.
+@available(iOS 15.0, *)
+@MainActor
+@objc(PPHomeHeroBackgroundHostingController)
+public final class PPHomeHeroBackgroundHostingController: UIViewController {
+    private let hostingController: UIHostingController<PPHomeHeroBackgroundRootView>
+
+    @objc public init() {
+        hostingController = UIHostingController(
+            rootView: PPHomeHeroBackgroundRootView()
+        )
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError(
+            "PPHomeHeroBackgroundHostingController must be created programmatically."
+        )
+    }
+
+    public override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear
+
+        addChild(hostingController)
+        let hostedView = hostingController.view!
+        hostedView.translatesAutoresizingMaskIntoConstraints = false
+        hostedView.backgroundColor = .clear
+        hostedView.isUserInteractionEnabled = false
+        view.addSubview(hostedView)
+        NSLayoutConstraint.activate([
+            hostedView.topAnchor.constraint(equalTo: view.topAnchor),
+            hostedView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            hostedView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            hostedView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        hostingController.didMove(toParent: self)
     }
 }

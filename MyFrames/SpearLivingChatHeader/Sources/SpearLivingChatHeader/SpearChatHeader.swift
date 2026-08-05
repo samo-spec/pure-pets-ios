@@ -58,8 +58,18 @@ public struct SpearChatHeader<AvatarContent: View>: View {
         )
       }
     }
-    .background(seamlessBackground)
+    .padding(.top, safeAreaTopInset)
+    .background(seamlessBackground.ignoresSafeArea(.container, edges: .top))
     .accessibilityIdentifier(SpearChatHeaderAccessibilityID.root)
+  }
+
+  /// Returns the top safe area inset so content stays below the status bar
+  /// while the background extends beneath it.
+  private var safeAreaTopInset: CGFloat {
+    let scene = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .first { $0.activationState == .foregroundActive }
+    return scene?.keyWindow?.safeAreaInsets.top ?? 0
   }
 
   /// The seamless gradient dissolve — replaces the hard divider with a

@@ -5,6 +5,7 @@
 
 #import "PPInAppChatNotificationPresenter.h"
 #import "ChatThreadModel.h"
+#import "PPChatFeedbackManager.h"
 #import "ChatMessageModel.h"
 #import "ChManager.h"
 #import "ChNotificationRouter.h"

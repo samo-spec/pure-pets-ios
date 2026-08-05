@@ -4194,3 +4194,14 @@
 "home_pure_lens_title" = "Pure Lens";
 "home_pure_lens_a11y" = "Open Pure Lens camera";
 "pp_promo_carousel" = "Promotional offers";
+
+
+// Spear support conversation context
+"chat_support_context_status_waiting_for_agent" = "Waiting for a support agent";
+"chat_support_context_status_waiting_for_provider" = "Waiting for the service provider";
+"chat_support_context_status_active" = "Support conversation is active";
+"chat_support_context_status_resolved" = "Support case resolved";
+"chat_support_context_status_closed" = "Support case closed";
+"chat_support_context_status_unavailable" = "Support status unavailable";
+
+"chat_support_context_detail_format" = "Status: %@";

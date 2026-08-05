@@ -31,6 +31,7 @@ static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue
 @import FirebaseFirestore;
 @import FirebaseFunctions;
 #import "ChManager.h"
+#import "PPChatFeedbackManager.h"
 #import <UIKit/UIKit.h>
 #import "PPOverlayCoordinator.h"
 #import "UserManager.h"
@@ -2549,7 +2550,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }];
 }
 
-+ (CGFloat)heightForMessage:(NSString *)text onController:(PPMessagingViewController *)cont {
++ (CGFloat)heightForMessage:(NSString *)text onController:(UIViewController *)cont {
     UIFont *font = [UIFont systemFontOfSize:15];
 
     CGRect rect = [text boundingRectWithSize:CGSizeMake(MAX_BUBBLE_WIDTH(cont.view) - 20, CGFLOAT_MAX)
@@ -3270,11 +3271,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             return;
         }
         
-        // Push chat messaging controller
-        PPMessagingViewController *chatVC = [[PPMessagingViewController alloc] initWithChatThread:thread];
-        [PPFunc presentSheetFrom:controller
-                         sheetVC:chatVC
-                     detentStyle:PPSheetDetentStyleSemiLargAndLarge];
+        // Open chat messaging screen
+        [PPOverlayCoordinator pp_openChatThread:thread fromVC:controller];
     }];
     
 }
@@ -3354,11 +3352,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 return;
             }
 
-            // Push chat messaging controller
-            PPMessagingViewController *chatVC = [[PPMessagingViewController alloc] initWithChatThread:chatThread];
-            [PPFunc presentSheetFrom:controller
-                             sheetVC:chatVC
-                         detentStyle:PPSheetDetentStyleSemiLargAndLarge];
+            // Open chat messaging screen
+            [PPOverlayCoordinator pp_openChatThread:chatThread fromVC:controller];
         }];
 }
 @end

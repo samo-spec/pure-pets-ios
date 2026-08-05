@@ -28,6 +28,8 @@ private final class PPChatCellExpansionStore: ObservableObject {
 private struct PPChatCellHost: View {
     let thread: PPChatThreadSnapshot
     let style: PPChatCellStyle
+    let copy: PPChatCellCopy
+    let timestampFormatter: PPChatTimestampFormatter
     @ObservedObject var expansionStore: PPChatCellExpansionStore
     let onOpenChat: () -> Void
     let sendQuickReply: PPExpandableChatCell.SendReplyAction
@@ -42,6 +44,8 @@ private struct PPChatCellHost: View {
                 }
             ),
             style: style,
+            copy: copy,
+            timestampFormatter: timestampFormatter,
             onOpenChat: { _ in onOpenChat() },
             onOptimisticReply: { _, _ in },
             onReplyCommitted: { _ in },
@@ -98,19 +102,29 @@ final class PPChatCellBridge: NSObject {
         onOpenChat: @escaping (ChatThreadModel) -> Void
     ) {
         let snapshot = Self.makeSnapshot(from: thread)
+        let languageCode = Language.currentLanguageCode() ?? "en"
+        let locale = Locale(identifier: languageCode)
 
         cell.contentConfiguration = UIHostingConfiguration {
             PPChatCellHost(
                 thread: snapshot,
                 style: Self.liveStyle,
+                copy: .localized(languageCode: languageCode),
+                timestampFormatter: PPChatTimestampFormatter(locale: locale),
                 expansionStore: expansionStore,
                 onOpenChat: { onOpenChat(thread) },
                 sendQuickReply: { message, conversationID in
                     try await Self.sendQuickReplyBridge(
                         message: message,
-                        conversationID: conversationID
+                        conversationID: conversationID,
+                        receiverID: snapshot.participantID
                     )
                 }
+            )
+            .environment(\.locale, locale)
+            .environment(
+                \.layoutDirection,
+                languageCode == "ar" ? .rightToLeft : .leftToRight
             )
         }
         .margins(.all, 0)
@@ -137,7 +151,7 @@ final class PPChatCellBridge: NSObject {
     /// Maps `ChatThreadModel` + `UserModel` + `ChatPresenceManager` → `PPChatThreadSnapshot`.
     static func makeSnapshot(from thread: ChatThreadModel) -> PPChatThreadSnapshot {
         let user = ChatThreadModel.resolveOtherUser(fromThread: thread) ?? thread.otherUser
-        let conversationID = PPConversationID(thread.id ?? "")
+        let conversationID = PPConversationID(thread.id)
 
         // Display name
         let displayName: String = {
@@ -168,7 +182,7 @@ final class PPChatCellBridge: NSObject {
 
         // Last activity
         let lastActivity: PPChatLastActivity = {
-            let lastMsg = thread.lastMessage ?? ""
+            let lastMsg = thread.lastMessage
             guard !lastMsg.isEmpty else {
                 return .none
             }
@@ -182,7 +196,7 @@ final class PPChatCellBridge: NSObject {
         }()
 
         // Timestamp
-        let timestamp: Date = thread.lastMessageAt ?? thread.timestamp ?? Date.distantPast
+        let timestamp: Date = thread.lastMessageAt
 
         return PPChatThreadSnapshot(
             id: conversationID,
@@ -204,10 +218,13 @@ final class PPChatCellBridge: NSObject {
     /// existing messaging pipeline.
     private static func sendQuickReplyBridge(
         message: String,
-        conversationID: PPConversationID
+        conversationID: PPConversationID,
+        receiverID: String
     ) async throws -> PPQuickReplyReceipt {
         return try await withCheckedThrowingContinuation { continuation in
             let threadID = conversationID.rawValue
+            let resolvedReceiverID = receiverID
+                .trimmingCharacters(in: .whitespacesAndNewlines)
 
             let msg = ChatMessageModel()
             msg.text = message
@@ -218,6 +235,15 @@ final class PPChatCellBridge: NSObject {
             let senderID = UserManager.shared().currentUser?.id ?? ""
 
             msg.senderID = senderID
+            msg.receiverID = resolvedReceiverID
+
+            guard !threadID.isEmpty,
+                  !senderID.isEmpty,
+                  !resolvedReceiverID.isEmpty,
+                  senderID != resolvedReceiverID else {
+                continuation.resume(throwing: PPQuickReplyFailure.unknown)
+                return
+            }
 
             ChManager.shared().sendMessage(
                 msg,

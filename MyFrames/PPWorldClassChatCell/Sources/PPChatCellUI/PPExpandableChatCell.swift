@@ -38,10 +38,12 @@ public struct PPExpandableChatCell: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.colorSchemeContrast) var colorSchemeContrast
     @Environment(\.dynamicTypeSize) var dynamicTypeSize
+    @Environment(\.layoutDirection) var layoutDirection
 
     @State var replyState = PPQuickReplyStateMachine()
     @State var sendTask: Task<Void, Never>?
     @State var feedbackTask: Task<Void, Never>?
+    @State var hasEntered = false
     @FocusState var composerFocused: Bool
 
     public init(
@@ -91,14 +93,25 @@ public struct PPExpandableChatCell: View {
         )
         .padding(.horizontal, style.outerHorizontalInset)
         .padding(.vertical, style.outerVerticalInset)
+        .opacity(hasEntered ? 1 : 0)
+        .offset(
+            x: hasEntered ? 0 : (layoutDirection == .rightToLeft ? 8 : -8),
+            y: hasEntered ? 0 : 4
+        )
+        .scaleEffect(hasEntered ? 1 : 0.988, anchor: .center)
         .animation(expansionAnimation, value: isExpanded)
         .animation(feedbackAnimation, value: replyState.phase)
+        .animation(entranceAnimation, value: hasEntered)
         .accessibilityIdentifier("pp.chat.thread.\(thread.id.rawValue)")
+        .onAppear {
+            playEntranceIfNeeded()
+        }
         .onChange(of: isExpanded) { expanded in
             if !expanded { composerFocused = false }
         }
         .onChange(of: thread.id) { _ in
             resetForReuse()
+            playEntranceIfNeeded()
         }
         .onDisappear {
             composerFocused = false

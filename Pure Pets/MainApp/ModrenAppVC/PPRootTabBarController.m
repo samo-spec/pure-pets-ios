@@ -31,7 +31,6 @@
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
-#import "PPMessagingViewController.h"
 #import "CartManager.h"
 #import "CartViewController.h"
 #import "PPHomeHelper.h"
@@ -1887,8 +1886,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [chatNavigationController setViewControllers:@[rootController] animated:NO];
     }
 
-    PPMessagingViewController *chatController =
-        [[PPMessagingViewController alloc] initWithChatThread:thread];
+    PPMessagingSwiftUIHostController *chatController =
+        [[PPMessagingSwiftUIHostController alloc] init];
+    [chatController configureWithChatThread:thread];
     chatController.hidesBottomBarWhenPushed = NO;
 
     [chatNavigationController pushViewController:chatController animated:animated];

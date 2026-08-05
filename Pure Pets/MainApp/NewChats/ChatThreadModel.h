@@ -35,6 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *supportUserID;
 @property (nonatomic, copy) NSString *customerId;
 @property (nonatomic, copy) NSString *supportDisplayName;
+@property (nonatomic, copy) NSString *supportStatus;
 @property (nonatomic, copy) NSString *supportPhotoURLString;
 
 #pragma mark - Derived / Runtime-only (NOT Firestore)
@@ -51,7 +52,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (BOOL)isSupportThread:(ChatThreadModel *)thread;
 + (NSString *)purePetsOfficialSupportUserID;
 + (NSString *)canonicalSupportThreadIDForCustomerID:(NSString *)customerID;
-+ (UserModel *)resolveOtherUserFromThread:(ChatThreadModel *)thread;
++ (nullable UserModel *)resolveOtherUserFromThread:(ChatThreadModel *)thread;
 @end
 
 NS_ASSUME_NONNULL_END

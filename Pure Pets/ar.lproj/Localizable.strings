@@ -4195,3 +4195,14 @@
 "home_pure_lens_title" = "بيور لينس";
 "home_pure_lens_a11y" = "افتح كاميرا بيور لينس";
 "pp_promo_carousel" = "العروض الترويجية";
+
+
+// سياق محادثة الدعم في Spear
+"chat_support_context_status_waiting_for_agent" = "بانتظار أحد أفراد الدعم";
+"chat_support_context_status_waiting_for_provider" = "بانتظار مقدم الخدمة";
+"chat_support_context_status_active" = "محادثة الدعم نشطة";
+"chat_support_context_status_resolved" = "تم حل حالة الدعم";
+"chat_support_context_status_closed" = "أُغلقت حالة الدعم";
+"chat_support_context_status_unavailable" = "حالة الدعم غير متاحة";
+
+"chat_support_context_detail_format" = "الحالة: %@";

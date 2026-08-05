@@ -164,6 +164,23 @@ extension PPExpandableChatCell {
         cancelFeedbackOnly()
         replyState = PPQuickReplyStateMachine()
         composerFocused = false
+        hasEntered = false
+    }
+
+    func playEntranceIfNeeded() {
+        guard !hasEntered else { return }
+
+        if reduceMotion {
+            hasEntered = true
+            return
+        }
+
+        DispatchQueue.main.async {
+            guard !hasEntered else { return }
+            withAnimation(entranceAnimation) {
+                hasEntered = true
+            }
+        }
     }
 
     func cancelFeedbackOnly() {
@@ -318,6 +335,12 @@ extension PPExpandableChatCell {
         reduceMotion
         ? .easeOut(duration: 0.14)
         : .spring(response: 0.28, dampingFraction: 0.92, blendDuration: 0.06)
+    }
+
+    var entranceAnimation: Animation? {
+        reduceMotion
+        ? nil
+        : .timingCurve(0.20, 0.0, 0.0, 1.0, duration: 0.34)
     }
 
     var expandedContentTransition: AnyTransition {

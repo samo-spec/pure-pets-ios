@@ -43,34 +43,18 @@ enum PPChatComposerPalette {
         }
     )
 
-    /// High-contrast graphite/pearl reserved for active conversation controls.
-    /// The neutral role keeps brand and online-status colors semantically free.
+    /// Messaging ink follows the canonical Pure Pets brand token. The
+    /// assistant presentation keeps its own legacy accent below.
     static let messagingAccent = Color(
-        uiColor: UIColor { traitCollection in
-            let increasedContrast = traitCollection.accessibilityContrast == .high
-            if traitCollection.userInterfaceStyle == .dark {
-                return UIColor(
-                    red: increasedContrast ? 0.900 : 0.785,
-                    green: increasedContrast ? 0.900 : 0.800,
-                    blue: increasedContrast ? 0.880 : 0.785,
-                    alpha: 1.0
-                )
-            }
-            return UIColor(
-                red: increasedContrast ? 0.045 : 0.125,
-                green: increasedContrast ? 0.050 : 0.135,
-                blue: increasedContrast ? 0.055 : 0.140,
-                alpha: 1.0
-            )
-        }
+        uiColor: .ppPrimary
     )
 
     static let messagingSurface = Color(
         uiColor: UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {
-                return UIColor(red: 0.070, green: 0.082, blue: 0.082, alpha: 0.70)
+                return UIColor(white: 0.08, alpha: 0.42)
             }
-            return UIColor(red: 0.997, green: 0.990, blue: 0.970, alpha: 0.62)
+            return UIColor(white: 1.0, alpha: 0.44)
         }
     )
 
@@ -87,19 +71,14 @@ enum PPChatComposerPalette {
         uiColor: UIColor { traitCollection in
             let increasedContrast = traitCollection.accessibilityContrast == .high
             if traitCollection.userInterfaceStyle == .dark {
-                return UIColor(white: 1.0, alpha: increasedContrast ? 0.30 : 0.17)
+                return UIColor(white: 1.0, alpha: increasedContrast ? 0.48 : 0.26)
             }
-            return UIColor(white: 0.05, alpha: increasedContrast ? 0.30 : 0.14)
+            return UIColor(white: 1.0, alpha: increasedContrast ? 1.0 : 0.78)
         }
     )
 
     static let messagingOnAccent = Color(
-        uiColor: UIColor { traitCollection in
-            if traitCollection.userInterfaceStyle == .dark {
-                return UIColor(red: 0.035, green: 0.041, blue: 0.041, alpha: 1.0)
-            }
-            return .white
-        }
+        uiColor: .white
     )
 }
 

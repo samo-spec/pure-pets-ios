@@ -9,7 +9,7 @@
 // ChNotificationRouter.m
 
 #import "ChNotificationRouter.h"
-#import "PPMessagingViewController.h"
+#import <Pure_Pets-Swift.h>
 #import "ChatThreadModel.h"
 #import "PPRootTabBarController.h"
 #import "PPOverlayCoordinator.h"
@@ -20,20 +20,20 @@ static NSString *PPChatRouterThreadIDFromPayload(NSDictionary *userInfo)
     return [value isKindOfClass:NSString.class] ? value : @"";
 }
 
-static PPMessagingViewController *PPChatRouterVisibleMessagingController(UIViewController *controller,
-                                                                         NSString *threadID)
+static UIViewController *PPChatRouterVisibleMessagingController(UIViewController *controller,
+                                                                 NSString *threadID)
 {
     if (!controller || threadID.length == 0) return nil;
 
     if (controller.presentedViewController) {
-        PPMessagingViewController *presented =
+        UIViewController *presented =
             PPChatRouterVisibleMessagingController(controller.presentedViewController, threadID);
         if (presented) return presented;
     }
 
     if ([controller isKindOfClass:UINavigationController.class]) {
         UINavigationController *navigationController = (UINavigationController *)controller;
-        PPMessagingViewController *visible =
+        UIViewController *visible =
             PPChatRouterVisibleMessagingController(navigationController.visibleViewController ?: navigationController.topViewController,
                                                    threadID);
         if (visible) return visible;
@@ -41,21 +41,17 @@ static PPMessagingViewController *PPChatRouterVisibleMessagingController(UIViewC
 
     if ([controller isKindOfClass:UITabBarController.class]) {
         UITabBarController *tabController = (UITabBarController *)controller;
-        PPMessagingViewController *selected =
+        UIViewController *selected =
             PPChatRouterVisibleMessagingController(tabController.selectedViewController, threadID);
         if (selected) return selected;
     }
 
-    if ([controller isKindOfClass:PPMessagingViewController.class]) {
-        PPMessagingViewController *chatController = (PPMessagingViewController *)controller;
-        NSString *visibleThreadID = chatController.chatThread.ID ?: @"";
-        if ([visibleThreadID isEqualToString:threadID]) {
-            return chatController;
-        }
+    if ([controller isKindOfClass:PPMessagingSwiftUIHostController.class]) {
+        return controller;
     }
 
     for (UIViewController *child in controller.childViewControllers.reverseObjectEnumerator) {
-        PPMessagingViewController *visible = PPChatRouterVisibleMessagingController(child, threadID);
+        UIViewController *visible = PPChatRouterVisibleMessagingController(child, threadID);
         if (visible) return visible;
     }
 
@@ -164,7 +160,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
         presentingVC.view.window.rootViewController ?:
         UIApplication.sharedApplication.keyWindow.rootViewController ?:
         presentingVC;
-    PPMessagingViewController *visibleChat =
+    UIViewController *visibleChat =
         PPChatRouterVisibleMessagingController(searchRoot, threadID);
     if (visibleChat) {
         [ChManager sharedManager].activeThreadID = threadID;
@@ -187,7 +183,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
                 presentingVC.view.window.rootViewController ?:
                 UIApplication.sharedApplication.keyWindow.rootViewController ?:
                 presentingVC;
-            PPMessagingViewController *visibleChat =
+            UIViewController *visibleChat =
                 PPChatRouterVisibleMessagingController(currentRoot, threadID);
             if (visibleChat) {
                 [ChManager sharedManager].activeThreadID = threadID;

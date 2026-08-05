@@ -14,11 +14,11 @@ struct ReplyReferenceView: View {
 
         VStack(alignment: .leading, spacing: 2) {
           Text(reference.senderDisplayName)
-            .font(.caption.weight(.semibold))
+            .font(Font.ppBeirutiSemiBold(size: 12, relativeTo: .caption))
             .foregroundStyle(PurePetsMessagingTheme.brand)
 
           Label(previewText, systemImage: previewSymbol)
-            .font(.caption)
+            .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
             .foregroundStyle(.secondary)
             .lineLimit(2)
         }

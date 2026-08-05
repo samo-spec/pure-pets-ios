@@ -108,7 +108,7 @@ extension PPExpandableChatCell {
     var displayName: some View {
         HStack(spacing: 5) {
             Text(thread.displayName)
-                .font(.headline.weight(effectiveUnreadCount > 0 ? .bold : .semibold))
+                .font(effectiveUnreadCount > 0 ? Font.ppBeirutiBold(size: 16, relativeTo: .headline) : Font.ppBeirutiSemiBold(size: 16, relativeTo: .headline))
                 .foregroundStyle(Color.primary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .multilineTextAlignment(.leading)
@@ -124,7 +124,7 @@ extension PPExpandableChatCell {
 
     var timestamp: some View {
         Text(timestampText)
-            .font(.caption)
+            .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
             .foregroundStyle(effectiveUnreadCount > 0 ? Color.primary : Color.secondary)
             .monospacedDigit()
             .lineLimit(1)

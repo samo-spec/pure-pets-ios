@@ -83,7 +83,7 @@ internal struct SpearIdentityExpansion: View {
       let symbol = trust.detailSystemName
     {
       Label(detail, systemImage: symbol)
-        .font(.caption.weight(.medium))
+        .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
         .foregroundStyle(trust.isRestricted ? Color.orange : Color.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityHidden(true)
@@ -188,12 +188,12 @@ internal struct SpearMetricView: View {
   var body: some View {
     VStack(spacing: 3) {
       Text(metric.value)
-        .font(.subheadline.weight(.bold))
+        .font(Font.ppBeirutiBold(size: 14, relativeTo: .subheadline))
         .foregroundStyle(.primary)
         .contentTransition(.numericText())
 
       Text(metric.label)
-        .font(.caption2)
+        .font(Font.ppBeirutiRegular(size: 11, relativeTo: .caption2))
         .foregroundStyle(.secondary)
         .lineLimit(2)
         .multilineTextAlignment(.center)
@@ -211,13 +211,13 @@ internal struct SpearMetricRow: View {
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 12) {
       Text(metric.label)
-        .font(.subheadline)
+        .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
         .foregroundStyle(.secondary)
 
       Spacer(minLength: 12)
 
       Text(metric.value)
-        .font(.subheadline.weight(.semibold))
+        .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
         .multilineTextAlignment(.trailing)
     }
     .frame(minHeight: 44)

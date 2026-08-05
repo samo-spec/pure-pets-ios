@@ -99,7 +99,7 @@ public struct SmartMessageCell: View {
         .frame(width: 30, height: 30)
         .overlay {
           Text(message.sender.initials)
-            .font(.caption2.weight(.bold))
+            .font(Font.ppBeirutiBold(size: 11, relativeTo: .caption2))
             .foregroundStyle(PurePetsMessagingTheme.brand)
         }
         .accessibilityHidden(true)

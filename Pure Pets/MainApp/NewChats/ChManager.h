@@ -13,8 +13,6 @@
 
 #import <Foundation/Foundation.h>
 #import "ChatThreadModel.h"
-#import "PPMessagingViewController.h"
-#import "PPChatFeedbackManager.h"
 typedef void (^ChThreadFetchCompletion)(ChatThreadModel * _Nullable thread);
 
 @class ChatMessageModel;
@@ -71,7 +69,7 @@ NS_ASSUME_NONNULL_BEGIN
                                       completion:(void (^)(BOOL isTyping))completion;
 - (void)stopListeningForOtherUserTypingInThread:(NSString *)threadID
                                       otherUser:(NSString *)otherUserID;
-+ (CGFloat)heightForMessage:(NSString *)text onController:(PPMessagingViewController *)cont;
++ (CGFloat)heightForMessage:(NSString *)text onController:(UIViewController *)cont;
 
 - (void)setTyping:(BOOL)isTyping
          inThread:(NSString *)threadID

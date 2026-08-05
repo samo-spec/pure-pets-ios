@@ -5,7 +5,7 @@ struct DeletedMessageView: View {
 
   var body: some View {
     Label(message, systemImage: "nosign")
-      .font(.subheadline.italic())
+      .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline).italic())
       .foregroundStyle(.secondary)
       .accessibilityLabel(message)
   }

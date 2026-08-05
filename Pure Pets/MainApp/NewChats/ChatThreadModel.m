@@ -164,6 +164,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     _supportUserID = PPChatTrimmedString(dict[@"supportUserId"]);
     _customerId = PPChatTrimmedString(dict[@"customerId"]);
     _supportDisplayName = PPChatTrimmedString(dict[@"supportDisplayName"]);
+    _supportStatus = PPChatTrimmedString(dict[@"supportStatus"]);
     _supportPhotoURLString = PPChatTrimmedString(dict[@"supportPhotoUrl"]);
 
     // Derived fields
@@ -215,6 +216,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     [coder encodeObject:self.supportUserID forKey:@"supportUserId"];
     [coder encodeObject:self.customerId forKey:@"customerId"];
     [coder encodeObject:self.supportDisplayName forKey:@"supportDisplayName"];
+    [coder encodeObject:self.supportStatus forKey:@"supportStatus"];
     [coder encodeObject:self.supportPhotoURLString forKey:@"supportPhotoUrl"];
 }
 
@@ -253,6 +255,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     self.supportUserID = [coder decodeObjectOfClass:NSString.class forKey:@"supportUserId"] ?: @"";
     self.customerId = [coder decodeObjectOfClass:NSString.class forKey:@"customerId"] ?: @"";
     self.supportDisplayName = [coder decodeObjectOfClass:NSString.class forKey:@"supportDisplayName"] ?: @"";
+    self.supportStatus = [coder decodeObjectOfClass:NSString.class forKey:@"supportStatus"] ?: @"";
     self.supportPhotoURLString = [coder decodeObjectOfClass:NSString.class forKey:@"supportPhotoUrl"] ?: @"";
 
     NSString *myUID = PPCurrentChatIdentity();

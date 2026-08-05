@@ -118,14 +118,14 @@ internal struct SpearContextRail: View {
   private var contextText: some View {
     VStack(alignment: .leading, spacing: 3) {
       Text(context.eyebrow)
-        .font(.caption.weight(.medium))
+        .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
         .foregroundStyle(.secondary)
 
       Text(context.title)
-        .font(.subheadline.weight(.semibold))
+        .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
 
       Text(context.detail)
-        .font(.caption)
+        .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
         .foregroundStyle(.secondary)
 
       if let progress = context.orderProgress {
