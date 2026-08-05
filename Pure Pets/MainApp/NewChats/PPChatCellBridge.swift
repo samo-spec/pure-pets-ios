@@ -110,7 +110,7 @@ final class PPChatCellBridge: NSObject {
 
     /// Maps `ChatThreadModel` + `UserModel` + `ChatPresenceManager` → `PPChatThreadSnapshot`.
     static func makeSnapshot(from thread: ChatThreadModel) -> PPChatThreadSnapshot {
-        let user = ChatThreadModel.resolveOtherUser(from: thread) ?? thread.otherUser
+        let user = ChatThreadModel.resolveOtherUser(fromThread: thread) ?? thread.otherUser
         let conversationID = PPConversationID(thread.id ?? "")
 
         // Display name
@@ -128,7 +128,8 @@ final class PPChatCellBridge: NSObject {
 
         // Presence
         let presence: PPChatPresence = {
-            guard let userID = user?.id, !userID.isEmpty else {
+            let userID = user?.id ?? ""
+            guard !userID.isEmpty else {
                 return .offline(lastSeen: nil)
             }
             let online = ChatPresenceManager.shared().isUserOnline(userID)
@@ -141,7 +142,8 @@ final class PPChatCellBridge: NSObject {
 
         // Last activity
         let lastActivity: PPChatLastActivity = {
-            guard let lastMsg = thread.lastMessage, !lastMsg.isEmpty else {
+            let lastMsg = thread.lastMessage ?? ""
+            guard !lastMsg.isEmpty else {
                 return .none
             }
             if lastMsg == "__pp_message_unsent__" {
@@ -187,11 +189,11 @@ final class PPChatCellBridge: NSObject {
             msg.timestamp = Date()
             msg.id = UUID().uuidString
 
-            let senderID = UserManager.sharedManager().currentUser?.id ?? ""
+            let senderID = UserManager.shared().currentUser?.id ?? ""
 
             msg.senderID = senderID
 
-            ChManager.sharedManager().sendMessage(
+            ChManager.shared().sendMessage(
                 msg,
                 inThread: threadID,
                 senderID: senderID

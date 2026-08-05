@@ -16,6 +16,7 @@ public struct SpearChatHeaderModel: Equatable, Identifiable, Sendable {
   public var presence: SpearPresence
   public var metrics: [SpearIdentityMetric]
   public var context: SpearConversationContext?
+  public var isModal: Bool
 
   public init(
     id: String,
@@ -24,7 +25,8 @@ public struct SpearChatHeaderModel: Equatable, Identifiable, Sendable {
     trust: SpearTrustState = .standard(role: nil),
     presence: SpearPresence,
     metrics: [SpearIdentityMetric] = [],
-    context: SpearConversationContext? = nil
+    context: SpearConversationContext? = nil,
+    isModal: Bool = false
   ) {
     self.id = id
     self.name = name
@@ -33,6 +35,7 @@ public struct SpearChatHeaderModel: Equatable, Identifiable, Sendable {
     self.presence = presence
     self.metrics = Self.normalizedMetrics(metrics)
     self.context = context
+    self.isModal = isModal
   }
 
   private static func normalizedMetrics(

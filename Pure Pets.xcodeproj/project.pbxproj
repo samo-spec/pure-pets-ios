@@ -49,6 +49,7 @@
 		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
 		A6B710063020000100000001 /* PPMediaViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710053020000100000001 /* PPMediaViewer.swift */; };
 		A8100001301E000100000001 /* SwiftUI/PPMessagingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8100002301E000100000002 /* SwiftUI/PPMessagingScreen.swift */; };
+		A810000A301E00010000000A /* PPChatCellBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A810000B301E00010000000B /* PPChatCellBridge.swift */; };
 		A8100003301E000100000003 /* PPMessagingViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A8100004301E000100000004 /* PPMessagingViewController.m */; };
 		A8100006301E000100000006 /* PPMessagingViewController+helper.m in Sources */ = {isa = PBXBuildFile; fileRef = A8100007301E000100000007 /* PPMessagingViewController+helper.m */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
@@ -1022,6 +1023,7 @@
 		A6B710003020000100000001 /* AppRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRemoteImage.swift; sourceTree = "<group>"; };
 		A6B710053020000100000001 /* PPMediaViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMediaViewer.swift; sourceTree = "<group>"; };
 		A8100002301E000100000002 /* SwiftUI/PPMessagingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftUI/PPMessagingScreen.swift; sourceTree = "<group>"; };
+		A810000B301E00010000000B /* PPChatCellBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPChatCellBridge.swift; sourceTree = "<group>"; };
 		A8100004301E000100000004 /* PPMessagingViewController.m */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; path = PPMessagingViewController.m; sourceTree = "<group>"; };
 		A8100005301E000100000005 /* PPMessagingViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPMessagingViewController.h; sourceTree = "<group>"; };
 		A8100007301E000100000007 /* PPMessagingViewController+helper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PPMessagingViewController+helper.m"; sourceTree = "<group>"; };
@@ -4965,6 +4967,7 @@
 		F2B6F7892E37A2C000AC0DAE /* NewChats */ = {
 			isa = PBXGroup;
 			children = (
+				A810000B301E00010000000B /* PPChatCellBridge.swift */,
 				A8100002301E000100000002 /* SwiftUI/PPMessagingScreen.swift */,
 				A8100005301E000100000005 /* PPMessagingViewController.h */,
 				A8100004301E000100000004 /* PPMessagingViewController.m */,
@@ -6770,6 +6773,7 @@
 				BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */,
 				1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */,
 				A8100001301E000100000001 /* SwiftUI/PPMessagingScreen.swift in Sources */,
+				A810000A301E00010000000A /* PPChatCellBridge.swift in Sources */,
 				A8100003301E000100000003 /* PPMessagingViewController.m in Sources */,
 				A8100006301E000100000006 /* PPMessagingViewController+helper.m in Sources */,
 				12CEBEE12FFAA00100C0A901 /* PPStickerKit.swift in Sources */,
@@ -7042,7 +7046,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -7155,7 +7159,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -7213,7 +7217,7 @@
 				CURRENT_PROJECT_VERSION = 221;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -7231,7 +7235,7 @@
 				CURRENT_PROJECT_VERSION = 221;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -7248,7 +7252,7 @@
 				CURRENT_PROJECT_VERSION = 221;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -7265,7 +7269,7 @@
 				CURRENT_PROJECT_VERSION = 221;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -97,7 +97,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
 
   private var backButton: some View {
     SpearHeaderIconActionButton(
-      systemName: "chevron.backward",
+      systemName: model.isModal ? "xmark" : "chevron.backward",
       accessibilityLabel: copy.backAccessibilityLabel,
       accessibilityIdentifier: SpearChatHeaderAccessibilityID.back,
       action: .enabled(performBack)

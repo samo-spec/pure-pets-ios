@@ -13,7 +13,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPOverlayCoordinator.h"
 #import "PPHUD.h"
-// PPChatCellBridge (Swift) replaces ChCell — auto-imported via bridging.
+#import "Pure_Pets-Swift.h" // PPChatCellBridge (Swift) replaces ChCell
 #import "PPChatsFunc.h"
 #import "PPSelectOptionViewController.h"
 #import "PPStoriesViewController.h"

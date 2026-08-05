@@ -359,6 +359,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 - (void)pp_updateSwiftUIBottomNavigationClearance;
 - (void)pp_setOtherUserTyping:(BOOL)isTyping;
 - (void)pp_toggleAudioForMessage:(ChatMessageModel *)message;
+- (void)pp_presentConversationActions;
 @end
 
 @implementation PPMessagingViewController
@@ -7017,6 +7018,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         isMuted:self.chatThread.isMuted
         isBinned:self.chatThread.isBinned
         isReported:self.chatThread.isReportedByMe];
+    [self.messagingHostController setConversationLastActiveAt:user.lastSeen];
 }
 
 - (void)pp_updateSwiftUIBottomNavigationClearance
@@ -7124,10 +7126,68 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     self.audioResumeTimes[messageID] = @(target);
 }
 
+- (void)pp_presentConversationActions
+{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"more")
+                                                                   message:nil
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+
+    if (!self.chatThread.isPinned) {
+        [alert addAction:[UIAlertAction actionWithTitle:kLang(@"chat.pin")
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(__unused UIAlertAction *action) {
+            [self handlePinThread];
+        }]];
+    }
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(self.chatThread.isMuted ? @"chat.unmute" : @"chat.mute")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        [self handleMuteThread];
+    }]];
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"chat.background")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        [self presentChatBackgroundPicker];
+    }]];
+
+    UIAlertAction *reportAction = [UIAlertAction actionWithTitle:kLang(self.chatThread.isReportedByMe ? @"chat.reported" : @"chat.report")
+                                                            style:UIAlertActionStyleDefault
+                                                          handler:^(__unused UIAlertAction *action) {
+        [self presentReportConfirmation];
+    }];
+    reportAction.enabled = !self.chatThread.isReportedByMe;
+    [alert addAction:reportAction];
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(self.chatThread.isBinned ? @"chat.unbin" : @"chat.bin")
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(__unused UIAlertAction *action) {
+        [self handleBinThread];
+    }]];
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        alert.popoverPresentationController.sourceView = self.view;
+        alert.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                                                     CGRectGetMidY(self.view.bounds),
+                                                                     1.0,
+                                                                     1.0);
+    }
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)messagingHostDidRequestAction:(NSString *)action messageID:(NSString *)messageID
 {
     if ([action isEqualToString:@"close"]) {
         [self handleCloseTapped];
+        return;
+    }
+    if ([action isEqualToString:@"more"]) {
+        [self pp_presentConversationActions];
         return;
     }
     if ([action isEqualToString:@"profile"]) {

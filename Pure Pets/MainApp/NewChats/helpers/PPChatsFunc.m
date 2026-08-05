@@ -339,11 +339,12 @@ bubble.layer.mask = mask;
 
     // === Radius system ===
     CGFloat maximumRadius = 20.0;
-    if ([bubble isKindOfClass:ChatMediaBubbleView.class]) {
-        ChatMediaBubbleView *mediaBubble = (ChatMediaBubbleView *)bubble;
-        maximumRadius = mediaBubble.preferredMaximumCornerRadius > 0.0
-            ? mediaBubble.preferredMaximumCornerRadius
-            : 26.0;
+    SEL selCornerRadius = NSSelectorFromString(@"preferredMaximumCornerRadius");
+    if ([bubble respondsToSelector:selCornerRadius]) {
+        IMP imp = [bubble methodForSelector:selCornerRadius];
+        CGFloat (*func)(id, SEL) = (void *)imp;
+        CGFloat preferred = func(bubble, selCornerRadius);
+        maximumRadius = preferred > 0.0 ? preferred : 26.0;
     }
     CGFloat R = MIN(maximumRadius, floor(MIN(b.size.width, b.size.height) * 0.5));
     CGFloat S = MIN(6.0, R);    // stacked / connected radius

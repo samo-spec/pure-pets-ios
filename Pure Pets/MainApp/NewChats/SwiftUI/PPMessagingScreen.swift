@@ -11,6 +11,7 @@ import AVKit
 import Combine
 import PurePetsMessagingCore
 import PurePetsMessagingUI
+import SpearLivingChatHeader
 import SwiftUI
 import UIKit
 
@@ -126,6 +127,13 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
                 isBinned: isBinned,
                 isReported: isReported
             )
+        }
+    }
+
+    @objc(setConversationLastActiveAt:)
+    public func setConversationLastActiveAt(_ date: Date?) {
+        onMain { [weak self] in
+            self?.screenState.lastActiveAt = date
         }
     }
 
@@ -248,6 +256,7 @@ private final class PPMessagingScreenState: ObservableObject {
     @Published var presenceText = ""
     @Published var avatarURLString = ""
     @Published var isOnline = false
+    @Published var lastActiveAt: Date?
     @Published var usesSupportLogo = false
     @Published var isModal = false
     @Published var isPinned = false
@@ -349,6 +358,7 @@ private final class PPMessagingScreenState: ObservableObject {
         presenceText = status
         self.avatarURLString = avatarURLString
         self.isOnline = isOnline
+        self.lastActiveAt = nil
         self.usesSupportLogo = usesSupportLogo
         self.isModal = isModal
         self.isPinned = isPinned
@@ -554,6 +564,7 @@ private final class PPMessagingActionRelay {
 
 private enum PPMessagingAction: String {
     case close
+    case more
     case profile
     case pin
     case mute
@@ -973,147 +984,75 @@ private enum PPMessagingScrollID: Hashable {
 private struct PPMessagingHeader: View {
     @ObservedObject var state: PPMessagingScreenState
     let relay: PPMessagingActionRelay
-    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        HStack(spacing: 8) {
-            Button {
-                relay.request(.close)
-            } label: {
-                Image(systemName: closeSymbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(PPMessagingPalette.primaryText)
-                    .frame(width: 40, height: 40)
-                    .background(PPMessagingPalette.controlSurface, in: Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
-                    )
-                    .frame(width: 44, height: 44)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PPMessagingPressButtonStyle())
-            .accessibilityLabel(localized("Close"))
-            .accessibilityIdentifier("pp.messaging.close")
-
-            Button {
-                relay.request(.profile)
-            } label: {
-                HStack(spacing: 10) {
-                    PPMessagingAvatar(
-                        name: state.conversationName,
-                        urlString: state.avatarURLString,
-                        isOnline: state.isOnline,
-                        usesSupportLogo: state.usesSupportLogo
-                    )
-
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(state.conversationName.isEmpty ? localized("Chat") : state.conversationName)
-                            .font(.custom("Beiruti-Bold", size: 17.5, relativeTo: .headline))
-                            .foregroundColor(PPMessagingPalette.primaryText)
-                            .lineLimit(1)
-
-                        Text(state.presenceText)
-                            .font(.custom("Beiruti-Medium", size: 12.5, relativeTo: .caption))
-                            .foregroundColor(PPMessagingPalette.secondaryText)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                state.presenceText.isEmpty
-                    ? state.conversationName
-                    : "\(state.conversationName), \(state.presenceText)"
+        SpearChatHeader(
+            state: spearHeaderState,
+            style: .spear,
+            copy: Language.isRTL() ? .arabic : .english,
+            actions: spearActions
+        ) { _ in
+            // Reuse the app's existing avatar presentation; Spear owns the
+            // frame, trust ring, presence badge, and accessibility semantics.
+            PPMessagingAvatar(
+                name: state.conversationName,
+                urlString: state.avatarURLString,
+                isOnline: false,
+                usesSupportLogo: state.usesSupportLogo
             )
-
-            Menu {
-                if !state.isPinned {
-                    Button {
-                        relay.request(.pin)
-                    } label: {
-                        Label(localized("chat.pin"), systemImage: "pin")
-                    }
-                }
-
-                Button {
-                    relay.request(.mute)
-                } label: {
-                    Label(
-                        localized(state.isMuted ? "chat.unmute" : "chat.mute"),
-                        systemImage: state.isMuted ? "speaker.wave.2.fill" : "speaker.slash.fill"
-                    )
-                }
-
-                Button {
-                    relay.request(.background)
-                } label: {
-                    Label(localized("chat.background"), systemImage: "photo.on.rectangle.angled")
-                }
-
-                Button {
-                    relay.request(.report)
-                } label: {
-                    Label(
-                        localized(state.isReported ? "chat.reported" : "chat.report"),
-                        systemImage: "exclamationmark.bubble"
-                    )
-                }
-                .disabled(state.isReported)
-
-                Button(role: .destructive) {
-                    relay.request(.bin)
-                } label: {
-                    Label(
-                        localized(state.isBinned ? "chat.unbin" : "chat.bin"),
-                        systemImage: state.isBinned ? "tray.and.arrow.up" : "trash"
-                    )
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(PPMessagingPalette.primaryText)
-                    .frame(width: 40, height: 40)
-                    .background(PPMessagingPalette.controlSurface, in: Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
-                    )
-                    .frame(width: 44, height: 44)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PPMessagingPressButtonStyle())
-            .accessibilityLabel(localized("more"))
-            .accessibilityIdentifier("pp.messaging.more")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 5)
-        .background {
-            ZStack {
-                PPMessagingPalette.headerSurface
-                LinearGradient(
-                    colors: [
-                        PPMessagingPalette.headerHighlight,
-                        .clear
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(PPMessagingPalette.hairline.opacity(0.82))
-                .frame(height: 0.5)
-        }
+        .frame(minHeight: 72)
     }
 
-    private var closeSymbol: String {
-        if state.isModal { return "xmark" }
-        return layoutDirection == .rightToLeft ? "chevron.right" : "chevron.left"
+    private var spearHeaderState: SpearChatHeaderLoadState {
+        let name = state.conversationName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            return state.isLoading
+                ? .loading
+                : .unavailable(title: localized("Chat"), retryTitle: nil)
+        }
+
+        let presence: SpearPresence
+        if state.isTyping {
+            presence = .typing
+        } else if state.isOnline {
+            presence = .online(responseSpeed: nil)
+        } else {
+            // The Objective-C bridge supplies the real last-seen timestamp
+            // when available. Date() is only a defensive fallback for legacy
+            // profiles that have no lastSeen field.
+            presence = .offline(lastActiveAt: state.lastActiveAt ?? Date())
+        }
+
+        let initials = name
+            .split(separator: " ")
+            .prefix(2)
+            .compactMap(\.first)
+            .map(String.init)
+            .joined()
+        let fallback = initials.isEmpty
+            ? SpearAvatarFallback.systemImage("person.crop.circle.fill")
+            : SpearAvatarFallback.initials(initials.uppercased())
+
+        let model = SpearChatHeaderModel(
+            id: state.avatarURLString.isEmpty ? name : state.avatarURLString,
+            name: name,
+            avatarFallback: fallback,
+            trust: .standard(role: nil),
+            presence: presence,
+            metrics: [],
+            context: nil,
+            isModal: state.isModal
+        )
+        return .ready(model)
+    }
+
+    private var spearActions: SpearChatHeaderActions {
+        SpearChatHeaderActions(
+            onBack: { relay.request(.close) },
+            more: .enabled { relay.request(.more) },
+            profile: .enabled { relay.request(.profile) }
+        )
     }
 
     private func localized(_ key: String) -> String {
@@ -1536,7 +1475,7 @@ private enum PPMessagingAdapter {
 
         case "sticker":
             // swiftlint:disable:next force_try
-            let desc = try! NonEmptyText("Sticker")
+            let desc = try! NonEmptyText(NSLocalizedString("chat_reply_sticker", comment: ""))
             return .sticker(StickerPayload(
                 assetURL: snapshot.mediaURL,
                 fallbackEmoji: "🐾",
