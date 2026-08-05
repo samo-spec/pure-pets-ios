@@ -18,6 +18,11 @@ typedef void (^ChThreadFetchCompletion)(ChatThreadModel * _Nullable thread);
 @class ChatMessageModel;
 NS_ASSUME_NONNULL_BEGIN
 
+typedef void (^ChMessageObservationCompletion)(NSArray<ChatMessageModel *> *messages,
+                                                BOOL initialLoadCompleted,
+                                                BOOL canLoadOlder,
+                                                NSError * _Nullable error);
+
 @protocol ChManagerDelegate <NSObject>
 /// Called whenever a chat’s peer goes online/offline
 - (void)chat:(ChatThreadModel *_Nullable)chat didUpdateOnlineStatus:(BOOL)status;
@@ -102,7 +107,17 @@ NS_ASSUME_NONNULL_BEGIN
                     senderID:(NSString *)senderID;
 
 // In ChManager.h or .m
- - (void)startListeningForThreadMessages:(NSArray<ChatThreadModel *> *)threads;
+- (void)startListeningForThreadMessages:(NSArray<ChatThreadModel *> *)threads;
+
+/// Observes the active conversation and returns the complete ordered page on
+/// every snapshot. The UI bridge owns the page size and can restart this
+/// observer with a larger limit when the user requests older messages.
+- (void)startObservingMessagesInThreadID:(NSString *)threadID
+                                   limit:(NSInteger)limit
+                              completion:(ChMessageObservationCompletion)completion
+    NS_SWIFT_NAME(startObservingMessages(inThreadID:limit:completion:));
+- (void)stopObservingMessagesInThreadID:(NSString *)threadID
+    NS_SWIFT_NAME(stopObservingMessages(inThreadID:));
 
 - (void)stopAllThreadMessageListeners;
 

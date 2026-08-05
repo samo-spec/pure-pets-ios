@@ -49,6 +49,8 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
     private let screenState = PPMessagingScreenState()
     private var hostingController: UIHostingController<PPMessagingScreen>?
     private var chatThread: ChatThreadModel?
+    private var messagePageLimit = 50
+    private var messageObservationGeneration = 0
 
     @objc(configureWithChatThread:)
     public func configure(with thread: ChatThreadModel) {
@@ -70,6 +72,9 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         }
         relay.onContextRequested = { [weak self] contextID in
             self?.presentSupportContextDetails(contextID: contextID)
+        }
+        relay.onActionRequested = { [weak self] action, _ in
+            self?.handleMessageAction(action)
         }
 
         let screen = PPMessagingScreen(state: screenState, relay: relay)
@@ -121,6 +126,160 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         if let root = hostingController?.rootView {
             root.relay.delegate = delegate
         }
+        startMessageObservationIfNeeded()
+    }
+
+    public override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+        let isLeavingScreen =
+            isMovingFromParent ||
+            isBeingDismissed ||
+            navigationController?.isBeingDismissed == true
+        if isLeavingScreen {
+            stopMessageObservation()
+        }
+    }
+
+    deinit {
+        stopMessageObservation()
+    }
+
+    private func startMessageObservationIfNeeded() {
+        guard let thread = chatThread, !thread.id.isEmpty else {
+            screenState.setConnectionInterrupted(true)
+            return
+        }
+
+        let threadID = thread.id
+        messageObservationGeneration &+= 1
+        let generation = messageObservationGeneration
+        let limit = max(1, messagePageLimit)
+        ChManager.shared().activeThreadID = threadID
+
+        ChManager.shared().startObservingMessages(
+            inThreadID: threadID,
+            limit: limit
+        ) { [weak self] messages, initialLoadCompleted, canLoadOlder, error in
+            guard let self, generation == self.messageObservationGeneration else {
+                return
+            }
+
+            if let error {
+                NSLog(
+                    "[ChatMessages] Failed to load thread %@: %@",
+                    threadID,
+                    error.localizedDescription
+                )
+                self.screenState.setConnectionInterrupted(true)
+                self.screenState.isLoadingOlder = false
+                return
+            }
+
+            self.screenState.setConnectionInterrupted(false)
+            let currentUserID = UserManager.shared().currentUser?.id ?? ""
+            let payloads = messages.map {
+                self.messagePayload(from: $0, currentUserID: currentUserID)
+            }
+            self.screenState.apply(
+                payloads: payloads,
+                currentUserID: currentUserID,
+                initialLoadCompleted: initialLoadCompleted,
+                canLoadOlder: canLoadOlder,
+                animated: initialLoadCompleted
+            )
+        }
+    }
+
+    private func stopMessageObservation() {
+        guard let threadID = chatThread?.id, !threadID.isEmpty else {
+            return
+        }
+        messageObservationGeneration &+= 1
+        ChManager.shared().stopObservingMessages(inThreadID: threadID)
+        if ChManager.shared().activeThreadID == threadID {
+            ChManager.shared().activeThreadID = nil
+        }
+    }
+
+    private func loadOlderMessages() {
+        guard !screenState.isLoadingOlder, screenState.canLoadOlder else {
+            return
+        }
+        screenState.isLoadingOlder = true
+        messagePageLimit += 50
+        startMessageObservationIfNeeded()
+    }
+
+    private func handleMessageAction(_ action: PPMessagingAction) {
+        switch action {
+        case .loadOlder:
+            loadOlderMessages()
+        case .retryConnection:
+            screenState.setConnectionInterrupted(false)
+            startMessageObservationIfNeeded()
+        default:
+            break
+        }
+    }
+
+    private func messagePayload(
+        from message: ChatMessageModel,
+        currentUserID: String
+    ) -> [String: Any] {
+        let kind: String
+        if message.isImageMessage {
+            kind = "image"
+        } else if message.isVideoMessage {
+            kind = "video"
+        } else if message.isAudioMessage {
+            kind = "audio"
+        } else if message.isFileMessage {
+            kind = "file"
+        } else if message.isStickerMessage {
+            kind = "sticker"
+        } else {
+            kind = "text"
+        }
+
+        var fileURL = message.fileURL ?? ""
+        if fileURL.isEmpty, let localVideoURL = message.localVideoURL {
+            fileURL = localVideoURL.absoluteString
+        }
+
+        var payload: [String: Any] = [
+            "id": message.id,
+            "text": message.text,
+            "senderID": message.senderID,
+            "timestamp": message.timestamp,
+            "kind": kind,
+            "status": Int(message.status.rawValue),
+            "fileURL": fileURL,
+            "thumbnailURL": message.thumbnailURL ?? "",
+            "duration": message.mediaDuration,
+            "mediaWidth": message.mediaWidth,
+            "mediaHeight": message.mediaHeight,
+            "waveformSamples": message.waveformSamples,
+            "isUploading": message.isUploading,
+            "isLocalPending": message.isLocalPending,
+            "transferProgress": message.transferProgress,
+            "isDeleted": message.isDeleted,
+            "isOutgoing": message.senderID == currentUserID,
+            "canUnsend": false
+        ]
+
+        if let replyToMessageID = message.replyToMessageID {
+            payload["replyToMessageID"] = replyToMessageID
+        }
+        let localImage: UIImage? = message.localImage
+        if let localImage {
+            payload["localImage"] = localImage
+        }
+        let thumbnailImage: UIImage? = message.thumbnailImage
+        if let thumbnailImage {
+            payload["thumbnailImage"] = thumbnailImage
+        }
+        return payload
     }
 
     private func sendTextThroughExistingPipeline(_ rawText: String) {
@@ -780,6 +939,7 @@ private final class PPMessagingActionRelay {
     weak var delegate: PPMessagingSwiftUIHostControllerDelegate?
     var onSendText: ((String) -> Void)?
     var onContextRequested: ((String?) -> Void)?
+    var onActionRequested: ((PPMessagingAction, String?) -> Void)?
 
     func sendText(_ text: String) {
         if let delegate {
@@ -794,7 +954,11 @@ private final class PPMessagingActionRelay {
             onContextRequested?(messageID)
             return
         }
-        delegate?.messagingHostDidRequestAction(action.rawValue, messageID: messageID)
+        if let delegate {
+            delegate.messagingHostDidRequestAction(action.rawValue, messageID: messageID)
+        } else {
+            onActionRequested?(action, messageID)
+        }
     }
 }
 
@@ -2341,7 +2505,8 @@ private struct PPMessagingCanvas: View {
     var body: some View {
         ZStack {
             WorldGlassBackground(
-                intensity: colorScheme == .dark ? 0.72 : 0.88
+                intensity: colorScheme == .dark ? 0.72 : 0.88,
+                isFaded: true
             )
 
             if let backgroundImage {

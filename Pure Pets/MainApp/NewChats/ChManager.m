@@ -270,6 +270,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 @property (nonatomic, strong) NSMutableSet<NSString *> *mutedThreadIDsStorage;
 
 @property (nonatomic, strong) NSMutableDictionary<NSString *, id<FIRListenerRegistration>> *threadMessageListeners;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, id<FIRListenerRegistration>> *activeMessageListeners;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *knownMessageIDsByThread;
 @property (nonatomic, assign) BOOL didFinishInitialMessageSync;
 @property (nonatomic, strong) NSMutableSet<NSString *> *initialSyncedThreads;
@@ -308,6 +309,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         sharedInstance.presenceListeners = [NSMutableDictionary dictionary];
         
         sharedInstance.threadMessageListeners = [NSMutableDictionary dictionary];
+        sharedInstance.activeMessageListeners = [NSMutableDictionary dictionary];
         if (!sharedInstance.knownMessageIDsByThread) {
             sharedInstance.knownMessageIDsByThread = [NSMutableDictionary dictionary];
         }        sharedInstance.didFinishInitialMessageSync = NO;
@@ -1651,6 +1653,95 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }
 }
 
+- (void)startObservingMessagesInThreadID:(NSString *)threadID
+                                   limit:(NSInteger)limit
+                              completion:(ChMessageObservationCompletion)completion
+{
+    if (threadID.length == 0 || !completion) {
+        return;
+    }
+
+    [self stopObservingMessagesInThreadID:threadID];
+
+    NSString *myUserID = [self pp_authenticatedUIDForRequestedUID:nil];
+    if (myUserID.length == 0) {
+        NSError *error = [NSError errorWithDomain:@"ChManager"
+                                               code:401
+                                           userInfo:@{NSLocalizedDescriptionKey: @"Chat authentication is unavailable."}];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(@[], NO, NO, error);
+        });
+        return;
+    }
+
+    NSInteger resolvedLimit = MAX(1, limit);
+    FIRCollectionReference *messagesRef =
+    [[[self.firestore collectionWithPath:@"Chats"]
+       documentWithPath:threadID]
+      collectionWithPath:@"Messages"];
+    FIRQuery *query =
+    [[messagesRef queryOrderedByField:@"timestamp"] queryLimitedToLast:resolvedLimit];
+
+    __weak typeof(self) weakSelf = self;
+    id<FIRListenerRegistration> listener =
+    [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot,
+                                 NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+            return;
+        }
+
+        if (error || !snapshot) {
+            NSLog(@"❌ [ChatMessages] Snapshot failed thread=%@ code=%ld: %@",
+                  threadID,
+                  (long)error.code,
+                  error.localizedDescription ?: @"unknown error");
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(@[], NO, NO, error ?: [NSError errorWithDomain:@"ChManager"
+                                                                         code:500
+                                                                     userInfo:@{NSLocalizedDescriptionKey: @"Chat messages could not be loaded."}]);
+            });
+            return;
+        }
+
+        NSMutableArray<ChatMessageModel *> *messages =
+            [NSMutableArray arrayWithCapacity:snapshot.documents.count];
+        for (FIRDocumentSnapshot *document in snapshot.documents) {
+            ChatMessageModel *message =
+                [[ChatMessageModel alloc] initWithDictionary:document.data ?: @{}];
+            if (document.documentID.length > 0) {
+                message.ID = document.documentID;
+            }
+            [messages addObject:message];
+
+            if (message.status == ChatMessageStatusSent &&
+                [message.receiverID isEqualToString:myUserID] &&
+                ![message.senderID isEqualToString:myUserID]) {
+                [strongSelf markMessageAsDelivered:message.ID threadID:threadID];
+            }
+        }
+
+        BOOL canLoadOlder = snapshot.documents.count >= resolvedLimit;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(messages.copy, YES, canLoadOlder, nil);
+        });
+    }];
+
+    if (listener) {
+        self.activeMessageListeners[threadID] = listener;
+    }
+}
+
+- (void)stopObservingMessagesInThreadID:(NSString *)threadID
+{
+    if (threadID.length == 0) {
+        return;
+    }
+
+    id<FIRListenerRegistration> listener = self.activeMessageListeners[threadID];
+    [listener remove];
+    [self.activeMessageListeners removeObjectForKey:threadID];
+}
 
 - (void)createOrGetChatThreadWithUser:(UserModel *)user
                            completion:(void (^)(ChatThreadModel *thread, NSError *error))completion
@@ -3073,6 +3164,11 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         [listener remove];
     }
     [self.threadMessageListeners removeAllObjects];
+
+    for (id<FIRListenerRegistration> listener in self.activeMessageListeners.allValues) {
+        [listener remove];
+    }
+    [self.activeMessageListeners removeAllObjects];
 }
 
 /*
