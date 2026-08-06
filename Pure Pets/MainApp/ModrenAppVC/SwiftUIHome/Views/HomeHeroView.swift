@@ -896,11 +896,24 @@ struct HomeHeroField: View {
     let accent: Color
     let increasedContrast: Bool
     let cornerGlowOpacityScale: Double
+    var isAnimated: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var fieldAlive = false
+
+    init(
+        accent: Color,
+        increasedContrast: Bool,
+        cornerGlowOpacityScale: Double,
+        isAnimated: Bool = true
+    ) {
+        self.accent = accent
+        self.increasedContrast = increasedContrast
+        self.cornerGlowOpacityScale = cornerGlowOpacityScale
+        self.isAnimated = isAnimated
+    }
 
     private var isRightToLeft: Bool {
         layoutDirection == .rightToLeft
@@ -932,6 +945,9 @@ struct HomeHeroField: View {
         }
         .onAppear(perform: updateMotion)
         .onChange(of: reduceMotion) { _ in
+            updateMotion()
+        }
+        .onChange(of: isAnimated) { _ in
             updateMotion()
         }
         .onDisappear {
@@ -1067,7 +1083,7 @@ struct HomeHeroField: View {
     }
 
     private func updateMotion() {
-        guard !reduceMotion, !increasedContrast else {
+        guard isAnimated, !reduceMotion, !increasedContrast else {
             fieldAlive = false
             return
         }

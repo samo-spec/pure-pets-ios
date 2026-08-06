@@ -21,11 +21,20 @@ struct ImageMessageView: View {
       .contentShape(.rect)
     }
     .buttonStyle(.plain)
-    .accessibilityLabel("Image, \(payload.accessibilityDescription)")
-    .accessibilityHint("Opens the image viewer")
+    .accessibilityLabel(
+      String(
+        format: localized("chat_image_accessibility_format"),
+        payload.accessibilityDescription
+      )
+    )
+    .accessibilityHint(localized("chat_image_open_accessibility_hint"))
   }
 
   private var clampedAspectRatio: Double {
     min(max(payload.dimensions.aspectRatio, 0.65), 1.8)
+  }
+
+  private func localized(_ key: String) -> String {
+    NSLocalizedString(key, comment: "")
   }
 }

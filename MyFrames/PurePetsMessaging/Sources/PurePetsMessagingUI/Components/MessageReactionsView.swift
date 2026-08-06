@@ -3,6 +3,7 @@ import SwiftUI
 struct MessageReactionsView: View {
   let reactions: [MessageReaction]
   let onReactionTap: (MessageReaction) -> Void
+  @Environment(\.locale) private var locale
 
   var body: some View {
     if !reactions.isEmpty {
@@ -11,7 +12,7 @@ struct MessageReactionsView: View {
           Button {
             onReactionTap(reaction)
           } label: {
-            Text("\(reaction.emoji) \(reaction.count)")
+            Text("\(reaction.emoji) \(localizedCount(reaction.count))")
               .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
               .padding(.horizontal, 8)
               .padding(.vertical, 4)
@@ -24,10 +25,22 @@ struct MessageReactionsView: View {
           }
           .buttonStyle(.plain)
           .accessibilityLabel(
-            "\(reaction.emoji) reaction, \(reaction.count) people"
+            String(
+              format: localized("chat_reaction_accessibility_format"),
+              reaction.emoji,
+              localizedCount(reaction.count)
+            )
           )
         }
       }
     }
+  }
+
+  private func localizedCount(_ count: Int) -> String {
+    count.formatted(.number.locale(locale))
+  }
+
+  private func localized(_ key: String) -> String {
+    NSLocalizedString(key, comment: "")
   }
 }

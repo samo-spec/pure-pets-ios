@@ -121,7 +121,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
           brandColor: brandColor
         )
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
+      .frame(maxWidth: compact ? .infinity : nil, alignment: .leading)
 
       if canExpand {
         Image(systemName: "chevron.down")

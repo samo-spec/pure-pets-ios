@@ -56,7 +56,8 @@ typedef void (^PPAlertSimpleActionBlock)(void);
               cancelButton:(NSString *)cancelTitle
                       icon:(UIImage * _Nullable)icon
                confirmBlock:(AlertCompletionBlock _Nullable)confirmBlock
-                cancelBlock:(void(^ _Nullable)(void))cancelBlock;
+                cancelBlock:(void(^ _Nullable)(void))cancelBlock
+    NS_SWIFT_NAME(showConfirmation(in:title:subtitle:confirmButton:cancelButton:icon:confirmBlock:cancelBlock:));
 
 + (void)showThreeActionConfirmationIn:(UIViewController *)vc
                                 title:(NSString *)title
@@ -78,13 +79,26 @@ typedef void (^PPAlertSimpleActionBlock)(void);
              initialText:(NSString * _Nullable)initialText
              confirmText:(NSString * _Nullable)confirmText
               cancelText:(NSString * _Nullable)cancelText
-             completion:(AlertCompletionBlock)completion;
+             completion:(AlertCompletionBlock)completion
+    NS_SWIFT_NAME(showTextField(in:title:subtitle:placeholder:initialText:confirmText:cancelText:completion:));
+
++ (void)showDestructiveTextFieldAlertIn:(UIViewController *)vc
+                                  title:(NSString *)title
+                               subtitle:(NSString * _Nullable)subtitle
+                            placeholder:(NSString * _Nullable)placeholder
+                            initialText:(NSString * _Nullable)initialText
+                            confirmText:(NSString * _Nullable)confirmText
+                             cancelText:(NSString * _Nullable)cancelText
+                                   icon:(UIImage * _Nullable)icon
+                             completion:(AlertCompletionBlock)completion
+    NS_SWIFT_NAME(showDestructiveTextField(in:title:subtitle:placeholder:initialText:confirmText:cancelText:icon:completion:));
 
 
 + (void)showSuccessIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle;
 + (void)showErrorIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle;
 + (void)showWarningIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle;
-+ (void)showInfoIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle;
++ (void)showInfoIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle
+    NS_SWIFT_NAME(showInfo(in:title:subtitle:));
 + (void)showSuccessIn:(UIViewController *)vc
                 title:(NSString *)title
              subtitle:(NSString *)subtitle

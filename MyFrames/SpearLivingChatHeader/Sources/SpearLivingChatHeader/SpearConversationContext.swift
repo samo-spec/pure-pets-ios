@@ -8,19 +8,22 @@ public struct SpearListingContext: Equatable, Identifiable, Sendable {
   public var title: String
   public var detail: String
   public var actionTitle: String
+  public var thumbnailURL: URL?
 
   public init(
     id: String,
     eyebrow: String,
     title: String,
     detail: String,
-    actionTitle: String
+    actionTitle: String,
+    thumbnailURL: URL? = nil
   ) {
     self.id = id
     self.eyebrow = eyebrow
     self.title = title
     self.detail = detail
     self.actionTitle = actionTitle
+    self.thumbnailURL = thumbnailURL
   }
 }
 
@@ -80,6 +83,11 @@ public enum SpearConversationContext: Equatable, Identifiable, Sendable {
   case support(SpearSupportContext)
 
   public var id: String {
+    transitionIdentity
+  }
+
+  /// Canonical backend document identity.
+  public var backendID: String {
     switch self {
     case .listing(let value):
       value.id
@@ -88,6 +96,23 @@ public enum SpearConversationContext: Equatable, Identifiable, Sendable {
     case .support(let value):
       value.id
     }
+  }
+
+  internal var transitionIdentity: String {
+    switch self {
+    case .listing(let value):
+      "listing:\(value.id)"
+    case .order(let value):
+      "order:\(value.id)"
+    case .support(let value):
+      "support:\(value.id)"
+    }
+  }
+
+  internal var contentTransitionIdentity: String {
+    let progress = orderProgress.map { String(describing: $0) } ?? "none"
+    return [transitionIdentity, eyebrow, title, detail, actionTitle, progress]
+      .joined(separator: "|")
   }
 
   internal var eyebrow: String {
@@ -145,8 +170,18 @@ public enum SpearConversationContext: Equatable, Identifiable, Sendable {
     }
   }
 
+  internal var listingThumbnailURL: URL? {
+    guard case .listing(let value) = self else { return nil }
+    return value.thumbnailURL
+  }
+
   internal var orderProgress: Double? {
     guard case .order(let value) = self else { return nil }
     return value.progress
+  }
+
+  internal var isSupport: Bool {
+    if case .support = self { return true }
+    return false
   }
 }

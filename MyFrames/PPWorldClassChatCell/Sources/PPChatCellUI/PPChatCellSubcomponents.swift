@@ -210,7 +210,7 @@ struct PPChatActivityPreviewView: View {
                 )
         }
         .animation(
-            reduceMotion ? .easeOut(duration: 0.12) : .easeOut(duration: 0.20),
+            reduceMotion ? nil : .easeOut(duration: 0.20),
             value: displayedMessage
         )
         .accessibilityElement(children: .combine)

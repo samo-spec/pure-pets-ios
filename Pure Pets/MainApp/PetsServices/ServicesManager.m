@@ -10,7 +10,7 @@
 #import "ArabicNormalizer.h"
 #import "UserManager.h"
 #import "UserModel.h"
-#import "PPRolePermission.h"
+#import "PPUserKitCompatibility.h"
 #import "PPFunc.h"
 @import FirebaseFirestore;
 @import FirebaseStorage;

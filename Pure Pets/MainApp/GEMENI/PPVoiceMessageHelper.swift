@@ -519,6 +519,14 @@ public final class PPVoiceRecorderController: NSObject,
             options: [.defaultToSpeaker, .allowBluetoothHFP]
         )
         try session.setActive(true)
+        guard session.isInputAvailable,
+              !session.currentRoute.inputs.isEmpty else {
+            throw NSError(
+                domain: "PPVoiceRecorder",
+                code: 4,
+                userInfo: nil
+            )
+        }
     }
 
     private func deactivateAudioSession() {

@@ -16,6 +16,8 @@ public struct SpearChatHeader<AvatarContent: View>: View {
   private let style: SpearChatHeaderStyle
   private let copy: SpearChatHeaderCopy
   private let actions: SpearChatHeaderActions
+  private let onExpansionChanged: (Bool) -> Void
+  private let contextThumbnailBuilder: (URL) -> AnyView
   private let avatarBuilder: (SpearChatHeaderModel) -> AvatarContent
 
   public init(
@@ -23,12 +25,16 @@ public struct SpearChatHeader<AvatarContent: View>: View {
     style: SpearChatHeaderStyle = .spear,
     copy: SpearChatHeaderCopy = .english,
     actions: SpearChatHeaderActions,
+    onExpansionChanged: @escaping (Bool) -> Void = { _ in },
+    contextThumbnail: @escaping (URL) -> AnyView = { _ in AnyView(EmptyView()) },
     @ViewBuilder avatar: @escaping (SpearChatHeaderModel) -> AvatarContent
   ) {
     self.state = state
     self.style = style
     self.copy = copy
     self.actions = actions
+    self.onExpansionChanged = onExpansionChanged
+    self.contextThumbnailBuilder = contextThumbnail
     self.avatarBuilder = avatar
   }
 
@@ -44,6 +50,8 @@ public struct SpearChatHeader<AvatarContent: View>: View {
           style: style,
           copy: copy,
           actions: actions,
+          onExpansionChanged: onExpansionChanged,
+          contextThumbnail: contextThumbnailBuilder,
           avatarContent: avatarBuilder(model)
         )
         .id(model.id)
@@ -58,18 +66,8 @@ public struct SpearChatHeader<AvatarContent: View>: View {
         )
       }
     }
-    .padding(.top, safeAreaTopInset)
     .background(seamlessBackground.ignoresSafeArea(.container, edges: .top))
     .accessibilityIdentifier(SpearChatHeaderAccessibilityID.root)
-  }
-
-  /// Returns the top safe area inset so content stays below the status bar
-  /// while the background extends beneath it.
-  private var safeAreaTopInset: CGFloat {
-    let scene = UIApplication.shared.connectedScenes
-      .compactMap { $0 as? UIWindowScene }
-      .first { $0.activationState == .foregroundActive }
-    return scene?.keyWindow?.safeAreaInsets.top ?? 0
   }
 
   /// The seamless gradient dissolve — replaces the hard divider with a
@@ -77,24 +75,70 @@ public struct SpearChatHeader<AvatarContent: View>: View {
   private var seamlessBackground: some View {
     Group {
       if reduceTransparency {
-        // Accessibility: opaque surface with subtle tint
         Color(uiColor: .systemBackground)
+          .overlay {
+            LinearGradient(
+              colors: [style.brandColor.opacity(0.08), .clear],
+              startPoint: .top,
+              endPoint: .bottom
+            )
+          }
           .overlay(alignment: .bottom) {
             Rectangle()
-              .fill(Color.primary.opacity(contrast == .increased ? 0.12 : 0.04))
+              .fill(Color.primary.opacity(contrast == .increased ? 0.16 : 0.07))
               .frame(height: 1)
           }
       } else {
         ZStack {
-          // Base material for navigation-level context
           Rectangle().fill(.bar)
 
-          // Warm atmosphere gradient that dissolves downward
           LinearGradient(
             stops: gradientStops,
             startPoint: .top,
             endPoint: .bottom
           )
+
+          RadialGradient(
+            colors: [
+              style.brandColor.opacity(colorScheme == .dark ? 0.12 : 0.10),
+              style.brandColor.opacity(colorScheme == .dark ? 0.04 : 0.025),
+              .clear,
+            ],
+            center: .top,
+            startRadius: 0,
+            endRadius: 250
+          )
+
+          RadialGradient(
+            colors: [
+              Color.green.opacity(colorScheme == .dark ? 0.055 : 0.035),
+              .clear,
+            ],
+            center: .topTrailing,
+            startRadius: 0,
+            endRadius: 210
+          )
+
+          LinearGradient(
+            colors: [
+              Color.white.opacity(colorScheme == .dark ? 0.025 : 0.26),
+              .clear,
+            ],
+            startPoint: .top,
+            endPoint: .center
+          )
+        }
+        .overlay(alignment: .bottom) {
+          LinearGradient(
+            colors: [
+              .clear,
+              style.brandColor.opacity(contrast == .increased ? 0.22 : 0.10),
+              .clear,
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+          )
+          .frame(height: contrast == .increased ? 1.5 : 0.75)
         }
       }
     }
@@ -105,14 +149,14 @@ public struct SpearChatHeader<AvatarContent: View>: View {
 
     if colorScheme == .dark {
       return [
-        .init(color: brandTint.opacity(0.06), location: 0),
-        .init(color: brandTint.opacity(0.03), location: 0.5),
+        .init(color: brandTint.opacity(0.10), location: 0),
+        .init(color: brandTint.opacity(0.045), location: 0.52),
         .init(color: .clear, location: 1.0),
       ]
     } else {
       return [
-        .init(color: brandTint.opacity(0.04), location: 0),
-        .init(color: brandTint.opacity(0.02), location: 0.6),
+        .init(color: brandTint.opacity(0.075), location: 0),
+        .init(color: brandTint.opacity(0.025), location: 0.62),
         .init(color: .clear, location: 1.0),
       ]
     }
@@ -127,13 +171,17 @@ extension SpearChatHeader where AvatarContent == SpearDefaultAvatarContent {
     state: SpearChatHeaderLoadState,
     style: SpearChatHeaderStyle = .spear,
     copy: SpearChatHeaderCopy = .english,
-    actions: SpearChatHeaderActions
+    actions: SpearChatHeaderActions,
+    onExpansionChanged: @escaping (Bool) -> Void = { _ in },
+    contextThumbnail: @escaping (URL) -> AnyView = { _ in AnyView(EmptyView()) }
   ) {
     self.init(
       state: state,
       style: style,
       copy: copy,
-      actions: actions
+      actions: actions,
+      onExpansionChanged: onExpansionChanged,
+      contextThumbnail: contextThumbnail
     ) { model in
       SpearDefaultAvatarContent(
         fallback: model.avatarFallback,

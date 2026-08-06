@@ -19,6 +19,12 @@
 #import "ChatThreadModel.h"
 #import "ChatMessageModel.h"
 #import "PetAdManager.h"
+
+#import <IQKeyboardManager/IQKeyboardManager.h>
+#import "DesignFiles/PP/PPStyles/PPHUD.h"
+#import "DesignFiles/PP/PPStyles/PPAlertHelper.h"
+#import "MainApp/ModrenAppVC/Helpers/Stories/PPStoriesManager.h"
+#import "MainApp/ModrenAppVC/Helpers/Stories/PPStoryPlayerViewController.h"
 #import "AdoptPetModel.h"
 #import "AdoptPetManager.h"
 #import "AppClasses.h"

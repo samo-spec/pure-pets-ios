@@ -73,6 +73,13 @@ final class SpearChatHeaderContractTests: XCTestCase {
     XCTAssertTrue(text.hasPrefix("Last seen "))
   }
 
+  func testUnavailablePresenceNeverInventsRecentActivity() {
+    XCTAssertEqual(
+      SpearChatHeaderCopy.english.presenceText(for: .unavailable),
+      "Activity unavailable"
+    )
+  }
+
   func testActiveCallAlwaysOwnsAnEnabledEndAction() {
     var didEnd = false
     let call = SpearCallControl.active(elapsedSeconds: -8) {
@@ -89,6 +96,10 @@ final class SpearChatHeaderContractTests: XCTestCase {
   func testCallDurationUsesCopyLocale() {
     XCTAssertEqual(SpearChatHeaderCopy.english.callText(elapsedSeconds: 138), "Secure call · 02:18")
     XCTAssertEqual(SpearChatHeaderCopy.arabic.callText(elapsedSeconds: 138), "مكالمة آمنة · ٠٢:١٨")
+    XCTAssertEqual(
+      SpearChatHeaderCopy.english.callText(elapsedSeconds: 6_000),
+      "Secure call · 1:40:00"
+    )
   }
 
   func testMotionArbiterAllowsOneContinuousMode() {
@@ -142,6 +153,24 @@ final class SpearChatHeaderContractTests: XCTestCase {
 
     XCTAssertEqual(listing.symbolSystemName, "pawprint.fill")
     XCTAssertEqual(order.symbolSystemName, "shippingbox.fill")
+  }
+
+  func testContextIdentityIsNamespacedByKind() {
+    let listing = SpearConversationContext.listing(
+      .init(id: "same", eyebrow: "Listing", title: "Pet", detail: "", actionTitle: "View")
+    )
+    let order = SpearConversationContext.order(makeOrder(id: "same", progress: nil))
+    let support = SpearConversationContext.support(
+      .init(id: "same", eyebrow: "Support", title: "Case", detail: "", actionTitle: "Open")
+    )
+
+    XCTAssertEqual(listing.id, "listing:same")
+    XCTAssertEqual(order.id, "order:same")
+    XCTAssertEqual(support.id, "support:same")
+    XCTAssertEqual(Set([listing.id, order.id, support.id]).count, 3)
+    XCTAssertEqual(listing.backendID, "same")
+    XCTAssertEqual(order.backendID, "same")
+    XCTAssertEqual(support.backendID, "same")
   }
 
   func testOptionalActionsDefaultToHiddenInsteadOfNoOpEnabledButtons() {

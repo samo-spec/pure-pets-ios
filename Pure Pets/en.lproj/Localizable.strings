@@ -1856,6 +1856,9 @@
 "chat.background" = "Chat Background";
 "chat.report" = "Report";
 "chat.reported" = "Reported";
+"chat.actions.title" = "Conversation actions";
+"chat.action.unavailable" = "Not available for this conversation yet";
+"chat.action.completed" = "Completed";
 
 /* Report Sheet */
 "chat.report.title" = "Report Chat";
@@ -3198,6 +3201,20 @@
 "chat_reply_image" = "Photo";
 "chat_reply_video" = "Video";
 "chat_reply_audio" = "Voice message";
+"chat_voice_play_accessibility" = "Play voice message";
+"chat_voice_pause_accessibility" = "Pause voice message";
+"chat_voice_progress_accessibility_format" = "%1$@ of %2$@";
+"chat_message_unavailable" = "Message unavailable";
+"chat_message_requires_update" = "This message type requires a newer app version.";
+"chat_update_app" = "Update app";
+"chat_unsupported_type_accessibility_format" = "Unsupported message type: %@";
+"chat_image_accessibility_format" = "Image, %@";
+"chat_image_open_accessibility_hint" = "Opens the image viewer";
+"chat_video_accessibility_format" = "Video, %1$@, %2$@";
+"chat_video_open_accessibility_hint" = "Opens the video player";
+"chat_sticker_accessibility_format" = "Sticker, %@";
+"chat_reaction_accessibility_format" = "%1$@ reaction, %2$@ people";
+"chat_unread_count_accessibility_format" = "Unread messages: %@";
 "chat_reply_unavailable" = "Original message is not available.";
 "chat_reply_cancel" = "Cancel reply";
 "chat_unsend" = "Unsend";
@@ -3206,6 +3223,12 @@
 "chat_unsend_success" = "Message unsent";
 "chat_unsend_failed" = "This message could not be unsent.";
 "chat_message_unsent" = "Message unsent";
+"chat_deleted_by_sender" = "This message was deleted";
+"chat_deleted_by_recipient" = "You deleted this message";
+"chat_deleted_by_moderator" = "This message was removed by a moderator";
+"chat_deleted_by_system" = "This message is no longer available";
+"chat_forward" = "Forward";
+"chat_status_edited" = "Edited";
 "chat_status_sending" = "Sending";
 "chat_status_sent" = "Sent";
 "chat_status_delivered" = "Delivered";
@@ -4205,3 +4228,46 @@
 "chat_support_context_status_unavailable" = "Support status unavailable";
 
 "chat_support_context_detail_format" = "Status: %@";
+
+// SPEar chat header context and reputation
+"chat_header_rating" = "Rating";
+"chat_header_reviews" = "Reviews";
+"chat_header_listing_eyebrow" = "Discussing this listing";
+"chat_header_listing_action" = "View";
+"chat_header_order_eyebrow" = "Active order";
+"chat_header_order_action" = "Track";
+"chat_header_order_title_format" = "Order %@";
+"chat_header_start_call_accessibility" = "Start voice call";
+"chat_header_end_call_accessibility" = "End call";
+"chat_header_more_accessibility" = "More conversation actions";
+"chat_header_verified_seller" = "Verified seller";
+"chat_header_verified_business" = "Verified business";
+"chat_header_restricted_account" = "Restricted account";
+"chat_header_loading_identity" = "Loading conversation identity";
+"chat_header_conversation_with" = "Conversation with";
+"chat_header_online_now" = "Online now";
+"chat_header_replies_fast" = "Replies fast";
+"chat_header_replies_typically" = "Usually replies soon";
+"chat_header_typing" = "Typing";
+"chat_header_viewing_offer" = "Viewing your offer now";
+"chat_header_activity_unavailable" = "Activity unavailable";
+"chat_header_secure_call" = "Secure call";
+"chat_header_expand_hint" = "Expands conversation details";
+"chat_header_collapse_hint" = "Collapses conversation details";
+"chat_header_expanded" = "Expanded";
+"chat_header_collapsed" = "Collapsed";
+
+/* Shared Media Viewer */
+"pp_media_viewer_close" = "Close";
+"pp_media_viewer_share" = "Share";
+"pp_media_viewer_photo" = "Photo";
+"pp_media_viewer_of" = "of";
+"pp_media_viewer_photo_position_format" = "Photo %@ of %@";
+"pp_media_viewer_previous" = "Previous";
+"pp_media_viewer_next" = "Next";
+"pp_media_viewer_zoom_in" = "Zoom in";
+"pp_media_viewer_zoom_out" = "Zoom out";
+"pp_media_viewer_reset_zoom" = "Reset zoom";
+"pp_media_viewer_loading" = "Loading";
+"pp_media_viewer_retry" = "Retry";
+"pp_media_viewer_play" = "Play";

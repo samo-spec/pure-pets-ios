@@ -1,27 +1,30 @@
 import SwiftUI
 
-// MARK: - Identity Expansion (Frosted Sheet Style)
+// MARK: - Identity Expansion
 
-/// Expansion panel that unfolds as a warm frosted material sheet,
-/// extending the gradient atmosphere of the header.
+/// Inline identity utility rail. It deliberately avoids nesting another card
+/// under the navigation header: trust, metrics, and actions remain part of the
+/// same conversation hierarchy.
 @available(iOS 17.0, *)
 internal struct SpearIdentityExpansion: View {
   let trust: SpearTrustState
   let metrics: [SpearIdentityMetric]
   let copy: SpearChatHeaderCopy
   let brandColor: Color
+  let showsTrustDetail: Bool
   let profileAction: SpearHeaderAction
   let safetyAction: SpearHeaderAction
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-  @Environment(\.colorScheme) private var colorScheme
   @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    VStack(spacing: 12) {
-      trustDetail
+    VStack(spacing: 9) {
+      if showsTrustDetail {
+        trustDetail
+      }
 
       if !metrics.isEmpty {
         metricsLayout
@@ -29,50 +32,32 @@ internal struct SpearIdentityExpansion: View {
 
       actionsLayout
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
-    .background(expansionBackground)
     .padding(.horizontal, 12)
-    .padding(.bottom, 8)
+    .padding(.vertical, 10)
+    .background {
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .fill(
+          colorScheme == .dark
+            ? Color.white.opacity(0.05)
+            : Color.white.opacity(0.46)
+        )
+    }
+    .overlay {
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .strokeBorder(
+          brandColor.opacity(contrast == .increased ? 0.28 : 0.11),
+          lineWidth: contrast == .increased ? 1.5 : 0.75
+        )
+    }
+    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.12 : 0.04), radius: 10, y: 4)
     .transition(
       reduceMotion
         ? .opacity
         : .asymmetric(
-          insertion: .opacity
-            .combined(with: .scale(scale: 0.96, anchor: .top))
-            .combined(with: .offset(y: -6)),
+          insertion: .opacity.combined(with: .offset(y: -5)),
           removal: .opacity
-            .combined(with: .scale(scale: 0.98, anchor: .top))
         )
     )
-  }
-
-  // MARK: - Frosted Background
-
-  @ViewBuilder
-  private var expansionBackground: some View {
-    if reduceTransparency {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .fill(Color(uiColor: .secondarySystemGroupedBackground))
-        .overlay {
-          RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.2 : 0.08), lineWidth: 1)
-        }
-    } else {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .fill(.ultraThinMaterial)
-        .overlay {
-          RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(brandColor.opacity(colorScheme == .dark ? 0.04 : 0.02))
-        }
-        .overlay {
-          RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .strokeBorder(
-              Color.primary.opacity(contrast == .increased ? 0.18 : 0.06),
-              lineWidth: contrast == .increased ? 1.5 : 0.5
-            )
-        }
-    }
   }
 
   // MARK: - Trust Detail
@@ -147,8 +132,12 @@ internal struct SpearIdentityExpansion: View {
   }
 
   private var horizontalActions: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 0) {
       profileButton
+      if profileAction.availability.isVisible && safetyAction.availability.isVisible {
+        Divider()
+          .frame(height: 24)
+      }
       safetyButton
     }
   }
@@ -162,8 +151,9 @@ internal struct SpearIdentityExpansion: View {
 
   @ViewBuilder
   private var profileButton: some View {
-    SpearTextActionButton(
+    utilityButton(
       title: copy.profileButtonTitle,
+      systemName: "person.crop.circle",
       accessibilityIdentifier: SpearChatHeaderAccessibilityID.profile,
       action: profileAction
     )
@@ -171,11 +161,60 @@ internal struct SpearIdentityExpansion: View {
 
   @ViewBuilder
   private var safetyButton: some View {
-    SpearTextActionButton(
+    utilityButton(
       title: copy.safetyButtonTitle,
+      systemName: "shield.lefthalf.filled",
       accessibilityIdentifier: SpearChatHeaderAccessibilityID.safety,
       action: safetyAction
     )
+  }
+
+  @ViewBuilder
+  private func utilityButton(
+    title: String,
+    systemName: String,
+    accessibilityIdentifier: String,
+    action: SpearHeaderAction
+  ) -> some View {
+    if action.availability.isVisible {
+      Button {
+        guard action.availability.isEnabled else { return }
+        action.perform()
+      } label: {
+        Label(title, systemImage: systemName)
+          .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
+          .frame(maxWidth: .infinity)
+          .frame(minHeight: 44)
+      }
+      .buttonStyle(SpearIdentityUtilityButtonStyle(brandColor: brandColor))
+      .disabled(!action.availability.isEnabled)
+      .opacity(action.availability.isEnabled ? 1 : 0.42)
+      .accessibilityIdentifier(accessibilityIdentifier)
+      .modifier(
+        SpearDisabledReasonModifier(
+          reason: action.availability.disabledReason
+        )
+      )
+    }
+  }
+}
+
+private struct SpearIdentityUtilityButtonStyle: ButtonStyle {
+  let brandColor: Color
+
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .foregroundStyle(configuration.isPressed ? brandColor : Color.primary)
+      .contentShape(Rectangle())
+      .background(
+        configuration.isPressed ? brandColor.opacity(0.07) : .clear,
+        in: Capsule(style: .continuous)
+      )
+      .opacity(configuration.isPressed ? 0.82 : 1)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
   }
 }
 

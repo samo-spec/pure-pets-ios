@@ -94,10 +94,31 @@ extension PPExpandableChatCell {
                     }
                 }
 
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    if replyState.optimisticMessage != nil {
-                        Text(copy.you)
-                            .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    if latestMessageIsOwn {
+                        HStack(spacing: 4) {
+                            Text(copy.you)
+                                .font(Font.ppBeirutiBold(size: 14, relativeTo: .subheadline))
+                                .foregroundStyle(style.brand)
+
+                            if latestMessageWasSent {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(style.success)
+                                    .accessibilityHidden(true)
+                                    .transition(
+                                        reduceMotion
+                                        ? .opacity
+                                        : .opacity.combined(with: .scale(scale: 0.7))
+                                    )
+                            }
+                        }
+                        .layoutPriority(1)
+                        .transition(
+                            reduceMotion
+                            ? .opacity
+                            : .opacity.combined(with: .move(edge: .leading))
+                        )
                     }
 
                     Text(message)
@@ -107,6 +128,7 @@ extension PPExpandableChatCell {
                 .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .animation(feedbackAnimation, value: replyState.phase)
             }
             .padding(.leading, 14)
             .padding(.trailing, 12)
@@ -232,7 +254,15 @@ extension PPExpandableChatCell {
     }
 
     var composer: some View {
-        HStack(alignment: .center, spacing: 6) {
+        HStack(alignment: .center, spacing: 8) {
+            Image(systemName: composerFocused ? "pencil.line" : "text.bubble")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(composerFocused ? style.brand : Color.secondary)
+                .frame(width: 20)
+                .contentTransition(.symbolEffect(.replace))
+                .accessibilityHidden(true)
+                .animation(feedbackAnimation, value: composerFocused)
+
             TextField(copy.replyPlaceholder, text: $replyState.draft, axis: .vertical)
                 .focused($composerFocused)
                 .font(Font.ppBeirutiRegular(size: 16, relativeTo: .body))
@@ -246,6 +276,15 @@ extension PPExpandableChatCell {
                     normalizeDraft(value)
                 }
                 .accessibilityIdentifier("pp.chat.reply.input.\(thread.id.rawValue)")
+
+            if replyState.draft.count >= 200 {
+                Text("\(replyState.draft.count)/240")
+                    .font(Font.ppBeirutiMedium(size: 11, relativeTo: .caption2))
+                    .foregroundStyle(replyState.draft.count >= 240 ? style.danger : Color.secondary)
+                    .monospacedDigit()
+                    .accessibilityHidden(true)
+                    .transition(.opacity)
+            }
 
             Button(action: sendDraft) {
                 ZStack {
@@ -272,16 +311,16 @@ extension PPExpandableChatCell {
             .accessibilityValue(sendButtonAccessibilityValue)
             .accessibilityIdentifier("pp.chat.reply.send.\(thread.id.rawValue)")
         }
-        .padding(.leading, 16)
+        .padding(.leading, 14)
         .padding(.trailing, 6)
         .padding(.vertical, 2)
         .frame(minHeight: style.composerHeight)
         .background {
-            RoundedRectangle(cornerRadius: style.compactCornerRadius + 2, style: .continuous)
+            RoundedRectangle(cornerRadius: style.compactCornerRadius + 6, style: .continuous)
                 .fill(composerFill)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: style.compactCornerRadius + 2, style: .continuous)
+            RoundedRectangle(cornerRadius: style.compactCornerRadius + 6, style: .continuous)
                 .stroke(
                     composerStroke,
                     lineWidth: composerStrokeWidth
@@ -291,6 +330,10 @@ extension PPExpandableChatCell {
         .animation(
             reduceMotion ? nil : .easeOut(duration: 0.18),
             value: canSend
+        )
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.18),
+            value: replyState.draft.count >= 200
         )
     }
 

@@ -229,22 +229,33 @@
 + (void)pp_openChatThread:(ChatThreadModel *)thread
                    fromVC:(UIViewController *)vc
 {
-    if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return; }
+    [self pp_openChatThread:thread petAdContext:nil fromVC:vc];
+}
+
+
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+             petAdContext:(nullable PetAd *)petAd
+                   fromVC:(UIViewController *)vc
+{
+    if (!PPIsUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return NO;
+    }
     NSLog(@"💬 [Chat] Request to open chat thread");
 
     if (!thread) {
         NSLog(@"❌ [Chat] Thread is nil, aborting navigation");
-        return;
+        return NO;
     }
 
     if (!vc) {
         NSLog(@"❌ [Chat] Source view controller is nil");
-        return;
+        return NO;
     }
     UIViewController *presenter = [self pp_resolvedPresenterFrom:vc];
     if (![self pp_canPresentFrom:presenter]) {
         NSLog(@"⚠️ [Chat] Presenter is busy, dropping duplicate open request");
-        return;
+        return NO;
     }
 
     NSLog(@"📨 [Chat] Thread info | threadID=%@ | messagesCount=%ld",
@@ -255,13 +266,18 @@
     NSLog(@"➡️ [Chat] Presenting PPMessagingSwiftUIHostController");
 
     PPMessagingSwiftUIHostController *chat = [[PPMessagingSwiftUIHostController alloc] init];
-    [chat configureWithChatThread:thread];
+    if (petAd) {
+        [chat configureWithChatThread:thread petAdContext:petAd];
+    } else {
+        [chat configureWithChatThread:thread];
+    }
 
     PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:chat];
     nav.modalPresentationStyle = UIModalPresentationFullScreen;
     [presenter presentViewController:nav animated:YES completion:nil];
 
     NSLog(@"✅ [Chat] Chat screen presented successfully");
+    return YES;
 }
 
 

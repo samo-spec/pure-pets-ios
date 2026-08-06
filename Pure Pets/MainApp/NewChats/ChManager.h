@@ -13,6 +13,7 @@
 
 #import <Foundation/Foundation.h>
 #import "ChatThreadModel.h"
+@protocol FIRListenerRegistration;
 typedef void (^ChThreadFetchCompletion)(ChatThreadModel * _Nullable thread);
 
 @class ChatMessageModel;

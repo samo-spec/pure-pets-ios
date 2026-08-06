@@ -61,6 +61,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 @property (nonatomic, strong) NSError *loadError;
 @property (nonatomic, assign) BOOL didRunHeaderEntrance;
 @property (nonatomic, assign) BOOL didRunListEntrance;
+@property (nonatomic, assign) BOOL needsInboxReloadAfterMessagingTransition;
 
 @end
 
@@ -94,6 +95,12 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     [self startObservingChats];
     [self.storiesViewController startObservingStories];
     [self handleUnreadUpdate];
+
+    if (self.needsInboxReloadAfterMessagingTransition) {
+        self.needsInboxReloadAfterMessagingTransition = NO;
+        [self.chatCellBridge collapseExpanded];
+        [self reloadTableAnimated];
+    }
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -877,10 +884,167 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     [self pp_updateInboxSummaryAnimated:NO];
 }
 
+- (NSString *)pp_contentSignatureForThread:(ChatThreadModel *)thread {
+    if (![thread isKindOfClass:ChatThreadModel.class]) {
+        return @"";
+    }
+
+    UserModel *user = [ChatThreadModel resolveOtherUserFromThread:thread] ?: thread.otherUser;
+    NSString *userID = user.ID ?: @"";
+    NSString *avatar = user.UserImageUrl.absoluteString ?: @"";
+    NSString *name = user.UserName ?: @"";
+    NSTimeInterval ts = thread.lastMessageAt ? thread.lastMessageAt.timeIntervalSince1970 : 0.0;
+
+    return [NSString stringWithFormat:@"%@|%@|%.0f|%ld|%@|%@|%@|%d",
+            thread.ID ?: @"",
+            thread.lastMessage ?: @"",
+            ts,
+            (long)thread.unreadCount,
+            userID,
+            name,
+            avatar,
+            user.isVerified ? 1 : 0];
+}
+
 - (void)pp_applyThreadsSnapshot:(NSArray<ChatThreadModel *> *)newThreads animated:(BOOL)animated {
-    self.threads = newThreads ?: @[];
+    NSArray<ChatThreadModel *> *oldThreads = self.threads ?: @[];
+    NSArray<ChatThreadModel *> *incoming = newThreads ?: @[];
+
+    // Capture old identity/order + content signatures BEFORE swapping the
+    // data source so we can tell whether anything actually changed.
+    NSMutableArray<NSString *> *oldIDsOrdered = [NSMutableArray arrayWithCapacity:oldThreads.count];
+    NSMutableDictionary<NSString *, NSString *> *oldSignatures =
+        [NSMutableDictionary dictionaryWithCapacity:oldThreads.count];
+    for (ChatThreadModel *t in oldThreads) {
+        NSString *tid = t.ID ?: @"";
+        [oldIDsOrdered addObject:tid];
+        oldSignatures[tid] = [self pp_contentSignatureForThread:t];
+    }
+
+    NSMutableArray<NSString *> *newIDsOrdered = [NSMutableArray arrayWithCapacity:incoming.count];
+    for (ChatThreadModel *t in incoming) {
+        [newIDsOrdered addObject:(t.ID ?: @"")];
+    }
+
+    self.threads = incoming;
     [self pp_updateInboxSummaryAnimated:animated];
-    [self reloadTableAnimated];
+
+    // ─────────────────────────────────────────────────────────────
+    // First load or empty → full reload (no diff needed)
+    // ─────────────────────────────────────────────────────────────
+    if (oldThreads.count == 0 || !self.tableView.window) {
+        [self reloadTableAnimated];
+        [self pp_scheduleListEntranceIfNeeded];
+        return;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Fast path: identity + order unchanged.
+    // Reconfigure ONLY the rows whose content actually changed. This makes
+    // returning from the messaging screen (nothing changed) a true no-op,
+    // and keeps a quick-reply send from rebuilding the whole list. The row
+    // that is currently expanded is never reconfigured, so its live composer
+    // and send feedback are not torn down mid-interaction.
+    // ─────────────────────────────────────────────────────────────
+    if ([oldIDsOrdered isEqualToArray:newIDsOrdered]) {
+        NSMutableArray<NSIndexPath *> *changedPaths = [NSMutableArray array];
+        for (NSUInteger i = 0; i < incoming.count; i++) {
+            ChatThreadModel *thread = incoming[i];
+            NSString *tid = thread.ID ?: @"";
+            NSString *newSig = [self pp_contentSignatureForThread:thread];
+            if ([newSig isEqualToString:oldSignatures[tid]]) {
+                continue; // unchanged → leave the existing cell untouched
+            }
+            if ([self.chatCellBridge isExpanded:tid]) {
+                continue; // active expanded row manages its own live state
+            }
+            [changedPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+        }
+
+        if (changedPaths.count == 0) {
+            [self pp_scheduleListEntranceIfNeeded];
+            return; // nothing to do — no reload, no animation
+        }
+
+        [UIView performWithoutAnimation:^{
+            if (@available(iOS 15.0, *)) {
+                [self.tableView reconfigureRowsAtIndexPaths:changedPaths];
+            } else {
+                [self.tableView reloadRowsAtIndexPaths:changedPaths
+                                      withRowAnimation:UITableViewRowAnimationNone];
+            }
+        }];
+        [self pp_scheduleListEntranceIfNeeded];
+        return;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Structural change: inserts / deletes / reordering.
+    // Compute inserts and deletes, reconfigure surviving rows in-place
+    // without destroying the SwiftUI UIHostingConfiguration (prevents
+    // blank flash). Reordering is expressed through the surviving-row
+    // reconfigure so each visible row picks up its correct thread.
+    // ─────────────────────────────────────────────────────────────
+    NSMutableOrderedSet<NSString *> *oldIDs = [NSMutableOrderedSet orderedSetWithArray:oldIDsOrdered];
+    NSMutableOrderedSet<NSString *> *newIDs = [NSMutableOrderedSet orderedSetWithArray:newIDsOrdered];
+
+    NSMutableArray<NSIndexPath *> *deletePaths = [NSMutableArray array];
+    NSMutableArray<NSIndexPath *> *insertPaths = [NSMutableArray array];
+    NSMutableArray<NSIndexPath *> *reconfigurePaths = [NSMutableArray array];
+
+    // Deleted rows: in old but not in new
+    for (NSUInteger i = 0; i < oldIDs.count; i++) {
+        if (![newIDs containsObject:oldIDs[i]]) {
+            [deletePaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+        }
+    }
+
+    // Inserted rows: in new but not in old
+    for (NSUInteger i = 0; i < newIDs.count; i++) {
+        if (![oldIDs containsObject:newIDs[i]]) {
+            [insertPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+        }
+    }
+
+    // If the diff is too complex (large structural change), fall back to full reload
+    if (deletePaths.count + insertPaths.count > oldIDs.count) {
+        [self reloadTableAnimated];
+        [self pp_scheduleListEntranceIfNeeded];
+        return;
+    }
+
+    // Rows that exist in both: reconfigure in-place (preserves hosting config)
+    for (NSUInteger i = 0; i < newIDs.count; i++) {
+        if ([oldIDs containsObject:newIDs[i]] && ![insertPaths containsObject:[NSIndexPath indexPathForRow:i inSection:0]]) {
+            [reconfigurePaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+        }
+    }
+
+    [UIView performWithoutAnimation:^{
+        [self.tableView performBatchUpdates:^{
+            if (deletePaths.count > 0) {
+                [self.tableView deleteRowsAtIndexPaths:deletePaths
+                                     withRowAnimation:UITableViewRowAnimationNone];
+            }
+            if (insertPaths.count > 0) {
+                [self.tableView insertRowsAtIndexPaths:insertPaths
+                                     withRowAnimation:UITableViewRowAnimationNone];
+            }
+        } completion:^(__unused BOOL finished) {
+            // Reconfigure existing rows to update content without full reload.
+            // reconfigureRowsAtIndexPaths preserves the cell identity and its
+            // UIHostingConfiguration, preventing SwiftUI state loss.
+            if (reconfigurePaths.count > 0) {
+                if (@available(iOS 15.0, *)) {
+                    [self.tableView reconfigureRowsAtIndexPaths:reconfigurePaths];
+                } else {
+                    [self.tableView reloadRowsAtIndexPaths:reconfigurePaths
+                                         withRowAnimation:UITableViewRowAnimationNone];
+                }
+            }
+        }];
+    }];
+
     [self pp_scheduleListEntranceIfNeeded];
 }
 
@@ -1278,7 +1442,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
                                onOpenChat:^(ChatThreadModel * _Nonnull chatThread) {
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) return;
-            [PPOverlayCoordinator pp_openChatThread:chatThread fromVC:self];
+            [self pp_openMessagingThread:chatThread];
         }];
     }
     return cell;
@@ -1408,7 +1572,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    [PPOverlayCoordinator pp_openChatThread:thread fromVC:self];
+    [self pp_openMessagingThread:thread];
 }
 
 - (void)tableView:(UITableView *)tableView prefetchRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
@@ -1475,7 +1639,23 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    [PPOverlayCoordinator pp_openChatThread:thread fromVC:self];
+    [self pp_openMessagingThread:thread];
+}
+
+- (void)pp_openMessagingThread:(ChatThreadModel *)thread {
+    if (!thread) {
+        return;
+    }
+
+    [self.chatCellBridge collapseExpanded];
+    [self reloadTableAnimated];
+
+    BOOL didPresent = [PPOverlayCoordinator pp_openChatThread:thread
+                                                petAdContext:nil
+                                                      fromVC:self];
+    if (didPresent) {
+        self.needsInboxReloadAfterMessagingTransition = YES;
+    }
 }
 
 - (void)pp_dismissPresentedStartChatPicker {
@@ -1588,7 +1768,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
         }
 
         dispatch_async(dispatch_get_main_queue(), ^{
-            [PPOverlayCoordinator pp_openChatThread:thread fromVC:self];
+            [self pp_openMessagingThread:thread];
         });
     }];
 }

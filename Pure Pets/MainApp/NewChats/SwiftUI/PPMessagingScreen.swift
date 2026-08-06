@@ -2,9 +2,9 @@
 //  PPMessagingScreen.swift
 //  Pure Pets
 //
-//  SwiftUI presentation owner for the consumer messaging experience.
-//  Objective-C remains the behavior bridge; this file does not own Firebase,
-//  notification routing, thread creation, uploads, or business policy.
+//  The Objective-C delegate remains the primary behavior bridge. When a current
+//  presenter has not supplied one, this host reuses existing app services for
+//  safe local header actions without changing the message transport contract.
 //
 
 import AVKit
@@ -44,20 +44,57 @@ public protocol PPMessagingSwiftUIHostControllerDelegate: AnyObject {
 
 @objc(PPMessagingSwiftUIHostController)
 public final class PPMessagingSwiftUIHostController: UIViewController {
-    @objc public weak var delegate: PPMessagingSwiftUIHostControllerDelegate?
+    @objc public weak var delegate: PPMessagingSwiftUIHostControllerDelegate? {
+        didSet {
+            actionRelay?.delegate = delegate
+        }
+    }
+
+    private static var messagingToolbarSuppressionCount = 0
+    private static var previousMessagingKeyboardManagerEnabled: Bool?
+    private static var previousMessagingToolbarEnabled: Bool?
 
     private let screenState = PPMessagingScreenState()
+    private var actionRelay: PPMessagingActionRelay?
     private var hostingController: UIHostingController<PPMessagingScreen>?
     private var chatThread: ChatThreadModel?
+    private var launchPetAdContext: PetAd?
     private var messagePageLimit = 50
     private var messageObservationGeneration = 0
+    private var conversationActivityGeneration = 0
+    private var presenceObserverToken: Any?
+    private var observedPresenceUserID = ""
+    private var observedTypingThreadID = ""
+    private var observedTypingUserID = ""
+    private var isSuppressingMessagingToolbar = false
+    private var isOpeningParticipantStories = false
+    private var unsendingMessageIDs = Set<String>()
+    private weak var containingNavigationController: UINavigationController?
+    private var previousNavigationBarHidden: Bool?
+    private var keyboardFrameObserver: NSObjectProtocol?
+    private var lastObservedKeyboardOverlap: CGFloat = 0
+    private var keyboardExpansionWorkItem: DispatchWorkItem?
 
     @objc(configureWithChatThread:)
     public func configure(with thread: ChatThreadModel) {
+        configure(with: thread, petAdContext: nil)
+    }
+
+    @objc(configureWithChatThread:petAdContext:)
+    public func configure(with thread: ChatThreadModel, petAdContext: PetAd?) {
         onMain { [weak self] in
             guard let self = self else { return }
+            self.stopConversationActivityObservation()
             self.chatThread = thread
-            self.screenState.configure(thread: thread, isModal: true)
+            self.launchPetAdContext = petAdContext
+            self.screenState.configure(
+                thread: thread,
+                isModal: false,
+                petAdContext: petAdContext
+            )
+            if self.viewIfLoaded?.window != nil {
+                self.startConversationActivityObservationIfNeeded()
+            }
         }
     }
 
@@ -74,11 +111,12 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
             self?.sendStickerThroughExistingPipeline(sticker)
         }
         relay.onContextRequested = { [weak self] contextID in
-            self?.presentSupportContextDetails(contextID: contextID)
+            self?.presentConversationContext(contextID: contextID)
         }
-        relay.onActionRequested = { [weak self] action, _ in
-            self?.handleMessageAction(action)
+        relay.onActionRequested = { [weak self] action, messageID in
+            self?.handleMessageAction(action, messageID: messageID)
         }
+        actionRelay = relay
 
         let screen = PPMessagingScreen(state: screenState, relay: relay)
         let host = UIHostingController(rootView: screen)
@@ -97,55 +135,264 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         hostingController = host
     }
 
-    private func presentSupportContextDetails(contextID: String?) {
-        guard let thread = chatThread,
-              screenState.isSupportThread,
-              let contextID = contextID,
-              contextID == thread.id,
-              viewIfLoaded?.window != nil else {
+    private func presentConversationContext(contextID: String?) {
+        guard let contextID, !contextID.isEmpty else {
             return
         }
 
+        let contextType = screenState.contextType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let isEntityContext = ["listing", "pet_listing", "pet_ad", "order"]
+            .contains(contextType)
+
+        if isEntityContext {
+            if contextType == "pet_ad",
+               let petAd = launchPetAdContext,
+               petAd.adID == contextID {
+                PPPetAdViewerLegacyBridge.openPetAd(petAd, from: self)
+                return
+            }
+
+            if let delegate {
+                delegate.messagingHostDidRequestAction(
+                    PPMessagingAction.context.rawValue,
+                    messageID: contextID
+                )
+            } else {
+                presentConversationContextDetails(contextID: contextID)
+            }
+            return
+        }
+
+        guard screenState.isSupportThread else {
+            if let delegate {
+                delegate.messagingHostDidRequestAction(
+                    PPMessagingAction.context.rawValue,
+                    messageID: contextID
+                )
+            } else {
+                presentConversationContextDetails(contextID: contextID)
+            }
+            return
+        }
+
+        guard let thread = chatThread,
+              contextID == thread.id,
+              viewIfLoaded?.window != nil else { return }
+
         let title = thread.supportDisplayName
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let alert = UIAlertController(
-            title: title.isEmpty ? NSLocalizedString("Support", comment: "") : title,
-            message: PPMessagingSupportContextFormatter.detailsMessage(
+        PPAlertHelper.showInfo(
+            in: self,
+            title: title.isEmpty ? ppLocalized("Support") : title,
+            subtitle: PPMessagingSupportContextFormatter.detailsMessage(
                 status: thread.supportStatus
-            ),
-            preferredStyle: .alert
-        )
-        alert.addAction(
-            UIAlertAction(
-                title: NSLocalizedString("OK", comment: ""),
-                style: .default
             )
         )
-        present(alert, animated: true)
+    }
+
+    private func presentConversationContextDetails(contextID _: String) {
+        guard viewIfLoaded?.window != nil else { return }
+
+        let snapshot = screenState.contextSnapshot
+        let title = [
+            snapshot["title"] as? String,
+            snapshot["displayTitle"] as? String,
+            snapshot["orderNumber"] as? String
+        ]
+        .compactMap { value in
+            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        .first ?? ppLocalized("details")
+
+        let detail = [
+            snapshot["detail"] as? String,
+            snapshot["subtitle"] as? String,
+            snapshot["statusText"] as? String
+        ]
+        .compactMap { value in
+            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        .joined(separator: " · ")
+
+        PPAlertHelper.showInfo(
+            in: self,
+            title: title,
+            subtitle: detail.isEmpty ? nil : detail
+        )
     }
 
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        containingNavigationController = navigationController
+        if previousNavigationBarHidden == nil {
+            previousNavigationBarHidden = navigationController?.isNavigationBarHidden
+        }
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+        updateNavigationPresentationStyle()
+        beginMessagingKeyboardToolbarSuppression()
+        beginKeyboardFrameObservation()
+        actionRelay?.delegate = delegate
         if let root = hostingController?.rootView {
             root.relay.delegate = delegate
         }
         startMessageObservationIfNeeded()
+        startConversationActivityObservationIfNeeded()
     }
 
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        endMessagingKeyboardToolbarSuppression()
+        endKeyboardFrameObservation()
 
         let isLeavingScreen =
             isMovingFromParent ||
             isBeingDismissed ||
             navigationController?.isBeingDismissed == true
         if isLeavingScreen {
+            if let previousNavigationBarHidden {
+                containingNavigationController?.setNavigationBarHidden(
+                    previousNavigationBarHidden,
+                    animated: animated
+                )
+            }
             stopMessageObservation()
+            stopConversationActivityObservation()
         }
     }
 
+    public override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        updateBottomNavigationClearance()
+    }
+
+    public override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateBottomNavigationClearance()
+    }
+
     deinit {
+        endMessagingKeyboardToolbarSuppression()
+        endKeyboardFrameObservation()
         stopMessageObservation()
+        stopConversationActivityObservation()
+    }
+
+    private func updateBottomNavigationClearance() {
+        let clearance = PPPetAdViewerLegacyBridge.bottomNavigationClearance(
+            from: self
+        )
+        screenState.bottomNavigationClearance = max(0, clearance)
+    }
+
+    private func updateNavigationPresentationStyle() {
+        guard let navigationController else {
+            screenState.isModal = presentingViewController != nil
+            return
+        }
+        screenState.isModal =
+            navigationController.viewControllers.first === self &&
+            navigationController.presentingViewController != nil
+    }
+
+    private func beginKeyboardFrameObservation() {
+        guard keyboardFrameObserver == nil else { return }
+        keyboardFrameObserver = NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleKeyboardFrameChange(notification)
+        }
+    }
+
+    private func endKeyboardFrameObservation() {
+        if let keyboardFrameObserver {
+            NotificationCenter.default.removeObserver(keyboardFrameObserver)
+            self.keyboardFrameObserver = nil
+        }
+        keyboardExpansionWorkItem?.cancel()
+        keyboardExpansionWorkItem = nil
+        lastObservedKeyboardOverlap = 0
+        screenState.setKeyboardPresented(false)
+    }
+
+    private func handleKeyboardFrameChange(_ notification: Notification) {
+        guard let window = viewIfLoaded?.window,
+              let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
+                as? CGRect else { return }
+
+        let keyboardFrameInWindow = window.convert(endFrame, from: nil)
+        let hostFrameInWindow = view.convert(view.bounds, to: window)
+        let overlap = max(
+            0,
+            hostFrameInWindow.intersection(keyboardFrameInWindow).height
+        )
+
+        let previousOverlap = lastObservedKeyboardOverlap
+        lastObservedKeyboardOverlap = overlap
+        screenState.setKeyboardPresented(overlap > 1)
+
+        if overlap <= 1 {
+            keyboardExpansionWorkItem?.cancel()
+            keyboardExpansionWorkItem = nil
+            return
+        }
+
+        guard previousOverlap <= 1 || overlap > previousOverlap + 1 else {
+            return
+        }
+
+        // Coalesce the keyboard's interactive frame stream. Height decreases
+        // never publish, while a cancelled dismissal or a taller input mode
+        // produces one correction only after its frames settle.
+        keyboardExpansionWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.screenState.noteKeyboardExpansion()
+            self?.keyboardExpansionWorkItem = nil
+        }
+        keyboardExpansionWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: workItem)
+    }
+
+    private func beginMessagingKeyboardToolbarSuppression() {
+        guard !isSuppressingMessagingToolbar else { return }
+
+        let manager = IQKeyboardManager.shared
+        if Self.messagingToolbarSuppressionCount == 0 {
+            Self.previousMessagingKeyboardManagerEnabled = manager().isEnabled
+            Self.previousMessagingToolbarEnabled = manager().isEnableAutoToolbar
+        }
+        Self.messagingToolbarSuppressionCount += 1
+        isSuppressingMessagingToolbar = true
+        manager().isEnabled = false
+        manager().isEnableAutoToolbar = false
+        manager().reloadInputViews()
+    }
+
+    private func endMessagingKeyboardToolbarSuppression() {
+        guard isSuppressingMessagingToolbar else { return }
+
+        let manager = IQKeyboardManager.shared
+        Self.messagingToolbarSuppressionCount = max(
+            0,
+            Self.messagingToolbarSuppressionCount - 1
+        )
+        isSuppressingMessagingToolbar = false
+
+        guard Self.messagingToolbarSuppressionCount == 0 else { return }
+        if let previousValue = Self.previousMessagingKeyboardManagerEnabled {
+            manager().isEnabled = previousValue
+        }
+        if let previousValue = Self.previousMessagingToolbarEnabled {
+            manager().isEnableAutoToolbar = previousValue
+        }
+        Self.previousMessagingKeyboardManagerEnabled = nil
+        Self.previousMessagingToolbarEnabled = nil
+        manager().reloadInputViews()
     }
 
     private func startMessageObservationIfNeeded() {
@@ -192,6 +439,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
                 animated: initialLoadCompleted
             )
         }
+
     }
 
     private func stopMessageObservation() {
@@ -205,6 +453,88 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         }
     }
 
+    private func startConversationActivityObservationIfNeeded() {
+        let participantID = screenState.participantID
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let threadID = chatThread?.id
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !participantID.isEmpty, !threadID.isEmpty else {
+            stopConversationActivityObservation()
+            return
+        }
+
+        guard participantID != observedPresenceUserID
+                || participantID != observedTypingUserID
+                || threadID != observedTypingThreadID else {
+            refreshConversationPresence(participantID: participantID)
+            return
+        }
+
+        stopConversationActivityObservation()
+        conversationActivityGeneration &+= 1
+        let generation = conversationActivityGeneration
+        observedPresenceUserID = participantID
+        observedTypingUserID = participantID
+        observedTypingThreadID = threadID
+
+        let presenceManager = ChatPresenceManager.shared()
+        presenceObserverToken = presenceManager.addPresenceObserver {
+            [weak self] updatedUserID in
+            guard updatedUserID == participantID else { return }
+            self?.onMain { [weak self] in
+                guard let self,
+                      generation == self.conversationActivityGeneration,
+                      self.observedPresenceUserID == participantID else { return }
+                self.refreshConversationPresence(participantID: participantID)
+            }
+        }
+        presenceManager.startObservingUsers([participantID])
+        refreshConversationPresence(participantID: participantID)
+
+        ChManager.shared().startListeningForOtherUserTyping(
+            inThread: threadID,
+            otherUser: participantID
+        ) { [weak self] isTyping in
+            self?.onMain { [weak self] in
+                guard let self,
+                      generation == self.conversationActivityGeneration,
+                      self.observedTypingThreadID == threadID,
+                      self.observedTypingUserID == participantID else { return }
+                self.screenState.isTyping = isTyping
+            }
+        }
+    }
+
+    private func refreshConversationPresence(participantID: String) {
+        let manager = ChatPresenceManager.shared()
+        screenState.isOnline = manager.isUserOnline(participantID)
+        screenState.lastActiveAt = manager.lastSeen(forUser: participantID)
+    }
+
+    private func stopConversationActivityObservation() {
+        conversationActivityGeneration &+= 1
+
+        if let presenceObserverToken {
+            ChatPresenceManager.shared().removePresenceObserver(
+                presenceObserverToken
+            )
+            self.presenceObserverToken = nil
+        }
+
+        if !observedTypingThreadID.isEmpty,
+           !observedTypingUserID.isEmpty {
+            ChManager.shared().stopListeningForOtherUserTyping(
+                inThread: observedTypingThreadID,
+                otherUser: observedTypingUserID
+            )
+        }
+
+        observedPresenceUserID = ""
+        observedTypingThreadID = ""
+        observedTypingUserID = ""
+        screenState.isTyping = false
+    }
+
     private func loadOlderMessages() {
         guard !screenState.isLoadingOlder, screenState.canLoadOlder else {
             return
@@ -214,16 +544,404 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         startMessageObservationIfNeeded()
     }
 
-    private func handleMessageAction(_ action: PPMessagingAction) {
+    private func handleMessageAction(
+        _ action: PPMessagingAction,
+        messageID: String? = nil
+    ) {
         switch action {
         case .loadOlder:
             loadOlderMessages()
         case .retryConnection:
             screenState.setConnectionInterrupted(false)
             startMessageObservationIfNeeded()
+        case .close:
+            closeMessagingHost()
+        case .more:
+            presentConversationActions()
+        case .profile:
+            presentParticipantStories()
+        case .report:
+            presentReportConfirmation()
+        case .context:
+            presentConversationContext(contextID: messageID)
+        case .reply:
+            beginReply(messageID: messageID)
+        case .copy:
+            PPHUD.showSuccess(ppLocalized("chat_copied"))
+        case .unsend:
+            confirmUnsend(messageID: messageID)
+        case .replyUnavailable:
+            PPHUD.showInfo(ppLocalized("chat_reply_unavailable"))
+        case .composerCancelledReply:
+            screenState.clearReplyComposer()
         default:
             break
         }
+    }
+
+    private func beginReply(messageID: String?) {
+        guard let messageID,
+              let message = screenState.message(withID: messageID) else {
+            PPHUD.showInfo(ppLocalized("chat_reply_unavailable"))
+            return
+        }
+
+        screenState.beginReply(to: message)
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    private func confirmUnsend(messageID: String?) {
+        guard let messageID,
+              let message = screenState.message(withID: messageID),
+              message.isUnsendEligible(at: Date()),
+              let thread = chatThread,
+              !thread.id.isEmpty,
+              !unsendingMessageIDs.contains(messageID),
+              viewIfLoaded?.window != nil else {
+            PPHUD.showInfo(ppLocalized("chat_unsend_failed"))
+            return
+        }
+
+        PPAlertHelper.showConfirmation(
+            in: self,
+            title: ppLocalized("chat_unsend_title"),
+            subtitle: ppLocalized("chat_unsend_confirmation"),
+            confirmButton: ppLocalized("chat_unsend"),
+            cancelButton: ppLocalized("chat.cancel"),
+            icon: UIImage(systemName: "trash"),
+            confirmBlock: { [weak self] _, didConfirm in
+                guard didConfirm else { return }
+                self?.unsendMessage(
+                    messageID: messageID,
+                    threadID: thread.id
+                )
+            },
+            cancelBlock: nil
+        )
+    }
+
+    private func unsendMessage(messageID: String, threadID: String) {
+        guard !unsendingMessageIDs.contains(messageID) else { return }
+        unsendingMessageIDs.insert(messageID)
+        PPHUD.showLoading()
+
+        ChManager.shared().unsendMessage(
+            withID: messageID,
+            threadID: threadID
+        ) { [weak self] error in
+            self?.onMain {
+                guard let self else { return }
+                self.unsendingMessageIDs.remove(messageID)
+                PPHUD.dismiss()
+
+                if error != nil {
+                    PPHUD.showError(self.ppLocalized("chat_unsend_failed"))
+                    return
+                }
+
+                self.screenState.markMessageUnsent(messageID: messageID)
+                PPHUD.showSuccess(self.ppLocalized("chat_unsend_success"))
+            }
+        }
+    }
+
+    private func closeMessagingHost() {
+        if let navigationController {
+            if navigationController.viewControllers.first === self,
+               navigationController.presentingViewController != nil {
+                navigationController.dismiss(animated: true)
+            } else if navigationController.topViewController === self {
+                navigationController.popViewController(animated: true)
+            } else {
+                dismiss(animated: true)
+            }
+            return
+        }
+        dismiss(animated: true)
+    }
+
+    private func presentConversationActions() {
+        guard let thread = chatThread,
+              viewIfLoaded?.window != nil else { return }
+
+        let rootView = PPMessagingConversationActionsSheet(
+            title: ppLocalized("chat.actions.title"),
+            conversationName: screenState.conversationName,
+            isPinned: thread.isPinned != 0,
+            isMuted: thread.isMuted,
+            isBinned: thread.isBinned,
+            isReported: thread.isReportedByMe,
+            onPin: delegate == nil ? nil : { [weak self] in
+                self?.delegate?.messagingHostDidRequestAction(
+                    PPMessagingAction.pin.rawValue,
+                    messageID: nil
+                )
+            },
+            onMute: { [weak self] in
+                self?.toggleMuteThread()
+            },
+            onBackground: delegate == nil ? nil : { [weak self] in
+                self?.delegate?.messagingHostDidRequestAction(
+                    PPMessagingAction.background.rawValue,
+                    messageID: nil
+                )
+            },
+            onReport: thread.isReportedByMe ? nil : { [weak self] in
+                self?.presentReportConfirmation()
+            },
+            onBin: { [weak self] in
+                self?.confirmBinThread()
+            }
+        )
+        .environment(
+            \.layoutDirection,
+            Language.isRTL() ? .rightToLeft : .leftToRight
+        )
+        .environment(
+            \.locale,
+            Locale(identifier: Language.isRTL() ? "ar_QA" : "en_QA")
+        )
+
+        let controller = UIHostingController(rootView: rootView)
+        controller.view.backgroundColor = .clear
+        controller.modalPresentationStyle = .pageSheet
+
+        if let sheet = controller.sheetPresentationController {
+            let actionDetent = UISheetPresentationController.Detent.custom {
+                context in
+                min(
+                    context.maximumDetentValue,
+                    max(390, context.maximumDetentValue * 0.62)
+                )
+            }
+            sheet.detents = [actionDetent]
+            sheet.prefersGrabberVisible = false
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+            sheet.preferredCornerRadius = 32
+        }
+
+        present(controller, animated: true)
+    }
+
+    private func toggleMuteThread() {
+        guard let thread = chatThread,
+              !thread.id.isEmpty else { return }
+
+        let nextMuted = !thread.isMuted
+        PPHUD.showLoading()
+        ChManager.shared().muteThread(
+            withID: thread.id,
+            muted: nextMuted
+        ) { [weak self] error in
+            self?.onMain {
+                guard let self else { return }
+                PPHUD.dismiss()
+                if error != nil {
+                    PPHUD.showError(self.ppLocalized("SomethingWentWrong"))
+                    return
+                }
+
+                thread.isMuted = nextMuted
+                let currentUserID = UserManager.shared().currentUser?.id ?? ""
+                if !currentUserID.isEmpty {
+                    var mutedBy = thread.mutedBy
+                    if nextMuted {
+                        if !mutedBy.contains(currentUserID) {
+                            mutedBy.append(currentUserID)
+                        }
+                    } else {
+                        mutedBy.removeAll { $0 == currentUserID }
+                    }
+                    thread.mutedBy = mutedBy
+                }
+                self.screenState.isMuted = nextMuted
+                PPHUD.showSuccess(
+                    self.ppLocalized(nextMuted ? "chat.muted" : "chat.unmuted")
+                )
+            }
+        }
+    }
+
+    private func confirmBinThread() {
+        guard let thread = chatThread,
+              !thread.id.isEmpty else { return }
+
+        let nextBinned = !thread.isBinned
+        PPAlertHelper.showConfirmation(
+            in: self,
+            title: ppLocalized(
+                nextBinned
+                    ? "chat.bin.confirm.title"
+                    : "chat.unbin.confirm.title"
+            ),
+            subtitle: ppLocalized(
+                nextBinned
+                    ? "chat.bin.confirm.message"
+                    : "chat.unbin.confirm.message"
+            ),
+            confirmButton: ppLocalized(
+                nextBinned ? "chat.bin.confirm.action" : "chat.unbin"
+            ),
+            cancelButton: ppLocalized("chat.cancel"),
+            icon: UIImage(
+                systemName: nextBinned
+                    ? "archivebox.fill"
+                    : "tray.and.arrow.up.fill"
+            ),
+            confirmBlock: { [weak self] _, didConfirm in
+                guard didConfirm else { return }
+                self?.updateBinState(thread: thread, binned: nextBinned)
+            },
+            cancelBlock: nil
+        )
+    }
+
+    private func updateBinState(thread: ChatThreadModel, binned: Bool) {
+        PPHUD.showLoading()
+        ChManager.shared().binThread(
+            withID: thread.id,
+            binned: binned
+        ) { [weak self] error in
+            self?.onMain {
+                guard let self else { return }
+                PPHUD.dismiss()
+                if error != nil {
+                    PPHUD.showError(self.ppLocalized("SomethingWentWrong"))
+                    return
+                }
+
+                thread.isBinned = binned
+                let currentUserID = UserManager.shared().currentUser?.id ?? ""
+                if !currentUserID.isEmpty {
+                    var binnedBy = thread.binnedBy
+                    if binned {
+                        if !binnedBy.contains(currentUserID) {
+                            binnedBy.append(currentUserID)
+                        }
+                    } else {
+                        binnedBy.removeAll { $0 == currentUserID }
+                    }
+                    thread.binnedBy = binnedBy
+                }
+                self.screenState.isBinned = binned
+                PPHUD.showSuccess(
+                    self.ppLocalized(binned ? "chat.binned" : "chat.unbinned")
+                )
+
+                if binned {
+                    NotificationCenter.default.post(
+                        name: Notification.Name("forceReloadThreads"),
+                        object: nil
+                    )
+                    self.closeMessagingHost()
+                }
+            }
+        }
+    }
+
+    private func presentReportConfirmation() {
+        guard let thread = chatThread else { return }
+        if thread.isReportedByMe {
+            PPHUD.showInfo(ppLocalized("chat.report.already"))
+            return
+        }
+
+        PPAlertHelper.showDestructiveTextField(
+            in: self,
+            title: ppLocalized("chat.report.title"),
+            subtitle: ppLocalized("chat.report.message"),
+            placeholder: ppLocalized("chat.report.reason.placeholder"),
+            initialText: nil,
+            confirmText: ppLocalized("chat.report.confirm"),
+            cancelText: ppLocalized("chat.cancel"),
+            icon: UIImage(systemName: "exclamationmark.bubble.fill")
+        ) { [weak self] reason, didConfirm in
+            guard didConfirm else { return }
+            self?.submitReport(thread: thread, reason: reason ?? "")
+        }
+    }
+
+    private func submitReport(thread: ChatThreadModel, reason: String) {
+        guard !thread.isReportedByMe else {
+            PPHUD.showInfo(ppLocalized("chat.report.already"))
+            return
+        }
+
+        PPHUD.showLoading()
+        ChManager.shared().reportThread(
+            thread,
+            reason: reason
+        ) { [weak self] error in
+            self?.onMain {
+                guard let self else { return }
+                PPHUD.dismiss()
+                if error != nil {
+                    PPHUD.showError(self.ppLocalized("SomethingWentWrong"))
+                    return
+                }
+
+                thread.isReportedByMe = true
+                let currentUserID = UserManager.shared().currentUser?.id ?? ""
+                if !currentUserID.isEmpty {
+                    var reportedBy = thread.reportedBy
+                    if !reportedBy.contains(currentUserID) {
+                        reportedBy.append(currentUserID)
+                    }
+                    thread.reportedBy = reportedBy
+                }
+                self.screenState.isReported = true
+                PPHUD.showSuccess(self.ppLocalized("chat.report.success"))
+            }
+        }
+    }
+
+    private func presentParticipantStories() {
+        guard !isOpeningParticipantStories,
+              presentedViewController == nil,
+              viewIfLoaded?.window != nil,
+              let thread = chatThread else { return }
+
+        let user = ChatThreadModel.resolveOtherUser(fromThread: thread) ?? thread.otherUser
+        let targetUserID = user?.id ?? ""
+        guard !targetUserID.isEmpty else {
+            PPHUD.showInfo(ppLocalized("story_unavailable"))
+            return
+        }
+
+        isOpeningParticipantStories = true
+        PPHUD.showLoading(ppLocalized("story_loading"))
+        PPStoriesManager.shared().fetchStories(forUserID: targetUserID) { [weak self] stories, error in
+            self?.onMain {
+                guard let self else { return }
+                self.isOpeningParticipantStories = false
+                PPHUD.dismiss()
+
+                if error != nil {
+                    PPHUD.showInfo(self.ppLocalized("story_load_failed"))
+                    return
+                }
+                guard !stories.isEmpty,
+                      let firstStory = stories.first,
+                      !firstStory.items.isEmpty else {
+                    PPHUD.showInfo(self.ppLocalized("story_no_items"))
+                    return
+                }
+
+                guard let player = PPStoryPlayerViewController(
+                    stories: stories,
+                    start: 0
+                ) else {
+                    PPHUD.showInfo(self.ppLocalized("story_unavailable"))
+                    return
+                }
+                player.modalPresentationStyle = .fullScreen
+                self.present(player, animated: true)
+            }
+        }
+    }
+
+    private func ppLocalized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
     }
 
     private func messagePayload(
@@ -268,7 +986,11 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
             "transferProgress": message.transferProgress,
             "isDeleted": message.isDeleted,
             "isOutgoing": message.senderID == currentUserID,
-            "canUnsend": false
+            "canUnsend": PPMessagingSwiftUIHostController.canUnsend(
+                message: message,
+                currentUserID: currentUserID,
+                now: Date()
+            )
         ]
 
         if let replyToMessageID = message.replyToMessageID {
@@ -283,6 +1005,22 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
             payload["thumbnailImage"] = thumbnailImage
         }
         return payload
+    }
+
+    private static func canUnsend(
+        message: ChatMessageModel,
+        currentUserID: String,
+        now: Date
+    ) -> Bool {
+        guard !message.isDeleted,
+              !currentUserID.isEmpty,
+              message.senderID == currentUserID else {
+            return false
+        }
+
+        let age = now.timeIntervalSince(message.timestamp)
+        return age <= PPMessagingUnsendPolicy.window &&
+            age >= -PPMessagingUnsendPolicy.clockSkewTolerance
     }
 
     private func sendTextThroughExistingPipeline(_ rawText: String) {
@@ -310,12 +1048,16 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         message.receiverID = receiverID
         message.timestamp = Date()
         message.messageType = .text
+        let replyToMessageID = screenState.composerReplyMessageID
+        message.replyToMessageID = replyToMessageID
 
         screenState.appendOptimisticText(
             messageID: message.id,
             text: text,
-            senderID: senderID
+            senderID: senderID,
+            replyToMessageID: replyToMessageID
         )
+        screenState.clearReplyComposer()
 
         ChManager.shared().sendMessage(
             message,
@@ -374,12 +1116,16 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         message.stickerStoragePath = sticker.storagePath
         message.mimeType = "image/png"
         message.mediaWidth = 1.0
+        let replyToMessageID = screenState.composerReplyMessageID
+        message.replyToMessageID = replyToMessageID
 
         screenState.appendOptimisticSticker(
             messageID: message.id,
             sticker: sticker,
-            senderID: senderID
+            senderID: senderID,
+            replyToMessageID: replyToMessageID
         )
+        screenState.clearReplyComposer()
 
         ChManager.shared().sendMessage(
             message,
@@ -566,15 +1312,13 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
     @objc(setReplyPreviewTitle:subtitle:)
     public func setReplyPreviewTitle(_ title: String, subtitle: String) {
         onMain { [weak self] in
-            self?.screenState.composerState.replyTitle = title
-            self?.screenState.composerState.replySubtitle = subtitle
+            self?.screenState.setReplyPreview(title: title, subtitle: subtitle)
         }
     }
 
     @objc public func clearReplyPreview() {
         onMain { [weak self] in
-            self?.screenState.composerState.replyTitle = ""
-            self?.screenState.composerState.replySubtitle = ""
+            self?.screenState.clearReplyComposer()
         }
     }
 
@@ -604,6 +1348,12 @@ private final class PPMessagingScreenState: ObservableObject {
     @Published var canLoadOlder = false
     @Published var isTyping = false
     @Published var conversationName = ""
+    @Published var participantID = ""
+    @Published var participantVerified = false
+    @Published var participantRestricted = false
+    @Published var participantPlan = ""
+    @Published var providerRatingValue = 0.0
+    @Published var providerReviewCount = 0
     @Published var presenceText = ""
     @Published var avatarURLString = ""
     @Published var isOnline = false
@@ -618,8 +1368,13 @@ private final class PPMessagingScreenState: ObservableObject {
     @Published var supportThreadID = ""
     @Published var supportDisplayName = ""
     @Published var supportStatus = ""
+    @Published var contextType = ""
+    @Published var contextID = ""
+    @Published var contextSnapshot: NSDictionary = [:]
     @Published var bottomNavigationClearance: CGFloat = 0
     @Published var backgroundImage: UIImage?
+    @Published private(set) var keyboardIsPresented = false
+    @Published private(set) var keyboardExpansionRevision = 0
     @Published private(set) var messageRevision = 0
     @Published private(set) var latestAppendedCount = 0
     @Published private(set) var latestAppendContainsOutgoing = false
@@ -631,6 +1386,7 @@ private final class PPMessagingScreenState: ObservableObject {
     @Published private(set) var audioLoading = false
 
     let composerState = PPNovaChatBarState()
+    private(set) var composerReplyMessageID: String?
 
     private var failedMessages: [String: String] = [:]
     private var knownMessageIDs = Set<String>()
@@ -687,6 +1443,15 @@ private final class PPMessagingScreenState: ObservableObject {
         messageRevision &+= 1
     }
 
+    func markMessageUnsent(messageID: String) {
+        failedMessages.removeValue(forKey: messageID)
+        messages = messages.map {
+            guard $0.id == messageID else { return $0 }
+            return $0.withUnsent()
+        }
+        messageRevision &+= 1
+    }
+
     func setConnectionInterrupted(_ interrupted: Bool) {
         connectionInterrupted = interrupted
         if interrupted {
@@ -714,6 +1479,12 @@ private final class PPMessagingScreenState: ObservableObject {
         supportStatus: String
     ) {
         conversationName = name
+        participantID = ""
+        participantVerified = false
+        participantRestricted = false
+        participantPlan = ""
+        providerRatingValue = 0
+        providerReviewCount = 0
         presenceText = status
         self.avatarURLString = avatarURLString
         self.isOnline = isOnline
@@ -728,13 +1499,20 @@ private final class PPMessagingScreenState: ObservableObject {
         self.supportThreadID = supportThreadID
         self.supportDisplayName = supportDisplayName
         self.supportStatus = supportStatus
+        contextType = ""
+        contextID = ""
+        contextSnapshot = [:]
         if !didResolveUnreadBoundary {
             requestedInitialUnreadCount = max(0, unreadCount)
             resolveUnreadBoundaryIfNeeded()
         }
     }
 
-    func configure(thread: ChatThreadModel, isModal: Bool) {
+    func configure(
+        thread: ChatThreadModel,
+        isModal: Bool,
+        petAdContext: PetAd? = nil
+    ) {
         let user = ChatThreadModel.resolveOtherUser(fromThread: thread) ?? thread.otherUser
         let isSupportThread = ChatThreadModel.isSupportThread(thread)
         let displayName: String = {
@@ -766,26 +1544,116 @@ private final class PPMessagingScreenState: ObservableObject {
             supportStatus: thread.supportStatus
         )
         lastActiveAt = user?.lastSeen
+        participantID = user?.id ?? ""
+        participantVerified = user?.isVerified ?? false
+        participantRestricted =
+            (user?.isEffectivelyBlocked ?? false) ||
+            (user?.isChatEffectivelyBlocked ?? false)
+        participantPlan = user?.subscriptionPlan ?? ""
+        providerRatingValue = user?.providerRatingValue ?? 0
+        providerReviewCount = max(0, user?.providerReviewCount ?? 0)
+        if let petAdContext,
+           !petAdContext.adID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            contextType = "pet_ad"
+            contextID = petAdContext.adID
+            contextSnapshot = Self.presentationSnapshot(for: petAdContext)
+        } else {
+            contextType = thread.contextType
+            contextID = thread.contextId
+            contextSnapshot = thread.contextSnapshot as NSDictionary
+        }
+    }
+
+    private static func presentationSnapshot(for ad: PetAd) -> NSDictionary {
+        let trimmedTitle = ad.adTitle?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let title = trimmedTitle.isEmpty
+            ? NSLocalizedString("pet_ad_viewer_title_fallback", comment: "")
+            : trimmedTitle
+        let price = PPPetAdViewerLegacyBridge.formattedPrice(for: ad)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let location = PPPetAdViewerLegacyBridge.locationName(for: ad)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let availability = NSLocalizedString(
+            ad.isSold ? "Sold" : "Available",
+            comment: ""
+        )
+        let detail = [price, availability, location]
+            .filter { !$0.isEmpty }
+            .reduce(into: [String]()) { values, value in
+                if !values.contains(value) { values.append(value) }
+            }
+            .joined(separator: " · ")
+        let thumbnailURLString = PPPetAdMediaItem.items(from: ad)
+            .compactMap(\.imageURL)
+            .first ?? ""
+
+        return [
+            "title": title,
+            "detail": detail,
+            "priceText": price,
+            "availabilityText": availability,
+            "thumbnailURLString": thumbnailURLString
+        ]
+    }
+
+    func message(withID messageID: String) -> PPMessagingMessageSnapshot? {
+        messages.first { $0.id == messageID }
+    }
+
+    func beginReply(to message: PPMessagingMessageSnapshot) {
+        composerReplyMessageID = message.id
+
+        let senderName = message.isOutgoing
+            ? NSLocalizedString("chat_reply_sender_you", comment: "")
+            : (conversationName.isEmpty
+                ? NSLocalizedString("Chat", comment: "")
+                : conversationName)
+        composerState.replyTitle = String(
+            format: NSLocalizedString("chat_replying_to_format", comment: ""),
+            senderName
+        )
+        composerState.replySubtitle = replyPreviewText(for: message)
+        composerState.isFocusedTrigger = true
+    }
+
+    func setReplyPreview(title: String, subtitle: String) {
+        composerReplyMessageID = nil
+        composerState.replyTitle = title
+        composerState.replySubtitle = subtitle
+    }
+
+    func clearReplyComposer() {
+        composerReplyMessageID = nil
+        composerState.replyTitle = ""
+        composerState.replySubtitle = ""
+        composerState.isFocusedTrigger = false
     }
 
     func appendOptimisticText(
         messageID: String,
         text: String,
-        senderID: String
+        senderID: String,
+        replyToMessageID: String?
     ) {
         guard !messages.contains(where: { $0.id == messageID }) else { return }
 
+        var payload: [String: Any] = [
+            "id": messageID,
+            "text": text,
+            "senderID": senderID,
+            "timestamp": Date(),
+            "kind": "text",
+            "status": 0,
+            "isLocalPending": true,
+            "isOutgoing": true
+        ]
+        if let replyToMessageID {
+            payload["replyToMessageID"] = replyToMessageID
+        }
+
         let snapshot = PPMessagingMessageSnapshot(
-            payload: [
-                "id": messageID,
-                "text": text,
-                "senderID": senderID,
-                "timestamp": Date(),
-                "kind": "text",
-                "status": 0,
-                "isLocalPending": true,
-                "isOutgoing": true
-            ],
+            payload: payload,
             currentUserID: senderID,
             failureText: nil,
             animatesEntrance: true
@@ -800,22 +1668,28 @@ private final class PPMessagingScreenState: ObservableObject {
     func appendOptimisticSticker(
         messageID: String,
         sticker: PPChatSticker,
-        senderID: String
+        senderID: String,
+        replyToMessageID: String?
     ) {
         guard !messages.contains(where: { $0.id == messageID }) else { return }
 
+        var payload: [String: Any] = [
+            "id": messageID,
+            "text": "",
+            "senderID": senderID,
+            "timestamp": Date(),
+            "kind": "sticker",
+            "status": 0,
+            "fileURL": sticker.downloadURLString,
+            "isLocalPending": true,
+            "isOutgoing": true
+        ]
+        if let replyToMessageID {
+            payload["replyToMessageID"] = replyToMessageID
+        }
+
         let snapshot = PPMessagingMessageSnapshot(
-            payload: [
-                "id": messageID,
-                "text": "",
-                "senderID": senderID,
-                "timestamp": Date(),
-                "kind": "sticker",
-                "status": 0,
-                "fileURL": sticker.downloadURLString,
-                "isLocalPending": true,
-                "isOutgoing": true
-            ],
+            payload: payload,
             currentUserID: senderID,
             failureText: nil,
             animatesEntrance: true
@@ -867,6 +1741,15 @@ private final class PPMessagingScreenState: ObservableObject {
         audioLoading = isLoading
     }
 
+    func noteKeyboardExpansion() {
+        keyboardExpansionRevision &+= 1
+    }
+
+    func setKeyboardPresented(_ presented: Bool) {
+        guard keyboardIsPresented != presented else { return }
+        keyboardIsPresented = presented
+    }
+
     private func resolveUnreadBoundaryIfNeeded() {
         guard !didResolveUnreadBoundary,
               requestedInitialUnreadCount > 0,
@@ -881,6 +1764,30 @@ private final class PPMessagingScreenState: ObservableObject {
         let offset = min(requestedInitialUnreadCount, incoming.count)
         unreadBoundaryMessageID = incoming[incoming.count - offset].id
         didResolveUnreadBoundary = true
+    }
+
+    private func replyPreviewText(for message: PPMessagingMessageSnapshot) -> String {
+        if message.isDeleted {
+            return NSLocalizedString("chat_message_unsent", comment: "")
+        }
+
+        switch message.kind {
+        case "image":
+            return NSLocalizedString("chat_reply_image", comment: "")
+        case "video":
+            return NSLocalizedString("chat_reply_video", comment: "")
+        case "audio":
+            return NSLocalizedString("chat_reply_audio", comment: "")
+        case "sticker":
+            return NSLocalizedString("chat_reply_sticker", comment: "")
+        case "text":
+            let text = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty
+                ? NSLocalizedString("chat_reply_unavailable", comment: "")
+                : String(text.prefix(240))
+        default:
+            return NSLocalizedString("chat_reply_unavailable", comment: "")
+        }
     }
 }
 
@@ -952,30 +1859,31 @@ private struct PPMessagingMessageSnapshot: Identifiable {
         copying source: Self,
         failureText: String?,
         status: Int? = nil,
-        isLocalPending: Bool? = nil
+        isLocalPending: Bool? = nil,
+        unsent: Bool = false
     ) {
         id = source.id
-        text = source.text
+        text = unsent ? "" : source.text
         senderID = source.senderID
         timestamp = source.timestamp
-        kind = source.kind
+        kind = unsent ? "text" : source.kind
         self.status = status ?? source.status
-        fileURLString = source.fileURLString
-        thumbnailURLString = source.thumbnailURLString
-        localImage = source.localImage
-        thumbnailImage = source.thumbnailImage
-        duration = source.duration
-        mediaWidth = source.mediaWidth
-        mediaHeight = source.mediaHeight
-        waveformSamples = source.waveformSamples
-        isUploading = source.isUploading
-        self.isLocalPending = isLocalPending ?? source.isLocalPending
-        transferProgress = source.transferProgress
-        isDeleted = source.isDeleted
-        replyToMessageID = source.replyToMessageID
+        fileURLString = unsent ? "" : source.fileURLString
+        thumbnailURLString = unsent ? "" : source.thumbnailURLString
+        localImage = unsent ? nil : source.localImage
+        thumbnailImage = unsent ? nil : source.thumbnailImage
+        duration = unsent ? 0 : source.duration
+        mediaWidth = unsent ? 0 : source.mediaWidth
+        mediaHeight = unsent ? 0 : source.mediaHeight
+        waveformSamples = unsent ? [] : source.waveformSamples
+        isUploading = unsent ? false : source.isUploading
+        self.isLocalPending = unsent ? false : (isLocalPending ?? source.isLocalPending)
+        transferProgress = unsent ? 0 : source.transferProgress
+        isDeleted = unsent || source.isDeleted
+        replyToMessageID = unsent ? nil : source.replyToMessageID
         isOutgoing = source.isOutgoing
-        canUnsend = source.canUnsend
-        self.failureText = failureText
+        canUnsend = unsent ? false : source.canUnsend
+        self.failureText = unsent ? nil : failureText
         animatesEntrance = false
     }
 
@@ -1004,6 +1912,21 @@ private struct PPMessagingMessageSnapshot: Identifiable {
 
     var isMedia: Bool {
         kind == "image" || kind == "video" || kind == "sticker"
+    }
+
+    func withUnsent() -> Self {
+        Self(
+            copying: self,
+            failureText: nil,
+            unsent: true
+        )
+    }
+
+    func isUnsendEligible(at now: Date) -> Bool {
+        guard canUnsend, isOutgoing, !isDeleted else { return false }
+        let age = now.timeIntervalSince(timestamp)
+        return age <= PPMessagingUnsendPolicy.window &&
+            age >= -PPMessagingUnsendPolicy.clockSkewTolerance
     }
 }
 
@@ -1090,6 +2013,11 @@ private enum PPMessagingAction: String {
     case composerCancelledReply
 }
 
+private enum PPMessagingUnsendPolicy {
+    static let window: TimeInterval = 15 * 60
+    static let clockSkewTolerance: TimeInterval = 5 * 60
+}
+
 private enum PPMessagingSupportContextFormatter {
     static func statusText(_ rawStatus: String) -> String {
         let key: String
@@ -1118,6 +2046,269 @@ private enum PPMessagingSupportContextFormatter {
     }
 }
 
+// MARK: - Conversation Actions Sheet
+
+private struct PPMessagingConversationActionsSheet: View {
+    let title: String
+    let conversationName: String
+    let isPinned: Bool
+    let isMuted: Bool
+    let isBinned: Bool
+    let isReported: Bool
+    let onPin: (() -> Void)?
+    let onMute: () -> Void
+    let onBackground: (() -> Void)?
+    let onReport: (() -> Void)?
+    let onBin: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            PPMessagingPalette.canvas
+
+            RadialGradient(
+                colors: [
+                    PPMessagingPalette.highlight.opacity(
+                        colorScheme == .dark ? 0.11 : 0.075
+                    ),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 280
+            )
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(colorScheme == .dark ? 0.025 : 0.22),
+                    .clear
+                ],
+                startPoint: .top,
+                endPoint: .center
+            )
+
+            VStack(spacing: 0) {
+                Capsule(style: .continuous)
+                    .fill(PPMessagingPalette.secondaryText.opacity(0.26))
+                    .frame(width: 38, height: 5)
+                    .padding(.top, 9)
+                    .padding(.bottom, 8)
+                    .accessibilityHidden(true)
+
+                sheetHeader
+
+                ScrollView {
+                    VStack(spacing: 12) {
+                        settingsGroup
+                        safetyGroup
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 24)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        .presentationBackground(.clear)
+        .accessibilityIdentifier("pp.messaging.conversation-actions")
+    }
+
+    private var sheetHeader: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.custom("Beiruti-Bold", size: 22, relativeTo: .title2))
+                    .foregroundStyle(PPMessagingPalette.primaryText)
+
+                if !conversationName.isEmpty {
+                    Text(conversationName)
+                        .font(.custom("Beiruti-Regular", size: 13, relativeTo: .subheadline))
+                        .foregroundStyle(PPMessagingPalette.secondaryText)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 12)
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(PPMessagingPalette.primaryText)
+                    .frame(width: 44, height: 44)
+                    .background(PPMessagingPalette.controlSurface, in: Circle())
+                    .overlay {
+                        Circle()
+                            .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.75)
+                    }
+            }
+            .buttonStyle(PPMessagingPressButtonStyle())
+            .accessibilityLabel(localized("Close"))
+        }
+        .padding(.horizontal, 18)
+        .padding(.bottom, 4)
+    }
+
+    private var settingsGroup: some View {
+        actionGroup {
+            actionRow(
+                title: localized("chat.pin"),
+                systemName: "pin.fill",
+                disabledSystemName: isPinned ? "checkmark" : "lock.fill",
+                showsUnavailableReason: !isPinned,
+                accessibilityValue: isPinned
+                    ? localized("chat.action.completed")
+                    : nil,
+                action: isPinned ? nil : onPin
+            )
+
+            groupDivider
+
+            actionRow(
+                title: localized(isMuted ? "chat.unmute" : "chat.mute"),
+                systemName: isMuted ? "bell.fill" : "bell.slash.fill",
+                action: onMute
+            )
+
+            groupDivider
+
+            actionRow(
+                title: localized("chat.background"),
+                systemName: "photo.on.rectangle.angled",
+                action: onBackground
+            )
+        }
+    }
+
+    private var safetyGroup: some View {
+        actionGroup {
+            actionRow(
+                title: localized(isReported ? "chat.reported" : "chat.report"),
+                systemName: isReported ? "checkmark.shield.fill" : "exclamationmark.bubble.fill",
+                disabledSystemName: isReported ? "checkmark" : "lock.fill",
+                showsUnavailableReason: !isReported,
+                accessibilityValue: isReported
+                    ? localized("chat.action.completed")
+                    : nil,
+                action: onReport
+            )
+
+            groupDivider
+
+            actionRow(
+                title: localized(isBinned ? "chat.unbin" : "chat.bin"),
+                systemName: isBinned ? "tray.and.arrow.up.fill" : "archivebox.fill",
+                role: .destructive,
+                action: onBin
+            )
+        }
+    }
+
+    private func actionGroup<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 0, content: content)
+            .background(
+                PPMessagingPalette.headerSurface,
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.75)
+            }
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.14 : 0.045),
+                radius: 14,
+                y: 6
+            )
+    }
+
+    private var groupDivider: some View {
+        Rectangle()
+            .fill(PPMessagingPalette.hairline)
+            .frame(height: 0.5)
+            .padding(.leading, 62)
+            .accessibilityHidden(true)
+    }
+
+    private func actionRow(
+        title: String,
+        systemName: String,
+        role: ButtonRole? = nil,
+        disabledSystemName: String = "lock.fill",
+        showsUnavailableReason: Bool = true,
+        accessibilityValue: String? = nil,
+        action: (() -> Void)?
+    ) -> some View {
+        let isEnabled = action != nil
+        let tint = role == .destructive
+            ? PPMessagingPalette.failure
+            : PPMessagingPalette.highlight
+
+        return Button(role: role) {
+            guard let action else { return }
+            dismiss()
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + (reduceMotion ? 0.05 : 0.22),
+                execute: action
+            )
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: systemName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(isEnabled ? tint : PPMessagingPalette.secondaryText)
+                    .frame(width: 38, height: 38)
+                    .background(tint.opacity(isEnabled ? 0.09 : 0.035), in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.custom("Beiruti-SemiBold", size: 16, relativeTo: .body))
+                        .foregroundStyle(
+                            role == .destructive && isEnabled
+                                ? PPMessagingPalette.failure
+                                : PPMessagingPalette.primaryText
+                        )
+
+                    if !isEnabled && showsUnavailableReason {
+                        Text(localized("chat.action.unavailable"))
+                            .font(.custom("Beiruti-Regular", size: 11.5, relativeTo: .caption))
+                            .foregroundStyle(PPMessagingPalette.secondaryText)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: isEnabled ? "chevron.forward" : disabledSystemName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(PPMessagingPalette.secondaryText)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PPMessagingPressButtonStyle())
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.62)
+        .accessibilityHint(
+            !isEnabled && showsUnavailableReason
+                ? localized("chat.action.unavailable")
+                : ""
+        )
+        .accessibilityValue(Text(accessibilityValue ?? ""))
+    }
+
+    private func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
+    }
+}
+
 // MARK: - Screen
 
 private struct PPMessagingScreen: View {
@@ -1134,12 +2325,22 @@ private struct PPMessagingScreen: View {
     @State private var unseenMessageCount = 0
     @State private var paginationAnchorID: String?
     @State private var highlightedMessageID: String?
+    @State private var activeReplyGestureMessageID: String?
+    @State private var replyGestureOffset: CGFloat = 0
+    @State private var replyGestureActivityToken = 0
+    @State private var headerLayoutRevision = 0
+    @State private var preservesLatestDuringHeaderLayout = false
     @State private var packageAudioCoordinator = ConversationAudioCoordinator()
+    @State private var unsendEligibilityNow = Date()
 
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
-                PPMessagingHeader(state: state, relay: relay)
+                PPMessagingHeader(
+                    state: state,
+                    relay: relay,
+                    onExpansionChanged: handleHeaderExpansionChange
+                )
 
                 if state.connectionInterrupted {
                     PPMessagingConnectionRibbon {
@@ -1174,16 +2375,19 @@ private struct PPMessagingScreen: View {
                 .padding(.top, 9)
                 .padding(
                     .bottom,
-                    max(22, state.bottomNavigationClearance)
+                    state.keyboardIsPresented
+                        ? 12
+                        : max(22, state.bottomNavigationClearance)
                 )
+                .animation(reduceMotion ? nil : .timingCurve(0.2, 0, 0, 1, duration: 0.24), value: state.keyboardIsPresented)
                 .background {
                     PPMessagingComposerBackdrop()
                 }
             }
-            // SpearChatHeader owns the status-bar inset internally. Let the
-            // host stack reach the physical edges so that inset is applied
-            // once and the composer can rest 22pt above the real bottom.
-            .ignoresSafeArea(.container, edges: [.top, .bottom])
+            // Native SwiftUI safe-area layout owns the status bar. Only the
+            // composer reaches the physical bottom; the keyboard safe area
+            // remains authoritative when editing begins.
+            .ignoresSafeArea(.container, edges: .bottom)
             .background {
                 PPMessagingCanvas(backgroundImage: state.backgroundImage)
                     .ignoresSafeArea()
@@ -1212,6 +2416,11 @@ private struct PPMessagingScreen: View {
         ) { _ in
             refreshLanguage()
         }
+        .onReceive(
+            Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+        ) { now in
+            unsendEligibilityNow = now
+        }
         .fullScreenCover(item: $presentedMedia) { message in
             PPMessagingMediaViewer(message: message) {
                 presentedMedia = nil
@@ -1225,6 +2434,13 @@ private struct PPMessagingScreen: View {
         let nextLanguageCode = Language.currentLanguageCode() ?? "en"
         guard nextLanguageCode != languageCode else { return }
         languageCode = nextLanguageCode
+    }
+
+    private func handleHeaderExpansionChange(_: Bool) {
+        guard hasPositionedInitially else { return }
+        preservesLatestDuringHeaderLayout = isAtLatest
+        guard preservesLatestDuringHeaderLayout else { return }
+        headerLayoutRevision &+= 1
     }
 
     @ViewBuilder
@@ -1288,7 +2504,8 @@ private struct PPMessagingScreen: View {
                                     from: message,
                                     groupPosition: packageGroupPosition(at: index),
                                     replySource: replySource(for: message),
-                                    audioState: audioState(for: message)
+                                    audioState: audioState(for: message),
+                                    conversationName: state.conversationName
                                 ),
                                 showsAvatar: grouping(at: index) == .single || grouping(at: index) == .last,
                                 audioCoordinator: packageAudioCoordinator,
@@ -1302,9 +2519,26 @@ private struct PPMessagingScreen: View {
                                     onOpenImage: { _ in handleMessageAction(.openMedia, message: message, proxy: proxy) },
                                     onOpenVideo: { _ in handleMessageAction(.openMedia, message: message, proxy: proxy) },
                                     onReactionTap: { _ in },
-                                    onUpdateApp: {}
-                                )
+                                    onUpdateApp: openAppStore,
+                                    canDelete: message.isUnsendEligible(at: unsendEligibilityNow),
+                                    canForward: false
+                                ),
+                                animatesEntrance: message.animatesEntrance,
+                                isHighlighted: highlightedMessageID == message.id,
+                                replyOffset: activeReplyGestureMessageID == message.id
+                                    ? replyGestureOffset
+                                    : 0,
+                                maximumBubbleWidth: maximumBubbleWidth(
+                                    for: message,
+                                    availableWidth: availableWidth
+                                ),
+                                contentLayoutDirection: layoutDirection
                             )
+                            // Sender lanes are physical, not semantic: outgoing
+                            // remains on the screen's right edge in both Arabic
+                            // and English. Payload text receives the captured
+                            // locale direction through SmartMessageCell.
+                            .environment(\.layoutDirection, .leftToRight)
                             .id(message.id)
                             .accessibilityIdentifier("pp.messaging.message.\(message.id)")
                             .padding(.bottom, rowSpacing(after: index))
@@ -1324,7 +2558,8 @@ private struct PPMessagingScreen: View {
                                 unseenMessageCount = 0
                             }
                             .onDisappear {
-                                if hasPositionedInitially {
+                                if hasPositionedInitially,
+                                   !preservesLatestDuringHeaderLayout {
                                     isAtLatest = false
                                 }
                             }
@@ -1335,6 +2570,48 @@ private struct PPMessagingScreen: View {
                 }
                 .accessibilityIdentifier("pp.messaging.messages")
                 .ppInteractiveKeyboardDismissal()
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 6, coordinateSpace: .local)
+                        .onChanged { value in
+                            guard preservesLatestDuringHeaderLayout,
+                                  abs(value.translation.height) >
+                                    abs(value.translation.width) else { return }
+                            preservesLatestDuringHeaderLayout = false
+                            isAtLatest = false
+                        }
+                )
+                .overlayPreferenceValue(
+                    SmartMessageReplyRegionPreferenceKey.self
+                ) { regions in
+                    GeometryReader { geometry in
+                        PPMessagingTranscriptReplyPanGesture(
+                            targets: state.messages.compactMap { message in
+                                let packageID = PPMessagingAdapter.messageID(
+                                    from: message.id
+                                )
+                                guard let anchor = regions[packageID] else {
+                                    return nil
+                                }
+                                return PPMessagingReplyPanTarget(
+                                    messageID: message.id,
+                                    isOutgoing: message.isOutgoing,
+                                    frame: geometry[anchor]
+                                )
+                            },
+                            axisBias: PPMessagingReplyGestureMetrics.axisBias,
+                            onChanged: updateReplyGesture,
+                            onEnded: { target, horizontal, vertical in
+                                finishReplyGesture(
+                                    target: target,
+                                    horizontalDistance: horizontal,
+                                    verticalDistance: vertical,
+                                    proxy: proxy
+                                )
+                            },
+                            onCancelled: cancelReplyGesture
+                        )
+                    }
+                }
                 .onChange(of: state.initialLoadCompleted) { completed in
                     guard completed else { return }
                     positionInitially(using: proxy)
@@ -1346,24 +2623,40 @@ private struct PPMessagingScreen: View {
                     guard typing, isAtLatest else { return }
                     scrollToLatest(using: proxy, animated: true)
                 }
-                .onReceive(
-                    NotificationCenter.default.publisher(
-                        for: UIResponder.keyboardWillChangeFrameNotification
-                    )
-                ) { _ in
-                    // The composer is edge-to-edge and changes the available
-                    // viewport when the keyboard moves. Preserve the user's
-                    // position when they are reading older content, but keep
-                    // the latest row visible for the normal send flow.
+                .onChange(of: state.keyboardExpansionRevision) { _ in
+                    // The host only publishes first presentation and genuine
+                    // height increases. Interactive dismissal decreases never
+                    // compete with the user's vertical scroll ownership.
                     guard hasPositionedInitially, isAtLatest else { return }
                     DispatchQueue.main.async {
                         scrollToLatest(using: proxy, animated: !reduceMotion)
+                    }
+                }
+                .onChange(of: headerLayoutRevision) { revision in
+                    guard hasPositionedInitially,
+                          preservesLatestDuringHeaderLayout else { return }
+
+                    DispatchQueue.main.async {
+                        guard headerLayoutRevision == revision,
+                              preservesLatestDuringHeaderLayout else { return }
+                        scrollToLatest(using: proxy, animated: false)
+                    }
+                    DispatchQueue.main.asyncAfter(
+                        deadline: .now() + (reduceMotion ? 0.02 : 0.42)
+                    ) {
+                        guard headerLayoutRevision == revision,
+                              preservesLatestDuringHeaderLayout else { return }
+                        scrollToLatest(using: proxy, animated: false)
+                        preservesLatestDuringHeaderLayout = false
                     }
                 }
                 .onAppear {
                     if state.initialLoadCompleted {
                         positionInitially(using: proxy)
                     }
+                }
+                .onDisappear {
+                    cancelReplyGesture()
                 }
 
                 if !isAtLatest || unseenMessageCount > 0 {
@@ -1475,6 +2768,75 @@ private struct PPMessagingScreen: View {
         }
     }
 
+    private func openAppStore() {
+        guard let appStoreURL = URL(
+            string: "itms-apps://itunes.apple.com/app/id1594016239"
+        ) else { return }
+        UIApplication.shared.open(appStoreURL)
+    }
+
+    private func updateReplyGesture(
+        _ target: PPMessagingReplyPanTarget,
+        horizontalDistance: CGFloat,
+        verticalDistance: CGFloat
+    ) {
+        replyGestureActivityToken &+= 1
+        activeReplyGestureMessageID = target.messageID
+        guard horizontalDistance >
+                verticalDistance * PPMessagingReplyGestureMetrics.axisBias else {
+            replyGestureOffset = 0
+            return
+        }
+        replyGestureOffset = min(
+            max(horizontalDistance, 0),
+            PPMessagingReplyGestureMetrics.maximumOffset
+        )
+    }
+
+    private func finishReplyGesture(
+        target: PPMessagingReplyPanTarget,
+        horizontalDistance: CGFloat,
+        verticalDistance: CGFloat,
+        proxy: ScrollViewProxy
+    ) {
+        let commitsReply =
+            activeReplyGestureMessageID == target.messageID &&
+            horizontalDistance >= PPMessagingReplyGestureMetrics.commitThreshold &&
+            horizontalDistance >
+                verticalDistance * PPMessagingReplyGestureMetrics.axisBias
+
+        if commitsReply,
+           let message = state.messages.first(where: { $0.id == target.messageID }) {
+            handleMessageAction(.reply, message: message, proxy: proxy)
+        }
+        settleReplyGesture()
+    }
+
+    private func cancelReplyGesture() {
+        settleReplyGesture()
+    }
+
+    private func settleReplyGesture() {
+        replyGestureActivityToken &+= 1
+        let settlementToken = replyGestureActivityToken
+        let messageID = activeReplyGestureMessageID
+
+        guard !reduceMotion else {
+            replyGestureOffset = 0
+            activeReplyGestureMessageID = nil
+            return
+        }
+
+        withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 0.20)) {
+            replyGestureOffset = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+            guard replyGestureActivityToken == settlementToken,
+                  activeReplyGestureMessageID == messageID else { return }
+            activeReplyGestureMessageID = nil
+        }
+    }
+
     private func replySource(for message: PPMessagingMessageSnapshot) -> PPMessagingMessageSnapshot? {
         guard let replyID = message.replyToMessageID else { return nil }
         return state.messages.first(where: { $0.id == replyID })
@@ -1513,6 +2875,7 @@ private struct PPMessagingScreen: View {
         with other: PPMessagingMessageSnapshot
     ) -> Bool {
         guard message.senderID == other.senderID,
+              groupingFamily(for: message) == groupingFamily(for: other),
               Calendar.current.isDate(message.timestamp, inSameDayAs: other.timestamp) else {
             return false
         }
@@ -1521,6 +2884,49 @@ private struct PPMessagingScreen: View {
 
     private func rowSpacing(after index: Int) -> CGFloat {
         grouping(at: index) == .last || grouping(at: index) == .single ? 11 : 2.5
+    }
+
+    private func groupingFamily(
+        for message: PPMessagingMessageSnapshot
+    ) -> String {
+        // A quote is a complete conversational thought, not a continuation of
+        // the preceding short text run. Keeping it isolated also gives the
+        // reply source and terminal delivery metadata a stable layout contract.
+        if message.replyToMessageID != nil {
+            return "reply:\(message.id)"
+        }
+        if message.isDeleted { return "text" }
+        switch message.kind {
+        case "image", "video":
+            return "media"
+        case "audio":
+            return "voice"
+        case "sticker":
+            return "sticker"
+        default:
+            return "text"
+        }
+    }
+
+    private func maximumBubbleWidth(
+        for message: PPMessagingMessageSnapshot,
+        availableWidth: CGFloat
+    ) -> CGFloat {
+        let transcriptWidth = max(availableWidth - 28, 220)
+        if dynamicTypeSize.isAccessibilitySize {
+            return min(max(transcriptWidth - 42, 230), 430)
+        }
+
+        switch message.kind {
+        case "audio":
+            return min(max(transcriptWidth * 0.66, 238), 254)
+        case "image", "video":
+            return min(max(transcriptWidth * 0.70, 232), 276)
+        case "sticker":
+            return min(max(transcriptWidth * 0.52, 190), 220)
+        default:
+            return min(max(transcriptWidth * 0.72, 210), 320)
+        }
     }
 
     private func needsDateSeparator(at index: Int) -> Bool {
@@ -1560,18 +2966,216 @@ private enum PPMessagingScrollID: Hashable {
     case unreadBoundary
 }
 
+private enum PPMessagingReplyGestureMetrics {
+    static let axisBias: CGFloat = 1.15
+    static let commitThreshold: CGFloat = 56
+    static let maximumOffset: CGFloat = 72
+}
+
+private struct PPMessagingReplyPanTarget {
+    let messageID: String
+    let isOutgoing: Bool
+    let frame: CGRect
+}
+
+private struct PPMessagingTranscriptReplyPanGesture: UIViewRepresentable {
+    let targets: [PPMessagingReplyPanTarget]
+    let axisBias: CGFloat
+    let onChanged: (PPMessagingReplyPanTarget, CGFloat, CGFloat) -> Void
+    let onEnded: (PPMessagingReplyPanTarget, CGFloat, CGFloat) -> Void
+    let onCancelled: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> AnchorView {
+        let view = AnchorView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.coordinator = context.coordinator
+        context.coordinator.anchorView = view
+        return view
+    }
+
+    func updateUIView(_ uiView: AnchorView, context: Context) {
+        context.coordinator.update(
+            targets: targets,
+            axisBias: axisBias,
+            onChanged: onChanged,
+            onEnded: onEnded,
+            onCancelled: onCancelled
+        )
+        context.coordinator.attachIfNeeded(to: uiView.window)
+    }
+
+    static func dismantleUIView(_ uiView: AnchorView, coordinator: Coordinator) {
+        uiView.coordinator = nil
+        coordinator.detach()
+    }
+
+    final class AnchorView: UIView {
+        weak var coordinator: Coordinator?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            coordinator?.attachIfNeeded(to: window)
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        weak var anchorView: AnchorView?
+        private var targets: [PPMessagingReplyPanTarget] = []
+        private var axisBias: CGFloat = PPMessagingReplyGestureMetrics.axisBias
+        private var activeTarget: PPMessagingReplyPanTarget?
+        private var onChanged: (
+            (PPMessagingReplyPanTarget, CGFloat, CGFloat) -> Void
+        )?
+        private var onEnded: (
+            (PPMessagingReplyPanTarget, CGFloat, CGFloat) -> Void
+        )?
+        private var onCancelled: (() -> Void)?
+
+        private lazy var panGesture: UIPanGestureRecognizer = {
+            let gesture = UIPanGestureRecognizer(
+                target: self,
+                action: #selector(handlePan(_:))
+            )
+            gesture.delegate = self
+            gesture.maximumNumberOfTouches = 1
+            gesture.cancelsTouchesInView = false
+            return gesture
+        }()
+
+        func update(
+            targets: [PPMessagingReplyPanTarget],
+            axisBias: CGFloat,
+            onChanged: @escaping (
+                PPMessagingReplyPanTarget,
+                CGFloat,
+                CGFloat
+            ) -> Void,
+            onEnded: @escaping (
+                PPMessagingReplyPanTarget,
+                CGFloat,
+                CGFloat
+            ) -> Void,
+            onCancelled: @escaping () -> Void
+        ) {
+            self.targets = targets
+            self.axisBias = max(axisBias, 1)
+            self.onChanged = onChanged
+            self.onEnded = onEnded
+            self.onCancelled = onCancelled
+
+            if let activeTarget,
+               !targets.contains(where: { $0.messageID == activeTarget.messageID }) {
+                cancelActiveGesture()
+            }
+        }
+
+        func attachIfNeeded(to window: UIWindow?) {
+            guard panGesture.view !== window else { return }
+            detach()
+            guard let window else { return }
+            window.addGestureRecognizer(panGesture)
+        }
+
+        func detach() {
+            if activeTarget != nil {
+                cancelActiveGesture()
+            }
+            panGesture.view?.removeGestureRecognizer(panGesture)
+        }
+
+        func gestureRecognizerShouldBegin(
+            _ gestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            guard gestureRecognizer === panGesture,
+                  let anchorView else { return false }
+            let location = panGesture.location(in: anchorView)
+            guard let target = targets.last(where: { $0.frame.contains(location) }) else {
+                return false
+            }
+
+            let velocity = panGesture.velocity(in: anchorView)
+            let directionalVelocity = target.isOutgoing ? -velocity.x : velocity.x
+            guard directionalVelocity > 0,
+                  abs(velocity.x) > abs(velocity.y) * axisBias else {
+                return false
+            }
+            activeTarget = target
+            return true
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            guard gestureRecognizer === panGesture else { return false }
+            return otherGestureRecognizer.view is UIScrollView
+        }
+
+        @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+            guard let anchorView, let activeTarget else { return }
+            let translation = gesture.translation(in: anchorView)
+            let horizontalDistance = max(
+                activeTarget.isOutgoing ? -translation.x : translation.x,
+                0
+            )
+            let verticalDistance = abs(translation.y)
+
+            switch gesture.state {
+            case .began, .changed:
+                guard horizontalDistance > verticalDistance * axisBias else {
+                    cancelActiveGesture()
+                    return
+                }
+                onChanged?(activeTarget, horizontalDistance, verticalDistance)
+            case .ended:
+                self.activeTarget = nil
+                onEnded?(activeTarget, horizontalDistance, verticalDistance)
+            case .cancelled, .failed:
+                cancelActiveGesture()
+            default:
+                break
+            }
+        }
+
+        private func cancelActiveGesture() {
+            activeTarget = nil
+            onCancelled?()
+        }
+    }
+}
+
 // MARK: - Header and Screen States
 
 private struct PPMessagingHeader: View {
     @ObservedObject var state: PPMessagingScreenState
     let relay: PPMessagingActionRelay
+    let onExpansionChanged: (Bool) -> Void
 
     var body: some View {
         SpearChatHeader(
             state: spearHeaderState,
-            style: .spear,
-            copy: Language.isRTL() ? .arabic : .english,
-            actions: spearActions
+            style: SpearChatHeaderStyle(
+                brandColor: PPMessagingPalette.highlight,
+                cornerRadius: 20,
+                horizontalPadding: 14
+            ),
+            copy: headerCopy,
+            actions: spearActions,
+            onExpansionChanged: onExpansionChanged,
+            contextThumbnail: { url in
+                AnyView(
+                    PPMessagingRemoteImage(
+                        localImage: nil,
+                        url: url,
+                        contentMode: .fill
+                    )
+                )
+            }
         ) { _ in
             // Reuse the app's existing avatar presentation; Spear owns the
             // frame, trust ring, presence badge, and accessibility semantics.
@@ -1582,7 +3186,7 @@ private struct PPMessagingHeader: View {
                 usesSupportLogo: state.usesSupportLogo
             )
         }
-        .frame(minHeight: 72)
+        .frame(minHeight: 68)
     }
 
     private var spearHeaderState: SpearChatHeaderLoadState {
@@ -1598,11 +3202,10 @@ private struct PPMessagingHeader: View {
             presence = .typing
         } else if state.isOnline {
             presence = .online(responseSpeed: nil)
+        } else if let lastActiveAt = state.lastActiveAt {
+            presence = .offline(lastActiveAt: lastActiveAt)
         } else {
-            // The Objective-C bridge supplies the real last-seen timestamp
-            // when available. Date() is only a defensive fallback for legacy
-            // profiles that have no lastSeen field.
-            presence = .offline(lastActiveAt: state.lastActiveAt ?? Date())
+            presence = .unavailable
         }
 
         let initials = name
@@ -1616,16 +3219,154 @@ private struct PPMessagingHeader: View {
             : SpearAvatarFallback.initials(initials.uppercased())
 
         let model = SpearChatHeaderModel(
-            id: state.avatarURLString.isEmpty ? name : state.avatarURLString,
+            id: state.participantID.isEmpty ? "legacy:\(name)" : state.participantID,
             name: name,
             avatarFallback: fallback,
-            trust: .standard(role: nil),
+            trust: trustState,
             presence: presence,
-            metrics: [],
-            context: supportContext,
+            metrics: reputationMetrics,
+            context: headerContext,
             isModal: state.isModal
         )
         return .ready(model)
+    }
+
+    private var headerCopy: SpearChatHeaderCopy {
+        SpearChatHeaderCopy(
+            localeIdentifier: Language.isRTL() ? "ar_QA" : "en_QA",
+            backAccessibilityLabel: localized("Back"),
+            callButtonTitle: localized("Call"),
+            startCallAccessibilityLabel: localized("chat_header_start_call_accessibility"),
+            endCallAccessibilityLabel: localized("chat_header_end_call_accessibility"),
+            moreButtonTitle: localized("more"),
+            moreAccessibilityLabel: localized("chat_header_more_accessibility"),
+            verifiedSellerAccessibilityLabel: localized("chat_header_verified_seller"),
+            verifiedBusinessAccessibilityLabel: localized("chat_header_verified_business"),
+            restrictedAccessibilityLabel: localized("chat_header_restricted_account"),
+            profileButtonTitle: localized("chat_stories_title"),
+            safetyButtonTitle: localized("chat.report"),
+            loadingAccessibilityLabel: localized("chat_header_loading_identity"),
+            conversationAccessibilityPrefix: localized("chat_header_conversation_with"),
+            onlineNowText: localized("chat_header_online_now"),
+            repliesFastText: localized("chat_header_replies_fast"),
+            repliesTypicallyText: localized("chat_header_replies_typically"),
+            typingText: localized("chat_header_typing"),
+            viewingOfferText: localized("chat_header_viewing_offer"),
+            lastSeenPrefix: localized("chat.last_seen"),
+            secureCallText: localized("chat_header_secure_call"),
+            expandAccessibilityHint: localized("chat_header_expand_hint"),
+            collapseAccessibilityHint: localized("chat_header_collapse_hint"),
+            expandedAccessibilityValue: localized("chat_header_expanded"),
+            collapsedAccessibilityValue: localized("chat_header_collapsed"),
+            unavailableText: localized("chat_header_activity_unavailable"),
+            closeAccessibilityLabel: localized("Close")
+        )
+    }
+
+    private var trustState: SpearTrustState {
+        if state.participantRestricted {
+            return .restricted(reason: headerCopy.restrictedAccessibilityLabel)
+        }
+        if state.usesSupportLogo {
+            let name = state.supportDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            return .verifiedBusiness(displayName: name.isEmpty ? localized("Support") : name)
+        }
+        let providerPlans = Set(["business", "production", "service_provider", "pro"])
+        let isProvider = providerPlans.contains(state.participantPlan.lowercased())
+            || state.providerReviewCount > 0
+        if state.participantVerified && isProvider {
+            return .verifiedSeller(
+                role: headerCopy.verifiedSellerAccessibilityLabel,
+                location: nil
+            )
+        }
+        return .standard(role: nil)
+    }
+
+    private var reputationMetrics: [SpearIdentityMetric] {
+        guard state.providerReviewCount > 0,
+              state.providerRatingValue.isFinite,
+              state.providerRatingValue > 0 else { return [] }
+        let rating = min(max(state.providerRatingValue, 0), 5)
+        return [
+            .init(
+                id: "rating",
+                value: rating.formatted(.number.precision(.fractionLength(1))),
+                label: localized("chat_header_rating")
+            ),
+            .init(
+                id: "reviews",
+                value: state.providerReviewCount.formatted(),
+                label: localized("chat_header_reviews")
+            )
+        ]
+    }
+
+    private var headerContext: SpearConversationContext? {
+        let contextID = state.contextID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let contextType = state.contextType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        if !contextID.isEmpty,
+           ["listing", "pet_listing", "pet_ad"].contains(contextType) {
+            let title = snapshotText("title", "displayTitle")
+                ?? localized("pet_ad_viewer_title_fallback")
+            let detail = snapshotText("detail", "subtitle")
+                ?? [snapshotText("priceText"), snapshotText("availabilityText")]
+                    .compactMap { $0 }
+                    .joined(separator: " · ")
+            return .listing(
+                .init(
+                    id: contextID,
+                    eyebrow: localized("chat_header_listing_eyebrow"),
+                    title: title,
+                    detail: detail,
+                    actionTitle: localized("chat_header_listing_action"),
+                    thumbnailURL: snapshotText(
+                        "thumbnailURLString",
+                        "imageURLString",
+                        "imageURL"
+                    ).flatMap(URL.init(string:))
+                )
+            )
+        }
+
+        if !contextID.isEmpty, contextType == "order" {
+            let number = snapshotText("orderNumber")
+            let title = snapshotText("title")
+                ?? number.map {
+                    String(format: localized("chat_header_order_title_format"), $0)
+                }
+            guard let title else { return nil }
+            return .order(
+                .init(
+                    id: contextID,
+                    eyebrow: localized("chat_header_order_eyebrow"),
+                    title: title,
+                    detail: snapshotText("detail", "statusText") ?? "",
+                    actionTitle: localized("chat_header_order_action"),
+                    progress: snapshotDouble("progress")
+                )
+            )
+        }
+
+        return supportContext
+    }
+
+    private func snapshotText(_ keys: String...) -> String? {
+        for key in keys {
+            guard let raw = state.contextSnapshot[key] as? String else { continue }
+            let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty { return value }
+        }
+        return nil
+    }
+
+    private func snapshotDouble(_ key: String) -> Double? {
+        guard let value = state.contextSnapshot[key] as? NSNumber else { return nil }
+        let result = value.doubleValue
+        return result.isFinite ? result : nil
     }
 
     private var supportContext: SpearConversationContext? {
@@ -1651,16 +3392,17 @@ private struct PPMessagingHeader: View {
     }
 
     private var spearActions: SpearChatHeaderActions {
-        let contextAction: SpearContextHeaderAction = supportContext == nil
+        let contextAction: SpearContextHeaderAction = headerContext == nil
             ? .hidden
             : .enabled { context in
-                relay.request(.context, messageID: context.id)
+                relay.request(.context, messageID: context.backendID)
             }
 
         return SpearChatHeaderActions(
             onBack: { relay.request(.close) },
             more: .enabled { relay.request(.more) },
             profile: .enabled { relay.request(.profile) },
+            safety: .enabled { relay.request(.report) },
             context: contextAction
         )
     }
@@ -1807,6 +3549,17 @@ private struct PPMessagingEmptyState: View {
     let focusComposer: () -> Void
 
     var body: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                content
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: proxy.size.height)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 22) {
             ZStack {
                 Circle()
@@ -1823,6 +3576,7 @@ private struct PPMessagingEmptyState: View {
                     .font(.system(size: 34, weight: .semibold))
                     .foregroundColor(PPMessagingPalette.primaryText)
             }
+            .accessibilityHidden(true)
 
             VStack(spacing: 8) {
                 Text(localized("chat_empty_thread_title"))
@@ -1946,24 +3700,32 @@ private enum PPMessagingAdapter {
                            hash[12], hash[13], hash[14], hash[15]))
     }
 
+    static func messageID(from rawID: String) -> MessageID {
+        MessageID(deterministicUUID(from: rawID))
+    }
+
     static func chatMessage(
         from snapshot: PPMessagingMessageSnapshot,
         groupPosition: MessageGroupPosition,
         replySource: PPMessagingMessageSnapshot?,
-        audioState: PPMessagingAudioState
+        audioState: PPMessagingAudioState,
+        conversationName: String
     ) -> ChatMessage {
         let senderUUID = deterministicUUID(from: snapshot.senderID)
-        let displayName = snapshot.senderID.isEmpty ? "?" : snapshot.senderID
+        let trimmedConversationName = conversationName.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        let displayName = snapshot.isOutgoing
+            ? NSLocalizedString("chat_reply_sender_you", comment: "")
+            : (trimmedConversationName.isEmpty
+                ? NSLocalizedString("Chat", comment: "")
+                : trimmedConversationName)
         let initials: String = {
-            let id = snapshot.senderID
-            if id.isEmpty { return "?" }
-            // If it looks like a name (contains spaces), use name initials
-            let parts = id.split(separator: " ").prefix(2)
+            let parts = displayName.split(separator: " ").prefix(2)
             if parts.count >= 2 {
                 return parts.compactMap(\.first).map(String.init).joined().uppercased()
             }
-            // Otherwise use first two characters
-            return String(id.prefix(2)).uppercased()
+            return String(displayName.prefix(2)).uppercased()
         }()
 
         let sender = MessageSender(
@@ -1994,7 +3756,10 @@ private enum PPMessagingAdapter {
                     case "image": preview = .image
                     case "video": preview = .video
                     case "audio": preview = .voice
-                    case "sticker": preview = .sticker(description: "Sticker")
+                    case "sticker":
+                        preview = .sticker(
+                            description: NSLocalizedString("chat_reply_sticker", comment: "")
+                        )
                     default: preview = .text(src.text)
                     }
                 }
@@ -2003,13 +3768,17 @@ private enum PPMessagingAdapter {
             }
             return ReplyReference(
                 messageID: MessageID(deterministicUUID(from: replyID)),
-                senderDisplayName: replySource?.senderID ?? "",
+                senderDisplayName: replySource.map { source in
+                    source.isOutgoing
+                        ? NSLocalizedString("chat_reply_sender_you", comment: "")
+                        : displayNameForIncomingReply(conversationName: conversationName)
+                } ?? displayNameForIncomingReply(conversationName: conversationName),
                 preview: preview
             )
         }()
 
         return ChatMessage(
-            id: MessageID(deterministicUUID(from: snapshot.id)),
+            id: messageID(from: snapshot.id),
             sender: sender,
             direction: direction,
             payload: payload,
@@ -2018,6 +3787,13 @@ private enum PPMessagingAdapter {
             sentAt: snapshot.timestamp,
             groupPosition: groupPosition
         )
+    }
+
+    private static func displayNameForIncomingReply(
+        conversationName: String
+    ) -> String {
+        let trimmed = conversationName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? NSLocalizedString("Chat", comment: "") : trimmed
     }
 
     private static func outgoingState(from snapshot: PPMessagingMessageSnapshot) -> OutgoingDeliveryState {
@@ -2265,24 +4041,25 @@ private struct PPMessagingTypingRow: View {
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        HStack(spacing: 9) {
-            PPMessagingTypingDots()
-            Text(String(format: localized("chat_typing_format"), name))
-                .font(.custom("Beiruti-Medium", size: 12.5, relativeTo: .footnote))
-                .foregroundColor(PPMessagingPalette.secondaryText)
-                .lineLimit(1)
+        HStack(spacing: 0) {
+            HStack(spacing: 9) {
+                PPMessagingTypingDots()
+                Text(String(format: localized("chat_typing_format"), name))
+                    .font(.custom("Beiruti-Medium", size: 12.5, relativeTo: .footnote))
+                    .foregroundColor(PPMessagingPalette.secondaryText)
+                    .lineLimit(1)
+            }
+            .environment(\.layoutDirection, layoutDirection)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 9)
+            .background(PPMessagingPalette.incomingBubble, in: Capsule())
+
             Spacer()
         }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 9)
-        .background(PPMessagingPalette.incomingBubble, in: Capsule())
-        .frame(maxWidth: .infinity, alignment: incomingAlignment)
+        .environment(\.layoutDirection, .leftToRight)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 5)
         .accessibilityElement(children: .combine)
-    }
-
-    private var incomingAlignment: Alignment {
-        layoutDirection == .rightToLeft ? .trailing : .leading
     }
 
     private func localized(_ key: String) -> String {
@@ -2327,13 +4104,7 @@ private struct PPMessagingDateSeparator: View {
             Text(label)
                 .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
                 .foregroundColor(PPMessagingPalette.secondaryText)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(PPMessagingPalette.separatorSurface, in: Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.6)
-                )
+                .padding(.horizontal, 4)
             if !dynamicTypeSize.isAccessibilitySize {
                 line
             }
@@ -2370,12 +4141,11 @@ private struct PPMessagingUnreadSeparator: View {
             Label(localized("chat_unread"), systemImage: "sparkle")
                 .font(.custom("Beiruti-Bold", size: 11.5, relativeTo: .caption))
                 .foregroundColor(PPMessagingPalette.highlight)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(PPMessagingPalette.highlight.opacity(0.10), in: Capsule())
+                .padding(.horizontal, 4)
             line
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(localized("chat_unread"))
     }
 
     private var line: some View {
@@ -2392,6 +4162,7 @@ private struct PPMessagingUnreadSeparator: View {
 private struct PPMessagingLatestButton: View {
     let count: Int
     let action: () -> Void
+    @Environment(\.locale) private var locale
 
     var body: some View {
         Button(action: action) {
@@ -2399,7 +4170,7 @@ private struct PPMessagingLatestButton: View {
                 Image(systemName: "arrow.down")
                     .font(.system(size: 13, weight: .bold))
                 if count > 0 {
-                    Text("\(count)")
+                    Text(localizedCount)
                         .font(Font.ppBeirutiBold(size: 11, relativeTo: .caption).monospacedDigit())
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -2433,9 +4204,16 @@ private struct PPMessagingLatestButton: View {
         .buttonStyle(PPMessagingPressButtonStyle())
         .accessibilityLabel(
             count > 0
-                ? String(format: localized("chat_unread_count_format"), count)
+                ? String(
+                    format: localized("chat_unread_count_accessibility_format"),
+                    localizedCount
+                )
                 : localized("chat_scroll_latest")
         )
+    }
+
+    private var localizedCount: String {
+        count.formatted(.number.locale(locale))
     }
 
     private func localized(_ key: String) -> String {
@@ -2612,7 +4390,21 @@ private struct PPMessagingCanvas: View {
         ZStack {
             WorldGlassBackground(
                 intensity: colorScheme == .dark ? 0.72 : 0.88,
-                isFaded: true
+                isFaded: backgroundImage != nil
+            )
+
+            RadialGradient(
+                colors: [PPMessagingPalette.canvasWarmField, .clear],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 330
+            )
+
+            RadialGradient(
+                colors: [PPMessagingPalette.canvasCoolField, .clear],
+                center: .bottomLeading,
+                startRadius: 0,
+                endRadius: 420
             )
 
             if let backgroundImage {
@@ -2779,7 +4571,7 @@ private enum PPMessagingFormatters {
             let formatter = DateFormatter()
             formatter.locale = locale
             formatter.dateStyle = .full
-            formatter.timeStyle = .short
+            formatter.timeStyle = .none
             return formatter
         }
     }

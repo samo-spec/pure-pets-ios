@@ -3,6 +3,7 @@ import Foundation
 public struct SpearChatHeaderCopy: Equatable, Sendable {
   public var localeIdentifier: String
   public var backAccessibilityLabel: String
+  public var closeAccessibilityLabel: String
   public var callButtonTitle: String
   public var startCallAccessibilityLabel: String
   public var endCallAccessibilityLabel: String
@@ -21,6 +22,7 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
   public var typingText: String
   public var viewingOfferText: String
   public var lastSeenPrefix: String
+  public var unavailableText: String
   public var secureCallText: String
   public var expandAccessibilityHint: String
   public var collapseAccessibilityHint: String
@@ -52,10 +54,13 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
     expandAccessibilityHint: String,
     collapseAccessibilityHint: String,
     expandedAccessibilityValue: String,
-    collapsedAccessibilityValue: String
+    collapsedAccessibilityValue: String,
+    unavailableText: String? = nil,
+    closeAccessibilityLabel: String? = nil
   ) {
     self.localeIdentifier = localeIdentifier
     self.backAccessibilityLabel = backAccessibilityLabel
+    self.closeAccessibilityLabel = closeAccessibilityLabel ?? backAccessibilityLabel
     self.callButtonTitle = callButtonTitle
     self.startCallAccessibilityLabel = startCallAccessibilityLabel
     self.endCallAccessibilityLabel = endCallAccessibilityLabel
@@ -74,6 +79,7 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
     self.typingText = typingText
     self.viewingOfferText = viewingOfferText
     self.lastSeenPrefix = lastSeenPrefix
+    self.unavailableText = unavailableText ?? lastSeenPrefix
     self.secureCallText = secureCallText
     self.expandAccessibilityHint = expandAccessibilityHint
     self.collapseAccessibilityHint = collapseAccessibilityHint
@@ -94,7 +100,9 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
       return viewingOfferText
 
     case .offline(let lastActiveAt):
-      let safeLastActiveAt = min(lastActiveAt, Date())
+      guard !presence.isUnavailable else { return unavailableText }
+      let now = Date()
+      let safeLastActiveAt = min(lastActiveAt, now.addingTimeInterval(-1))
       let relative = safeLastActiveAt.formatted(
         .relative(presentation: .numeric, unitsStyle: .wide)
           .locale(Locale(identifier: localeIdentifier))
@@ -140,12 +148,16 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
   private func formattedDuration(_ elapsedSeconds: Int) -> String {
     let seconds = max(0, elapsedSeconds)
     let locale = Locale(identifier: localeIdentifier)
-    let twoDigits = IntegerFormatStyle<Int>.number
-      .locale(locale)
+    let number = IntegerFormatStyle<Int>.number.locale(locale)
+    let twoDigits = number
       .precision(.integerLength(2))
-    let minutes = (seconds / 60).formatted(twoDigits)
+    let hours = seconds / 3600
+    let minutes = (seconds % 3600) / 60
     let remainingSeconds = (seconds % 60).formatted(twoDigits)
-    return "\(minutes):\(remainingSeconds)"
+    if hours > 0 {
+      return "\(hours.formatted(number)):\(minutes.formatted(twoDigits)):\(remainingSeconds)"
+    }
+    return "\(minutes.formatted(number)):\(remainingSeconds)"
   }
 
   public static let english = SpearChatHeaderCopy(
@@ -173,7 +185,9 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
     expandAccessibilityHint: "Expands profile details",
     collapseAccessibilityHint: "Collapses profile details",
     expandedAccessibilityValue: "Expanded",
-    collapsedAccessibilityValue: "Collapsed"
+    collapsedAccessibilityValue: "Collapsed",
+    unavailableText: "Activity unavailable",
+    closeAccessibilityLabel: "Close"
   )
 
   public static let arabic = SpearChatHeaderCopy(
@@ -201,6 +215,8 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
     expandAccessibilityHint: "يوسّع تفاصيل الملف الشخصي",
     collapseAccessibilityHint: "يطوي تفاصيل الملف الشخصي",
     expandedAccessibilityValue: "موسّع",
-    collapsedAccessibilityValue: "مطوي"
+    collapsedAccessibilityValue: "مطوي",
+    unavailableText: "حالة النشاط غير متاحة",
+    closeAccessibilityLabel: "إغلاق"
   )
 }

@@ -1828,6 +1828,9 @@
 "chat.background" = "خلفية الدردشة";
 "chat.report" = "إبلاغ";
 "chat.reported" = "تم الإبلاغ";
+"chat.actions.title" = "إجراءات المحادثة";
+"chat.action.unavailable" = "غير متاح لهذه المحادثة بعد";
+"chat.action.completed" = "مكتمل";
 
 /* Report Sheet */
 "chat.report.title" = "الإبلاغ عن الدردشة";
@@ -3177,6 +3180,20 @@
 "chat_reply_image" = "صورة";
 "chat_reply_video" = "فيديو";
 "chat_reply_audio" = "رسالة صوتية";
+"chat_voice_play_accessibility" = "تشغيل الرسالة الصوتية";
+"chat_voice_pause_accessibility" = "إيقاف الرسالة الصوتية مؤقتًا";
+"chat_voice_progress_accessibility_format" = "%1$@ من %2$@";
+"chat_message_unavailable" = "الرسالة غير متاحة";
+"chat_message_requires_update" = "يتطلب هذا النوع من الرسائل إصدارًا أحدث من التطبيق.";
+"chat_update_app" = "تحديث التطبيق";
+"chat_unsupported_type_accessibility_format" = "نوع رسالة غير مدعوم: %@";
+"chat_image_accessibility_format" = "صورة، %@";
+"chat_image_open_accessibility_hint" = "يفتح عارض الصور";
+"chat_video_accessibility_format" = "فيديو، %1$@، %2$@";
+"chat_video_open_accessibility_hint" = "يفتح مشغل الفيديو";
+"chat_sticker_accessibility_format" = "ملصق، %@";
+"chat_reaction_accessibility_format" = "تفاعل %1$@، العدد %2$@";
+"chat_unread_count_accessibility_format" = "الرسائل غير المقروءة: %@";
 "chat_reply_unavailable" = "الرسالة الأصلية غير متاحة.";
 "chat_reply_cancel" = "إلغاء الرد";
 "chat_unsend" = "إلغاء الإرسال";
@@ -3185,6 +3202,12 @@
 "chat_unsend_success" = "تم إلغاء إرسال الرسالة";
 "chat_unsend_failed" = "تعذر إلغاء إرسال هذه الرسالة.";
 "chat_message_unsent" = "تم إلغاء إرسال الرسالة";
+"chat_deleted_by_sender" = "تم حذف هذه الرسالة";
+"chat_deleted_by_recipient" = "لقد حذفت هذه الرسالة";
+"chat_deleted_by_moderator" = "تمت إزالة هذه الرسالة بواسطة المشرف";
+"chat_deleted_by_system" = "لم تعد هذه الرسالة متاحة";
+"chat_forward" = "إعادة توجيه";
+"chat_status_edited" = "تم التعديل";
 "chat_status_sending" = "جارٍ الإرسال";
 "chat_status_sent" = "تم الإرسال";
 "chat_status_delivered" = "تم التسليم";
@@ -4014,6 +4037,7 @@
 "pp_media_viewer_share" = "مشاركة";
 "pp_media_viewer_photo" = "صورة";
 "pp_media_viewer_of" = "من";
+"pp_media_viewer_photo_position_format" = "الصورة %@ من %@";
 "pp_media_viewer_previous" = "السابق";
 "pp_media_viewer_next" = "التالي";
 "pp_media_viewer_zoom_in" = "تكبير";
@@ -4206,3 +4230,31 @@
 "chat_support_context_status_unavailable" = "حالة الدعم غير متاحة";
 
 "chat_support_context_detail_format" = "الحالة: %@";
+
+// سياق وتقييمات رأس محادثة SPEar
+"chat_header_rating" = "التقييم";
+"chat_header_reviews" = "المراجعات";
+"chat_header_listing_eyebrow" = "تتحدثان عن هذا الإعلان";
+"chat_header_listing_action" = "عرض";
+"chat_header_order_eyebrow" = "طلب نشط";
+"chat_header_order_action" = "تتبع";
+"chat_header_order_title_format" = "الطلب %@";
+"chat_header_start_call_accessibility" = "بدء مكالمة صوتية";
+"chat_header_end_call_accessibility" = "إنهاء المكالمة";
+"chat_header_more_accessibility" = "المزيد من إجراءات المحادثة";
+"chat_header_verified_seller" = "بائع موثّق";
+"chat_header_verified_business" = "نشاط تجاري موثّق";
+"chat_header_restricted_account" = "حساب مقيّد";
+"chat_header_loading_identity" = "جارٍ تحميل هوية المحادثة";
+"chat_header_conversation_with" = "محادثة مع";
+"chat_header_online_now" = "متصل الآن";
+"chat_header_replies_fast" = "سريع الرد";
+"chat_header_replies_typically" = "يرد عادةً قريبًا";
+"chat_header_typing" = "يكتب الآن";
+"chat_header_viewing_offer" = "يشاهد عرضك الآن";
+"chat_header_activity_unavailable" = "حالة النشاط غير متاحة";
+"chat_header_secure_call" = "مكالمة آمنة";
+"chat_header_expand_hint" = "يوسّع تفاصيل المحادثة";
+"chat_header_collapse_hint" = "يطوي تفاصيل المحادثة";
+"chat_header_expanded" = "موسّع";
+"chat_header_collapsed" = "مطوي";

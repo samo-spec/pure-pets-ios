@@ -1,0 +1,1 @@
+// PurePetsAdShareKit module anchor.

@@ -32,7 +32,9 @@ public struct PPExpandableChatCell: View {
     let onReplyFailed: ReplyFailedAction
     let sendQuickReply: SendReplyAction
 
-    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    let animationsEnabled: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @Environment(\.accessibilityDifferentiateWithoutColor) var differentiateWithoutColor
     @Environment(\.colorScheme) var colorScheme
@@ -57,7 +59,8 @@ public struct PPExpandableChatCell: View {
         onOptimisticReply: @escaping OptimisticReplyAction = { _, _ in },
         onReplyCommitted: @escaping ReplyCommittedAction = { _ in },
         onReplyFailed: @escaping ReplyFailedAction = { _, _ in },
-        sendQuickReply: @escaping SendReplyAction
+        sendQuickReply: @escaping SendReplyAction,
+        animationsEnabled: Bool = true
     ) {
         self.thread = thread
         _isExpanded = isExpanded
@@ -70,6 +73,16 @@ public struct PPExpandableChatCell: View {
         self.onReplyCommitted = onReplyCommitted
         self.onReplyFailed = onReplyFailed
         self.sendQuickReply = sendQuickReply
+        self.animationsEnabled = animationsEnabled
+        // Start already-settled for a thread that has entered before this
+        // session (e.g. the host rebuilt the UIHostingConfiguration after
+        // dismissing the messaging screen, or reconfigured the row after a
+        // send). This avoids a one-frame opacity/offset/scale flash and any
+        // entrance replay; genuinely new threads still animate once via onAppear.
+        _hasEntered = State(
+            initialValue: !animationsEnabled ||
+                PPChatCellEntranceLedger.shared.hasEntered(thread.id)
+        )
     }
 
     public var body: some View {
@@ -117,6 +130,10 @@ public struct PPExpandableChatCell: View {
             composerFocused = false
             cancelFeedbackOnly()
         }
+    }
+
+    var reduceMotion: Bool {
+        !animationsEnabled || systemReduceMotion
     }
 
 }

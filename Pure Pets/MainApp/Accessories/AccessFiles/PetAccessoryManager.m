@@ -13,7 +13,7 @@
 #import "PetAdManager.h"
 #import "UserManager.h"
 #import "UserModel.h"
-#import "PPRolePermission.h"
+#import "PPUserKitCompatibility.h"
 #import "PPFirestoreErrorNotifier.h"
 #import "PPFunc.h"
 #import "PPImageCollection.h"
@@ -2737,7 +2737,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
      [self.collectionView reloadData];
  }];
  */
-
 
 
 

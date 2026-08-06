@@ -37,6 +37,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *supportDisplayName;
 @property (nonatomic, copy) NSString *supportStatus;
 @property (nonatomic, copy) NSString *supportPhotoURLString;
+@property (nonatomic, copy) NSString *contextType;
+@property (nonatomic, copy) NSString *contextId;
+@property (nonatomic, copy) NSDictionary<NSString *, id> *contextSnapshot;
 
 #pragma mark - Derived / Runtime-only (NOT Firestore)
 

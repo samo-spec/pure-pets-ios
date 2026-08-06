@@ -1,12 +1,5 @@
-//
-//  UserModel.h
-//  PurePetsAdmin
-//
-//  Created by Mohammed Ahmed on 21/08/2025.
-//  Refactored for best practices
-//
 #import <Foundation/Foundation.h>
-#import "PPRolePermission.h"
+#import "PPUserKitCompatibility.h"
 
 @class FIRUser;
 @class FIRDocumentSnapshot;
@@ -16,14 +9,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// ===== Login Source =====
 typedef NS_ENUM(NSInteger, UserLoginSource) {
     UserLoginSourceUnknown = 0,
-    UserLoginSourcePPUsers = 1,   // From main PurePets app
-    UserLoginSourcePPAdmin = 2    // From PurePets Admin app
+    UserLoginSourcePPUsers = 1,
+    UserLoginSourcePPAdmin = 2
 };
 
-// ===== Online Status =====
 typedef NS_ENUM(NSInteger, OnlineStatus) {
     OnlineStatusOffline = 0,
     OnlineStatusOnline
@@ -31,51 +22,31 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 
 @interface UserModel : NSObject <NSSecureCoding>
 
-#pragma mark - Core Profile
 @property (nonatomic, assign) OnlineStatus onlineStatus;
 @property (nonatomic, strong, nullable) NSDate *lastSeen;
-
-#pragma mark - Identity
 @property (nonatomic, copy) NSString *ID;
 @property (nonatomic, copy) NSString *UserName;
 @property (nonatomic, copy) NSString *UserEmail;
-
-#pragma mark - Profile
 @property (nonatomic, copy, nullable) NSString *FirstName;
 @property (nonatomic, copy, nullable) NSString *LastName;
 @property (nonatomic, copy, nullable) NSString *MobileNo;
 @property (nonatomic, copy, nullable) NSString *UserAbout;
 @property (nonatomic, copy, nullable) NSString *UserImageName;
 @property (nonatomic, strong, nullable) NSURL *UserImageUrl;
-
-#pragma mark - Presence
 @property (nonatomic, assign) BOOL isOnline;
-
-#pragma mark - Status & Meta
 @property (nonatomic, strong, nullable) NSDate *loginDate;
 @property (nonatomic, strong, nullable) NSDate *updatedAt;
 @property (nonatomic, assign) NSInteger CountryID;
 @property (nonatomic, copy) NSString *PPUserTokenID;
 @property (nonatomic, copy) NSString *PPAdminTokenID;
 @property (nonatomic, copy) NSString *PPProTokenID;
-
-#pragma mark - Roles
 @property (nonatomic, assign) UserRole role;
 @property (nonatomic, assign) BOOL isAdmin;
 @property (nonatomic, assign) BOOL isSuperAdmin;
 @property (nonatomic, assign) BOOL isBlocked;
 
-#pragma mark - User Access Model (Console-managed)
-// These fields are managed by the Console Users Management page.
-// They are read from UsersCol/{uid} via real-time Firestore listener.
-// The iOS app NEVER writes to these fields — they are server/console managed.
-
-/// Account status set by Console admin
-@property (nonatomic, copy) NSString *accountStatus;    // "active" | "blocked" | "disabled" | "pending_review"
-/// Production/protection status — intentional spelling
-@property (nonatomic, copy) NSString *prodectionStatus;  // "active" | "inactive"
-
-/// Feature flags — what the user can do in the app
+@property (nonatomic, copy) NSString *accountStatus;
+@property (nonatomic, copy) NSString *prodectionStatus;
 @property (nonatomic, assign) BOOL canPostPetAdsFeature;
 @property (nonatomic, assign) BOOL canPostAdoptionFeature;
 @property (nonatomic, assign) BOOL canSellAccessoriesFeature;
@@ -87,11 +58,9 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) BOOL canUseChatFeature;
 @property (nonatomic, assign) BOOL canAccessPremiumMarketplaceFeature;
 @property (nonatomic, assign) BOOL canAccessProviderMarketplaceFeature;
-
-/// Partner onboarding + workspace access
 @property (nonatomic, assign) BOOL partnerOnboardingVisible;
-@property (nonatomic, copy) NSString *partnerApplicationStatus;   // "not_started" | "in_progress" | "submitted" | "approved" | "rejected"
-@property (nonatomic, copy, nullable) NSString *selectedPartnerType; // "delivery" | "service_provider" | "vet" | "pharmacy"
+@property (nonatomic, copy) NSString *partnerApplicationStatus;
+@property (nonatomic, copy, nullable) NSString *selectedPartnerType;
 @property (nonatomic, assign) BOOL canAccessPartnerAppPermission;
 @property (nonatomic, assign) BOOL canManageDeliveryPermission;
 @property (nonatomic, assign) BOOL canManageServiceProviderPermission;
@@ -99,32 +68,20 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) BOOL canPostVetProfilePermission;
 @property (nonatomic, assign) BOOL canEditVetInfoPermission;
 @property (nonatomic, assign) BOOL canManagePetMedicinesPermission;
-
-/// Subscription info
-@property (nonatomic, copy) NSString *subscriptionPlan;    // "free" | "pro" | "business" | "production" | "service_provider"
-@property (nonatomic, copy) NSString *subscriptionStatus;  // "active" | "inactive" | "past_due" | "canceled" | "trial"
-@property (nonatomic, copy) NSString *subscriptionSource;  // "manual" | "app_store" | "play_store" | "internal"
-
-/// Restrictions — what's blocked for this user
+@property (nonatomic, copy) NSString *subscriptionPlan;
+@property (nonatomic, copy) NSString *subscriptionStatus;
+@property (nonatomic, copy) NSString *subscriptionSource;
 @property (nonatomic, assign) BOOL postingBlocked;
 @property (nonatomic, assign) BOOL chatBlocked;
 @property (nonatomic, assign) BOOL purchaseBlocked;
 @property (nonatomic, assign) BOOL withdrawalBlocked;
-
-/// Computed: is this user effectively blocked by any mechanism?
 @property (nonatomic, readonly) BOOL isEffectivelyBlocked;
-/// Computed: is posting blocked by any mechanism?
 @property (nonatomic, readonly) BOOL isPostingEffectivelyBlocked;
-/// Computed: is chat blocked?
 @property (nonatomic, readonly) BOOL isChatEffectivelyBlocked;
-/// Computed: is purchasing blocked?
 @property (nonatomic, readonly) BOOL isPurchaseEffectivelyBlocked;
-
-#pragma mark - Permissions
 @property (nonatomic, copy) NSDictionary<NSString *, NSNumber *> *permissions;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> permissionsListener;
 
-#pragma mark - Convenience Flags
 @property (nonatomic, readonly) BOOL canPostAds;
 @property (nonatomic, readonly) BOOL canSellNew;
 @property (nonatomic, readonly) BOOL canSellUsed;
@@ -135,47 +92,25 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, readonly) BOOL canManageServices;
 @property (nonatomic, readonly) BOOL canProduction;
 @property (nonatomic, readonly) BOOL isAdminAll;
-
 @property (nonatomic, readonly) BOOL isStoreManager;
 @property (nonatomic, readonly) BOOL isFoodManager;
 @property (nonatomic, readonly) BOOL isModerator;
 @property (nonatomic, readonly) BOOL isOwner;
 @property (nonatomic, readonly) BOOL isVet;
-
-#pragma mark - Verification / Plan
 @property (nonatomic, assign, getter=isVerified) BOOL verified;
 @property (nonatomic, copy, nullable) NSString *plan;
-
-#pragma mark - Provider Reputation
-/// Server-owned aggregate from UsersCol/{providerID}/providerReviews.
 @property (nonatomic, assign) double providerRatingValue;
 @property (nonatomic, assign) NSInteger providerReviewCount;
-
-#pragma mark - Cover Images
-/// Array of cover image URLs (stored in UsersCol/{uid}.coverImageUrls).
 @property (nonatomic, strong, nullable) NSArray<NSString *> *coverImageUrls;
-
-#pragma mark - Login Source
 @property (nonatomic, assign) UserLoginSource loginSource;
-
-#pragma mark - Addresses
 @property (nonatomic, strong) NSMutableArray<PPAddressModel *> *Addresses;
-
-#pragma mark - Payment
-/// @note This property will move to PPPaymentManager in a future release.
 @property (nonatomic, strong, nullable) UserPaymentInstrument *SelectedInstrument;
 
-#pragma mark - Initializers
 - (instancetype)initWithDict:(NSDictionary *)dict;
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot;
-
-#pragma mark - Firestore Sync
 - (NSDictionary *)toDictionary;
 - (void)syncToFirestoreWithCompletion:(void(^)(NSError * _Nullable error))completion;
-/// @deprecated Use syncToFirestoreWithCompletion: instead.
 - (void)SYNC:(void(^)(NSError * _Nullable error))completion;
-
-#pragma mark - Permissions API
 - (void)fetchPermissionsWithCompletion:(void (^_Nullable)(NSDictionary<NSString *, NSNumber *> *perms,
                                                          NSError * _Nullable error))completion;
 - (void)startListeningPermissionsWithChange:(void (^)(NSDictionary<NSString *, NSNumber *> *perms))changeBlock;
@@ -186,29 +121,19 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 - (BOOL)hasPermissionNamed:(NSString *)permName;
 - (BOOL)hasAnyPermissionInKeys:(NSArray<NSString *> *)permNames;
 
-#pragma mark - Cache Helpers
 + (nullable instancetype)loadSavedUserWithUID:(NSString *)uid;
 - (void)saveToDisk;
 + (void)clearCachedUserWithUID:(NSString *)uid;
 
-#pragma mark - Builders
 + (instancetype)fromAuthUser:(FIRUser *)auth
                      rootDoc:(nullable NSDictionary *)root
                  permissions:(nullable NSDictionary<NSString *, NSNumber *> *)perms
-                      claims:(nullable NSDictionary *)claims;
+                     claims:(nullable NSDictionary *)claims;
 + (void)loadCurrentUserModelWithCompletion:(void(^)(UserModel *_Nullable u,
                                                     NSError *_Nullable err))completion;
- 
-#pragma mark - Display Helpers
-- (NSString *)bestDisplayName;
-/// @deprecated Use bestDisplayName instead.
-- (NSString *)PPBestDisplayName;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MARK: - camelCase Aliases (Preferred API — use these in new code)
-// These return the same backing data as the PascalCase properties above.
-// PascalCase setters work for both: user.UserName = @"x" == user.userName = @"x"
-// ─────────────────────────────────────────────────────────────────────────────
+- (NSString *)bestDisplayName;
+- (NSString *)PPBestDisplayName;
 - (NSString *)userName;
 - (NSString *)userEmail;
 - (nullable NSString *)firstName;
@@ -221,7 +146,7 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 - (NSString *)ppUserTokenID;
 - (NSMutableArray<PPAddressModel *> *)addresses;
 - (nullable UserPaymentInstrument *)selectedInstrument;
- 
+
 @end
-/**************************************************************************************************************************************************************************************/
+
 NS_ASSUME_NONNULL_END

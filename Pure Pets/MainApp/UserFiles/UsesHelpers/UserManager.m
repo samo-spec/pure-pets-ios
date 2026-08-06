@@ -1,7 +1,8 @@
 
 #import "UserManager.h"
 #import "UserModel.h"
-#import "PPRolePermission.h"  // Assuming this defines UserPermission enum and possibly mapping
+#import "PPUserKitCompatibility.h"
+#import <Pure_Pets-Swift.h>
 #import "AppDataListenerManager.h"
 #import "CartManager.h"
 #import "ChManager.h"
@@ -36,7 +37,6 @@ NS_ASSUME_NONNULL_BEGIN
  
 @property (nonatomic, strong) FIRFunctions *functions;
 @property (nonatomic, strong, nullable) id authStateListenerHandle;  // handle for Auth state listener
-@property (nonatomic, strong, nullable) id<FIRListenerRegistration> blockedStateListener;
 @property (nonatomic, strong) dispatch_queue_t authQueue;
 @property (nonatomic, assign) NSUInteger authStateVersion;
 @property (nonatomic, assign) BOOL isSessionRestoreRunning;
@@ -46,6 +46,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, nullable) NSTimer *tokenRefreshTimer;
 @property (nonatomic, assign) BOOL requireVerifiedEmail;
 @property (nonatomic, assign) BOOL enforceFirestoreBlockedFlag;
+@property (nonatomic, strong, nullable) id userKitAccessObserver;
 - (void)pp_syncPublicProfileForUID:(NSString *)uid
                             fields:(NSDictionary<NSString *, id> *)fields
                         completion:(FUCompletion _Nullable)completion;
@@ -326,9 +327,6 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
             [defaults synchronize];
         }
 
-        // Attempt to load cached user for faster cold-start rendering.
-        [self loadCachedUser];
-
         // Attach auth observer asynchronously to avoid dispatch_once re-entrancy
         // if Auth immediately invokes callbacks while the singleton is still initializing.
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -502,6 +500,13 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
 
 // MARK: - Current User setter (syncs UID to sub-managers)
 - (void)setCurrentUser:(UserModel * _Nullable)currentUser {
+    if (currentUser) {
+        NSString *authUID = PPSafeString([FIRAuth auth].currentUser.uid);
+        if (authUID.length == 0 || ![authUID isEqualToString:currentUser.ID]) {
+            NSLog(@"[UserManager] Ignoring non-canonical current user projection.");
+            return;
+        }
+    }
     _currentUser = currentUser;
     // Keep PPPetProfileManager's UID in sync so it can resolve its own Firestore paths.
     [PPPetProfileManager sharedManager].currentUserUID = currentUser.ID;
@@ -1058,17 +1063,9 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
                     return;
                 }
 
-                NSLog(@"[UserManager] Warning: failed to load repaired user model after sign-in: %@",
+                NSLog(@"[UserManager] Failed to load canonical user model after sign-in: %@",
                       loadError.localizedDescription);
-                UserModel *fallback = [UserModel fromAuthUser:authUser
-                                                       rootDoc:nil
-                                                   permissions:nil
-                                                        claims:nil];
-                fallback.PPUserTokenID = pushToken ?: @"";
-                self.currentUser = fallback;
-                [self cacheUser:fallback];
-                [self startListeningCurrentUserBlockedState];
-                if (completion) completion(fallback, loadError);
+                if (completion) completion(nil, loadError);
                 return;
             }
 
@@ -2592,236 +2589,44 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
 - (void)startListeningCurrentUserBlockedState {
     [self stopListeningCurrentUserBlockedState];
 
-    NSString *uid = PPSafeString(self.currentUser.ID);
-    if (uid.length == 0) {
-        uid = PPSafeString([FIRAuth auth].currentUser.uid);
-    }
-    if (uid.length == 0) {
-        return;
-    }
-
-    FIRDocumentReference *docRef = [[[FIRFirestore firestore] collectionWithPath:@"UsersCol"] documentWithPath:uid];
+    [[PPUserKitRuntime shared] start];
     __weak typeof(self) weakSelf = self;
-    self.blockedStateListener = [docRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot,
-                                                              NSError * _Nullable error) {
+    self.userKitAccessObserver =
+        [[NSNotificationCenter defaultCenter] addObserverForName:@"PPUserKitRuntimeDidChangeNotification"
+                                                            object:nil
+                                                             queue:[NSOperationQueue mainQueue]
+                                                        usingBlock:^(NSNotification * _Nonnull note) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
-        if (error) {
-            NSLog(@"[UserManager] Block-state listener error: %@", error.localizedDescription);
-            return;
-        }
-        if (!snapshot.exists) {
-            return;
-        }
+        UserModel *user = strongSelf.currentUser;
+        if (!user) return;
 
-        NSDictionary *data = snapshot.data ?: @{};
-        BOOL isBlocked = [data[@"isBlocked"] boolValue];
-        BOOL previousCanPostPetAdsFeature = strongSelf.currentUser.canPostPetAdsFeature;
-        BOOL previousCanPostAdoptionFeature = strongSelf.currentUser.canPostAdoptionFeature;
-        BOOL previousCanSellAccessoriesFeature = strongSelf.currentUser.canSellAccessoriesFeature;
-        BOOL previousCanOfferServicesFeature = strongSelf.currentUser.canOfferServicesFeature;
-        BOOL previousCanDeliveryFeature = strongSelf.currentUser.canDeliveryFeature;
-        BOOL previousCanPharmacyFeature = strongSelf.currentUser.canPharmacyFeature;
-        BOOL previousCanVetFeature = strongSelf.currentUser.canVetFeature;
-        BOOL previousCanUseStoriesFeature = strongSelf.currentUser.canUseStoriesFeature;
-        BOOL previousCanUseChatFeature = strongSelf.currentUser.canUseChatFeature;
-        BOOL previousCanAccessPremiumMarketplaceFeature = strongSelf.currentUser.canAccessPremiumMarketplaceFeature;
-        BOOL previousPartnerOnboardingVisible = strongSelf.currentUser.partnerOnboardingVisible;
-        NSString *previousPartnerApplicationStatus = PPSafeString(strongSelf.currentUser.partnerApplicationStatus);
-        NSString *previousSelectedPartnerType = PPSafeString(strongSelf.currentUser.selectedPartnerType);
-        BOOL previousCanAccessPartnerAppPermission = strongSelf.currentUser.canAccessPartnerAppPermission;
-        BOOL previousCanManageDeliveryPermission = strongSelf.currentUser.canManageDeliveryPermission;
-        BOOL previousCanManageServiceProviderPermission = strongSelf.currentUser.canManageServiceProviderPermission;
-        BOOL previousCanManageVetPermission = strongSelf.currentUser.canManageVetPermission;
-        BOOL previousCanPostVetProfilePermission = strongSelf.currentUser.canPostVetProfilePermission;
-        BOOL previousCanEditVetInfoPermission = strongSelf.currentUser.canEditVetInfoPermission;
-        BOOL previousCanManagePetMedicinesPermission = strongSelf.currentUser.canManagePetMedicinesPermission;
-        BOOL previousPostingBlocked = strongSelf.currentUser.postingBlocked;
-        BOOL previousChatBlocked = strongSelf.currentUser.chatBlocked;
-        BOOL previousPurchaseBlocked = strongSelf.currentUser.purchaseBlocked;
-        BOOL previousWithdrawalBlocked = strongSelf.currentUser.withdrawalBlocked;
-        NSString *previousSubscriptionPlan = PPSafeString(strongSelf.currentUser.subscriptionPlan);
-        NSString *previousSubscriptionStatus = PPSafeString(strongSelf.currentUser.subscriptionStatus);
-        NSString *previousSubscriptionSource = PPSafeString(strongSelf.currentUser.subscriptionSource);
-
-        // ── Parse new User Access Model fields from the same snapshot ──
-        NSString *accountStatus = PPSafeString(data[@"accountStatus"]);
-        if (accountStatus.length == 0) accountStatus = @"active";
-        NSString *prodectionStatus = PPSafeString(data[@"prodectionStatus"]);
-        if (prodectionStatus.length == 0) prodectionStatus = @"active";
-
-        // Features
-        NSDictionary *featuresDict = [data[@"features"] isKindOfClass:NSDictionary.class] ? data[@"features"] : nil;
-        if (featuresDict) {
-            strongSelf.currentUser.canPostPetAdsFeature = [featuresDict[@"canPostPetAds"] boolValue];
-            strongSelf.currentUser.canPostAdoptionFeature = [featuresDict[@"canPostAdoption"] boolValue];
-            strongSelf.currentUser.canSellAccessoriesFeature = [featuresDict[@"canSellAccessories"] boolValue];
-            strongSelf.currentUser.canOfferServicesFeature = [featuresDict[@"service_provider"] boolValue] || [featuresDict[@"canOfferServices"] boolValue];
-            strongSelf.currentUser.canDeliveryFeature = [featuresDict[@"delivery"] boolValue] || [featuresDict[@"canDelivery"] boolValue];
-            strongSelf.currentUser.canPharmacyFeature = [data[@"canPharmacy"] boolValue] || [featuresDict[@"pharmacy"] boolValue] || [featuresDict[@"canPharmacy"] boolValue];
-            strongSelf.currentUser.canVetFeature = [featuresDict[@"vet"] boolValue] || [featuresDict[@"canVet"] boolValue];
-            strongSelf.currentUser.canUseStoriesFeature = [featuresDict[@"canUseStories"] boolValue];
-            strongSelf.currentUser.canUseChatFeature = [featuresDict[@"canUseChat"] boolValue];
-            strongSelf.currentUser.canAccessPremiumMarketplaceFeature = [featuresDict[@"canAccessPremiumMarketplace"] boolValue];
-        } else {
-            strongSelf.currentUser.canPharmacyFeature = [data[@"canPharmacy"] boolValue];
-        }
-
-        NSDictionary *onboardingDict = [data[@"onboarding"] isKindOfClass:NSDictionary.class] ? data[@"onboarding"] : nil;
-        NSDictionary *partnerRoot = onboardingDict ?: data;
-        strongSelf.currentUser.partnerOnboardingVisible = [partnerRoot[@"partnerOnboardingVisible"] boolValue];
-
-        NSString *partnerApplicationStatus = PPSafeString(partnerRoot[@"partnerApplicationStatus"]);
-        strongSelf.currentUser.partnerApplicationStatus = partnerApplicationStatus.length > 0 ? partnerApplicationStatus : @"not_started";
-
-        NSString *rawPartnerType = [PPSafeString(partnerRoot[@"selectedPartnerType"]).lowercaseString stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if ([rawPartnerType isEqualToString:@"delivery_subscription"]) {
-            rawPartnerType = @"delivery";
-        } else if ([rawPartnerType isEqualToString:@"service"] || [rawPartnerType isEqualToString:@"serviceprovider"]) {
-            rawPartnerType = @"service_provider";
-        }
-        if (!([rawPartnerType isEqualToString:@"delivery"] ||
-              [rawPartnerType isEqualToString:@"service_provider"] ||
-              [rawPartnerType isEqualToString:@"vet"])) {
-            rawPartnerType = @"";
-        }
-        strongSelf.currentUser.selectedPartnerType = rawPartnerType.length > 0 ? rawPartnerType : nil;
-
-        NSDictionary *permDict = [data[@"permissions"] isKindOfClass:NSDictionary.class] ? data[@"permissions"] : nil;
-        if (permDict) {
-            strongSelf.currentUser.canManageDeliveryPermission = [permDict[@"canManageDelivery"] boolValue];
-            strongSelf.currentUser.canManageServiceProviderPermission = [permDict[@"canManageServiceProvider"] boolValue];
-            strongSelf.currentUser.canManageVetPermission = [permDict[@"canManageVet"] boolValue];
-            strongSelf.currentUser.canPostVetProfilePermission = [permDict[@"canPostVetProfile"] boolValue];
-            strongSelf.currentUser.canEditVetInfoPermission = [permDict[@"canEditVetInfo"] boolValue];
-            strongSelf.currentUser.canManagePetMedicinesPermission = [permDict[@"canManagePetMedicines"] boolValue];
-            strongSelf.currentUser.canAccessPartnerAppPermission = [permDict[@"canAccessPartnerApp"] boolValue];
-        }
-        if (!strongSelf.currentUser.canManageDeliveryPermission) {
-            strongSelf.currentUser.canManageDeliveryPermission = strongSelf.currentUser.canDeliveryFeature;
-        }
-        if (!strongSelf.currentUser.canManageServiceProviderPermission) {
-            strongSelf.currentUser.canManageServiceProviderPermission = strongSelf.currentUser.canOfferServicesFeature;
-        }
-        if (!strongSelf.currentUser.canManageVetPermission) {
-            strongSelf.currentUser.canManageVetPermission = strongSelf.currentUser.canVetFeature;
-        }
-        if (!strongSelf.currentUser.canPostVetProfilePermission) {
-            strongSelf.currentUser.canPostVetProfilePermission = strongSelf.currentUser.canManageVetPermission;
-        }
-        if (!strongSelf.currentUser.canEditVetInfoPermission) {
-            strongSelf.currentUser.canEditVetInfoPermission = strongSelf.currentUser.canManageVetPermission;
-        }
-        if (!strongSelf.currentUser.canManagePetMedicinesPermission) {
-            strongSelf.currentUser.canManagePetMedicinesPermission = strongSelf.currentUser.canPharmacyFeature;
-        }
-        if (!strongSelf.currentUser.canAccessPartnerAppPermission) {
-            strongSelf.currentUser.canAccessPartnerAppPermission =
-                strongSelf.currentUser.canManageDeliveryPermission ||
-                strongSelf.currentUser.canManageServiceProviderPermission ||
-                strongSelf.currentUser.canManageVetPermission ||
-                strongSelf.currentUser.canDeliveryFeature ||
-                strongSelf.currentUser.canOfferServicesFeature ||
-                strongSelf.currentUser.canVetFeature ||
-                strongSelf.currentUser.canPharmacyFeature;
-        }
-
-        // Restrictions
-        NSDictionary *restrictionsDict = [data[@"restrictions"] isKindOfClass:NSDictionary.class] ? data[@"restrictions"] : nil;
-        if (restrictionsDict) {
-            strongSelf.currentUser.postingBlocked = [restrictionsDict[@"postingBlocked"] boolValue];
-            strongSelf.currentUser.chatBlocked = [restrictionsDict[@"chatBlocked"] boolValue];
-            strongSelf.currentUser.purchaseBlocked = [restrictionsDict[@"purchaseBlocked"] boolValue];
-            strongSelf.currentUser.withdrawalBlocked = [restrictionsDict[@"withdrawalBlocked"] boolValue];
-        }
-
-        // Subscription
-        NSDictionary *subDict = [data[@"subscription"] isKindOfClass:NSDictionary.class] ? data[@"subscription"] : nil;
-        if (subDict) {
-            NSString *plan = PPSafeString(subDict[@"plan"]);
-            NSString *subStatus = PPSafeString(subDict[@"status"]);
-            NSString *source = PPSafeString(subDict[@"source"]);
-            strongSelf.currentUser.subscriptionPlan = plan.length ? plan : @"free";
-            strongSelf.currentUser.subscriptionStatus = subStatus.length ? subStatus : @"active";
-            strongSelf.currentUser.subscriptionSource = source.length ? source : @"manual";
-        }
-
-        // Account & prodection status
-        BOOL accountStatusChanged = ![strongSelf.currentUser.accountStatus isEqualToString:accountStatus];
-        BOOL prodectionChanged = ![strongSelf.currentUser.prodectionStatus isEqualToString:prodectionStatus];
-        strongSelf.currentUser.accountStatus = accountStatus;
-        strongSelf.currentUser.prodectionStatus = prodectionStatus;
-
-        // Verified status
-        BOOL newVerified = [data[@"verified"] boolValue];
-        BOOL verifiedChanged = (strongSelf.currentUser.verified != newVerified);
-        strongSelf.currentUser.verified = newVerified;
-
-        // Combine blocked check: legacy isBlocked OR accountStatus == "blocked"/"disabled"
-        BOOL effectivelyBlocked = isBlocked || [accountStatus isEqualToString:@"blocked"] || [accountStatus isEqualToString:@"disabled"];
-
-        BOOL accessChanged =
-            previousCanPostPetAdsFeature != strongSelf.currentUser.canPostPetAdsFeature ||
-            previousCanPostAdoptionFeature != strongSelf.currentUser.canPostAdoptionFeature ||
-            previousCanSellAccessoriesFeature != strongSelf.currentUser.canSellAccessoriesFeature ||
-            previousCanOfferServicesFeature != strongSelf.currentUser.canOfferServicesFeature ||
-            previousCanDeliveryFeature != strongSelf.currentUser.canDeliveryFeature ||
-            previousCanPharmacyFeature != strongSelf.currentUser.canPharmacyFeature ||
-            previousCanVetFeature != strongSelf.currentUser.canVetFeature ||
-            previousCanUseStoriesFeature != strongSelf.currentUser.canUseStoriesFeature ||
-            previousCanUseChatFeature != strongSelf.currentUser.canUseChatFeature ||
-            previousCanAccessPremiumMarketplaceFeature != strongSelf.currentUser.canAccessPremiumMarketplaceFeature ||
-            previousPartnerOnboardingVisible != strongSelf.currentUser.partnerOnboardingVisible ||
-            ![previousPartnerApplicationStatus isEqualToString:PPSafeString(strongSelf.currentUser.partnerApplicationStatus)] ||
-            ![previousSelectedPartnerType isEqualToString:PPSafeString(strongSelf.currentUser.selectedPartnerType)] ||
-            previousCanAccessPartnerAppPermission != strongSelf.currentUser.canAccessPartnerAppPermission ||
-            previousCanManageDeliveryPermission != strongSelf.currentUser.canManageDeliveryPermission ||
-            previousCanManageServiceProviderPermission != strongSelf.currentUser.canManageServiceProviderPermission ||
-            previousCanManageVetPermission != strongSelf.currentUser.canManageVetPermission ||
-            previousCanPostVetProfilePermission != strongSelf.currentUser.canPostVetProfilePermission ||
-            previousCanEditVetInfoPermission != strongSelf.currentUser.canEditVetInfoPermission ||
-            previousCanManagePetMedicinesPermission != strongSelf.currentUser.canManagePetMedicinesPermission ||
-            previousPostingBlocked != strongSelf.currentUser.postingBlocked ||
-            previousChatBlocked != strongSelf.currentUser.chatBlocked ||
-            previousPurchaseBlocked != strongSelf.currentUser.purchaseBlocked ||
-            previousWithdrawalBlocked != strongSelf.currentUser.withdrawalBlocked ||
-            ![previousSubscriptionPlan isEqualToString:PPSafeString(strongSelf.currentUser.subscriptionPlan)] ||
-            ![previousSubscriptionStatus isEqualToString:PPSafeString(strongSelf.currentUser.subscriptionStatus)] ||
-            ![previousSubscriptionSource isEqualToString:PPSafeString(strongSelf.currentUser.subscriptionSource)];
-
-        BOOL didChange = (strongSelf.currentUser.isBlocked != isBlocked) || accountStatusChanged || prodectionChanged || verifiedChanged || accessChanged;
-        strongSelf.currentUser.isBlocked = isBlocked;
-
-        if (didChange && strongSelf.currentUser.ID.length > 0) {
-            [strongSelf.currentUser saveToDisk];
-        }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [[NSNotificationCenter defaultCenter] postNotificationName:PPUserManagerDidUpdateBlockedStateNotification
-                                                                object:strongSelf
-                                                              userInfo:@{
-                PPUserManagerBlockedStateUserInfoKey: @(effectivelyBlocked),
-                @"uid": uid ?: @""
-            }];
-
-            [[NSNotificationCenter defaultCenter] postNotificationName:PPUserManagerDidUpdateUserAccessNotification
-                                                                object:strongSelf
-                                                              userInfo:@{
-                @"uid": uid ?: @"",
-                @"accountStatus": accountStatus,
-                @"prodectionStatus": prodectionStatus,
-                @"effectivelyBlocked": @(effectivelyBlocked),
-                @"verified": @(newVerified)
-            }];
-        });
+        BOOL effectivelyBlocked = user.isEffectivelyBlocked;
+        [[NSNotificationCenter defaultCenter]
+            postNotificationName:PPUserManagerDidUpdateBlockedStateNotification
+                          object:strongSelf
+                        userInfo:@{
+            PPUserManagerBlockedStateUserInfoKey: @(effectivelyBlocked),
+            @"uid": user.ID ?: @""
+        }];
+        [[NSNotificationCenter defaultCenter]
+            postNotificationName:PPUserManagerDidUpdateUserAccessNotification
+                          object:strongSelf
+                        userInfo:@{
+            @"uid": user.ID ?: @"",
+            @"accountStatus": user.accountStatus ?: @"unknown",
+            @"prodectionStatus": user.prodectionStatus ?: @"inactive",
+            @"effectivelyBlocked": @(effectivelyBlocked),
+            @"verified": @(user.verified)
+        }];
     }];
 }
 
 - (void)stopListeningCurrentUserBlockedState {
-    if (self.blockedStateListener) {
-        [self.blockedStateListener remove];
-        self.blockedStateListener = nil;
+    if (self.userKitAccessObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.userKitAccessObserver];
+        self.userKitAccessObserver = nil;
     }
 }
 
@@ -2926,14 +2731,17 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
 
 - (void)cacheUser:(UserModel *)user {
     if (!user || !user.ID) return;
-    // Save using UserModel's secure coding (to disk)
-    if(self.currentUser != user)
-    {
-        self.currentUser = user;
-        PPCurrentUser = user;
+    NSString *authUID = PPSafeString([FIRAuth auth].currentUser.uid);
+    if (authUID.length == 0 || ![authUID isEqualToString:user.ID]) {
+        [UserManager cacheUserModelInMemory:user];
+        return;
     }
-   
-    [user saveToDisk];
+
+    if (self.currentUser != user) {
+        self.currentUser = user;
+    }
+    [UserManager cacheUserModelInMemory:user];
+
     // Store last logged in UID in user defaults for quick reference
     [[NSUserDefaults standardUserDefaults] setObject:user.ID forKey:@"lastLoggedInUID"];
     [[NSUserDefaults standardUserDefaults] setObject:user.ID forKey:@"lastAuthenticatedUID"];
@@ -2941,22 +2749,7 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
 }
 
 - (void)loadCachedUser {
-    NSString *uid = [[NSUserDefaults standardUserDefaults] stringForKey:@"lastLoggedInUID"];
-    if (uid.length == 0) {
-        return;
-    }
-    FIRUser *authUser = [FIRAuth auth].currentUser;
-    if (authUser)
-    {
-        if (authUser.uid && [authUser.uid isEqualToString:uid]) {
-            UserModel *cached = [UserModel loadSavedUserWithUID:uid];
-            if (cached) {
-                self.currentUser = cached;
-                NSLog(@"[UserManager] Loaded cached user %@ (%@) from disk.", cached.UserName ?: cached.UserEmail, uid);
-            }
-        }
-    }
-    
+    // PurePetsUserKit owns cached session restoration.
 }
 
 - (void)clearUserDefaults {
@@ -3002,7 +2795,6 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
     [[ChManager sharedManager] stopAllThreadMessageListeners];
     [CartManager.sharedManager clearCart];
     self.currentUser = nil;
-    PPCurrentUser = nil;
     NSLog(@"[UserManager] Logged out and cleared all user data.");
 }
 
@@ -3213,6 +3005,21 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     }
 
     NSString *currentUID = [FIRAuth auth].currentUser.uid ?: @"";
+    if (currentUID.length > 0 && [uid isEqualToString:currentUID]) {
+        UserModel *loadedCurrentUser = self.currentUser;
+        if ([loadedCurrentUser.ID isEqualToString:uid]) {
+            [UserManager cacheUserModelInMemory:loadedCurrentUser];
+            if (completion) completion(loadedCurrentUser, nil);
+            return;
+        }
+        [UserModel loadCurrentUserModelWithCompletion:^(UserModel * _Nullable user, NSError * _Nullable error) {
+            if (user) {
+                [self cacheUser:user];
+            }
+            if (completion) completion(user, error);
+        }];
+        return;
+    }
     if (currentUID.length > 0 && ![uid isEqualToString:currentUID]) {
         [self getOtherUserModelFromFirestoreWithUID:uid completion:completion];
         return;
@@ -3226,7 +3033,6 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         }
         if (snapshot.exists) {
             UserModel *model = [[UserModel alloc] initWithSnapshot:snapshot];
-            self.currentUser = model;
             [self cacheUser:model];
             completion(model, nil);
         } else {
@@ -3687,7 +3493,6 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
 
 - (NSString *)profileNameAndTitleWithMode:(ProfileGreetingShorteningMode)mode {
     // Defensive: reset currentUser if not logged in
-    self.currentUser = PPIsUserLoggedIn ? PPCurrentUser : nil;
     NSLog(@"profileNameAndTitleWithMode → Logged in: %@", PPIsUserLoggedIn ? @"YES" : @"NO");
     
     if (!PPIsUserLoggedIn || !self.currentUser) {

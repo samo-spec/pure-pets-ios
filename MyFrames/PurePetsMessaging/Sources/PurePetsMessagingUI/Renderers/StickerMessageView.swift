@@ -19,11 +19,20 @@ struct StickerMessageView: View {
       )
     )
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Sticker, \(payload.accessibilityDescription.value)")
+    .accessibilityLabel(
+      String(
+        format: localized("chat_sticker_accessibility_format"),
+        payload.accessibilityDescription.value
+      )
+    )
   }
 
   private var stickerSize: CGFloat {
     dynamicTypeSize.isAccessibilitySize ? 176 : 144
+  }
+
+  private func localized(_ key: String) -> String {
+    NSLocalizedString(key, comment: "")
   }
 }
 

@@ -166,6 +166,11 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     _supportDisplayName = PPChatTrimmedString(dict[@"supportDisplayName"]);
     _supportStatus = PPChatTrimmedString(dict[@"supportStatus"]);
     _supportPhotoURLString = PPChatTrimmedString(dict[@"supportPhotoUrl"]);
+    _contextType = PPChatTrimmedString(dict[@"contextType"]);
+    _contextId = PPChatTrimmedString(dict[@"contextId"]);
+    _contextSnapshot = [dict[@"contextSnapshot"] isKindOfClass:NSDictionary.class]
+        ? [dict[@"contextSnapshot"] copy]
+        : @{};
 
     // Derived fields
     _unreadCount = 0;
@@ -218,6 +223,9 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     [coder encodeObject:self.supportDisplayName forKey:@"supportDisplayName"];
     [coder encodeObject:self.supportStatus forKey:@"supportStatus"];
     [coder encodeObject:self.supportPhotoURLString forKey:@"supportPhotoUrl"];
+    [coder encodeObject:self.contextType forKey:@"contextType"];
+    [coder encodeObject:self.contextId forKey:@"contextId"];
+    [coder encodeObject:self.contextSnapshot forKey:@"contextSnapshot"];
 }
 
 - (instancetype)initWithCoder:(NSCoder *)coder
@@ -257,6 +265,13 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     self.supportDisplayName = [coder decodeObjectOfClass:NSString.class forKey:@"supportDisplayName"] ?: @"";
     self.supportStatus = [coder decodeObjectOfClass:NSString.class forKey:@"supportStatus"] ?: @"";
     self.supportPhotoURLString = [coder decodeObjectOfClass:NSString.class forKey:@"supportPhotoUrl"] ?: @"";
+    self.contextType = [coder decodeObjectOfClass:NSString.class forKey:@"contextType"] ?: @"";
+    self.contextId = [coder decodeObjectOfClass:NSString.class forKey:@"contextId"] ?: @"";
+    NSSet *contextClasses = [NSSet setWithObjects:
+        NSDictionary.class, NSString.class, NSNumber.class, NSArray.class,
+        NSDate.class, NSURL.class, NSNull.class, nil];
+    self.contextSnapshot = [coder decodeObjectOfClasses:contextClasses
+                                                 forKey:@"contextSnapshot"] ?: @{};
 
     NSString *myUID = PPCurrentChatIdentity();
     self.isMuted = [self.mutedBy containsObject:myUID];

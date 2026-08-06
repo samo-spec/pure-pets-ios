@@ -9,7 +9,7 @@ struct DeliveryStatusView: View {
   var body: some View {
     HStack(spacing: 4) {
       if isEdited {
-        Text("Edited")
+        Text(localized("chat_status_edited"))
       }
 
       Text(timestamp, style: .time)
@@ -28,34 +28,38 @@ struct DeliveryStatusView: View {
     switch state {
     case .queued:
       Image(systemName: "clock")
-        .accessibilityLabel("Queued")
+        .accessibilityLabel(localized("chat_status_sending"))
 
     case .uploading(let progress):
       ProgressView(value: min(max(progress, 0), 1))
         .frame(width: 30)
-        .accessibilityLabel("Uploading")
+        .accessibilityLabel(localized("Uploading…"))
         .accessibilityValue(Text(progress, format: .percent))
 
     case .sent:
       Image(systemName: "checkmark")
-        .accessibilityLabel("Sent")
+        .accessibilityLabel(localized("chat_status_sent"))
 
     case .delivered:
       Image(systemName: "checkmark.circle")
-        .accessibilityLabel("Delivered")
+        .accessibilityLabel(localized("chat_status_delivered"))
 
     case .read:
       Image(systemName: "checkmark.circle.fill")
-        .foregroundStyle(PurePetsMessagingTheme.brand)
-        .accessibilityLabel("Read")
+        .foregroundStyle(PurePetsMessagingTheme.signal)
+        .accessibilityLabel(localized("chat_status_read"))
 
     case .failed:
       Button(action: onRetry) {
-        Label("Retry", systemImage: "exclamationmark.circle.fill")
+        Label(localized("Retry"), systemImage: "exclamationmark.circle.fill")
           .foregroundStyle(PurePetsMessagingTheme.danger)
       }
       .buttonStyle(.plain)
-      .accessibilityHint("Attempts to send this message again")
+      .accessibilityHint(localized("chat_retry_send_message"))
     }
+  }
+
+  private func localized(_ key: String) -> String {
+    NSLocalizedString(key, comment: "")
   }
 }

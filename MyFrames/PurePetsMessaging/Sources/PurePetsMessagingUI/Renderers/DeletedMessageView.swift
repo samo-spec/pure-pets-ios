@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct DeletedMessageView: View {
@@ -11,15 +12,17 @@ struct DeletedMessageView: View {
   }
 
   private var message: String {
+    let key: String
     switch payload.deletedBy {
     case .sender:
-      "This message was deleted"
+      key = "chat_deleted_by_sender"
     case .recipient:
-      "You deleted this message"
+      key = "chat_deleted_by_recipient"
     case .moderator:
-      "This message was removed by a moderator"
+      key = "chat_deleted_by_moderator"
     case .system:
-      "This message is no longer available"
+      key = "chat_deleted_by_system"
     }
+    return NSLocalizedString(key, comment: "")
   }
 }

@@ -6,6 +6,7 @@ struct VoiceMessageView: View {
   let audioCoordinator: ConversationAudioCoordinator
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.locale) private var locale
 
   var body: some View {
     Group {
@@ -15,13 +16,16 @@ struct VoiceMessageView: View {
           waveform
         }
       } else {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
           playButton
           waveform
         }
       }
     }
-    .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? nil : 220)
+    .frame(
+      width: dynamicTypeSize.isAccessibilitySize ? nil : 218,
+      alignment: .leading
+    )
     .onDisappear {
       audioCoordinator.stop(messageID: messageID)
     }
@@ -32,25 +36,30 @@ struct VoiceMessageView: View {
       audioCoordinator.toggle(messageID: messageID, payload: payload)
     } label: {
       Image(systemName: audioCoordinator.isPlaying(messageID) ? "pause.fill" : "play.fill")
-        .font(.headline)
-        .frame(width: 44, height: 44)
-        .background(PurePetsMessagingTheme.brand, in: .circle)
-        .foregroundStyle(.white)
+        .font(.system(size: 15, weight: .bold))
+        .frame(width: 40, height: 40)
+        .background(PurePetsMessagingTheme.signal, in: .circle)
+        .foregroundStyle(PurePetsMessagingTheme.signalForeground)
     }
     .buttonStyle(.plain)
     .accessibilityLabel(
-      audioCoordinator.isPlaying(messageID) ? "Pause voice message" : "Play voice message")
+      localized(
+        audioCoordinator.isPlaying(messageID)
+          ? "chat_voice_pause_accessibility"
+          : "chat_voice_play_accessibility"
+      )
+    )
   }
 
   private var waveform: some View {
-    VStack(alignment: .leading, spacing: 5) {
+    VStack(alignment: .leading, spacing: 3) {
       GeometryReader { proxy in
         HStack(alignment: .center, spacing: 2) {
           ForEach(Array(payload.waveform.enumerated()), id: \.offset) { index, sample in
             Capsule()
               .fill(
                 isPlayed(index)
-                  ? PurePetsMessagingTheme.brand
+                  ? PurePetsMessagingTheme.signal
                   : Color.secondary.opacity(0.45)
               )
               .frame(
@@ -59,13 +68,13 @@ struct VoiceMessageView: View {
                   (proxy.size.width - CGFloat(payload.waveform.count - 1) * 2)
                     / CGFloat(max(payload.waveform.count, 1))
                 ),
-                height: max(5, 32 * sample)
+                height: max(4, 25 * sample)
               )
           }
         }
         .frame(maxHeight: .infinity)
       }
-      .frame(height: 36)
+      .frame(height: 28)
 
       HStack {
         Text(elapsedText)
@@ -76,8 +85,14 @@ struct VoiceMessageView: View {
       .foregroundStyle(.secondary)
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Voice message")
-    .accessibilityValue("\(elapsedText) of \(durationText)")
+    .accessibilityLabel(localized("chat_reply_audio"))
+    .accessibilityValue(
+      String(
+        format: localized("chat_voice_progress_accessibility_format"),
+        elapsedText,
+        durationText
+      )
+    )
   }
 
   private var progress: Double {
@@ -100,7 +115,10 @@ struct VoiceMessageView: View {
   }
 
   private func durationString(_ duration: TimeInterval) -> String {
-    let seconds = max(Int(duration.rounded()), 0)
-    return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    PurePetsMessageDurationFormatter.string(for: duration, locale: locale)
+  }
+
+  private func localized(_ key: String) -> String {
+    NSLocalizedString(key, comment: "")
   }
 }

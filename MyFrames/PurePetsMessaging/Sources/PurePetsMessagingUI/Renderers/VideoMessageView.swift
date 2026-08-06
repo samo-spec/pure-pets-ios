@@ -3,6 +3,7 @@ import SwiftUI
 struct VideoMessageView: View {
   let payload: VideoPayload
   let onOpen: () -> Void
+  @Environment(\.locale) private var locale
 
   var body: some View {
     Button(action: onOpen) {
@@ -40,8 +41,14 @@ struct VideoMessageView: View {
       .contentShape(.rect)
     }
     .buttonStyle(.plain)
-    .accessibilityLabel("Video, \(payload.accessibilityDescription), \(durationText)")
-    .accessibilityHint("Opens the video player")
+    .accessibilityLabel(
+      String(
+        format: localized("chat_video_accessibility_format"),
+        payload.accessibilityDescription,
+        durationText
+      )
+    )
+    .accessibilityHint(localized("chat_video_open_accessibility_hint"))
   }
 
   private var clampedAspectRatio: Double {
@@ -49,7 +56,10 @@ struct VideoMessageView: View {
   }
 
   private var durationText: String {
-    let seconds = max(Int(payload.duration.rounded()), 0)
-    return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    PurePetsMessageDurationFormatter.string(for: payload.duration, locale: locale)
+  }
+
+  private func localized(_ key: String) -> String {
+    NSLocalizedString(key, comment: "")
   }
 }

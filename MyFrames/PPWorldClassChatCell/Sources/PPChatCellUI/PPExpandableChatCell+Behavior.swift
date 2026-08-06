@@ -164,14 +164,26 @@ extension PPExpandableChatCell {
         cancelFeedbackOnly()
         replyState = PPQuickReplyStateMachine()
         composerFocused = false
-        hasEntered = false
+        hasEntered = !animationsEnabled
     }
 
     func playEntranceIfNeeded() {
         guard !hasEntered else { return }
 
+        // A thread animates its entrance only once per app session. When the
+        // list re-appears — returning from the full messaging screen, or a
+        // reused cell rebinding an already-seen thread — the fresh SwiftUI view
+        // starts with `hasEntered == false`, which previously replayed the
+        // opacity/offset/scale entrance every single time. The ledger makes the
+        // cell settle instantly in that case instead of re-animating.
+        if PPChatCellEntranceLedger.shared.hasEntered(thread.id) {
+            hasEntered = true
+            return
+        }
+
         if reduceMotion {
             hasEntered = true
+            PPChatCellEntranceLedger.shared.markEntered(thread.id)
             return
         }
 
@@ -180,6 +192,7 @@ extension PPExpandableChatCell {
             withAnimation(entranceAnimation) {
                 hasEntered = true
             }
+            PPChatCellEntranceLedger.shared.markEntered(thread.id)
         }
     }
 
@@ -212,6 +225,20 @@ extension PPExpandableChatCell {
             return optimistic
         }
         return thread.lastActivity.textValue
+    }
+
+    /// True while the latest message shown in the expanded block is one the
+    /// current user just sent (optimistic in-flight or freshly confirmed),
+    /// so the block can label it with a bold sender token + sent indicator.
+    var latestMessageIsOwn: Bool {
+        if replyState.optimisticMessage != nil { return true }
+        if case .sent = replyState.phase { return true }
+        return false
+    }
+
+    var latestMessageWasSent: Bool {
+        if case .sent = replyState.phase { return true }
+        return false
     }
 
     var canSend: Bool {
@@ -332,7 +359,8 @@ extension PPExpandableChatCell {
     }
 
     var feedbackAnimation: Animation? {
-        reduceMotion
+        guard animationsEnabled else { return nil }
+        return reduceMotion
         ? .easeOut(duration: 0.14)
         : .spring(response: 0.28, dampingFraction: 0.92, blendDuration: 0.06)
     }
@@ -344,6 +372,10 @@ extension PPExpandableChatCell {
     }
 
     var expandedContentTransition: AnyTransition {
+        if !animationsEnabled {
+            return .identity
+        }
+
         if reduceMotion {
             return .opacity
         }
@@ -409,6 +441,27 @@ extension PPExpandableChatCell {
         case let .failed(_, failure):
             return copy.failureMessage(for: failure)
         }
+    }
+}
+
+/// Session-scoped record of which conversations have already played their
+/// one-time entrance animation. Lives for the lifetime of the process so that
+/// dismissing the full messaging screen (or reusing a hosting cell) does not
+/// replay the entrance every time the inbox re-appears.
+@MainActor
+final class PPChatCellEntranceLedger {
+    static let shared = PPChatCellEntranceLedger()
+
+    private var entered: Set<String> = []
+
+    private init() {}
+
+    func hasEntered(_ id: PPConversationID) -> Bool {
+        entered.contains(id.rawValue)
+    }
+
+    func markEntered(_ id: PPConversationID) {
+        entered.insert(id.rawValue)
     }
 }
 #endif

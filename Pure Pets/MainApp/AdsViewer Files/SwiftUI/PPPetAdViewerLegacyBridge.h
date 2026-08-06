@@ -109,6 +109,16 @@ fromViewController:(UIViewController *)viewController
              completion:(void (^)(NSError * _Nullable error))completion
     NS_SWIFT_NAME(openChat(for:from:completion:));
 
++ (void)openChatForUser:(UserModel *)user
+                    ad:(PetAd *)ad
+    fromViewController:(UIViewController *)viewController
+            completion:(void (^)(NSError * _Nullable error))completion
+    NS_SWIFT_NAME(openChat(for:ad:from:completion:));
+
++ (void)openPetAd:(PetAd *)ad
+fromViewController:(UIViewController *)viewController
+    NS_SWIFT_NAME(openPetAd(_:from:));
+
 + (void)openAccessory:(PetAccessory *)accessory
    fromViewController:(UIViewController *)viewController
     NS_SWIFT_NAME(openAccessory(_:from:));
@@ -127,6 +137,9 @@ fromViewController:(UIViewController *)viewController
                        animated:(BOOL)animated
              fromViewController:(UIViewController *)viewController
     NS_SWIFT_NAME(setPremiumTabDockHidden(_:animated:from:));
+
++ (CGFloat)bottomNavigationClearanceFromViewController:(UIViewController *)viewController
+    NS_SWIFT_NAME(bottomNavigationClearance(from:));
 
 @end
 

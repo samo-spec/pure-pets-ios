@@ -177,9 +177,18 @@ final class PPPetAdViewerStore: ObservableObject {
     }
 
     func share() {
-        hostActions.share(ad: snapshot.ad)
         repository.track(.share, ad: snapshot.ad)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        hostActions.share(ad: snapshot.ad) { [weak self] _ in
+            guard let self else { return }
+            let message = PPPetAdLocalization.text(
+                "load_error_retry",
+                fallback: "Something went wrong. Please try again."
+            )
+            UINotificationFeedbackGenerator()
+                .notificationOccurred(.error)
+            showToast(message)
+        }
     }
 
     func requestReport() {
@@ -334,7 +343,7 @@ final class PPPetAdViewerStore: ObservableObject {
             guard let self else { return }
             repository.logContact(ad: snapshot.ad, channelCode: 1)
             do {
-                try await hostActions.openChat(owner: owner)
+                try await hostActions.openChat(owner: owner, ad: snapshot.ad)
                 chatState = .succeeded(message: "")
                 repository.track(.chat, ad: snapshot.ad)
             } catch {

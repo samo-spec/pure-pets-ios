@@ -52,18 +52,18 @@ enum PPChatComposerPalette {
     static let messagingSurface = Color(
         uiColor: UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {
-                return UIColor(white: 0.08, alpha: 0.42)
+                return UIColor(red: 0.075, green: 0.082, blue: 0.085, alpha: 0.82)
             }
-            return UIColor(white: 1.0, alpha: 0.44)
+            return UIColor(red: 0.997, green: 0.991, blue: 0.976, alpha: 0.86)
         }
     )
 
     static let messagingFieldSurface = Color(
         uiColor: UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {
-                return UIColor(white: 1.0, alpha: 0.055)
+                return UIColor(white: 1.0, alpha: 0.045)
             }
-            return UIColor(white: 1.0, alpha: 0.18)
+            return UIColor.clear
         }
     )
 
@@ -71,9 +71,9 @@ enum PPChatComposerPalette {
         uiColor: UIColor { traitCollection in
             let increasedContrast = traitCollection.accessibilityContrast == .high
             if traitCollection.userInterfaceStyle == .dark {
-                return UIColor(white: 1.0, alpha: increasedContrast ? 0.48 : 0.26)
+                return UIColor(white: 1.0, alpha: increasedContrast ? 0.42 : 0.16)
             }
-            return UIColor(white: 1.0, alpha: increasedContrast ? 1.0 : 0.78)
+            return UIColor(white: 0.08, alpha: increasedContrast ? 0.24 : 0.09)
         }
     )
 
@@ -400,9 +400,13 @@ struct ChatBarView: View {
                     .zIndex(4)
             }
         }
-        .frame(height: usesMessagingPresentation ? nil : chatBarHeight)
+        // Recording and preview content must never ask the surrounding
+        // messaging VStack for its remaining height. A stable composer frame
+        // prevents the microphone state from becoming a full-screen oval.
         .frame(
-            minHeight: usesMessagingPresentation ? resolvedChatBarHeight : nil
+            height: usesMessagingPresentation
+                ? resolvedChatBarHeight
+                : chatBarHeight
         )
         .background {
             if usesMessagingPresentation {
@@ -445,10 +449,10 @@ struct ChatBarView: View {
             }
         }
         .shadow(
-            color: .black.opacity(usesMessagingPresentation ? 0.10 : 0.075),
-            radius: usesMessagingPresentation ? 16.0 : 12.0,
+            color: .black.opacity(usesMessagingPresentation ? 0.07 : 0.075),
+            radius: usesMessagingPresentation ? 10.0 : 12.0,
             x: 0.0,
-            y: usesMessagingPresentation ? 7.0 : 5.0
+            y: usesMessagingPresentation ? 4.0 : 5.0
         )
         .animation(stateAnimation, value: recorder.state)
         .animation(stateAnimation, value: attachmentsExpanded)
@@ -549,7 +553,13 @@ struct ChatBarView: View {
         switch recorder.state {
         case .idle:
             idleComposer
-        case .preparing, .recording:
+        case .preparing:
+            if usesMessagingPresentation {
+                messagingPreparingComposer
+            } else {
+                activeRecordingComposer
+            }
+        case .recording:
             activeRecordingComposer
         case .locked, .paused:
             lockedRecordingComposer
@@ -701,19 +711,47 @@ struct ChatBarView: View {
         .padding(.trailing, PPSpace.xs)
         .frame(height: textLaneHeight)
         .background {
-            Capsule(style: .continuous)
-                .fill(composerFieldSurfaceColor)
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(
-                            composerAccent.opacity(usesMessagingPresentation ? 0.04 : 0.08),
-                            lineWidth: usesMessagingPresentation ? 0 : 1.0 / UIScreen.main.scale
-                        )
-                }
+            if !usesMessagingPresentation {
+                Capsule(style: .continuous)
+                    .fill(composerFieldSurfaceColor)
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(
+                                composerAccent.opacity(0.08),
+                                lineWidth: 1.0 / UIScreen.main.scale
+                            )
+                    }
+            }
         }
     }
 
     // MARK: - Active Hold Recording
+
+    private var messagingPreparingComposer: some View {
+        HStack(spacing: PPSpace.sm) {
+            ProgressView()
+                .controlSize(.small)
+                .tint(composerAccent)
+                .accessibilityHidden(true)
+
+            Text(localized("voice_preparing"))
+                .font(
+                    .custom(
+                        "Beiruti-Medium",
+                        size: 14.0,
+                        relativeTo: .subheadline
+                    )
+                )
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, PPSpace.md)
+        .padding(.trailing, recordControlHitSize + PPSpace.lg)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
 
     private var activeRecordingComposer: some View {
         HStack(spacing: PPSpace.sm) {

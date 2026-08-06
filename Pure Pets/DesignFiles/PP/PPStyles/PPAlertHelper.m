@@ -1016,6 +1016,45 @@ typedef NS_ENUM(NSInteger, PPAlertActionStyle) {
     }];
 }
 
++ (void)showDestructiveTextFieldAlertIn:(UIViewController *)vc
+                                  title:(NSString *)title
+                               subtitle:(NSString * _Nullable)subtitle
+                            placeholder:(NSString * _Nullable)placeholder
+                            initialText:(NSString * _Nullable)initialText
+                            confirmText:(NSString * _Nullable)confirmText
+                             cancelText:(NSString * _Nullable)cancelText
+                                   icon:(UIImage * _Nullable)icon
+                             completion:(AlertCompletionBlock)completion {
+    NSString *safeConfirm = confirmText.length ? confirmText : kLang(@"OK");
+    NSString *safeCancel = cancelText.length ? cancelText : kLang(@"Cancel");
+    NSMutableArray<PPAlertActionItem *> *actions = [NSMutableArray array];
+    [actions addObject:[PPAlertActionItem itemWithTitle:safeCancel
+                                                  style:PPAlertActionStyleCancel
+                                             completion:^(__unused NSString * _Nullable text, __unused BOOL didConfirm) {
+        if (completion) completion(nil, NO);
+    }
+                                       simpleCompletion:nil]];
+    [actions addObject:[PPAlertActionItem itemWithTitle:safeConfirm
+                                                  style:PPAlertActionStyleDestructive
+                                             completion:^(NSString * _Nullable text, __unused BOOL didConfirm) {
+        if (completion) completion(text, YES);
+    }
+                                       simpleCompletion:nil]];
+
+    PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeTextInput
+                                             title:title
+                                          subtitle:subtitle ?: @""
+                                              icon:icon ?: [self symbolImageNamed:@"exclamationmark.bubble.fill"
+                                                                    fallbackType:PPAlertTypeTextInput]
+                                           actions:actions
+                                       placeholder:placeholder
+                                       initialText:initialText
+                                       secureEntry:NO
+                                      keyboardType:UIKeyboardTypeDefault
+                       shouldDismissOnBackgroundTap:NO];
+    [alert showInViewController:[self presenterForViewController:vc]];
+}
+
 + (void)showConfirmationIn:(UIViewController *)vc
                      title:(NSString *)title
                   subtitle:(NSString *)subtitle

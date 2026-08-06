@@ -49,6 +49,8 @@ internal struct SpearAvatarFrame<Content: View>: View {
       )
     }
     .frame(width: size + 8, height: size + 8)
+    .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: presence.transitionIdentity)
+    .animation(reduceMotion ? nil : .easeOut(duration: 0.24), value: motionMode)
     .accessibilityHidden(true)
   }
 
@@ -153,7 +155,21 @@ internal struct SpearPresenceLine: View {
   let motionMode: SpearMotionMode
   let brandColor: Color
 
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
   var body: some View {
+    Group {
+      if case .offline = presence, !call.isActive {
+        TimelineView(.periodic(from: .now, by: 60)) { _ in
+          lineContent
+        }
+      } else {
+        lineContent
+      }
+    }
+  }
+
+  private var lineContent: some View {
     HStack(spacing: 5) {
       Text(displayText)
         .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
@@ -170,6 +186,7 @@ internal struct SpearPresenceLine: View {
     }
     .id(transitionIdentity)
     .transition(.opacity)
+    .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: transitionIdentity)
   }
 
   private var displayText: String {
@@ -219,7 +236,7 @@ internal struct SpearTypingDots: View {
 
   private func dots(activeIndex: Int?) -> some View {
     HStack(spacing: 2.5) {
-      ForEach(0..<3, id: \.self) { index in
+      ForEach([0, 1, 2], id: \.self) { index in
         Circle()
           .fill(.secondary)
           .frame(width: 4, height: 4)
@@ -252,7 +269,7 @@ internal struct SpearCallWaveform: View {
 
   private func bars(phase: Int) -> some View {
     HStack(alignment: .center, spacing: 2) {
-      ForEach(0..<4, id: \.self) { index in
+      ForEach([0, 1, 2, 3], id: \.self) { index in
         Capsule()
           .fill(.green)
           .frame(width: 2.5, height: height(for: index, phase: phase))

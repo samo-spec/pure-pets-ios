@@ -65,7 +65,53 @@ static UIViewController *PPPetAdViewerResolvedPresenter(
     return presenter;
 }
 
+@protocol PPBottomNavigationClearanceProviding <NSObject>
+- (CGFloat)pp_currentBottomNavigationContentClearance;
+@end
+
+static CGFloat PPPetAdViewerBottomNavigationClearance(
+    UIViewController *source
+) {
+    NSMutableOrderedSet<UIViewController *> *candidates =
+        [NSMutableOrderedSet orderedSet];
+    UIViewController *cursor = source;
+    while (cursor) {
+        [candidates addObject:cursor];
+        if (cursor.navigationController) {
+            [candidates addObject:cursor.navigationController];
+        }
+        if (cursor.tabBarController) {
+            [candidates addObject:cursor.tabBarController];
+        }
+        if (cursor.navigationController.tabBarController) {
+            [candidates addObject:cursor.navigationController.tabBarController];
+        }
+        cursor = cursor.parentViewController ?: cursor.presentingViewController;
+    }
+
+    SEL selector = @selector(pp_currentBottomNavigationContentClearance);
+    for (UIViewController *candidate in candidates) {
+        if ([candidate respondsToSelector:selector]) {
+            return [(id<PPBottomNavigationClearanceProviding>)candidate
+                pp_currentBottomNavigationContentClearance];
+        }
+    }
+    return 0.0;
+}
+
+@interface PPPetAdViewerLegacyBridge ()
++ (void)pp_openChatForUser:(UserModel *)user
+                       ad:(nullable PetAd *)ad
+       fromViewController:(UIViewController *)viewController
+               completion:(void (^)(NSError * _Nullable error))completion;
+@end
+
 @implementation PPPetAdViewerLegacyBridge
+
++ (CGFloat)bottomNavigationClearanceFromViewController:(UIViewController *)viewController
+{
+    return PPPetAdViewerBottomNavigationClearance(viewController);
+}
 
 + (BOOL)isSignedIn
 {
@@ -514,6 +560,28 @@ fromViewController:(UIViewController *)viewController
      fromViewController:(UIViewController *)viewController
              completion:(void (^)(NSError * _Nullable))completion
 {
+    [self pp_openChatForUser:user
+                          ad:nil
+          fromViewController:viewController
+                  completion:completion];
+}
+
++ (void)openChatForUser:(UserModel *)user
+                    ad:(PetAd *)ad
+    fromViewController:(UIViewController *)viewController
+            completion:(void (^)(NSError * _Nullable))completion
+{
+    [self pp_openChatForUser:user
+                          ad:ad
+          fromViewController:viewController
+                  completion:completion];
+}
+
++ (void)pp_openChatForUser:(UserModel *)user
+                       ad:(nullable PetAd *)ad
+       fromViewController:(UIViewController *)viewController
+               completion:(void (^)(NSError * _Nullable))completion
+{
     [ChManager.sharedManager
      createOrGetChatThreadWithUser:user
      completion:^(ChatThreadModel * _Nullable thread,
@@ -533,10 +601,34 @@ fromViewController:(UIViewController *)viewController
                 return;
             }
 
-            [PPOverlayCoordinator pp_openChatThread:thread fromVC:viewController];
+            BOOL didRequestPresentation =
+                [PPOverlayCoordinator pp_openChatThread:thread
+                                           petAdContext:ad
+                                                 fromVC:viewController];
+            if (!didRequestPresentation) {
+                NSError *presentationError =
+                    [NSError errorWithDomain:PPPetAdViewerBridgeErrorDomain
+                                        code:1006
+                                    userInfo:@{
+                    NSLocalizedDescriptionKey:
+                        [Language get:@"pet_ad_viewer_chat_failed"
+                               alter:@"The chat could not be opened."]
+                }];
+                completion(presentationError);
+                return;
+            }
             completion(nil);
         });
     }];
+}
+
++ (void)openPetAd:(PetAd *)ad
+fromViewController:(UIViewController *)viewController
+{
+    if (!ad || !viewController) return;
+    [PPOverlayCoordinator pp_openDetailForObject:ad
+                                         fromVC:viewController
+                                     routingNav:nil];
 }
 
 + (void)openAccessory:(PetAccessory *)accessory

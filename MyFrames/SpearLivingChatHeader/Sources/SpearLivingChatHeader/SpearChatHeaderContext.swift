@@ -3,24 +3,26 @@ import UIKit
 
 // MARK: - Context Rail (Seamless Integration)
 
-/// Context rail that uses subtle brand tinting and refined card treatment
-/// to integrate with the dissolving gradient atmosphere.
+/// Context rail that continues the identity header instead of introducing a
+/// second card. The media/symbol is the visual anchor; metadata and the action
+/// share one reading line beneath a quiet separator.
 @available(iOS 17.0, *)
 internal struct SpearContextRail: View {
   let context: SpearConversationContext
   let brandColor: Color
-  let cornerRadius: CGFloat
   let action: SpearContextHeaderAction
+  let thumbnail: (URL) -> AnyView
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-  @Environment(\.colorSchemeContrast) private var contrast
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var contrast
   @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     Group {
-      if dynamicTypeSize.isAccessibilitySize {
+      if context.isSupport {
+        supportLayout
+      } else if dynamicTypeSize.isAccessibilitySize {
         verticalLayout
       } else {
         ViewThatFits(in: .horizontal) {
@@ -30,60 +32,74 @@ internal struct SpearContextRail: View {
         }
       }
     }
-    .padding(12)
-    .background(railBackground)
-  }
-
-  // MARK: - Background
-
-  @ViewBuilder
-  private var railBackground: some View {
-    if reduceTransparency {
-      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        .fill(Color(uiColor: .secondarySystemBackground))
-        .overlay {
-          RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .strokeBorder(
-              Color.primary.opacity(contrast == .increased ? 0.2 : 0.08),
-              lineWidth: contrast == .increased ? 1.5 : 1
-            )
-        }
-    } else {
-      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    .padding(10)
+    .background {
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
         .fill(
+          colorScheme == .dark
+            ? Color.white.opacity(0.055)
+            : Color.white.opacity(0.54)
+        )
+        .overlay {
           LinearGradient(
             colors: [
-              brandColor.opacity(colorScheme == .dark ? 0.06 : 0.04),
-              Color(uiColor: .secondarySystemBackground).opacity(0.8),
+              Color.white.opacity(colorScheme == .dark ? 0.035 : 0.50),
+              .clear,
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
           )
-        )
-        .overlay {
-          RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .strokeBorder(
-              brandColor.opacity(contrast == .increased ? 0.2 : 0.08),
-              lineWidth: contrast == .increased ? 1.5 : 0.5
-            )
+          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
+    .overlay {
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .strokeBorder(
+          brandColor.opacity(contrast == .increased ? 0.30 : 0.12),
+          lineWidth: contrast == .increased ? 1.5 : 0.75
+        )
+    }
+    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.13 : 0.045), radius: 12, y: 5)
+    .animation(contextMotion, value: context.contentTransitionIdentity)
   }
 
   // MARK: - Layouts
 
   private var horizontalLayout: some View {
-    HStack(spacing: 12) {
-      contextSymbol
+    HStack(spacing: 11) {
+      contextVisual
       contextText
       contextAction
     }
   }
 
+  private var supportLayout: some View {
+    HStack(spacing: 10) {
+      ZStack {
+        Circle()
+          .fill(brandColor.opacity(colorScheme == .dark ? 0.16 : 0.09))
+        Image(systemName: context.symbolSystemName)
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(brandColor)
+      }
+      .frame(width: 38, height: 38)
+      .accessibilityHidden(true)
+
+      Text(context.detail)
+        .font(Font.ppBeirutiMedium(size: 13, relativeTo: .subheadline))
+        .foregroundStyle(.secondary)
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+      contextAction
+    }
+    .accessibilityElement(children: .contain)
+  }
+
   private var verticalLayout: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(alignment: .top, spacing: 12) {
-        contextSymbol
+        contextVisual
         contextText
       }
 
@@ -95,38 +111,49 @@ internal struct SpearContextRail: View {
   // MARK: - Symbol
 
   @ViewBuilder
-  private var contextSymbol: some View {
-    let symbol = Image(systemName: context.symbolSystemName)
-      .font(.body.weight(.semibold))
-      .foregroundStyle(brandColor)
-      .frame(width: 40, height: 40)
-      .background(
-        brandColor.opacity(colorScheme == .dark ? 0.14 : 0.08),
-        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-      )
-      .accessibilityHidden(true)
+  private var contextVisual: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .fill(brandColor.opacity(colorScheme == .dark ? 0.13 : 0.07))
 
-    if reduceMotion {
-      symbol
-    } else {
-      symbol.symbolEffect(.bounce, value: context.id)
+      Image(systemName: context.symbolSystemName)
+        .font(.body.weight(.semibold))
+        .foregroundStyle(brandColor)
+
+      if let thumbnailURL = context.listingThumbnailURL {
+        thumbnail(thumbnailURL)
+      }
     }
+    .frame(width: 46, height: 46)
+    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .strokeBorder(
+          brandColor.opacity(contrast == .increased ? 0.30 : 0.12),
+          lineWidth: contrast == .increased ? 1.5 : 0.7
+        )
+    }
+    .accessibilityHidden(true)
   }
 
   // MARK: - Text
 
   private var contextText: some View {
-    VStack(alignment: .leading, spacing: 3) {
+    VStack(alignment: .leading, spacing: 2) {
       Text(context.eyebrow)
         .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
         .foregroundStyle(.secondary)
 
       Text(context.title)
         .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
+        .lineLimit(1)
 
-      Text(context.detail)
-        .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
-        .foregroundStyle(.secondary)
+      if !context.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        Text(context.detail)
+          .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
+          .foregroundStyle(.secondary)
+          .lineLimit(2)
+      }
 
       if let progress = context.orderProgress {
         ProgressView(value: progress)
@@ -149,5 +176,10 @@ internal struct SpearContextRail: View {
       context: context,
       action: action
     )
+  }
+
+  private var contextMotion: Animation? {
+    if reduceMotion { return nil }
+    return .smooth(duration: 0.28)
   }
 }

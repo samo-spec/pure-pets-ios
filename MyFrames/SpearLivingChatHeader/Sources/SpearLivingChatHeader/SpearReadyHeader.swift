@@ -14,6 +14,8 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   let style: SpearChatHeaderStyle
   let copy: SpearChatHeaderCopy
   let actions: SpearChatHeaderActions
+  let onExpansionChanged: (Bool) -> Void
+  let contextThumbnail: (URL) -> AnyView
   let avatarContent: AvatarContent
 
   @State private var isExpanded = false
@@ -29,17 +31,20 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           metrics: model.metrics,
           copy: copy,
           brandColor: style.brandColor,
+          showsTrustDetail: model.context?.isSupport != true,
           profileAction: actionWithFeedback(actions.profile),
           safetyAction: actionWithFeedback(actions.safety)
         )
+        .padding(.horizontal, style.horizontalPadding)
+        .padding(.bottom, 8)
       }
 
       if let context = model.context {
         SpearContextRail(
           context: context,
           brandColor: style.brandColor,
-          cornerRadius: style.cornerRadius,
-          action: contextActionWithFeedback
+          action: contextActionWithFeedback,
+          thumbnail: contextThumbnail
         )
         .padding(.horizontal, style.horizontalPadding)
         .padding(.bottom, 10)
@@ -50,10 +55,6 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
               insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .top)),
               removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
             )
-        )
-        .animation(
-          reduceMotion ? nil : .smooth(duration: 0.32),
-          value: context.id
         )
       }
     }
@@ -85,8 +86,8 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       actionCapsule
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.top, 10)
-    .padding(.bottom, 10)
+    .padding(.top, 8)
+    .padding(.bottom, 8)
   }
 
   // MARK: - Compact Layout
@@ -136,8 +137,16 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     .padding(4)
     .background {
       Capsule(style: .continuous)
-        .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+        .fill(colorScheme == .dark ? Color.white.opacity(0.075) : Color.black.opacity(0.052))
     }
+    .overlay {
+      Capsule(style: .continuous)
+        .strokeBorder(
+          colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.72),
+          lineWidth: 0.75
+        )
+    }
+    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.16 : 0.055), radius: 10, y: 4)
   }
 
   // MARK: - Buttons
@@ -145,7 +154,9 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   private var backButton: some View {
     SpearHeaderIconActionButton(
       systemName: model.isModal ? "xmark" : "chevron.backward",
-      accessibilityLabel: copy.backAccessibilityLabel,
+      accessibilityLabel: model.isModal
+        ? copy.closeAccessibilityLabel
+        : copy.backAccessibilityLabel,
       accessibilityIdentifier: SpearChatHeaderAccessibilityID.back,
       action: .enabled(performBack)
     )
@@ -240,12 +251,14 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
 
   private func toggleExpansion() {
     guard canExpand else { return }
+    let nextValue = !isExpanded
+    onExpansionChanged(nextValue)
 
     if reduceMotion {
-      isExpanded.toggle()
+      isExpanded = nextValue
     } else {
       withAnimation(.smooth(duration: 0.38, extraBounce: 0.02)) {
-        isExpanded.toggle()
+        isExpanded = nextValue
       }
     }
   }

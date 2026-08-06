@@ -9,7 +9,7 @@
 #import "SettingVC.h"
 #import "PPCommerceFeedbackManager.h"
 #import "UserModel.h"
-#import "PPRolePermission.h"
+#import "PPUserKitCompatibility.h"
 #import "UserManager.h"
 #import "OptionModel.h"
 #import "AppClasses.h"

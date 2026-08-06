@@ -23,6 +23,8 @@ static CGFloat const kPPHubHeroHeight = 162.0;
 static CGFloat const kPPHubHeroHorizontalInset = 16.0;
 static CGFloat const kPPHubHeroTopInset = 8.0;
 static CGFloat const kPPHubContentTopGap = 10.0;
+static BOOL const kPPHubHeroBackgroundAnimationEnabled = YES;
+static PPWaveCardBGShape const kPPHubHeroBackgroundShape = PPWaveCardBGShapeRounded;
 static NSInteger const kPPHubSegmentIconTag = 4701;
 static NSInteger const kPPHubSegmentTitleTag = 4702;
 
@@ -1242,7 +1244,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) UIViewController *homeHeroBackgroundController;
+@property (nonatomic, strong) PPWaveCardBGHostingController *waveCardBackgroundController;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -1416,21 +1418,21 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     [self pp_applyGlowView:self.backgroundTopGlowView
                     color:AppSurfColor
-             surfaceAlpha:isDark ? 0.13 : 0.075
-            shadowOpacity:isDark ? 0.16f : 0.10f
-             shadowRadius:isDark ? 82.0 : 74.0];
+             surfaceAlpha:isDark ? 0.10 : 0.060
+            shadowOpacity:isDark ? 0.13f : 0.080f
+             shadowRadius:isDark ? 76.0 : 68.0];
 
     [self pp_applyGlowView:self.backgroundMidGlowView
                     color:secondaryColor
-             surfaceAlpha:isDark ? 0.10 : 0.055
-            shadowOpacity:isDark ? 0.12f : 0.075f
-             shadowRadius:isDark ? 72.0 : 64.0];
+             surfaceAlpha:isDark ? 0.080 : 0.044
+            shadowOpacity:isDark ? 0.10f : 0.060f
+             shadowRadius:isDark ? 66.0 : 58.0];
 
     [self pp_applyGlowView:self.backgroundBottomGlowView
                     color:bottomFadeColor
-             surfaceAlpha:isDark ? 0.030 : 0.050
-            shadowOpacity:isDark ? 0.08f : 0.045f
-             shadowRadius:isDark ? 62.0 : 54.0];
+             surfaceAlpha:isDark ? 0.024 : 0.040
+            shadowOpacity:isDark ? 0.065f : 0.036f
+             shadowRadius:isDark ? 56.0 : 48.0];
 }
 
 - (void)pp_applyGlowView:(UIView *)glowView
@@ -1454,7 +1456,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     if (@available(iOS 13.0, *)) {
         if (self.traitCollection.userInterfaceStyle != previousTraitCollection.userInterfaceStyle) {
             [self pp_updateGlowAppearance];
-            self.view.backgroundColor = AppSurfColor;
+            self.view.backgroundColor = AppBackgroundClr;
         }
     }
 }
@@ -1468,9 +1470,9 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.heroContainerView.clipsToBounds = NO;
     self.heroContainerView.layer.cornerRadius = 28.0;
     [self.heroContainerView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.16]];
-    self.heroContainerView.layer.shadowOpacity = 0.10;
-    self.heroContainerView.layer.shadowRadius = 20.0;
-    self.heroContainerView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    self.heroContainerView.layer.shadowOpacity = 0.08;
+    self.heroContainerView.layer.shadowRadius = 18.0;
+    self.heroContainerView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     if (@available(iOS 13.0, *)) {
         self.heroContainerView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1481,28 +1483,29 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.heroSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroSurfaceView.layer.cornerRadius = 28.0;
     self.heroSurfaceView.layer.masksToBounds = YES;
-    self.heroSurfaceView.layer.borderWidth = 0.0;
     self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
         self.heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.heroContainerView addSubview:self.heroSurfaceView];
 
-    PPHomeHeroBackgroundHostingController *homeBackground =
-        [[PPHomeHeroBackgroundHostingController alloc] init];
-    [self addChildViewController:homeBackground];
-    UIView *backgroundView = homeBackground.view;
+    self.waveCardBackgroundController =
+        [[PPWaveCardBGHostingController alloc] initWithAnimationEnabled:kPPHubHeroBackgroundAnimationEnabled
+                                                                    shape:kPPHubHeroBackgroundShape
+                                                              cornerRadius:28.0
+                                                       accentColorOverride:nil];
+    [self addChildViewController:self.waveCardBackgroundController];
+    UIView *backgroundView = self.waveCardBackgroundController.view;
     backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.heroSurfaceView insertSubview:backgroundView atIndex:0];
-    self.homeHeroBackgroundController = homeBackground;
     [NSLayoutConstraint activateConstraints:@[
         [backgroundView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
         [backgroundView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
         [backgroundView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
         [backgroundView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor]
     ]];
-    [homeBackground didMoveToParentViewController:self];
+    [self.waveCardBackgroundController didMoveToParentViewController:self];
 
     self.heroEyebrowLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;

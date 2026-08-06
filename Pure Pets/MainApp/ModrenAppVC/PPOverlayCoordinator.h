@@ -13,6 +13,7 @@
 
 #import <UIKit/UIKit.h>
 
+@class PetAd;
 
 typedef NS_ENUM(NSInteger, PPOverlayType) {
     PPOverlayTypeAddActions,
@@ -36,6 +37,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable UIViewController *)pp_resolvedPresenterFrom:(nullable UIViewController *)source;
 + (BOOL)pp_canPresentFrom:(nullable UIViewController *)presenter;
 + (void)pp_openChatThread:(ChatThreadModel *)thread fromVC:(UIViewController *)vc;
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+             petAdContext:(nullable PetAd *)petAd
+                   fromVC:(UIViewController *)vc;
 + (void)pp_openDetailForObject:(id)object
                         fromVC:(UIViewController *)vc
                     routingNav:(nullable PPNavigationController *)routingNav;

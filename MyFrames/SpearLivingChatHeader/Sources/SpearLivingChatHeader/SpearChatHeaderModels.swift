@@ -154,6 +154,15 @@ public enum SpearPresence: Equatable, Sendable {
   case viewingOffer
   case offline(lastActiveAt: Date)
 
+  public static var unavailable: Self {
+    .offline(lastActiveAt: .distantPast)
+  }
+
+  internal var isUnavailable: Bool {
+    guard case .offline(let lastActiveAt) = self else { return false }
+    return lastActiveAt == .distantPast
+  }
+
   internal var transitionIdentity: String {
     switch self {
     case .online:
@@ -163,7 +172,7 @@ public enum SpearPresence: Equatable, Sendable {
     case .viewingOffer:
       return "viewingOffer"
     case .offline:
-      return "offline"
+      return isUnavailable ? "unavailable" : "offline"
     }
   }
 }

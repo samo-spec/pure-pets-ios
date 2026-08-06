@@ -8,7 +8,7 @@
 #import "PPFunc.h"
 #import "CartViewController.h"
 #import "UserManager.h"
-#import "PPRolePermission.h"
+#import "PPUserKitCompatibility.h"
 @import FirebaseStorage;
 
 NS_ASSUME_NONNULL_BEGIN

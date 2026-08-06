@@ -8,6 +8,7 @@
 #import "PPOfflineBannerView.h"
 #import "InstallationManager.h"
 #import "SceneDelegate.h"
+#import <Pure_Pets-Swift.h>
 #if __has_include(<FirebaseAppCheck/FirebaseAppCheck.h>)
 @import FirebaseAppCheck;
 #define PP_HAS_FIREBASE_APPCHECK 1
@@ -465,6 +466,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
     // Detect fresh install and clear user if needed
     [[PPAuthManager shared] handleFreshInstall];
+    [[PPUserKitRuntime shared] start];
     [UsrMgr restoreSessionOnLaunchWithCompletion:^(NSError * _Nullable error) {
         if (error) {
             NSLog(@"[AuthRestore] Session restore failed: %@", error.localizedDescription);
