@@ -19,6 +19,10 @@
 #import "ChatThreadModel.h"
 #import "ChatMessageModel.h"
 #import "PetAdManager.h"
+#import "PPPetProfileManager.h"
+#import "PPPetProfile.h"
+#import "PPPetProfilesViewController.h"
+#import "PetAccessoryManager.h"
 
 #import <IQKeyboardManager/IQKeyboardManager.h>
 #import "DesignFiles/PP/PPStyles/PPHUD.h"
@@ -32,6 +36,7 @@
 #import "MainKindsModel.h"
 #import "MainKindsArrayManager.h"
 #import "GM.h"
+#import "AppManager.h"
 #import "PPPetAdViewerLegacyBridge.h"
 #import "PPAccessoryViewerLegacyBridge.h"
 #import "PPRootLegacyAdapter.h"

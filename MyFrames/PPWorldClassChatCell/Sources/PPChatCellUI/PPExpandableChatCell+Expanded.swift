@@ -18,7 +18,7 @@ extension PPExpandableChatCell {
                 .padding(.horizontal, style.horizontalPadding)
 
             VStack(alignment: .leading, spacing: style.sectionSpacing) {
-                expandedToolbar
+                // expandedToolbar
 
                 if let message = detailedMessage {
                     latestMessageBlock(message)

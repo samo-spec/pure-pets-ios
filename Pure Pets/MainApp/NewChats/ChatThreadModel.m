@@ -109,8 +109,11 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         _timestamp = [(FIRTimestamp *)ts dateValue];
     } else if ([ts isKindOfClass:NSDate.class]) {
         _timestamp = ts;
+    } else if ([ts isKindOfClass:NSNumber.class]) {
+        double val = [ts doubleValue];
+        _timestamp = val > 0 ? [NSDate dateWithTimeIntervalSince1970:val] : [NSDate date];
     } else {
-        _timestamp = [NSDate distantPast];
+        _timestamp = [NSDate date];
     }
     
     _lastReadBy =
@@ -132,8 +135,11 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         _lastMessageAt = [(FIRTimestamp *)lastAt dateValue];
     } else if ([lastAt isKindOfClass:NSDate.class]) {
         _lastMessageAt = lastAt;
+    } else if ([lastAt isKindOfClass:NSNumber.class]) {
+        double val = [lastAt doubleValue];
+        _lastMessageAt = val > 0 ? [NSDate dateWithTimeIntervalSince1970:val] : [NSDate date];
     } else {
-        _lastMessageAt = _timestamp ?: [NSDate distantPast];
+        _lastMessageAt = (_timestamp && ![_timestamp isEqual:[NSDate distantPast]]) ? _timestamp : [NSDate date];
     }
     
     

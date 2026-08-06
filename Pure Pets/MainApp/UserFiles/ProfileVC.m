@@ -120,6 +120,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 @property (nonatomic, strong) UIView *headerRoot;
 @property (nonatomic, strong) UIView *headerCardView;
+@property (nonatomic, strong) PPWaveCardBGHostingController *waveCardBackgroundController;
 @property (nonatomic, strong) UIView *headerMaterialView;
 @property (nonatomic, strong) CAGradientLayer *headerMarketplaceGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *headerBorderGradientLayer;
@@ -1070,6 +1071,26 @@ static CGFloat PPProfileBottomBarClearance(void) {
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     PPMarketplaceHeroCardApplySurfaceChrome(cardView, PPCornerHero - 6.0, self.traitCollection);
     [self.headerRoot addSubview:cardView];
+
+    if (@available(iOS 15.0, *)) {
+        self.waveCardBackgroundController =
+            [[PPWaveCardBGHostingController alloc] initWithAnimationEnabled:YES
+                                                                        shape:PPWaveCardBGShapeRounded
+                                                                 cornerRadius:PPCornerHero - 6.0
+                                                          accentColorOverride:nil];
+        [self addChildViewController:self.waveCardBackgroundController];
+        UIView *bgView = self.waveCardBackgroundController.view;
+        bgView.translatesAutoresizingMaskIntoConstraints = NO;
+        bgView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        [cardView insertSubview:bgView atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [bgView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
+            [bgView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
+            [bgView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
+            [bgView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor]
+        ]];
+        [self.waveCardBackgroundController didMoveToParentViewController:self];
+    }
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;

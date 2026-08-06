@@ -14,6 +14,7 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "PPMarketplaceHeroCardStyle.h"
+#import <Pure_Pets-Swift.h>
 
 static CGFloat const PPPetProfilesMaximumContentWidth = 760.0;
 static CGFloat const PPPetProfilesHorizontalMargin = 16.0;
@@ -959,6 +960,7 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 
 @property (nonatomic, strong) UIView *headerRootView;
 @property (nonatomic, strong) UIView *heroCardView;
+@property (nonatomic, strong) PPWaveCardBGHostingController *waveCardBackgroundController;
 @property (nonatomic, strong) UIView *heroMaterialView;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
 @property (nonatomic, strong) UIView *heroAccentBarView;
@@ -1129,6 +1131,26 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
     self.heroCardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroCardView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
     [self.headerRootView addSubview:self.heroCardView];
+
+    if (@available(iOS 15.0, *)) {
+        self.waveCardBackgroundController =
+            [[PPWaveCardBGHostingController alloc] initWithAnimationEnabled:YES
+                                                                        shape:PPWaveCardBGShapeRounded
+                                                                 cornerRadius:28.0
+                                                          accentColorOverride:nil];
+        [self addChildViewController:self.waveCardBackgroundController];
+        UIView *bgView = self.waveCardBackgroundController.view;
+        bgView.translatesAutoresizingMaskIntoConstraints = NO;
+        bgView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+        [self.heroCardView insertSubview:bgView atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [bgView.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor],
+            [bgView.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor],
+            [bgView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor],
+            [bgView.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor]
+        ]];
+        [self.waveCardBackgroundController didMoveToParentViewController:self];
+    }
 
     self.heroMaterialView = [[UIView alloc] init];
     self.heroMaterialView.translatesAutoresizingMaskIntoConstraints = NO;

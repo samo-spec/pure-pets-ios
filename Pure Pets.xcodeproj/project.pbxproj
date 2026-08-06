@@ -46,7 +46,6 @@
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
 		A6B710063020000100000001 /* PPMediaViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710053020000100000001 /* PPMediaViewer.swift */; };
-		A8100001301E000100000001 /* SwiftUI/PPMessagingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8100002301E000100000002 /* SwiftUI/PPMessagingScreen.swift */; };
 		A810000A301E00010000000A /* PPChatCellBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A810000B301E00010000000B /* PPChatCellBridge.swift */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
@@ -654,6 +653,7 @@
 		F2ACA9FC301ABCDB00F55032 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */; };
 		F2ACA9FF301ACF4A00F55032 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = F2ACA9FE301ACF4A00F55032 /* Kingfisher */; };
 		F2ACAA01301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */; };
+		F2AD5A010000000000000001 /* PurePetsAdShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AD5A030000000000000001 /* PurePetsAdShareKit */; };
 		F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */; };
 		F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */; };
 		F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1462D6E6AB400B55427 /* MainController.m */; };
@@ -667,7 +667,6 @@
 		F2AEFEC83023057600892AB2 /* PPChatCellCore in Frameworks */ = {isa = PBXBuildFile; productRef = F2AEFEC73023057600892AB2 /* PPChatCellCore */; };
 		F2AEFECA3023057600892AB2 /* PPChatCellUI in Frameworks */ = {isa = PBXBuildFile; productRef = F2AEFEC93023057600892AB2 /* PPChatCellUI */; };
 		F2AEFECD30230B2000892AB2 /* SpearLivingChatHeader in Frameworks */ = {isa = PBXBuildFile; productRef = F2AEFECC30230B2000892AB2 /* SpearLivingChatHeader */; };
-		F2AD5A010000000000000001 /* PurePetsAdShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AD5A030000000000000001 /* PurePetsAdShareKit */; };
 		F2AF383E300AAFD800FBF82D /* PurePetsLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AF383D300AAFD800FBF82D /* PurePetsLayoutKit */; };
 		F2AF3841300AB06200FBF82D /* PurePetsLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AF3840300AB06200FBF82D /* PurePetsLayoutKit */; };
 		F2AF384A300AC36600FBF82D /* MatchedContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */; };
@@ -749,6 +748,9 @@
 		F2C5F7782CA01C0500D7897A /* UIView+DCAnimationKit.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */; };
 		F2C638602E5132A3007E4CE4 /* cities.json in Resources */ = {isa = PBXBuildFile; fileRef = F2C6385F2E5132A3007E4CE4 /* cities.json */; };
 		F2C7743B30242EF6000447CD /* PurePetsUserKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2C7743A30242EF6000447CD /* PurePetsUserKit */; };
+		F2C7743E30245E1F000447CD /* PPMessagingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C7743C30245E1F000447CD /* PPMessagingScreen.swift */; };
+		F2C7744130246715000447CD /* PureLens in Frameworks */ = {isa = PBXBuildFile; productRef = F2C7744030246715000447CD /* PureLens */; };
+		F2C7744330246715000447CD /* PurePetsEyes in Frameworks */ = {isa = PBXBuildFile; productRef = F2C7744230246715000447CD /* PurePetsEyes */; };
 		F2C890112F5C100000A1B2C3 /* PPModrenSegmrnted.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */; };
 		F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */ = {isa = PBXBuildFile; fileRef = F273146C2F31168400FFA0B8 /* PPOrder.h */; };
 		F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8722E7A3A3E00F0C084 /* UserModel.h */; };
@@ -1008,7 +1010,6 @@
 		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
 		A6B710003020000100000001 /* AppRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRemoteImage.swift; sourceTree = "<group>"; };
 		A6B710053020000100000001 /* PPMediaViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMediaViewer.swift; sourceTree = "<group>"; };
-		A8100002301E000100000002 /* SwiftUI/PPMessagingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftUI/PPMessagingScreen.swift; sourceTree = "<group>"; };
 		A810000B301E00010000000B /* PPChatCellBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPChatCellBridge.swift; sourceTree = "<group>"; };
 		A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceMessageSending.swift; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
@@ -2266,6 +2267,7 @@
 		F2C5F7762CA01C0500D7897A /* UIView+DCAnimationKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+DCAnimationKit.h"; sourceTree = "<group>"; };
 		F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+DCAnimationKit.m"; sourceTree = "<group>"; };
 		F2C6385F2E5132A3007E4CE4 /* cities.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = cities.json; sourceTree = "<group>"; };
+		F2C7743C30245E1F000447CD /* PPMessagingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMessagingScreen.swift; sourceTree = "<group>"; };
 		F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPModrenSegmrnted.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.m"; sourceTree = SOURCE_ROOT; };
 		F2CALC001F40A00000000001 /* PPCartCalculator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartCalculator.h; sourceTree = "<group>"; };
 		F2CALC002F40A00000000002 /* PPCartCalculator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartCalculator.m; sourceTree = "<group>"; };
@@ -2528,6 +2530,7 @@
 				F2FFDA0B2FCDCFC00025B5A9 /* FirebaseAuth in Frameworks */,
 				F2AEFEC53023025900892AB2 /* PurePetsMessagingUI in Frameworks */,
 				F2C7743B30242EF6000447CD /* PurePetsUserKit in Frameworks */,
+				F2C7744330246715000447CD /* PurePetsEyes in Frameworks */,
 				F2FFDA1D2FCDCFC00025B5A9 /* FirebaseStorage in Frameworks */,
 				F2AEFECA3023057600892AB2 /* PPChatCellUI in Frameworks */,
 				F2FFDA032FCDCFC00025B5A9 /* FirebaseAI in Frameworks */,
@@ -2550,6 +2553,7 @@
 				F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */,
 				F29EFFAC3020EFFA00125FB9 /* PureLens in Frameworks */,
 				F2FFDA1B2FCDCFC00025B5A9 /* FirebaseRemoteConfig in Frameworks */,
+				F2C7744130246715000447CD /* PureLens in Frameworks */,
 				F20CB1422EF50E1500CDD5AD /* GoogleSignIn in Frameworks */,
 				E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */,
 				F2AEFEC33023025900892AB2 /* PurePetsMessagingCore in Frameworks */,
@@ -4913,8 +4917,8 @@
 		F2B6F7892E37A2C000AC0DAE /* NewChats */ = {
 			isa = PBXGroup;
 			children = (
+				F2C7743D30245E1F000447CD /* SwiftUI */,
 				A810000B301E00010000000B /* PPChatCellBridge.swift */,
-				A8100002301E000100000002 /* SwiftUI/PPMessagingScreen.swift */,
 				F2A0BBB82F1F0695003715F0 /* ChCells */,
 				F293B21B2F1C42A9001F0831 /* helpers */,
 				F2B6F7992E37AB8A00AC0DAE /* UserChatsViewController.h */,
@@ -5059,6 +5063,14 @@
 				F2C5F76C2CA00D3300D7897A /* Classes */,
 			);
 			path = AAMultiSelectController;
+			sourceTree = "<group>";
+		};
+		F2C7743D30245E1F000447CD /* SwiftUI */ = {
+			isa = PBXGroup;
+			children = (
+				F2C7743C30245E1F000447CD /* PPMessagingScreen.swift */,
+			);
+			path = SwiftUI;
 			sourceTree = "<group>";
 		};
 		F2CDB0AA2DCCB2FB0009E210 /* PetsAdsFiles */ = {
@@ -5740,13 +5752,13 @@
 				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */,
 				F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */,
 				F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */,
-				F29EFFAA3020EFFA00125FB9 /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */,
 				F22D551630215DE700A5EC3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				F2AEFEC13023025900892AB2 /* XCLocalSwiftPackageReference "MyFrames/PurePetsMessaging" */,
 				F2AEFEC63023057600892AB2 /* XCLocalSwiftPackageReference "MyFrames/PPWorldClassChatCell" */,
 				F2AEFECB30230B2000892AB2 /* XCLocalSwiftPackageReference "MyFrames/SpearLivingChatHeader" */,
 				F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */,
 				F2C7743930242EF6000447CD /* XCLocalSwiftPackageReference "MyFrames/PurePetsUserLayerApple" */,
+				F2C7743F30246714000447CD /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */,
 			);
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
@@ -6266,6 +6278,7 @@
 				F2AF384C300AC36600FBF82D /* TransitionManager.swift in Sources */,
 				F2AF384D300AC36600FBF82D /* TransitionView.swift in Sources */,
 				F2AF384E300AC36600FBF82D /* MatchedGeometryState.swift in Sources */,
+				F2C7743E30245E1F000447CD /* PPMessagingScreen.swift in Sources */,
 				F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */,
 				F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */,
 				F2B09F962D1E0A2100FB3B26 /* GuideView.m in Sources */,
@@ -6729,7 +6742,6 @@
 				F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */,
 				BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */,
 				1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */,
-				A8100001301E000100000001 /* SwiftUI/PPMessagingScreen.swift in Sources */,
 				A810000A301E00010000000A /* PPChatCellBridge.swift in Sources */,
 				12CEBEE12FFAA00100C0A901 /* PPStickerKit.swift in Sources */,
 				5674957214A3074F19934B30 /* PPNovaSwiftUIChatBarViewController.swift in Sources */,
@@ -7276,9 +7288,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F29EFFAA3020EFFA00125FB9 /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */ = {
+		F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = MyFrames/PureLensPackage;
+			relativePath = "MyFrames/PurePetsAdShareKit-1.0.0";
 		};
 		F2AEFEC13023025900892AB2 /* XCLocalSwiftPackageReference "MyFrames/PurePetsMessaging" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -7296,13 +7308,13 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PurePetsLayoutKit;
 		};
-		F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = MyFrames/PurePetsAdShareKit-1.0.0;
-		};
 		F2C7743930242EF6000447CD /* XCLocalSwiftPackageReference "MyFrames/PurePetsUserLayerApple" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PurePetsUserLayerApple;
+		};
+		F2C7743F30246714000447CD /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = MyFrames/PureLensPackage;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -7365,6 +7377,11 @@
 			package = F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */;
 			productName = Kingfisher;
 		};
+		F2AD5A030000000000000001 /* PurePetsAdShareKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */;
+			productName = PurePetsAdShareKit;
+		};
 		F2AEFEC23023025900892AB2 /* PurePetsMessagingCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PurePetsMessagingCore;
@@ -7389,11 +7406,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = PurePetsLayoutKit;
 		};
-		F2AD5A030000000000000001 /* PurePetsAdShareKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */;
-			productName = PurePetsAdShareKit;
-		};
 		F2AF3840300AB06200FBF82D /* PurePetsLayoutKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PurePetsLayoutKit;
@@ -7406,6 +7418,14 @@
 		F2C7743A30242EF6000447CD /* PurePetsUserKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PurePetsUserKit;
+		};
+		F2C7744030246715000447CD /* PureLens */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PureLens;
+		};
+		F2C7744230246715000447CD /* PurePetsEyes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PurePetsEyes;
 		};
 		F2FFDA022FCDCFC00025B5A9 /* FirebaseAI */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -20,6 +20,7 @@
 #import <UserNotifications/UserNotifications.h>
 #import "PPHUD.h"
 #import "PPBackgroundView.h"
+#import <Pure_Pets-Swift.h>
 
 typedef NS_ENUM(NSInteger, PPUserMenuAction) {
     PPUserMenuActionProfile = 0,
@@ -630,6 +631,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 @property (nonatomic, strong) UIView *headerRootView;
 @property (nonatomic, strong) UIView *headerCardView;
 @property (nonatomic, strong) PPBackgroundView *headerBackgroundView;
+@property (nonatomic, strong) PPWaveCardBGHostingController *waveCardBackgroundController;
 @property (nonatomic, strong) UIView *avatarFrameView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
@@ -858,11 +860,13 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 
 - (void)pp_startHeroBackgroundMotionIfNeeded
 {
+    self.waveCardBackgroundController.animationEnabled = YES;
     [self.headerBackgroundView startAnimations];
 }
 
 - (void)pp_stopHeroBackgroundMotion
 {
+    self.waveCardBackgroundController.animationEnabled = NO;
     [self.headerBackgroundView stopAnimations];
 }
 
@@ -879,12 +883,38 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
     [root addSubview:card];
     self.headerCardView = card;
 
-    PPBackgroundView *bg = [PPBackgroundView new];
-    bg.translatesAutoresizingMaskIntoConstraints = NO;
-    bg.hidden = NO;
-    bg.alpha = 1.0;
-    [card insertSubview:bg atIndex:0];
-    self.headerBackgroundView = bg;
+    if (@available(iOS 15.0, *)) {
+        self.waveCardBackgroundController =
+            [[PPWaveCardBGHostingController alloc] initWithAnimationEnabled:YES
+                                                                        shape:PPWaveCardBGShapeRounded
+                                                                 cornerRadius:28.0
+                                                          accentColorOverride:nil];
+        [self addChildViewController:self.waveCardBackgroundController];
+        UIView *bgView = self.waveCardBackgroundController.view;
+        bgView.translatesAutoresizingMaskIntoConstraints = NO;
+        bgView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        [card insertSubview:bgView atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [bgView.topAnchor constraintEqualToAnchor:card.topAnchor],
+            [bgView.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
+            [bgView.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
+            [bgView.bottomAnchor constraintEqualToAnchor:card.bottomAnchor]
+        ]];
+        [self.waveCardBackgroundController didMoveToParentViewController:self];
+    } else {
+        PPBackgroundView *bg = [PPBackgroundView new];
+        bg.translatesAutoresizingMaskIntoConstraints = NO;
+        bg.hidden = NO;
+        bg.alpha = 1.0;
+        [card insertSubview:bg atIndex:0];
+        self.headerBackgroundView = bg;
+        [NSLayoutConstraint activateConstraints:@[
+            [bg.topAnchor constraintEqualToAnchor:card.topAnchor],
+            [bg.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
+            [bg.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
+            [bg.bottomAnchor constraintEqualToAnchor:card.bottomAnchor]
+        ]];
+    }
 
     UIButton *primaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     primaryButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -966,11 +996,6 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
         [card.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-PPScreenMargin],
         [card.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-14.0],
 
-        [bg.topAnchor constraintEqualToAnchor:card.topAnchor],
-        [bg.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
-        [bg.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-        [bg.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
-
         [avatarFrame.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
         [avatarFrame.topAnchor constraintEqualToAnchor:card.topAnchor constant:20.0],
         [avatarFrame.widthAnchor constraintEqualToConstant:96.0],
@@ -1004,7 +1029,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
     ]];
 
     // Keep identity and action content above the decorative hero material.
-    [card sendSubviewToBack:bg];
+    //[card sendSubviewToBack:bg];
     [self pp_applyHeaderMaterialPalette];
     self.headerRootView = root;
     self.tableView.tableHeaderView = root;
@@ -1397,11 +1422,16 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
     [self.headerRootView layoutIfNeeded];
     [self.headerCardView setNeedsLayout];
     [self.headerCardView layoutIfNeeded];
-    [self.headerCardView sendSubviewToBack:self.headerBackgroundView];
-    self.headerBackgroundView.hidden = NO;
-    self.headerBackgroundView.alpha = 1.0;
-    [self.headerBackgroundView setNeedsLayout];
-    [self.headerBackgroundView layoutIfNeeded];
+    if (self.headerBackgroundView) {
+        [self.headerCardView sendSubviewToBack:self.headerBackgroundView];
+        self.headerBackgroundView.hidden = NO;
+        self.headerBackgroundView.alpha = 1.0;
+        [self.headerBackgroundView setNeedsLayout];
+        [self.headerBackgroundView layoutIfNeeded];
+    }
+    if (self.waveCardBackgroundController) {
+        [self.headerCardView sendSubviewToBack:self.waveCardBackgroundController.view];
+    }
     [self pp_layoutHeaderMaterialLayers];
     [self pp_startHeroBackgroundMotionIfNeeded];
 }

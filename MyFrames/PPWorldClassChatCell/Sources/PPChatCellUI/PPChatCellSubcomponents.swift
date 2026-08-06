@@ -174,6 +174,7 @@ struct PPChatActivityPreviewView: View {
     let copy: PPChatCellCopy
     let isUnread: Bool
     let brand: Color
+    var animationsEnabled = true
     var lineLimit: Int = 1
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -202,18 +203,26 @@ struct PPChatActivityPreviewView: View {
                 .lineLimit(lineLimit)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .id(displayedMessage)
-                .transition(
-                    reduceMotion
-                    ? .opacity
-                    : .opacity.combined(with: .move(edge: .bottom))
-                )
+                // The UIKit inbox opts out of motion. Keep a stable identity
+                // there so SwiftUI updates the text in place instead of briefly
+                // rendering an outgoing/incoming pair during a quick reply.
+                .id(shouldAnimate ? displayedMessage : "pp.chat.activity.static")
+                .transition(messageTransition)
         }
         .animation(
-            reduceMotion ? nil : .easeOut(duration: 0.20),
+            shouldAnimate ? .easeOut(duration: 0.20) : nil,
             value: displayedMessage
         )
         .accessibilityElement(children: .combine)
+    }
+
+    private var shouldAnimate: Bool {
+        animationsEnabled && !reduceMotion
+    }
+
+    private var messageTransition: AnyTransition {
+        guard shouldAnimate else { return .identity }
+        return .opacity.combined(with: .move(edge: .bottom))
     }
 
     private var displayedSender: String? {

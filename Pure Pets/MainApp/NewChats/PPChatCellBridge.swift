@@ -122,6 +122,9 @@ final class PPChatCellBridge: NSObject {
                     )
                 }
             )
+            // Keep SwiftUI state scoped to one immutable conversation ID even
+            // when UIKit reconfigures a reusable hosting cell.
+            .id(snapshot.id.rawValue)
             .environment(\.locale, locale)
             .environment(
                 \.layoutDirection,
@@ -197,7 +200,17 @@ final class PPChatCellBridge: NSObject {
         }()
 
         // Timestamp
-        let timestamp: Date = thread.lastMessageAt
+        let timestamp: Date = {
+            let lastAt = thread.lastMessageAt
+            if lastAt != Date.distantPast {
+                return lastAt
+            }
+            let ts = thread.timestamp
+            if ts != Date.distantPast {
+                return ts
+            }
+            return Date()
+        }()
 
         return PPChatThreadSnapshot(
             id: conversationID,

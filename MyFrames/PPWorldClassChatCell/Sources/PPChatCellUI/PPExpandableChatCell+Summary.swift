@@ -27,6 +27,7 @@ extension PPExpandableChatCell {
                             copy: copy,
                             isUnread: effectiveUnreadCount > 0,
                             brand: style.brand,
+                            animationsEnabled: animationsEnabled,
                             lineLimit: dynamicTypeSize.isAccessibilitySize ? 2 : 1
                         )
                     }

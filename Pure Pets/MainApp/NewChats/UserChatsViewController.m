@@ -61,8 +61,8 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 @property (nonatomic, strong) NSError *loadError;
 @property (nonatomic, assign) BOOL didRunHeaderEntrance;
 @property (nonatomic, assign) BOOL didRunListEntrance;
-@property (nonatomic, assign) BOOL needsInboxReloadAfterMessagingTransition;
-
+@property (nonatomic, assign) BOOL didAppear;
+@property (nonatomic, assign) BOOL willAppear;
 @end
 
 @implementation UserChatsViewController
@@ -71,7 +71,9 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
+    self.didAppear = NO;
+    self.willAppear = NO;
+    
     self.threads = @[];
     self.isLoading = YES;
     self.state = UserChatsStateLoading;
@@ -92,22 +94,22 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
 
+    if(self.willAppear) return;
     [self startObservingChats];
     [self.storiesViewController startObservingStories];
     [self handleUnreadUpdate];
-
-    if (self.needsInboxReloadAfterMessagingTransition) {
-        self.needsInboxReloadAfterMessagingTransition = NO;
-        [self.chatCellBridge collapseExpanded];
-        [self reloadTableAnimated];
-    }
+    [self.chatCellBridge collapseExpanded];
+    self.willAppear = YES;
+    
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    if(self.didAppear) return;
     [self startObservingOnlineStatus];
     [self pp_runHeaderEntranceIfNeeded];
     [self pp_scheduleListEntranceIfNeeded];
+    self.didAppear = YES;
 }
 
 - (void)viewDidLayoutSubviews {
@@ -818,11 +820,17 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 
     NSDate *lastMessageAt = thread.lastMessageAt;
     NSDate *timestamp = thread.timestamp;
-    if (lastMessageAt && timestamp) {
+
+    BOOL hasValidLast = lastMessageAt && ![lastMessageAt isEqual:NSDate.distantPast];
+    BOOL hasValidTs   = timestamp && ![timestamp isEqual:NSDate.distantPast];
+
+    if (hasValidLast && hasValidTs) {
         return ([lastMessageAt compare:timestamp] == NSOrderedAscending) ? timestamp : lastMessageAt;
     }
+    if (hasValidLast) return lastMessageAt;
+    if (hasValidTs)   return timestamp;
 
-    return lastMessageAt ?: (timestamp ?: NSDate.distantPast);
+    return NSDate.date;
 }
 
 - (NSArray<ChatThreadModel *> *)pp_sortedVisibleThreads:(NSArray<ChatThreadModel *> *)threads {
@@ -893,7 +901,8 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     NSString *userID = user.ID ?: @"";
     NSString *avatar = user.UserImageUrl.absoluteString ?: @"";
     NSString *name = user.UserName ?: @"";
-    NSTimeInterval ts = thread.lastMessageAt ? thread.lastMessageAt.timeIntervalSince1970 : 0.0;
+    NSDate *activityDate = [self pp_activityDateForThread:thread];
+    NSTimeInterval ts = activityDate ? activityDate.timeIntervalSince1970 : 0.0;
 
     return [NSString stringWithFormat:@"%@|%@|%.0f|%ld|%@|%@|%@|%d",
             thread.ID ?: @"",
@@ -980,13 +989,157 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 
     // ─────────────────────────────────────────────────────────────
     // Structural change: inserts / deletes / reordering.
-    // Compute inserts and deletes, reconfigure surviving rows in-place
-    // without destroying the SwiftUI UIHostingConfiguration (prevents
-    // blank flash). Reordering is expressed through the surviving-row
-    // reconfigure so each visible row picks up its correct thread.
-    // ─────────────────────────────────────────────────────────────
+    // A quick reply normally changes one conversation's activity date. Model
+    // that as a real row move so the visible UIHostingConfiguration—and its
+    // in-flight SwiftUI reply state—travels with the same conversation ID.
+    if (oldIDsOrdered.count == newIDsOrdered.count && oldIDsOrdered.count > 0) {
+        NSSet<NSString *> *oldIDSet = [NSSet setWithArray:oldIDsOrdered];
+        NSSet<NSString *> *newIDSet = [NSSet setWithArray:newIDsOrdered];
+        BOOL hasUniqueStableIDs = oldIDSet.count == oldIDsOrdered.count &&
+                                  newIDSet.count == newIDsOrdered.count;
+
+        if (hasUniqueStableIDs && [oldIDSet isEqualToSet:newIDSet]) {
+            // The parent-thread update normally changes exactly one thread:
+            // the sender of the quick reply. Prefer that identity when an
+            // adjacent swap could be expressed as a move in either direction.
+            NSMutableArray<NSString *> *changedThreadIDs = [NSMutableArray array];
+            for (ChatThreadModel *thread in incoming) {
+                NSString *threadID = thread.ID ?: @"";
+                NSString *newSignature = [self pp_contentSignatureForThread:thread];
+                if (![newSignature isEqualToString:oldSignatures[threadID]]) {
+                    [changedThreadIDs addObject:threadID];
+                }
+            }
+
+            NSUInteger moveFrom = NSNotFound;
+            NSUInteger moveTo = NSNotFound;
+            NSString *preferredThreadID = changedThreadIDs.count == 1
+            ? changedThreadIDs.firstObject
+            : nil;
+
+            if (preferredThreadID.length > 0) {
+                NSUInteger preferredSource = [oldIDsOrdered indexOfObject:preferredThreadID];
+                NSUInteger preferredDestination = [newIDsOrdered indexOfObject:preferredThreadID];
+                if (preferredSource != NSNotFound && preferredDestination != NSNotFound) {
+                    NSMutableArray<NSString *> *candidateOrder = [oldIDsOrdered mutableCopy];
+                    [candidateOrder removeObjectAtIndex:preferredSource];
+                    [candidateOrder insertObject:preferredThreadID atIndex:preferredDestination];
+                    if ([candidateOrder isEqualToArray:newIDsOrdered]) {
+                        moveFrom = preferredSource;
+                        moveTo = preferredDestination;
+                    }
+                }
+            }
+
+            // If multiple threads changed, find a single physical move that
+            // still produces the observed order. The changed rows below are
+            // refreshed by their own stable identity, never by source index.
+            if (moveFrom == NSNotFound) {
+                for (NSUInteger source = 0; source < oldIDsOrdered.count; source++) {
+                    NSString *threadID = oldIDsOrdered[source];
+                    NSMutableArray<NSString *> *candidateOrder = [oldIDsOrdered mutableCopy];
+                    [candidateOrder removeObjectAtIndex:source];
+
+                    for (NSUInteger destination = 0; destination <= candidateOrder.count; destination++) {
+                        [candidateOrder insertObject:threadID atIndex:destination];
+                        BOOL matchesIncomingOrder = [candidateOrder isEqualToArray:newIDsOrdered];
+                        [candidateOrder removeObjectAtIndex:destination];
+
+                        if (matchesIncomingOrder) {
+                            moveFrom = source;
+                            moveTo = destination;
+                            break;
+                        }
+                    }
+
+                    if (moveFrom != NSNotFound) {
+                        break;
+                    }
+                }
+            }
+
+            if (moveFrom != NSNotFound && moveTo != NSNotFound && moveFrom != moveTo) {
+                NSIndexPath *sourcePath = [NSIndexPath indexPathForRow:moveFrom inSection:0];
+                NSIndexPath *destinationPath = [NSIndexPath indexPathForRow:moveTo inSection:0];
+                NSMutableArray<NSIndexPath *> *changedPaths = [NSMutableArray array];
+                for (NSString *threadID in changedThreadIDs) {
+                    NSUInteger row = [newIDsOrdered indexOfObject:threadID];
+                    if (row != NSNotFound) {
+                        [changedPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
+                    }
+                }
+                if (changedPaths.count == 0) {
+                    [changedPaths addObject:destinationPath];
+                }
+
+                [UIView performWithoutAnimation:^{
+                    [self.tableView performBatchUpdates:^{
+                        [self.tableView moveRowAtIndexPath:sourcePath toIndexPath:destinationPath];
+                    } completion:^(__unused BOOL finished) {
+                        // Reconfigure only the identities whose content changed
+                        // after their cells have moved into their final rows.
+                        [UIView performWithoutAnimation:^{
+                            if (@available(iOS 15.0, *)) {
+                                [self.tableView reconfigureRowsAtIndexPaths:changedPaths];
+                            } else {
+                                [self.tableView reloadRowsAtIndexPaths:changedPaths
+                                                     withRowAnimation:UITableViewRowAnimationNone];
+                            }
+                        }];
+                    }];
+                }];
+
+                [self pp_scheduleListEntranceIfNeeded];
+                return;
+            }
+
+            // A complex pure reorder cannot be safely represented by
+            // reconfiguring rows in place: that would bind a hosted cell's
+            // @State to a different conversation. Reload without animation
+            // rather than displaying mismatched or reflected cell content.
+            [UIView performWithoutAnimation:^{
+                [self.tableView reloadData];
+                [self.tableView layoutIfNeeded];
+            }];
+            [self pp_scheduleListEntranceIfNeeded];
+            return;
+        }
+    }
+
+    // Insertions/deletions are safe to batch only when the conversations that
+    // remain keep their relative order. Otherwise use the non-animated safe
+    // fallback above instead of rebinding UIHostingConfiguration state.
     NSMutableOrderedSet<NSString *> *oldIDs = [NSMutableOrderedSet orderedSetWithArray:oldIDsOrdered];
     NSMutableOrderedSet<NSString *> *newIDs = [NSMutableOrderedSet orderedSetWithArray:newIDsOrdered];
+    if (oldIDs.count != oldIDsOrdered.count || newIDs.count != newIDsOrdered.count) {
+        [UIView performWithoutAnimation:^{
+            [self.tableView reloadData];
+            [self.tableView layoutIfNeeded];
+        }];
+        [self pp_scheduleListEntranceIfNeeded];
+        return;
+    }
+
+    NSMutableArray<NSString *> *oldSharedIDs = [NSMutableArray array];
+    NSMutableArray<NSString *> *newSharedIDs = [NSMutableArray array];
+    for (NSString *threadID in oldIDsOrdered) {
+        if ([newIDs containsObject:threadID]) {
+            [oldSharedIDs addObject:threadID];
+        }
+    }
+    for (NSString *threadID in newIDsOrdered) {
+        if ([oldIDs containsObject:threadID]) {
+            [newSharedIDs addObject:threadID];
+        }
+    }
+    if (![oldSharedIDs isEqualToArray:newSharedIDs]) {
+        [UIView performWithoutAnimation:^{
+            [self.tableView reloadData];
+            [self.tableView layoutIfNeeded];
+        }];
+        [self pp_scheduleListEntranceIfNeeded];
+        return;
+    }
 
     NSMutableArray<NSIndexPath *> *deletePaths = [NSMutableArray array];
     NSMutableArray<NSIndexPath *> *insertPaths = [NSMutableArray array];
@@ -1006,16 +1159,17 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
         }
     }
 
-    // If the diff is too complex (large structural change), fall back to full reload
+    // If the diff is too complex (large structural change), fall back to full reload.
     if (deletePaths.count + insertPaths.count > oldIDs.count) {
         [self reloadTableAnimated];
         [self pp_scheduleListEntranceIfNeeded];
         return;
     }
 
-    // Rows that exist in both: reconfigure in-place (preserves hosting config)
+    // Rows that exist in both can refresh in place because their relative
+    // identity/order is unchanged in this path.
     for (NSUInteger i = 0; i < newIDs.count; i++) {
-        if ([oldIDs containsObject:newIDs[i]] && ![insertPaths containsObject:[NSIndexPath indexPathForRow:i inSection:0]]) {
+        if ([oldIDs containsObject:newIDs[i]]) {
             [reconfigurePaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
         }
     }
@@ -1032,8 +1186,8 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
             }
         } completion:^(__unused BOOL finished) {
             // Reconfigure existing rows to update content without full reload.
-            // reconfigureRowsAtIndexPaths preserves the cell identity and its
-            // UIHostingConfiguration, preventing SwiftUI state loss.
+            // Their identity has not changed, so no SwiftUI host is rebound to
+            // a different conversation while a reply is in progress.
             if (reconfigurePaths.count > 0) {
                 if (@available(iOS 15.0, *)) {
                     [self.tableView reconfigureRowsAtIndexPaths:reconfigurePaths];
@@ -1648,14 +1802,9 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [self.chatCellBridge collapseExpanded];
-    [self reloadTableAnimated];
-
-    BOOL didPresent = [PPOverlayCoordinator pp_openChatThread:thread
-                                                petAdContext:nil
-                                                      fromVC:self];
-    if (didPresent) {
-        self.needsInboxReloadAfterMessagingTransition = YES;
-    }
+    [PPOverlayCoordinator pp_openChatThread:thread
+                               petAdContext:nil
+                                     fromVC:self];
 }
 
 - (void)pp_dismissPresentedStartChatPicker {

@@ -32,6 +32,13 @@ public extension Font {
         }
         return .system(size: size, weight: .semibold)
     }
+
+    static func ppBeirutiRegular(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
+        if UIFont(name: "Beiruti-Regular", size: size) != nil {
+            return .custom("Beiruti-Regular", size: size, relativeTo: textStyle)
+        }
+        return .system(size: size, weight: .regular)
+    }
 }
 
 /// Declarative SwiftUI item component rendering individual native tab bar items with haptics, unread badges, and RTL layout support.

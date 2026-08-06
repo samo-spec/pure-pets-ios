@@ -43,7 +43,7 @@ public protocol PPMessagingSwiftUIHostControllerDelegate: AnyObject {
 }
 
 @objc(PPMessagingSwiftUIHostController)
-public final class PPMessagingSwiftUIHostController: UIViewController {
+public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     @objc public weak var delegate: PPMessagingSwiftUIHostControllerDelegate? {
         didSet {
             actionRelay?.delegate = delegate
@@ -106,6 +106,15 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
         relay.delegate = delegate
         relay.onSendText = { [weak self] text in
             self?.sendTextThroughExistingPipeline(text)
+        }
+        relay.onSendAudio = { [weak self] url, duration in
+            self?.sendAudioThroughExistingPipeline(url: url, duration: duration)
+        }
+        relay.onCameraTap = { [weak self] in
+            self?.presentImagePicker()
+        }
+        relay.onVideoTap = { [weak self] in
+            self?.presentVideoPicker()
         }
         relay.onStickerSelected = { [weak self] sticker in
             self?.sendStickerThroughExistingPipeline(sticker)
@@ -941,7 +950,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
     }
 
     private func ppLocalized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 
     private func messagePayload(
@@ -1147,6 +1156,213 @@ public final class PPMessagingSwiftUIHostController: UIViewController {
                 }
             }
         }
+    }
+
+    private func sendAudioThroughExistingPipeline(url: URL, duration: Double) {
+        guard let thread = chatThread, !thread.id.isEmpty else { return }
+        let threadID = thread.id
+        let senderID = UserManager.shared().currentUser?.id ?? ""
+        let receiverID = Self.outgoingReceiverID(for: thread, senderID: senderID)
+        guard !senderID.isEmpty, !receiverID.isEmpty, senderID != receiverID else {
+            NSLog("[Chat] Refusing outgoing audio message without a valid sender/receiver identity")
+            return
+        }
+
+        guard let audioData = try? Data(contentsOf: url) else {
+            NSLog("[Chat] Failed to read audio data from URL: \(url)")
+            return
+        }
+
+        let messageID = UUID().uuidString
+        let replyToMessageID = screenState.composerReplyMessageID
+
+        screenState.appendOptimisticAudio(
+            messageID: messageID,
+            duration: duration,
+            senderID: senderID,
+            replyToMessageID: replyToMessageID
+        )
+        screenState.clearReplyComposer()
+
+        AppManager.sharedInstance().uploadAudioData(audioData) { [weak self] (downloadURL: String?, error: Error?) in
+            guard let self = self else { return }
+            self.onMain {
+                if error != nil || downloadURL == nil {
+                    self.screenState.setFailure(
+                        messageID: messageID,
+                        message: self.ppLocalized("chat_message_failed_title")
+                    )
+                    return
+                }
+
+                let message = ChatMessageModel()
+                message.id = messageID
+                message.text = ""
+                message.senderID = senderID
+                message.receiverID = receiverID
+                message.timestamp = Date()
+                message.messageType = .audio
+                message.fileURL = downloadURL
+                message.mediaDuration = duration
+                message.mimeType = "audio/m4a"
+                message.replyToMessageID = replyToMessageID
+
+                ChManager.shared().sendMessage(
+                    message,
+                    inThread: threadID,
+                    senderID: senderID
+                ) { [weak self] sendError in
+                    guard let self = self else { return }
+                    self.onMain {
+                        if sendError != nil {
+                            self.screenState.setFailure(
+                                messageID: messageID,
+                                message: self.ppLocalized("chat_message_failed_title")
+                            )
+                        } else {
+                            self.screenState.markMessageSent(messageID: messageID)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func sendImageThroughExistingPipeline(_ image: UIImage) {
+        guard let thread = chatThread, !thread.id.isEmpty else { return }
+        let threadID = thread.id
+        let senderID = UserManager.shared().currentUser?.id ?? ""
+        let receiverID = Self.outgoingReceiverID(for: thread, senderID: senderID)
+        guard !senderID.isEmpty, !receiverID.isEmpty, senderID != receiverID else {
+            NSLog("[Chat] Refusing outgoing image message without a valid sender/receiver identity")
+            return
+        }
+
+        let message = ChatMessageModel()
+        message.id = UUID().uuidString
+        message.text = ""
+        message.senderID = senderID
+        message.receiverID = receiverID
+        message.timestamp = Date()
+        message.messageType = .image
+        message.localImage = image
+        message.mediaWidth = image.size.width
+        message.mediaHeight = image.size.height
+        let replyToMessageID = screenState.composerReplyMessageID
+        message.replyToMessageID = replyToMessageID
+
+        screenState.appendOptimisticImage(
+            messageID: message.id,
+            image: image,
+            senderID: senderID,
+            replyToMessageID: replyToMessageID
+        )
+        screenState.clearReplyComposer()
+
+        ChManager.shared().sendImageMessage(
+            image,
+            message: message,
+            inThread: threadID,
+            progress: { _ in }
+        ) { [weak self] error in
+            guard let self = self else { return }
+            self.onMain {
+                if error != nil {
+                    self.screenState.setFailure(
+                        messageID: message.id,
+                        message: self.ppLocalized("chat_message_failed_title")
+                    )
+                } else {
+                    self.screenState.markMessageSent(messageID: message.id)
+                }
+            }
+        }
+    }
+
+    private func sendVideoThroughExistingPipeline(_ videoURL: URL) {
+        guard let thread = chatThread, !thread.id.isEmpty else { return }
+        let threadID = thread.id
+        let senderID = UserManager.shared().currentUser?.id ?? ""
+        let receiverID = Self.outgoingReceiverID(for: thread, senderID: senderID)
+        guard !senderID.isEmpty, !receiverID.isEmpty, senderID != receiverID else {
+            NSLog("[Chat] Refusing outgoing video message without a valid sender/receiver identity")
+            return
+        }
+
+        let message = ChatMessageModel()
+        message.id = UUID().uuidString
+        message.text = ""
+        message.senderID = senderID
+        message.receiverID = receiverID
+        message.timestamp = Date()
+        message.messageType = .video
+        message.localVideoURL = videoURL
+        let replyToMessageID = screenState.composerReplyMessageID
+        message.replyToMessageID = replyToMessageID
+
+        screenState.appendOptimisticVideo(
+            messageID: message.id,
+            videoURL: videoURL,
+            senderID: senderID,
+            replyToMessageID: replyToMessageID
+        )
+        screenState.clearReplyComposer()
+
+        ChManager.shared().sendVideoMessage(
+            videoURL,
+            message: message,
+            inThread: threadID
+        ) { [weak self] error in
+            guard let self = self else { return }
+            self.onMain {
+                if error != nil {
+                    self.screenState.setFailure(
+                        messageID: message.id,
+                        message: self.ppLocalized("chat_message_failed_title")
+                    )
+                } else {
+                    self.screenState.markMessageSent(messageID: message.id)
+                }
+            }
+        }
+    }
+
+    private func presentImagePicker() {
+        onMain { [weak self] in
+            guard let self = self else { return }
+            let picker = UIImagePickerController()
+            picker.delegate = self
+            picker.sourceType = .photoLibrary
+            picker.mediaTypes = ["public.image"]
+            self.present(picker, animated: true)
+        }
+    }
+
+    private func presentVideoPicker() {
+        onMain { [weak self] in
+            guard let self = self else { return }
+            let picker = UIImagePickerController()
+            picker.delegate = self
+            picker.sourceType = .photoLibrary
+            picker.mediaTypes = ["public.movie"]
+            self.present(picker, animated: true)
+        }
+    }
+
+    public func imagePickerController(
+        _ picker: UIImagePickerController,
+        didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+    ) {
+        picker.dismiss(animated: true)
+        if let image = info[.originalImage] as? UIImage {
+            sendImageThroughExistingPipeline(image)
+        } else if let videoURL = info[.mediaURL] as? URL {
+            sendVideoThroughExistingPipeline(videoURL)
+        }
+    }
+
+    public func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
     }
 
     private static func outgoingReceiverID(
@@ -1701,6 +1917,117 @@ private final class PPMessagingScreenState: ObservableObject {
         messageRevision &+= 1
     }
 
+    func appendOptimisticImage(
+        messageID: String,
+        image: UIImage,
+        senderID: String,
+        replyToMessageID: String?
+    ) {
+        guard !messages.contains(where: { $0.id == messageID }) else { return }
+
+        var payload: [String: Any] = [
+            "id": messageID,
+            "text": "",
+            "senderID": senderID,
+            "timestamp": Date(),
+            "kind": "image",
+            "status": 0,
+            "localImage": image,
+            "mediaWidth": Double(image.size.width),
+            "mediaHeight": Double(image.size.height),
+            "isLocalPending": true,
+            "isOutgoing": true
+        ]
+        if let replyToMessageID {
+            payload["replyToMessageID"] = replyToMessageID
+        }
+
+        let snapshot = PPMessagingMessageSnapshot(
+            payload: payload,
+            currentUserID: senderID,
+            failureText: nil,
+            animatesEntrance: true
+        )
+        messages.append(snapshot)
+        knownMessageIDs.insert(messageID)
+        latestAppendedCount = 1
+        latestAppendContainsOutgoing = true
+        messageRevision &+= 1
+    }
+
+    func appendOptimisticVideo(
+        messageID: String,
+        videoURL: URL,
+        senderID: String,
+        replyToMessageID: String?
+    ) {
+        guard !messages.contains(where: { $0.id == messageID }) else { return }
+
+        var payload: [String: Any] = [
+            "id": messageID,
+            "text": "",
+            "senderID": senderID,
+            "timestamp": Date(),
+            "kind": "video",
+            "status": 0,
+            "localVideoURL": videoURL,
+            "isLocalPending": true,
+            "isOutgoing": true
+        ]
+        if let replyToMessageID {
+            payload["replyToMessageID"] = replyToMessageID
+        }
+
+        let snapshot = PPMessagingMessageSnapshot(
+            payload: payload,
+            currentUserID: senderID,
+            failureText: nil,
+            animatesEntrance: true
+        )
+        messages.append(snapshot)
+        knownMessageIDs.insert(messageID)
+        latestAppendedCount = 1
+        latestAppendContainsOutgoing = true
+        messageRevision &+= 1
+    }
+
+    func appendOptimisticAudio(
+        messageID: String,
+        duration: Double,
+        senderID: String,
+        replyToMessageID: String?
+    ) {
+        guard !messages.contains(where: { $0.id == messageID }) else { return }
+
+        var payload: [String: Any] = [
+            "id": messageID,
+            "text": "",
+            "senderID": senderID,
+            "timestamp": Date(),
+            "kind": "audio",
+            "status": 0,
+            "duration": duration,
+            "mediaDuration": duration,
+            "isLocalPending": true,
+            "isOutgoing": true
+        ]
+        if let replyToMessageID {
+            payload["replyToMessageID"] = replyToMessageID
+        }
+
+        let snapshot = PPMessagingMessageSnapshot(
+            payload: payload,
+            currentUserID: senderID,
+            failureText: nil,
+            animatesEntrance: true
+        )
+        messages.append(snapshot)
+        knownMessageIDs.insert(messageID)
+        latestAppendedCount = 1
+        latestAppendContainsOutgoing = true
+        messageRevision &+= 1
+    }
+
     func markMessageSent(messageID: String) {
         messages = messages.map {
             guard $0.id == messageID else { return $0 }
@@ -1958,6 +2285,10 @@ private extension Dictionary where Key == String, Value == Any {
 private final class PPMessagingActionRelay {
     weak var delegate: PPMessagingSwiftUIHostControllerDelegate?
     var onSendText: ((String) -> Void)?
+    var onSendAudio: ((URL, Double) -> Void)?
+    var onCameraTap: (() -> Void)?
+    var onVideoTap: (() -> Void)?
+    var onContactTap: (() -> Void)?
     var onStickerSelected: ((PPChatSticker) -> Void)?
     var onContextRequested: ((String?) -> Void)?
     var onActionRequested: ((PPMessagingAction, String?) -> Void)?
@@ -1967,6 +2298,38 @@ private final class PPMessagingActionRelay {
             delegate.messagingHostDidSendText(text)
         } else {
             onSendText?(text)
+        }
+    }
+
+    func sendAudio(url: URL, duration: Double) {
+        if let delegate {
+            delegate.messagingHostDidSendAudio(url, duration: duration)
+        } else {
+            onSendAudio?(url, duration)
+        }
+    }
+
+    func tapCamera() {
+        if let delegate {
+            delegate.messagingHostDidTapPhoto()
+        } else {
+            onCameraTap?()
+        }
+    }
+
+    func tapVideo() {
+        if let delegate {
+            delegate.messagingHostDidTapVideo()
+        } else {
+            onVideoTap?()
+        }
+    }
+
+    func tapContact() {
+        if let delegate {
+            delegate.messagingHostDidTapContact()
+        } else {
+            onContactTap?()
         }
     }
 
@@ -2071,8 +2434,8 @@ private struct PPMessagingConversationActionsSheet: View {
 
             RadialGradient(
                 colors: [
-                    PPMessagingPalette.highlight.opacity(
-                        colorScheme == .dark ? 0.11 : 0.075
+                    Color.ppMineralBeige.opacity(
+                        colorScheme == .dark ? 0.20 : 0.45
                     ),
                     .clear
                 ],
@@ -2120,12 +2483,12 @@ private struct PPMessagingConversationActionsSheet: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.custom("Beiruti-Bold", size: 22, relativeTo: .title2))
+                    .font(Font.ppBeirutiBold(size: 22, relativeTo: .title2))
                     .foregroundStyle(PPMessagingPalette.primaryText)
 
                 if !conversationName.isEmpty {
                     Text(conversationName)
-                        .font(.custom("Beiruti-Regular", size: 13, relativeTo: .subheadline))
+                        .font(Font.ppBeirutiRegular(size: 13, relativeTo: .subheadline))
                         .foregroundStyle(PPMessagingPalette.secondaryText)
                         .lineLimit(1)
                 }
@@ -2267,7 +2630,7 @@ private struct PPMessagingConversationActionsSheet: View {
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title)
-                        .font(.custom("Beiruti-SemiBold", size: 16, relativeTo: .body))
+                        .font(Font.ppBeirutiSemiBold(size: 16, relativeTo: .body))
                         .foregroundStyle(
                             role == .destructive && isEnabled
                                 ? PPMessagingPalette.failure
@@ -2276,7 +2639,7 @@ private struct PPMessagingConversationActionsSheet: View {
 
                     if !isEnabled && showsUnavailableReason {
                         Text(localized("chat.action.unavailable"))
-                            .font(.custom("Beiruti-Regular", size: 11.5, relativeTo: .caption))
+                            .font(Font.ppBeirutiRegular(size: 11.5, relativeTo: .caption))
                             .foregroundStyle(PPMessagingPalette.secondaryText)
                             .lineLimit(2)
                     }
@@ -2305,7 +2668,7 @@ private struct PPMessagingConversationActionsSheet: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -2356,12 +2719,12 @@ private struct PPMessagingScreen: View {
                     presentation: .messaging,
                     chatBarHeight: 54,
                     onSendText: { relay.sendText($0) },
-                    onCameraTap: { relay.delegate?.messagingHostDidTapPhoto() },
-                    onVideoTap: { relay.delegate?.messagingHostDidTapVideo() },
-                    onContactTap: { relay.delegate?.messagingHostDidTapContact() },
+                    onCameraTap: { relay.tapCamera() },
+                    onVideoTap: { relay.tapVideo() },
+                    onContactTap: { relay.tapContact() },
                     onStickerTap: { relay.selectSticker($0) },
                     onSendAudio: { url, duration in
-                        relay.delegate?.messagingHostDidSendAudio(url, duration: duration)
+                        relay.sendAudio(url: url, duration: duration)
                     },
                     onCancelReply: {
                         relay.request(.composerCancelledReply)
@@ -2391,6 +2754,12 @@ private struct PPMessagingScreen: View {
             .background {
                 PPMessagingCanvas(backgroundImage: state.backgroundImage)
                     .ignoresSafeArea()
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if state.keyboardIsPresented {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
             }
             .accessibilityIdentifier("pp.messaging.screen")
         }
@@ -2623,11 +2992,16 @@ private struct PPMessagingScreen: View {
                     guard typing, isAtLatest else { return }
                     scrollToLatest(using: proxy, animated: true)
                 }
+                .onChange(of: state.keyboardIsPresented) { presented in
+                    guard presented else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        scrollToLatest(using: proxy, animated: !reduceMotion)
+                    }
+                }
                 .onChange(of: state.keyboardExpansionRevision) { _ in
-                    // The host only publishes first presentation and genuine
-                    // height increases. Interactive dismissal decreases never
-                    // compete with the user's vertical scroll ownership.
-                    guard hasPositionedInitially, isAtLatest else { return }
+                    // The host publishes keyboard frame expansion. Scroll message list to bottom
+                    // so the user's focus and latest messages follow the keyboard expansion.
+                    guard hasPositionedInitially else { return }
                     DispatchQueue.main.async {
                         scrollToLatest(using: proxy, animated: !reduceMotion)
                     }
@@ -4389,6 +4763,7 @@ private struct PPMessagingCanvas: View {
     var body: some View {
         ZStack {
             WorldGlassBackground(
+                style: .messaging,
                 intensity: colorScheme == .dark ? 0.72 : 0.88,
                 isFaded: backgroundImage != nil
             )
@@ -4673,14 +5048,16 @@ private enum PPMessagingPalette {
             : UIColor(white: 1.0, alpha: 0.36)
     })
     static let canvasWarmField = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.22, green: 0.17, blue: 0.13, alpha: 0.16)
-            : UIColor(red: 0.82, green: 0.73, blue: 0.62, alpha: 0.20)
+        let base = UIColor.ppMineralBeige.resolvedColor(with: traits)
+        return traits.userInterfaceStyle == .dark
+            ? base.withAlphaComponent(0.24)
+            : base.withAlphaComponent(0.60)
     })
     static let canvasCoolField = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.12, green: 0.16, blue: 0.17, alpha: 0.14)
-            : UIColor(red: 0.62, green: 0.67, blue: 0.68, alpha: 0.12)
+        let base = UIColor.ppMineralBeige.resolvedColor(with: traits)
+        return traits.userInterfaceStyle == .dark
+            ? base.withAlphaComponent(0.18)
+            : base.withAlphaComponent(0.42)
     })
 }
 

@@ -2,12 +2,24 @@ import Combine
 import Foundation
 import SwiftUI
 
+/// Selects which world-glass atmosphere `WorldGlassBackground` renders.
+public enum WorldGlassStyle: Equatable {
+    /// The original quiet care orbit. Berry-led, top-weighted, unchanged.
+    case `default`
+    /// A living, non-brand "aurora weave" tuned for the messaging canvas:
+    /// cool twilight fields drift the full screen while opaque chat bubbles
+    /// keep the transcript legible.
+    case messaging
+}
+
 /// Pure Pets' quiet, living world canvas.
 ///
-/// A berry-led care orbit moves through the upper field while a still lower
-/// anchor preserves visual calm around persistent navigation. Motion pauses for
+/// The `.default` style keeps a berry-led care orbit moving through the upper
+/// field while a still lower anchor preserves visual calm around persistent
+/// navigation. The `.messaging` style replaces it with a full-field aurora
+/// weave of non-brand cool hues for the conversation surface. Motion pauses for
 /// Reduce Motion, Low Power Mode, inactive scenes, and server-requested fading.
-/// Rendering uses the same Canvas path on iOS 15 and later.
+/// Both styles render through the same Canvas path on iOS 15 and later.
 public struct WorldGlassBackground: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -18,22 +30,31 @@ public struct WorldGlassBackground: View {
     @State private var isLowPowerModeEnabled =
         ProcessInfo.processInfo.isLowPowerModeEnabled
 
+    private let style: WorldGlassStyle
     private let tint: Color
     private let intensity: Double
     private let animatedHeightRatio: CGFloat
     private let isFaded: Bool
 
     /// - Parameters:
-    ///   - tint: Dominant atmospheric tint. Pure Pets defaults to brand berry.
+    ///   - style: Selects the atmosphere. `.default` preserves the original
+    ///     berry-led care orbit; `.messaging` renders the non-brand living
+    ///     "aurora weave" designed for the conversation canvas.
+    ///   - tint: Dominant atmospheric tint for the `.default` style. Pure Pets
+    ///     defaults to brand berry. Ignored by `.messaging`, which never paints
+    ///     the brand color into the conversation background.
     ///   - intensity: Recommended range is `0.65 ... 1.05`.
-    ///   - animatedHeightRatio: Portion of the screen allowed to animate.
+    ///   - animatedHeightRatio: Portion of the screen allowed to animate in the
+    ///     `.default` style. The `.messaging` style animates the full field.
     ///   - isFaded: Removes ambient fields while retaining the semantic canvas.
     public init(
+        style: WorldGlassStyle = .default,
         tint: Color = .worldGlassBerry,
         intensity: Double = 0.88,
         animatedHeightRatio: CGFloat = 0.64,
         isFaded: Bool = false
     ) {
+        self.style = style
         self.tint = tint
         self.intensity = intensity.clamped(to: 0 ... 1.20)
         self.animatedHeightRatio =
@@ -43,10 +64,6 @@ public struct WorldGlassBackground: View {
 
     public var body: some View {
         GeometryReader { proxy in
-            let topHeight = min(
-                max(proxy.size.height * animatedHeightRatio, 360),
-                660
-            )
             let animationIsPaused =
                 reduceMotion
                 || isLowPowerModeEnabled
@@ -58,40 +75,21 @@ public struct WorldGlassBackground: View {
             ZStack(alignment: .top) {
                 Color.ppBackground
 
-                ZStack(alignment: .top) {
-                    canvasTemperature
-
-                    WorldGlassStaticField(
-                        tint: tint,
-                        strength: resolvedStrength,
-                        isRightToLeft: layoutDirection == .rightToLeft
-                    )
-
-                    TimelineView(
-                        .animation(
-                            minimumInterval: 1.0 / 24.0,
-                            paused: animationIsPaused
+                Group {
+                    switch style {
+                    case .default:
+                        defaultField(
+                            proxy: proxy,
+                            animationIsPaused: animationIsPaused,
+                            usesCanonicalPhase: usesCanonicalPhase
                         )
-                    ) { timeline in
-                        WorldGlassLivingField(
-                            time: usesCanonicalPhase
-                                ? 0
-                                : timeline.date
-                                    .timeIntervalSinceReferenceDate,
-                            tint: tint,
-                            strength: resolvedStrength,
-                            isRightToLeft:
-                                layoutDirection == .rightToLeft
+                    case .messaging:
+                        messagingField(
+                            proxy: proxy,
+                            animationIsPaused: animationIsPaused,
+                            usesCanonicalPhase: usesCanonicalPhase
                         )
-                        .frame(
-                            width: proxy.size.width,
-                            height: topHeight
-                        )
-                        .mask(upperFieldMask)
                     }
-
-                    topSpecularHighlight
-                        .frame(height: topHeight * 0.62)
                 }
                 .opacity(isFaded ? 0 : 1)
                 .animation(
@@ -116,6 +114,99 @@ public struct WorldGlassBackground: View {
         ) { _ in
             isLowPowerModeEnabled =
                 ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+    }
+
+    // MARK: - Default care-orbit field (unchanged behavior)
+
+    @ViewBuilder
+    private func defaultField(
+        proxy: GeometryProxy,
+        animationIsPaused: Bool,
+        usesCanonicalPhase: Bool
+    ) -> some View {
+        let topHeight = min(
+            max(proxy.size.height * animatedHeightRatio, 360),
+            660
+        )
+
+        ZStack(alignment: .top) {
+            canvasTemperature
+
+            WorldGlassStaticField(
+                tint: tint,
+                strength: resolvedStrength,
+                isRightToLeft: layoutDirection == .rightToLeft
+            )
+
+            TimelineView(
+                .animation(
+                    minimumInterval: 1.0 / 24.0,
+                    paused: animationIsPaused
+                )
+            ) { timeline in
+                WorldGlassLivingField(
+                    time: usesCanonicalPhase
+                        ? 0
+                        : timeline.date
+                            .timeIntervalSinceReferenceDate,
+                    tint: tint,
+                    strength: resolvedStrength,
+                    isRightToLeft:
+                        layoutDirection == .rightToLeft
+                )
+                .frame(
+                    width: proxy.size.width,
+                    height: topHeight
+                )
+                .mask(upperFieldMask)
+            }
+
+            topSpecularHighlight
+                .frame(height: topHeight * 0.62)
+        }
+    }
+
+    // MARK: - Messaging aurora field (non-brand, full-screen, living)
+
+    @ViewBuilder
+    private func messagingField(
+        proxy: GeometryProxy,
+        animationIsPaused: Bool,
+        usesCanonicalPhase: Bool
+    ) -> some View {
+        let isRightToLeft = layoutDirection == .rightToLeft
+
+        ZStack {
+            messagingTemperature
+
+            WorldGlassAuroraStaticField(
+                strength: resolvedStrength,
+                isRightToLeft: isRightToLeft
+            )
+
+            TimelineView(
+                .animation(
+                    minimumInterval: 1.0 / 24.0,
+                    paused: animationIsPaused
+                )
+            ) { timeline in
+                WorldGlassAuroraLivingField(
+                    time: usesCanonicalPhase
+                        ? 0
+                        : timeline.date
+                            .timeIntervalSinceReferenceDate,
+                    strength: resolvedStrength,
+                    isRightToLeft: isRightToLeft
+                )
+                .frame(
+                    width: proxy.size.width,
+                    height: proxy.size.height
+                )
+                .mask(auroraCalmMask)
+            }
+
+            messagingSpecularHighlight
         }
     }
 
@@ -186,6 +277,68 @@ public struct WorldGlassBackground: View {
             endPoint: .bottom
         )
     }
+
+    // MARK: Messaging atmosphere helpers
+
+    /// A cool depth wash for the messaging canvas. Uses no brand hue.
+    private var messagingTemperature: some View {
+        LinearGradient(
+            colors:
+                colorScheme == .dark
+                ? [
+                    Color.worldGlassAuroraIndigo.opacity(0.14),
+                    Color.clear,
+                    Color.worldGlassAuroraAqua.opacity(0.08)
+                ]
+                : [
+                    Color.worldGlassAuroraLilac.opacity(0.16),
+                    Color.clear,
+                    Color.worldGlassAuroraAqua.opacity(0.11)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    /// Keeps the vertical center of the reading zone a touch calmer than the
+    /// top and bottom so drifting light never competes with the transcript.
+    private var auroraCalmMask: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .black, location: 0.00),
+                .init(color: .black.opacity(0.86), location: 0.40),
+                .init(color: .black.opacity(0.74), location: 0.50),
+                .init(color: .black.opacity(0.86), location: 0.60),
+                .init(color: .black, location: 1.00)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var messagingSpecularHighlight: some View {
+        LinearGradient(
+            stops: [
+                .init(
+                    color: .white.opacity(
+                        (colorScheme == .dark ? 0.030 : 0.16)
+                            * resolvedStrength
+                    ),
+                    location: 0.00
+                ),
+                .init(
+                    color: .white.opacity(
+                        (colorScheme == .dark ? 0.012 : 0.040)
+                            * resolvedStrength
+                    ),
+                    location: 0.18
+                ),
+                .init(color: .clear, location: 0.52)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 }
 
 private enum WorldGlassMotion {
@@ -200,17 +353,20 @@ private enum WorldGlassMotion {
 
 /// A convenient root container when the background should sit behind a screen.
 public struct WorldGlassScene<Content: View>: View {
+    private let style: WorldGlassStyle
     private let tint: Color
     private let intensity: Double
     private let isFaded: Bool
     private let content: Content
 
     public init(
+        style: WorldGlassStyle = .default,
         tint: Color = .worldGlassBerry,
         intensity: Double = 0.88,
         isFaded: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
+        self.style = style
         self.tint = tint
         self.intensity = intensity
         self.isFaded = isFaded
@@ -220,6 +376,7 @@ public struct WorldGlassScene<Content: View>: View {
     public var body: some View {
         ZStack {
             WorldGlassBackground(
+                style: style,
                 tint: tint,
                 intensity: intensity,
                 isFaded: isFaded
@@ -355,6 +512,165 @@ private struct WorldGlassLivingField: View {
                 size: size,
                 phase: orbitPhase,
                 tint: tint,
+                strength: strength,
+                isRightToLeft: isRightToLeft
+            )
+        }
+    }
+}
+
+/// Persistent, motionless base for the messaging aurora. Two soft cool anchors
+/// give the field depth even when animation is paused (inactive scene, Low
+/// Power, Reduce Motion, or server-requested fade).
+private struct WorldGlassAuroraStaticField: View {
+    let strength: Double
+    let isRightToLeft: Bool
+
+    var body: some View {
+        Canvas(
+            opaque: false,
+            colorMode: .linear,
+            rendersAsynchronously: true
+        ) { context, size in
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.20,
+                    y: 0.12,
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: max(size.width * 0.72, 260),
+                color: Color.worldGlassAuroraIndigo.opacity(
+                    0.085 * strength
+                )
+            )
+
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.82,
+                    y: 0.90,
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: max(size.width * 0.66, 240),
+                color: Color.worldGlassAuroraAqua.opacity(
+                    0.070 * strength
+                )
+            )
+        }
+    }
+}
+
+/// The living "aurora weave": cool non-brand fields drift on slow Lissajous
+/// orbits, the whole field breathes, and one silk light-sweep travels across.
+/// These are the two product-behavior signature moments — both collapse to a
+/// still frame when `time` is pinned to `0` for Reduce Motion / Low Power.
+private struct WorldGlassAuroraLivingField: View {
+    let time: TimeInterval
+    let strength: Double
+    let isRightToLeft: Bool
+
+    var body: some View {
+        Canvas(
+            opaque: false,
+            colorMode: .linear,
+            rendersAsynchronously: true
+        ) { context, size in
+            let driftA = WorldGlassDrawing.phase(time: time, duration: 34)
+            let driftB = WorldGlassDrawing.phase(time: time, duration: 41)
+            let driftC = WorldGlassDrawing.phase(time: time, duration: 52)
+            let driftD = WorldGlassDrawing.phase(time: time, duration: 63)
+            let breath = WorldGlassDrawing.phase(time: time, duration: 19)
+            let sweep = WorldGlassDrawing.phase(time: time, duration: 47)
+
+            // Signature moment 1 — the whole field breathes gently.
+            let breathScale = 1.0 + (0.045 * sin(breath))
+
+            // Indigo dawn — upper leading.
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.18 + (0.060 * sin(driftA)),
+                    y: 0.16 + (0.048 * cos(driftB)),
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: size.width * 0.62 * breathScale,
+                color: Color.worldGlassAuroraIndigo.opacity(0.20 * strength)
+            )
+
+            // Aqua tide — upper trailing.
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.86 + (0.050 * cos(driftB)),
+                    y: 0.24 + (0.044 * sin(driftC)),
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: size.width * 0.58 * breathScale,
+                color: Color.worldGlassAuroraAqua.opacity(0.17 * strength)
+            )
+
+            // Lilac wander — mid field, the widest slow orbit.
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.50 + (0.100 * sin(driftC)),
+                    y: 0.50 + (0.060 * cos(driftA)),
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: size.width * 0.55 * breathScale,
+                color: Color.worldGlassAuroraLilac.opacity(0.13 * strength)
+            )
+
+            // Aqua deep — lower leading.
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.16 + (0.050 * cos(driftA)),
+                    y: 0.84 + (0.040 * sin(driftB)),
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: size.width * 0.60 * breathScale,
+                color: Color.worldGlassAuroraAqua.opacity(0.15 * strength)
+            )
+
+            // Warm sand — lower trailing, a quiet neutral counterweight (no brand hue).
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.82 + (0.044 * sin(driftB)),
+                    y: 0.90 + (0.030 * cos(driftD)),
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: size.width * 0.50 * breathScale,
+                color: Color.worldGlassAuroraSand.opacity(0.10 * strength)
+            )
+
+            // Luminous core — a soft near-white lift at the crown.
+            WorldGlassDrawing.drawGlow(
+                in: &context,
+                center: WorldGlassDrawing.point(
+                    x: 0.50 + (0.050 * sin(driftB)),
+                    y: 0.04 + (0.020 * cos(driftC)),
+                    in: size,
+                    isRightToLeft: isRightToLeft
+                ),
+                radius: size.width * 0.50,
+                color: Color.white.opacity(0.14 * strength)
+            )
+
+            // Signature moment 2 — a silk light-sweep travels across the field.
+            WorldGlassDrawing.drawAuroraSweep(
+                in: &context,
+                size: size,
+                phase: sweep,
                 strength: strength,
                 isRightToLeft: isRightToLeft
             )
@@ -533,6 +849,133 @@ private enum WorldGlassDrawing {
             y: size.height * y
         )
     }
+
+    /// A slow silk of light that travels diagonally across the messaging field.
+    /// A wide soft body carries a thin bright core; both stay low-opacity so the
+    /// transcript keeps priority. `phase` drives both the vertical undulation and
+    /// the position of the bright band along the sweep.
+    static func drawAuroraSweep(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        phase: CGFloat,
+        strength: Double,
+        isRightToLeft: Bool
+    ) {
+        let yBase: CGFloat = 0.40
+        var path = Path()
+        path.move(
+            to: point(
+                x: -0.16,
+                y: yBase + (0.12 * sin(phase)),
+                in: size,
+                isRightToLeft: isRightToLeft
+            )
+        )
+        path.addCurve(
+            to: point(
+                x: 1.16,
+                y: yBase + 0.16 + (0.10 * cos(phase)),
+                in: size,
+                isRightToLeft: isRightToLeft
+            ),
+            control1: point(
+                x: 0.30,
+                y: yBase - 0.16 + (0.12 * cos(phase)),
+                in: size,
+                isRightToLeft: isRightToLeft
+            ),
+            control2: point(
+                x: 0.72,
+                y: yBase + 0.30 + (0.12 * sin(phase)),
+                in: size,
+                isRightToLeft: isRightToLeft
+            )
+        )
+
+        let widthScale = min(max(size.width / 390, 0.86), 1.45)
+
+        // Bright band position travels along the sweep with the phase.
+        // Clamp so gradient stop locations stay strictly ascending
+        // (0.00 < lead <= center <= trail < 1.00) at every phase.
+        let bandCenter = min(max(CGFloat((sin(phase) + 1) / 2), 0.06), 0.94)
+        let bandLead = max(bandCenter - 0.22, 0.02)
+        let bandTrail = min(bandCenter + 0.22, 0.98)
+
+        let start = point(
+            x: -0.10,
+            y: 0,
+            in: size,
+            isRightToLeft: isRightToLeft
+        )
+        let end = point(
+            x: 1.10,
+            y: 0,
+            in: size,
+            isRightToLeft: isRightToLeft
+        )
+
+        // Wide soft body.
+        context.stroke(
+            path,
+            with: .linearGradient(
+                Gradient(stops: [
+                    .init(color: .clear, location: 0.00),
+                    .init(
+                        color: Color.worldGlassAuroraLilac.opacity(
+                            0.045 * strength
+                        ),
+                        location: max(bandLead, 0.02)
+                    ),
+                    .init(
+                        color: Color.white.opacity(0.060 * strength),
+                        location: bandCenter
+                    ),
+                    .init(
+                        color: Color.worldGlassAuroraAqua.opacity(
+                            0.040 * strength
+                        ),
+                        location: min(bandTrail, 0.98)
+                    ),
+                    .init(color: .clear, location: 1.00)
+                ]),
+                startPoint: start,
+                endPoint: end
+            ),
+            style: StrokeStyle(
+                lineWidth: 22 * widthScale,
+                lineCap: .round,
+                lineJoin: .round
+            )
+        )
+
+        // Thin bright core.
+        context.stroke(
+            path,
+            with: .linearGradient(
+                Gradient(stops: [
+                    .init(color: .clear, location: 0.02),
+                    .init(
+                        color: Color.white.opacity(0.16 * strength),
+                        location: bandCenter
+                    ),
+                    .init(
+                        color: Color.worldGlassAuroraAqua.opacity(
+                            0.090 * strength
+                        ),
+                        location: min(bandTrail, 0.96)
+                    ),
+                    .init(color: .clear, location: 0.98)
+                ]),
+                startPoint: start,
+                endPoint: end
+            ),
+            style: StrokeStyle(
+                lineWidth: 1.3 * widthScale,
+                lineCap: .round,
+                lineJoin: .round
+            )
+        )
+    }
 }
 
 public extension Color {
@@ -567,6 +1010,40 @@ public extension Color {
         green: 235.0 / 255.0,
         blue: 217.0 / 255.0
     )
+
+    // MARK: Messaging aurora palette (deliberately non-brand)
+    //
+    // The messaging background must never paint the brand berry (#CB2654) or its
+    // rose family. These cool twilight hues plus one neutral warm sand carry the
+    // living conversation canvas instead.
+
+    /// Periwinkle indigo `#5C6FC4`.
+    static let worldGlassAuroraIndigo = Color(
+        red: 92.0 / 255.0,
+        green: 111.0 / 255.0,
+        blue: 196.0 / 255.0
+    )
+
+    /// Cool aqua `#4FB6C9`.
+    static let worldGlassAuroraAqua = Color(
+        red: 79.0 / 255.0,
+        green: 182.0 / 255.0,
+        blue: 201.0 / 255.0
+    )
+
+    /// Soft lilac `#ABA6E6`.
+    static let worldGlassAuroraLilac = Color(
+        red: 171.0 / 255.0,
+        green: 166.0 / 255.0,
+        blue: 230.0 / 255.0
+    )
+
+    /// Neutral warm sand `#E9DEC9` — a quiet counterweight, not a brand rose.
+    static let worldGlassAuroraSand = Color(
+        red: 233.0 / 255.0,
+        green: 222.0 / 255.0,
+        blue: 201.0 / 255.0
+    )
 }
 
 private extension Comparable {
@@ -585,6 +1062,33 @@ private extension Comparable {
                 .font(.body)
                 .foregroundStyle(.secondary)
 
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+#Preview("World Glass — Messaging") {
+    WorldGlassScene(style: .messaging) {
+        VStack(spacing: 12) {
+            Spacer()
+            ForEach(0 ..< 4) { index in
+                HStack {
+                    if index.isMultiple(of: 2) { Spacer() }
+                    Text(
+                        index.isMultiple(of: 2)
+                            ? "Message from me"
+                            : "Reply from the other side"
+                    )
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+                    if !index.isMultiple(of: 2) { Spacer() }
+                }
+            }
             Spacer()
         }
         .padding()

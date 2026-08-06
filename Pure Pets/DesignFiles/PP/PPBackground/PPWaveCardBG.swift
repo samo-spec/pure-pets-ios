@@ -28,10 +28,10 @@ public struct PPWaveCardBG: View {
 
     public init(
         animationEnabled: Bool = true,
-        shape: PPWaveCardBGShape = .rounded,
+        shape: PPWaveCardBGShape = .capsule,
         cornerRadius: CGFloat = 28.0,
         accentColorOverride: UIColor? = nil,
-        borderWidth: CGFloat = 0.75
+        borderWidth: CGFloat = 0.125
     ) {
         self.animationEnabled = animationEnabled
         self.shape = shape

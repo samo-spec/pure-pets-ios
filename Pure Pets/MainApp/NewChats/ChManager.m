@@ -56,10 +56,17 @@ static NSDate *PPThreadActivityDate(ChatThreadModel *thread) {
     }
     NSDate *lastMessageAt = thread.lastMessageAt;
     NSDate *timestamp = thread.timestamp;
-    if (lastMessageAt && timestamp) {
+
+    BOOL hasValidLast = lastMessageAt && ![lastMessageAt isEqual:[NSDate distantPast]];
+    BOOL hasValidTs   = timestamp && ![timestamp isEqual:[NSDate distantPast]];
+
+    if (hasValidLast && hasValidTs) {
         return ([lastMessageAt compare:timestamp] == NSOrderedAscending) ? timestamp : lastMessageAt;
     }
-    return lastMessageAt ?: (timestamp ?: [NSDate distantPast]);
+    if (hasValidLast) return lastMessageAt;
+    if (hasValidTs)   return timestamp;
+
+    return [NSDate date];
 }
 
 static NSString *PPSupportTrimmedString(id value) {
