@@ -18,6 +18,7 @@
 #import "PPS.h"
 #import "CartManager.h"
 #import "PPBackgroundView.h"
+#import <Pure_Pets-Swift.h>
 #import "PPOrderSupportComposerViewController.h"
 
 #import <QuartzCore/QuartzCore.h>
@@ -134,12 +135,15 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, strong) UIView *heroCard;
 @property (nonatomic, strong) UIView *heroSurfaceView;
 @property (nonatomic, strong) UIVisualEffectView *heroMaterialView;
+@property (nonatomic, strong) CAGradientLayer *heroDNADepthLayer;
+@property (nonatomic, strong) CAGradientLayer *heroDNASpecularLayer;
 @property (nonatomic, strong) UIView *heroTintView;
 @property (nonatomic, strong) UIView *heroStatusRailView;
 @property (nonatomic, strong) UIButton *searchToggleButton;
 @property (nonatomic, strong) UIButton *heroSupportButton;
 @property (nonatomic, assign) BOOL searchExpanded;
 @property (nonatomic, strong) PPBackgroundView *ambientGlassBackground;
+@property (nonatomic, strong) PPWorldGlassBackgroundHostingController *worldGlassBackgroundController;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -213,6 +217,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    self.worldGlassBackgroundController.isFaded = NO;
     [self pp_applyNavigationPresentationForCurrentContextAnimated:animated];
     [self pp_prepareHeroEntranceIfNeeded];
 }
@@ -221,6 +226,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 {
     [super viewWillDisappear:animated];
     [self pp_restoreNavigationBarPresentationIfNeededAnimated:animated];
+    self.worldGlassBackgroundController.isFaded = YES;
     [self.ambientGlassBackground stopAnimations];
 }
 
@@ -481,6 +487,13 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)setupBackdrop
 {
+    if (@available(iOS 15.0, *)) {
+        self.worldGlassBackgroundController =
+            [[PPWorldGlassBackgroundHostingController alloc] initWithIsFaded:NO];
+        [self.worldGlassBackgroundController attachTo:self];
+        return;
+    }
+
     PPBackgroundView *background = [[PPBackgroundView alloc] initWithFrame:self.view.bounds];
     background.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     background.userInteractionEnabled = NO;
@@ -533,6 +546,17 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroMaterialView = [[UIVisualEffectView alloc] initWithEffect:heroEffect];
     self.heroMaterialView.userInteractionEnabled = NO;
     [self.heroSurfaceView addSubview:self.heroMaterialView];
+
+    // App-DNA world-glass base surface for the hero card. Neutral gradient
+    // layers live inside the material content, BELOW the status accent tint
+    // (heroTintView) and the vertical rail, so the accent stays the signal.
+    self.heroDNADepthLayer = [CAGradientLayer layer];
+    self.heroDNADepthLayer.name = @"PPOrderHeroDNADepth";
+    [self.heroMaterialView.contentView.layer insertSublayer:self.heroDNADepthLayer atIndex:0];
+
+    self.heroDNASpecularLayer = [CAGradientLayer layer];
+    self.heroDNASpecularLayer.name = @"PPOrderHeroDNASpecular";
+    [self.heroMaterialView.contentView.layer insertSublayer:self.heroDNASpecularLayer atIndex:1];
 
     self.heroTintView = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroTintView.userInteractionEnabled = NO;
@@ -874,6 +898,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroCard.frame = CGRectMake(cardX, safeTop, cardWidth, finalHeroHeight);
     self.heroSurfaceView.frame = self.heroCard.bounds;
     self.heroMaterialView.frame = self.heroSurfaceView.bounds;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.heroDNADepthLayer.frame = self.heroMaterialView.contentView.bounds;
+    self.heroDNASpecularLayer.frame = self.heroMaterialView.contentView.bounds;
+    [CATransaction commit];
     self.heroTintView.frame = self.heroSurfaceView.bounds;
     CGFloat railX = isRTL ? cardWidth - 5.0 : 1.0;
     self.heroStatusRailView.frame = CGRectMake(railX,
@@ -994,6 +1023,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroCard.layer.shadowRadius = isDark ? 18.0 : 20.0;
     self.heroCard.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
 
+    [self pp_applyHeroDNASurfaceColors];
+
     self.searchToggleButton.backgroundColor = PPIOS26()
         ? UIColor.clearColor
         : [resolvedAccent colorWithAlphaComponent:isDark ? 0.18 : 0.105];
@@ -1030,6 +1061,37 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.summaryDividerView.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:isDark ? 0.34 : 0.45];
     self.initialLoader.color = resolvedAccent;
     self.paginationLoader.color = resolvedAccent;
+}
+
+- (void)pp_applyHeroDNASurfaceColors
+{
+    // App-DNA world-glass hero base surface. Neutral (non-accent) so the status
+    // accent tint and vertical rail remain the semantic color. Depth is drawn
+    // from the sanctioned PPGradientCard DNA tokens; specular is the signature
+    // top lift shared with the order cell.
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    }
+
+    UIColor *depthTop = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.055]
+        : [PPGradientCardStart colorWithAlphaComponent:0.60];
+    UIColor *depthBottom = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.0]
+        : [PPGradientCardEnd colorWithAlphaComponent:0.45];
+    self.heroDNADepthLayer.colors = @[(id)depthTop.CGColor, (id)depthBottom.CGColor];
+    self.heroDNADepthLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.heroDNADepthLayer.endPoint = CGPointMake(1.0, 1.0);
+
+    UIColor *specTop = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.06 : 0.30];
+    self.heroDNASpecularLayer.colors = @[
+        (id)specTop.CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
+    ];
+    self.heroDNASpecularLayer.locations = @[@0.0, @0.5];
+    self.heroDNASpecularLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.heroDNASpecularLayer.endPoint = CGPointMake(0.5, 1.0);
 }
 
 - (void)pp_updateSearchTogglePresentation

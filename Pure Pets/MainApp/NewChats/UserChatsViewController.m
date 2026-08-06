@@ -52,6 +52,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 @property (nonatomic, strong) NSMutableSet<NSString *> *resolvingOtherUserIDs;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedThreadIDs;
 @property (nonatomic, strong) PPChatCellBridge *chatCellBridge;
+@property (nonatomic, strong) PPWorldGlassBackgroundHostingController *worldGlassBackgroundController;
 @property (nonatomic, assign) BOOL storiesHeaderVisible;
 @property (nonatomic, assign) BOOL isLoading;
 @property (nonatomic, assign) BOOL isObserving;
@@ -81,6 +82,12 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     self.animatedThreadIDs = [NSMutableSet set];
     self.chatCellBridge = [PPChatCellBridge new];
 
+    if (@available(iOS 15.0, *)) {
+        self.worldGlassBackgroundController =
+            [[PPWorldGlassBackgroundHostingController alloc] initWithIsFaded:NO];
+        [self.worldGlassBackgroundController attachTo:self];
+    }
+
     [self pp_configureAppearance];
     [self pp_configureTableView];
     [self pp_configureInboxHeader];
@@ -93,6 +100,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    self.worldGlassBackgroundController.isFaded = NO;
 
     if(self.willAppear) return;
     [self startObservingChats];
@@ -128,6 +136,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
 
+    self.worldGlassBackgroundController.isFaded = YES;
     [self stopObservingChats];
     [self.storiesViewController stopObservingStories];
 

@@ -632,6 +632,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 @property (nonatomic, strong) UIView *headerCardView;
 @property (nonatomic, strong) PPBackgroundView *headerBackgroundView;
 @property (nonatomic, strong) PPWaveCardBGHostingController *waveCardBackgroundController;
+@property (nonatomic, strong) PPWorldGlassBackgroundHostingController *worldGlassBackgroundController;
 @property (nonatomic, strong) UIView *avatarFrameView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
@@ -654,6 +655,11 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
     [super viewDidLoad];
     self.view.backgroundColor = PPUserMenuCanvasColor();
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    if (@available(iOS 15.0, *)) {
+        self.worldGlassBackgroundController =
+            [[PPWorldGlassBackgroundHostingController alloc] initWithIsFaded:NO];
+        [self.worldGlassBackgroundController attachTo:self];
+    }
     self.navigationItem.title = nil;
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:nil showBack:NO];
 
@@ -667,6 +673,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    self.worldGlassBackgroundController.isFaded = NO;
     [self pp_applyMenuNavigationChromeAnimated:animated];
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -698,6 +705,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    self.worldGlassBackgroundController.isFaded = YES;
     [self pp_restoreMenuNavigationChromeIfNeededAnimated:animated];
     [self pp_stopHeroBackgroundMotion];
 }

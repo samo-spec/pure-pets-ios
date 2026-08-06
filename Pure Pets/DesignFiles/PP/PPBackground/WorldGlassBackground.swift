@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Selects which world-glass atmosphere `WorldGlassBackground` renders.
 public enum WorldGlassStyle: Equatable {
@@ -895,11 +896,20 @@ private enum WorldGlassDrawing {
         let widthScale = min(max(size.width / 390, 0.86), 1.45)
 
         // Bright band position travels along the sweep with the phase.
-        // Clamp so gradient stop locations stay strictly ascending
-        // (0.00 < lead <= center <= trail < 1.00) at every phase.
-        let bandCenter = min(max(CGFloat((sin(phase) + 1) / 2), 0.06), 0.94)
-        let bandLead = max(bandCenter - 0.22, 0.02)
-        let bandTrail = min(bandCenter + 0.22, 0.98)
+        // Keep the moving stops inside fixed margins so every location is
+        // finite and strictly ordered on every TimelineView frame:
+        // wide body: 0.00 < lead < center < trail < 1.00
+        // bright core: 0.02 < lead < trail < 0.98
+        let safePhase = phase.isFinite ? phase : 0
+        let bandProgress = min(
+            max((sin(safePhase) + 1) * 0.5, 0),
+            1
+        )
+        let bandCenter = 0.18 + (0.64 * bandProgress)
+        let bandLead = bandCenter - 0.12
+        let bandTrail = bandCenter + 0.12
+        let coreLead = bandCenter - 0.06
+        let coreTrail = bandCenter + 0.06
 
         let start = point(
             x: -0.10,
@@ -924,7 +934,7 @@ private enum WorldGlassDrawing {
                         color: Color.worldGlassAuroraLilac.opacity(
                             0.045 * strength
                         ),
-                        location: max(bandLead, 0.02)
+                        location: bandLead
                     ),
                     .init(
                         color: Color.white.opacity(0.060 * strength),
@@ -934,7 +944,7 @@ private enum WorldGlassDrawing {
                         color: Color.worldGlassAuroraAqua.opacity(
                             0.040 * strength
                         ),
-                        location: min(bandTrail, 0.98)
+                        location: bandTrail
                     ),
                     .init(color: .clear, location: 1.00)
                 ]),
@@ -956,13 +966,13 @@ private enum WorldGlassDrawing {
                     .init(color: .clear, location: 0.02),
                     .init(
                         color: Color.white.opacity(0.16 * strength),
-                        location: bandCenter
+                        location: coreLead
                     ),
                     .init(
                         color: Color.worldGlassAuroraAqua.opacity(
                             0.090 * strength
                         ),
-                        location: min(bandTrail, 0.96)
+                        location: coreTrail
                     ),
                     .init(color: .clear, location: 0.98)
                 ]),
@@ -1049,6 +1059,118 @@ public extension Color {
 private extension Comparable {
     func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPWorldGlassBackgroundRootView: View {
+    let isFaded: Bool
+
+    @State private var isRightToLeft = Language.isRTL()
+
+    var body: some View {
+        WorldGlassBackground(
+            style: .default,
+            isFaded: isFaded
+        )
+        .environment(
+            \.layoutDirection,
+            isRightToLeft ? .rightToLeft : .leftToRight
+        )
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Notification.Name("LanguageDidChangeNotification")
+            )
+        ) { _ in
+            isRightToLeft = Language.isRTL()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Notification.Name("PPLanguageDidChangeNotification")
+            )
+        ) { _ in
+            isRightToLeft = Language.isRTL()
+        }
+    }
+}
+
+@available(iOS 15.0, *)
+@MainActor
+@objc(PPWorldGlassBackgroundHostingController)
+public final class PPWorldGlassBackgroundHostingController: UIViewController {
+    private var hostingController: UIHostingController<PPWorldGlassBackgroundRootView>!
+
+    @objc public var isFaded: Bool {
+        didSet {
+            updateRootView()
+        }
+    }
+
+    @objc public init(isFaded: Bool) {
+        self.isFaded = isFaded
+        super.init(nibName: nil, bundle: nil)
+        hostingController = UIHostingController(
+            rootView: PPWorldGlassBackgroundRootView(isFaded: isFaded)
+        )
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError(
+            "PPWorldGlassBackgroundHostingController must be created programmatically."
+        )
+    }
+
+    public override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear
+        view.isOpaque = false
+        view.isUserInteractionEnabled = false
+        view.accessibilityElementsHidden = true
+
+        addChild(hostingController)
+        let hostedView = hostingController.view!
+        hostedView.translatesAutoresizingMaskIntoConstraints = false
+        hostedView.backgroundColor = .clear
+        hostedView.isOpaque = false
+        hostedView.isUserInteractionEnabled = false
+        hostedView.accessibilityElementsHidden = true
+        view.addSubview(hostedView)
+        NSLayoutConstraint.activate([
+            hostedView.topAnchor.constraint(equalTo: view.topAnchor),
+            hostedView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            hostedView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            hostedView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        hostingController.didMove(toParent: self)
+    }
+
+    @objc public func attach(to parent: UIViewController) {
+        guard self.parent == nil,
+              let backgroundView = view,
+              let parentView = parent.view else {
+            return
+        }
+
+        parent.addChild(self)
+        backgroundView.translatesAutoresizingMaskIntoConstraints = false
+        parentView.insertSubview(backgroundView, at: 0)
+        NSLayoutConstraint.activate([
+            backgroundView.topAnchor.constraint(equalTo: parentView.topAnchor),
+            backgroundView.leadingAnchor.constraint(equalTo: parentView.leadingAnchor),
+            backgroundView.trailingAnchor.constraint(equalTo: parentView.trailingAnchor),
+            backgroundView.bottomAnchor.constraint(equalTo: parentView.bottomAnchor),
+        ])
+        didMove(toParent: parent)
+    }
+
+    private func updateRootView() {
+        guard hostingController != nil else {
+            return
+        }
+        hostingController.rootView = PPWorldGlassBackgroundRootView(
+            isFaded: isFaded
+        )
     }
 }
 

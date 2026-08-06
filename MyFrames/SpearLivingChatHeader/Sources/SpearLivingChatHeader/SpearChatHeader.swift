@@ -71,14 +71,16 @@ public struct SpearChatHeader<AvatarContent: View>: View {
   }
 
   /// The seamless gradient dissolve — replaces the hard divider with a
-  /// warm gradient that fades into the conversation background.
+  /// non-brand cool atmosphere that fades into the conversation background.
+  /// The brand color is intentionally kept out of the background so the header
+  /// dissolves into the messaging aurora instead of painting the brand hue.
   private var seamlessBackground: some View {
     Group {
       if reduceTransparency {
         Color(uiColor: .systemBackground)
           .overlay {
             LinearGradient(
-              colors: [style.brandColor.opacity(0.08), .clear],
+              colors: [SpearHeaderAtmosphere.indigo.opacity(0.06), .clear],
               startPoint: .top,
               endPoint: .bottom
             )
@@ -100,8 +102,8 @@ public struct SpearChatHeader<AvatarContent: View>: View {
 
           RadialGradient(
             colors: [
-              style.brandColor.opacity(colorScheme == .dark ? 0.12 : 0.10),
-              style.brandColor.opacity(colorScheme == .dark ? 0.04 : 0.025),
+              SpearHeaderAtmosphere.indigo.opacity(colorScheme == .dark ? 0.12 : 0.10),
+              SpearHeaderAtmosphere.indigo.opacity(colorScheme == .dark ? 0.04 : 0.025),
               .clear,
             ],
             center: .top,
@@ -111,7 +113,7 @@ public struct SpearChatHeader<AvatarContent: View>: View {
 
           RadialGradient(
             colors: [
-              Color.green.opacity(colorScheme == .dark ? 0.055 : 0.035),
+              SpearHeaderAtmosphere.aqua.opacity(colorScheme == .dark ? 0.06 : 0.04),
               .clear,
             ],
             center: .topTrailing,
@@ -132,7 +134,7 @@ public struct SpearChatHeader<AvatarContent: View>: View {
           LinearGradient(
             colors: [
               .clear,
-              style.brandColor.opacity(contrast == .increased ? 0.22 : 0.10),
+              SpearHeaderAtmosphere.indigo.opacity(contrast == .increased ? 0.20 : 0.09),
               .clear,
             ],
             startPoint: .leading,
@@ -145,23 +147,47 @@ public struct SpearChatHeader<AvatarContent: View>: View {
   }
 
   private var gradientStops: [Gradient.Stop] {
-    let brandTint = style.brandColor
+    let atmosphere = SpearHeaderAtmosphere.indigo
 
     if colorScheme == .dark {
       return [
-        .init(color: brandTint.opacity(0.10), location: 0),
-        .init(color: brandTint.opacity(0.045), location: 0.52),
+        .init(color: atmosphere.opacity(0.10), location: 0),
+        .init(color: atmosphere.opacity(0.045), location: 0.52),
         .init(color: .clear, location: 1.0),
       ]
     } else {
       return [
-        .init(color: brandTint.opacity(0.075), location: 0),
-        .init(color: brandTint.opacity(0.025), location: 0.62),
+        .init(color: atmosphere.opacity(0.075), location: 0),
+        .init(color: atmosphere.opacity(0.025), location: 0.62),
         .init(color: .clear, location: 1.0),
       ]
     }
   }
 }
+
+// MARK: - Non-brand header atmosphere (never the brand berry)
+//
+// Cool twilight hues that match the messaging aurora background so the header
+// reads as one continuous surface. Kept separate from the configurable
+// `style.brandColor`, which still drives identity/action accents. Declared
+// outside the generic `SpearChatHeader` because Swift forbids stored static
+// properties on generic types.
+internal enum SpearHeaderAtmosphere {
+  /// Periwinkle indigo `#5C6FC4`.
+  static let indigo = Color(
+    red: 92.0 / 255.0,
+    green: 111.0 / 255.0,
+    blue: 196.0 / 255.0
+  )
+
+  /// Cool aqua `#4FB6C9`.
+  static let aqua = Color(
+    red: 79.0 / 255.0,
+    green: 182.0 / 255.0,
+    blue: 201.0 / 255.0
+  )
+}
+
 
 // MARK: - Default Avatar Convenience
 
