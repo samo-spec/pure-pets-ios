@@ -324,7 +324,7 @@ final class PPPetAdViewerStore: ObservableObject {
             repository.track(.chat, ad: snapshot.ad)
         }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        hostActions.openWhatsApp(owner: owner)
+        hostActions.openWhatsApp(owner: owner, ad: snapshot.ad)
     }
 
     func openChat() {

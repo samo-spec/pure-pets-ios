@@ -991,6 +991,10 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 @property (nonatomic, assign) BOOL didPrepareEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedRowIdentifiers;
+@property (nonatomic, strong) PPPetProfilesSwiftUIHostingController *swiftUIHost;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, UIImage *> *swiftUIImageMap;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSURLSessionDataTask *> *swiftUIImageTasks;
+@property (nonatomic, assign) BOOL previousNavigationBarHidden;
 @end
 
 @implementation PPPetProfilesViewController
@@ -1005,26 +1009,28 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
     self.pets = @[];
     self.isLoading = YES;
     self.animatedRowIdentifiers = [NSMutableSet set];
+    self.swiftUIImageMap = [NSMutableDictionary dictionary];
+    self.swiftUIImageTasks = [NSMutableDictionary dictionary];
 
-    [self pp_configureNavigation];
-    [self pp_buildBackground];
-    [self pp_buildTableView];
-    [self pp_buildHeroHeader];
-    [self pp_installRefreshControl];
-    [self pp_applyTheme];
-    [self pp_updateHeroContent];
-    [self pp_prepareEntranceIfNeeded];
+    [self pp_buildSwiftUI];
+    [self pp_renderState];
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
     self.view.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
-    self.tableView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
-    [self pp_applyTheme];
-    [self pp_updateHeroContent];
-    [self pp_prepareEntranceIfNeeded];
+    self.previousNavigationBarHidden = self.navigationController.isNavigationBarHidden;
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
     [self pp_reload];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    if (!self.previousNavigationBarHidden) {
+        [self.navigationController setNavigationBarHidden:NO animated:animated];
+    }
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -1044,9 +1050,107 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 - (void)dealloc
 {
     [self.heroImageTask cancel];
+    for (NSURLSessionDataTask *task in self.swiftUIImageTasks.allValues) {
+        [task cancel];
+    }
 }
 
 #pragma mark - Build
+
+- (void)pp_buildSwiftUI
+{
+    __weak typeof(self) weakSelf = self;
+    self.swiftUIHost = [[PPPetProfilesSwiftUIHostingController alloc]
+        initWithPets:self.pets ?: @[]
+        isLoading:self.isLoading
+        hasError:(self.loadError != nil)
+        images:self.swiftUIImageMap ?: @{}
+        onBack:^{
+            [weakSelf pp_handleBack];
+        }
+        onAdd:^{
+            [weakSelf pp_addPet];
+        }
+        onReminders:^{
+            [weakSelf pp_openReminders];
+        }
+        onRefresh:^{
+            [weakSelf pp_reload];
+        }
+        onSelect:^(PPPetProfile *pet) {
+            [weakSelf pp_editPet:pet];
+        }
+        onMakeDefault:^(PPPetProfile *pet) {
+            [weakSelf pp_makeDefaultPet:pet];
+        }
+        onDelete:^(PPPetProfile *pet) {
+            [weakSelf pp_deletePet:pet];
+        }];
+
+    [self addChildViewController:self.swiftUIHost];
+    UIView *hostedView = self.swiftUIHost.view;
+    hostedView.translatesAutoresizingMaskIntoConstraints = NO;
+    hostedView.backgroundColor = UIColor.clearColor;
+    [self.view addSubview:hostedView];
+    [NSLayoutConstraint activateConstraints:@[
+        [hostedView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [hostedView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [hostedView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [hostedView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+    ]];
+    [self.swiftUIHost didMoveToParentViewController:self];
+}
+
+- (NSString *)pp_swiftImageKeyForPet:(PPPetProfile *)pet
+{
+    if (!pet) return @"";
+    return [PPPetProfilesSwiftUIImageKey keyForPet:pet];
+}
+
+- (void)pp_updateSwiftUIImages
+{
+    for (NSURLSessionDataTask *task in self.swiftUIImageTasks.allValues) {
+        [task cancel];
+    }
+    [self.swiftUIImageTasks removeAllObjects];
+    [self.swiftUIImageMap removeAllObjects];
+
+    for (PPPetProfile *pet in self.pets) {
+        NSString *key = [self pp_swiftImageKeyForPet:pet];
+        self.swiftUIImageMap[key] = [PPModernAvatarRenderer avatarImageForName:(pet.name ?: @"") size:96.0];
+
+        NSString *requestedURL = pet.imageURL ?: @"";
+        if (requestedURL.length == 0) continue;
+
+        __weak typeof(self) weakSelf = self;
+        NSURLSessionDataTask *task = PPPetProfilesLoadImage(requestedURL, ^(UIImage *image) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            PPPetProfile *currentPet = nil;
+            for (PPPetProfile *candidate in self.pets) {
+                if ([[self pp_swiftImageKeyForPet:candidate] isEqualToString:key]) {
+                    currentPet = candidate;
+                    break;
+                }
+            }
+            if (!currentPet || ![currentPet.imageURL isEqualToString:requestedURL]) return;
+            self.swiftUIImageMap[key] = image;
+            [self pp_updateSwiftUIHost];
+        });
+        if (task) self.swiftUIImageTasks[key] = task;
+    }
+
+    [self pp_updateSwiftUIHost];
+}
+
+- (void)pp_updateSwiftUIHost
+{
+    if (!self.swiftUIHost) return;
+    [self.swiftUIHost updatePets:self.pets ?: @[]
+                        isLoading:self.isLoading
+                         hasError:(self.loadError != nil)
+                           images:self.swiftUIImageMap ?: @{}];
+}
 
 - (void)pp_configureNavigation
 {
@@ -1152,9 +1256,15 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
         [self.waveCardBackgroundController didMoveToParentViewController:self];
     }
 
+    BOOL usesWaveCardMaterial = self.waveCardBackgroundController != nil;
+    if (usesWaveCardMaterial) {
+        self.heroCardView.layer.borderWidth = 0.0;
+    }
+
     self.heroMaterialView = [[UIView alloc] init];
     self.heroMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroMaterialView.clipsToBounds = YES;
+    self.heroMaterialView.hidden = usesWaveCardMaterial;
     [self.heroCardView addSubview:self.heroMaterialView];
 
     self.heroGradientLayer = [CAGradientLayer layer];
@@ -1444,11 +1554,16 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     UIColor *accent = PPPetsUIBrandColor();
     PPMarketplaceHeroCardApplySurfaceChrome(self.heroCardView, 28.0, self.traitCollection);
+    BOOL usesWaveCardMaterial = self.waveCardBackgroundController != nil;
+    if (usesWaveCardMaterial) {
+        self.heroCardView.layer.borderWidth = 0.0;
+    }
     self.heroCardView.layer.shadowOpacity = isDark ? 0.22 : 0.07;
     self.heroCardView.layer.shadowRadius = isDark ? 18.0 : 20.0;
     self.heroCardView.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
 
     self.heroMaterialView.backgroundColor = UIColor.clearColor;
+    self.heroMaterialView.hidden = usesWaveCardMaterial;
     PPPetProfilesApplyContinuousCorners(self.heroMaterialView, 28.0);
     PPMarketplaceHeroCardConfigureSurfaceGradient(self.heroGradientLayer,
                                                   accent,
@@ -1645,6 +1760,7 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 
             self.loadError = nil;
             self.pets = pets ?: @[];
+            [self pp_updateSwiftUIImages];
             [self pp_renderState];
             if (shouldReloadAgain) [self pp_reload];
         });
@@ -1653,6 +1769,10 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 
 - (void)pp_renderState
 {
+    if (self.swiftUIHost) {
+        [self pp_updateSwiftUIHost];
+        return;
+    }
     [self pp_updateHeroContent];
     [self.tableView reloadData];
     [self.tableView layoutIfNeeded];

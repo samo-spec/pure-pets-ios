@@ -534,6 +534,15 @@ fromViewController:(UIViewController *)viewController
 + (void)openWhatsAppForUser:(UserModel *)user
          fromViewController:(UIViewController *)viewController
 {
+    [self openWhatsAppForUser:user
+                            ad:nil
+           fromViewController:viewController];
+}
+
++ (void)openWhatsAppForUser:(UserModel *)user
+                          ad:(PetAd *)ad
+         fromViewController:(UIViewController *)viewController
+{
     NSString *rawPhone = [self phoneNumberForUser:user];
     NSMutableString *digitsOnly = [NSMutableString string];
     for (NSUInteger index = 0; index < rawPhone.length; index++) {
@@ -552,7 +561,9 @@ fromViewController:(UIViewController *)viewController
         return;
     }
 
+    NSString *message = ad ? [PetAd shareMessageForPetAd:ad] : nil;
     [AppClasses startWhatsAppWith:digitsOnly
+                          message:message
                fromViewController:viewController];
 }
 

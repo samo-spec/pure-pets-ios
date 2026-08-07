@@ -233,18 +233,109 @@
     }]];
 }
 
++ (void)applyFocusStyleToInputView:(UIView *)view focused:(BOOL)focused {
+    if (!view) return;
+
+    UIColor *restingBorder = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : [UIColor colorWithWhite:0.0 alpha:0.06];
+    }];
+    UIColor *focusedBorder = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.62];
+    UIColor *focusedBackground = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.10]
+            : [UIColor colorWithWhite:1.0 alpha:0.99];
+    }];
+
+    void (^changes)(void) = ^{
+        view.layer.borderWidth = focused ? 1.5 : 1.0;
+        [view pp_setBorderColor:focused ? focusedBorder : restingBorder];
+        if (focused) {
+            view.backgroundColor = focusedBackground;
+        } else {
+            [self applyInputStyleToView:view];
+        }
+    };
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+        return;
+    }
+
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseOut
+                     animations:changes
+                     completion:nil];
+}
+
++ (void)animateEntranceForViews:(NSArray<UIView *> *)views
+                    inContainer:(UIView *)container {
+    if (views.count == 0 || !container) return;
+
+    NSMutableArray<UIView *> *visibleViews = [NSMutableArray arrayWithCapacity:views.count];
+    for (UIView *view in views) {
+        if (view && view.superview && !view.hidden) {
+            [visibleViews addObject:view];
+        }
+    }
+    if (visibleViews.count == 0) return;
+
+    [container layoutIfNeeded];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        for (UIView *view in visibleViews) {
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }
+        return;
+    }
+
+    [visibleViews enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
+        CGFloat distance = 14.0 + MIN((CGFloat)idx, 2.0);
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformConcat(
+            CGAffineTransformMakeTranslation(0.0, distance),
+            CGAffineTransformMakeScale(0.992, 0.992)
+        );
+
+        UICubicTimingParameters *timing =
+            [[UICubicTimingParameters alloc] initWithControlPoint1:CGPointMake(0.22, 1.0)
+                                                      controlPoint2:CGPointMake(0.36, 1.0)];
+        UIViewPropertyAnimator *animator =
+            [[UIViewPropertyAnimator alloc] initWithDuration:0.46 timingParameters:timing];
+        [animator addAnimations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }];
+        [animator startAnimationAfterDelay:MIN(0.16, 0.045 * idx)];
+        (void)stop;
+    }];
+}
+
 + (void)addPressMotionToControl:(UIControl *)control {
     [control addTarget:self action:@selector(pp_authPressDown:) forControlEvents:UIControlEventTouchDown];
     [control addTarget:self action:@selector(pp_authPressUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
 }
 
 + (void)pp_authPressDown:(UIControl *)control {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        control.alpha = 0.82;
+        return;
+    }
     [UIView animateWithDuration:0.12 delay:0.0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction animations:^{
         control.transform = CGAffineTransformMakeScale(0.985, 0.985);
     } completion:nil];
 }
 
 + (void)pp_authPressUp:(UIControl *)control {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        control.alpha = 1.0;
+        control.transform = CGAffineTransformIdentity;
+        return;
+    }
     [UIView animateWithDuration:0.24 delay:0.0 usingSpringWithDamping:0.88 initialSpringVelocity:0.12 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction animations:^{
         control.transform = CGAffineTransformIdentity;
     } completion:nil];

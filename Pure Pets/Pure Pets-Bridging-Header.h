@@ -50,6 +50,7 @@
 #import "PPHomeDataBridge.h"
 #import "PPDataViewVM.h"
 #import "PPMarketplaceDataViewBridge.h"
+#import "PPImageSearchService.h"
 #import "PPBannersManager.h"
 #import "PPHomePromoCarouselBridge.h"
 #import "PPHomePromoCarouselDataSource.h"

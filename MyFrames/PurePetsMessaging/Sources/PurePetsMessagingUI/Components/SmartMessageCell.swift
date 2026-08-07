@@ -57,7 +57,7 @@ public struct SmartMessageCell: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorScheme) private var colorScheme
-  @ScaledMetric(relativeTo: .body) private var incomingAvatarSize = 30
+  @ScaledMetric(relativeTo: .body) private var incomingAvatarSize = 31
   @State private var hasEntered = false
 
   public init(
@@ -85,7 +85,7 @@ public struct SmartMessageCell: View {
   public var body: some View {
     HStack(alignment: .bottom, spacing: 8) {
       if message.direction.isOutgoing {
-        Spacer(minLength: 54)
+        Spacer(minLength: 52)
       } else {
         incomingAvatar
       }
@@ -93,12 +93,9 @@ public struct SmartMessageCell: View {
       messageColumn
 
       if !message.direction.isOutgoing {
-        Spacer(minLength: 54)
+        Spacer(minLength: 52)
       }
     }
-    // LazyVStack proposes the transcript width, but an HStack is otherwise
-    // free to collapse around short content. Claiming the proposal here keeps
-    // the physical sender lanes pinned to the screen edges in every locale.
     .frame(maxWidth: .infinity)
     .environment(\.layoutDirection, .leftToRight)
     .accessibilityElement(children: .contain)
@@ -114,17 +111,25 @@ public struct SmartMessageCell: View {
 
   @ViewBuilder
   private var incomingAvatar: some View {
-    let size = min(incomingAvatarSize, 38)
+    let size = min(incomingAvatarSize, 39)
     if showsAvatar {
-      Circle()
-        .fill(PurePetsMessagingTheme.avatarSurface)
-        .frame(width: size, height: size)
-        .overlay {
-          Text(message.sender.initials)
-            .font(Font.ppBeirutiBold(size: 11, relativeTo: .caption2))
-            .foregroundStyle(PurePetsMessagingTheme.avatarForeground)
-        }
-        .accessibilityHidden(true)
+      ZStack {
+        Circle()
+          .fill(PurePetsMessagingTheme.avatarGradient)
+
+        Circle()
+          .strokeBorder(PurePetsMessagingTheme.surfaceRaised.opacity(0.78), lineWidth: 1)
+
+        Text(message.sender.initials)
+          .font(Font.ppBeirutiBold(size: 11.5, relativeTo: .caption2))
+          .foregroundStyle(PurePetsMessagingTheme.avatarForeground)
+      }
+      .frame(width: size, height: size)
+      .overlay {
+        Circle()
+          .stroke(PurePetsMessagingTheme.signal.opacity(0.14), lineWidth: 0.75)
+      }
+      .accessibilityHidden(true)
     } else {
       Color.clear
         .frame(width: size, height: 1)
@@ -142,15 +147,16 @@ public struct SmartMessageCell: View {
       .environment(\.layoutDirection, contentLayoutDirection)
     }
     .environment(\.layoutDirection, .leftToRight)
-    .frame(maxWidth: .infinity, alignment: message.direction.isOutgoing ? .trailing : .leading)
+    .frame(
+      maxWidth: .infinity,
+      alignment: message.direction.isOutgoing ? .trailing : .leading
+    )
   }
 
   private var interactiveShell: some View {
     ZStack(alignment: replyIndicatorAlignment) {
       replyIndicator
-
-      shell
-        .offset(x: signedReplyOffset)
+      shell.offset(x: signedReplyOffset)
     }
     .environment(\.layoutDirection, .leftToRight)
   }
@@ -158,7 +164,7 @@ public struct SmartMessageCell: View {
   private var shell: some View {
     VStack(
       alignment: message.direction.isOutgoing ? .trailing : .leading,
-      spacing: 7
+      spacing: 6
     ) {
       if let replyReference = message.replyReference {
         ReplyReferenceView(reference: replyReference) {
@@ -177,54 +183,20 @@ public struct SmartMessageCell: View {
     )
     .background {
       if !message.payload.usesTransparentChrome {
-        ZStack {
-          MessageBubbleShape(
-            isOutgoing: message.direction.isOutgoing,
-            groupPosition: message.groupPosition
-          )
-          .fill(
-            message.direction.isOutgoing
-              ? PurePetsMessagingTheme.outgoingBubbleSurface
-              : PurePetsMessagingTheme.incomingSurface
-          )
-
-          MessageBubbleShape(
-            isOutgoing: message.direction.isOutgoing,
-            groupPosition: message.groupPosition
-          )
-          .fill(
-            LinearGradient(
-              colors: [bubbleSpecularHighlight, .clear],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-        }
-        .environment(\.layoutDirection, .leftToRight)
+        bubbleSurface
       }
     }
     .overlay {
-      if !message.payload.usesTransparentChrome {
-        MessageBubbleShape(
-          isOutgoing: message.direction.isOutgoing,
-          groupPosition: message.groupPosition
-        )
-        .stroke(
-          isHighlighted
-            ? PurePetsMessagingTheme.signal.opacity(0.78)
-            : (message.direction.isOutgoing
-                ? PurePetsMessagingTheme.outgoingBubbleStroke
-                : PurePetsMessagingTheme.incomingBubbleStroke),
-          lineWidth: isHighlighted ? 1.5 : 0.7
-        )
-        .environment(\.layoutDirection, .leftToRight)
-      } else if isHighlighted {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .stroke(PurePetsMessagingTheme.signal.opacity(0.78), lineWidth: 1.5)
-      }
+      bubbleOutline
     }
-    // Own interaction before adding the invisible width cap used for sender
-    // alignment. Blank transcript space cannot open a menu or start a reply.
+    .ppMessageTerminalElevation(
+      showsTerminalElevation,
+      isOutgoing: message.direction.isOutgoing
+    )
+    .scaleEffect(
+      isHighlighted && !reduceMotion ? 1.012 : 1,
+      anchor: message.direction.isOutgoing ? .trailing : .leading
+    )
     .contentShape(Rectangle())
     .anchorPreference(
       key: SmartMessageReplyRegionPreferenceKey.self,
@@ -259,15 +231,47 @@ public struct SmartMessageCell: View {
       message.direction.isOutgoing ? .dark : colorScheme
     )
     .environment(\.layoutDirection, .leftToRight)
-    .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: isHighlighted)
+    .animation(reduceMotion ? nil : PurePetsMessagingMotion.standard, value: isHighlighted)
+  }
+
+  private var bubbleSurface: some View {
+    MessageBubbleShape(
+      isOutgoing: message.direction.isOutgoing,
+      groupPosition: message.groupPosition
+    )
+    .fill(
+      message.direction.isOutgoing
+        ? AnyShapeStyle(PurePetsMessagingTheme.outgoingBubbleGradient)
+        : AnyShapeStyle(PurePetsMessagingTheme.incomingBubbleGradient)
+    )
+    .environment(\.layoutDirection, .leftToRight)
+  }
+
+  @ViewBuilder
+  private var bubbleOutline: some View {
+    if !message.payload.usesTransparentChrome {
+      MessageBubbleShape(
+        isOutgoing: message.direction.isOutgoing,
+        groupPosition: message.groupPosition
+      )
+      .stroke(
+        isHighlighted
+          ? PurePetsMessagingTheme.signal.opacity(0.90)
+          : (message.direction.isOutgoing
+              ? PurePetsMessagingTheme.outgoingBubbleStroke
+              : PurePetsMessagingTheme.incomingBubbleStroke),
+        lineWidth: isHighlighted ? 1.5 : 0.75
+      )
+      .environment(\.layoutDirection, .leftToRight)
+    } else if isHighlighted {
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .stroke(PurePetsMessagingTheme.signal.opacity(0.90), lineWidth: 1.5)
+    }
   }
 
   @ViewBuilder
   private var messageBody: some View {
     if case .text(let payload) = message.payload, showsDeliveryMetadata {
-      // Short text and its timestamp belong to one reading line. Long text
-      // naturally falls back to the stacked composition instead of being
-      // squeezed or truncated to preserve the compact bubble.
       ViewThatFits(in: .horizontal) {
         HStack(alignment: .lastTextBaseline, spacing: 8) {
           TextMessageView(payload: payload)
@@ -314,27 +318,36 @@ public struct SmartMessageCell: View {
   }
 
   private var replyIndicator: some View {
-    Image(
-      systemName: message.direction.isOutgoing
-        ? "arrowshape.turn.up.left.fill"
-        : "arrowshape.turn.up.right.fill"
-    )
-      .font(.system(size: 14, weight: .semibold))
-      .foregroundStyle(PurePetsMessagingTheme.signal)
-      .frame(width: 36, height: 36)
-      .background(
-        Circle()
-          .fill(PurePetsMessagingTheme.brandSoft)
+    ZStack {
+      Circle()
+        .fill(PurePetsMessagingTheme.brandSoft)
+
+      Circle()
+        .stroke(PurePetsMessagingTheme.signal.opacity(0.20), lineWidth: 1)
+
+      Circle()
+        .trim(from: 0, to: max(0.035, replyProgress))
+        .stroke(
+          PurePetsMessagingTheme.signal,
+          style: StrokeStyle(lineWidth: 2, lineCap: .round)
+        )
+        .rotationEffect(.degrees(-90))
+
+      Image(
+        systemName: message.direction.isOutgoing
+          ? "arrowshape.turn.up.left.fill"
+          : "arrowshape.turn.up.right.fill"
       )
-      .overlay {
-        Circle()
-          .stroke(PurePetsMessagingTheme.signal.opacity(0.32), lineWidth: 0.7)
-      }
-      .padding(.horizontal, 7)
-      .opacity(replyProgress)
-      .scaleEffect(0.78 + (replyProgress * 0.22))
-      .allowsHitTesting(false)
-      .accessibilityHidden(true)
+      .font(.system(size: 13, weight: .semibold))
+      .foregroundStyle(PurePetsMessagingTheme.signal)
+    }
+    .frame(width: 38, height: 38)
+    .padding(.horizontal, 3)
+    .opacity(replyProgress)
+    .scaleEffect(0.94 + (replyProgress * 0.06))
+    .offset(x: message.direction.isOutgoing ? 3 : -3)
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
   }
 
   @ViewBuilder
@@ -379,14 +392,14 @@ public struct SmartMessageCell: View {
 
   private var maximumMessageWidth: CGFloat {
     message.payload.usesTransparentChrome
-      ? min(220, maximumBubbleWidth)
+      ? min(224, maximumBubbleWidth)
       : maximumBubbleWidth
   }
 
   private var minimumBubbleSurfaceWidth: CGFloat? {
     guard !message.payload.usesTransparentChrome else { return nil }
     if case .text = message.payload {
-      return 56
+      return 58
     }
     return nil
   }
@@ -401,23 +414,16 @@ public struct SmartMessageCell: View {
     )
   }
 
-  private var bubbleSpecularHighlight: Color {
-    if message.direction.isOutgoing {
-      return Color.white.opacity(colorScheme == .dark ? 0.055 : 0.085)
-    }
-    return Color.white.opacity(colorScheme == .dark ? 0.035 : 0.26)
-  }
-
   private var bubbleHorizontalPadding: CGFloat {
     switch message.payload {
     case .image, .video:
       return 5
     case .voice:
-      return 10
+      return 9
     case .sticker:
       return 0
     default:
-      return 12
+      return 13
     }
   }
 
@@ -426,11 +432,11 @@ public struct SmartMessageCell: View {
     case .image, .video:
       return 5
     case .voice:
-      return 8
+      return 6
     case .sticker:
       return 0
     default:
-      return 9
+      return 7
     }
   }
 
@@ -444,6 +450,11 @@ public struct SmartMessageCell: View {
 
   private var replyProgress: CGFloat {
     min(max(replyOffset / ReplyGestureMetrics.threshold, 0), 1)
+  }
+
+  private var showsTerminalElevation: Bool {
+    guard !message.payload.usesTransparentChrome else { return false }
+    return message.groupPosition == .isolated || message.groupPosition == .last
   }
 
   private var showsDeliveryMetadata: Bool {
@@ -468,13 +479,13 @@ public struct SmartMessageCell: View {
   private var entranceOffset: CGSize {
     guard animatesEntrance, !hasEntered, !reduceMotion else { return .zero }
     return CGSize(
-      width: message.direction.isOutgoing ? 14 : -14,
-      height: 7
+      width: message.direction.isOutgoing ? 10 : -10,
+      height: 5
     )
   }
 
   private var entranceScale: CGFloat {
-    animatesEntrance && !hasEntered && !reduceMotion ? 0.96 : 1
+    animatesEntrance && !hasEntered && !reduceMotion ? 0.985 : 1
   }
 
   private func performEntranceIfNeeded() {
@@ -486,10 +497,6 @@ public struct SmartMessageCell: View {
       hasEntered = true
       return
     }
-    // A gently damped spring gives the new bubble a directional "settle" from
-    // its own sender lane. It is a transform-only animation (opacity + offset +
-    // scale), so it never changes layout height and cannot nudge the scroll
-    // position of the rows above it.
     withAnimation(PurePetsMessagingMotion.entrance) {
       hasEntered = true
     }
@@ -501,6 +508,24 @@ public struct SmartMessageCell: View {
 
   private enum ReplyGestureMetrics {
     static let threshold: CGFloat = 56
+  }
+}
+
+private extension View {
+  @ViewBuilder
+  func ppMessageTerminalElevation(
+    _ isEnabled: Bool,
+    isOutgoing: Bool
+  ) -> some View {
+    if isEnabled {
+      shadow(
+        color: PurePetsMessagingTheme.messageShadow,
+        radius: isOutgoing ? 5 : 4,
+        y: 2
+      )
+    } else {
+      self
+    }
   }
 }
 

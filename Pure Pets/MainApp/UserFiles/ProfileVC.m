@@ -1078,6 +1078,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
                                                                         shape:PPWaveCardBGShapeRounded
                                                                  cornerRadius:PPCornerHero - 6.0
                                                           accentColorOverride:nil];
+        self.waveCardBackgroundController.borderWidth = 0.0;
         [self addChildViewController:self.waveCardBackgroundController];
         UIView *bgView = self.waveCardBackgroundController.view;
         bgView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1092,6 +1093,11 @@ static CGFloat PPProfileBottomBarClearance(void) {
         [self.waveCardBackgroundController didMoveToParentViewController:self];
     }
 
+    BOOL usesWaveCardMaterial = self.waveCardBackgroundController != nil;
+    if (usesWaveCardMaterial) {
+        cardView.layer.borderWidth = 0.0;
+    }
+
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
     tintView.backgroundColor = UIColor.clearColor;
@@ -1100,6 +1106,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
         tintView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     tintView.layer.masksToBounds = YES;
+    tintView.hidden = usesWaveCardMaterial;
     [cardView addSubview:tintView];
 
     CAGradientLayer *materialGradientLayer = [CAGradientLayer layer];

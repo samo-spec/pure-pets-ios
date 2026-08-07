@@ -104,6 +104,11 @@ fromViewController:(UIViewController *)viewController
          fromViewController:(UIViewController *)viewController
     NS_SWIFT_NAME(openWhatsApp(for:from:));
 
++ (void)openWhatsAppForUser:(UserModel *)user
+                          ad:(PetAd *)ad
+         fromViewController:(UIViewController *)viewController
+    NS_SWIFT_NAME(openWhatsApp(for:ad:from:));
+
 + (void)openChatForUser:(UserModel *)user
      fromViewController:(UIViewController *)viewController
              completion:(void (^)(NSError * _Nullable error))completion

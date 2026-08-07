@@ -8,9 +8,10 @@ struct VoiceMessageView: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.locale) private var locale
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorScheme) private var colorScheme
 
   private let barHeight: CGFloat = 28
-  private let maxBarHeight: CGFloat = 26
+  private let maxBarHeight: CGFloat = 24
 
   var body: some View {
     Group {
@@ -27,7 +28,7 @@ struct VoiceMessageView: View {
       }
     }
     .frame(
-      width: dynamicTypeSize.isAccessibilitySize ? nil : 218,
+      width: dynamicTypeSize.isAccessibilitySize ? nil : 224,
       alignment: .leading
     )
     .onDisappear {
@@ -43,15 +44,30 @@ struct VoiceMessageView: View {
     Button {
       audioCoordinator.toggle(messageID: messageID, payload: payload)
     } label: {
-      Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-        .font(.system(size: 15, weight: .bold))
-        .frame(width: 40, height: 40)
-        .background(PurePetsMessagingTheme.signal, in: .circle)
-        .foregroundStyle(PurePetsMessagingTheme.signalForeground)
-        // Morph play↔pause in place rather than hard-cutting the glyph.
-        .contentTransition(.symbolEffect(.replace.offUp))
+      ZStack {
+        Circle()
+          .fill(
+            LinearGradient(
+              colors: [PurePetsMessagingTheme.signal, PurePetsMessagingTheme.brandDeep],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+
+        Circle()
+          .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+
+        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+          .font(.system(size: 14.5, weight: .bold))
+          .foregroundStyle(PurePetsMessagingTheme.signalForeground)
+          .contentTransition(
+            reduceMotion ? .identity : .symbolEffect(.replace.offUp)
+          )
+          .offset(x: isPlaying ? 0 : 0.75)
+      }
+      .frame(width: 44, height: 44)
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PurePetsMessagingPressButtonStyle())
     .accessibilityLabel(
       localized(
         isPlaying
@@ -62,20 +78,31 @@ struct VoiceMessageView: View {
   }
 
   private var waveform: some View {
-    VStack(alignment: .leading, spacing: 3) {
+    VStack(alignment: .leading, spacing: 4) {
       GeometryReader { proxy in
-        waveBars(width: proxy.size.width)
+        waveformBars(width: proxy.size.width)
       }
       .frame(height: barHeight)
 
-      HStack {
+      HStack(spacing: 8) {
         Text(elapsedText)
-        Spacer()
+          .foregroundStyle(isPlaying ? PurePetsMessagingTheme.signal : .secondary)
+        Spacer(minLength: 8)
         Text(durationText)
       }
-      .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
+      .font(Font.ppBeirutiRegular(size: 11.5, relativeTo: .caption))
       .monospacedDigit()
       .foregroundStyle(.secondary)
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 7)
+    .background(
+      PurePetsMessagingTheme.replySurface,
+      in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+    )
+    .overlay {
+      RoundedRectangle(cornerRadius: 13, style: .continuous)
+        .strokeBorder(PurePetsMessagingTheme.surfaceStroke, lineWidth: 0.65)
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(localized("chat_reply_audio"))
@@ -88,66 +115,69 @@ struct VoiceMessageView: View {
     )
   }
 
-  /// While playing (and motion is allowed) a `TimelineView` drives a subtle
-  /// travelling pulse at the playhead so the bar reads as *alive* without ever
-  /// changing the view's footprint. Otherwise the bars are perfectly static.
-  @ViewBuilder
-  private func waveBars(width: CGFloat) -> some View {
-    if isPlaying && !reduceMotion {
-      TimelineView(.animation) { timeline in
-        barsRow(width: width, time: timeline.date.timeIntervalSinceReferenceDate)
-      }
-    } else {
-      barsRow(width: width, time: nil)
-    }
-  }
+  private func waveformBars(width: CGFloat) -> some View {
+    let samples = decimatedSamples(for: width)
 
-  private func barsRow(width: CGFloat, time: TimeInterval?) -> some View {
-    let count = max(payload.waveform.count, 1)
-    let barWidth = max(2, (width - CGFloat(count - 1) * 2) / CGFloat(count))
-    let playheadIndex = Int((progress * Double(count)).rounded(.down))
+    return ZStack(alignment: .leading) {
+      barLayer(
+        samples: samples,
+        width: width,
+        fill: AnyShapeStyle(PurePetsMessagingTheme.waveformTrack(colorScheme))
+      )
 
-    return HStack(alignment: .center, spacing: 2) {
-      ForEach(Array(payload.waveform.enumerated()), id: \.offset) { index, sample in
-        let played = isPlayed(index)
-        Capsule()
-          .fill(
-            played
-              ? AnyShapeStyle(PurePetsMessagingTheme.waveformPlayedGradient)
-              : AnyShapeStyle(PurePetsMessagingTheme.waveformTrack(.light))
-          )
-          .frame(
-            width: barWidth,
-            height: max(4, maxBarHeight * sample * playheadPulse(index, playheadIndex, time))
-          )
-          // Only the fill (progress) animates implicitly; height while playing
-          // is driven directly by TimelineView so the two never fight.
-          .animation(reduceMotion ? nil : PurePetsMessagingMotion.waveBar, value: played)
+      barLayer(
+        samples: samples,
+        width: width,
+        fill: AnyShapeStyle(PurePetsMessagingTheme.waveformPlayedGradient)
+      )
+      .mask(alignment: .leading) {
+        GeometryReader { proxy in
+          Rectangle()
+            .frame(width: proxy.size.width * min(max(progress, 0), 1))
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
-  /// A gentle amplitude bump on the 1–2 bars nearest the playhead. Returns 1.0
-  /// (no change) when not playing or under Reduce Motion.
-  private func playheadPulse(_ index: Int, _ playheadIndex: Int, _ time: TimeInterval?) -> CGFloat {
-    guard let time else { return 1 }
-    let distance = abs(index - playheadIndex)
-    guard distance <= 1 else { return 1 }
-    let falloff: CGFloat = distance == 0 ? 1 : 0.5
-    let wave = (sin(time * 6.0) + 1) / 2 // 0…1
-    return 1 + 0.16 * falloff * CGFloat(wave)
+  private func barLayer(
+    samples: [Double],
+    width: CGFloat,
+    fill: AnyShapeStyle
+  ) -> some View {
+    let spacing: CGFloat = 2
+    let count = max(samples.count, 1)
+    let barWidth = max(2, (width - CGFloat(count - 1) * spacing) / CGFloat(count))
+
+    return HStack(alignment: .center, spacing: spacing) {
+      ForEach(Array(samples.enumerated()), id: \.offset) { _, sample in
+        Capsule(style: .continuous)
+          .fill(fill)
+          .frame(
+            width: barWidth,
+            height: max(4, maxBarHeight * CGFloat(sample))
+          )
+      }
+    }
+  }
+
+  private func decimatedSamples(for width: CGFloat) -> [Double] {
+    let source = payload.waveform.isEmpty
+      ? [0.32, 0.56, 0.42, 0.75, 0.48, 0.64, 0.36, 0.58]
+      : payload.waveform
+    let maximumCount = max(Int(width / 4), 8)
+    guard source.count > maximumCount else { return source }
+
+    let step = Double(source.count) / Double(maximumCount)
+    return (0..<maximumCount).map { index in
+      let sourceIndex = min(Int((Double(index) * step).rounded(.down)), source.count - 1)
+      return source[sourceIndex]
+    }
   }
 
   private var progress: Double {
     audioCoordinator.progress(for: messageID)
-  }
-
-  private func isPlayed(_ index: Int) -> Bool {
-    guard !payload.waveform.isEmpty else {
-      return false
-    }
-    return Double(index) / Double(payload.waveform.count) <= progress
   }
 
   private var elapsedText: String {

@@ -3517,6 +3517,13 @@
 "user_menu_account_section" = "Account";
 "user_menu_activity_section" = "Activity";
 "user_menu_tools_section" = "Support & Settings";
+"pure_lens_account_section" = "Visual Discovery";
+"pure_lens_account_title" = "Pure Lens";
+"pure_lens_account_camera" = "Camera";
+"pure_lens_account_recognize" = "Recognize";
+"pure_lens_account_discover" = "Discover";
+"pure_lens_account_a11y" = "Pure Lens. Camera, recognition, and marketplace discovery.";
+"pure_lens_account_hint" = "Opens the animal discovery camera";
 "user_menu_profile_subtitle" = "View and update your account details.";
 "user_menu_login_subtitle" = "Sign in to unlock your account menu.";
 "user_menu_favorites_subtitle" = "Open your saved pets and products.";
@@ -4304,3 +4311,9 @@
 "purelens_error_cart_out_of_stock" = "This product is out of stock.";
 "purelens_error_cart_failed" = "The order could not be prepared.";
 "purelens_error_listing_unavailable" = "The listing flow is not available right now.";
+
+
+// SwiftUI pet profile surfaces
+"pet_field_age_short" = "Age";
+"pet_profiles_card_hint" = "Opens this pet profile";
+"pet_vaccine_name_required" = "Vaccine name is required";

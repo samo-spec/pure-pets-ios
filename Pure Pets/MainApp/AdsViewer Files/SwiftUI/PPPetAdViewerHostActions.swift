@@ -91,10 +91,11 @@ final class PPPetAdViewerHostActions {
         PPPetAdViewerLegacyBridge.call(owner.user, from: presenter)
     }
 
-    func openWhatsApp(owner: PPPetAdOwner) {
+    func openWhatsApp(owner: PPPetAdOwner, ad: PetAd) {
         guard let presenter else { return }
         PPPetAdViewerLegacyBridge.openWhatsApp(
             for: owner.user,
+            ad: ad,
             from: presenter
         )
     }
@@ -163,14 +164,17 @@ private enum PPPetAdViewerSharePayloadFactory {
         let publicID = ad.adID.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        var pathAllowed = CharacterSet.urlPathAllowed
-        pathAllowed.remove(charactersIn: "/")
-        guard let encodedID = publicID.addingPercentEncoding(
-            withAllowedCharacters: pathAllowed
-        ),
-        let canonicalURL = URL(
-            string: "https://purepets.app/ads/\(encodedID)"
-        ) else {
+        guard !publicID.isEmpty,
+              var components = URLComponents(
+                  string: "https://pure-pets.net/share"
+              ) else {
+            throw PPAdShareError.invalidCanonicalURL
+        }
+        components.queryItems = [
+            URLQueryItem(name: "type", value: "pet_ad"),
+            URLQueryItem(name: "id", value: publicID)
+        ]
+        guard let canonicalURL = components.url else {
             throw PPAdShareError.invalidCanonicalURL
         }
 

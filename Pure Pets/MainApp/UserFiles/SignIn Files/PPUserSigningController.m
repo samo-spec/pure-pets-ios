@@ -96,6 +96,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 @property (nonatomic, strong, nullable) NSArray *savedSheetDetents;
 @property (nonatomic, strong) CAGradientLayer *layer;
 @property (nonatomic, assign) BOOL didStartAmbientGlowAnimation;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
 @end
 
 @implementation PPUserSigningController
@@ -421,6 +422,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         self.keyboardObserversRegistered = YES;
     }
     [self updateContinuePhoneButtonState];
+    [self pp_animateEntranceIfNeeded];
     
 }
 
@@ -2409,7 +2411,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 #pragma mark - Utility Methods
 
 - (void)startAmbientGlowAnimationsIfNeeded {
-    if (self.didStartAmbientGlowAnimation) {
+    if (self.didStartAmbientGlowAnimation || UIAccessibilityIsReduceMotionEnabled()) {
         return;
     }
     self.didStartAmbientGlowAnimation = YES;
@@ -2424,6 +2426,30 @@ static inline void PPDispatchMain(void (^block)(void)) {
                                          scale:1.09
                                    targetAlpha:0.38
                                       duration:10.4];
+}
+
+- (void)pp_animateEntranceIfNeeded {
+    if (self.didAnimateEntrance) return;
+    self.didAnimateEntrance = YES;
+
+    [PPAuthScaffoldView animateEntranceForViews:@[
+        self.stepIndicatorView,
+        self.phoneSectionCard,
+        self.separatorView,
+        self.socialSectionCard
+    ] inContainer:self.view];
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField {
+    if (textField == self.phoneNumberField) {
+        [PPAuthScaffoldView applyFocusStyleToInputView:textField focused:YES];
+    }
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField {
+    if (textField == self.phoneNumberField) {
+        [PPAuthScaffoldView applyFocusStyleToInputView:textField focused:NO];
+    }
 }
 
 - (void)pp_startFloatingAnimationForGlowView:(UIView *)glowView

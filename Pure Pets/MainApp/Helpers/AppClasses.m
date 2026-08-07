@@ -235,6 +235,14 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
 
 
 + (void)startWhatsAppWith:(NSString *)phoneNumber  fromViewController:(UIViewController *)viewController{
+    [self startWhatsAppWith:phoneNumber
+                    message:nil
+         fromViewController:viewController];
+}
+
++ (void)startWhatsAppWith:(NSString *)phoneNumber
+                  message:(nullable NSString *)message
+       fromViewController:(UIViewController *)viewController {
     NSString *cleanedNumber = [[phoneNumber componentsSeparatedByCharactersInSet:
                                [[NSCharacterSet characterSetWithCharactersInString:@"+0123456789"] invertedSet]]
                                componentsJoinedByString:@""];
@@ -242,14 +250,26 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
         return;
     }
 
-    NSString *wa = [NSString stringWithFormat:@"https://wa.me/%@", cleanedNumber];
-    NSURL *u = [NSURL URLWithString:wa];
-    if (!u) {
+    NSURLComponents *components = [[NSURLComponents alloc] init];
+    components.scheme = @"https";
+    components.host = @"wa.me";
+    components.path = [@"/" stringByAppendingString:cleanedNumber];
+
+    NSString *trimmedMessage = [message stringByTrimmingCharactersInSet:
+                               [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (trimmedMessage.length > 0) {
+        components.queryItems = @[
+            [NSURLQueryItem queryItemWithName:@"text" value:trimmedMessage]
+        ];
+    }
+
+    NSURL *url = components.URL;
+    if (!url) {
         return;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[UIApplication sharedApplication] openURL:u options:@{} completionHandler:nil];
+        [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
     });
 }
 + (void)callPhoneNumber:(NSString *)phoneNumber  fromViewController:(UIViewController *)viewController{

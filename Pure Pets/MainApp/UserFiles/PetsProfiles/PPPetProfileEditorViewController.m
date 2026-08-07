@@ -17,6 +17,7 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
+#import <Pure_Pets-Swift.h>
  
 @import PhotosUI;
 
@@ -56,6 +57,29 @@ static void PPEditorLoadImage(UIImageView *iv, NSString *url, UIImage *ph) {
         [PPEditorImgCache() setObject:img forKey:url];
         dispatch_async(dispatch_get_main_queue(), ^{ w.image = img; });
     }] resume];
+}
+
+static NSURLSessionDataTask *PPEditorLoadImageValue(NSString *urlString, void (^completion)(UIImage *image)) {
+    if (urlString.length == 0 || !completion) return nil;
+    UIImage *cached = [PPEditorImgCache() objectForKey:urlString];
+    if (cached) {
+        completion(cached);
+        return nil;
+    }
+    NSURL *url = [NSURL URLWithString:urlString];
+    if (!url) return nil;
+    __weak typeof(completion) weakCompletion = completion;
+    NSURLSessionDataTask *task = [PPEditorURLSession() dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (data.length == 0) return;
+        UIImage *image = [UIImage imageWithData:data];
+        if (!image) return;
+        [PPEditorImgCache() setObject:image forKey:urlString];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (weakCompletion) weakCompletion(image);
+        });
+    }];
+    [task resume];
+    return task;
 }
 
 // ─── Constants (matches ProfileVC.m exactly) ──────────────
@@ -243,6 +267,15 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 @property (nonatomic, strong) UIView       *backgroundGlowViewTop;
 @property (nonatomic, strong) UIView       *backgroundGlowViewBottom;
 @property (nonatomic, strong) NSArray<UIView *> *floatingCircles;
+@property (nonatomic, strong) PPPetProfileEditorSwiftUIHostingController *swiftUIHost;
+@property (nonatomic, copy) NSString *swiftUIName;
+@property (nonatomic, copy) NSString *swiftUIBreed;
+@property (nonatomic, copy) NSString *swiftUIAge;
+@property (nonatomic, assign) BOOL swiftUIDefault;
+@property (nonatomic, assign) BOOL swiftUISaveSucceeded;
+@property (nonatomic, strong) UIImage *swiftUIRemoteImage;
+@property (nonatomic, strong) NSURLSessionDataTask *swiftUIImageTask;
+@property (nonatomic, assign) BOOL previousNavigationBarHidden;
 @end
 
 @implementation PPPetProfileEditorViewController
@@ -258,62 +291,95 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     return self;
 }
 
+#pragma mark - SwiftUI Surface
+
+- (void)pp_buildSwiftUI {
+    self.swiftUIName = self.pet.name ?: @"";
+    self.swiftUIBreed = self.pet.categoryName.length > 0 ? self.pet.categoryName : (self.pet.breed ?: @"");
+    self.swiftUIAge = self.pet.ageInMonths > 0 ? [@(self.pet.ageInMonths) stringValue] : @"";
+    self.swiftUIDefault = self.pet.isDefaultPet;
+    self.swiftUISaveSucceeded = NO;
+
+    [self pp_loadSwiftUIRemoteImage];
+
+    __weak typeof(self) weakSelf = self;
+    self.swiftUIHost = [[PPPetProfileEditorSwiftUIHostingController alloc]
+        initWithName:self.swiftUIName ?: @""
+        breed:self.swiftUIBreed ?: @""
+        age:self.swiftUIAge ?: @""
+        isDefault:self.swiftUIDefault
+        vaccinations:self.records ?: @[]
+        selectedImage:self.selectedImage
+        remoteImage:self.swiftUIRemoteImage
+        isSaving:self.isSaving
+        saveSucceeded:self.swiftUISaveSucceeded
+        isEditing:(self.pet.petID.length > 0)
+        onBack:^{ [weakSelf pp_handleBack]; }
+        onSave:^{ [weakSelf pp_save]; }
+        onPhoto:^{ [weakSelf pp_pickPhoto]; }
+        onBreed:^{ [weakSelf pp_presentCategoryPicker]; }
+        onNameChanged:^(NSString *value) { weakSelf.swiftUIName = value ?: @""; }
+        onAgeChanged:^(NSString *value) { weakSelf.swiftUIAge = value ?: @""; }
+        onDefaultChanged:^(BOOL value) { weakSelf.swiftUIDefault = value; }
+        onAddVaccination:^{ [weakSelf pp_addVaccination]; }
+        onEditVaccination:^(NSInteger index) { [weakSelf pp_editVaccineAtIndex:index]; }
+        onDeleteVaccination:^(NSInteger index) { [weakSelf pp_deleteVaccineAtIndex:index]; }];
+
+    [self addChildViewController:self.swiftUIHost];
+    UIView *hostedView = self.swiftUIHost.view;
+    hostedView.translatesAutoresizingMaskIntoConstraints = NO;
+    hostedView.backgroundColor = UIColor.clearColor;
+    [self.view addSubview:hostedView];
+    [NSLayoutConstraint activateConstraints:@[
+        [hostedView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [hostedView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [hostedView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [hostedView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+    ]];
+    [self.swiftUIHost didMoveToParentViewController:self];
+}
+
+- (void)pp_loadSwiftUIRemoteImage {
+    [self.swiftUIImageTask cancel];
+    self.swiftUIImageTask = nil;
+    self.swiftUIRemoteImage = nil;
+    NSString *urlString = self.pet.imageURL ?: @"";
+    if (urlString.length == 0) return;
+
+    __weak typeof(self) weakSelf = self;
+    self.swiftUIImageTask = PPEditorLoadImageValue(urlString, ^(UIImage *image) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || ![self.pet.imageURL isEqualToString:urlString]) return;
+        self.swiftUIRemoteImage = image;
+        [self pp_updateSwiftUIEditorHost];
+    });
+}
+
+- (void)pp_updateSwiftUIEditorHost {
+    if (!self.swiftUIHost) return;
+    [self.swiftUIHost updateName:self.swiftUIName ?: @""
+                            breed:self.swiftUIBreed ?: @""
+                              age:self.swiftUIAge ?: @""
+                        isDefault:self.swiftUIDefault
+                     vaccinations:self.records ?: @[]
+                    selectedImage:self.selectedImage
+                      remoteImage:self.swiftUIRemoteImage
+                         isSaving:self.isSaving
+                    saveSucceeded:self.swiftUISaveSucceeded];
+}
+
 #pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
-    BOOL isEdit = self.pet.petID.length > 0;
-    self.title  = isEdit ? (kLang(@"pet_edit_title") ?: @"Edit Pet") : (kLang(@"pet_add_title") ?: @"Add Pet");
-
-    // Nav — AddressFormVC style
-    self.navigationItem.leftBarButtonItem =
-        [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName)
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(pp_handleBack)];
-    UIButton *saveButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"Save") ?: @"Save"
-                                                          font:[GM fontWithSize:17]
-                                                     imageName:@""
-                                                        target:self
-                                                        config:[UIButtonConfiguration tintedButtonConfiguration]
-                                                        action:@selector(pp_save)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveButton];
-
-    // Table
-    self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
-    self.tableView.autoresizingMask    = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self.tableView.dataSource          = self;
-    self.tableView.delegate            = self;
-    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    self.tableView.backgroundColor     = UIColor.clearColor;
-    self.tableView.separatorStyle      = UITableViewCellSeparatorStyleNone;
-    self.tableView.contentInset        = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
-    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
-    self.tableView.showsVerticalScrollIndicator = NO;
-    self.tableView.showsHorizontalScrollIndicator = NO;
-    self.tableView.alwaysBounceHorizontal = NO;
-    self.tableView.semanticContentAttribute = PPEditorSemanticAttr();
-    if (@available(iOS 15.0, *)) {
-        self.tableView.sectionHeaderTopPadding = 0.0;
-    }
-    [self pp_initForm];
-    [self.tableView registerClass:UITableViewCell.class         forCellReuseIdentifier:@"form_cell"];
-    [self.tableView registerClass:PPPetEditorActionCell.class   forCellReuseIdentifier:@"toggle"];
-    [self.tableView registerClass:PPPetEditorVaccineCell.class forCellReuseIdentifier:@"vaccine"];
-    [self.tableView registerClass:PPPetEditorActionCell.class   forCellReuseIdentifier:@"addBtn"];
-    [self.view addSubview:self.tableView];
-
-    [self pp_setupBackdrop];
-    [self pp_buildHeroHeader];
-    [self pp_applyCanvasBackground];
-    [self pp_refreshHeroHeader];
-
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_kbChange:)
-                                                 name:UIKeyboardWillChangeFrameNotification object:nil];
+    self.title = self.pet.petID.length > 0
+        ? (kLang(@"pet_edit_title") ?: @"Edit Pet")
+        : (kLang(@"pet_add_title") ?: @"Add Pet");
+    [self pp_buildSwiftUI];
 }
 
 - (void)dealloc {
+    [self.swiftUIImageTask cancel];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -322,9 +388,16 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     self.view.semanticContentAttribute = PPEditorSemanticAttr();
-    self.tableView.semanticContentAttribute = PPEditorSemanticAttr();
-    [self pp_applyCanvasBackground];
-    [self pp_refreshHeroHeader];
+    self.previousNavigationBarHidden = self.navigationController.isNavigationBarHidden;
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
+    [self pp_updateSwiftUIEditorHost];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    if (!self.previousNavigationBarHidden) {
+        [self.navigationController setNavigationBarHidden:NO animated:animated];
+    }
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -363,6 +436,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    if (self.swiftUIHost) return;
     [self pp_applyCanvasBackground];
     self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
     self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
@@ -719,8 +793,12 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         if (![image isKindOfClass:UIImage.class]) return;
         dispatch_async(dispatch_get_main_queue(), ^{
             ws.selectedImage = image;
-            ws.heroImageView.image = image;
-            [ws pp_refreshHeroHeader];
+            if (ws.swiftUIHost) {
+                [ws pp_updateSwiftUIEditorHost];
+            } else {
+                ws.heroImageView.image = image;
+                [ws pp_refreshHeroHeader];
+            }
         });
     }];
 }
@@ -931,8 +1009,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         ws.pet.categoryId = kind.ID;
         ws.pet.categoryName = kind.KindName;
         ws.pet.breed = kind.KindName; // Fallback for backward compatibility
-        [ws.infoFormView setValue:kind.KindName forIdentifier:@"breed"];
-        [ws pp_refreshHeroHeader];
+        if (ws.swiftUIHost) {
+            ws.swiftUIBreed = kind.KindName ?: @"";
+            [ws pp_updateSwiftUIEditorHost];
+        } else {
+            [ws.infoFormView setValue:kind.KindName forIdentifier:@"breed"];
+            [ws pp_refreshHeroHeader];
+        }
         }];
     [self presentViewController:vc animated:YES completion:nil];
 }
@@ -946,6 +1029,10 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                                              completion:^(PPPetVaccinationRecord *rec, BOOL saved) {
         if (!saved || !rec) return;
         [ws.records addObject:rec];
+        if (ws.swiftUIHost) {
+            [ws pp_updateSwiftUIEditorHost];
+            return;
+        }
         CGPoint savedOffset = ws.tableView.contentOffset;
         [UIView performWithoutAnimation:^{
             [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
@@ -966,6 +1053,10 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                                              withRecord:rec
                                              completion:^(PPPetVaccinationRecord *updatedRec, BOOL saved) {
         if (!saved) return;
+        if (ws.swiftUIHost) {
+            [ws pp_updateSwiftUIEditorHost];
+            return;
+        }
         CGPoint savedOffset = ws.tableView.contentOffset;
         [UIView performWithoutAnimation:^{
             [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
@@ -980,6 +1071,10 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (void)pp_deleteVaccineAtIndex:(NSInteger)idx {
     if (idx < 0 || idx >= (NSInteger)self.records.count) return;
     [self.records removeObjectAtIndex:idx];
+    if (self.swiftUIHost) {
+        [self pp_updateSwiftUIEditorHost];
+        return;
+    }
     CGPoint savedOffset = self.tableView.contentOffset;
     [UIView performWithoutAnimation:^{
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
@@ -995,7 +1090,10 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (void)pp_save {
     if (self.isSaving) return;
 
-    NSString *name = [[self.infoFormView valueForIdentifier:@"name"] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *nameSource = self.swiftUIHost
+        ? (self.swiftUIName ?: @"")
+        : ([self.infoFormView valueForIdentifier:@"name"] ?: @"");
+    NSString *name = [nameSource stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (name.length == 0) {
         PPFormFieldRowView *row = [self.infoFormView rowForIdentifier:@"name"];
         if (row) {
@@ -1012,11 +1110,18 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     }
 
     self.isSaving = YES;
-    self.pet.name         = name;
-    self.pet.breed        = [self.infoFormView valueForIdentifier:@"breed"] ?: @"";
-    self.pet.ageInMonths  = MAX(0, [self.infoFormView valueForIdentifier:@"age"].integerValue);
-    self.pet.isDefaultPet = self.defaultSwitch.isOn;
+    self.swiftUISaveSucceeded = NO;
+    self.pet.name = name;
+    self.pet.breed = self.swiftUIHost
+        ? (self.swiftUIBreed ?: @"")
+        : ([self.infoFormView valueForIdentifier:@"breed"] ?: @"");
+    NSString *ageSource = self.swiftUIHost
+        ? (self.swiftUIAge ?: @"")
+        : ([self.infoFormView valueForIdentifier:@"age"] ?: @"");
+    self.pet.ageInMonths = MAX(0, ageSource.integerValue);
+    self.pet.isDefaultPet = self.swiftUIHost ? self.swiftUIDefault : self.defaultSwitch.isOn;
     self.pet.vaccinations = self.records.copy;
+    [self pp_updateSwiftUIEditorHost];
 
     [PPHUD showIndeterminateIn:self.view title:(kLang(@"please_wait") ?: @"Saving…") subtitle:nil];
 
@@ -1026,8 +1131,12 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 ws.isSaving = NO;
                 if (error) {
+                    ws.swiftUISaveSucceeded = NO;
+                    [ws pp_updateSwiftUIEditorHost];
                     [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:error.localizedDescription];
                 } else {
+                    ws.swiftUISaveSucceeded = YES;
+                    [ws pp_updateSwiftUIEditorHost];
                     [PPHUD showSuccess:(kLang(@"Done") ?: @"Saved") subtitle:nil];
                     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                         [ws.navigationController popViewControllerAnimated:YES];

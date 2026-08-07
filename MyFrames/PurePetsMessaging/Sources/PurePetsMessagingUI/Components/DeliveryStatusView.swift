@@ -7,6 +7,7 @@ struct DeliveryStatusView: View {
   let onRetry: () -> Void
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     HStack(spacing: 4) {
@@ -18,13 +19,12 @@ struct DeliveryStatusView: View {
         .monospacedDigit()
 
       if case .outgoing(let state) = direction {
-        // A FIXED-SIZE slot. Every outgoing state (queued/uploading/sent/
-        // delivered/read/failed) renders inside the same footprint, so a
-        // status change animates in place and never reflows the bubble or
-        // nudges the transcript — the root of "jumping" during status updates.
         statusSlot(state)
-          .frame(width: 22, height: 14, alignment: .trailing)
-          .animation(reduceMotion ? nil : PurePetsMessagingMotion.status, value: phaseToken(state))
+          .frame(width: 22, height: 16, alignment: .trailing)
+          .animation(
+            reduceMotion ? nil : PurePetsMessagingMotion.status,
+            value: phaseToken(state)
+          )
       }
     }
     .font(Font.ppBeirutiRegular(size: 11, relativeTo: .caption2))
@@ -32,31 +32,29 @@ struct DeliveryStatusView: View {
     .accessibilityElement(children: .combine)
   }
 
-  // MARK: - Status slot
-
   @ViewBuilder
   private func statusSlot(_ state: OutgoingDeliveryState) -> some View {
     switch state {
     case .queued:
-      queuedGlyph
-        .transition(glyphTransition)
+      queuedGlyph.transition(glyphTransition)
 
     case .uploading(let progress):
       UploadProgressRing(
         progress: min(max(progress, 0), 1),
+        colorScheme: colorScheme,
         reduceMotion: reduceMotion
       )
       .transition(glyphTransition)
 
-    // A single branch for the three "check" states keeps one Image identity,
-    // so the SF Symbol morphs in place (checkmark → double → filled) via the
-    // symbol replace transition instead of hard-swapping views.
     case .sent, .delivered, .read:
-      checkGlyph(for: state)
-        .transition(glyphTransition)
+      checkGlyph(for: state).transition(glyphTransition)
 
     case .failed:
-      failedGlyph
+      Color.clear
+        .frame(width: 22, height: 16)
+        .overlay {
+          failedGlyph
+        }
         .transition(glyphTransition)
     }
   }
@@ -65,17 +63,17 @@ struct DeliveryStatusView: View {
     Image(systemName: "clock")
       .font(.system(size: 11, weight: .semibold))
       .foregroundStyle(.secondary)
-      .modifier(RepeatingPulse(active: !reduceMotion))
       .accessibilityLabel(localized("chat_status_sending"))
   }
 
   private func checkGlyph(for state: OutgoingDeliveryState) -> some View {
     let isRead = { if case .read = state { return true } else { return false } }()
     return Image(systemName: checkSymbol(for: state))
-      .font(.system(size: 12, weight: .bold))
+      .font(.system(size: 11.5, weight: .bold))
       .foregroundStyle(isRead ? PurePetsMessagingTheme.signal : Color.secondary)
-      .contentTransition(.symbolEffect(.replace.downUp))
-      .symbolEffect(.bounce, options: .nonRepeating, value: isRead)
+      .contentTransition(
+        reduceMotion ? .identity : .symbolEffect(.replace.downUp)
+      )
       .accessibilityLabel(localized(checkAccessibilityKey(for: state)))
   }
 
@@ -84,14 +82,13 @@ struct DeliveryStatusView: View {
       Image(systemName: "exclamationmark.circle.fill")
         .font(.system(size: 12, weight: .bold))
         .foregroundStyle(PurePetsMessagingTheme.danger)
-        .symbolEffect(.bounce, options: .nonRepeating, value: phaseToken(.failed(.unknown(code: nil))))
+        .frame(width: 44, height: 44)
+        .contentShape(Rectangle())
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PurePetsMessagingPressButtonStyle())
     .accessibilityLabel(localized("Retry"))
     .accessibilityHint(localized("chat_retry_send_message"))
   }
-
-  // MARK: - Mapping
 
   private func checkSymbol(for state: OutgoingDeliveryState) -> String {
     switch state {
@@ -111,10 +108,6 @@ struct DeliveryStatusView: View {
     }
   }
 
-  /// Discrete category used to drive the branch-swap animation. Deliberately
-  /// ignores the continuous upload progress value so the ring's own
-  /// progress animation owns that, and the branch morph fires only on real
-  /// state transitions.
   private func phaseToken(_ state: OutgoingDeliveryState) -> Int {
     switch state {
     case .queued: return 0
@@ -129,7 +122,7 @@ struct DeliveryStatusView: View {
   private var glyphTransition: AnyTransition {
     reduceMotion
       ? .opacity
-      : .opacity.combined(with: .scale(scale: 0.55))
+      : .opacity.combined(with: .scale(scale: 0.94))
   }
 
   private func localized(_ key: String) -> String {
@@ -137,20 +130,16 @@ struct DeliveryStatusView: View {
   }
 }
 
-// MARK: - Upload progress ring
-
-/// A compact determinate ring used for the outgoing "uploading" state. Reads as
-/// a premium, tactile sending indicator: a faint track, a brand-gradient
-/// progress arc that eases toward completion, and a soft leading-cap dot.
 private struct UploadProgressRing: View {
   let progress: Double
+  let colorScheme: ColorScheme
   let reduceMotion: Bool
 
   var body: some View {
     ZStack {
       Circle()
         .stroke(
-          PurePetsMessagingTheme.waveformTrack(.light).opacity(0.9),
+          PurePetsMessagingTheme.waveformTrack(colorScheme),
           lineWidth: 2
         )
 
@@ -161,31 +150,13 @@ private struct UploadProgressRing: View {
           style: StrokeStyle(lineWidth: 2, lineCap: .round)
         )
         .rotationEffect(.degrees(-90))
-        .animation(reduceMotion ? nil : PurePetsMessagingMotion.progress, value: progress)
+        .animation(
+          reduceMotion ? nil : PurePetsMessagingMotion.progress,
+          value: progress
+        )
     }
     .frame(width: 13, height: 13)
     .accessibilityLabel(NSLocalizedString("Uploading…", comment: ""))
     .accessibilityValue(Text(progress, format: .percent))
-  }
-}
-
-// MARK: - Repeating pulse
-
-/// A gentle, infinitely-repeating opacity+scale breath used for the queued
-/// state so an outgoing message reads as actively "in flight" while it waits.
-private struct RepeatingPulse: ViewModifier {
-  let active: Bool
-  @State private var on = false
-
-  func body(content: Content) -> some View {
-    content
-      .opacity(active ? (on ? 1 : 0.45) : 1)
-      .scaleEffect(active ? (on ? 1 : 0.9) : 1)
-      .onAppear {
-        guard active else { return }
-        withAnimation(.easeInOut(duration: 0.75).repeatForever(autoreverses: true)) {
-          on = true
-        }
-      }
   }
 }

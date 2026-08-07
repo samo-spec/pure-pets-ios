@@ -499,6 +499,9 @@
 		F28CB4062E4C6902009DD547 /* AdoptPetListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */; };
 		F28CB4072E4C6903009DD547 /* AdoptPetDetailsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */; };
 		F28CB4082E4C6904009DD547 /* AdoptPetsHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */; };
+		A9F200010000000000000001 /* PPPetProfilesSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */; };
+		A9F200020000000000000002 /* PPPetProfileEditorSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */; };
+		A9F200030000000000000003 /* PPPetProfilesHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */; };
 		F28CBB5F2D30044D002993F0 /* GSIndeterminateProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB5D2D30044D002993F0 /* GSIndeterminateProgressView.m */; };
 		F28CBB642D302899002993F0 /* JPCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB612D302899002993F0 /* JPCell.m */; };
 		F28CBB682D30298C002993F0 /* JPCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F28CBB672D30298C002993F0 /* JPCell.xib */; };
@@ -1068,6 +1071,9 @@
 		F209567B2F8567EA007C4ABA /* PPPetProfilesViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetProfilesViewController.m; sourceTree = "<group>"; };
 		F209567D2F85680A007C4ABA /* PPPetProfileEditorViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfileEditorViewController.h; sourceTree = "<group>"; };
 		F209567E2F856813007C4ABA /* PPPetProfileEditorViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileEditorViewController.m; sourceTree = "<group>"; };
+		A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfilesSwiftUI.swift; sourceTree = "<group>"; };
+		A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfileEditorSwiftUI.swift; sourceTree = "<group>"; };
+		A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfilesHostingControllers.swift; sourceTree = "<group>"; };
 		F20956802F856830007C4ABA /* PPPetRemindersViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetRemindersViewController.h; sourceTree = "<group>"; };
 		F20956812F856838007C4ABA /* PPPetRemindersViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetRemindersViewController.m; sourceTree = "<group>"; };
 		F20956832F856850007C4ABA /* PPReminderEditorViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderEditorViewController.h; sourceTree = "<group>"; };
@@ -2690,6 +2696,9 @@
 				F20956812F856838007C4ABA /* PPPetRemindersViewController.m */,
 				F209567D2F85680A007C4ABA /* PPPetProfileEditorViewController.h */,
 				F209567E2F856813007C4ABA /* PPPetProfileEditorViewController.m */,
+				A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */,
+				A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */,
+				A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */,
 				F209567A2F8567E1007C4ABA /* PPPetProfilesViewController.h */,
 				F209567B2F8567EA007C4ABA /* PPPetProfilesViewController.m */,
 				F20956742F856791007C4ABA /* PPPetReminder.h */,
@@ -6076,6 +6085,9 @@
 				F27146732CCE6B5300F7F3BA /* XLFormSectionDescriptor.m in Sources */,
 				F2C0BA4B2FF09FCB009D1C33 /* PPProviderCompanyCell.m in Sources */,
 				F209567F2F856824007C4ABA /* PPPetProfileEditorViewController.m in Sources */,
+				A9F200010000000000000001 /* PPPetProfilesSwiftUI.swift in Sources */,
+				A9F200020000000000000002 /* PPPetProfileEditorSwiftUI.swift in Sources */,
+				A9F200030000000000000003 /* PPPetProfilesHostingControllers.swift in Sources */,
 				F27146742CCE6B5300F7F3BA /* XLFormImageCell.m in Sources */,
 				F27146752CCE6B5300F7F3BA /* XLFormSelectorCell.m in Sources */,
 				F27146762CCE6B5300F7F3BA /* XLFormViewController.m in Sources */,

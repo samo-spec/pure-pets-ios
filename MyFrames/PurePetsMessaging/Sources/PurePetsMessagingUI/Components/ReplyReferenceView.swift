@@ -3,47 +3,66 @@ import SwiftUI
 struct ReplyReferenceView: View {
   let reference: ReplyReference
   let onOpen: () -> Void
+
   @Environment(\.layoutDirection) private var fallbackLayoutDirection
 
   var body: some View {
     Button(action: onOpen) {
-      HStack(spacing: 8) {
-        Capsule()
-          .fill(PurePetsMessagingTheme.signal)
+      HStack(spacing: 10) {
+        Capsule(style: .continuous)
+          .fill(
+            LinearGradient(
+              colors: [PurePetsMessagingTheme.signal, PurePetsMessagingTheme.brandDeep],
+              startPoint: .top,
+              endPoint: .bottom
+            )
+          )
           .frame(width: 3)
           .accessibilityHidden(true)
 
         VStack(alignment: .leading, spacing: 2) {
           Text(reference.senderDisplayName)
-            .font(Font.ppBeirutiSemiBold(size: 12, relativeTo: .caption))
+            .font(Font.ppBeirutiSemiBold(size: 12.5, relativeTo: .caption))
             .foregroundStyle(PurePetsMessagingTheme.signal)
             .lineLimit(1)
             .truncationMode(.tail)
 
-          Label(previewText, systemImage: previewSymbol)
-            .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
-            .foregroundStyle(.secondary)
-            .lineLimit(2)
+          HStack(spacing: 5) {
+            Image(systemName: previewSymbol)
+              .font(.system(size: 10.5, weight: .semibold))
+              .foregroundStyle(.secondary)
+              .accessibilityHidden(true)
+
+            Text(previewText)
+              .font(Font.ppBeirutiRegular(size: 12.5, relativeTo: .caption))
+              .foregroundStyle(.secondary)
+              .lineLimit(2)
+          }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        Image(systemName: "arrow.up.left.and.arrow.down.right")
+          .font(.system(size: 9.5, weight: .semibold))
+          .foregroundStyle(PurePetsMessagingTheme.signal.opacity(0.72))
+          .frame(width: 24, height: 24)
+          .background(PurePetsMessagingTheme.signal.opacity(0.08), in: Circle())
+          .accessibilityHidden(true)
       }
-      .padding(.horizontal, 9)
-      .padding(.vertical, 7)
-      // A reply should be legible without forcing every quoted message to the
-      // transcript's maximum width. Long previews can still grow and wrap
-      // within the parent bubble proposal.
-      .frame(minWidth: 148, alignment: .leading)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 8)
+      .frame(minWidth: 154, alignment: .leading)
       .background(
-        Color.primary.opacity(0.055),
-        in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+        PurePetsMessagingTheme.replySurface,
+        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
       )
       .overlay {
-        RoundedRectangle(cornerRadius: 11, style: .continuous)
-          .strokeBorder(Color.primary.opacity(0.075), lineWidth: 0.6)
+        RoundedRectangle(cornerRadius: 13, style: .continuous)
+          .strokeBorder(PurePetsMessagingTheme.surfaceStroke, lineWidth: 0.65)
       }
       .contentShape(.rect)
       .environment(\.layoutDirection, resolvedLayoutDirection)
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PurePetsMessagingPressButtonStyle())
     .accessibilityLabel(
       String(
         format: NSLocalizedString("chat_replying_to_format", comment: ""),

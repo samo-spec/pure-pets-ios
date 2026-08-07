@@ -121,6 +121,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self pp_configureNavigationChrome];
+    [self animateVerificationEntranceIfNeeded];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -128,7 +129,6 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     self.modalInPresentation = (self.navigationController == nil);
     self.presentationController.delegate = self;
     [self.codeField becomeFirstResponder];
-    [self animateVerificationEntranceIfNeeded];
     [self.stepIndicatorView restartCurrentStepMotionIfNeeded];
 }
 
@@ -1142,32 +1142,11 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     }
     self.didAnimateEntrance = YES;
 
-    NSArray<UIView *> *views = @[
-        self.stepIndicatorView ?: UIView.new,
-        self.cardView ?: UIView.new,
-        self.backButton ?: UIView.new,
-        self.titleLabel ?: UIView.new,
-        self.subtitleLabel ?: UIView.new,
-        self.changeNumberButton ?: UIView.new,
-        self.digitStackView ?: UIView.new,
-        self.continueButton ?: UIView.new,
-        self.resendButton ?: UIView.new
-    ];
-
-    [views enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
-        [UIView animateWithDuration:0.50
-                              delay:0.04 * idx
-             usingSpringWithDamping:0.88
-              initialSpringVelocity:0.16
-                            options:UIViewAnimationOptionCurveEaseOut
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-        (void)stop;
-    }];
+    [PPAuthScaffoldView animateEntranceForViews:@[
+        self.stepIndicatorView,
+        self.cardView,
+        self.backButton
+    ] inContainer:self.view];
 }
 
 @end

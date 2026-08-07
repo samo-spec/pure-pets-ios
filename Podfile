@@ -69,6 +69,20 @@ post_install do |installer|
     end
   end
 
+  # TOCropViewController's iOS 26 toolbar uses an unavailable clear-glass
+  # factory. Keep the pod checkout aligned with UIKit's supported glass API.
+  crop_toolbar_path = File.join(installer.sandbox.root.to_s,
+                                'TOCropViewController',
+                                'Objective-C',
+                                'TOCropViewController',
+                                'Views',
+                                'TOCropToolbar.m')
+  if File.file?(crop_toolbar_path)
+    content = File.read(crop_toolbar_path)
+    patched = content.gsub('clearGlassButtonConfiguration', 'glassButtonConfiguration')
+    File.write(crop_toolbar_path, patched) if patched != content
+  end
+
   # Xcode may still sandbox the CocoaPods rsync copy phase and block temp-file creation
   # (e.g. .AFNetworking.xxxxxx inside .app/Frameworks). Force rsync to copy in-place.
   Dir.glob(File.join(installer.sandbox.root.to_s, 'Target Support Files', '**', '*-frameworks.sh')).each do |script_path|
@@ -82,6 +96,5 @@ post_install do |installer|
     File.write(script_path, patched)
   end
 end
-
 
 

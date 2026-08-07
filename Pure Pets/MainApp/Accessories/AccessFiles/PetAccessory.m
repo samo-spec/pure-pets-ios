@@ -551,6 +551,11 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     if (typeText) {
         [message appendFormat:@"%@: %@", kLang(@"Type"), typeText];
     }
+
+    NSURL *shareURL = [self shareableLinkForAccessory:accessory];
+    if (shareURL.absoluteString.length > 0) {
+        [message appendFormat:@"\n\n%@", shareURL.absoluteString];
+    }
     
     return [message copy];
 }
@@ -614,21 +619,21 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     [PetAccessory sharePetAccessory:self fromViewController:vc sourceView:sourceView];
 }
 
-#pragma mark - Share Link Generation (Optional)
+#pragma mark - Share Link Generation
 
 + (nullable NSURL *)shareableLinkForAccessory:(PetAccessory *)accessory {
-    // Generate a deep link or web URL for the accessory
-    // This depends on your app's URL scheme or website
-    
-    if (!accessory.accessoryID) return nil;
-    
-    // Example: "yourapp://accessory/12345"
-    NSString *deepLink = [NSString stringWithFormat:@"yourapp://accessory/%@", accessory.accessoryID];
-    
-    // OR web URL: "https://yourapp.com/accessory/12345"
-    // NSString *webURL = [NSString stringWithFormat:@"https://yourapp.com/accessory/%@", accessory.accessoryID];
-    
-    return [NSURL URLWithString:deepLink];
+    NSString *accessoryID = [accessory.accessoryID
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (accessoryID.length == 0) return nil;
+
+    NSURLComponents *components = [NSURLComponents componentsWithString:@"https://pure-pets.net/share"];
+    if (!components) return nil;
+
+    components.queryItems = @[
+        [NSURLQueryItem queryItemWithName:@"type" value:@"accessory"],
+        [NSURLQueryItem queryItemWithName:@"id" value:accessoryID]
+    ];
+    return components.URL;
 }
 
 #pragma mark - Social Media Specific Sharing (Optional)

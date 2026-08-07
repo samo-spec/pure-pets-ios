@@ -34,6 +34,7 @@ typedef NS_ENUM(NSInteger, PPUserMenuAction) {
     PPUserMenuActionSettings,
     PPUserMenuActionSupport,
     PPUserMenuActionLogout,
+    PPUserMenuActionPureLens,
 
     // Quick Access Actions
     PPUserMenuActionQuickAccessAppearance,
@@ -44,6 +45,7 @@ typedef NS_ENUM(NSInteger, PPUserMenuAction) {
 };
 
 static NSString * const PPUserMenuCellIdentifier = @"PPUserMenuCell";
+static NSString * const PPUserMenuPureLensCellIdentifier = @"PPUserMenuPureLensCell";
 static NSString * const PPUserMenuHeroConstellationOpacityAnimationKey = @"pp.user.menu.hero.constellation.opacity";
 static NSString * const PPUserMenuHeroDotPulseAnimationKey = @"pp.user.menu.hero.dot.pulse";
 
@@ -427,6 +429,223 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
 
 @end
 
+#pragma mark - Pure Lens Entry Cell
+
+@interface PPUserMenuPureLensCell : UITableViewCell
+@property (nonatomic, strong) UIView *surfaceView;
+@end
+
+@implementation PPUserMenuPureLensCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        self.contentView.backgroundColor = UIColor.clearColor;
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
+        self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+        UIView *surface = [UIView new];
+        surface.translatesAutoresizingMaskIntoConstraints = NO;
+        surface.backgroundColor = UIColor.clearColor;
+        surface.layer.borderWidth = 1.0;
+        [surface pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.14]];
+        PPApplyContinuousCorners(surface, PPCornerCard);
+        [surface pp_setShadowColor:UIColor.blackColor];
+        surface.layer.shadowOpacity = 0.14;
+        surface.layer.shadowRadius = 18.0;
+        surface.layer.shadowOffset = CGSizeMake(0.0, 9.0);
+        [self.contentView addSubview:surface];
+        self.surfaceView = surface;
+
+        UIVisualEffect *materialEffect = nil;
+        if (@available(iOS 26.0, *)) {
+            UIGlassEffect *glass = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
+            glass.tintColor = [AppPrimaryClrShiner colorWithAlphaComponent:0.22];
+            materialEffect = glass;
+        } else {
+            materialEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+        }
+        UIVisualEffectView *materialView = [[UIVisualEffectView alloc] initWithEffect:materialEffect];
+        materialView.translatesAutoresizingMaskIntoConstraints = NO;
+        materialView.userInteractionEnabled = NO;
+        PPApplyContinuousCorners(materialView, PPCornerCard);
+        materialView.clipsToBounds = YES;
+        [surface addSubview:materialView];
+
+        UIView *materialTint = [UIView new];
+        materialTint.translatesAutoresizingMaskIntoConstraints = NO;
+        materialTint.userInteractionEnabled = NO;
+        materialTint.backgroundColor = [AppPrimaryClrShiner colorWithAlphaComponent:0.12];
+        [materialView.contentView addSubview:materialTint];
+
+        UIView *signal = [UIView new];
+        signal.translatesAutoresizingMaskIntoConstraints = NO;
+        signal.backgroundColor = AppPrimaryClr;
+        signal.layer.cornerRadius = 2.0;
+        [surface addSubview:signal];
+
+        UIImageView *camera = [UIImageView new];
+        camera.translatesAutoresizingMaskIntoConstraints = NO;
+        camera.contentMode = UIViewContentModeScaleAspectFit;
+        camera.image = PPUserMenuSymbol(@"camera.viewfinder",
+                                        AppPrimaryClr,
+                                        20.0,
+                                        UIImageSymbolWeightBold);
+        [surface addSubview:camera];
+
+        UILabel *title = [UILabel new];
+        title.translatesAutoresizingMaskIntoConstraints = NO;
+        title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+                      scaledFontForFont:([GM boldFontWithSize:20.0] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightBold])];
+        title.adjustsFontForContentSizeCategory = YES;
+        title.textColor = AppPrimaryTextClr;
+        title.text = PPUserMenuLocalized(@"pure_lens_account_title");
+        title.textAlignment = [Language alignmentForCurrentLanguage];
+        title.numberOfLines = 2;
+        [surface addSubview:title];
+
+        UIImageView *launch = [UIImageView new];
+        launch.translatesAutoresizingMaskIntoConstraints = NO;
+        launch.contentMode = UIViewContentModeScaleAspectFit;
+        launch.image = PPUserMenuSymbol(@"arrow.up.forward",
+                                        [AppSecondaryTextClr colorWithAlphaComponent:0.82],
+                                        14.0,
+                                        UIImageSymbolWeightBold);
+        [surface addSubview:launch];
+
+        UIView *cameraNode = [self pp_phaseNodeWithSymbol:@"camera.fill"
+                                                titleKey:@"pure_lens_account_camera"
+                                                    tint:AppPrimaryClr];
+        UIView *recognitionNode = [self pp_phaseNodeWithSymbol:@"viewfinder"
+                                                     titleKey:@"pure_lens_account_recognize"
+                                                         tint:AppSuccessClr];
+        UIView *discoveryNode = [self pp_phaseNodeWithSymbol:@"square.grid.2x2.fill"
+                                                   titleKey:@"pure_lens_account_discover"
+                                                       tint:AppInfoClr];
+        UIView *firstConnector = [self pp_connectorView];
+        UIView *secondConnector = [self pp_connectorView];
+        UIStackView *flow = [[UIStackView alloc] initWithArrangedSubviews:@[
+            cameraNode, firstConnector, recognitionNode, secondConnector, discoveryNode
+        ]];
+        flow.translatesAutoresizingMaskIntoConstraints = NO;
+        flow.axis = UILayoutConstraintAxisHorizontal;
+        flow.alignment = UIStackViewAlignmentCenter;
+        flow.distribution = UIStackViewDistributionFill;
+        flow.spacing = 8.0;
+        flow.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        [surface addSubview:flow];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [surface.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:7.0],
+            [surface.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+            [surface.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+            [surface.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-7.0],
+            [surface.heightAnchor constraintGreaterThanOrEqualToConstant:138.0],
+
+            [materialView.topAnchor constraintEqualToAnchor:surface.topAnchor],
+            [materialView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor],
+            [materialView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor],
+            [materialView.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
+
+            [materialTint.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor],
+            [materialTint.leadingAnchor constraintEqualToAnchor:materialView.contentView.leadingAnchor],
+            [materialTint.trailingAnchor constraintEqualToAnchor:materialView.contentView.trailingAnchor],
+            [materialTint.bottomAnchor constraintEqualToAnchor:materialView.contentView.bottomAnchor],
+
+            [signal.topAnchor constraintEqualToAnchor:surface.topAnchor constant:18.0],
+            [signal.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor],
+            [signal.widthAnchor constraintEqualToConstant:4.0],
+            [signal.heightAnchor constraintEqualToConstant:30.0],
+
+            [camera.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:20.0],
+            [camera.topAnchor constraintEqualToAnchor:surface.topAnchor constant:20.0],
+            [camera.widthAnchor constraintEqualToConstant:28.0],
+            [camera.heightAnchor constraintEqualToConstant:28.0],
+
+            [title.leadingAnchor constraintEqualToAnchor:camera.trailingAnchor constant:11.0],
+            [title.centerYAnchor constraintEqualToAnchor:camera.centerYAnchor],
+            [title.trailingAnchor constraintLessThanOrEqualToAnchor:launch.leadingAnchor constant:-10.0],
+
+            [launch.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-20.0],
+            [launch.centerYAnchor constraintEqualToAnchor:camera.centerYAnchor],
+            [launch.widthAnchor constraintEqualToConstant:18.0],
+            [launch.heightAnchor constraintEqualToConstant:18.0],
+
+            [flow.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:20.0],
+            [flow.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-20.0],
+            [flow.topAnchor constraintGreaterThanOrEqualToAnchor:title.bottomAnchor constant:18.0],
+            [flow.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-17.0],
+            [firstConnector.widthAnchor constraintGreaterThanOrEqualToConstant:10.0],
+            [secondConnector.widthAnchor constraintGreaterThanOrEqualToConstant:10.0]
+        ]];
+
+        self.accessibilityLabel = PPUserMenuLocalized(@"pure_lens_account_a11y");
+        self.accessibilityHint = PPUserMenuLocalized(@"pure_lens_account_hint");
+        self.accessibilityTraits = UIAccessibilityTraitButton;
+        self.isAccessibilityElement = YES;
+    }
+    return self;
+}
+
+- (UIView *)pp_phaseNodeWithSymbol:(NSString *)symbol titleKey:(NSString *)titleKey tint:(UIColor *)tint
+{
+    UIImageView *icon = [UIImageView new];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    icon.image = PPUserMenuSymbol(symbol, tint, 15.0, UIImageSymbolWeightBold);
+
+    UILabel *label = [UILabel new];
+    label.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+                  scaledFontForFont:([GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold])];
+    label.adjustsFontForContentSizeCategory = YES;
+    label.textColor = AppSecondaryTextClr;
+    label.text = PPUserMenuLocalized(titleKey);
+    label.numberOfLines = 2;
+    label.textAlignment = NSTextAlignmentCenter;
+
+    UIStackView *node = [[UIStackView alloc] initWithArrangedSubviews:@[icon, label]];
+    node.axis = UILayoutConstraintAxisVertical;
+    node.alignment = UIStackViewAlignmentCenter;
+    node.spacing = 6.0;
+    [icon.widthAnchor constraintEqualToConstant:22.0].active = YES;
+    [icon.heightAnchor constraintEqualToConstant:22.0].active = YES;
+    [node.widthAnchor constraintGreaterThanOrEqualToConstant:52.0].active = YES;
+    return node;
+}
+
+- (UIView *)pp_connectorView
+{
+    UIView *line = [UIView new];
+    line.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.20];
+    line.layer.cornerRadius = 1.0;
+    [line.heightAnchor constraintEqualToConstant:2.0].active = YES;
+    return line;
+}
+
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
+{
+    [super setHighlighted:highlighted animated:animated];
+    void (^changes)(void) = ^{
+        self.surfaceView.alpha = highlighted ? 0.86 : 1.0;
+        self.surfaceView.transform = highlighted && !UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformMakeScale(0.985, 0.985)
+            : CGAffineTransformIdentity;
+    };
+    if (animated) {
+        [UIView animateWithDuration:0.14
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
+}
+
+@end
+
 #pragma mark - Quick Access Cell
 
 static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickAccessCell";
@@ -633,6 +852,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 @property (nonatomic, strong) PPBackgroundView *headerBackgroundView;
 @property (nonatomic, strong) PPWaveCardBGHostingController *waveCardBackgroundController;
 @property (nonatomic, strong) PPWorldGlassBackgroundHostingController *worldGlassBackgroundController;
+@property (nonatomic, strong) PPPureLensHostPresenter *pureLensPresenter;
 @property (nonatomic, strong) UIView *avatarFrameView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
@@ -664,6 +884,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:nil showBack:NO];
 
     [self pp_buildTableView];
+    self.pureLensPresenter = [PPPureLensHostPresenter new];
     [self pp_buildHeader];
     [self pp_rebuildSections];
     [self pp_refreshHeaderContent];
@@ -785,6 +1006,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
         tableView.sectionHeaderTopPadding = 0.0;
     }
     [tableView registerClass:PPUserMenuCell.class forCellReuseIdentifier:PPUserMenuCellIdentifier];
+    [tableView registerClass:PPUserMenuPureLensCell.class forCellReuseIdentifier:PPUserMenuPureLensCellIdentifier];
     [tableView registerClass:PPUserMenuQuickAccessCell.class forCellReuseIdentifier:PPUserMenuQuickAccessCellIdentifier];
     [self.view addSubview:tableView];
     self.tableView = tableView;
@@ -1177,6 +1399,16 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
                         destructive:NO];
     [sections addObject:[self pp_sectionWithTitleKey:@"user_menu_account_section" items:@[accountItem]]];
 
+    PPUserMenuItem *pureLensItem =
+        [self pp_itemWithTitleKey:@"pure_lens_account_title"
+                     subtitleKey:@""
+                        iconName:@"camera.viewfinder"
+                       tintColor:brand
+                          action:PPUserMenuActionPureLens
+                     destructive:NO];
+    [sections addObject:[self pp_sectionWithTitleKey:@"pure_lens_account_section"
+                                              items:@[pureLensItem]]];
+
     // Add Quick Access Settings section
     PPUserMenuSection *quickAccessSection = [self pp_buildQuickAccessSection];
     if (quickAccessSection) {
@@ -1457,6 +1689,9 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
         return 0;
     }
     PPUserMenuSection *menuSection = self.sections[section];
+    if ([menuSection.titleKey isEqualToString:@"pure_lens_account_section"]) {
+        return 1;
+    }
     if ([menuSection.titleKey isEqualToString:@"quick_access_settings_section"]) {
         return 1;
     }
@@ -1466,6 +1701,11 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     PPUserMenuSection *section = self.sections[indexPath.section];
+
+    if ([section.titleKey isEqualToString:@"pure_lens_account_section"]) {
+        return [tableView dequeueReusableCellWithIdentifier:PPUserMenuPureLensCellIdentifier
+                                                forIndexPath:indexPath];
+    }
 
     // Check if this is the quick access section
     if ([section.titleKey isEqualToString:@"quick_access_settings_section"]) {
@@ -1489,6 +1729,9 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     PPUserMenuSection *section = self.sections[indexPath.section];
+    if ([section.titleKey isEqualToString:@"pure_lens_account_section"]) {
+        return UITableViewAutomaticDimension;
+    }
     if ([section.titleKey isEqualToString:@"quick_access_settings_section"]) {
         return PPUserMenuQuickAccessRowHeight;
     }
@@ -1663,6 +1906,9 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
         }
         case PPUserMenuActionLogout:
             [self pp_presentLogoutFlow];
+            break;
+        case PPUserMenuActionPureLens:
+            [self.pureLensPresenter presentFromViewController:self];
             break;
 
         // Quick Access Actions

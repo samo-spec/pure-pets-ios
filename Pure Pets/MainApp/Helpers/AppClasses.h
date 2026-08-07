@@ -32,6 +32,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void)callPhoneNumber:(NSString *)phoneNumber  fromViewController:(UIViewController *)viewController;
 + (void)startWhatsAppWith:(NSString *)phoneNumber  fromViewController:(UIViewController *)viewController;
++ (void)startWhatsAppWith:(NSString *)phoneNumber
+                  message:(nullable NSString *)message
+       fromViewController:(UIViewController *)viewController;
 
 + (void)reloadThisCollectionView:(UICollectionView *)collectionView;
 

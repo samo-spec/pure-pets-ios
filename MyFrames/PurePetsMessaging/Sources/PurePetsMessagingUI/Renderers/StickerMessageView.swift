@@ -3,8 +3,9 @@ import SwiftUI
 struct StickerMessageView: View {
   let payload: StickerPayload
 
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var hasPresented = false
 
   var body: some View {
     RemoteMediaImage(url: payload.assetURL, contentMode: .fit) {
@@ -13,11 +14,27 @@ struct StickerMessageView: View {
         .minimumScaleFactor(0.6)
     }
     .frame(width: stickerSize, height: stickerSize)
-    .modifier(
-      StickerMotionModifier(
-        isEnabled: payload.isAnimated && !reduceMotion
-      )
+    .scaleEffect(
+      payload.isAnimated && !reduceMotion && !hasPresented ? 0.96 : 1
     )
+    .rotationEffect(
+      .degrees(payload.isAnimated && !reduceMotion && !hasPresented ? -1.2 : 0)
+    )
+    .shadow(
+      color: PurePetsMessagingTheme.messageShadow.opacity(0.34),
+      radius: 4,
+      y: 2
+    )
+    .onAppear {
+      guard !hasPresented else { return }
+      guard payload.isAnimated, !reduceMotion else {
+        hasPresented = true
+        return
+      }
+      withAnimation(PurePetsMessagingMotion.standard) {
+        hasPresented = true
+      }
+    }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
       String(
@@ -28,29 +45,10 @@ struct StickerMessageView: View {
   }
 
   private var stickerSize: CGFloat {
-    dynamicTypeSize.isAccessibilitySize ? 176 : 144
+    dynamicTypeSize.isAccessibilitySize ? 176 : 148
   }
 
   private func localized(_ key: String) -> String {
     NSLocalizedString(key, comment: "")
-  }
-}
-
-private struct StickerMotionModifier: ViewModifier {
-  let isEnabled: Bool
-
-  func body(content: Content) -> some View {
-    if isEnabled {
-      content
-        .phaseAnimator([false, true]) { view, lifted in
-          view
-            .offset(y: lifted ? -5 : 0)
-            .rotationEffect(.degrees(lifted ? 1.5 : -0.5))
-        } animation: { _ in
-          .easeInOut(duration: 0.9)
-        }
-    } else {
-      content
-    }
   }
 }

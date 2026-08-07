@@ -5,9 +5,9 @@ struct MessageBubbleShape: Shape {
   let groupPosition: MessageGroupPosition
 
   func path(in rect: CGRect) -> Path {
-    let exposed: CGFloat = 19
-    let joined: CGFloat = 8
-    let terminal: CGFloat = 10
+    let exposed: CGFloat = 22
+    let joined: CGFloat = 7
+    let terminal: CGFloat = 6
     let joinsPrevious = groupPosition == .middle || groupPosition == .last
     let joinsNext = groupPosition == .first || groupPosition == .middle
 
@@ -24,14 +24,15 @@ struct MessageBubbleShape: Shape {
       bottomLeading = joinsNext ? joined : terminal
     }
 
-    let radii = RectangleCornerRadii(
-      topLeading: topLeading,
-      bottomLeading: bottomLeading,
-      bottomTrailing: bottomTrailing,
-      topTrailing: topTrailing
+    return UnevenRoundedRectangle(
+      cornerRadii: RectangleCornerRadii(
+        topLeading: topLeading,
+        bottomLeading: bottomLeading,
+        bottomTrailing: bottomTrailing,
+        topTrailing: topTrailing
+      ),
+      style: .continuous
     )
-
-    return UnevenRoundedRectangle(cornerRadii: radii, style: .continuous)
-      .path(in: rect)
+    .path(in: rect)
   }
 }

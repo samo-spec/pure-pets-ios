@@ -3,36 +3,79 @@ import SwiftUI
 struct MessageReactionsView: View {
   let reactions: [MessageReaction]
   let onReactionTap: (MessageReaction) -> Void
-  @Environment(\.locale) private var locale
 
+  @Environment(\.locale) private var locale
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+
+  @ViewBuilder
   var body: some View {
     if !reactions.isEmpty {
-      HStack(spacing: 4) {
-        ForEach(reactions) { reaction in
-          Button {
-            onReactionTap(reaction)
-          } label: {
-            Text("\(reaction.emoji) \(localizedCount(reaction.count))")
-              .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
-              .padding(.horizontal, 8)
-              .padding(.vertical, 4)
-              .background(
-                reaction.reactedByCurrentUser
-                  ? PurePetsMessagingTheme.brandSoft
-                  : Color(uiColor: .tertiarySystemBackground),
-                in: .capsule
-              )
+      if dynamicTypeSize.isAccessibilitySize {
+        VStack(alignment: .leading, spacing: 5) {
+          reactionButtons
+        }
+      } else {
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 5) {
+            reactionButtons
           }
-          .buttonStyle(.plain)
-          .accessibilityLabel(
-            String(
-              format: localized("chat_reaction_accessibility_format"),
-              reaction.emoji,
-              localizedCount(reaction.count)
-            )
-          )
+
+          VStack(alignment: .leading, spacing: 5) {
+            reactionButtons
+          }
         }
       }
+    }
+  }
+
+  @ViewBuilder
+  private var reactionButtons: some View {
+    ForEach(reactions) { reaction in
+      Button {
+        onReactionTap(reaction)
+      } label: {
+        HStack(spacing: 5) {
+          Text(reaction.emoji)
+          Text(localizedCount(reaction.count))
+            .monospacedDigit()
+
+          if reaction.reactedByCurrentUser && differentiateWithoutColor {
+            Image(systemName: "checkmark.circle.fill")
+              .font(.system(size: 10, weight: .bold))
+              .accessibilityHidden(true)
+          }
+        }
+        .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 10)
+        .frame(minWidth: 44, minHeight: 44)
+        .background(
+          reaction.reactedByCurrentUser
+            ? PurePetsMessagingTheme.brandSoft
+            : PurePetsMessagingTheme.reactionSurface,
+          in: Capsule(style: .continuous)
+        )
+        .overlay {
+          Capsule(style: .continuous)
+            .strokeBorder(
+              reaction.reactedByCurrentUser
+                ? PurePetsMessagingTheme.signal.opacity(0.34)
+                : PurePetsMessagingTheme.surfaceStroke,
+              lineWidth: reaction.reactedByCurrentUser ? 1 : 0.7
+            )
+        }
+      }
+      .buttonStyle(PurePetsMessagingPressButtonStyle())
+      .contentShape(Capsule(style: .continuous))
+      .accessibilityAddTraits(reaction.reactedByCurrentUser ? .isSelected : [])
+      .accessibilityLabel(
+        String(
+          format: localized("chat_reaction_accessibility_format"),
+          reaction.emoji,
+          localizedCount(reaction.count)
+        )
+      )
     }
   }
 

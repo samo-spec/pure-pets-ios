@@ -2430,26 +2430,11 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     }
     self.didAnimateIntro = YES;
 
-    NSArray<UIView *> *views = @[
-        self.topBarView ?: UIView.new,
-        self.authStepIndicatorView ?: UIView.new,
-        self.headerCardView ?: UIView.new,
-        self.tableView ?: UIView.new
-    ];
-    [views enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 18.0),
-                                                 CGAffineTransformMakeScale(0.985, 0.985));
-        [UIView animateWithDuration:0.62
-                              delay:0.055 * idx
-             usingSpringWithDamping:0.90
-              initialSpringVelocity:0.10
-                            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
+    [PPAuthScaffoldView animateEntranceForViews:@[
+        self.topBarView,
+        self.authStepIndicatorView,
+        self.tableView
+    ] inContainer:self.view];
 }
 
 #pragma mark - Skip

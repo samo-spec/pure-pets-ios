@@ -85,6 +85,7 @@ NS_ASSUME_NONNULL_BEGIN
                originalPrice:(NSNumber *)originalPrice
              discountPercent:(NSNumber *)discountPercent;
 + (NSString *)shareMessageForAccessory:(PetAccessory *)accessory;
++ (nullable NSURL *)shareableLinkForAccessory:(PetAccessory *)accessory;
 + (void)sharePetAccessory:(PetAccessory *)accessory
        fromViewController:(UIViewController *)vc
                sourceView:(nullable UIView *)sourceView;

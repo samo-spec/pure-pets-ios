@@ -2426,51 +2426,48 @@ private struct PPMessagingConversationActionsSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
             PPMessagingPalette.canvas
 
-            RadialGradient(
-                colors: [
-                    Color.ppMineralBeige.opacity(
-                        colorScheme == .dark ? 0.20 : 0.45
-                    ),
-                    .clear
-                ],
-                center: .topTrailing,
-                startRadius: 0,
-                endRadius: 280
-            )
+            if allowsAmbientDetail {
+                RadialGradient(
+                    colors: [PPMessagingPalette.canvasWarmField, .clear],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: 310
+                )
 
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(colorScheme == .dark ? 0.025 : 0.22),
-                    .clear
-                ],
-                startPoint: .top,
-                endPoint: .center
-            )
+                RadialGradient(
+                    colors: [PPMessagingPalette.canvasSignalField, .clear],
+                    center: .bottomLeading,
+                    startRadius: 20,
+                    endRadius: 360
+                )
+            }
 
             VStack(spacing: 0) {
                 Capsule(style: .continuous)
-                    .fill(PPMessagingPalette.secondaryText.opacity(0.26))
-                    .frame(width: 38, height: 5)
+                    .fill(PPMessagingPalette.secondaryText.opacity(0.24))
+                    .frame(width: 36, height: 5)
                     .padding(.top, 9)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 12)
                     .accessibilityHidden(true)
 
                 sheetHeader
 
                 ScrollView {
-                    VStack(spacing: 12) {
+                    VStack(spacing: 16) {
                         settingsGroup
                         safetyGroup
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 10)
-                    .padding(.bottom, 24)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
                 }
                 .scrollIndicators(.hidden)
             }
@@ -2479,41 +2476,77 @@ private struct PPMessagingConversationActionsSheet: View {
         .accessibilityIdentifier("pp.messaging.conversation-actions")
     }
 
+    private var allowsAmbientDetail: Bool {
+        !reduceTransparency && colorSchemeContrast == .standard
+    }
+
     private var sheetHeader: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
+            identityMark
+
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(Font.ppBeirutiBold(size: 22, relativeTo: .title2))
+                    .font(Font.ppBeirutiBold(size: 23, relativeTo: .title2))
                     .foregroundStyle(PPMessagingPalette.primaryText)
 
                 if !conversationName.isEmpty {
                     Text(conversationName)
-                        .font(Font.ppBeirutiRegular(size: 13, relativeTo: .subheadline))
+                        .font(Font.ppBeirutiRegular(size: 13.5, relativeTo: .subheadline))
                         .foregroundStyle(PPMessagingPalette.secondaryText)
                         .lineLimit(1)
                 }
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 10)
 
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 13.5, weight: .bold))
                     .foregroundStyle(PPMessagingPalette.primaryText)
                     .frame(width: 44, height: 44)
                     .background(PPMessagingPalette.controlSurface, in: Circle())
                     .overlay {
                         Circle()
-                            .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.75)
+                            .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.8)
                     }
             }
             .buttonStyle(PPMessagingPressButtonStyle())
             .accessibilityLabel(localized("Close"))
         }
         .padding(.horizontal, 18)
-        .padding(.bottom, 4)
+        .padding(.bottom, 5)
+    }
+
+    private var identityMark: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            PPMessagingPalette.highlight.opacity(0.20),
+                            PPMessagingPalette.controlSurface
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Circle()
+                .strokeBorder(PPMessagingPalette.highlight.opacity(0.24), lineWidth: 0.8)
+
+            Text(conversationInitials)
+                .font(Font.ppBeirutiBold(size: 16, relativeTo: .headline))
+                .foregroundStyle(PPMessagingPalette.primaryText)
+        }
+        .frame(width: 48, height: 48)
+        .shadow(
+            color: PPMessagingPalette.shadow.opacity(colorScheme == .dark ? 0.34 : 0.14),
+            radius: 7,
+            y: 3
+        )
+        .accessibilityHidden(true)
     }
 
     private var settingsGroup: some View {
@@ -2575,18 +2608,19 @@ private struct PPMessagingConversationActionsSheet: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(spacing: 0, content: content)
+            .padding(4)
             .background(
-                PPMessagingPalette.headerSurface,
-                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                PPMessagingPalette.sheetSurface,
+                in: RoundedRectangle(cornerRadius: 25, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.75)
+                RoundedRectangle(cornerRadius: 25, style: .continuous)
+                    .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.8)
             }
             .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.14 : 0.045),
+                color: PPMessagingPalette.shadow.opacity(colorScheme == .dark ? 0.30 : 0.11),
                 radius: 14,
-                y: 6
+                y: 7
             )
     }
 
@@ -2594,7 +2628,7 @@ private struct PPMessagingConversationActionsSheet: View {
         Rectangle()
             .fill(PPMessagingPalette.hairline)
             .frame(height: 0.5)
-            .padding(.leading, 62)
+            .padding(.leading, 66)
             .accessibilityHidden(true)
     }
 
@@ -2620,12 +2654,19 @@ private struct PPMessagingConversationActionsSheet: View {
                 execute: action
             )
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: 13) {
                 Image(systemName: systemName)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(isEnabled ? tint : PPMessagingPalette.secondaryText)
-                    .frame(width: 38, height: 38)
-                    .background(tint.opacity(isEnabled ? 0.09 : 0.035), in: Circle())
+                    .frame(width: 42, height: 42)
+                    .background(
+                        tint.opacity(isEnabled ? 0.10 : 0.035),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(tint.opacity(isEnabled ? 0.14 : 0.05), lineWidth: 0.7)
+                    }
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 1) {
@@ -2647,13 +2688,15 @@ private struct PPMessagingConversationActionsSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: isEnabled ? "chevron.forward" : disabledSystemName)
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(PPMessagingPalette.secondaryText)
+                    .frame(width: 28, height: 28)
+                    .background(PPMessagingPalette.controlSurface, in: Circle())
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .frame(minHeight: 56)
+            .frame(minHeight: 60)
             .contentShape(Rectangle())
         }
         .buttonStyle(PPMessagingPressButtonStyle())
@@ -2665,6 +2708,16 @@ private struct PPMessagingConversationActionsSheet: View {
                 : ""
         )
         .accessibilityValue(Text(accessibilityValue ?? ""))
+    }
+
+    private var conversationInitials: String {
+        let value = conversationName
+            .split(separator: " ")
+            .prefix(2)
+            .compactMap(\.first)
+            .map(String.init)
+            .joined()
+        return value.isEmpty ? "P" : value.uppercased()
     }
 
     private func localized(_ key: String) -> String {
@@ -2734,15 +2787,20 @@ private struct PPMessagingScreen: View {
                 .onReceive(state.composerState.$message.dropFirst()) { text in
                     relay.delegate?.messagingHostDidChangeText(text)
                 }
-                .padding(.horizontal, 22)
-                .padding(.top, 9)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
                 .padding(
                     .bottom,
                     state.keyboardIsPresented
-                        ? 12
-                        : max(22, state.bottomNavigationClearance)
+                        ? 10
+                        : max(18, state.bottomNavigationClearance)
                 )
-                .animation(reduceMotion ? nil : .timingCurve(0.2, 0, 0, 1, duration: 0.24), value: state.keyboardIsPresented)
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22),
+                    value: state.keyboardIsPresented
+                )
                 .background {
                     PPMessagingComposerBackdrop()
                 }
@@ -2850,10 +2908,24 @@ private struct PPMessagingScreen: View {
                             }
 
                         if state.isLoadingOlder {
-                            ProgressView()
-                                .tint(PPMessagingPalette.secondaryText)
-                                .padding(.vertical, 12)
-                                .accessibilityLabel(localized("chat_loading_older"))
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(PPMessagingPalette.highlight)
+
+                                Text(localized("chat_loading_older"))
+                                    .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
+                                    .foregroundStyle(PPMessagingPalette.secondaryText)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 32)
+                            .background(PPMessagingPalette.separatorSurface, in: Capsule())
+                            .overlay {
+                                Capsule()
+                                    .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.6)
+                            }
+                            .padding(.vertical, 10)
+                            .accessibilityElement(children: .combine)
                         }
 
                         ForEach(Array(state.messages.enumerated()), id: \.element.id) { index, message in
@@ -2933,9 +3005,9 @@ private struct PPMessagingScreen: View {
                                 }
                             }
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.top, 4)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 10)
+                    .padding(.bottom, 16)
                 }
                 .accessibilityIdentifier("pp.messaging.messages")
                 .ppInteractiveKeyboardDismissal()
@@ -3041,7 +3113,7 @@ private struct PPMessagingScreen: View {
                     // and composer without changing message scroll insets.
                     .padding(.bottom, 18)
                     .zIndex(2)
-                    .transition(.scale(scale: 0.92).combined(with: .opacity))
+                    .transition(.scale(scale: 0.94).combined(with: .opacity))
                 }
             }
         }
@@ -3093,7 +3165,7 @@ private struct PPMessagingScreen: View {
             unseenMessageCount = 0
         }
         if animated && !reduceMotion {
-            withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 0.34), operation)
+            withAnimation(.timingCurve(0.23, 1, 0.32, 1, duration: 0.28), operation)
         } else {
             operation()
         }
@@ -3129,12 +3201,12 @@ private struct PPMessagingScreen: View {
             if reduceMotion {
                 proxy.scrollTo(sourceID, anchor: .center)
             } else {
-                withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 0.36)) {
+                withAnimation(.timingCurve(0.23, 1, 0.32, 1, duration: 0.28)) {
                     proxy.scrollTo(sourceID, anchor: .center)
                 }
             }
             highlightedMessageID = sourceID
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                 if highlightedMessageID == sourceID {
                     highlightedMessageID = nil
                 }
@@ -3161,6 +3233,7 @@ private struct PPMessagingScreen: View {
             replyGestureOffset = 0
             return
         }
+
         replyGestureOffset = min(
             max(horizontalDistance, 0),
             PPMessagingReplyGestureMetrics.maximumOffset
@@ -3201,10 +3274,16 @@ private struct PPMessagingScreen: View {
             return
         }
 
-        withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 0.20)) {
+        withAnimation(
+            .interactiveSpring(
+                response: 0.25,
+                dampingFraction: 0.88,
+                blendDuration: 0.08
+            )
+        ) {
             replyGestureOffset = 0
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             guard replyGestureActivityToken == settlementToken,
                   activeReplyGestureMessageID == messageID else { return }
             activeReplyGestureMessageID = nil
@@ -3257,7 +3336,11 @@ private struct PPMessagingScreen: View {
     }
 
     private func rowSpacing(after index: Int) -> CGFloat {
-        grouping(at: index) == .last || grouping(at: index) == .single ? 11 : 2.5
+        // Even, stable rhythm between bubbles. Grouped continuations get a
+        // comfortable 6pt (no longer cramped at 2pt), and group edges / single
+        // messages get 12pt — a gentle, seamless step instead of a jarring
+        // 2→9 jump. Grouping remains legible through the joined bubble corners.
+        grouping(at: index) == .last || grouping(at: index) == .single ? 12 : 6
     }
 
     private func groupingFamily(
@@ -3286,20 +3369,20 @@ private struct PPMessagingScreen: View {
         for message: PPMessagingMessageSnapshot,
         availableWidth: CGFloat
     ) -> CGFloat {
-        let transcriptWidth = max(availableWidth - 28, 220)
+        let transcriptWidth = max(availableWidth - 24, 220)
         if dynamicTypeSize.isAccessibilitySize {
-            return min(max(transcriptWidth - 42, 230), 430)
+            return min(max(transcriptWidth - 40, 232), 440)
         }
 
         switch message.kind {
         case "audio":
-            return min(max(transcriptWidth * 0.66, 238), 254)
+            return min(max(transcriptWidth * 0.70, 244), 272)
         case "image", "video":
-            return min(max(transcriptWidth * 0.70, 232), 276)
+            return min(max(transcriptWidth * 0.74, 238), 288)
         case "sticker":
-            return min(max(transcriptWidth * 0.52, 190), 220)
+            return min(max(transcriptWidth * 0.54, 194), 224)
         default:
-            return min(max(transcriptWidth * 0.72, 210), 320)
+            return min(max(transcriptWidth * 0.76, 214), 330)
         }
     }
 
@@ -3530,13 +3613,16 @@ private struct PPMessagingHeader: View {
     let relay: PPMessagingActionRelay
     let onExpansionChanged: (Bool) -> Void
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     var body: some View {
         SpearChatHeader(
             state: spearHeaderState,
             style: SpearChatHeaderStyle(
                 brandColor: PPMessagingPalette.highlight,
-                cornerRadius: 20,
-                horizontalPadding: 14
+                cornerRadius: 22,
+                horizontalPadding: 12
             ),
             copy: headerCopy,
             actions: spearActions,
@@ -3551,8 +3637,6 @@ private struct PPMessagingHeader: View {
                 )
             }
         ) { _ in
-            // Reuse the app's existing avatar presentation; Spear owns the
-            // frame, trust ring, presence badge, and accessibility semantics.
             PPMessagingAvatar(
                 name: state.conversationName,
                 urlString: state.avatarURLString,
@@ -3561,6 +3645,41 @@ private struct PPMessagingHeader: View {
             )
         }
         .frame(minHeight: 68)
+        .padding(.horizontal, 6)
+        .padding(.top, 4)
+        .padding(.bottom, 7)
+        .background {
+            ZStack {
+                PPMessagingPalette.headerSurface
+
+                if allowsAmbientDetail {
+                    LinearGradient(
+                        colors: [
+                            PPMessagingPalette.headerHighlight,
+                            .clear,
+                            PPMessagingPalette.canvasSignalField.opacity(0.42)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(PPMessagingPalette.hairline.opacity(0.74))
+                .frame(height: 0.5)
+                .accessibilityHidden(true)
+        }
+        .shadow(
+            color: PPMessagingPalette.shadow.opacity(0.10),
+            radius: 10,
+            y: 5
+        )
+    }
+
+    private var allowsAmbientDetail: Bool {
+        !reduceTransparency && colorSchemeContrast == .standard
     }
 
     private var spearHeaderState: SpearChatHeaderLoadState {
@@ -3813,15 +3932,37 @@ private struct PPMessagingAvatar: View {
                     avatarFallback
                 }
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 46, height: 46)
             .clipShape(Circle())
-            .overlay(Circle().stroke(PPMessagingPalette.avatarStroke, lineWidth: 0.8))
+            .overlay {
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                PPMessagingPalette.highlight.opacity(0.30),
+                                PPMessagingPalette.avatarStroke,
+                                Color.white.opacity(0.22)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(
+                color: PPMessagingPalette.shadow.opacity(0.18),
+                radius: 6,
+                y: 3
+            )
 
             if isOnline {
                 Circle()
                     .fill(PPMessagingPalette.online)
-                    .frame(width: 11, height: 11)
-                    .overlay(Circle().stroke(Color(PPMessagingPalette.canvasUIColor), lineWidth: 2))
+                    .frame(width: 12, height: 12)
+                    .overlay {
+                        Circle()
+                            .stroke(Color(PPMessagingPalette.canvasUIColor), lineWidth: 2.5)
+                    }
                     .accessibilityHidden(true)
             }
         }
@@ -3852,21 +3993,36 @@ private struct PPMessagingConnectionRibbon: View {
 
     var body: some View {
         Button(action: retry) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Image(systemName: "wifi.slash")
+                    .font(.system(size: 12.5, weight: .bold))
+                    .frame(width: 32, height: 32)
+                    .background(PPMessagingPalette.warningSurface, in: Circle())
+                    .accessibilityHidden(true)
+
                 Text(localized("chat_connection_interrupted"))
                     .font(.custom("Beiruti-Medium", size: 13, relativeTo: .footnote))
                     .lineLimit(2)
-                Spacer(minLength: 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
                 Text(localized("KLang_Retry"))
-                    .font(.custom("Beiruti-Bold", size: 13, relativeTo: .footnote))
+                    .font(.custom("Beiruti-Bold", size: 12.5, relativeTo: .footnote))
+                    .padding(.horizontal, 11)
+                    .frame(minHeight: 32)
+                    .background(PPMessagingPalette.warningSurface, in: Capsule())
             }
-            .foregroundColor(PPMessagingPalette.warningText)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 9)
-            .background(PPMessagingPalette.warningSurface)
+            .foregroundStyle(PPMessagingPalette.warningText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(PPMessagingPalette.canvas.opacity(0.94))
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PPMessagingPressButtonStyle())
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(PPMessagingPalette.warningText.opacity(0.12))
+                .frame(height: 0.5)
+        }
         .accessibilityHint(localized("offline_action_message"))
     }
 
@@ -3875,43 +4031,96 @@ private struct PPMessagingConnectionRibbon: View {
     }
 }
 
-private struct PPMessagingLoadingState: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var breathes = false
+private struct PPMessagingStateMark: View {
+    let systemName: String
+    let accent: Color
+
+    @ScaledMetric(relativeTo: .title) private var markSize = 112
 
     var body: some View {
-        VStack(spacing: 24) {
-            ZStack {
-                Circle()
-                    .fill(PPMessagingPalette.controlSurface)
-                    .frame(width: 72, height: 72)
-                    .scaleEffect(reduceMotion ? 1 : (breathes ? 1.04 : 0.97))
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 27, weight: .semibold))
-                    .foregroundColor(PPMessagingPalette.secondaryText)
-            }
+        let size = min(markSize, 138)
 
-            VStack(spacing: 7) {
-                Text(localized("chat_loading_messages_title"))
-                    .font(.custom("Beiruti-Bold", size: 20, relativeTo: .title3))
-                    .foregroundColor(PPMessagingPalette.primaryText)
-                Text(localized("chat_loading_messages_subtitle"))
-                    .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
-                    .foregroundColor(PPMessagingPalette.secondaryText)
-                    .multilineTextAlignment(.center)
-            }
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [accent.opacity(0.18), accent.opacity(0.035), .clear],
+                        center: .center,
+                        startRadius: 4,
+                        endRadius: size * 0.58
+                    )
+                )
 
-            ProgressView()
-                .tint(PPMessagingPalette.secondaryText)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(PPMessagingPalette.sheetSurface)
+                .frame(width: size * 0.48, height: size * 0.34)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.7)
+                }
+                .offset(x: -size * 0.16, y: -size * 0.10)
+
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [accent.opacity(0.88), accent.opacity(0.60)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: size * 0.42, height: size * 0.30)
+                .offset(x: size * 0.17, y: size * 0.14)
+
+            Image(systemName: systemName)
+                .font(.system(size: size * 0.23, weight: .semibold))
+                .foregroundStyle(PPMessagingPalette.primaryText)
+                .symbolRenderingMode(.hierarchical)
         }
-        .padding(32)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                breathes = true
+        .frame(width: size, height: size)
+        .shadow(
+            color: PPMessagingPalette.shadow.opacity(0.12),
+            radius: 10,
+            y: 5
+        )
+        .accessibilityHidden(true)
+    }
+}
+
+private struct PPMessagingLoadingState: View {
+    var body: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 24) {
+                    PPMessagingStateMark(
+                        systemName: "ellipsis.message.fill",
+                        accent: PPMessagingPalette.highlight
+                    )
+
+                    VStack(spacing: 7) {
+                        Text(localized("chat_loading_messages_title"))
+                            .font(.custom("Beiruti-Bold", size: 21, relativeTo: .title3))
+                            .foregroundStyle(PPMessagingPalette.primaryText)
+
+                        Text(localized("chat_loading_messages_subtitle"))
+                            .font(.custom("Beiruti-Regular", size: 14.5, relativeTo: .subheadline))
+                            .foregroundStyle(PPMessagingPalette.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    ProgressView()
+                        .tint(PPMessagingPalette.highlight)
+                        .controlSize(.small)
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 30)
+                .frame(maxWidth: 430)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: proxy.size.height)
+                .accessibilityElement(children: .combine)
             }
+            .scrollIndicators(.hidden)
         }
-        .accessibilityElement(children: .combine)
     }
 
     private func localized(_ key: String) -> String {
@@ -3934,47 +4143,59 @@ private struct PPMessagingEmptyState: View {
     }
 
     private var content: some View {
-        VStack(spacing: 22) {
-            ZStack {
-                Circle()
-                    .fill(PPMessagingPalette.controlSurface)
-                    .frame(width: 94, height: 94)
-                Circle()
-                    .stroke(PPMessagingPalette.hairline, lineWidth: 1)
-                    .frame(width: 118, height: 118)
-                Image(systemName: "pawprint.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(PPMessagingPalette.secondaryText.opacity(0.45))
-                    .offset(x: -27, y: -27)
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundColor(PPMessagingPalette.primaryText)
-            }
-            .accessibilityHidden(true)
+        VStack(spacing: 24) {
+            PPMessagingStateMark(
+                systemName: "pawprint.fill",
+                accent: PPMessagingPalette.highlight
+            )
 
             VStack(spacing: 8) {
                 Text(localized("chat_empty_thread_title"))
-                    .font(.custom("Beiruti-Bold", size: 23, relativeTo: .title2))
-                    .foregroundColor(PPMessagingPalette.primaryText)
+                    .font(.custom("Beiruti-Bold", size: 24, relativeTo: .title2))
+                    .foregroundStyle(PPMessagingPalette.primaryText)
+                    .multilineTextAlignment(.center)
+
                 Text(localized("chat_empty_thread_subtitle"))
-                    .font(.custom("Beiruti-Regular", size: 15, relativeTo: .body))
-                    .foregroundColor(PPMessagingPalette.secondaryText)
+                    .font(.custom("Beiruti-Regular", size: 15.5, relativeTo: .body))
+                    .foregroundStyle(PPMessagingPalette.secondaryText)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Button(action: focusComposer) {
-                Label(localized("chat_empty_thread_action"), systemImage: "square.and.pencil")
-                    .font(.custom("Beiruti-Bold", size: 15, relativeTo: .body))
-                    .padding(.horizontal, 18)
-                    .frame(minHeight: 48)
-                    .background(PPMessagingPalette.primaryText, in: Capsule())
-                    .foregroundColor(PPMessagingPalette.inverseText)
+                Label(
+                    localized("chat_empty_thread_action"),
+                    systemImage: "square.and.pencil"
+                )
+                .font(.custom("Beiruti-Bold", size: 15, relativeTo: .body))
+                .padding(.horizontal, 20)
+                .frame(minHeight: 50)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            PPMessagingPalette.highlight,
+                            PurePetsMessagingTheme.brandDeep
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: Capsule(style: .continuous)
+                )
+                .foregroundStyle(PurePetsMessagingTheme.signalForeground)
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                }
+                .shadow(
+                    color: PPMessagingPalette.highlight.opacity(0.20),
+                    radius: 10,
+                    y: 5
+                )
             }
             .buttonStyle(PPMessagingPressButtonStyle())
         }
         .padding(.horizontal, 32)
-        .padding(.vertical, 28)
+        .padding(.vertical, 30)
         .frame(maxWidth: 430)
         .accessibilityElement(children: .contain)
     }
@@ -3988,33 +4209,45 @@ private struct PPMessagingOfflineState: View {
     let retry: () -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "wifi.slash")
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundColor(PPMessagingPalette.secondaryText)
-                .frame(width: 78, height: 78)
-                .background(PPMessagingPalette.controlSurface, in: Circle())
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 22) {
+                    PPMessagingStateMark(
+                        systemName: "wifi.slash",
+                        accent: PPMessagingPalette.warningText
+                    )
 
-            Text(localized("chat_offline_title"))
-                .font(.custom("Beiruti-Bold", size: 22, relativeTo: .title2))
-                .foregroundColor(PPMessagingPalette.primaryText)
+                    VStack(spacing: 8) {
+                        Text(localized("chat_offline_title"))
+                            .font(.custom("Beiruti-Bold", size: 23, relativeTo: .title2))
+                            .foregroundStyle(PPMessagingPalette.primaryText)
 
-            Text(localized("chat_offline_subtitle"))
-                .font(.custom("Beiruti-Regular", size: 15, relativeTo: .body))
-                .foregroundColor(PPMessagingPalette.secondaryText)
-                .multilineTextAlignment(.center)
+                        Text(localized("chat_offline_subtitle"))
+                            .font(.custom("Beiruti-Regular", size: 15.5, relativeTo: .body))
+                            .foregroundStyle(PPMessagingPalette.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
-            Button(action: retry) {
-                Text(localized("KLang_Retry"))
-                    .font(.custom("Beiruti-Bold", size: 15, relativeTo: .body))
-                    .padding(.horizontal, 22)
-                    .frame(minHeight: 48)
-                    .background(PPMessagingPalette.primaryText, in: Capsule())
-                    .foregroundColor(PPMessagingPalette.inverseText)
+                    Button(action: retry) {
+                        Label(localized("KLang_Retry"), systemImage: "arrow.clockwise")
+                            .font(.custom("Beiruti-Bold", size: 15, relativeTo: .body))
+                            .padding(.horizontal, 20)
+                            .frame(minHeight: 50)
+                            .background(PPMessagingPalette.primaryText, in: Capsule())
+                            .foregroundStyle(PPMessagingPalette.inverseText)
+                    }
+                    .buttonStyle(PPMessagingPressButtonStyle())
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 30)
+                .frame(maxWidth: 430)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: proxy.size.height)
+                .accessibilityElement(children: .contain)
             }
-            .buttonStyle(PPMessagingPressButtonStyle())
+            .scrollIndicators(.hidden)
         }
-        .padding(32)
     }
 
     private func localized(_ key: String) -> String {
@@ -4416,23 +4649,43 @@ private struct PPMessagingTypingRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 9) {
+            HStack(spacing: 10) {
                 PPMessagingTypingDots()
+
                 Text(String(format: localized("chat_typing_format"), name))
                     .font(.custom("Beiruti-Medium", size: 12.5, relativeTo: .footnote))
-                    .foregroundColor(PPMessagingPalette.secondaryText)
+                    .foregroundStyle(PPMessagingPalette.secondaryText)
                     .lineLimit(1)
             }
             .environment(\.layoutDirection, layoutDirection)
-            .padding(.horizontal, 13)
-            .padding(.vertical, 9)
-            .background(PPMessagingPalette.incomingBubble, in: Capsule())
+            .padding(.horizontal, 14)
+            .frame(minHeight: 42)
+            .background(
+                LinearGradient(
+                    colors: [
+                        PPMessagingPalette.incomingBubble,
+                        PPMessagingPalette.sheetSurface
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: 17, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .strokeBorder(PPMessagingPalette.incomingStroke, lineWidth: 0.7)
+            }
+            .shadow(
+                color: PPMessagingPalette.shadow.opacity(0.10),
+                radius: 5,
+                y: 2
+            )
 
             Spacer()
         }
         .environment(\.layoutDirection, .leftToRight)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 5)
+        .padding(.top, 6)
         .accessibilityElement(children: .combine)
     }
 
@@ -4444,21 +4697,26 @@ private struct PPMessagingTypingRow: View {
 private struct PPMessagingTypingDots: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var activeIndex = 0
-    private let timer = Timer.publish(every: 0.28, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 0.32, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 3.5) {
             ForEach([0, 1, 2], id: \.self) { index in
+                let isActive = activeIndex == index
                 Circle()
-                    .fill(PPMessagingPalette.secondaryText)
+                    .fill(
+                        isActive && !reduceMotion
+                            ? PPMessagingPalette.highlight
+                            : PPMessagingPalette.secondaryText.opacity(0.56)
+                    )
                     .frame(width: 5, height: 5)
-                    .scaleEffect(reduceMotion ? 1 : (activeIndex == index ? 1.22 : 0.82))
-                    .opacity(reduceMotion ? 0.72 : (activeIndex == index ? 1 : 0.42))
+                    .scaleEffect(reduceMotion ? 1 : (isActive ? 1.10 : 0.94))
+                    .opacity(reduceMotion ? 0.70 : (isActive ? 1 : 0.48))
             }
         }
         .onReceive(timer) { _ in
             guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 0.18)) {
+            withAnimation(.timingCurve(0.23, 1, 0.32, 1, duration: 0.16)) {
                 activeIndex = (activeIndex + 1) % 3
             }
         }
@@ -4471,14 +4729,22 @@ private struct PPMessagingDateSeparator: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             if !dynamicTypeSize.isAccessibilitySize {
                 line
             }
+
             Text(label)
-                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                .foregroundColor(PPMessagingPalette.secondaryText)
-                .padding(.horizontal, 4)
+                .font(.custom("Beiruti-Bold", size: 11.5, relativeTo: .caption))
+                .foregroundStyle(PPMessagingPalette.secondaryText)
+                .padding(.horizontal, 11)
+                .frame(minHeight: 28)
+                .background(PPMessagingPalette.separatorSurface, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.6)
+                }
+
             if !dynamicTypeSize.isAccessibilitySize {
                 line
             }
@@ -4488,9 +4754,12 @@ private struct PPMessagingDateSeparator: View {
     }
 
     private var line: some View {
-        Rectangle()
-            .fill(PPMessagingPalette.hairline)
-            .frame(height: 0.5)
+        LinearGradient(
+            colors: [.clear, PPMessagingPalette.hairline, .clear],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(height: 0.5)
     }
 
     private var label: String {
@@ -4512,10 +4781,18 @@ private struct PPMessagingUnreadSeparator: View {
     var body: some View {
         HStack(spacing: 9) {
             line
+
             Label(localized("chat_unread"), systemImage: "sparkle")
                 .font(.custom("Beiruti-Bold", size: 11.5, relativeTo: .caption))
-                .foregroundColor(PPMessagingPalette.highlight)
-                .padding(.horizontal, 4)
+                .foregroundStyle(PPMessagingPalette.highlight)
+                .padding(.horizontal, 11)
+                .frame(minHeight: 28)
+                .background(PurePetsMessagingTheme.brandSoft, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .strokeBorder(PPMessagingPalette.highlight.opacity(0.20), lineWidth: 0.7)
+                }
+
             line
         }
         .accessibilityElement(children: .combine)
@@ -4523,9 +4800,12 @@ private struct PPMessagingUnreadSeparator: View {
     }
 
     private var line: some View {
-        Rectangle()
-            .fill(PPMessagingPalette.highlight.opacity(0.28))
-            .frame(height: 0.5)
+        LinearGradient(
+            colors: [.clear, PPMessagingPalette.highlight.opacity(0.42), .clear],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(height: 1)
     }
 
     private func localized(_ key: String) -> String {
@@ -4536,44 +4816,54 @@ private struct PPMessagingUnreadSeparator: View {
 private struct PPMessagingLatestButton: View {
     let count: Int
     let action: () -> Void
+
     @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 7) {
                 Image(systemName: "arrow.down")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12.5, weight: .bold))
+                    .foregroundStyle(PPMessagingPalette.highlight)
+                    .frame(width: 30, height: 30)
+                    .background(PurePetsMessagingTheme.brandSoft, in: Circle())
+
                 if count > 0 {
                     Text(localizedCount)
-                        .font(Font.ppBeirutiBold(size: 11, relativeTo: .caption).monospacedDigit())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(PPMessagingPalette.highlight, in: Capsule())
-                        .foregroundColor(.white)
+                        .font(
+                            Font.ppBeirutiBold(size: 11.5, relativeTo: .caption)
+                                .monospacedDigit()
+                        )
+                        .foregroundStyle(PPMessagingPalette.primaryText)
+                        .padding(.trailing, 4)
                 }
             }
-            .foregroundColor(PPMessagingPalette.primaryText)
-            .frame(minWidth: 44, minHeight: 44)
-            .padding(.horizontal, count > 0 ? 8 : 0)
+            .frame(minWidth: 46, minHeight: 46)
+            .padding(.horizontal, count > 0 ? 7 : 0)
             .background {
                 if count > 0 {
                     Capsule(style: .continuous)
-                        .fill(PPMessagingPalette.headerSurface)
+                        .fill(PPMessagingPalette.sheetSurface)
                 } else {
                     Circle()
-                        .fill(PPMessagingPalette.headerSurface)
+                        .fill(PPMessagingPalette.sheetSurface)
                 }
             }
             .overlay {
                 if count > 0 {
                     Capsule(style: .continuous)
-                        .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
+                        .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.8)
                 } else {
                     Circle()
-                        .stroke(PPMessagingPalette.controlStroke, lineWidth: 0.8)
+                        .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.8)
                 }
             }
-            .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
+            .shadow(
+                color: PPMessagingPalette.shadow.opacity(colorScheme == .dark ? 0.32 : 0.15),
+                radius: 11,
+                y: 5
+            )
         }
         .buttonStyle(PPMessagingPressButtonStyle())
         .accessibilityLabel(
@@ -4602,9 +4892,19 @@ private struct PPMessagingMediaViewer: View {
     let close: () -> Void
     let onSave: () -> Void
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+
+            RadialGradient(
+                colors: [Color.white.opacity(0.06), .clear],
+                center: .center,
+                startRadius: 0,
+                endRadius: 420
+            )
+            .ignoresSafeArea()
 
             if message.kind == "video", let url = message.mediaURL {
                 PPMessagingVideoPlayer(url: url)
@@ -4615,36 +4915,70 @@ private struct PPMessagingMediaViewer: View {
                     url: message.mediaURL,
                     contentMode: .fit
                 )
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 54)
             }
 
+            LinearGradient(
+                colors: [Color.black.opacity(0.48), .clear, Color.black.opacity(0.30)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+
             VStack {
-                HStack {
-                    Button(action: close) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial, in: Circle())
-                    }
-                    .accessibilityLabel(localized("Close"))
+                HStack(spacing: 12) {
+                    viewerButton(
+                        systemName: "xmark",
+                        accessibilityLabel: localized("Close"),
+                        action: close
+                    )
 
                     Spacer()
 
-                    Button(action: onSave) {
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial, in: Circle())
-                    }
-                    .accessibilityLabel(localized("chat_media_download"))
+                    viewerButton(
+                        systemName: "square.and.arrow.down",
+                        accessibilityLabel: localized("chat_media_download"),
+                        action: onSave
+                    )
                 }
-                .padding(16)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
                 Spacer()
             }
         }
         .statusBar(hidden: true)
+    }
+
+    private func viewerButton(
+        systemName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 14.5, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background {
+                    ZStack {
+                        if !reduceTransparency {
+                            Circle().fill(.ultraThinMaterial)
+                        }
+                        Circle()
+                            .fill(Color.black.opacity(reduceTransparency ? 0.78 : 0.30))
+                    }
+                }
+                .overlay {
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.20), lineWidth: 0.8)
+                }
+                .shadow(color: Color.black.opacity(0.28), radius: 9, y: 4)
+        }
+        .buttonStyle(PPMessagingPressButtonStyle())
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private func localized(_ key: String) -> String {
@@ -4759,28 +5093,39 @@ private struct PPMessagingCanvas: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         ZStack {
+            PPMessagingPalette.canvas
+
             WorldGlassBackground(
                 style: .messaging,
-                intensity: colorScheme == .dark ? 0.72 : 0.88,
+                intensity: allowsAmbientDetail
+                    ? (colorScheme == .dark ? 0.52 : 0.68)
+                    : 0.34,
                 isFaded: backgroundImage != nil
             )
 
-            RadialGradient(
-                colors: [PPMessagingPalette.canvasWarmField, .clear],
-                center: .topTrailing,
-                startRadius: 0,
-                endRadius: 330
-            )
+            if allowsAmbientDetail {
+                RadialGradient(
+                    colors: [PPMessagingPalette.canvasWarmField, .clear],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: 380
+                )
 
-            RadialGradient(
-                colors: [PPMessagingPalette.canvasCoolField, .clear],
-                center: .bottomLeading,
-                startRadius: 0,
-                endRadius: 420
-            )
+                RadialGradient(
+                    colors: [PPMessagingPalette.canvasSignalField, .clear],
+                    center: .bottomLeading,
+                    startRadius: 10,
+                    endRadius: 460
+                )
+
+                PPMessagingThreadField()
+                    .opacity(backgroundImage == nil ? 1 : 0.28)
+            }
 
             if let backgroundImage {
                 GeometryReader { proxy in
@@ -4789,59 +5134,131 @@ private struct PPMessagingCanvas: View {
                         .scaledToFill()
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .clipped()
-                        .saturation(0.28)
-                        .contrast(0.92)
-                        .opacity(colorScheme == .dark ? 0.16 : 0.22)
+                        .saturation(0.38)
+                        .contrast(0.94)
+                        .opacity(colorScheme == .dark ? 0.18 : 0.25)
                         .id(ObjectIdentifier(backgroundImage))
                         .transition(.opacity)
                 }
 
                 PPMessagingPalette.canvas
-                    .opacity(colorScheme == .dark ? 0.34 : 0.42)
+                    .opacity(colorScheme == .dark ? 0.30 : 0.34)
             }
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: backgroundImage.map(ObjectIdentifier.init))
+        .animation(
+            reduceMotion
+                ? nil
+                : .timingCurve(0.23, 1, 0.32, 1, duration: 0.24),
+            value: backgroundImage.map(ObjectIdentifier.init)
+        )
         .accessibilityHidden(true)
+    }
+
+    private var allowsAmbientDetail: Bool {
+        !reduceTransparency && colorSchemeContrast == .standard
     }
 }
 
-private struct PPMessagingComposerBackdrop: View {
+private struct PPMessagingThreadField: View {
     var body: some View {
-        LinearGradient(
-            colors: [
-                .clear,
-                PPMessagingPalette.composerBackdrop.opacity(0.84),
-                PPMessagingPalette.composerBackdrop
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea(edges: .bottom)
+        GeometryReader { proxy in
+            let size = proxy.size
+
+            ZStack {
+                Path { path in
+                    path.move(to: CGPoint(x: size.width * 0.02, y: size.height * 0.26))
+                    path.addCurve(
+                        to: CGPoint(x: size.width * 0.98, y: size.height * 0.48),
+                        control1: CGPoint(x: size.width * 0.30, y: size.height * 0.08),
+                        control2: CGPoint(x: size.width * 0.65, y: size.height * 0.68)
+                    )
+                }
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .clear,
+                            PPMessagingPalette.threadLine,
+                            PPMessagingPalette.highlight.opacity(0.08),
+                            .clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 0.8, lineCap: .round)
+                )
+
+                Path { path in
+                    path.move(to: CGPoint(x: size.width * 0.12, y: size.height * 0.78))
+                    path.addCurve(
+                        to: CGPoint(x: size.width * 0.88, y: size.height * 0.14),
+                        control1: CGPoint(x: size.width * 0.34, y: size.height * 0.94),
+                        control2: CGPoint(x: size.width * 0.62, y: size.height * 0.02)
+                    )
+                }
+                .stroke(
+                    PPMessagingPalette.threadLine.opacity(0.62),
+                    style: StrokeStyle(lineWidth: 0.6, lineCap: .round)
+                )
+
+                Circle()
+                    .fill(PPMessagingPalette.highlight.opacity(0.09))
+                    .frame(width: 7, height: 7)
+                    .position(x: size.width * 0.22, y: size.height * 0.20)
+
+                Circle()
+                    .fill(PPMessagingPalette.threadLine.opacity(0.86))
+                    .frame(width: 5, height: 5)
+                    .position(x: size.width * 0.80, y: size.height * 0.60)
+            }
+        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 }
 
-private struct PPMessagingPressButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+private struct PPMessagingComposerBackdrop: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    func makeBody(configuration: Configuration) -> some View {
-        let pressAnimation = reduceMotion
-            ? Animation.easeOut(duration: 0.08)
-            : Animation.timingCurve(
-                0.2,
-                0,
-                0,
-                1,
-                duration: configuration.isPressed ? 0.09 : 0.18
+    var body: some View {
+        ZStack(alignment: .top) {
+            LinearGradient(
+                colors: [
+                    .clear,
+                    PPMessagingPalette.composerBackdrop.opacity(0.78),
+                    PPMessagingPalette.composerBackdrop
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
 
-        configuration.label
-            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.96 : 1))
-            .opacity(configuration.isPressed ? 0.78 : 1)
-            .animation(pressAnimation, value: configuration.isPressed)
+            if allowsAmbientDetail {
+                RadialGradient(
+                    colors: [PPMessagingPalette.canvasSignalField.opacity(0.72), .clear],
+                    center: .bottom,
+                    startRadius: 0,
+                    endRadius: 240
+                )
+            }
+
+            LinearGradient(
+                colors: [.clear, PPMessagingPalette.hairline, .clear],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(height: 0.5)
+        }
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var allowsAmbientDetail: Bool {
+        !reduceTransparency && colorSchemeContrast == .standard
     }
 }
+
+private typealias PPMessagingPressButtonStyle = PurePetsMessagingPressButtonStyle
 
 private extension View {
     @ViewBuilder
@@ -4958,24 +5375,25 @@ private enum PPMessagingPalette {
         let increasedContrast = traits.accessibilityContrast == .high
         if traits.userInterfaceStyle == .dark {
             return UIColor(
-                red: increasedContrast ? 0.025 : 0.043,
-                green: increasedContrast ? 0.028 : 0.048,
-                blue: increasedContrast ? 0.030 : 0.050,
+                red: increasedContrast ? 0.018 : 0.041,
+                green: increasedContrast ? 0.020 : 0.045,
+                blue: increasedContrast ? 0.021 : 0.047,
                 alpha: 1
             )
         }
         return UIColor(
-            red: increasedContrast ? 0.935 : 0.953,
-            green: increasedContrast ? 0.925 : 0.945,
-            blue: increasedContrast ? 0.905 : 0.929,
+            red: increasedContrast ? 0.930 : 0.956,
+            green: increasedContrast ? 0.918 : 0.946,
+            blue: increasedContrast ? 0.895 : 0.928,
             alpha: 1
         )
     }
-    static let canvas = Color(canvasUIColor)
+
+    static let canvas = PurePetsMessagingTheme.canvas
     static let composerBackdrop = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.043, green: 0.048, blue: 0.050, alpha: 0.97)
-            : UIColor(red: 0.953, green: 0.945, blue: 0.929, alpha: 0.97)
+            ? UIColor(red: 0.041, green: 0.045, blue: 0.047, alpha: 0.975)
+            : UIColor(red: 0.956, green: 0.946, blue: 0.928, alpha: 0.975)
     })
     static let primaryText = Color.ppTextPrimary
     static let secondaryText = Color.ppTextSecondary
@@ -4985,53 +5403,34 @@ private enum PPMessagingPalette {
     })
     static let outgoingSecondary = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(white: 1.0, alpha: 0.72)
-            : UIColor(white: 1.0, alpha: 0.76)
+            ? UIColor(white: 1.0, alpha: 0.74)
+            : UIColor(white: 1.0, alpha: 0.78)
     })
-    static let incomingBubble = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.095, green: 0.103, blue: 0.108, alpha: 0.98)
-            : UIColor(red: 0.997, green: 0.991, blue: 0.976, alpha: 0.98)
-    })
-    static let outgoingBubble = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.200, green: 0.212, blue: 0.218, alpha: 1)
-            : UIColor(red: 0.145, green: 0.153, blue: 0.158, alpha: 1)
-    })
-    static let incomingStroke = Color(UIColor { traits in
-        let increasedContrast = traits.accessibilityContrast == .high
-        if traits.userInterfaceStyle == .dark {
-            return UIColor(white: 1.0, alpha: increasedContrast ? 0.24 : 0.10)
-        }
-        return UIColor(white: 0.05, alpha: increasedContrast ? 0.20 : 0.085)
-    })
-    static let outgoingStroke = Color.white.opacity(0.08)
-    static let controlSurface = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.075)
-            : UIColor(white: 0, alpha: 0.038)
-    })
-    static let controlStroke = Color(UIColor { traits in
-        let increasedContrast = traits.accessibilityContrast == .high
-        return traits.userInterfaceStyle == .dark
-            ? UIColor(white: 1.0, alpha: increasedContrast ? 0.30 : 0.13)
-            : UIColor(white: 0.0, alpha: increasedContrast ? 0.22 : 0.075)
-    })
+    static let incomingBubble = PurePetsMessagingTheme.incomingSurface
+    static let outgoingBubble = PurePetsMessagingTheme.outgoingBubbleSurface
+    static let incomingStroke = PurePetsMessagingTheme.incomingBubbleStroke
+    static let outgoingStroke = PurePetsMessagingTheme.outgoingBubbleStroke
+    static let controlSurface = PurePetsMessagingTheme.surfaceRaised.opacity(0.82)
+    static let controlStroke = PurePetsMessagingTheme.surfaceStroke
+    static let sheetSurface = PurePetsMessagingTheme.surface
+    static let shadow = PurePetsMessagingTheme.messageShadow
     static let hairline = Color.ppSeparator.opacity(0.72)
-    static let separatorSurface = Color.ppElevatedSurface.opacity(0.90)
+    static let separatorSurface = PurePetsMessagingTheme.surfaceRaised.opacity(0.88)
     static let mediaPlaceholder = Color.ppSecondarySurface
     static let online = Color.ppSuccess
     static let failure = Color.ppError
-    static let highlight = PPChatComposerPalette.messagingAccent
-    static let incomingReplySurface = Color(UIColor.tertiarySystemFill)
+    static let highlight = PurePetsMessagingTheme.signal
+    static let incomingReplySurface = PurePetsMessagingTheme.replySurface
     static let outgoingReplySurface = Color.white.opacity(0.09)
     static let warningSurface = Color(UIColor.systemOrange).opacity(0.11)
     static let warningText = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark ? UIColor.systemOrange : UIColor.systemOrange.darker(by: 0.22)
+        traits.userInterfaceStyle == .dark
+            ? UIColor.systemOrange
+            : UIColor.systemOrange.darker(by: 0.22)
     })
-    static let avatarStroke = Color.ppSeparator.opacity(0.78)
-    static let avatarTop = Color.ppElevatedSurface
-    static let avatarBottom = Color.ppSecondarySurface
+    static let avatarStroke = PurePetsMessagingTheme.surfaceStroke
+    static let avatarTop = PurePetsMessagingTheme.avatarSurface
+    static let avatarBottom = PurePetsMessagingTheme.avatarDepth
     static let avatarLogoSurface = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(white: 0.92, alpha: 1)
@@ -5039,25 +5438,22 @@ private enum PPMessagingPalette {
     })
     static let headerSurface = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.055, green: 0.061, blue: 0.063, alpha: 0.94)
-            : UIColor(red: 0.975, green: 0.965, blue: 0.946, alpha: 0.94)
+            ? UIColor(red: 0.055, green: 0.060, blue: 0.063, alpha: 0.96)
+            : UIColor(red: 0.982, green: 0.973, blue: 0.956, alpha: 0.96)
     })
     static let headerHighlight = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(white: 1.0, alpha: 0.025)
-            : UIColor(white: 1.0, alpha: 0.36)
+            ? UIColor(white: 1.0, alpha: 0.030)
+            : UIColor(white: 1.0, alpha: 0.44)
     })
-    static let canvasWarmField = Color(UIColor { traits in
-        let base = UIColor.ppMineralBeige.resolvedColor(with: traits)
+    static let canvasWarmField = PurePetsMessagingTheme.ambientWarm
+    static let canvasSignalField = PurePetsMessagingTheme.ambientSignal
+    static let canvasCoolField = PurePetsMessagingTheme.ambientSignal
+    static let threadLine = Color(UIColor { traits in
+        let increasedContrast = traits.accessibilityContrast == .high
         return traits.userInterfaceStyle == .dark
-            ? base.withAlphaComponent(0.24)
-            : base.withAlphaComponent(0.60)
-    })
-    static let canvasCoolField = Color(UIColor { traits in
-        let base = UIColor.ppMineralBeige.resolvedColor(with: traits)
-        return traits.userInterfaceStyle == .dark
-            ? base.withAlphaComponent(0.18)
-            : base.withAlphaComponent(0.42)
+            ? UIColor(white: 1, alpha: increasedContrast ? 0.10 : 0.045)
+            : UIColor(white: 0, alpha: increasedContrast ? 0.11 : 0.042)
     })
 }
 

@@ -10,13 +10,26 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
 
 @interface MainKindsArrayManager ()
 - (void)pp_fillAccessoryCategoriesForMainKinds:(NSArray<MainKindsModel *> *)mainKinds completion:(dispatch_block_t)completion;
+- (void)pp_publishVisibleMainKinds:(NSArray<MainKindsModel *> *)mainKinds;
+@property (nonatomic, assign) BOOL pp_mainKindsLoadInFlight;
+@property (nonatomic, strong) NSMutableArray *pp_pendingMainKindsCompletions;
 @end
-
 
 //NSArray<MainKindsModel *> *PPMainKinds      = nil;
 
 // MainKindsArrayManager.m
 @implementation MainKindsArrayManager
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _MainKindsArray = [NSMutableArray array];
+        _pp_pendingMainKindsCompletions = [NSMutableArray array];
+    }
+    return self;
+}
+
 + (instancetype)shared {
 
     static id s;
@@ -47,18 +60,22 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
 
         if (error) {
             NSLog(@"[MainKinds] ❌ Fetch error: %@", error.localizedDescription);
-            if (block) block(nil, error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (block) block(nil, error);
+            });
             return;
         }
         if (!snapshot) {
-            if (block) block(@[], nil);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (block) block(@[], nil);
+            });
             return;
         }
 
         NSMutableArray<MainKindsModel *> *arr = [NSMutableArray array];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             MainKindsModel *m = [[MainKindsModel alloc] initWithSnapshot:doc];
-            if (m) [arr addObject:m];
+            if (m && m.isVisibleInUserApp) [arr addObject:m];
         }
 
         [arr sortUsingComparator:^NSComparisonResult(MainKindsModel *a, MainKindsModel *b) {
@@ -67,15 +84,18 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
             NSOrderedSame;
         }];
 
-        [strongSelf pp_fillAccessoryCategoriesForMainKinds:arr completion:^{
-            strongSelf.MainKindsArray = arr.mutableCopy;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [strongSelf pp_fillAccessoryCategoriesForMainKinds:arr completion:^{
+                [strongSelf pp_publishVisibleMainKinds:arr];
+                [strongSelf saveMainKindsToCache];
 
-            NSLog(@"[MainKinds] 🔄 Fetch completed → %lu items", (unsigned long)arr.count);
-
-            [strongSelf saveMainKindsToCache];
-
-            if (block) block(arr, nil);
-        }];
+                NSArray<MainKindsModel *> *published = [strongSelf visibleMainKindsSnapshot];
+                NSLog(@"[MainKinds] 🔄 Fetch completed → %lu items", (unsigned long)published.count);
+                [[NSNotificationCenter defaultCenter] postNotificationName:PPMainKindsUpdatedNotification
+                                                                    object:strongSelf];
+                if (block) block(published, nil);
+            }];
+        });
     }];
 }
 
@@ -318,33 +338,44 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
 
 
 - (void)loadMainDataCompletionHandler:(void (^)(int result))completionHandler {
-    // Initialize array if needed
-
-    self.MainKindsArray =  [self loadMainKindsFromCache].mutableCopy;
-    NSLog(@"Initial MainKindsArray Complete From %@",self.MainKindsArray.count > 0 ? @"::CACHE::" :  @"::SERVER::");
-    if (!self.MainKindsArray) {
-        self.MainKindsArray = [NSMutableArray array];
-    }
-    else
-    {
-
-
+    if (!NSThread.isMainThread) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf loadMainDataCompletionHandler:completionHandler];
+        });
+        return;
     }
 
-    // If we already have cached MainKinds data, return it immediately.
-    BOOL hasCache = (self.MainKindsArray.count > 0);
-    if (hasCache) {
-        if (completionHandler) {
+    if (!self.MainKindsArray) self.MainKindsArray = [NSMutableArray array];
+    if (!self.pp_pendingMainKindsCompletions) self.pp_pendingMainKindsCompletions = [NSMutableArray array];
 
-            NSLog(@"completionHandler MainKindsArray Because it complete from cache ✅✅✅✅✅✅");
-            completionHandler(1);  // Return success with cached data
+    if (self.MainKindsArray.count == 0) {
+        NSArray<MainKindsModel *> *cachedKinds = [self loadMainKindsFromCache];
+        if (cachedKinds.count > 0) {
+            [self pp_publishVisibleMainKinds:cachedKinds];
         }
     }
 
-    // Set a flag indicating whether initial data has been seeded
-    self.didSeedMainKinds = hasCache;
+    BOOL hasInitialData = self.MainKindsArray.count > 0;
+    self.didSeedMainKinds = hasInitialData;
+    NSLog(@"Initial MainKindsArray Complete From %@",
+          hasInitialData ? @"::CACHE_OR_MEMORY::" : @"::SERVER::");
 
-    // Build the Firestore query (sorted by ID ascending)
+    if (completionHandler) {
+        if (hasInitialData) {
+            completionHandler(1);
+        } else {
+            [self.pp_pendingMainKindsCompletions addObject:[completionHandler copy]];
+        }
+    }
+
+    // Coalesce concurrent callers. Cache-backed callers have already completed;
+    // callers without data are drained once when this request reaches a terminal state.
+    if (self.pp_mainKindsLoadInFlight) {
+        return;
+    }
+    self.pp_mainKindsLoadInFlight = YES;
+
     FIRQuery *query = [[[[FIRFirestore firestore] collectionWithPath:@"MainKindsCollection"]
                         queryWhereField:@"is_visible_in_user_app" isEqualTo:@YES]
                        queryOrderedByField:@"sortingKey" descending:NO];
@@ -358,46 +389,89 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
 
         if (error) {
             NSLog(@"Error fetching MainKinds: %@", error.localizedDescription);
-            if (completionHandler && !strongSelf.didSeedMainKinds) {
-                completionHandler(0);
-            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf pp_finishMainKindsLoadWithResult:0];
+            });
             return;
         }
         if (!snapshot) {
             NSLog(@"No snapshot returned for MainKindsCollection");
-            if (completionHandler && !strongSelf.didSeedMainKinds) {
-                completionHandler(0);
-            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf pp_finishMainKindsLoadWithResult:0];
+            });
             return;
         }
 
-        // Seed the array from the fetched data
-        [strongSelf.MainKindsArray removeAllObjects];
+        NSMutableArray<MainKindsModel *> *serverKinds = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             MainKindsModel *model = [[MainKindsModel alloc] initWithSnapshot:doc];
+            if (!model || !model.isVisibleInUserApp) continue;
             if (!model.SubKindsArray) model.SubKindsArray = [NSMutableArray array];
             model.didSeedSubKinds = NO;
-            [strongSelf.MainKindsArray addObject:model];
+            [serverKinds addObject:model];
         }
-        [strongSelf.MainKindsArray sortUsingComparator:^NSComparisonResult(MainKindsModel *a, MainKindsModel *b) {
+        [serverKinds sortUsingComparator:^NSComparisonResult(MainKindsModel *a, MainKindsModel *b) {
             if (a.sortingKey < b.sortingKey) return NSOrderedAscending;
             if (a.sortingKey > b.sortingKey) return NSOrderedDescending;
             return NSOrderedSame;
         }];
-        [strongSelf pp_fillAccessoryCategoriesForMainKinds:strongSelf.MainKindsArray completion:^{
-            strongSelf.didSeedMainKinds = YES;
-            [strongSelf saveMainKindsToCache];
-
-            if (!hasCache && completionHandler) {
-                NSLog(@"Initial MainKindsArray updated with Server %lu items.", (unsigned long)strongSelf.MainKindsArray.count);
-                completionHandler(1);
-            } else if (completionHandler) {
-                completionHandler(1);
-            }
-            [[NSNotificationCenter defaultCenter] postNotificationName:PPMainKindsUpdatedNotification object:strongSelf];
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"fetchMainKindsComplete" object:strongSelf];
-        }];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [strongSelf pp_fillAccessoryCategoriesForMainKinds:serverKinds completion:^{
+                [strongSelf pp_publishVisibleMainKinds:serverKinds];
+                strongSelf.didSeedMainKinds = YES;
+                [strongSelf saveMainKindsToCache];
+                NSLog(@"MainKindsArray refreshed with %lu visible server items.",
+                      (unsigned long)strongSelf.MainKindsArray.count);
+                [strongSelf pp_finishMainKindsLoadWithResult:1];
+                [[NSNotificationCenter defaultCenter] postNotificationName:PPMainKindsUpdatedNotification object:strongSelf];
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"fetchMainKindsComplete" object:strongSelf];
+            }];
+        });
     }];
+}
+
+- (NSArray<MainKindsModel *> *)visibleMainKindsSnapshot
+{
+    if (NSThread.isMainThread) {
+        return self.MainKindsArray.copy ?: @[];
+    }
+
+    __block NSArray<MainKindsModel *> *snapshot = nil;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        snapshot = [self visibleMainKindsSnapshot];
+    });
+    return snapshot ?: @[];
+}
+
+- (void)pp_publishVisibleMainKinds:(NSArray<MainKindsModel *> *)mainKinds
+{
+    NSAssert(NSThread.isMainThread, @"MainKinds snapshots must be published on the main thread.");
+    NSMutableArray<MainKindsModel *> *visible = [NSMutableArray arrayWithCapacity:mainKinds.count];
+    for (MainKindsModel *kind in mainKinds ?: @[]) {
+        if (kind && kind.isVisibleInUserApp) [visible addObject:kind];
+    }
+    [visible sortUsingComparator:^NSComparisonResult(MainKindsModel *a, MainKindsModel *b) {
+        if (a.sortingKey < b.sortingKey) return NSOrderedAscending;
+        if (a.sortingKey > b.sortingKey) return NSOrderedDescending;
+        if (a.ID < b.ID) return NSOrderedAscending;
+        if (a.ID > b.ID) return NSOrderedDescending;
+        return NSOrderedSame;
+    }];
+
+    NSArray<MainKindsModel *> *published = visible.copy;
+    self.MainKindsArray = published.mutableCopy;
+}
+
+- (void)pp_finishMainKindsLoadWithResult:(int)result
+{
+    NSAssert(NSThread.isMainThread, @"MainKinds terminal delivery must occur on the main thread.");
+    self.pp_mainKindsLoadInFlight = NO;
+    NSArray *callbacks = self.pp_pendingMainKindsCompletions.copy;
+    [self.pp_pendingMainKindsCompletions removeAllObjects];
+    for (id callbackObject in callbacks) {
+        void (^callback)(int) = callbackObject;
+        callback(result);
+    }
 }
 
 // Helper method to find index of MainKind by Firestore documentID

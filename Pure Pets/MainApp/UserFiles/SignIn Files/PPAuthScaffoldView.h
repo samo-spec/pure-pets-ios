@@ -20,7 +20,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)applyPrimaryButtonStyleToButton:(UIButton *)button enabled:(BOOL)enabled loading:(BOOL)loading;
 + (void)applySecondaryButtonStyleToButton:(UIButton *)button;
 + (void)applyInputStyleToView:(UIView *)view;
++ (void)applyFocusStyleToInputView:(UIView *)view focused:(BOOL)focused;
 + (void)addPressMotionToControl:(UIControl *)control;
++ (void)animateEntranceForViews:(NSArray<UIView *> *)views
+                    inContainer:(UIView *)container;
 
 @end
 

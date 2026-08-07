@@ -14,15 +14,20 @@ static NSString * const PPMainKindsUpdatedNotification = @"MainKindsUpdatedNotif
 
 
 
-/// Global immutable snapshot of the latest loaded MainKinds
-FOUNDATION_EXPORT NSArray<MainKindsModel *> * PPMainKindsArray;
-
 @interface MainKindsArrayManager : NSObject
 + (instancetype)shared;
 - (void)fetchMainKindByID:(NSString *)mainID completion:(void(^)(NSDictionary *doc, NSError *err))completion;
 - (void)addOrReplaceSubKind:(SubKindModel *)sub toMainID:(NSString *)mainID completion:(void(^)(NSError *err))completion;
 - (void)removeSubKindID:(NSString *)subID fromMainID:(NSString *)mainID completion:(void(^)(NSError *err))completion;
+/// Cache-first, concurrent-call-safe load. Every non-nil completion is invoked
+/// exactly once on the main thread. Later server refreshes are broadcast through
+/// PPMainKindsUpdatedNotification instead of invoking the completion again.
 - (void)loadMainDataCompletionHandler:(void (^)(int result))completionHandler;
+
+/// Queue-safe immutable view of the latest user-visible taxonomy. This is the
+/// preferred read API for new integrations; the legacy mutable property and
+/// convenience macro remain available for existing screens.
+- (NSArray<MainKindsModel *> *)visibleMainKindsSnapshot;
 
 - (void)FillMainKindsArray;
 @property (nonatomic, strong) NSMutableArray<MainKindsModel *> *MainKindsArray;

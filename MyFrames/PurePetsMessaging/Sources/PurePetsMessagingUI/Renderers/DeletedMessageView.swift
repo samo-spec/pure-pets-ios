@@ -5,10 +5,20 @@ struct DeletedMessageView: View {
   let payload: DeletedPayload
 
   var body: some View {
-    Label(message, systemImage: "nosign")
-      .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline).italic())
-      .foregroundStyle(.secondary)
-      .accessibilityLabel(message)
+    HStack(spacing: 8) {
+      Image(systemName: "nosign")
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .frame(width: 24, height: 24)
+        .background(PurePetsMessagingTheme.replySurface, in: Circle())
+        .accessibilityHidden(true)
+
+      Text(message)
+        .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline).italic())
+        .foregroundStyle(.secondary)
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(message)
   }
 
   private var message: String {

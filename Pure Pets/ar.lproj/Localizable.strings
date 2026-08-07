@@ -3496,6 +3496,13 @@
 "user_menu_account_section" = "الحساب";
 "user_menu_activity_section" = "النشاط";
 "user_menu_tools_section" = "الدعم والإعدادات";
+"pure_lens_account_section" = "الاكتشاف البصري";
+"pure_lens_account_title" = "بيور لينس";
+"pure_lens_account_camera" = "كاميرا";
+"pure_lens_account_recognize" = "تعرّف";
+"pure_lens_account_discover" = "اكتشف";
+"pure_lens_account_a11y" = "بيور لينس. كاميرا وتعرّف واكتشاف في المتجر.";
+"pure_lens_account_hint" = "يفتح كاميرا اكتشاف الحيوانات";
 "user_menu_profile_subtitle" = "عرض وتحديث بيانات حسابك.";
 "user_menu_login_subtitle" = "سجّل الدخول لفتح قائمة حسابك.";
 "user_menu_favorites_subtitle" = "افتح الحيوانات والمنتجات المحفوظة.";
@@ -4291,3 +4298,9 @@
 "purelens_error_cart_out_of_stock" = "نفد مخزون المنتج.";
 "purelens_error_cart_failed" = "تعذر تجهيز الطلب.";
 "purelens_error_listing_unavailable" = "مسار إنشاء الإعلان غير متاح الآن.";
+
+
+// SwiftUI pet profile surfaces
+"pet_field_age_short" = "العمر";
+"pet_profiles_card_hint" = "يفتح ملف هذا الحيوان الأليف";
+"pet_vaccine_name_required" = "اسم التطعيم مطلوب";

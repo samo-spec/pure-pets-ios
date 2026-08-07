@@ -635,10 +635,11 @@ fromViewController:(UIViewController *)vc
     NSString *adID = [petAd.adID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (adID.length == 0) return nil;
 
-    NSURLComponents *components = [NSURLComponents componentsWithString:@"https://pure-pets.net/share.html"];
+    NSURLComponents *components = [NSURLComponents componentsWithString:@"https://pure-pets.net/share"];
     if (!components) return nil;
 
     components.queryItems = @[
+        [NSURLQueryItem queryItemWithName:@"type" value:@"pet_ad"],
         [NSURLQueryItem queryItemWithName:@"id" value:adID]
     ];
     return components.URL;

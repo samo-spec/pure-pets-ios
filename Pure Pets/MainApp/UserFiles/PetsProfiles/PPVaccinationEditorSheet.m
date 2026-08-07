@@ -12,6 +12,7 @@
  
 #import "Language.h"
 #import "GM.h"
+#import <Pure_Pets-Swift.h>
 
 // ─── Constants ────────────────────────────────────────────
 
@@ -171,6 +172,7 @@ static const CGFloat kCorner      = 16.0;
 @property (nonatomic, strong) PPVaccDateRow    *nextDueDateRow;
 @property (nonatomic, strong) UIButton         *saveButton;
 @property (nonatomic, strong) UIButton         *cancelButton;
+@property (nonatomic, strong) PPVaccinationSwiftUIHostingController *swiftUIHost;
 @end
 
 @implementation PPVaccinationEditorSheet
@@ -221,6 +223,42 @@ static const CGFloat kCorner      = 16.0;
     [parent presentViewController:sheet animated:YES completion:nil];
 }
 
+#pragma mark - SwiftUI Surface
+
+- (void)pp_buildSwiftUI {
+    __weak typeof(self) weakSelf = self;
+    self.swiftUIHost = [[PPVaccinationSwiftUIHostingController alloc]
+        initWithRecord:self.record
+        isNewRecord:self.isNewRecord
+        onSaved:^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [self dismissViewControllerAnimated:YES completion:^{
+                if (self.completion) self.completion(self.record, YES);
+            }];
+        }
+        onCancelled:^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [self dismissViewControllerAnimated:YES completion:^{
+                if (self.completion) self.completion(nil, NO);
+            }];
+        }];
+
+    [self addChildViewController:self.swiftUIHost];
+    UIView *hostedView = self.swiftUIHost.view;
+    hostedView.translatesAutoresizingMaskIntoConstraints = NO;
+    hostedView.backgroundColor = UIColor.clearColor;
+    [self.view addSubview:hostedView];
+    [NSLayoutConstraint activateConstraints:@[
+        [hostedView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [hostedView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [hostedView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [hostedView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+    ]];
+    [self.swiftUIHost didMoveToParentViewController:self];
+}
+
 #pragma mark - Lifecycle
 
 - (void)viewDidLoad {
@@ -229,8 +267,7 @@ static const CGFloat kCorner      = 16.0;
     self.view.backgroundColor = PPPetsUICanvasColor();
     self.view.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
 
-    [self pp_buildUI];
-    [self pp_populateFields];
+    [self pp_buildSwiftUI];
 }
 
 - (void)viewDidAppear:(BOOL)animated {

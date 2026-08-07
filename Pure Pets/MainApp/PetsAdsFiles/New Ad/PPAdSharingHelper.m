@@ -63,7 +63,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 + (void)shareItem:(id)item fromViewController:(UIViewController *)viewController {
-    NSString *deepLink = @"";
     NSString *message = @"";
     NSMutableArray *itemsToShare = [NSMutableArray array];
     
@@ -96,17 +95,14 @@ NS_ASSUME_NONNULL_BEGIN
         
     } else if ([item isKindOfClass:[PetAccessory class]]) {
         PetAccessory *accessory = (PetAccessory *)item;
-        
-        // Construct deep link
-        deepLink = [NSString stringWithFormat:@"purepets://accessory/%@", accessory.accessoryID];
-        
-        // Compose message
-        message = [NSString stringWithFormat:
-                   @"Check out this pet accessory!\n\n%@: %@\n%@: %@\n\nOpen in app: %@",
-                   kLang(@"name"), accessory.name ?: @"",
-                   kLang(@"price"), accessory.price ?: @"",
-                   deepLink];
-        
+        NSURL *shareURL = [PetAccessory shareableLinkForAccessory:accessory];
+        if (!shareURL) {
+            NSLog(@"Cannot share accessory without a public share URL.");
+            return;
+        }
+
+        // Use the same localized message and canonical Website URL as the main accessory viewer.
+        message = [PetAccessory shareMessageForAccessory:accessory];
         [itemsToShare addObject:message];
         
         if (accessory.imageURLsArray.count > 0) {
@@ -115,7 +111,6 @@ NS_ASSUME_NONNULL_BEGIN
             if (imageData) {
                 UIImage *originalImage = [UIImage imageWithData:imageData];
                 if (originalImage) {
-                    //UIImage *watermarkedImage = [self imageWithWatermark:originalImage watermarkText:@"Pure Pets"];
                     UIImage *watermarkedImage = [self imageWithLogoWatermark:originalImage logo:[UIImage imageNamed:@"newlogo"]];
                     [itemsToShare addObject:watermarkedImage];
                 }
