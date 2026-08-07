@@ -4307,6 +4307,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 }
 
 
+- (void)pp_openListingDraftWithPrefill:(NSDictionary<NSString *, NSString *> *)prefill
+{
+    (void)prefill;
+    [self openNewAdEditor];
+}
+
 - (void)openAddUsedAccessory {
     if (UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) {
         [PPAlertHelper showErrorIn:self

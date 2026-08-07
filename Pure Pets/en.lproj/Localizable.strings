@@ -4271,3 +4271,36 @@
 "pp_media_viewer_loading" = "Loading";
 "pp_media_viewer_retry" = "Retry";
 "pp_media_viewer_play" = "Play";
+
+
+/* PureLens Detector 3.0 host bridge */
+"purelens_remote_processing_disclosure" = "After you agree, one selected frame is sent to the Pure Pets service using Google Gemini to understand the scene. Continuous video is never sent, and the frame is deleted after the request according to the privacy policy.";
+"purelens_action_order_ready" = "Order ready";
+"purelens_action_order_ready_detail" = "The product was added to your cart. Review price and stock before checkout.";
+"purelens_action_product_opened" = "Product opened";
+"purelens_action_product_opened_detail" = "You can review the product details in Pure Pets.";
+"purelens_action_medicine_opened" = "Package information opened";
+"purelens_action_medicine_opened_detail" = "Only verified package information is shown, never diagnosis or dosage.";
+"purelens_action_vet_opened" = "Veterinary care opened";
+"purelens_action_vet_opened_detail" = "Speak with a professional; PureLens does not provide diagnosis.";
+"purelens_action_adoption_opened" = "Adoption opened";
+"purelens_action_adoption_opened_detail" = "Review the current records before taking any action.";
+"purelens_action_support_opened" = "Support opened";
+"purelens_action_support_opened_detail" = "The Pure Pets team can help you now.";
+"purelens_action_listing_opened" = "Listing editor opened";
+"purelens_action_listing_opened_detail" = "Review the fields and complete the form before publishing.";
+"purelens_error_generic" = "PureLens could not complete this right now.";
+"purelens_error_auth" = "Your account session could not be verified.";
+"purelens_error_app_check" = "App security verification could not be completed.";
+"purelens_error_profile" = "The Pet Profile could not be opened right now.";
+"purelens_error_invalid_payload" = "The action data is incomplete.";
+"purelens_error_invalid_action" = "This action is not available right now.";
+"purelens_error_action_in_progress" = "This action is already in progress.";
+"purelens_error_product_unavailable" = "This product is not available right now.";
+"purelens_error_medicine_unavailable" = "Verified package information is not available right now.";
+"purelens_error_cart_unavailable" = "The order cannot be prepared because the product or stock changed.";
+"purelens_error_cart_cancelled" = "Adding the product to your cart was cancelled.";
+"purelens_error_offline" = "Check your connection and try adding the product again.";
+"purelens_error_cart_out_of_stock" = "This product is out of stock.";
+"purelens_error_cart_failed" = "The order could not be prepared.";
+"purelens_error_listing_unavailable" = "The listing flow is not available right now.";

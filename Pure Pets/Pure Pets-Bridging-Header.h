@@ -46,6 +46,7 @@
 #import "PPColorUtils.h"
 #import "ServiceModel.h"
 #import "PPHomeViewController.h"
+#import "PPRootTabBarController.h"
 #import "PPHomeDataBridge.h"
 #import "PPDataViewVM.h"
 #import "PPMarketplaceDataViewBridge.h"

@@ -38,6 +38,11 @@ typedef void (^PPCartFloatingBarOpenHandler)(void);
 - (void)pp_deactivateFloatingCartBarForSourceViewController:(UIViewController *)viewController
                                                    animated:(BOOL)animated;
 - (BOOL)pp_openChatThreadFromNotification:(ChatThreadModel *)thread animated:(BOOL)animated;
+
+/// Opens the existing listing editor for a PureLens-created draft. The editor
+/// remains host-owned; prefill values are advisory and never publish directly.
+- (void)pp_openListingDraftWithPrefill:(NSDictionary<NSString *, NSString *> *)prefill
+    NS_SWIFT_NAME(pp_openListingDraft(prefill:));
 @end
 
 

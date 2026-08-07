@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import FirebaseAuth
+import FirebaseAnalytics
 import FirebaseAppCheck
 import PureLens
 
@@ -8,9 +9,17 @@ import PureLens
 final class HomeRouter: NSObject, PureLensViewControllerDelegate {
     private(set) weak var owner: PPHomeViewController?
     private var inFlightRoutes = Set<String>()
+    private var inFlightLensActions = Set<String>()
+    private var completedLensActions: [String: NSDictionary] = [:]
     private var activeLensContext: LensContext?
     private var profilePresentationCoordinator: PetProfilePresentationCoordinator?
     private let lensEndpoint = URL(string: "https://us-central1-pure-pets-49199.cloudfunctions.net/lensResolve")!
+
+    // Consent is scoped to the authenticated user and the exact processor,
+    // purpose, and retention terms disclosed by the current backend contract.
+    // Bump this value whenever those terms change.
+    private static let lensConsentVersion = "purelens-3.0-google-gemini-no-retention-v1"
+    private static let lensConsentEvent = "pure_lens_remote_processing_consent_granted"
 
     init(owner: PPHomeViewController) {
         self.owner = owner
@@ -37,17 +46,19 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
             guard let self, let owner else { return }
             guard error == nil, let context else { owner.pp_homeOpenPetProfiles(); return }
             self.activeLensContext = context
-            let locale = Language.currentLanguageCode() ?? Locale.current.identifier
+            let locale = context.localeIdentifier
             let configuration = PureLensObjCConfiguration(
                 endpoint: self.lensEndpoint,
                 activePetID: context.activePetID,
                 activePetName: context.activePetName,
                 petIdentityConfidence: context.petIdentityConfidence ?? 0,
-                proactiveHint: nil,
-                proactiveHintExpiresAt: nil,
+                proactiveHint: context.proactiveHint,
+                proactiveHintExpiresAt: context.proactiveHintExpiresAt,
                 hapticsEnabled: true,
-                remoteProcessingDisclosure: nil,
-                hasPriorRemoteProcessingConsent: false,
+                remoteProcessingDisclosure: self.localizedLens(
+                    "purelens_remote_processing_disclosure"
+                ),
+                hasPriorRemoteProcessingConsent: self.hasCurrentLensConsent,
                 localeIdentifier: locale
             )
             let lens = PureLensViewControllerFactory.makeViewController(configuration: configuration, delegate: self)
@@ -87,11 +98,11 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
     // MARK: - Pure Lens bridge
 
     func pureLensAuthorizationToken(_ completion: @escaping (String?, NSError?) -> Void) {
-        guard let user = Auth.auth().currentUser else { completion(nil, lensError("Error")); return }
+        guard let user = Auth.auth().currentUser else { completion(nil, lensError("purelens_error_auth")); return }
         user.getIDTokenForcingRefresh(false) { [weak user] token, error in
             if let token, !token.isEmpty, error == nil { completion(token, nil); return }
             guard let user else {
-                completion(nil, error.map { $0 as NSError } ?? self.lensError("Error"))
+                completion(nil, error.map { $0 as NSError } ?? self.lensError("purelens_error_auth"))
                 return
             }
             user.getIDTokenForcingRefresh(true) { refreshed, refreshError in
@@ -99,7 +110,7 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
                     (refreshed?.isEmpty == false) ? refreshed : nil,
                     refreshError.map { $0 as NSError }
                         ?? error.map { $0 as NSError }
-                        ?? self.lensError("Error")
+                        ?? self.lensError("purelens_error_auth")
                 )
             }
         }
@@ -108,23 +119,30 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
     func pureLensAdditionalHeaders(_ completion: @escaping (NSDictionary?, NSError?) -> Void) {
         AppCheck.appCheck().limitedUseToken { token, error in
             guard let token = token?.token, !token.isEmpty, error == nil else {
-                completion(nil, error.map { $0 as NSError } ?? self.lensError("Error")); return
+                completion(nil, error.map { $0 as NSError } ?? self.lensError("purelens_error_app_check"))
+                return
             }
             completion(["X-Firebase-AppCheck": token] as NSDictionary, nil)
         }
     }
 
     func pureLensOpenPetProfile(_ completion: @escaping (NSDictionary?, NSError?) -> Void) {
-        guard let owner, profilePresentationCoordinator == nil else { completion(nil, lensError("Error")); return }
+        guard let owner, profilePresentationCoordinator == nil else { completion(nil, lensError("purelens_error_profile")); return }
         let presenter = topViewController(from: owner.presentedViewController ?? owner)
         let profileVC = PPPetProfilesViewController()
         let navigation = UINavigationController(rootViewController: profileVC)
         navigation.modalPresentationStyle = .formSheet
         let coordinator = PetProfilePresentationCoordinator { [weak self] in
-            guard let self else { completion(nil, self?.lensError("Error")); return }
+            guard let self else {
+                completion(nil, NSError(domain: "PurePets.PureLens", code: 1))
+                return
+            }
             self.profilePresentationCoordinator = nil
             self.loadPetContext(preferredPetID: self.activeLensContext?.activePetID) { context, error in
-                guard let context, error == nil else { completion(nil, error ?? self.lensError("Error")); return }
+                guard let context, error == nil else {
+                    completion(nil, error ?? self.lensError("purelens_error_profile"))
+                    return
+                }
                 self.activeLensContext = context
                 completion(self.contextDictionary(context), nil)
             }
@@ -134,39 +152,169 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
     }
 
     func pureLensPerformAction(_ kind: String, actionID: String, payload: NSDictionary, completion: @escaping (NSDictionary?, NSError?) -> Void) {
-        guard let owner else { completion(nil, lensError("Error")); return }
+        guard let owner else { completion(nil, lensError("purelens_error_generic")); return }
+        guard !actionID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            completion(nil, lensError("purelens_error_invalid_payload"))
+            return
+        }
+        if let cached = completedLensActions[actionID] {
+            completion(cached, nil)
+            return
+        }
+        guard inFlightLensActions.insert(actionID).inserted else {
+            completion(nil, lensError("purelens_error_action_in_progress"))
+            return
+        }
+        let finish: (NSDictionary?, NSError?) -> Void = { [weak self] response, error in
+            guard let self else { completion(response, error); return }
+            self.inFlightLensActions.remove(actionID)
+            if let response, error == nil {
+                self.completedLensActions[actionID] = response
+            }
+            completion(response, error)
+        }
         let value = { (key: String) -> String in (payload[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
+
         switch kind {
         case "prepareCart":
-            fetchAccessory(id: value("productID")) { product, error in
-                guard let product, error == nil, self.available(product, requireStock: true) else { completion(nil, error ?? self.lensError("Error")); return }
+            let productID = value("productID")
+            guard !productID.isEmpty else { finish(nil, lensError("purelens_error_invalid_payload")); return }
+            fetchAccessory(id: productID) { product, error in
+                guard let product, error == nil, self.available(product, requireStock: true) else {
+                    finish(nil, error ?? self.lensError("purelens_error_cart_unavailable"))
+                    return
+                }
                 let quantity = max(1, Int(value("quantity")) ?? 1)
-                PPAccessoryViewerLegacyBridge.addToCart(product, quantity: quantity, from: owner) { result, _, _, _ in
-                    completion(result.rawValue == 0 ? nil : nil, result.rawValue == 0 ? nil : self.lensError("Error"))
+                PPAccessoryViewerLegacyBridge.addToCart(product, quantity: quantity, from: owner) { result, addedQuantity, cartQuantity, remainingStock in
+                    DispatchQueue.main.async {
+                        guard result.rawValue == 0 else {
+                            finish(nil, self.lensError(self.cartErrorKey(result.rawValue)))
+                            return
+                        }
+                        finish(
+                            self.actionReceipt(
+                                titleKey: "purelens_action_order_ready",
+                                detailKey: "purelens_action_order_ready_detail",
+                                metadata: [
+                                    "actionID": actionID,
+                                    "addedQuantity": String(addedQuantity),
+                                    "cartQuantity": String(cartQuantity),
+                                    "remainingStock": String(remainingStock)
+                                ]
+                            ),
+                            nil
+                        )
+                    }
                 }
             }
         case "openProduct":
-            fetchAccessory(id: value("productID")) { product, error in
-                guard let product, error == nil, self.available(product, requireStock: false) else { completion(nil, error ?? self.lensError("Error")); return }
-                PPAccessoryViewerLegacyBridge.openAccessory(product, from: owner); completion(nil, nil)
+            let productID = value("productID")
+            guard !productID.isEmpty else { finish(nil, lensError("purelens_error_invalid_payload")); return }
+            fetchAccessory(id: productID) { product, error in
+                guard let product, error == nil, self.available(product, requireStock: false) else {
+                    finish(nil, error ?? self.lensError("purelens_error_product_unavailable"))
+                    return
+                }
+                self.dismissLensThen {
+                    PPAccessoryViewerLegacyBridge.openAccessory(product, from: owner)
+                    finish(self.actionReceipt(titleKey: "purelens_action_product_opened", detailKey: "purelens_action_product_opened_detail"), nil)
+                }
             }
         case "openVerifiedMedicine":
-            fetchAccessory(id: value("medicineID")) { product, error in
-                guard let product, error == nil, product.isPetMedicine, self.available(product, requireStock: false) else { completion(nil, error ?? self.lensError("Error")); return }
-                PPAccessoryViewerLegacyBridge.openAccessory(product, from: owner); completion(nil, nil)
+            let medicineID = value("medicineID")
+            guard !medicineID.isEmpty else { finish(nil, lensError("purelens_error_invalid_payload")); return }
+            fetchAccessory(id: medicineID) { product, error in
+                guard let product, error == nil, product.isPetMedicine, self.available(product, requireStock: false) else {
+                    finish(nil, error ?? self.lensError("purelens_error_medicine_unavailable"))
+                    return
+                }
+                self.dismissLensThen {
+                    PPAccessoryViewerLegacyBridge.openAccessory(product, from: owner)
+                    finish(self.actionReceipt(titleKey: "purelens_action_medicine_opened", detailKey: "purelens_action_medicine_opened_detail"), nil)
+                }
             }
-        case "bookVet": owner.pp_homeOpenCareSection(1, mainKind: nil); completion(nil, nil)
-        case "openAdoption": owner.pp_homeOpenAdoption(); completion(nil, nil)
-        case "contactSupport": PPAccessoryViewerLegacyBridge.openSupport(from: owner); completion(nil, nil)
-        default: completion(nil, lensError("Error"))
+        case "bookVet":
+            guard !value("vetID").isEmpty else { finish(nil, lensError("purelens_error_invalid_payload")); return }
+            dismissLensThen {
+                owner.pp_homeOpenCareSection(1, mainKind: nil)
+                finish(self.actionReceipt(titleKey: "purelens_action_vet_opened", detailKey: "purelens_action_vet_opened_detail"), nil)
+            }
+        case "openAdoption":
+            dismissLensThen {
+                owner.pp_homeOpenAdoption()
+                finish(self.actionReceipt(titleKey: "purelens_action_adoption_opened", detailKey: "purelens_action_adoption_opened_detail"), nil)
+            }
+        case "contactSupport":
+            dismissLensThen {
+                PPAccessoryViewerLegacyBridge.openSupport(from: owner)
+                finish(self.actionReceipt(titleKey: "purelens_action_support_opened", detailKey: "purelens_action_support_opened_detail"), nil)
+            }
+        case "createListingDraft":
+            guard let root = owner.tabBarController as? PPRootTabBarController else {
+                finish(nil, lensError("purelens_error_listing_unavailable"))
+                return
+            }
+            var prefill: [String: String] = [:]
+            for (key, rawValue) in payload {
+                guard let key = key as? String, let rawValue = rawValue as? String else { continue }
+                prefill[key] = rawValue
+            }
+            dismissLensThen {
+                root.pp_openListingDraft(prefill: prefill)
+                finish(self.actionReceipt(titleKey: "purelens_action_listing_opened", detailKey: "purelens_action_listing_opened_detail"), nil)
+            }
+        default:
+            finish(nil, lensError("purelens_error_invalid_action"))
         }
+    }
+
+    @objc(pureLensTrackEvent:properties:)
+    func pureLensTrackEvent(_ name: String, properties: NSDictionary) {
+        if name == Self.lensConsentEvent {
+            persistCurrentLensConsent()
+        }
+
+        let allowedEvents: Set<String> = [
+            "pure_lens_opened",
+            "pure_lens_pet_profile_verified",
+            "pure_lens_pet_profile_required",
+            "pure_lens_pet_detected",
+            "pure_lens_discover_tapped",
+            "pure_lens_auto_resolve_started",
+            "pure_lens_insight_shown",
+            "pure_lens_action_confirmed",
+            "pure_lens_action_succeeded",
+            "pure_lens_failed",
+            "pure_lens_detector_degraded",
+            "pure_lens_remote_processing_declined",
+            Self.lensConsentEvent
+        ]
+        guard allowedEvents.contains(name) else { return }
+
+        let allowedProperties: Set<String> = [
+            "localDetectionCount", "feedbackPlayed", "confidence", "action", "domain", "kind", "errorType"
+        ]
+        var parameters: [String: Any] = [:]
+        properties.forEach { key, value in
+            guard let key = key as? String,
+                  allowedProperties.contains(key),
+                  let value = value as? String,
+                  value.count <= 120
+            else { return }
+            parameters[key] = value
+        }
+        Analytics.logEvent(name, parameters: parameters.isEmpty ? nil : parameters)
     }
 
     // MARK: - Pet and catalog helpers
 
     private func loadPetContext(preferredPetID: String?, completion: @escaping (LensContext?, NSError?) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion(nil, lensError("purelens_error_auth"))
+            return
+        }
         let manager = PPPetProfileManager.shared()
-        manager.currentUserUID = Auth.auth().currentUser?.uid
+        manager.currentUserUID = uid
         manager.fetchPetProfilesForCurrentUser { pets, error in
             DispatchQueue.main.async {
                 guard error == nil else { completion(nil, error as NSError?); return }
@@ -174,34 +322,122 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
                 let selected = preferredPetID.flatMap { wanted in all.first { $0.petID == wanted } }
                     ?? all.first(where: { $0.isDefaultPet }) ?? all.first
                 guard let pet = selected, !pet.petID.isEmpty else { completion(nil, nil); return }
-                completion(LensContext(activePetID: pet.petID, activePetName: pet.name.isEmpty ? nil : pet.name, petIdentityConfidence: nil, proactiveHint: nil, proactiveHintExpiresAt: nil, localeIdentifier: Language.currentLanguageCode() ?? Locale.current.identifier, timeZoneIdentifier: TimeZone.current.identifier), nil)
+                completion(
+                    LensContext(
+                        activePetID: pet.petID,
+                        activePetName: pet.name.isEmpty ? nil : pet.name,
+                        petIdentityConfidence: nil,
+                        proactiveHint: nil,
+                        proactiveHintExpiresAt: nil,
+                        localeIdentifier: Language.currentLanguageCode() ?? Locale.current.identifier,
+                        timeZoneIdentifier: TimeZone.current.identifier,
+                        clientVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+                    ),
+                    nil
+                )
             }
         }
     }
 
     private func fetchAccessory(id: String, completion: @escaping (PetAccessory?, NSError?) -> Void) {
-        guard !id.isEmpty else { completion(nil, lensError("Error")); return }
+        guard !id.isEmpty else { completion(nil, lensError("purelens_error_invalid_payload")); return }
         PetAccessoryManager.fetchAccessories(withIDs: [id]) { accessories in
-            DispatchQueue.main.async { completion(accessories.first, accessories.first == nil ? self.lensError("Error") : nil) }
+            DispatchQueue.main.async {
+                completion(accessories.first, accessories.first == nil ? self.lensError("purelens_error_product_unavailable") : nil)
+            }
         }
     }
+
     private func available(_ product: PetAccessory, requireStock: Bool) -> Bool {
         product.showInAppMarket && !product.isLivePet && !PPAccessoryViewerLegacyBridge.isUnavailable(product) && (!requireStock || product.quantity > 0)
     }
+
     private func contextDictionary(_ context: LensContext) -> NSDictionary {
-        ["activePetID": context.activePetID ?? "", "activePetName": context.activePetName ?? "", "localeIdentifier": context.localeIdentifier, "timeZoneIdentifier": context.timeZoneIdentifier] as NSDictionary
+        var result: [String: Any] = [
+            "activePetID": context.activePetID ?? "",
+            "activePetName": context.activePetName ?? "",
+            "localeIdentifier": context.localeIdentifier,
+            "timeZoneIdentifier": context.timeZoneIdentifier
+        ]
+        if let confidence = context.petIdentityConfidence { result["petIdentityConfidence"] = confidence }
+        if let version = context.clientVersion { result["clientVersion"] = version }
+        return result as NSDictionary
     }
+
+    private func actionReceipt(titleKey: String, detailKey: String, metadata: [String: String] = [:]) -> NSDictionary {
+        [
+            "title": localizedLens(titleKey),
+            "detail": localizedLens(detailKey),
+            "metadata": metadata
+        ] as NSDictionary
+    }
+
+    private func localizedLens(_ key: String) -> String {
+        PPAccessoryViewerLegacyBridge.localizedText(key: key, fallback: key)
+    }
+
+    private func cartErrorKey(_ rawValue: Int) -> String {
+        switch rawValue {
+        case 1: return "purelens_error_cart_cancelled"
+        case 2: return "purelens_error_offline"
+        case 3: return "purelens_error_auth"
+        case 4: return "purelens_error_cart_out_of_stock"
+        case 5: return "purelens_error_product_unavailable"
+        default: return "purelens_error_cart_failed"
+        }
+    }
+
+    private func dismissLensThen(_ action: @escaping () -> Void) {
+        guard let owner, owner.presentedViewController != nil else {
+            action()
+            return
+        }
+        owner.dismiss(animated: true, completion: action)
+    }
+
+    private var lensConsentDefaultsKey: String? {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return nil }
+        return "PurePets.PureLens.remoteConsent.\(uid)"
+    }
+
+    private var hasCurrentLensConsent: Bool {
+        guard let key = lensConsentDefaultsKey,
+              let record = UserDefaults.standard.dictionary(forKey: key),
+              record["granted"] as? Bool == true,
+              record["version"] as? String == Self.lensConsentVersion
+        else { return false }
+        return true
+    }
+
+    private func persistCurrentLensConsent() {
+        guard let key = lensConsentDefaultsKey else { return }
+        UserDefaults.standard.set(
+            ["granted": true, "version": Self.lensConsentVersion],
+            forKey: key
+        )
+    }
+
     private func topViewController(from root: UIViewController) -> UIViewController {
         var current = root
         while let presented = current.presentedViewController { current = presented }
         return current
     }
-    private func lensError(_ key: String) -> NSError { NSError(domain: "PurePets.PureLens", code: 1, userInfo: [NSLocalizedDescriptionKey: PPAccessoryViewerLegacyBridge.localizedText(key: key, fallback: key)]) }
+
+    private func lensError(_ key: String) -> NSError {
+        NSError(
+            domain: "PurePets.PureLens",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: localizedLens(key)]
+        )
+    }
 
     private func performOnce(_ key: String, action: () -> Void) {
         guard inFlightRoutes.insert(key).inserted else { return }
         action()
-        Task { [weak self] in try? await Task.sleep(nanoseconds: 700_000_000); self?.inFlightRoutes.remove(key) }
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            self?.inFlightRoutes.remove(key)
+        }
     }
 }
 

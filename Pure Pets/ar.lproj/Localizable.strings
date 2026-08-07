@@ -4258,3 +4258,36 @@
 "chat_header_collapse_hint" = "يطوي تفاصيل المحادثة";
 "chat_header_expanded" = "موسّع";
 "chat_header_collapsed" = "مطوي";
+
+
+/* PureLens Detector 3.0 host bridge */
+"purelens_remote_processing_disclosure" = "بعد موافقتك، تُرسل لقطة واحدة مختارة إلى خدمة Pure Pets التي تستخدم Google Gemini لتحليل المشهد. لا يُرسل فيديو مستمر، وتُحذف اللقطة بعد إتمام الطلب وفق سياسة الخصوصية.";
+"purelens_action_order_ready" = "أصبح الطلب جاهزاً";
+"purelens_action_order_ready_detail" = "تمت إضافة المنتج إلى السلة. راجع السعر والمخزون قبل إتمام الشراء.";
+"purelens_action_product_opened" = "تم فتح المنتج";
+"purelens_action_product_opened_detail" = "يمكنك مراجعة تفاصيل المنتج في Pure Pets.";
+"purelens_action_medicine_opened" = "تم فتح معلومات العبوة";
+"purelens_action_medicine_opened_detail" = "تظهر معلومات العبوة الموثقة فقط، من دون تشخيص أو جرعات.";
+"purelens_action_vet_opened" = "تم فتح الرعاية البيطرية";
+"purelens_action_vet_opened_detail" = "تحدث مع مختص؛ لا يقدم PureLens تشخيصاً.";
+"purelens_action_adoption_opened" = "تم فتح التبني";
+"purelens_action_adoption_opened_detail" = "راجع السجلات الحالية قبل اتخاذ أي خطوة.";
+"purelens_action_support_opened" = "تم فتح الدعم";
+"purelens_action_support_opened_detail" = "يمكن لفريق Pure Pets مساعدتك الآن.";
+"purelens_action_listing_opened" = "تم فتح نموذج الإعلان";
+"purelens_action_listing_opened_detail" = "راجع البيانات وأكمل النموذج قبل النشر.";
+"purelens_error_generic" = "تعذر إكمال PureLens الآن.";
+"purelens_error_auth" = "تعذر التحقق من جلسة الحساب.";
+"purelens_error_app_check" = "تعذر التحقق من أمان التطبيق.";
+"purelens_error_profile" = "تعذر فتح ملف الحيوانات الآن.";
+"purelens_error_invalid_payload" = "بيانات الإجراء غير مكتملة.";
+"purelens_error_invalid_action" = "هذا الإجراء غير متاح حالياً.";
+"purelens_error_action_in_progress" = "هذا الإجراء قيد التنفيذ بالفعل.";
+"purelens_error_product_unavailable" = "المنتج غير متاح حالياً.";
+"purelens_error_medicine_unavailable" = "معلومات العبوة الموثقة غير متاحة حالياً.";
+"purelens_error_cart_unavailable" = "لا يمكن تجهيز الطلب لأن المنتج أو المخزون تغيّر.";
+"purelens_error_cart_cancelled" = "تم إلغاء إضافة المنتج إلى السلة.";
+"purelens_error_offline" = "تحقق من الاتصال وحاول إضافة المنتج مرة أخرى.";
+"purelens_error_cart_out_of_stock" = "نفد مخزون المنتج.";
+"purelens_error_cart_failed" = "تعذر تجهيز الطلب.";
+"purelens_error_listing_unavailable" = "مسار إنشاء الإعلان غير متاح الآن.";
