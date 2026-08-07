@@ -28,7 +28,7 @@ public struct PPWaveCardBG: View {
 
     public init(
         animationEnabled: Bool = true,
-        shape: PPWaveCardBGShape = .circle,
+        shape: PPWaveCardBGShape = .rounded,
         cornerRadius: CGFloat = 28.0,
         accentColorOverride: UIColor? = nil,
         borderWidth: CGFloat = 0.125
@@ -87,7 +87,7 @@ public struct PPWaveCardBG: View {
 
     private var resolvedAccent: Color {
         guard let accentColorOverride else {
-            return .homeBrand
+            return .appPrimaryColorDarker
         }
         return Color(uiColor: accentColorOverride)
     }
@@ -110,7 +110,7 @@ public struct PPWaveCardBG: View {
                 colors: [
                     darkMode ? Color.white.opacity(0.16) : Color.white.opacity(0.98),
                     darkMode ? Color.white.opacity(0.12) : Color.white.opacity(0.90),
-                    resolvedAccent.opacity(darkMode ? 0.18 : 0.07),
+                    Color.white.opacity(darkMode ? 0.18 : 0.07),
                     darkMode ? Color.white.opacity(0.10) : Color.white.opacity(0.84),
                     darkMode ? Color.white.opacity(0.14) : Color.white.opacity(0.96),
                 ],
@@ -131,7 +131,7 @@ public struct PPWaveCardBG: View {
             let ovalWidth = min(148.0, max(96.0, width * 0.34))
             let ovalHeight = min(84.0, max(52.0, height * 0.42))
             let spillColor = Color.ppElevatedSurface.opacity(
-                colorScheme == .dark ? 0.19 : 0.24
+                colorScheme == .dark ? 0.39 : 0.44
             )
 
             ZStack(alignment: .topLeading) {

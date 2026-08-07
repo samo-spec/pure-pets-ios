@@ -468,13 +468,13 @@ public struct SmartMessageCell: View {
   private var entranceOffset: CGSize {
     guard animatesEntrance, !hasEntered, !reduceMotion else { return .zero }
     return CGSize(
-      width: message.direction.isOutgoing ? 8 : -8,
-      height: 5
+      width: message.direction.isOutgoing ? 14 : -14,
+      height: 7
     )
   }
 
   private var entranceScale: CGFloat {
-    animatesEntrance && !hasEntered && !reduceMotion ? 0.985 : 1
+    animatesEntrance && !hasEntered && !reduceMotion ? 0.96 : 1
   }
 
   private func performEntranceIfNeeded() {
@@ -486,7 +486,11 @@ public struct SmartMessageCell: View {
       hasEntered = true
       return
     }
-    withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 0.24)) {
+    // A gently damped spring gives the new bubble a directional "settle" from
+    // its own sender lane. It is a transform-only animation (opacity + offset +
+    // scale), so it never changes layout height and cannot nudge the scroll
+    // position of the rows above it.
+    withAnimation(PurePetsMessagingMotion.entrance) {
       hasEntered = true
     }
   }

@@ -874,17 +874,39 @@ public struct PPVoiceWaveformView: View {
             ForEach(levels.indices, id: \.self) { index in
                 let level = min(max(CGFloat(levels[index]), 0.04), 1.0)
                 Capsule(style: .continuous)
-                    .fill(tint.opacity(isActive ? 0.92 : 0.42))
+                    .fill(barFill(level: level))
                     .frame(width: 3.0, height: max(4.0, level * 36.0))
+                    // A gently damped spring makes each bar chase the live mic
+                    // level with a fluid, studio-grade response instead of a
+                    // linear ramp — while a fixed 38pt frame keeps the composer
+                    // height perfectly constant (no jump).
                     .animation(
                         reduceMotion || !isActive
                         ? nil
-                        : .easeOut(duration: 0.12),
+                        : .spring(response: 0.28, dampingFraction: 0.72),
                         value: levels[index]
                     )
             }
         }
+        // HStack centers each capsule, so bars grow symmetrically from the
+        // vertical midline — the classic mirrored recording read.
         .frame(maxHeight: 38.0)
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.2),
+            value: isActive
+        )
         .accessibilityHidden(true)
+    }
+
+    /// Vertical brand gradient so tall bars read as lit-from-within. Dims when
+    /// the recorder is paused/inactive.
+    private func barFill(level: CGFloat) -> LinearGradient {
+        let top = isActive ? tint : tint.opacity(0.42)
+        let bottom = isActive ? tint.opacity(0.68) : tint.opacity(0.28)
+        return LinearGradient(
+            colors: [top, bottom],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 }

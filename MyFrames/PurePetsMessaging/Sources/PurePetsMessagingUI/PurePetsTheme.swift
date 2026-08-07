@@ -50,6 +50,42 @@ public enum PurePetsMessagingTheme {
   public static let subduedText = Color.secondary
   public static let success = Color(red: 0.086, green: 0.510, blue: 0.365)
   public static let danger = Color(red: 0.706, green: 0.141, blue: 0.110)
+
+  // MARK: - Waveform
+
+  /// Gradient used to paint the *played* portion of a voice waveform. Brand at
+  /// the leading edge easing into the softer signal tint gives the bars a
+  /// studio-grade, lit-from-within read while still tracking playback.
+  static var waveformPlayedGradient: LinearGradient {
+    LinearGradient(
+      colors: [signal, brand],
+      startPoint: .bottom,
+      endPoint: .top
+    )
+  }
+
+  /// Fill for the not-yet-played portion of a waveform.
+  static func waveformTrack(_ scheme: ColorScheme) -> Color {
+    scheme == .dark
+      ? Color.white.opacity(0.24)
+      : Color.black.opacity(0.20)
+  }
+}
+
+// MARK: - Shared motion
+
+/// Centralized, tuned motion curves so every messaging animation shares one
+/// physical vocabulary. All are no-overshoot or gently damped so nothing in a
+/// scrolling transcript can jitter, flash, or push neighbouring rows.
+enum PurePetsMessagingMotion {
+  /// Status glyph morphs (sent → delivered → read). Snappy but settled.
+  static let status: Animation = .spring(response: 0.34, dampingFraction: 1.0)
+  /// Determinate upload-ring progress.
+  static let progress: Animation = .easeInOut(duration: 0.30)
+  /// Message entrance (incoming/outgoing). Gentle, no overshoot.
+  static let entrance: Animation = .spring(response: 0.40, dampingFraction: 0.90)
+  /// Per-bar waveform level response while recording/playing.
+  static let waveBar: Animation = .spring(response: 0.28, dampingFraction: 0.72)
 }
 
 enum PurePetsMessageTextDirection {

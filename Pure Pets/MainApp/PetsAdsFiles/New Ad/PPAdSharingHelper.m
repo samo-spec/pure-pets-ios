@@ -70,16 +70,14 @@ NS_ASSUME_NONNULL_BEGIN
     if ([item isKindOfClass:[PetAd class]]) {
         PetAd *petAd = (PetAd *)item;
         
-        // Construct deep link
-        deepLink = [NSString stringWithFormat:@"purepets://petad/%@", petAd.adID];
-        
-        // Compose message
-        message = [NSString stringWithFormat:
-                   @"Check out this pet ad!\n\n%@: %@\n%@: %@\n%@: %@\n\nOpen in app: %@",
-                   kLang(@"category"), [MainKindsModel kindNameForID:petAd.category],
-                   kLang(@"subcategory"), [SubKindModel getSubKindName:(long)petAd.subcategory subKindsArrayLocal:[MKM getSubKindArray:petAd.category]],
-                   kLang(@"price"), petAd.price,
-                   deepLink];
+        NSURL *shareURL = [PetAd shareableLinkForPetAd:petAd];
+        if (!shareURL) {
+            NSLog(@"Cannot share pet ad without a public share URL.");
+            return;
+        }
+
+        // Reuse the localized native share message, including the public Website URL.
+        message = [PetAd shareMessageForPetAd:petAd];
         
         [itemsToShare addObject:message];
         

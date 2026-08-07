@@ -392,6 +392,11 @@ fromViewController:(UIViewController *)vc
     // Status
     NSString *statusString = petAd.isSold ? kLang(@"Sold") : kLang(@"Available");
     [message appendFormat:@"%@: %@", kLang(@"Status"), statusString];
+
+    NSURL *shareURL = [self shareableLinkForPetAd:petAd];
+    if (shareURL.absoluteString.length > 0) {
+        [message appendFormat:@"\n\n%@", shareURL.absoluteString];
+    }
     
     return [message copy];
 }
@@ -627,15 +632,16 @@ fromViewController:(UIViewController *)vc
 #pragma mark - Generate Shareable Link (Optional)
 
 + (nullable NSURL *)shareableLinkForPetAd:(PetAd *)petAd {
-    if (!petAd.adID) return nil;
-    
-    // Example deep link: "yourapp://petad/12345"
-    NSString *deepLink = [NSString stringWithFormat:@"yourapp://petad/%@", petAd.adID];
-    
-    // OR web URL: "https://yourapp.com/petad/12345"
-    // NSString *webURL = [NSString stringWithFormat:@"https://yourapp.com/petad/%@", petAd.adID];
-    
-    return [NSURL URLWithString:deepLink];
+    NSString *adID = [petAd.adID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (adID.length == 0) return nil;
+
+    NSURLComponents *components = [NSURLComponents componentsWithString:@"https://pure-pets.net/share.html"];
+    if (!components) return nil;
+
+    components.queryItems = @[
+        [NSURLQueryItem queryItemWithName:@"id" value:adID]
+    ];
+    return components.URL;
 }
  
 
