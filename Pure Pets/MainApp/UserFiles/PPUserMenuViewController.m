@@ -673,7 +673,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    self.worldGlassBackgroundController.isFaded = NO;
+    self.worldGlassBackgroundController.isFaded = YES;
     [self pp_applyMenuNavigationChromeAnimated:animated];
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];

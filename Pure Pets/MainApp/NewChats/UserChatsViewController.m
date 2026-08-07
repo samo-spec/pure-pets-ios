@@ -100,7 +100,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    self.worldGlassBackgroundController.isFaded = NO;
+    self.worldGlassBackgroundController.isFaded = YES;
 
     if(self.willAppear) return;
     [self startObservingChats];

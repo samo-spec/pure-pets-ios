@@ -53,7 +53,7 @@ public struct WorldGlassBackground: View {
         tint: Color = .worldGlassBerry,
         intensity: Double = 0.88,
         animatedHeightRatio: CGFloat = 0.64,
-        isFaded: Bool = false
+        isFaded: Bool = true
     ) {
         self.style = style
         self.tint = tint
@@ -1021,38 +1021,38 @@ public extension Color {
         blue: 217.0 / 255.0
     )
 
-    // MARK: Messaging aurora palette (deliberately non-brand)
+    // MARK: Messaging aurora palette (deliberately non-brand premium light hues)
     //
     // The messaging background must never paint the brand berry (#CB2654) or its
-    // rose family. These cool twilight hues plus one neutral warm sand carry the
+    // rose family. These luminous premium light hues plus one warm cashmere pearl carry the
     // living conversation canvas instead.
 
-    /// Periwinkle indigo `#5C6FC4`.
+    /// Luminous ice periwinkle `#B8C6F5`.
     static let worldGlassAuroraIndigo = Color(
-        red: 92.0 / 255.0,
-        green: 111.0 / 255.0,
-        blue: 196.0 / 255.0
+        red: 184.0 / 255.0,
+        green: 198.0 / 255.0,
+        blue: 245.0 / 255.0
     )
 
-    /// Cool aqua `#4FB6C9`.
+    /// Crystal sky mint `#ACE2EE`.
     static let worldGlassAuroraAqua = Color(
-        red: 79.0 / 255.0,
-        green: 182.0 / 255.0,
-        blue: 201.0 / 255.0
+        red: 172.0 / 255.0,
+        green: 226.0 / 255.0,
+        blue: 238.0 / 255.0
     )
 
-    /// Soft lilac `#ABA6E6`.
+    /// Soft lilac frost `#D8D2FC`.
     static let worldGlassAuroraLilac = Color(
-        red: 171.0 / 255.0,
-        green: 166.0 / 255.0,
-        blue: 230.0 / 255.0
+        red: 216.0 / 255.0,
+        green: 210.0 / 255.0,
+        blue: 252.0 / 255.0
     )
 
-    /// Neutral warm sand `#E9DEC9` — a quiet counterweight, not a brand rose.
+    /// Cashmere pearl sand `#F7F1E8` — a quiet warm light counterweight.
     static let worldGlassAuroraSand = Color(
-        red: 233.0 / 255.0,
-        green: 222.0 / 255.0,
-        blue: 201.0 / 255.0
+        red: 247.0 / 255.0,
+        green: 241.0 / 255.0,
+        blue: 232.0 / 255.0
     )
 }
 

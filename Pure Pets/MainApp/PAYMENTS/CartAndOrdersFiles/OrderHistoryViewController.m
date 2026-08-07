@@ -217,7 +217,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    self.worldGlassBackgroundController.isFaded = NO;
+    self.worldGlassBackgroundController.isFaded = YES;
     [self pp_applyNavigationPresentationForCurrentContextAnimated:animated];
     [self pp_prepareHeroEntranceIfNeeded];
 }
