@@ -53,25 +53,21 @@ extension PPExpandableChatCell {
 
             Button(action: toggleExpanded) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            isExpanded
-                            ? style.brandSoft
-                            : style.quietFill
-                        )
-                        .frame(width: 40, height: 40)
+                    Circle()
+                        .fill(isExpanded ? style.brandSoft : style.quietFill)
+                        .frame(width: 38, height: 38)
 
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    Circle()
                         .stroke(
                             isExpanded
-                            ? style.brand.opacity(0.40)
+                            ? style.brand.opacity(0.38)
                             : style.separator.opacity(borderOpacity),
                             lineWidth: borderWidth
                         )
-                        .frame(width: 40, height: 40)
+                        .frame(width: 38, height: 38)
 
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 13, weight: .heavy))
                         .foregroundStyle(isExpanded ? style.brand : Color.secondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }

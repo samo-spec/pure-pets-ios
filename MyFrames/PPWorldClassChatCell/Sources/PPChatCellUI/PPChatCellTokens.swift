@@ -6,6 +6,9 @@ public struct PPChatCellStyle {
     public var brand: Color
     public var cornerRadius: CGFloat
     public var compactCornerRadius: CGFloat
+    /// Corner radius of the resting (collapsed) card. Kept close to the
+    /// expanded radius so the shape morph reads as one seamless surface.
+    public var collapsedCornerRadius: CGFloat
     public var avatarSize: CGFloat
     public var outerHorizontalInset: CGFloat
     public var outerVerticalInset: CGFloat
@@ -16,25 +19,35 @@ public struct PPChatCellStyle {
     public var minimumSummaryHeight: CGFloat
     public var minimumTouchTarget: CGFloat
     public var composerHeight: CGFloat
+    /// Fixed elevation blur radius. NEVER animated — only the shadow's
+    /// opacity animates between states, which is what keeps the shadow
+    /// perfectly stable (no trembling) while the card resizes.
+    public var shadowRadius: CGFloat
+    /// Fixed elevation vertical offset. NEVER animated.
+    public var shadowYOffset: CGFloat
 
     public init(
         brand: Color,
-        cornerRadius: CGFloat = 28,
+        cornerRadius: CGFloat = 26,
         compactCornerRadius: CGFloat = 17,
+        collapsedCornerRadius: CGFloat = 22,
         avatarSize: CGFloat = 54,
         outerHorizontalInset: CGFloat = 14,
-        outerVerticalInset: CGFloat = 5,
+        outerVerticalInset: CGFloat = 7,
         horizontalPadding: CGFloat = 16,
         verticalPadding: CGFloat = 13,
         rowSpacing: CGFloat = 12,
         sectionSpacing: CGFloat = 16,
         minimumSummaryHeight: CGFloat = 78,
         minimumTouchTarget: CGFloat = 44,
-        composerHeight: CGFloat = 48
+        composerHeight: CGFloat = 48,
+        shadowRadius: CGFloat = 14,
+        shadowYOffset: CGFloat = 6
     ) {
         self.brand = brand
         self.cornerRadius = cornerRadius
         self.compactCornerRadius = compactCornerRadius
+        self.collapsedCornerRadius = collapsedCornerRadius
         self.avatarSize = avatarSize
         self.outerHorizontalInset = outerHorizontalInset
         self.outerVerticalInset = outerVerticalInset
@@ -45,6 +58,8 @@ public struct PPChatCellStyle {
         self.minimumSummaryHeight = minimumSummaryHeight
         self.minimumTouchTarget = max(44, minimumTouchTarget)
         self.composerHeight = max(44, composerHeight)
+        self.shadowRadius = max(0, shadowRadius)
+        self.shadowYOffset = shadowYOffset
     }
 
     public static let purePets = PPChatCellStyle(
@@ -99,6 +114,56 @@ extension PPChatCellStyle {
 
     var danger: Color {
         Color(uiColor: .systemRed)
+    }
+
+    // MARK: - Elevation
+
+    /// Base color of the drop shadow. Warm-neutral so the elevation reads as
+    /// depth rather than a grey smudge.
+    var shadowColor: Color {
+        Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+            ? UIColor.black
+            : UIColor(red: 0.09, green: 0.05, blue: 0.07, alpha: 1)
+        })
+    }
+
+    /// Resting elevation opacity — a whisper of depth so collapsed rows read
+    /// as floating cards without visual noise.
+    func restingShadowOpacity(_ scheme: ColorScheme) -> Double {
+        scheme == .dark ? 0.22 : 0.055
+    }
+
+    /// Lifted elevation opacity while expanded. The delta from resting is what
+    /// animates (opacity only — radius stays fixed), producing a smooth,
+    /// tremor-free lift.
+    func liftedShadowOpacity(_ scheme: ColorScheme) -> Double {
+        scheme == .dark ? 0.40 : 0.14
+    }
+
+    /// A one-pixel top highlight → bottom shade gradient used for the card
+    /// border so the surface catches light like a physical card.
+    func hairlineBorder(_ scheme: ColorScheme, contrast: ColorSchemeContrast) -> LinearGradient {
+        if contrast == .increased {
+            return LinearGradient(
+                colors: [separator.opacity(0.9), separator.opacity(0.9)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+
+        let top = scheme == .dark
+            ? Color.white.opacity(0.14)
+            : Color.white.opacity(0.9)
+        let bottom = scheme == .dark
+            ? Color.black.opacity(0.28)
+            : separator.opacity(0.42)
+
+        return LinearGradient(
+            colors: [top, bottom],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 }
 

@@ -51,7 +51,8 @@ private struct PPChatCellHost: View {
             onReplyCommitted: { _ in },
             onReplyFailed: { _, _ in },
             sendQuickReply: sendQuickReply,
-            animationsEnabled: false
+            animationsEnabled: true,
+            entranceEnabled: false
         )
     }
 }

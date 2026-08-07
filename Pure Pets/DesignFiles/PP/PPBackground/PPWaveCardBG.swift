@@ -28,7 +28,7 @@ public struct PPWaveCardBG: View {
 
     public init(
         animationEnabled: Bool = true,
-        shape: PPWaveCardBGShape = .capsule,
+        shape: PPWaveCardBGShape = .circle,
         cornerRadius: CGFloat = 28.0,
         accentColorOverride: UIColor? = nil,
         borderWidth: CGFloat = 0.125
@@ -62,7 +62,7 @@ public struct PPWaveCardBG: View {
             HomeHeroField(
                 accent: resolvedAccent,
                 increasedContrast: contrast == .increased,
-                cornerGlowOpacityScale: 0.72,
+                cornerGlowOpacityScale: 0.42,
                 isAnimated: animationEnabled
             )
 
@@ -94,14 +94,14 @@ public struct PPWaveCardBG: View {
 
     private var resolvedBorderWidth: CGFloat {
         guard borderWidth.isFinite else {
-            return 0.75
+            return 0.125
         }
         return max(0.0, borderWidth)
     }
 
     private var borderStyle: AnyShapeStyle {
         if contrast == .increased {
-            return AnyShapeStyle(Color.homeTextPrimary.opacity(0.76))
+            return AnyShapeStyle(Color.homeTextPrimary.opacity(0.46))
         }
 
         let darkMode = colorScheme == .dark
@@ -131,7 +131,7 @@ public struct PPWaveCardBG: View {
             let ovalWidth = min(148.0, max(96.0, width * 0.34))
             let ovalHeight = min(84.0, max(52.0, height * 0.42))
             let spillColor = Color.ppElevatedSurface.opacity(
-                colorScheme == .dark ? 0.09 : 0.14
+                colorScheme == .dark ? 0.19 : 0.24
             )
 
             ZStack(alignment: .topLeading) {

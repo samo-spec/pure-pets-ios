@@ -164,11 +164,18 @@ extension PPExpandableChatCell {
         cancelFeedbackOnly()
         replyState = PPQuickReplyStateMachine()
         composerFocused = false
-        hasEntered = !animationsEnabled
+        hasEntered = !animationsEnabled || !entranceEnabled
     }
 
     func playEntranceIfNeeded() {
         guard !hasEntered else { return }
+
+        // Entrance is a one-time, opt-in flourish. Hosts that recycle cells in
+        // a scrolling list disable it so a reused row never replays mid-scroll.
+        guard entranceEnabled else {
+            hasEntered = true
+            return
+        }
 
         // A thread animates its entrance only once per app session. When the
         // list re-appears — returning from the full messaging screen, or a
@@ -348,14 +355,16 @@ extension PPExpandableChatCell {
         colorSchemeContrast == .increased ? 0.72 : colorScheme == .dark ? 0.46 : 0.30
     }
 
-    var expandedShadowOpacity: Double {
-        colorScheme == .dark ? 0.26 : 0.10
-    }
-
     var expansionAnimation: Animation? {
+        // Critically damped spring (dampingFraction 1.0 → zero overshoot).
+        // Overshoot would make the row height bounce past its final value and
+        // shove neighbouring rows back and forth in the table — the source of
+        // "unstable in transitions". A no-bounce spring lets UIHosting
+        // configuration animate the self-sizing resize monotonically, so the
+        // card, its shadow, and every neighbour settle in one smooth pass.
         reduceMotion
         ? nil
-        : .interactiveSpring(response: 0.42, dampingFraction: 0.90, blendDuration: 0.10)
+        : .spring(response: 0.42, dampingFraction: 1.0, blendDuration: 0)
     }
 
     var feedbackAnimation: Animation? {
@@ -376,16 +385,13 @@ extension PPExpandableChatCell {
             return .identity
         }
 
-        if reduceMotion {
-            return .opacity
-        }
-
-        return .asymmetric(
-            insertion: .opacity
-                .combined(with: .move(edge: .top))
-                .combined(with: .scale(scale: 0.985, anchor: .top)),
-            removal: .opacity.combined(with: .scale(scale: 0.992, anchor: .top))
-        )
+        // Seamless curtain reveal: the container's height animates via the
+        // expansion spring and clips the content to the rounded surface, so the
+        // body is uncovered top-to-bottom. The content itself only fades — no
+        // `.move` (which slides content out from behind the summary → flash)
+        // and no `.scale` (which rasterizes → blink). Opacity over an animated
+        // height clip is what makes the reveal read as one continuous motion.
+        return .opacity
     }
 
     var summaryAccessibilityLabel: String {

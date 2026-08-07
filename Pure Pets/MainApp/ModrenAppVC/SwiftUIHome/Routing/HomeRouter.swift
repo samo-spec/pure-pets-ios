@@ -59,6 +59,7 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
                     "purelens_remote_processing_disclosure"
                 ),
                 hasPriorRemoteProcessingConsent: self.hasCurrentLensConsent,
+                remoteProcessingConsentVersion: Self.lensConsentVersion,
                 localeIdentifier: locale
             )
             let lens = PureLensViewControllerFactory.makeViewController(configuration: configuration, delegate: self)
@@ -349,7 +350,11 @@ final class HomeRouter: NSObject, PureLensViewControllerDelegate {
     }
 
     private func available(_ product: PetAccessory, requireStock: Bool) -> Bool {
-        product.showInAppMarket && !product.isLivePet && !PPAccessoryViewerLegacyBridge.isUnavailable(product) && (!requireStock || product.quantity > 0)
+        product.showInAppMarket
+            && !product.isLivePet
+            && !PPAccessoryViewerLegacyBridge.isUnavailable(product)
+            && product.finalPrice.doubleValue > 0
+            && (!requireStock || product.quantity > 0)
     }
 
     private func contextDictionary(_ context: LensContext) -> NSDictionary {

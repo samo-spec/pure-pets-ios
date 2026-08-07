@@ -9,12 +9,22 @@ extension PPExpandableChatCell {
 
     var expandedContent: some View {
         VStack(spacing: 0) {
-            Divider()
-                .overlay(alignment: .leading) {
-                    Capsule()
-                        .fill(style.brand.opacity(0.78))
-                        .frame(width: 34, height: differentiateWithoutColor ? 3 : 2)
-                }
+            // Gradient hairline separator: a thin brand-tinted rule that fades
+            // out toward the trailing edge, reading as a seam rather than a
+            // hard line dividing two panels.
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            style.brand.opacity(0.55),
+                            style.separator.opacity(borderOpacity * 0.9),
+                            style.separator.opacity(0)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: differentiateWithoutColor ? 1.5 : 1)
                 .padding(.horizontal, style.horizontalPadding)
 
             VStack(alignment: .leading, spacing: style.sectionSpacing) {

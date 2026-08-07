@@ -33,6 +33,12 @@ public struct PPExpandableChatCell: View {
     let sendQuickReply: SendReplyAction
 
     let animationsEnabled: Bool
+    /// Whether the one-time entrance (fade/offset/scale) is allowed to play.
+    /// Hosts that recycle cells inside a scrolling list (e.g. the UIKit inbox)
+    /// pass `false` so a reused row never replays an entrance mid-scroll, while
+    /// expand/collapse and feedback still animate. Defaults to `true` for
+    /// standalone SwiftUI use.
+    let entranceEnabled: Bool
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
@@ -60,7 +66,8 @@ public struct PPExpandableChatCell: View {
         onReplyCommitted: @escaping ReplyCommittedAction = { _ in },
         onReplyFailed: @escaping ReplyFailedAction = { _, _ in },
         sendQuickReply: @escaping SendReplyAction,
-        animationsEnabled: Bool = true
+        animationsEnabled: Bool = true,
+        entranceEnabled: Bool = true
     ) {
         self.thread = thread
         _isExpanded = isExpanded
@@ -74,13 +81,15 @@ public struct PPExpandableChatCell: View {
         self.onReplyFailed = onReplyFailed
         self.sendQuickReply = sendQuickReply
         self.animationsEnabled = animationsEnabled
-        // Start already-settled for a thread that has entered before this
-        // session (e.g. the host rebuilt the UIHostingConfiguration after
-        // dismissing the messaging screen, or reconfigured the row after a
-        // send). This avoids a one-frame opacity/offset/scale flash and any
-        // entrance replay; genuinely new threads still animate once via onAppear.
+        self.entranceEnabled = entranceEnabled
+        // Start already-settled when the entrance is disabled, or for a thread
+        // that has entered before this session (e.g. the host rebuilt the
+        // UIHostingConfiguration after dismissing the messaging screen, or
+        // reconfigured the row after a send). This avoids a one-frame
+        // opacity/offset/scale flash and any entrance replay; genuinely new
+        // threads still animate once via onAppear.
         _hasEntered = State(
-            initialValue: !animationsEnabled ||
+            initialValue: !animationsEnabled || !entranceEnabled ||
                 PPChatCellEntranceLedger.shared.hasEntered(thread.id)
         )
     }
@@ -98,11 +107,16 @@ public struct PPExpandableChatCell: View {
         .overlay { surfaceBorder }
         .overlay(alignment: .leading) { conversationSignal }
         .clipShape(surfaceShape)
+        // Elevation contract: radius and offset are FIXED constants; only the
+        // shadow's opacity animates between resting and lifted. Animating the
+        // blur radius is the classic cause of "shadow trembling" during a
+        // resize, so we never do it. A fixed kernel + opacity fade keeps the
+        // shadow rock-steady while the card grows/shrinks.
         .shadow(
-            color: Color.black.opacity(isExpanded ? expandedShadowOpacity : 0),
-            radius: isExpanded ? 22 : 0,
+            color: style.shadowColor.opacity(currentShadowOpacity),
+            radius: style.shadowRadius,
             x: 0,
-            y: isExpanded ? 12 : 0
+            y: style.shadowYOffset
         )
         .padding(.horizontal, style.outerHorizontalInset)
         .padding(.vertical, style.outerVerticalInset)
@@ -130,6 +144,14 @@ public struct PPExpandableChatCell: View {
             composerFocused = false
             cancelFeedbackOnly()
         }
+    }
+
+    /// Resolved shadow opacity for the current state. Interpolated by the
+    /// expansion animation (opacity only — see `body`).
+    var currentShadowOpacity: Double {
+        isExpanded
+        ? style.liftedShadowOpacity(colorScheme)
+        : style.restingShadowOpacity(colorScheme)
     }
 
     var reduceMotion: Bool {
