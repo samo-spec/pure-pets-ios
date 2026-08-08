@@ -2037,41 +2037,58 @@ static inline void PPDispatchMain(void (^block)(void)) {
             return;
         }
 
-        UIWindow *window = self.view.window ?: UIApplication.sharedApplication.keyWindow;
-        if (!window) {
-            PPAuthDebugLog(@"[Auth] Root switch fallback after %@ because active window is missing. currentUID=%@",
+        void (^performRootSwitch)(void) = ^{
+            UIWindow *window = self.view.window ?: UIApplication.sharedApplication.keyWindow;
+            if (!window) {
+                PPAuthDebugLog(@"[Auth] Root switch fallback after %@ because active window is missing. currentUID=%@",
+                               context ?: @"sign-in",
+                               [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser]);
+                [PPFunc reloadAppUI];
+                return;
+            }
+
+            PPAuthDebugLog(@"[Auth] Root switch started after %@. currentUID=%@ windowRoot=%@ navDepth=%lu",
                            context ?: @"sign-in",
-                           [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser]);
-            [PPFunc reloadAppUI];
-            return;
+                           [self pp_safeAuthUIDForLog:currentUser],
+                           NSStringFromClass(window.rootViewController.class),
+                           (unsigned long)self.navigationController.viewControllers.count);
+
+            PPRootTabBarController *rootVC = [[PPRootTabBarController alloc] init];
+            rootVC.view.semanticContentAttribute = GM.setSemantic;
+            window.semanticContentAttribute = GM.setSemantic;
+
+            [UIView transitionWithView:window
+                              duration:0.42
+                               options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                            animations:^{
+                BOOL previousAnimationState = [UIView areAnimationsEnabled];
+                [UIView setAnimationsEnabled:NO];
+                window.rootViewController = rootVC;
+                [window makeKeyAndVisible];
+                [window layoutIfNeeded];
+                [UIView setAnimationsEnabled:previousAnimationState];
+            } completion:^(__unused BOOL finished) {
+                PPAuthDebugLog(@"[Auth] Root switch completed after %@. currentUID=%@ newRoot=%@",
+                               context ?: @"sign-in",
+                               [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser],
+                               NSStringFromClass(window.rootViewController.class));
+            }];
+        };
+
+        UIViewController *presentingOwner = self.presentingViewController ?: self.navigationController.presentingViewController;
+        if (self.presentedViewController) {
+            [self dismissViewControllerAnimated:NO completion:^{
+                if (presentingOwner) {
+                    [presentingOwner dismissViewControllerAnimated:NO completion:performRootSwitch];
+                } else {
+                    performRootSwitch();
+                }
+            }];
+        } else if (presentingOwner) {
+            [presentingOwner dismissViewControllerAnimated:NO completion:performRootSwitch];
+        } else {
+            performRootSwitch();
         }
-
-        PPAuthDebugLog(@"[Auth] Root switch started after %@. currentUID=%@ windowRoot=%@ navDepth=%lu",
-                       context ?: @"sign-in",
-                       [self pp_safeAuthUIDForLog:currentUser],
-                       NSStringFromClass(window.rootViewController.class),
-                       (unsigned long)self.navigationController.viewControllers.count);
-
-        PPRootTabBarController *rootVC = [[PPRootTabBarController alloc] init];
-        rootVC.view.semanticContentAttribute = GM.setSemantic;
-        window.semanticContentAttribute = GM.setSemantic;
-
-        [UIView transitionWithView:window
-                          duration:0.42
-                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
-                        animations:^{
-            BOOL previousAnimationState = [UIView areAnimationsEnabled];
-            [UIView setAnimationsEnabled:NO];
-            window.rootViewController = rootVC;
-            [window makeKeyAndVisible];
-            [window layoutIfNeeded];
-            [UIView setAnimationsEnabled:previousAnimationState];
-        } completion:^(__unused BOOL finished) {
-            PPAuthDebugLog(@"[Auth] Root switch completed after %@. currentUID=%@ newRoot=%@",
-                           context ?: @"sign-in",
-                           [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser],
-                           NSStringFromClass(window.rootViewController.class));
-        }];
     });
 }
 
@@ -2143,8 +2160,27 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
             [self.stepIndicatorView updateCurrentStepIndex:2 completedStepIndex:1 animated:YES];
             vc.modalPresentationStyle = UIModalPresentationFullScreen;
-            if (self.navigationController) {
-                [self.navigationController pushViewController:vc animated:YES];
+
+            UINavigationController *targetNav = self.navigationController;
+            if (!targetNav && [self.presentedViewController isKindOfClass:[UINavigationController class]]) {
+                targetNav = (UINavigationController *)self.presentedViewController;
+            }
+
+            if (targetNav) {
+                NSMutableArray<UIViewController *> *vcs = [targetNav.viewControllers mutableCopy];
+                NSUInteger verificationIdx = NSNotFound;
+                for (NSUInteger i = 0; i < vcs.count; i++) {
+                    if ([vcs[i] isKindOfClass:[PPVerificationCodeViewController class]]) {
+                        verificationIdx = i;
+                        break;
+                    }
+                }
+                if (verificationIdx != NSNotFound) {
+                    [vcs replaceObjectAtIndex:verificationIdx withObject:vc];
+                    [targetNav setViewControllers:vcs animated:YES];
+                } else {
+                    [targetNav pushViewController:vc animated:YES];
+                }
             } else {
                 UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
                 nav.navigationBarHidden = NO;

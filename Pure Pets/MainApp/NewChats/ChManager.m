@@ -2395,6 +2395,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         FIRStorageMetadata *metadata = [FIRStorageMetadata new];
         metadata.contentType = @"image/jpeg";
+        metadata.customMetadata = @{
+            @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
+            @"thread_id": threadID ?: @"",
+            @"message_id": msg.ID ?: @"",
+            @"media_type": @"image"
+        };
         msg.mimeType = metadata.contentType;
         FIRStorageUploadTask *task =
             [ref putData:imageData metadata:metadata];
@@ -2487,6 +2493,11 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     FIRStorageMetadata *metadata = [FIRStorageMetadata new];
     metadata.contentType = @"image/jpeg";
+    metadata.customMetadata = @{
+        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
+        @"message_id": msg.ID ?: @"",
+        @"media_type": @"video_thumbnail"
+    };
     FIRStorageUploadTask *task =
         [ref putData:data metadata:metadata];
 
@@ -2529,6 +2540,11 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     FIRStorageMetadata *metadata = [FIRStorageMetadata new];
     metadata.contentType = @"image/jpeg";
+    metadata.customMetadata = @{
+        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
+        @"message_id": msgID ?: @"",
+        @"media_type": @"video_thumbnail"
+    };
     FIRStorageUploadTask *task =
         [ref putData:data metadata:metadata];
 
@@ -2609,6 +2625,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     FIRStorageMetadata *metadata = [FIRStorageMetadata new];
     metadata.contentType = @"video/mp4";
+    metadata.customMetadata = @{
+        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
+        @"thread_id": threadID ?: @"",
+        @"message_id": msg.ID ?: @"",
+        @"media_type": @"video"
+    };
     msg.mimeType = metadata.contentType;
     FIRStorageUploadTask *task =
         [videoRef putData:videoData metadata:metadata];

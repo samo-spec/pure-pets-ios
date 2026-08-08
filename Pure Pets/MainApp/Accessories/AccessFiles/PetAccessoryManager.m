@@ -900,7 +900,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 FIRStorageMetadata *firebaseMetadata = [[FIRStorageMetadata alloc] init];
                 firebaseMetadata.contentType = @"image/png";
                 firebaseMetadata.customMetadata = @{
-                    @"uploaded_by": accessory.ownerID,
+                    @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
                     @"accessory_id": accessory.accessoryID,
                     @"accessory_name": accessory.name ?: @"unnamed",
                     @"upload_timestamp": @((NSInteger)[[NSDate date] timeIntervalSince1970]).stringValue,
@@ -1383,7 +1383,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
                     metadata.contentType = @"image/png";
                     metadata.customMetadata = @{
-                        @"uploaded_by": UserManager.sharedManager.currentUser.ID ?: @"unknown",
+                        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
                         @"accessory_id": accessory.accessoryID,
                         @"upload_timestamp": @((NSInteger)[[NSDate date] timeIntervalSince1970]).stringValue,
                         @"image_width": @(image.size.width).stringValue,
@@ -1589,7 +1589,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
                     metadata.contentType = @"image/png";
                     metadata.customMetadata = @{
-                        @"uploaded_by": UserManager.sharedManager.currentUser.ID ?: @"unknown",
+                        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
                         @"accessory_id": accessory.accessoryID,
                         @"upload_timestamp": @((NSInteger)[[NSDate date] timeIntervalSince1970]).stringValue,
                         @"image_width": @(image.size.width).stringValue,

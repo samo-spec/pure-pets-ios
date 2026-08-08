@@ -134,9 +134,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 // Hero Card views
 @property (nonatomic, strong) UIView *heroCard;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) UIVisualEffectView *heroMaterialView;
-@property (nonatomic, strong) CAGradientLayer *heroDNADepthLayer;
-@property (nonatomic, strong) CAGradientLayer *heroDNASpecularLayer;
+@property (nonatomic, strong) UIView *heroFillView;
 @property (nonatomic, strong) UIView *heroTintView;
 @property (nonatomic, strong) UIView *heroStatusRailView;
 @property (nonatomic, strong) UIButton *searchToggleButton;
@@ -261,7 +259,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     if (self.view.window && !UIAccessibilityIsReduceMotionEnabled()) {
         [self.ambientGlassBackground startAnimations];
     }
-    [self pp_applyHeroMaterialWithAccent:[self pp_currentHeroAccentColor]];
+    [self pp_applyHeroSurfaceWithAccent:[self pp_currentHeroAccentColor]];
 }
 
 - (void)pp_reduceMotionStatusDidChange
@@ -401,8 +399,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.searchView = [[PPS alloc] initWithFrame:CGRectZero];
     self.searchView.delegate = self;
-    self.searchView.blurEnabled = YES;
-    self.searchView.glassAlpha = PPIOS26() ? 1.0 : 0.72;
+    self.searchView.blurEnabled = NO;
     self.searchView.shadowEnabled = NO;
     self.searchView.debounceInterval = 0.16;
     self.searchView.fuzzyEnabled = YES;
@@ -535,28 +532,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
     [self.heroCard addSubview:self.heroSurfaceView];
 
-    UIVisualEffect *heroEffect = nil;
-    if (@available(iOS 26.0, *)) {
-        heroEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
-    } else if (@available(iOS 13.0, *)) {
-        heroEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
-    } else {
-        heroEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
-    }
-    self.heroMaterialView = [[UIVisualEffectView alloc] initWithEffect:heroEffect];
-    self.heroMaterialView.userInteractionEnabled = NO;
-    [self.heroSurfaceView addSubview:self.heroMaterialView];
-
-    // App-DNA world-glass base surface for the hero card. Neutral gradient
-    // layers live inside the material content, BELOW the status accent tint
-    // (heroTintView) and the vertical rail, so the accent stays the signal.
-    self.heroDNADepthLayer = [CAGradientLayer layer];
-    self.heroDNADepthLayer.name = @"PPOrderHeroDNADepth";
-    [self.heroMaterialView.contentView.layer insertSublayer:self.heroDNADepthLayer atIndex:0];
-
-    self.heroDNASpecularLayer = [CAGradientLayer layer];
-    self.heroDNASpecularLayer.name = @"PPOrderHeroDNASpecular";
-    [self.heroMaterialView.contentView.layer insertSublayer:self.heroDNASpecularLayer atIndex:1];
+    // Solid card fill: preserve the existing hierarchy and accent overlays
+    // without a blur/material surface.
+    self.heroFillView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.heroFillView.userInteractionEnabled = NO;
+    self.heroFillView.clipsToBounds = YES;
+    [self.heroSurfaceView addSubview:self.heroFillView];
 
     self.heroTintView = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroTintView.userInteractionEnabled = NO;
@@ -579,23 +560,13 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
     [self.heroSurfaceView addSubview:self.searchToggleButton];
 
-    if (@available(iOS 26.0, *)) {
-        UIButtonConfiguration *configuration = [UIButtonConfiguration glassButtonConfiguration];
+    // Use a normal button configuration on every supported OS. The search
+    // control keeps its capsule shape and accent treatment without glass.
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         configuration.contentInsets = NSDirectionalEdgeInsetsZero;
         self.searchToggleButton.configuration = configuration;
-    } else {
-        UIBlurEffect *buttonEffect = nil;
-        if (@available(iOS 13.0, *)) {
-            buttonEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        } else {
-            buttonEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
-        }
-        UIVisualEffectView *buttonMaterialView = [[UIVisualEffectView alloc] initWithEffect:buttonEffect];
-        buttonMaterialView.frame = CGRectMake(0.0, 0.0, 44.0, 44.0);
-        buttonMaterialView.userInteractionEnabled = NO;
-        buttonMaterialView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        [self.searchToggleButton insertSubview:buttonMaterialView atIndex:0];
     }
     [self pp_updateSearchTogglePresentation];
 
@@ -897,12 +868,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.heroCard.frame = CGRectMake(cardX, safeTop, cardWidth, finalHeroHeight);
     self.heroSurfaceView.frame = self.heroCard.bounds;
-    self.heroMaterialView.frame = self.heroSurfaceView.bounds;
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.heroDNADepthLayer.frame = self.heroMaterialView.contentView.bounds;
-    self.heroDNASpecularLayer.frame = self.heroMaterialView.contentView.bounds;
-    [CATransaction commit];
+    self.heroFillView.frame = self.heroSurfaceView.bounds;
     self.heroTintView.frame = self.heroSurfaceView.bounds;
     CGFloat railX = isRTL ? cardWidth - 5.0 : 1.0;
     self.heroStatusRailView.frame = CGRectMake(railX,
@@ -955,7 +921,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     UIColor *accent = [self pp_currentHeroAccentColor];
 
-    [self pp_applyHeroMaterialWithAccent:accent];
+    [self pp_applyHeroSurfaceWithAccent:accent];
     self.summaryPanel.backgroundColor = UIColor.clearColor;
     self.activeMetricLabel.backgroundColor = [accent colorWithAlphaComponent:0.14];
     self.activeMetricLabel.textColor = accent;
@@ -1007,7 +973,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     : [self colorForStatusFilterKey:self.selectedStatusFilterKey];
 }
 
-- (void)pp_applyHeroMaterialWithAccent:(UIColor *)accent
+- (void)pp_applyHeroSurfaceWithAccent:(UIColor *)accent
 {
     UIColor *resolvedAccent = accent ?: ([GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemOrangeColor);
     BOOL isDark = NO;
@@ -1015,7 +981,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     }
 
-    self.heroCard.backgroundColor = UIColor.clearColor;
+    UIColor *surfaceColor = AppForgroundColr ?: AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    self.heroFillView.backgroundColor = [surfaceColor colorWithAlphaComponent:1.0];
     self.heroCard.layer.cornerRadius = PPCornerHero - 4.0;
     self.heroCard.layer.borderWidth = 0.0;
     self.heroCard.layer.masksToBounds = NO;
@@ -1023,33 +990,24 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroCard.layer.shadowRadius = isDark ? 18.0 : 20.0;
     self.heroCard.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
 
-    [self pp_applyHeroDNASurfaceColors];
-
-    self.searchToggleButton.backgroundColor = PPIOS26()
-        ? UIColor.clearColor
-        : [resolvedAccent colorWithAlphaComponent:isDark ? 0.18 : 0.105];
+    self.searchToggleButton.backgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.18 : 0.105];
     [self.searchToggleButton pp_setBorderColor:[resolvedAccent colorWithAlphaComponent:isDark ? 0.22 : 0.18]];
     self.searchToggleButton.tintColor = resolvedAccent;
-    if (@available(iOS 26.0, *)) {
+    if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = self.searchToggleButton.configuration;
+        configuration.baseBackgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.18 : 0.105];
         configuration.baseForegroundColor = resolvedAccent;
         self.searchToggleButton.configuration = configuration;
     }
 
     self.heroTintView.backgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.055 : 0.030];
-    if (@available(iOS 26.0, *)) {
-        if ([self.heroMaterialView.effect isKindOfClass:UIGlassEffect.class]) {
-            ((UIGlassEffect *)self.heroMaterialView.effect).tintColor =
-                [resolvedAccent colorWithAlphaComponent:isDark ? 0.12 : 0.075];
-        }
-    }
     self.heroStatusRailView.backgroundColor = resolvedAccent;
     self.heroSurfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [self.heroSurfaceView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.13 : 0.70]];
 
     self.summaryPanel.layer.borderWidth = 0.0;
     self.searchView.strokeColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.22 : 0.14];
-    [self.searchView updateGlassBackgroundColor:resolvedAccent opacity:isDark ? 0.10 : 0.055];
+    self.searchView.backgroundColor = [surfaceColor colorWithAlphaComponent:1.0];
 
     NSString *accentKey = self.selectedStatusFilterKey ?: kOrderHistoryFilterAll;
     if (![self.renderedAccentFilterKey isEqualToString:accentKey]) {
@@ -1061,37 +1019,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.summaryDividerView.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:isDark ? 0.34 : 0.45];
     self.initialLoader.color = resolvedAccent;
     self.paginationLoader.color = resolvedAccent;
-}
-
-- (void)pp_applyHeroDNASurfaceColors
-{
-    // App-DNA world-glass hero base surface. Neutral (non-accent) so the status
-    // accent tint and vertical rail remain the semantic color. Depth is drawn
-    // from the sanctioned PPGradientCard DNA tokens; specular is the signature
-    // top lift shared with the order cell.
-    BOOL isDark = NO;
-    if (@available(iOS 13.0, *)) {
-        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    }
-
-    UIColor *depthTop = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.055]
-        : [PPGradientCardStart colorWithAlphaComponent:0.60];
-    UIColor *depthBottom = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.0]
-        : [PPGradientCardEnd colorWithAlphaComponent:0.45];
-    self.heroDNADepthLayer.colors = @[(id)depthTop.CGColor, (id)depthBottom.CGColor];
-    self.heroDNADepthLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroDNADepthLayer.endPoint = CGPointMake(1.0, 1.0);
-
-    UIColor *specTop = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.06 : 0.30];
-    self.heroDNASpecularLayer.colors = @[
-        (id)specTop.CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
-    ];
-    self.heroDNASpecularLayer.locations = @[@0.0, @0.5];
-    self.heroDNASpecularLayer.startPoint = CGPointMake(0.5, 0.0);
-    self.heroDNASpecularLayer.endPoint = CGPointMake(0.5, 1.0);
 }
 
 - (void)pp_updateSearchTogglePresentation

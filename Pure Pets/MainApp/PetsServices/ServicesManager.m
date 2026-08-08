@@ -12,6 +12,7 @@
 #import "UserModel.h"
 #import "PPUserKitCompatibility.h"
 #import "PPFunc.h"
+@import FirebaseAuth;
 @import FirebaseFirestore;
 @import FirebaseStorage;
 
@@ -40,7 +41,7 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
 - (void)addService:(ServiceModel *)service image:(nullable UIImage *)image completion:(void (^)(NSError * _Nullable))completion {
     UserManager *userManager = [UserManager sharedManager];
     UserModel *currentUser = userManager.currentUser;
-    NSString *uid = [currentUser.ID isKindOfClass:NSString.class] ? currentUser.ID : @"";
+    NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
 
     if (uid.length == 0) {
         if (completion) completion(PPServiceCreatePermissionError(@"Please sign in to add a new service."));
@@ -65,7 +66,15 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
         NSString *fileName = [NSString stringWithFormat:@"services/%@.jpg", [[NSUUID UUID] UUIDString]];
         FIRStorageReference *ref = [[FIRStorage storage].reference child:fileName];
 
-        [ref putData:imageData metadata:nil completion:^(FIRStorageMetadata *metadata, NSError *error) {
+        FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
+        metadata.contentType = @"image/jpeg";
+        metadata.customMetadata = @{
+            @"uploaded_by": uid,
+            @"entity_type": @"service",
+            @"entity_id": service.serviceID ?: @""
+        };
+
+        [ref putData:imageData metadata:metadata completion:^(FIRStorageMetadata *metadata, NSError *error) {
             if (error) {
                 completion(error);
                 return;

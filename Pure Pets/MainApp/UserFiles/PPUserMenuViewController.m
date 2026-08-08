@@ -448,7 +448,10 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
 
         UIView *surface = [UIView new];
         surface.translatesAutoresizingMaskIntoConstraints = NO;
-        surface.backgroundColor = UIColor.clearColor;
+        // Keep the lens entry as a solid card. The card retains its own
+        // border, shadow, content hierarchy, and press feedback without a
+        // blur/material layer or translucent tint.
+        surface.backgroundColor = [PPUserMenuSurfaceColor() colorWithAlphaComponent:1.0];
         surface.layer.borderWidth = 1.0;
         [surface pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.14]];
         PPApplyContinuousCorners(surface, PPCornerCard);
@@ -458,27 +461,6 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
         surface.layer.shadowOffset = CGSizeMake(0.0, 9.0);
         [self.contentView addSubview:surface];
         self.surfaceView = surface;
-
-        UIVisualEffect *materialEffect = nil;
-        if (@available(iOS 26.0, *)) {
-            UIGlassEffect *glass = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
-            glass.tintColor = [AppPrimaryClrShiner colorWithAlphaComponent:0.22];
-            materialEffect = glass;
-        } else {
-            materialEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        }
-        UIVisualEffectView *materialView = [[UIVisualEffectView alloc] initWithEffect:materialEffect];
-        materialView.translatesAutoresizingMaskIntoConstraints = NO;
-        materialView.userInteractionEnabled = NO;
-        PPApplyContinuousCorners(materialView, PPCornerCard);
-        materialView.clipsToBounds = YES;
-        [surface addSubview:materialView];
-
-        UIView *materialTint = [UIView new];
-        materialTint.translatesAutoresizingMaskIntoConstraints = NO;
-        materialTint.userInteractionEnabled = NO;
-        materialTint.backgroundColor = [AppPrimaryClrShiner colorWithAlphaComponent:0.12];
-        [materialView.contentView addSubview:materialTint];
 
         UIView *signal = [UIView new];
         signal.translatesAutoresizingMaskIntoConstraints = NO;
@@ -543,16 +525,6 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
             [surface.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
             [surface.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-7.0],
             [surface.heightAnchor constraintGreaterThanOrEqualToConstant:138.0],
-
-            [materialView.topAnchor constraintEqualToAnchor:surface.topAnchor],
-            [materialView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor],
-            [materialView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor],
-            [materialView.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
-
-            [materialTint.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor],
-            [materialTint.leadingAnchor constraintEqualToAnchor:materialView.contentView.leadingAnchor],
-            [materialTint.trailingAnchor constraintEqualToAnchor:materialView.contentView.trailingAnchor],
-            [materialTint.bottomAnchor constraintEqualToAnchor:materialView.contentView.bottomAnchor],
 
             [signal.topAnchor constraintEqualToAnchor:surface.topAnchor constant:18.0],
             [signal.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor],

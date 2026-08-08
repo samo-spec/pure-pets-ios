@@ -9,6 +9,7 @@
 
 import AVKit
 import Combine
+import FirebaseStorage
 import PurePetsMessagingCore
 import PurePetsMessagingUI
 import SpearLivingChatHeader
@@ -435,20 +436,96 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                 return
             }
 
-            self.screenState.setConnectionInterrupted(false)
             let currentUserID = UserManager.shared().currentUser?.id ?? ""
-            let payloads = messages.map {
-                self.messagePayload(from: $0, currentUserID: currentUserID)
+            self.resolveStickerDownloadURLs(
+                in: messages,
+                currentUserID: currentUserID
+            ) { [weak self] payloads in
+                guard let self, generation == self.messageObservationGeneration else {
+                    return
+                }
+                self.screenState.apply(
+                    payloads: payloads,
+                    currentUserID: currentUserID,
+                    initialLoadCompleted: initialLoadCompleted,
+                    canLoadOlder: canLoadOlder,
+                    animated: initialLoadCompleted
+                )
             }
-            self.screenState.apply(
-                payloads: payloads,
-                currentUserID: currentUserID,
-                initialLoadCompleted: initialLoadCompleted,
-                canLoadOlder: canLoadOlder,
-                animated: initialLoadCompleted
-            )
         }
 
+    }
+
+    private func resolveStickerDownloadURLs(
+        in messages: [ChatMessageModel],
+        currentUserID: String,
+        completion: @escaping ([[String: Any]]) -> Void
+    ) {
+        var payloads = messages.map {
+            self.messagePayload(from: $0, currentUserID: currentUserID)
+        }
+        let unresolvedIndices = messages.indices.filter { index in
+            let message = messages[index]
+            guard message.isStickerMessage else { return false }
+
+            let fileURL = message.fileURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let hasHTTPURL: Bool = {
+                guard let url = URL(string: fileURL),
+                      let scheme = url.scheme?.lowercased(),
+                      (scheme == "http" || scheme == "https"),
+                      url.host != nil else {
+                    return false
+                }
+                return true
+            }()
+            return !hasHTTPURL && !(message.stickerStoragePath?.isEmpty ?? true)
+        }
+
+        guard !unresolvedIndices.isEmpty else {
+            completion(payloads)
+            return
+        }
+
+        let group = DispatchGroup()
+        let lock = NSLock()
+
+        for index in unresolvedIndices {
+            let message = messages[index]
+            let path = message.stickerStoragePath!.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !path.isEmpty else { continue }
+
+            group.enter()
+            let reference: StorageReference
+            if path.hasPrefix("gs://") {
+                reference = Storage.storage().reference(forURL: path)
+            } else {
+                reference = Storage.storage().reference(withPath: path)
+            }
+            reference.downloadURL { [weak self] url, error in
+                defer { group.leave() }
+                guard let url else {
+                    NSLog(
+                        "[ChatStickers] Failed to resolve Storage path %@ for message %@: %@",
+                        path,
+                        message.id,
+                        error?.localizedDescription ?? "unknown error"
+                    )
+                    return
+                }
+                lock.lock()
+                payloads[index]["fileURL"] = url.absoluteString
+                lock.unlock()
+                self?.logStickerResolution(messageID: message.id, path: path)
+            }
+        }
+
+        group.notify(queue: .main) {
+            completion(payloads)
+        }
+    }
+
+    private func logStickerResolution(messageID: String, path: String) {
+        NSLog("[ChatStickers] Resolved Storage path %@ for message %@", path, messageID)
     }
 
     private func stopMessageObservation() {
@@ -985,6 +1062,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
             "kind": kind,
             "status": Int(message.status.rawValue),
             "fileURL": fileURL,
+            "stickerStoragePath": message.stickerStoragePath ?? "",
             "thumbnailURL": message.thumbnailURL ?? "",
             "duration": message.mediaDuration,
             "mediaWidth": message.mediaWidth,
@@ -3645,7 +3723,7 @@ private struct PPMessagingHeader: View {
             )
         }
         .frame(minHeight: 68)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 12)
         .padding(.top, 4)
         .padding(.bottom, 7)
         .background {
@@ -3657,7 +3735,7 @@ private struct PPMessagingHeader: View {
                         colors: [
                             PPMessagingPalette.headerHighlight,
                             .clear,
-                            PPMessagingPalette.canvasSignalField.opacity(0.42)
+                            PPMessagingPalette.canvasSignalField.opacity(0.0)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -5109,6 +5187,7 @@ private struct PPMessagingCanvas: View {
             )
 
             if allowsAmbientDetail {
+
                 RadialGradient(
                     colors: [PPMessagingPalette.canvasWarmField, .clear],
                     center: .topTrailing,

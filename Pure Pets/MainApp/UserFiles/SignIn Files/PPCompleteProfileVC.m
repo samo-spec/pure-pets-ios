@@ -2104,7 +2104,6 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
                         if (codeCompletion) {
                             codeCompletion(YES, nil);
                         }
-                        [weakVerificationVC dismissViewControllerAnimated:YES completion:nil];
                     });
                 }];
             };

@@ -1945,6 +1945,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         NSString *storagePath = [self pp_storagePathForAdID:ad.adID index:idx];
         FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
         metadata.contentType = @"image/jpeg";
+        metadata.customMetadata = @{
+            @"uploaded_by": [self pp_submitOwnerID] ?: @"",
+            @"entity_type": @"ads",
+            @"entity_id": ad.adID ?: @""
+        };
 
         FIRStorageReference *ref =
         [rootRef child:storagePath];

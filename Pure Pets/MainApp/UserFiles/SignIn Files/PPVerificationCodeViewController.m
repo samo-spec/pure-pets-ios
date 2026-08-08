@@ -110,9 +110,11 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
     [self startTimer];
 
+    __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(300 * NSEC_PER_MSEC)),
                    dispatch_get_main_queue(), ^{
-        [self.codeField becomeFirstResponder];
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        [strongSelf.codeField becomeFirstResponder];
     });
 
     
@@ -120,6 +122,8 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    self.cardView.alpha = 1.0;
+    self.stepIndicatorView.alpha = 1.0;
     [self pp_configureNavigationChrome];
     [self animateVerificationEntranceIfNeeded];
 }
@@ -344,11 +348,11 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     self.codeField.tintColor = UIColor.clearColor;
     self.codeField.textAlignment = NSTextAlignmentCenter;
     self.codeField.font =  [GM boldFontWithSize:1];
-    self.codeField.placeholder = kLang(@"otp_placeholder");
     self.codeField.delegate = self;
     self.codeField.textColor = UIColor.clearColor;
     self.codeField.layer.cornerRadius = 12;
     self.codeField.backgroundColor = UIColor.clearColor;
+    self.codeField.clipsToBounds = YES;
     [self.codeField addTarget:self action:@selector(codeChanged:) forControlEvents:UIControlEventEditingChanged];
     self.codeField.translatesAutoresizingMaskIntoConstraints = NO;
 
@@ -988,7 +992,10 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     
     self.pendingAutomaticSubmissionCode = nil;
     self.isVerifyingCode = YES;
-    NSString *verificationID = [[NSUserDefaults standardUserDefaults] stringForKey:@"authVerificationID"];
+    NSString *rawVerificationID = [[NSUserDefaults standardUserDefaults] stringForKey:@"authVerificationID"];
+    NSString *verificationID = [rawVerificationID isKindOfClass:[NSString class]]
+        ? [rawVerificationID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
     NSLog(@"[Auth][OTP] Verification started. codeLength=%lu hasVerificationID=%@ currentUID=%@",
           (unsigned long)code.length,
           verificationID.length > 0 ? @"YES" : @"NO",
@@ -1045,40 +1052,52 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
         return;
     }
 
-    FIRAuthCredential *credential =
-        [[FIRPhoneAuthProvider provider] credentialWithVerificationID:verificationID
-                                                    verificationCode:code];
+    __weak typeof(self) weakSelf = self;
+    @try {
+        FIRAuthCredential *credential =
+            [[FIRPhoneAuthProvider provider] credentialWithVerificationID:verificationID
+                                                        verificationCode:code];
 
-    // Loading indicator in button
-    [self setLoadingState:YES];
+        // Loading indicator in button
+        [self setLoadingState:YES];
 
-    [[FIRAuth auth] signInWithCredential:credential
-                              completion:^(FIRAuthDataResult * _Nullable authResult,
-                                           NSError * _Nullable error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
+        [[FIRAuth auth] signInWithCredential:credential
+                                   completion:^(FIRAuthDataResult * _Nullable authResult,
+                                                NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) {
+                    return;
+                }
 
-            // stop loading button
-            [self setLoadingState:NO];
-            self.isVerifyingCode = NO;
+                // stop loading button
+                [self setLoadingState:NO];
+                self.isVerifyingCode = NO;
 
-            if (error) {
-                NSLog(@"[Auth][OTP] Firebase sign-in failed. domain=%@ code=%ld message=%@ currentUID=%@",
-                      error.domain,
-                      (long)error.code,
-                      error.localizedDescription,
+                if (error) {
+                    NSLog(@"[Auth][OTP] Firebase sign-in failed. domain=%@ code=%ld message=%@ currentUID=%@",
+                          error.domain,
+                          (long)error.code,
+                          error.localizedDescription,
+                          PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
+                    NSString *message = [self pp_localizedVerificationMessageForError:error
+                                                                          fallbackKey:@"invalid_code_message"];
+                    [self showInvalidCodeErrorWithMessage:message];
+                    return;
+                }
+
+                NSLog(@"[Auth][OTP] Firebase sign-in succeeded. resultUID=%@ currentUID=%@",
+                      PPVerificationSafeUIDForLog(authResult.user),
                       PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
-                NSString *message = [self pp_localizedVerificationMessageForError:error
-                                                                      fallbackKey:@"invalid_code_message"];
-                [self showInvalidCodeErrorWithMessage:message];
-                return;
-            }
-
-            NSLog(@"[Auth][OTP] Firebase sign-in succeeded. resultUID=%@ currentUID=%@",
-                  PPVerificationSafeUIDForLog(authResult.user),
-                  PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
-            [self handleSuccessfulAuth:authResult];
-        });
-    }];
+                [self handleSuccessfulAuth:authResult];
+            });
+        }];
+    } @catch (NSException *exception) {
+        NSLog(@"[Auth][OTP] Exception during Firebase credential/sign-in: %@", exception);
+        self.isVerifyingCode = NO;
+        [self setLoadingState:NO];
+        [self showInvalidCodeErrorWithMessage:kLang(@"auth_session_expired_message") ?: kLang(@"auth_verification_start_failed")];
+    }
 }
 
 #pragma mark - Success Handling

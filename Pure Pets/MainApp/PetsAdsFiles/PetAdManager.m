@@ -1259,7 +1259,15 @@ if (completion) completion(ad, nil);
         FIRStorageReference *imgRef =
         [storageRef child:fileName];
 
-        [imgRef putData:data metadata:nil completion:^(FIRStorageMetadata *meta, NSError *error) {
+        FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+        metadata.contentType = @"image/jpeg";
+        metadata.customMetadata = @{
+            @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
+            @"entity_type": @"ads",
+            @"entity_id": ad.adID ?: @"",
+            @"media_type": @"image"
+        };
+        [imgRef putData:data metadata:metadata completion:^(FIRStorageMetadata *meta, NSError *error) {
 
             if (error) {
                 NSLog(@"❌ Image upload failed: %@", error.localizedDescription);

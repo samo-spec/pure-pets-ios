@@ -87,14 +87,11 @@
                   dateText:(nullable NSString *)dateText
              fallbackColor:(nullable UIColor *)fallbackColor;
 - (void)pp_updateContentSizeLayout;
-- (void)pp_applyDNASurfaceColors;
 @end
 
 @implementation OrderCell {
     UIView *_cardView;
-    UIVisualEffectView *_blurView;
-    CAGradientLayer *_dnaDepthLayer;      // App-DNA world-glass depth (neutral)
-    CAGradientLayer *_dnaSpecularLayer;   // App-DNA world-glass top specular
+    UIView *_surfaceView;
     UIView *_surfaceTintView;
     UIView *_statusRailView;
 
@@ -161,59 +158,28 @@
         [_cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-verticalPadding]
     ]];
 
-    // 2. Premium Material Background (UIVisualEffectView for blur / glassmorphism)
-    UIVisualEffect *materialEffect = nil;
-    if (@available(iOS 26.0, *)) {
-        materialEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
-    } else if (@available(iOS 13.0, *)) {
-        materialEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-    } else {
-        materialEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
-    }
-    
-    _blurView = [[UIVisualEffectView alloc] initWithEffect:materialEffect];
-    _blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    PPApplyContinuousCorners(_blurView, PPCornerCard);
-    _blurView.clipsToBounds = YES;
-    _blurView.layer.borderWidth = 0.7;
-    _blurView.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.45].CGColor;
-    _blurView.alpha = PPIOS26() ? 1.0 : 0.78;
-    [_cardView addSubview:_blurView];
-
-    // Constraints for Blur Material (pins to Card View edges)
+    // Solid order surface. Keep the card border, shadow, status tint, and
+    // layout, but remove all blur/glass material from the reusable row.
+    _surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
+    _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    _surfaceView.backgroundColor = [(AppForgroundColr ?: AppBackgroundClr ?: UIColor.systemBackgroundColor) colorWithAlphaComponent:1.0];
+    PPApplyContinuousCorners(_surfaceView, PPCornerCard);
+    _surfaceView.clipsToBounds = YES;
+    _surfaceView.layer.borderWidth = 0.7;
+    _surfaceView.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.45].CGColor;
+    [_cardView addSubview:_surfaceView];
     [NSLayoutConstraint activateConstraints:@[
-        [_blurView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor],
-        [_blurView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor],
-        [_blurView.topAnchor constraintEqualToAnchor:_cardView.topAnchor],
-        [_blurView.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor]
+        [_surfaceView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor],
+        [_surfaceView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor],
+        [_surfaceView.topAnchor constraintEqualToAnchor:_cardView.topAnchor],
+        [_surfaceView.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor]
     ]];
 
+    // Surface tint remains a semantic status accent, not a blur layer.
     _surfaceTintView = [[UIView alloc] initWithFrame:CGRectZero];
     _surfaceTintView.translatesAutoresizingMaskIntoConstraints = NO;
     _surfaceTintView.userInteractionEnabled = NO;
-    [_blurView.contentView addSubview:_surfaceTintView];
-
-    // App-DNA world-glass base surface. These neutral gradient layers sit
-    // BELOW the status accent wash (_surfaceTintView) and the vertical rail so
-    // the per-order status color remains the semantic signal. Derived from the
-    // sanctioned PPGradientCard DNA tokens; static (no per-cell animation) to
-    // stay reuse- and scroll-performance safe.
-    _dnaDepthLayer = [CAGradientLayer layer];
-    _dnaDepthLayer.name = @"PPOrderCellDNADepth";
-    [_blurView.contentView.layer insertSublayer:_dnaDepthLayer atIndex:0];
-
-    _dnaSpecularLayer = [CAGradientLayer layer];
-    _dnaSpecularLayer.name = @"PPOrderCellDNASpecular";
-    [_blurView.contentView.layer insertSublayer:_dnaSpecularLayer atIndex:1];
-
-    [self pp_applyDNASurfaceColors];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_surfaceTintView.leadingAnchor constraintEqualToAnchor:_blurView.contentView.leadingAnchor],
-        [_surfaceTintView.trailingAnchor constraintEqualToAnchor:_blurView.contentView.trailingAnchor],
-        [_surfaceTintView.topAnchor constraintEqualToAnchor:_blurView.contentView.topAnchor],
-        [_surfaceTintView.bottomAnchor constraintEqualToAnchor:_blurView.contentView.bottomAnchor]
-    ]];
+    [_surfaceView addSubview:_surfaceTintView];
 
     _statusRailView = [[UIView alloc] initWithFrame:CGRectZero];
     _statusRailView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -431,12 +397,6 @@
         _statusRailView.backgroundColor = resolvedAccent;
         _surfaceTintView.backgroundColor = [resolvedAccent colorWithAlphaComponent:
                                             PPOrderStatusUsesDarkAppearance(self.traitCollection) ? 0.055 : 0.026];
-        if (@available(iOS 26.0, *)) {
-            if ([_blurView.effect isKindOfClass:UIGlassEffect.class]) {
-                ((UIGlassEffect *)_blurView.effect).tintColor =
-                    [resolvedAccent colorWithAlphaComponent:PPOrderStatusUsesDarkAppearance(self.traitCollection) ? 0.10 : 0.065];
-            }
-        }
         _statusPillContainer.backgroundColor = PPOrderStatusSurfaceColorForAccent(accent, self.traitCollection);
         _statusPillContainer.layer.borderWidth = 1.0;
         _statusPillContainer.layer.borderColor = PPOrderStatusBorderColorForAccent(accent, self.traitCollection).CGColor;
@@ -460,11 +420,6 @@
         _statusRailView.backgroundColor = neutral;
         _surfaceTintView.backgroundColor = UIColor.clearColor;
         _statusIconView.image = nil;
-        if (@available(iOS 26.0, *)) {
-            if ([_blurView.effect isKindOfClass:UIGlassEffect.class]) {
-                ((UIGlassEffect *)_blurView.effect).tintColor = nil;
-            }
-        }
     }
 
     _customDateLabel.hidden = (_currentDateText.length == 0);
@@ -490,8 +445,6 @@
     [CATransaction setDisableActions:YES];
     _statusPillGradientLayer.frame = _statusPillContainer.bounds;
     _statusPillGradientLayer.cornerRadius = _statusPillContainer.layer.cornerRadius;
-    _dnaDepthLayer.frame = _blurView.contentView.bounds;
-    _dnaSpecularLayer.frame = _blurView.contentView.bounds;
     [CATransaction commit];
 
     BOOL isRTL = ([Language languageVal] == 1);
@@ -539,10 +492,10 @@
                 return [UIColor colorWithWhite:0.0 alpha:0.06];
             }
         }];
-        _blurView.layer.borderColor = [borderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+        _surfaceView.layer.borderColor = [borderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
         _itemImageView.layer.borderColor = [[UIColor separatorColor] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     } else {
-        _blurView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.06].CGColor;
+        _surfaceView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.06].CGColor;
         _itemImageView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.1].CGColor;
     }
 
@@ -557,7 +510,6 @@
     [self pp_updateContentSizeLayout];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applyDNASurfaceColors];
             [self pp_applyStatusText:_currentStatusText
                            statusKey:_currentStatusKey
                             dateText:_currentDateText
@@ -588,37 +540,6 @@
     _customDateLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
 
     [self setNeedsLayout];
-}
-
-- (void)pp_applyDNASurfaceColors
-{
-    BOOL isDark = NO;
-    if (@available(iOS 13.0, *)) {
-        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    }
-
-    // Neutral world-glass depth from the DNA card gradient (white -> #FFF5F7).
-    // Kept low-alpha and near-neutral so it never competes with the status
-    // accent wash rendered above it.
-    UIColor *depthTop = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.050]
-        : [PPGradientCardStart colorWithAlphaComponent:0.55];
-    UIColor *depthBottom = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.0]
-        : [PPGradientCardEnd colorWithAlphaComponent:0.40];
-    _dnaDepthLayer.colors = @[(id)depthTop.CGColor, (id)depthBottom.CGColor];
-    _dnaDepthLayer.startPoint = CGPointMake(0.0, 0.0);
-    _dnaDepthLayer.endPoint = CGPointMake(1.0, 1.0);
-
-    // World-glass specular sheen hugging the top edge — the signature lift.
-    UIColor *specTop = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.05 : 0.26];
-    _dnaSpecularLayer.colors = @[
-        (id)specTop.CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
-    ];
-    _dnaSpecularLayer.locations = @[@0.0, @0.5];
-    _dnaSpecularLayer.startPoint = CGPointMake(0.5, 0.0);
-    _dnaSpecularLayer.endPoint = CGPointMake(0.5, 1.0);
 }
 
 #pragma mark - Interactive Selection Feedback

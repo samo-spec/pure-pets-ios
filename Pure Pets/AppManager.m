@@ -1499,11 +1499,15 @@ int startListen = 0;
 // 🎙 Upload audio message from NSData to Firebase Storage
 - (void)uploadAudioData:(NSData *)audioData completion:(void (^)(NSString *downloadURL, NSError *error))completion {
     NSString *Uuid = [NSString stringWithFormat:@"%@_%@", [[NSUUID UUID] UUIDString], PPCurrentUser.ID];
-    NSString *filename = [NSString stringWithFormat:@"chats/audio/%@.mp3", Uuid];
+    NSString *filename = [NSString stringWithFormat:@"chat_media/audio/%@.mp3", Uuid];
     FIRStorageReference *storageRef = [[FIRStorage storage] referenceWithPath:filename];
     
     FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
     metadata.contentType = @"audio/mp3";
+    metadata.customMetadata = @{
+        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
+        @"media_type": @"audio"
+    };
     
     FIRStorageUploadTask *uploadTask = [storageRef putData:audioData metadata:metadata completion:^(FIRStorageMetadata *metadata, NSError *error) {
         if (error) {
@@ -1538,11 +1542,16 @@ int startListen = 0;
 // 🎧 Upload audio message from file path to Firebase Storage
 - (void)uploadMP3FromPath:(NSString *)filePath completion:(void (^)(NSString *downloadURL, NSString *fileName, NSError *error))completion {
     NSString *Uuid = [NSString stringWithFormat:@"%@_%@.mp3",UUIDJoin(@"Record"), PPCurrentUser.ID];
-    NSString *filename = [NSString stringWithFormat:@"chats/audio/%@", Uuid];
-    FIRStorageReference *storageRef = [[FIRStorage storage] referenceWithPath:filename];
+    NSString *filename = [NSString stringWithFormat:@"chat_media/audio/%@", Uuid];
     NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-    
-    FIRStorageUploadTask *uploadTask = [storageRef putFile:fileURL metadata:nil completion:^(FIRStorageMetadata *metadata, NSError *error) {
+    FIRStorageReference *storageRef = [[FIRStorage storage] referenceWithPath:filename];
+    FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
+    metadata.contentType = @"audio/mp4";
+    metadata.customMetadata = @{
+        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
+        @"media_type": @"audio"
+    };
+    FIRStorageUploadTask *uploadTask = [storageRef putFile:fileURL metadata:metadata completion:^(FIRStorageMetadata *metadata, NSError *error) {
         if (error) {
             NSLog(@"Error uploading file: %@", error);
             if (completion) completion(nil, Uuid, error);
