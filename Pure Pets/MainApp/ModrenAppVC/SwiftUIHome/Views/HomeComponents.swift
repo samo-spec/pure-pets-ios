@@ -3952,12 +3952,12 @@ struct HomePureLensSection: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.ppPrimary)
                 .frame(width: 32, height: 32)
-                .background(Color.white.opacity(0.08), in: Circle())
+                .background(palette.headerIconFill, in: Circle())
                 .accessibilityHidden(true)
 
             Text(title)
                 .font(HomeFont.title2())
-                .foregroundStyle(Color.white)
+                .foregroundStyle(palette.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -3968,9 +3968,9 @@ struct HomePureLensSection: View {
     private var cardBorder: some View {
         cardShape
         .stroke(
-            contrast == .increased
-                ? Color.white.opacity(0.82)
-                : Color.white.opacity(colorScheme == .dark ? 0.20 : 0.14),
+            palette.cardBorder(
+                increasedContrast: contrast == .increased
+            ),
             lineWidth: contrast == .increased ? 1.5 : 0.7
         )
         .accessibilityHidden(true)
@@ -3981,6 +3981,10 @@ struct HomePureLensSection: View {
             cornerRadius: PPCorner.card,
             style: .continuous
         )
+    }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(colorScheme: colorScheme)
     }
 
     private var title: String {
@@ -4034,6 +4038,88 @@ private enum HomePureLensMetrics {
     static let launchSize: CGFloat = 36
 }
 
+private struct HomePureLensPalette {
+    let colorScheme: ColorScheme
+
+    private var isDark: Bool {
+        colorScheme == .dark
+    }
+
+    var headerIconFill: Color {
+        isDark ? Color.white.opacity(0.08) : Color.ppCard
+    }
+
+    var primaryText: Color {
+        isDark ? Color.white : Color.ppTextPrimary
+    }
+
+    var opticalFill: Color {
+        isDark ? Color.white.opacity(0.045) : Color.ppCard
+    }
+
+    var opticalLeadingTint: Color {
+        Color.ppPrimary.opacity(isDark ? 0.20 : 0.12)
+    }
+
+    var opticalTrailingTint: Color {
+        isDark
+            ? Color.white.opacity(0.055)
+            : Color.ppSoftRose.opacity(0.52)
+    }
+
+    var opticalStatus: Color {
+        isDark
+            ? Color.white.opacity(0.34)
+            : Color.ppTextSecondary.opacity(0.86)
+    }
+
+    var compactPhaseText: Color {
+        isDark ? Color.white.opacity(0.72) : Color.ppTextPrimary
+    }
+
+    var expandedPhaseText: Color {
+        isDark ? Color.white.opacity(0.78) : Color.ppTextPrimary
+    }
+
+    var phaseConnector: Color {
+        isDark
+            ? Color.white.opacity(0.18)
+            : Color.ppPrimary.opacity(0.22)
+    }
+
+    var phaseIconFill: Color {
+        isDark ? Color.white.opacity(0.07) : Color.ppCard
+    }
+
+    func cardBorder(increasedContrast: Bool) -> Color {
+        if isDark {
+            return Color.white.opacity(increasedContrast ? 0.82 : 0.20)
+        }
+        return increasedContrast ? Color.ppTextPrimary : Color.ppSurfaceBorder
+    }
+
+    func opticalReticle(increasedContrast: Bool) -> Color {
+        if isDark {
+            return Color.white.opacity(increasedContrast ? 1 : 0.88)
+        }
+        return Color.ppTextPrimary.opacity(increasedContrast ? 1 : 0.72)
+    }
+
+    func opticalBorder(increasedContrast: Bool) -> Color {
+        if isDark {
+            return Color.white.opacity(increasedContrast ? 0.76 : 0.12)
+        }
+        return increasedContrast ? Color.ppTextPrimary : Color.ppSurfaceBorder
+    }
+
+    func launchBorder(increasedContrast: Bool) -> Color {
+        if isDark {
+            return Color.white.opacity(increasedContrast ? 0.86 : 0.18)
+        }
+        return Color.white.opacity(increasedContrast ? 1 : 0.76)
+    }
+}
+
 private struct HomePureLensPressedKey: EnvironmentKey {
     static let defaultValue = false
 }
@@ -4069,7 +4155,20 @@ private struct HomePureLensButtonStyle: ButtonStyle {
 }
 
 private struct HomePureLensCardSurface: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        Group {
+            if colorScheme == .dark {
+                darkSurface
+            } else {
+                lightSurface
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var darkSurface: some View {
         ZStack {
             RoundedRectangle(
                 cornerRadius: PPCorner.card,
@@ -4109,7 +4208,48 @@ private struct HomePureLensCardSurface: View {
                 )
             )
         }
-        .accessibilityHidden(true)
+    }
+
+    private var lightSurface: some View {
+        ZStack {
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .fill(Color.ppSurfaceOverlay)
+
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.72),
+                        Color.clear,
+                        Color.ppPrimary.opacity(0.10),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .fill(
+                RadialGradient(
+                    colors: [
+                        Color.ppPrimary.opacity(0.13),
+                        Color.ppPrimary.opacity(0),
+                    ],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: 190
+                )
+            )
+        }
     }
 }
 
@@ -4117,6 +4257,7 @@ private struct HomePureLensOpticalWindow: View {
     let height: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.homePureLensIsPressed) private var isPressed
 
@@ -4126,13 +4267,13 @@ private struct HomePureLensOpticalWindow: View {
                 cornerRadius: PPCorner.medium,
                 style: .continuous
             )
-            .fill(Color.white.opacity(0.045))
+            .fill(palette.opticalFill)
 
             LinearGradient(
                 colors: [
-                    Color.ppPrimary.opacity(0.20),
+                    palette.opticalLeadingTint,
                     Color.clear,
-                    Color.white.opacity(0.055),
+                    palette.opticalTrailingTint,
                 ],
                 startPoint: .leading,
                 endPoint: .trailing
@@ -4141,7 +4282,9 @@ private struct HomePureLensOpticalWindow: View {
             Image(systemName: "viewfinder")
                 .font(.system(size: min(height * 0.62, 62), weight: .light))
                 .foregroundStyle(
-                    Color.white.opacity(contrast == .increased ? 1 : 0.88)
+                    palette.opticalReticle(
+                        increasedContrast: contrast == .increased
+                    )
                 )
                 .scaleEffect(
                     isPressed && !reduceMotion ? 0.92 : 1
@@ -4182,7 +4325,7 @@ private struct HomePureLensOpticalWindow: View {
                 Image(systemName: "square.grid.2x2.fill")
             }
             .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Color.white.opacity(0.34))
+            .foregroundStyle(palette.opticalStatus)
             .padding(PPSpace.md)
         }
         .frame(maxWidth: .infinity)
@@ -4193,7 +4336,9 @@ private struct HomePureLensOpticalWindow: View {
                 style: .continuous
             )
             .stroke(
-                Color.white.opacity(contrast == .increased ? 0.76 : 0.12),
+                palette.opticalBorder(
+                    increasedContrast: contrast == .increased
+                ),
                 lineWidth: contrast == .increased ? 1.5 : 0.7
             )
         }
@@ -4214,12 +4359,18 @@ private struct HomePureLensOpticalWindow: View {
         guard !reduceMotion else { return 0 }
         return isPressed ? height * 0.20 : height * -0.20
     }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(colorScheme: colorScheme)
+    }
 }
 
 private struct HomePureLensPhaseRail: View {
     let cameraTitle: String
     let recognitionTitle: String
     let discoveryTitle: String
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: PPSpace.sm) {
@@ -4253,7 +4404,7 @@ private struct HomePureLensPhaseRail: View {
 
             Text(title)
                 .font(HomeFont.caption1())
-                .foregroundStyle(Color.white.opacity(0.72))
+                .foregroundStyle(palette.compactPhaseText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
         }
@@ -4262,10 +4413,14 @@ private struct HomePureLensPhaseRail: View {
 
     private var connector: some View {
         Capsule()
-            .fill(Color.white.opacity(0.18))
+            .fill(palette.phaseConnector)
             .frame(maxWidth: 18)
             .frame(height: 1)
             .offset(y: -9)
+    }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(colorScheme: colorScheme)
     }
 }
 
@@ -4273,6 +4428,8 @@ private struct HomePureLensPhaseColumn: View {
     let cameraTitle: String
     let recognitionTitle: String
     let discoveryTitle: String
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
@@ -4289,18 +4446,23 @@ private struct HomePureLensPhaseColumn: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.ppPrimary)
                 .frame(width: 24, height: 24)
-                .background(Color.white.opacity(0.07), in: Circle())
+                .background(palette.phaseIconFill, in: Circle())
 
             Text(title)
                 .font(HomeFont.subheadline())
-                .foregroundStyle(Color.white.opacity(0.78))
+                .foregroundStyle(palette.expandedPhaseText)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(colorScheme: colorScheme)
     }
 }
 
 private struct HomePureLensLaunchMark: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.homePureLensIsPressed) private var isPressed
     @Environment(\.layoutDirection) private var layoutDirection
@@ -4316,7 +4478,9 @@ private struct HomePureLensLaunchMark: View {
             .background(Color.ppPrimary, in: Circle())
             .overlay {
                 Circle().stroke(
-                    Color.white.opacity(contrast == .increased ? 0.86 : 0.18),
+                    palette.launchBorder(
+                        increasedContrast: contrast == .increased
+                    ),
                     lineWidth: contrast == .increased ? 1.5 : 0.7
                 )
             }
@@ -4333,5 +4497,9 @@ private struct HomePureLensLaunchMark: View {
     private var launchOffset: CGFloat {
         guard isPressed, !reduceMotion else { return 0 }
         return layoutDirection == .rightToLeft ? -2 : 2
+    }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(colorScheme: colorScheme)
     }
 }
