@@ -17,15 +17,21 @@ internal struct SpearBrandButtonStyle: ButtonStyle {
       .padding(.vertical, 9)
       .frame(minHeight: 44)
       .background(
-        color.opacity(configuration.isPressed ? 0.78 : 1),
+        color,
         in: RoundedRectangle(cornerRadius: 12, style: .continuous)
       )
+      .overlay {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+          .fill(Color.black.opacity(0.12))
+          .opacity(configuration.isPressed ? 1 : 0)
+      }
       .shadow(
-        color: color.opacity(colorScheme == .dark ? 0.2 : 0.25),
-        radius: configuration.isPressed ? 4 : 8,
-        y: configuration.isPressed ? 2 : 4
+        color: color.opacity(colorScheme == .dark ? 0.16 : 0.18),
+        radius: 5,
+        y: 2
       )
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
-      .animation(reduceMotion ? nil : .snappy(duration: 0.17, extraBounce: 0.06), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .opacity(configuration.isPressed ? 0.86 : 1)
+      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
   }
 }

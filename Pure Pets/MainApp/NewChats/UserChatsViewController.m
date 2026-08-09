@@ -64,6 +64,9 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 @property (nonatomic, assign) BOOL didRunListEntrance;
 @property (nonatomic, assign) BOOL didAppear;
 @property (nonatomic, assign) BOOL willAppear;
+@property (nonatomic, assign) BOOL isMovingThreadRow;
+@property (nonatomic, strong) NSArray<ChatThreadModel *> *pendingHostedContentThreads;
+@property (nonatomic, strong, nullable) ChatThreadModel *pendingHostedContentThread;
 @end
 
 @implementation UserChatsViewController
@@ -102,13 +105,11 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     [super viewWillAppear:animated];
     self.worldGlassBackgroundController.isFaded = YES;
 
-    if(self.willAppear) return;
     [self startObservingChats];
     [self.storiesViewController startObservingStories];
     [self handleUnreadUpdate];
     [self.chatCellBridge collapseExpanded];
     self.willAppear = YES;
-    
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -137,6 +138,9 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     [super viewWillDisappear:animated];
 
     self.worldGlassBackgroundController.isFaded = YES;
+    self.isMovingThreadRow = NO;
+    self.pendingHostedContentThreads = nil;
+    self.pendingHostedContentThread = nil;
     [self stopObservingChats];
     [self.storiesViewController stopObservingStories];
 
@@ -924,6 +928,29 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
             user.isVerified ? 1 : 0];
 }
 
+- (void)pp_publishHostedContentForThreads:(NSArray<ChatThreadModel *> *)threads {
+    NSArray<ChatThreadModel *> *snapshot = threads.copy ?: @[];
+    if (self.isMovingThreadRow) {
+        self.pendingHostedContentThreads = snapshot;
+        return;
+    }
+
+    [self.chatCellBridge syncHostedContentWithThreads:snapshot];
+}
+
+- (void)pp_publishHostedContentForThread:(ChatThreadModel *)thread {
+    if (!thread) {
+        return;
+    }
+
+    if (self.isMovingThreadRow) {
+        self.pendingHostedContentThread = thread;
+        return;
+    }
+
+    [self.chatCellBridge updateHostedContentWithThread:thread];
+}
+
 - (void)pp_applyThreadsSnapshot:(NSArray<ChatThreadModel *> *)newThreads animated:(BOOL)animated {
     NSArray<ChatThreadModel *> *oldThreads = self.threads ?: @[];
     NSArray<ChatThreadModel *> *incoming = newThreads ?: @[];
@@ -957,41 +984,12 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Fast path: identity + order unchanged.
-    // Reconfigure ONLY the rows whose content actually changed. This makes
-    // returning from the messaging screen (nothing changed) a true no-op,
-    // and keeps a quick-reply send from rebuilding the whole list. The row
-    // that is currently expanded is never reconfigured, so its live composer
-    // and send feedback are not torn down mid-interaction.
+    // Fast path: identity + order unchanged. Publish model changes through the
+    // bridge-owned observable stores. This leaves every existing UIKit cell and
+    // SwiftUI host attached, including an active inline reply interaction.
     // ─────────────────────────────────────────────────────────────
     if ([oldIDsOrdered isEqualToArray:newIDsOrdered]) {
-        NSMutableArray<NSIndexPath *> *changedPaths = [NSMutableArray array];
-        for (NSUInteger i = 0; i < incoming.count; i++) {
-            ChatThreadModel *thread = incoming[i];
-            NSString *tid = thread.ID ?: @"";
-            NSString *newSig = [self pp_contentSignatureForThread:thread];
-            if ([newSig isEqualToString:oldSignatures[tid]]) {
-                continue; // unchanged → leave the existing cell untouched
-            }
-            if ([self.chatCellBridge isExpanded:tid]) {
-                continue; // active expanded row manages its own live state
-            }
-            [changedPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
-        }
-
-        if (changedPaths.count == 0) {
-            [self pp_scheduleListEntranceIfNeeded];
-            return; // nothing to do — no reload, no animation
-        }
-
-        [UIView performWithoutAnimation:^{
-            if (@available(iOS 15.0, *)) {
-                [self.tableView reconfigureRowsAtIndexPaths:changedPaths];
-            } else {
-                [self.tableView reloadRowsAtIndexPaths:changedPaths
-                                      withRowAnimation:UITableViewRowAnimationNone];
-            }
-        }];
+        [self pp_publishHostedContentForThreads:incoming];
         [self pp_scheduleListEntranceIfNeeded];
         return;
     }
@@ -1041,8 +1039,8 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
             }
 
             // If multiple threads changed, find a single physical move that
-            // still produces the observed order. The changed rows below are
-            // refreshed by their own stable identity, never by source index.
+            // still produces the observed order. Hosted content is published
+            // by stable conversation identity after the move completes.
             if (moveFrom == NSNotFound) {
                 for (NSUInteger source = 0; source < oldIDsOrdered.count; source++) {
                     NSString *threadID = oldIDsOrdered[source];
@@ -1070,31 +1068,24 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
             if (moveFrom != NSNotFound && moveTo != NSNotFound && moveFrom != moveTo) {
                 NSIndexPath *sourcePath = [NSIndexPath indexPathForRow:moveFrom inSection:0];
                 NSIndexPath *destinationPath = [NSIndexPath indexPathForRow:moveTo inSection:0];
-                NSMutableArray<NSIndexPath *> *changedPaths = [NSMutableArray array];
-                for (NSString *threadID in changedThreadIDs) {
-                    NSUInteger row = [newIDsOrdered indexOfObject:threadID];
-                    if (row != NSNotFound) {
-                        [changedPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
-                    }
-                }
-                if (changedPaths.count == 0) {
-                    [changedPaths addObject:destinationPath];
-                }
 
+                self.isMovingThreadRow = YES;
                 [UIView performWithoutAnimation:^{
                     [self.tableView performBatchUpdates:^{
                         [self.tableView moveRowAtIndexPath:sourcePath toIndexPath:destinationPath];
                     } completion:^(__unused BOOL finished) {
-                        // Reconfigure only the identities whose content changed
-                        // after their cells have moved into their final rows.
-                        [UIView performWithoutAnimation:^{
-                            if (@available(iOS 15.0, *)) {
-                                [self.tableView reconfigureRowsAtIndexPaths:changedPaths];
-                            } else {
-                                [self.tableView reloadRowsAtIndexPaths:changedPaths
-                                                     withRowAnimation:UITableViewRowAnimationNone];
-                            }
-                        }];
+                        // Keep the same UIKit cell + SwiftUI host attached while
+                        // it travels to the destination. Publish the new model
+                        // only after the physical move has finished.
+                        self.isMovingThreadRow = NO;
+                        NSArray<ChatThreadModel *> *threadsToPublish = self.pendingHostedContentThreads ?: incoming;
+                        ChatThreadModel *threadToPublish = self.pendingHostedContentThread;
+                        self.pendingHostedContentThreads = nil;
+                        self.pendingHostedContentThread = nil;
+                        [self.chatCellBridge syncHostedContentWithThreads:threadsToPublish];
+                        if (threadToPublish) {
+                            [self.chatCellBridge updateHostedContentWithThread:threadToPublish];
+                        }
                     }];
                 }];
 
@@ -1152,7 +1143,6 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
 
     NSMutableArray<NSIndexPath *> *deletePaths = [NSMutableArray array];
     NSMutableArray<NSIndexPath *> *insertPaths = [NSMutableArray array];
-    NSMutableArray<NSIndexPath *> *reconfigurePaths = [NSMutableArray array];
 
     // Deleted rows: in old but not in new
     for (NSUInteger i = 0; i < oldIDs.count; i++) {
@@ -1175,14 +1165,6 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
         return;
     }
 
-    // Rows that exist in both can refresh in place because their relative
-    // identity/order is unchanged in this path.
-    for (NSUInteger i = 0; i < newIDs.count; i++) {
-        if ([oldIDs containsObject:newIDs[i]]) {
-            [reconfigurePaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
-        }
-    }
-
     [UIView performWithoutAnimation:^{
         [self.tableView performBatchUpdates:^{
             if (deletePaths.count > 0) {
@@ -1194,17 +1176,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
                                      withRowAnimation:UITableViewRowAnimationNone];
             }
         } completion:^(__unused BOOL finished) {
-            // Reconfigure existing rows to update content without full reload.
-            // Their identity has not changed, so no SwiftUI host is rebound to
-            // a different conversation while a reply is in progress.
-            if (reconfigurePaths.count > 0) {
-                if (@available(iOS 15.0, *)) {
-                    [self.tableView reconfigureRowsAtIndexPaths:reconfigurePaths];
-                } else {
-                    [self.tableView reloadRowsAtIndexPaths:reconfigurePaths
-                                         withRowAnimation:UITableViewRowAnimationNone];
-                }
-            }
+            [self pp_publishHostedContentForThreads:incoming];
         }];
     }];
 
@@ -1400,24 +1372,21 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
                     return;
                 }
 
-                NSMutableArray<NSIndexPath *> *reloadPaths = [NSMutableArray array];
+                BOOL updatedThread = NO;
                 for (NSInteger row = 0; row < self.threads.count; row++) {
                     ChatThreadModel *model = self.threads[row];
                     NSString *modelOtherUserID = [self pp_otherUserIDForThread:model];
                     if ([modelOtherUserID isEqualToString:otherUserID]) {
                         model.otherUser = user;
-                        [reloadPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
+                        updatedThread = YES;
                     }
                 }
 
-                if (reloadPaths.count == 0) {
+                if (!updatedThread) {
                     return;
                 }
 
-                [UIView performWithoutAnimation:^{
-                    [self.tableView reloadRowsAtIndexPaths:reloadPaths
-                                          withRowAnimation:UITableViewRowAnimationNone];
-                }];
+                [self pp_publishHostedContentForThreads:self.threads];
                 [self startObservingOnlineStatus];
             });
         }];
@@ -1474,12 +1443,9 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
         NSDate *lastSeen = [[ChatPresenceManager shared] lastSeenForUser:user.ID];
         user.isOnline = online;
         user.lastSeen = lastSeen;
-
-        // PPExpandableChatCell reads presence from the snapshot at
-        // configure time.  Reload the row to pick up new state.
-        [self.tableView reloadRowsAtIndexPaths:@[indexPath]
-                              withRowAnimation:UITableViewRowAnimationNone];
     }
+
+    [self pp_publishHostedContentForThreads:self.threads];
 }
 
 - (void)pp_applyPresenceUpdateForUserID:(NSString *)userID {
@@ -1496,11 +1462,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     user.lastSeen = lastSeen;
     thread.otherUser = user;
 
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:0];
-    // PPExpandableChatCell reads presence from the snapshot at
-    // configure time.  Reload the row to pick up new state.
-    [self.tableView reloadRowsAtIndexPaths:@[indexPath]
-                          withRowAnimation:UITableViewRowAnimationNone];
+    [self pp_publishHostedContentForThread:thread];
 }
 
 - (NSInteger)indexForThreadWithUserID:(NSString *)uid {
@@ -1525,7 +1487,6 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     }
 
     BOOL anyChanges = NO;
-    NSMutableArray<NSIndexPath *> *reloadPaths = [NSMutableArray array];
     for (NSInteger row = 0; row < self.threads.count; row++) {
         ChatThreadModel *thread = self.threads[row];
         NSInteger newCount = liveUnreadCounts[thread.ID].integerValue;
@@ -1565,7 +1526,6 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
         if (thread.unreadCount != newCount || messageUpdated) {
             thread.unreadCount = newCount;
             anyChanges = YES;
-            [reloadPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
         }
     }
 
@@ -1901,8 +1861,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    [self.tableView reloadRowsAtIndexPaths:@[indexPath]
-                          withRowAnimation:UITableViewRowAnimationNone];
+    [self pp_publishHostedContentForThread:chat];
 }
 
 - (NSIndexPath *)indexPathForChat:(ChatThreadModel *)chat {

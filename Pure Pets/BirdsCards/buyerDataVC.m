@@ -1449,17 +1449,19 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
 
 // Show No network alert method
 - (void)showNoNetworkAlert {
-    FCAlertView *alert = [[FCAlertView alloc] init];
+/*
+ FCAlertView *alert = [[FCAlertView alloc] init];
 
-    alert.colorScheme = [GM appPrimaryColor];
-    alert.tintColor = [GM appPrimaryColor];
-    alert.firstButtonTitleColor = GM.appPrimaryColor;
-    [alert  showAlertInView:self
-                  withTitle:kLang(@"noInternetTitle")
-               withSubtitle:kLang(@"noInternetSubTitle")
-            withCustomImage:nil
-        withDoneButtonTitle:kLang(@"ok")
-                 andButtons:nil];
+ alert.colorScheme = [GM appPrimaryColor];
+ alert.tintColor = [GM appPrimaryColor];
+ alert.firstButtonTitleColor = GM.appPrimaryColor;
+ [alert  showAlertInView:self
+               withTitle:kLang(@"noInternetTitle")
+            withSubtitle:kLang(@"noInternetSubTitle")
+         withCustomImage:nil
+     withDoneButtonTitle:kLang(@"ok")
+              andButtons:nil];
+ */
 }
 
 - (void)viewDidAppear:(BOOL)animated

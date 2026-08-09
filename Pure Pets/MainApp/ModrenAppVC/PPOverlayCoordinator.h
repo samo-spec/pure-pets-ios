@@ -40,6 +40,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (BOOL)pp_openChatThread:(ChatThreadModel *)thread
              petAdContext:(nullable PetAd *)petAd
                    fromVC:(UIViewController *)vc;
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+             petAdContext:(nullable PetAd *)petAd
+                   fromVC:(UIViewController *)vc
+                 animated:(BOOL)animated;
 + (void)pp_openDetailForObject:(id)object
                         fromVC:(UIViewController *)vc
                     routingNav:(nullable PPNavigationController *)routingNav;

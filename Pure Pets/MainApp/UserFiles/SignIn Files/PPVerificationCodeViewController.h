@@ -22,6 +22,9 @@ typedef void (^PPVerificationCodeCheckCompletion)(BOOL success, NSError * _Nulla
 @property (nonatomic, copy, nullable) void (^onAuthResultSuccess)(FIRAuthDataResult *authResult);
 @property (nonatomic, copy, nullable) void (^onResendRequested)(PPVerificationResendCompletion completion);
 @property (nonatomic, copy, nullable) void (^onBackRequested)(void);
+/// Ephemeral Firebase phone-auth binding. Keep in memory only and replace it
+/// when a resend returns a new verification ID.
+@property (nonatomic, copy, nullable) NSString *verificationID;
 
 - (instancetype)initWithPhone:(NSString *)phone;
 

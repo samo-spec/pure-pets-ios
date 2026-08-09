@@ -3676,6 +3676,7 @@ UIBarButtonItem *addbutton;
 }
 
 - (void)showNoNetworkAlert {
+   /*
     FCAlertView *alert = [[FCAlertView alloc] init];
 
     alert.colorScheme = [GM appPrimaryColor];
@@ -3687,6 +3688,7 @@ UIBarButtonItem *addbutton;
             withCustomImage:nil
         withDoneButtonTitle:kLang(@"ok")
                  andButtons:nil];
+    */
 }
 
 // =============================================================================

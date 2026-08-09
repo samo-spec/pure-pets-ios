@@ -912,8 +912,10 @@
 "Cancel" = "Cancel";
 "Delete" = "Delete";
 "Save" = "Save";
+"SaveAddressHint" = "Saves this address for delivery and checkout.";
 "AddressFormAddSubtitle" = "Add a delivery address with country, city, area, and map pin.";
 "AddressFormEditSubtitle" = "Update your delivery details and location.";
+"PhoneCountryCode" = "Phone country code";
 "Shipping Addresses"="Shipping Addresses";
 "Add New Address"="Add New Address";
 // English
@@ -1510,6 +1512,7 @@
 "PostalCodePlaceholder" = "Postal/ZIP code";
 "TapToSelect" = "Tap to select";
 "TapToSelectPlaceholder" = "Tap to select";
+"address_no_options_available" = "No options available";
 
 "MainPage" = "Home";
 "Add New Parrot Card" = "Add New Parrot Card";
@@ -2173,6 +2176,7 @@
 "image_gallery_open_hint" = "Double-tap to view full screen.";
 "image_gallery_empty" = "No image available";
 "service_view_contact_loading" = "Contact data is still loading. Please try again.";
+"service_view_contact_provider" = "Contact provider";
 "service_view_description_title" = "Description";
 "service_view_details_title" = "Service Details";
 "service_view_default_title" = "Service";
@@ -4317,3 +4321,39 @@
 "pet_field_age_short" = "Age";
 "pet_profiles_card_hint" = "Opens this pet profile";
 "pet_vaccine_name_required" = "Vaccine name is required";
+
+/* Precision Location Picker */
+"location_picker_instruction" = "Drag the map to place the paw precisely.";
+"location_picker_map_accessibility" = "Location selection map";
+"location_picker_confirm" = "Use this location";
+"location_picker_confirm_hint" = "Confirms the current map point";
+"location_picker_recenter" = "Recenter on my location";
+"location_picker_recenter_unavailable" = "Current-location access is unavailable";
+"location_picker_finding_current_location" = "Finding your current location";
+"location_picker_coordinates_label" = "Coordinates";
+"location_picker_coordinates_unavailable" = "Coordinates unavailable";
+"location_picker_choose_point" = "Choose a point on the map";
+"location_picker_pinned_point" = "Pinned map point";
+"location_picker_address_unavailable" = "Address unavailable";
+"location_picker_doha_fallback" = "Doha, Qatar";
+"location_picker_status_moving" = "Moving map";
+"location_picker_status_resolving" = "Finding address";
+"location_picker_status_address_ready" = "Address ready";
+"location_picker_status_coordinates_ready" = "Coordinates ready";
+"location_picker_status_area_ready" = "Area found";
+"location_picker_status_unavailable" = "Location unavailable";
+"location_picker_hint_moving" = "Release to resolve the closest address.";
+"location_picker_hint_resolving" = "Looking for the closest address to this paw.";
+"location_picker_hint_address_ready" = "This place is ready. Drag again to refine the entrance point.";
+"location_picker_hint_coordinates_ready" = "You can use this exact map point even without a street name.";
+"location_picker_hint_area_ready" = "This area is ready. Drag again for more precision.";
+"location_picker_hint_unavailable" = "Move the map to a valid point and try again.";
+"location_picker_permission_denied" = "Current-location access is off. You can still choose any point on the map.";
+"location_picker_permission_restricted" = "Current-location access is restricted. You can still choose any point on the map.";
+"location_picker_precision_actions_hint" = "Swipe up or down for precision map actions.";
+"location_picker_move_north" = "Move point north";
+"location_picker_move_south" = "Move point south";
+"location_picker_move_east" = "Move point east";
+"location_picker_move_west" = "Move point west";
+"location_picker_alert_title" = "Select a location";
+"location_picker_alert_message" = "Move the map until the paw is over the right spot.";

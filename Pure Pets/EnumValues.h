@@ -319,6 +319,7 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionMarketplaceHero = 17,
     PPHomeSectionSuggestionAds = 18,
     PPHomeSectionSuggestionAccessories = 19,
+    PPHomeSectionPureLens = 20,
 };
 
 typedef NS_ENUM(NSInteger, PPDataSection) {

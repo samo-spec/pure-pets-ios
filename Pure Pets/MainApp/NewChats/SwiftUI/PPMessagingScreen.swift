@@ -1854,7 +1854,7 @@ private final class PPMessagingScreenState: ObservableObject {
         } else {
             contextType = thread.contextType
             contextID = thread.contextId
-            contextSnapshot = thread.contextSnapshot as NSDictionary
+            contextSnapshot = (thread.contextSnapshot as? NSDictionary) ?? [:]
         }
     }
 
@@ -2873,12 +2873,7 @@ private struct PPMessagingScreen: View {
                         ? 10
                         : max(18, state.bottomNavigationClearance)
                 )
-                .animation(
-                    reduceMotion
-                        ? nil
-                        : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22),
-                    value: state.keyboardIsPresented
-                )
+                .animation(reduceMotion ? nil : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22), value: state.keyboardIsPresented)
                 .background {
                     PPMessagingComposerBackdrop()
                 }
@@ -3414,11 +3409,10 @@ private struct PPMessagingScreen: View {
     }
 
     private func rowSpacing(after index: Int) -> CGFloat {
-        // Even, stable rhythm between bubbles. Grouped continuations get a
-        // comfortable 6pt (no longer cramped at 2pt), and group edges / single
-        // messages get 12pt — a gentle, seamless step instead of a jarring
-        // 2→9 jump. Grouping remains legible through the joined bubble corners.
-        grouping(at: index) == .last || grouping(at: index) == .single ? 12 : 6
+        // Internal bubble padding carries readability; external spacing stays
+        // compact so short conversational runs feel connected. Exposed group
+        // edges retain enough separation to preserve sender and time changes.
+        grouping(at: index) == .last || grouping(at: index) == .single ? 7 : 3
     }
 
     private func groupingFamily(
@@ -3691,14 +3685,12 @@ private struct PPMessagingHeader: View {
     let relay: PPMessagingActionRelay
     let onExpansionChanged: (Bool) -> Void
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
     var body: some View {
         SpearChatHeader(
             state: spearHeaderState,
             style: SpearChatHeaderStyle(
                 brandColor: PPMessagingPalette.highlight,
+                mainBackgroundColor: .ppBackground,
                 cornerRadius: 22,
                 horizontalPadding: 12
             ),
@@ -3722,42 +3714,7 @@ private struct PPMessagingHeader: View {
                 usesSupportLogo: state.usesSupportLogo
             )
         }
-        .frame(minHeight: 68)
-        .padding(.horizontal, 12)
-        .padding(.top, 4)
-        .padding(.bottom, 7)
-        .background {
-            ZStack {
-                PPMessagingPalette.headerSurface
-
-                if allowsAmbientDetail {
-                    LinearGradient(
-                        colors: [
-                            PPMessagingPalette.headerHighlight,
-                            .clear,
-                            PPMessagingPalette.canvasSignalField.opacity(0.0)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            }
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(PPMessagingPalette.hairline.opacity(0.74))
-                .frame(height: 0.5)
-                .accessibilityHidden(true)
-        }
-        .shadow(
-            color: PPMessagingPalette.shadow.opacity(0.10),
-            radius: 10,
-            y: 5
-        )
-    }
-
-    private var allowsAmbientDetail: Bool {
-        !reduceTransparency && colorSchemeContrast == .standard
+        .frame(minHeight: 62)
     }
 
     private var spearHeaderState: SpearChatHeaderLoadState {
@@ -5224,12 +5181,7 @@ private struct PPMessagingCanvas: View {
                     .opacity(colorScheme == .dark ? 0.30 : 0.34)
             }
         }
-        .animation(
-            reduceMotion
-                ? nil
-                : .timingCurve(0.23, 1, 0.32, 1, duration: 0.24),
-            value: backgroundImage.map(ObjectIdentifier.init)
-        )
+        .animation(reduceMotion ? nil : .timingCurve(0.23, 1, 0.32, 1, duration: 0.24), value: backgroundImage.map(ObjectIdentifier.init))
         .accessibilityHidden(true)
     }
 
@@ -5515,19 +5467,8 @@ private enum PPMessagingPalette {
             ? UIColor(white: 0.92, alpha: 1)
             : UIColor.white
     })
-    static let headerSurface = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.055, green: 0.060, blue: 0.063, alpha: 0.96)
-            : UIColor(red: 0.982, green: 0.973, blue: 0.956, alpha: 0.96)
-    })
-    static let headerHighlight = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(white: 1.0, alpha: 0.030)
-            : UIColor(white: 1.0, alpha: 0.44)
-    })
     static let canvasWarmField = PurePetsMessagingTheme.ambientWarm
     static let canvasSignalField = PurePetsMessagingTheme.ambientSignal
-    static let canvasCoolField = PurePetsMessagingTheme.ambientSignal
     static let threadLine = Color(UIColor { traits in
         let increasedContrast = traits.accessibilityContrast == .high
         return traits.userInterfaceStyle == .dark

@@ -1017,7 +1017,6 @@ struct HomeMyPetProfileCard: View {
     let isLoading: Bool
     let errorMessage: String?
     let action: () -> Void
-    var onOpenPureLens: (() -> Void)? = nil
 
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.colorScheme) private var colorScheme
@@ -1028,64 +1027,16 @@ struct HomeMyPetProfileCard: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        ZStack {
-            // Primary card tap — navigates to pet profiles.
-            Button(action: action) {
-                cardBody
-            }
-            .buttonStyle(HomeMyPetProfileCardPressStyle())
-            .disabled(isLoading)
-            .focused($isFocused)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint(accessibilityHint)
-            .accessibilityAddTraits(.isButton)
-
-            // Lens button lives OUTSIDE the card Button so its taps are
-            // never swallowed by the outer ButtonStyle gesture recognizer.
-            // It is a ZStack sibling: hit-testing hits the topmost view
-            // first, so only the capsule-shaped area routes to lens; all
-            // other card areas fall through to the card Button below.
-            if let onOpenPureLens {
-                VStack(spacing: 0) {
-                    Spacer()
-                    HStack(spacing: PPSpace.sm) {
-                        Spacer()
-                        Button(action: onOpenPureLens) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "camera.viewfinder")
-                                    .font(.system(size: 12, weight: .bold))
-                                Text(HomeModelAdapter.localized(
-                                    "home_pure_lens_title",
-                                    fallback: "بيور لينس"
-                                ))
-                                .font(HomeFont.bold(12))
-                            }
-                            // Transparent — the visual pill in ctaView shows through.
-                            .foregroundStyle(Color.clear)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(HomeModelAdapter.localized(
-                            "home_pure_lens_a11y",
-                            fallback: "افتح كاميرا بيور لينس"
-                        ))
-                        .accessibilityAddTraits(.isButton)
-                        // Fixed spacer matching the chevron width so the
-                        // invisible hit target sits exactly over the pill.
-                        Spacer().frame(width: 21)
-                    }
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: dynamicTypeSize.isAccessibilitySize ? 52 : 44
-                    )
-                    .padding(.horizontal, PPSpace.lg + PPSpace.md)
-                }
-                .padding(.bottom, PPSpace.lg)
-            }
+        Button(action: action) {
+            cardBody
         }
+        .buttonStyle(HomeMyPetProfileCardPressStyle())
+        .disabled(isLoading)
+        .focused($isFocused)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(accessibilityHint)
+        .accessibilityAddTraits(.isButton)
     }
 
     private var cardBody: some View {
@@ -1332,30 +1283,6 @@ struct HomeMyPetProfileCard: View {
                 .minimumScaleFactor(0.82)
 
             Spacer(minLength: PPSpace.sm)
-
-            if onOpenPureLens != nil {
-                // Visual-only pill. Interaction is handled by the ZStack
-                // sibling Button in `body` — see the TODO resolution above.
-                HStack(spacing: 5) {
-                    Image(systemName: "camera.viewfinder")
-                        .font(.system(size: 12, weight: .bold))
-                    Text(HomeModelAdapter.localized(
-                        "home_pure_lens_title",
-                        fallback: "بيور لينس"
-                    ))
-                    .font(HomeFont.bold(12))
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(Color.ppPrimary)
-                        .shadow(color: Color.ppPrimary.opacity(0.35), radius: 4, x: 0, y: 2)
-                )
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
 
             Image(systemName: forwardSymbol)
                 .font(.system(size: 13, weight: .bold))
@@ -3949,5 +3876,462 @@ private extension View {
         } else {
             self
         }
+    }
+}
+
+@available(iOS 15.0, *)
+struct HomePureLensSection: View {
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var opticalWindowHeight: CGFloat =
+        HomePureLensMetrics.opticalWindowHeight
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                header
+
+                HomePureLensOpticalWindow(
+                    height: min(
+                        opticalWindowHeight,
+                        HomePureLensMetrics.maximumOpticalWindowHeight
+                    )
+                )
+
+                if usesExpandedLayout {
+                    HomePureLensPhaseColumn(
+                        cameraTitle: cameraTitle,
+                        recognitionTitle: recognitionTitle,
+                        discoveryTitle: discoveryTitle
+                    )
+                } else {
+                    HomePureLensPhaseRail(
+                        cameraTitle: cameraTitle,
+                        recognitionTitle: recognitionTitle,
+                        discoveryTitle: discoveryTitle
+                    )
+                }
+            }
+            .padding(PPSpace.base)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: HomePureLensMetrics.minimumHeight,
+                alignment: .leading
+            )
+            .background(HomePureLensCardSurface())
+            .overlay(cardBorder)
+            .contentShape(cardShape)
+            .shadow(
+                color: contrast == .increased
+                    ? .clear
+                    : Color.black.opacity(colorScheme == .dark ? 0.32 : 0.14),
+                radius: colorScheme == .dark ? 10 : 14,
+                y: colorScheme == .dark ? 4 : 8
+            )
+        }
+        .buttonStyle(HomePureLensButtonStyle())
+        .hoverEffect(.highlight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(HomeModelAdapter.localized(
+            "pure_lens_account_a11y",
+            fallback: "Pure Lens. Camera, recognition, and marketplace discovery."
+        ))
+        .accessibilityHint(HomeModelAdapter.localized(
+            "pure_lens_account_hint",
+            fallback: "Opens the animal discovery camera"
+        ))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var header: some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: "viewfinder")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 32, height: 32)
+                .background(Color.white.opacity(0.08), in: Circle())
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(HomeFont.title2())
+                .foregroundStyle(Color.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HomePureLensLaunchMark()
+        }
+    }
+
+    private var cardBorder: some View {
+        cardShape
+        .stroke(
+            contrast == .increased
+                ? Color.white.opacity(0.82)
+                : Color.white.opacity(colorScheme == .dark ? 0.20 : 0.14),
+            lineWidth: contrast == .increased ? 1.5 : 0.7
+        )
+        .accessibilityHidden(true)
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPCorner.card,
+            style: .continuous
+        )
+    }
+
+    private var title: String {
+        HomeModelAdapter.localized(
+            "pure_lens_account_title",
+            fallback: "Pure Lens"
+        )
+    }
+
+    private var cameraTitle: String {
+        HomeModelAdapter.localized(
+            "pure_lens_account_camera",
+            fallback: "Camera"
+        )
+    }
+
+    private var recognitionTitle: String {
+        HomeModelAdapter.localized(
+            "pure_lens_account_recognize",
+            fallback: "Recognize"
+        )
+    }
+
+    private var discoveryTitle: String {
+        HomeModelAdapter.localized(
+            "pure_lens_account_discover",
+            fallback: "Discover"
+        )
+    }
+
+    private var usesExpandedLayout: Bool {
+        switch dynamicTypeSize {
+        case .xxLarge,
+             .xxxLarge,
+             .accessibility1,
+             .accessibility2,
+             .accessibility3,
+             .accessibility4,
+             .accessibility5:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+private enum HomePureLensMetrics {
+    static let minimumHeight: CGFloat = 184
+    static let opticalWindowHeight: CGFloat = 92
+    static let maximumOpticalWindowHeight: CGFloat = 116
+    static let launchSize: CGFloat = 36
+}
+
+private struct HomePureLensPressedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private extension EnvironmentValues {
+    var homePureLensIsPressed: Bool {
+        get { self[HomePureLensPressedKey.self] }
+        set { self[HomePureLensPressedKey.self] = newValue }
+    }
+}
+
+private struct HomePureLensButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .environment(\.homePureLensIsPressed, configuration.isPressed)
+            .scaleEffect(
+                configuration.isPressed && !reduceMotion ? 0.99 : 1
+            )
+            .opacity(configuration.isPressed ? 0.96 : 1)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(
+                        response: 0.20,
+                        dampingFraction: 0.88,
+                        blendDuration: 0.04
+                    ),
+                value: configuration.isPressed
+            )
+    }
+}
+
+private struct HomePureLensCardSurface: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .fill(Color.black)
+
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.075),
+                        Color.clear,
+                        Color.ppPrimary.opacity(0.16),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .fill(
+                RadialGradient(
+                    colors: [
+                        Color.ppPrimary.opacity(0.22),
+                        Color.ppPrimary.opacity(0),
+                    ],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: 190
+                )
+            )
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct HomePureLensOpticalWindow: View {
+    let height: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.homePureLensIsPressed) private var isPressed
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+            .fill(Color.white.opacity(0.045))
+
+            LinearGradient(
+                colors: [
+                    Color.ppPrimary.opacity(0.20),
+                    Color.clear,
+                    Color.white.opacity(0.055),
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+
+            Image(systemName: "viewfinder")
+                .font(.system(size: min(height * 0.62, 62), weight: .light))
+                .foregroundStyle(
+                    Color.white.opacity(contrast == .increased ? 1 : 0.88)
+                )
+                .scaleEffect(
+                    isPressed && !reduceMotion ? 0.92 : 1
+                )
+
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: min(height * 0.24, 24), weight: .bold))
+                .foregroundStyle(Color.ppPrimary)
+                .scaleEffect(
+                    isPressed && !reduceMotion ? 0.84 : 1
+                )
+
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.ppPrimary.opacity(0),
+                            Color.ppPrimary,
+                            Color.ppPrimary.opacity(0),
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(
+                    width: min(height * 0.72, 70),
+                    height: contrast == .increased ? 2 : 1
+                )
+                .shadow(
+                    color: Color.ppPrimary.opacity(0.52),
+                    radius: 4
+                )
+                .offset(y: scanLineOffset)
+
+            HStack {
+                Image(systemName: "camera.fill")
+                Spacer()
+                Image(systemName: "square.grid.2x2.fill")
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Color.white.opacity(0.34))
+            .padding(PPSpace.md)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+            .stroke(
+                Color.white.opacity(contrast == .increased ? 0.76 : 0.12),
+                lineWidth: contrast == .increased ? 1.5 : 0.7
+            )
+        }
+        .animation(
+            reduceMotion
+                ? nil
+                : .spring(
+                    response: 0.22,
+                    dampingFraction: 0.84,
+                    blendDuration: 0.03
+                ),
+            value: isPressed
+        )
+        .accessibilityHidden(true)
+    }
+
+    private var scanLineOffset: CGFloat {
+        guard !reduceMotion else { return 0 }
+        return isPressed ? height * 0.20 : height * -0.20
+    }
+}
+
+private struct HomePureLensPhaseRail: View {
+    let cameraTitle: String
+    let recognitionTitle: String
+    let discoveryTitle: String
+
+    var body: some View {
+        HStack(spacing: PPSpace.sm) {
+            phase(
+                title: cameraTitle,
+                symbol: "camera.fill"
+            )
+            connector
+            phase(
+                title: recognitionTitle,
+                symbol: "viewfinder"
+            )
+            connector
+            phase(
+                title: discoveryTitle,
+                symbol: "square.grid.2x2.fill"
+            )
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityHidden(true)
+    }
+
+    private func phase(
+        title: String,
+        symbol: String
+    ) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+
+            Text(title)
+                .font(HomeFont.caption1())
+                .foregroundStyle(Color.white.opacity(0.72))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var connector: some View {
+        Capsule()
+            .fill(Color.white.opacity(0.18))
+            .frame(maxWidth: 18)
+            .frame(height: 1)
+            .offset(y: -9)
+    }
+}
+
+private struct HomePureLensPhaseColumn: View {
+    let cameraTitle: String
+    let recognitionTitle: String
+    let discoveryTitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            phase(title: cameraTitle, symbol: "camera.fill")
+            phase(title: recognitionTitle, symbol: "viewfinder")
+            phase(title: discoveryTitle, symbol: "square.grid.2x2.fill")
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func phase(title: String, symbol: String) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 24, height: 24)
+                .background(Color.white.opacity(0.07), in: Circle())
+
+            Text(title)
+                .font(HomeFont.subheadline())
+                .foregroundStyle(Color.white.opacity(0.78))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct HomePureLensLaunchMark: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.homePureLensIsPressed) private var isPressed
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    var body: some View {
+        Image(systemName: "chevron.forward")
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(Color.white)
+            .frame(
+                width: HomePureLensMetrics.launchSize,
+                height: HomePureLensMetrics.launchSize
+            )
+            .background(Color.ppPrimary, in: Circle())
+            .overlay {
+                Circle().stroke(
+                    Color.white.opacity(contrast == .increased ? 0.86 : 0.18),
+                    lineWidth: contrast == .increased ? 1.5 : 0.7
+                )
+            }
+            .offset(x: launchOffset)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .easeOut(duration: 0.14),
+                value: isPressed
+            )
+            .accessibilityHidden(true)
+    }
+
+    private var launchOffset: CGFloat {
+        guard isPressed, !reduceMotion else { return 0 }
+        return layoutDirection == .rightToLeft ? -2 : 2
     }
 }

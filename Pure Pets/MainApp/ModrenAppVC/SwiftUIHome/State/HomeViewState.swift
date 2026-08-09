@@ -228,6 +228,7 @@ struct HomeConfigModel {
 
     static let fallback = HomeConfigModel(
         sections: [
+            HomeConfigSection(id: 20, type: "PPHomeSectionPureLens", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 15, type: "PPHomeSectionPremiumSearch", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 17, type: "PPHomeSectionMarketplaceHero", isVisible: false, metadata: [:]),
             HomeConfigSection(id: 16, type: "PPHomeSectionProviderCategoryNav", isVisible: false, metadata: [:]),

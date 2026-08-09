@@ -16,6 +16,8 @@ copy_source = (SOURCE / "SpearChatHeaderCopy.swift").read_text(encoding="utf-8")
 context_source = (SOURCE / "SpearConversationContext.swift").read_text(encoding="utf-8")
 context_view_source = (SOURCE / "SpearChatHeaderContext.swift").read_text(encoding="utf-8")
 states_source = (SOURCE / "SpearChatHeaderStates.swift").read_text(encoding="utf-8")
+header_source = (SOURCE / "SpearChatHeader.swift").read_text(encoding="utf-8")
+style_source = (SOURCE / "SpearChatHeaderStyle.swift").read_text(encoding="utf-8")
 
 checks: list[tuple[str, bool]] = []
 checks.append(("production files stay under 300 lines", all(len(p.read_text().splitlines()) <= 300 for p in production_files)))
@@ -39,6 +41,9 @@ checks.append(("context motion respects Reduce Motion", "accessibilityReduceMoti
 checks.append(("custom avatar boundary exists", "@ViewBuilder avatar:" in (SOURCE / "SpearChatHeader.swift").read_text()))
 checks.append(("motion arbiter exists", "internal enum SpearMotionMode" in text and "call.isActive" in (SOURCE / "SpearChatHeaderStyle.swift").read_text()))
 checks.append(("stable UI-test identifiers exist", "public enum SpearChatHeaderAccessibilityID" in text))
+checks.append(("semantic main background owns the header field", "mainBackgroundColor" in style_source and "style.mainBackgroundColor" in header_source))
+checks.append(("legacy lilac and community blue are absent from the header", "quietLilac" not in text and "618CB8" not in text and "SpearHeaderAtmosphere" not in text))
+checks.append(("live and warning states use adaptive semantic colors", "SpearHeaderSemanticColor" in style_source and ".green" not in text and ".orange" not in text))
 
 failed = [name for name, passed in checks if not passed]
 for name, passed in checks:

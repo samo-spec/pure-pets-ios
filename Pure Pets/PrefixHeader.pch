@@ -103,9 +103,7 @@
 #else
 @class LOTAnimationView;
 #endif
-#import "AKPickerView.h"
-#import "FCAlertView.h"
-#import "FTPopOverMenu.h"
+  #import "FTPopOverMenu.h"
 #import "ZMJTipView.h"
 #import "RNFrostedSidebar.h"
 #import "PPPermissionHelper.h"

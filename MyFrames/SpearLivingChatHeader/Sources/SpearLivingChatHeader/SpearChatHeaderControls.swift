@@ -11,8 +11,6 @@ internal struct SpearHeaderCapsuleButton: View {
   let tint: Color
   let isActive: Bool
 
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
   var body: some View {
     if action.availability.isVisible {
       Button(action: action.perform) {
@@ -34,14 +32,9 @@ internal struct SpearHeaderCapsuleButton: View {
 
   @ViewBuilder
   private var activeGlow: some View {
-    if isActive && !reduceMotion {
+    if isActive {
       Circle()
         .fill(tint.opacity(0.12))
-        .phaseAnimator([false, true]) { view, phase in
-          view.scaleEffect(phase ? 1.15 : 1.0)
-        } animation: { _ in
-          .easeInOut(duration: 1.2)
-        }
     }
   }
 }
@@ -167,13 +160,13 @@ internal struct SpearContextButtonStyle: ButtonStyle {
       .frame(minWidth: 44, minHeight: 44)
       .contentShape(Rectangle())
       .background(
-        configuration.isPressed
-          ? color.opacity(contrast == .increased ? 0.15 : 0.08)
-          : .clear,
+        color.opacity(contrast == .increased ? 0.15 : 0.08)
+          .opacity(configuration.isPressed ? 1 : 0),
         in: Capsule(style: .continuous)
       )
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
-      .animation(reduceMotion ? nil : .snappy(duration: 0.17), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .opacity(configuration.isPressed ? 0.84 : 1)
+      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
   }
 }
 
@@ -200,9 +193,9 @@ internal struct SpearCapsuleItemStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.88 : 1)
-      .opacity(configuration.isPressed ? 0.65 : 1)
-      .animation(reduceMotion ? nil : .snappy(duration: 0.16, extraBounce: 0.12), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .opacity(configuration.isPressed ? 0.72 : 1)
+      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
   }
 }
 
@@ -216,12 +209,15 @@ internal struct SpearIconButtonStyle: ButtonStyle {
     configuration.label
       .background(
         Color.primary.opacity(
-          configuration.isPressed
-            ? (contrast == .increased ? 0.18 : 0.11)
-            : (contrast == .increased ? 0.10 : 0.055)
+          contrast == .increased ? 0.10 : 0.045
         ),
         in: Circle()
       )
+      .overlay {
+        Circle()
+          .fill(Color.primary.opacity(contrast == .increased ? 0.10 : 0.065))
+          .opacity(configuration.isPressed ? 1 : 0)
+      }
       .overlay {
         Circle()
           .strokeBorder(
@@ -230,12 +226,13 @@ internal struct SpearIconButtonStyle: ButtonStyle {
           )
       }
       .shadow(
-        color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.05),
-        radius: 9,
-        y: 4
+        color: Color.black.opacity(colorScheme == .dark ? 0.10 : 0.035),
+        radius: 4,
+        y: 1
       )
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.92 : 1)
-      .animation(reduceMotion ? nil : .snappy(duration: 0.18, extraBounce: 0.08), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .opacity(configuration.isPressed ? 0.82 : 1)
+      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
   }
 }
 
@@ -248,11 +245,13 @@ internal struct SpearIdentityButtonStyle: ButtonStyle {
       .padding(.horizontal, 4)
       .padding(.vertical, 3)
       .background(
-        configuration.isPressed ? Color.primary.opacity(0.05) : .clear,
+        Color.primary.opacity(0.05)
+          .opacity(configuration.isPressed ? 1 : 0),
         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
       )
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.99 : 1)
-      .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+      .opacity(configuration.isPressed ? 0.86 : 1)
+      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
   }
 }
 
@@ -269,9 +268,14 @@ internal struct SpearSecondaryButtonStyle: ButtonStyle {
       .padding(.vertical, 8)
       .frame(minHeight: 44)
       .background(
-        Color.primary.opacity(configuration.isPressed ? 0.08 : 0.04),
+        Color.primary.opacity(0.04),
         in: RoundedRectangle(cornerRadius: 14, style: .continuous)
       )
+      .overlay {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+          .fill(Color.primary.opacity(0.04))
+          .opacity(configuration.isPressed ? 1 : 0)
+      }
       .overlay {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
           .strokeBorder(
@@ -279,7 +283,8 @@ internal struct SpearSecondaryButtonStyle: ButtonStyle {
             lineWidth: contrast == .increased ? 1.5 : 0.5
           )
       }
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
-      .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .opacity(configuration.isPressed ? 0.84 : 1)
+      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
   }
 }

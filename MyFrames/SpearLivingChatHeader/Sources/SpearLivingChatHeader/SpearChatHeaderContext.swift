@@ -10,6 +10,8 @@ import UIKit
 internal struct SpearContextRail: View {
   let context: SpearConversationContext
   let brandColor: Color
+  let mainBackgroundColor: Color
+  let cornerRadius: CGFloat
   let action: SpearContextHeaderAction
   let thumbnail: (URL) -> AnyView
 
@@ -32,34 +34,31 @@ internal struct SpearContextRail: View {
         }
       }
     }
-    .padding(10)
+    .padding(.horizontal, 10)
+    .padding(.vertical, context.isSupport ? 6 : 8)
     .background {
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .fill(
-          colorScheme == .dark
-            ? Color.white.opacity(0.055)
-            : Color.white.opacity(0.54)
-        )
+      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        .fill(mainBackgroundColor)
         .overlay {
           LinearGradient(
             colors: [
-              Color.white.opacity(colorScheme == .dark ? 0.035 : 0.50),
+              Color.white.opacity(colorScheme == .dark ? 0.02 : 0.30),
+              brandColor.opacity(colorScheme == .dark ? 0.025 : 0.015),
               .clear,
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
           )
-          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+          .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
     }
     .overlay {
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
+      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         .strokeBorder(
-          brandColor.opacity(contrast == .increased ? 0.30 : 0.12),
-          lineWidth: contrast == .increased ? 1.5 : 0.75
+          Color.primary.opacity(contrast == .increased ? 0.34 : 0.18),
+          lineWidth: contrast == .increased ? 1.5 : 1.0
         )
     }
-    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.13 : 0.045), radius: 12, y: 5)
     .animation(contextMotion, value: context.contentTransitionIdentity)
   }
 
@@ -74,7 +73,7 @@ internal struct SpearContextRail: View {
   }
 
   private var supportLayout: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 9) {
       ZStack {
         Circle()
           .fill(brandColor.opacity(colorScheme == .dark ? 0.16 : 0.09))
@@ -82,7 +81,7 @@ internal struct SpearContextRail: View {
           .font(.subheadline.weight(.semibold))
           .foregroundStyle(brandColor)
       }
-      .frame(width: 38, height: 38)
+      .frame(width: 32, height: 32)
       .accessibilityHidden(true)
 
       Text(context.detail)
@@ -180,6 +179,6 @@ internal struct SpearContextRail: View {
 
   private var contextMotion: Animation? {
     if reduceMotion { return nil }
-    return .smooth(duration: 0.28)
+    return SpearHeaderMotion.liveIndicator
   }
 }

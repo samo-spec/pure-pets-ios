@@ -25,8 +25,25 @@ private final class PPChatCellExpansionStore: ObservableObject {
 }
 
 @MainActor
+private final class PPChatCellContentStore: ObservableObject {
+    @Published private(set) var thread: PPChatThreadSnapshot
+    private(set) var sourceThread: ChatThreadModel
+
+    init(thread: PPChatThreadSnapshot, sourceThread: ChatThreadModel) {
+        self.thread = thread
+        self.sourceThread = sourceThread
+    }
+
+    func apply(_ nextThread: PPChatThreadSnapshot, sourceThread: ChatThreadModel) {
+        self.sourceThread = sourceThread
+        guard thread != nextThread else { return }
+        thread = nextThread
+    }
+}
+
+@MainActor
 private struct PPChatCellHost: View {
-    let thread: PPChatThreadSnapshot
+    @ObservedObject var contentStore: PPChatCellContentStore
     let style: PPChatCellStyle
     let copy: PPChatCellCopy
     let timestampFormatter: PPChatTimestampFormatter
@@ -35,6 +52,8 @@ private struct PPChatCellHost: View {
     let sendQuickReply: PPExpandableChatCell.SendReplyAction
 
     var body: some View {
+        let thread = contentStore.thread
+
         PPExpandableChatCell(
             thread: thread,
             isExpanded: Binding(
@@ -72,6 +91,7 @@ final class PPChatCellBridge: NSObject {
     // MARK: - Expansion State
 
     private let expansionStore = PPChatCellExpansionStore()
+    private var contentStores: [String: PPChatCellContentStore] = [:]
 
     /// Which conversation (if any) is currently expanded.
     /// Only one at a time — matches `MIGRATION_FROM_CHCELL.md` contract.
@@ -89,6 +109,34 @@ final class PPChatCellBridge: NSObject {
         expansionStore.expandedConversationID == conversationID
     }
 
+    // MARK: - Hosted Content State
+
+    /// Publishes fresh thread snapshots into existing SwiftUI hosts without
+    /// replacing their UIHostingConfiguration or resetting their local state.
+    @objc(syncHostedContentWithThreads:)
+    func syncHostedContent(with threads: [ChatThreadModel]) {
+        var activeConversationIDs = Set<String>()
+
+        for thread in threads {
+            let snapshot = Self.makeSnapshot(from: thread)
+            let conversationID = snapshot.id.rawValue
+            activeConversationIDs.insert(conversationID)
+            contentStores[conversationID]?.apply(snapshot, sourceThread: thread)
+        }
+
+        contentStores = contentStores.filter {
+            activeConversationIDs.contains($0.key)
+        }
+    }
+
+    /// Updates one existing host in place, if that conversation is currently
+    /// materialized. Offscreen rows receive the latest snapshot when dequeued.
+    @objc(updateHostedContentWithThread:)
+    func updateHostedContent(with thread: ChatThreadModel) {
+        let snapshot = Self.makeSnapshot(from: thread)
+        contentStores[snapshot.id.rawValue]?.apply(snapshot, sourceThread: thread)
+    }
+
     // MARK: - Cell Configuration
 
     /// Applies `UIHostingConfiguration` containing `PPExpandableChatCell`
@@ -104,17 +152,30 @@ final class PPChatCellBridge: NSObject {
         onOpenChat: @escaping (ChatThreadModel) -> Void
     ) {
         let snapshot = Self.makeSnapshot(from: thread)
+        let conversationID = snapshot.id.rawValue
+        let contentStore: PPChatCellContentStore
+        if let existingStore = contentStores[conversationID] {
+            existingStore.apply(snapshot, sourceThread: thread)
+            contentStore = existingStore
+        } else {
+            let newStore = PPChatCellContentStore(
+                thread: snapshot,
+                sourceThread: thread
+            )
+            contentStores[conversationID] = newStore
+            contentStore = newStore
+        }
         let languageCode = Language.currentLanguageCode() ?? "en"
         let locale = Locale(identifier: languageCode)
 
         cell.contentConfiguration = UIHostingConfiguration {
             PPChatCellHost(
-                thread: snapshot,
+                contentStore: contentStore,
                 style: Self.liveStyle,
                 copy: .localized(languageCode: languageCode),
                 timestampFormatter: PPChatTimestampFormatter(locale: locale),
                 expansionStore: expansionStore,
-                onOpenChat: { onOpenChat(thread) },
+                onOpenChat: { onOpenChat(contentStore.sourceThread) },
                 sendQuickReply: { message, conversationID in
                     try await Self.sendQuickReplyBridge(
                         message: message,
@@ -125,7 +186,7 @@ final class PPChatCellBridge: NSObject {
             )
             // Keep SwiftUI state scoped to one immutable conversation ID even
             // when UIKit reconfigures a reusable hosting cell.
-            .id(snapshot.id.rawValue)
+            .id(conversationID)
             .environment(\.locale, locale)
             .environment(
                 \.layoutDirection,

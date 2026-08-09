@@ -30,7 +30,11 @@
 
 @import FirebaseAuth;
 
+#if DEBUG
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+#else
+#define PPORDERLog(...)
+#endif
 
 static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutPreflight";
 static NSInteger const PPOrderCheckoutPreflightCodeInvalidQIBPhone = 1004;

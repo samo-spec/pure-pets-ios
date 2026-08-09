@@ -935,8 +935,10 @@
 "Cancel" = "إلغاء";
 "Delete" = "حذف";
 "Save" = "حفظ";
+"SaveAddressHint" = "يحفظ هذا العنوان لاستخدامه في التوصيل والدفع.";
 "AddressFormAddSubtitle" = "أضف عنوان التوصيل مع الدولة والمدينة والمنطقة وتثبيت الموقع على الخريطة.";
 "AddressFormEditSubtitle" = "حدّث تفاصيل التوصيل والموقع بسهولة.";
+"PhoneCountryCode" = "رمز دولة الهاتف";
 "Shipping Addresses"="عناوين الشحن والتوصيل";
 "Add New Address"="إضافة عنوان جديد";
 
@@ -1489,6 +1491,7 @@
 "PostalCodePlaceholder" = "الرمز البريدي";
 "TapToSelect" = "انقر للاختيار";
 "TapToSelectPlaceholder" = "انقر للاختيار";
+"address_no_options_available" = "لا توجد خيارات متاحة";
 "MainPage" = "الرئيسية";
 "Add New Parrot Card" = "إضافة بطاقة طير جديدة";
 "Add New Archive" = "إضافة أرشيف جديد";
@@ -2148,6 +2151,7 @@
 "image_gallery_open_hint" = "اضغط مرتين لعرض الصورة بملء الشاشة.";
 "image_gallery_empty" = "لا تتوفر صورة";
 "service_view_contact_loading" = "بيانات التواصل قيد التحميل. حاول مرة أخرى.";
+"service_view_contact_provider" = "تواصل مع مقدم الخدمة";
 "service_view_description_title" = "الوصف";
 "service_view_details_title" = "تفاصيل الخدمة";
 "service_view_default_title" = "الخدمة";
@@ -4304,3 +4308,39 @@
 "pet_field_age_short" = "العمر";
 "pet_profiles_card_hint" = "يفتح ملف هذا الحيوان الأليف";
 "pet_vaccine_name_required" = "اسم التطعيم مطلوب";
+
+/* منتقي الموقع الدقيق */
+"location_picker_instruction" = "حرّك الخريطة لوضع علامة الكف بدقة.";
+"location_picker_map_accessibility" = "خريطة اختيار الموقع";
+"location_picker_confirm" = "استخدم هذا الموقع";
+"location_picker_confirm_hint" = "يؤكد نقطة الخريطة الحالية";
+"location_picker_recenter" = "العودة إلى موقعي";
+"location_picker_recenter_unavailable" = "الوصول إلى موقعك الحالي غير متاح";
+"location_picker_finding_current_location" = "جارٍ تحديد موقعك الحالي";
+"location_picker_coordinates_label" = "الإحداثيات";
+"location_picker_coordinates_unavailable" = "الإحداثيات غير متاحة";
+"location_picker_choose_point" = "اختر نقطة على الخريطة";
+"location_picker_pinned_point" = "نقطة محددة على الخريطة";
+"location_picker_address_unavailable" = "العنوان غير متاح";
+"location_picker_doha_fallback" = "الدوحة، قطر";
+"location_picker_status_moving" = "جارٍ تحريك الخريطة";
+"location_picker_status_resolving" = "جارٍ تحديد العنوان";
+"location_picker_status_address_ready" = "العنوان جاهز";
+"location_picker_status_coordinates_ready" = "الإحداثيات جاهزة";
+"location_picker_status_area_ready" = "تم تحديد المنطقة";
+"location_picker_status_unavailable" = "الموقع غير متاح";
+"location_picker_hint_moving" = "اترك الخريطة لتحديد أقرب عنوان.";
+"location_picker_hint_resolving" = "نبحث عن أقرب عنوان إلى علامة الكف.";
+"location_picker_hint_address_ready" = "الموقع جاهز. حرّك الخريطة مجددًا لضبط نقطة الدخول.";
+"location_picker_hint_coordinates_ready" = "يمكنك استخدام نقطة الخريطة الدقيقة حتى من دون اسم شارع.";
+"location_picker_hint_area_ready" = "تم تحديد المنطقة. حرّك الخريطة مجددًا لمزيد من الدقة.";
+"location_picker_hint_unavailable" = "حرّك الخريطة إلى نقطة صالحة ثم حاول مجددًا.";
+"location_picker_permission_denied" = "الوصول إلى موقعك الحالي متوقف. ما زال بإمكانك اختيار أي نقطة على الخريطة.";
+"location_picker_permission_restricted" = "الوصول إلى موقعك الحالي مقيّد. ما زال بإمكانك اختيار أي نقطة على الخريطة.";
+"location_picker_precision_actions_hint" = "مرّر لأعلى أو لأسفل لاختيار إجراء دقيق لتحريك النقطة.";
+"location_picker_move_north" = "حرّك النقطة شمالًا";
+"location_picker_move_south" = "حرّك النقطة جنوبًا";
+"location_picker_move_east" = "حرّك النقطة شرقًا";
+"location_picker_move_west" = "حرّك النقطة غربًا";
+"location_picker_alert_title" = "اختر موقعًا";
+"location_picker_alert_message" = "حرّك الخريطة حتى تصبح علامة الكف فوق المكان الصحيح.";

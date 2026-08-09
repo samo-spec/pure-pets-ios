@@ -47,6 +47,9 @@
 		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
 		A6B710063020000100000001 /* PPMediaViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710053020000100000001 /* PPMediaViewer.swift */; };
 		A810000A301E00010000000A /* PPChatCellBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A810000B301E00010000000B /* PPChatCellBridge.swift */; };
+		A9F200010000000000000001 /* PPPetProfilesSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */; };
+		A9F200020000000000000002 /* PPPetProfileEditorSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */; };
+		A9F200030000000000000003 /* PPPetProfilesHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
@@ -146,7 +149,6 @@
 		F21A622F2D0AF21400A28792 /* eggDatesCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21A622E2D0AF21400A28792 /* eggDatesCell.m */; };
 		F21C2B0F2CD01E3A00B2373D /* XLFormCustomCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21C2B0E2CD01E3A00B2373D /* XLFormCustomCell.m */; };
 		F21D1B5F2E9C72B600220F72 /* PPUniversalCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21D1B5E2E9C72B600220F72 /* PPUniversalCell.m */; };
-		F21D1B732E9D640C00220F72 /* AKPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21D1B712E9D640C00220F72 /* AKPickerView.m */; };
 		F21E09322E451A4B00690BC5 /* Language.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09302E451A4B00690BC5 /* Language.m */; };
 		F21E09352E452D8F00690BC5 /* ISO8601DateFormatter.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09342E452D8F00690BC5 /* ISO8601DateFormatter.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		F2201FE82E11D7CA005DBD9F /* CartItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FE72E11D7C9005DBD9F /* CartItem.m */; };
@@ -241,14 +243,6 @@
 		F22C07D32EF66C2F00C00EAC /* UIView+YYAdd.m in Sources */ = {isa = PBXBuildFile; fileRef = F22C07112EF66C2F00C00EAC /* UIView+YYAdd.m */; };
 		F22C07D42EF66C2F00C00EAC /* UIBezierPath+YYAdd.m in Sources */ = {isa = PBXBuildFile; fileRef = F22C06FB2EF66C2F00C00EAC /* UIBezierPath+YYAdd.m */; };
 		F22C07D52EF66C2F00C00EAC /* NSArray+YYAdd.m in Sources */ = {isa = PBXBuildFile; fileRef = F22C06D52EF66C2F00C00EAC /* NSArray+YYAdd.m */; };
-		F22CD3702C66F8710098B6E9 /* QuickSecurityCode.m in Sources */ = {isa = PBXBuildFile; fileRef = F22CD3692C66F8710098B6E9 /* QuickSecurityCode.m */; };
-		F22CD3712C66F8710098B6E9 /* UITextField+QuickSecurityCode.m in Sources */ = {isa = PBXBuildFile; fileRef = F22CD36B2C66F8710098B6E9 /* UITextField+QuickSecurityCode.m */; };
-		F22CD3812C6709650098B6E9 /* alert-round.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3742C6709650098B6E9 /* alert-round.png */; };
-		F22CD3822C6709650098B6E9 /* checkmark-round.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3752C6709650098B6E9 /* checkmark-round.png */; };
-		F22CD3832C6709650098B6E9 /* close-round.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3762C6709650098B6E9 /* close-round.png */; };
-		F22CD3842C6709650098B6E9 /* heart.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3772C6709650098B6E9 /* heart.png */; };
-		F22CD3852C6709650098B6E9 /* star.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3782C6709650098B6E9 /* star.png */; };
-		F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22CD37B2C6709650098B6E9 /* FCAlertView.m */; };
 		F22DE0802ECB61C600B2D0D2 /* PPUserSigningController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D6396C2ECB491D00FEBCBB /* PPUserSigningController.m */; };
 		F22EC0C62FD07D4F00AE5A5D /* PPImageSearchService.m in Sources */ = {isa = PBXBuildFile; fileRef = F22EC0C52FD07D4F00AE5A5D /* PPImageSearchService.m */; };
 		F22ED2432FA9FF4900F72C2B /* PPNovaProductMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */; };
@@ -421,7 +415,6 @@
 		F27CA86B2C65933800E92897 /* TTGSnackbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27CA8682C65933800E92897 /* TTGSnackbar.swift */; };
 		F27D66282E1FD8B10081943A /* OptionModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D66272E1FD8B10081943A /* OptionModel.m */; };
 		F27D662B2E1FD8D90081943A /* BottomOptionsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D662A2E1FD8C80081943A /* BottomOptionsViewController.m */; };
-		F27F45F92C701DE300876484 /* FFLoadingView.m in Sources */ = {isa = PBXBuildFile; fileRef = F27F45F72C701DE300876484 /* FFLoadingView.m */; };
 		F27FA1432CE492B000A9A078 /* NullSafe.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FA1422CE492B000A9A078 /* NullSafe.m */; };
 		F27FAE522D2F250600EA6B56 /* CustomCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FAE512D2F250600EA6B56 /* CustomCollectionViewCell.m */; };
 		F27FAE592D2F2B7700EA6B56 /* VideoCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FAE582D2F2B7700EA6B56 /* VideoCollectionViewCell.m */; };
@@ -499,9 +492,6 @@
 		F28CB4062E4C6902009DD547 /* AdoptPetListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */; };
 		F28CB4072E4C6903009DD547 /* AdoptPetDetailsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */; };
 		F28CB4082E4C6904009DD547 /* AdoptPetsHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */; };
-		A9F200010000000000000001 /* PPPetProfilesSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */; };
-		A9F200020000000000000002 /* PPPetProfileEditorSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */; };
-		A9F200030000000000000003 /* PPPetProfilesHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */; };
 		F28CBB5F2D30044D002993F0 /* GSIndeterminateProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB5D2D30044D002993F0 /* GSIndeterminateProgressView.m */; };
 		F28CBB642D302899002993F0 /* JPCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB612D302899002993F0 /* JPCell.m */; };
 		F28CBB682D30298C002993F0 /* JPCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F28CBB672D30298C002993F0 /* JPCell.xib */; };
@@ -580,8 +570,6 @@
 		F299FDDD2C61C37B00C63506 /* CircularIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F299FDDA2C61C37A00C63506 /* CircularIndicatorView.m */; };
 		F29AB78A2D5F5E99009D3060 /* RoundedImageViewWithShadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F29AB7892D5F5E99009D3060 /* RoundedImageViewWithShadow.m */; };
 		F29CA1D42E94F4DE000C50BD /* DetailsTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29CA1D32E94F4DE000C50BD /* DetailsTableViewCell.m */; };
-		F29E72652CBD23CE00CF441B /* SKSplashIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F29E72612CBD23CE00CF441B /* SKSplashIcon.m */; };
-		F29E72662CBD23CE00CF441B /* SKSplashView.m in Sources */ = {isa = PBXBuildFile; fileRef = F29E72632CBD23CE00CF441B /* SKSplashView.m */; };
 		F29EFFAC3020EFFA00125FB9 /* PureLens in Frameworks */ = {isa = PBXBuildFile; productRef = F29EFFAB3020EFFA00125FB9 /* PureLens */; };
 		F29EFFAE3020EFFA00125FB9 /* PurePetsEyes in Frameworks */ = {isa = PBXBuildFile; productRef = F29EFFAD3020EFFA00125FB9 /* PurePetsEyes */; };
 		F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D02D0D08CB00FF2180 /* StepperCell.m */; };
@@ -591,11 +579,7 @@
 		F2A0BBCD2F203B1E003715F0 /* TypingIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */; };
 		F2A0F5F22CC842D300B38F14 /* KBSwipeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0F5F12CC842D300B38F14 /* KBSwipeCell.m */; };
 		F2A1B2C32F45111100FFA0B8 /* QIBPayment.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = F273148B2F31540B00FFA0B8 /* QIBPayment.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */; };
-		F2A1DD612D03058F009F0B62 /* YIInnerShadowLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5B2D03058F009F0B62 /* YIInnerShadowLayer.m */; };
-		F2A1DD642D031328009F0B62 /* UIView+Shadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD632D031328009F0B62 /* UIView+Shadow.m */; };
 		F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */; };
-		F2A260932D20C55A00081E59 /* deletealert.png in Resources */ = {isa = PBXBuildFile; fileRef = F2A260922D20C55A00081E59 /* deletealert.png */; };
 		F2A260992D21BFC600081E59 /* ZMJTipView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A260962D21BFC600081E59 /* ZMJTipView.m */; };
 		F2A2F1B02EB13C6000BD1261 /* PPAddressModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A2F1AF2EB13C6000BD1261 /* PPAddressModel.m */; };
 		F2A2F1B42EB13CE500BD1261 /* AddressFormVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A2F1B32EB13CD200BD1261 /* AddressFormVC.m */; };
@@ -626,24 +610,6 @@
 		F2AB48952C72CF3C00D88603 /* JGProgressHUDRingIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48882C72CF3C00D88603 /* JGProgressHUDRingIndicatorView.m */; };
 		F2AB48962C72CF3C00D88603 /* JGProgressHUDShadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48892C72CF3C00D88603 /* JGProgressHUDShadow.m */; };
 		F2AB48972C72CF3C00D88603 /* JGProgressHUDSuccessIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB488A2C72CF3C00D88603 /* JGProgressHUDSuccessIndicatorView.m */; };
-		F2AB48CA2C72D43D00D88603 /* KafkaCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48992C72D43C00D88603 /* KafkaCategories.m */; };
-		F2AB48CB2C72D43D00D88603 /* UIScrollView+KafkaConfiguration.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB489C2C72D43C00D88603 /* UIScrollView+KafkaConfiguration.m */; };
-		F2AB48CC2C72D43D00D88603 /* KafkaFootRefreshControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB489F2C72D43C00D88603 /* KafkaFootRefreshControl.m */; };
-		F2AB48CD2C72D43D00D88603 /* KafkaHeadRefreshControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48A12C72D43C00D88603 /* KafkaHeadRefreshControl.m */; };
-		F2AB48CE2C72D43D00D88603 /* KafkaRefreshControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48A32C72D43C00D88603 /* KafkaRefreshControl.m */; };
-		F2AB48CF2C72D43D00D88603 /* UIScrollView+KafkaRefreshControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48A62C72D43C00D88603 /* UIScrollView+KafkaRefreshControl.m */; };
-		F2AB48D02C72D43D00D88603 /* KafkaRefreshDefaults.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48A92C72D43C00D88603 /* KafkaRefreshDefaults.m */; };
-		F2AB48D12C72D43D00D88603 /* Image.bundle in Resources */ = {isa = PBXBuildFile; fileRef = F2AB48AB2C72D43C00D88603 /* Image.bundle */; };
-		F2AB48D22C72D43D00D88603 /* KafkaArrowFooter.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48B02C72D43C00D88603 /* KafkaArrowFooter.m */; };
-		F2AB48D32C72D43D00D88603 /* KafkaNativeFooter.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48B22C72D43C00D88603 /* KafkaNativeFooter.m */; };
-		F2AB48D42C72D43D00D88603 /* KafkaReplicatorFooter.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48B42C72D43C00D88603 /* KafkaReplicatorFooter.m */; };
-		F2AB48D52C72D43D00D88603 /* KafkaRingIndicatorFooter.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48B62C72D43C00D88603 /* KafkaRingIndicatorFooter.m */; };
-		F2AB48D62C72D43D00D88603 /* KafkaArrowHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48B92C72D43C00D88603 /* KafkaArrowHeader.m */; };
-		F2AB48D72C72D43D00D88603 /* KafkaNativeHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48BB2C72D43C00D88603 /* KafkaNativeHeader.m */; };
-		F2AB48D82C72D43D00D88603 /* KafkaReplicatorHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48BD2C72D43C00D88603 /* KafkaReplicatorHeader.m */; };
-		F2AB48D92C72D43D00D88603 /* KafkaRingIndicatorHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48BF2C72D43C00D88603 /* KafkaRingIndicatorHeader.m */; };
-		F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C32C72D43C00D88603 /* KafkaArcLayer.m */; };
-		F2AB48DB2C72D43D00D88603 /* KafkaReplicatorLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */; };
 		F2AC11013020000100BEE001 /* PPAccessoryViewerLegacyBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */; };
 		F2AC11023020000100BEE001 /* PPAccessoryViewerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */; };
 		F2AC11033020000100BEE001 /* PPAccessoryViewerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */; };
@@ -657,14 +623,9 @@
 		F2ACA9FF301ACF4A00F55032 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = F2ACA9FE301ACF4A00F55032 /* Kingfisher */; };
 		F2ACAA01301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */; };
 		F2AD5A010000000000000001 /* PurePetsAdShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AD5A030000000000000001 /* PurePetsAdShareKit */; };
-		F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */; };
-		F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */; };
 		F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1462D6E6AB400B55427 /* MainController.m */; };
 		F2AEC14E2D6E821200B55427 /* CardsCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2AEC14D2D6E821200B55427 /* CardsCell.xib */; };
 		F2AEC14F2D6E821200B55427 /* CardsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC14C2D6E821200B55427 /* CardsCell.m */; };
-		F2AEC1572D6EBA6900B55427 /* LUNSegmentedControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */; };
-		F2AEC1582D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */; };
-		F2AEC1592D6EBA6900B55427 /* LUNGradientView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1512D6EBA6900B55427 /* LUNGradientView.m */; };
 		F2AEFEC33023025900892AB2 /* PurePetsMessagingCore in Frameworks */ = {isa = PBXBuildFile; productRef = F2AEFEC23023025900892AB2 /* PurePetsMessagingCore */; };
 		F2AEFEC53023025900892AB2 /* PurePetsMessagingUI in Frameworks */ = {isa = PBXBuildFile; productRef = F2AEFEC43023025900892AB2 /* PurePetsMessagingUI */; };
 		F2AEFEC83023057600892AB2 /* PPChatCellCore in Frameworks */ = {isa = PBXBuildFile; productRef = F2AEFEC73023057600892AB2 /* PPChatCellCore */; };
@@ -742,12 +703,6 @@
 		F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C16F8E2D6B63DC00B2887E /* ImagePicker.m */; };
 		F2C1A1112F00111100C1A111 /* StateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C1A1132F00111100C1A113 /* StateModel.m */; };
 		F2C223CC2F061EFD006DB76A /* PPUniversalCellViewModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */; };
-		F2C5F76E2CA00D3300D7897A /* AAMultiSelectViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7682CA00D3300D7897A /* AAMultiSelectViewController.m */; };
-		F2C5F76F2CA00D3300D7897A /* AAPopupView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F76B2CA00D3300D7897A /* AAPopupView.m */; };
-		F2C5F7702CA00D3300D7897A /* AAMultiSelectTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7662CA00D3300D7897A /* AAMultiSelectTableViewCell.m */; };
-		F2C5F7712CA00D3300D7897A /* AAMultiSelectModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7642CA00D3300D7897A /* AAMultiSelectModel.m */; };
-		F2C5F7722CA00D3300D7897A /* AAicon_check@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F2C5F75E2CA00D3300D7897A /* AAicon_check@2x.png */; };
-		F2C5F7732CA00D3300D7897A /* AAicon_check@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F2C5F75F2CA00D3300D7897A /* AAicon_check@3x.png */; };
 		F2C5F7782CA01C0500D7897A /* UIView+DCAnimationKit.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */; };
 		F2C638602E5132A3007E4CE4 /* cities.json in Resources */ = {isa = PBXBuildFile; fileRef = F2C6385F2E5132A3007E4CE4 /* cities.json */; };
 		F2C7743B30242EF6000447CD /* PurePetsUserKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2C7743A30242EF6000447CD /* PurePetsUserKit */; };
@@ -768,10 +723,6 @@
 		F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CDBD4C2D12632100FE7FA2 /* ImageModel.m */; };
 		F2CE352D2C6D7CE6005A78CD /* PulsingHaloLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CE352B2C6D7CE6005A78CD /* PulsingHaloLayer.m */; };
 		F2CEC0C72CB3CB8300E3B181 /* archiveCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CEC0C62CB3CB8300E3B181 /* archiveCell.m */; };
-		F2CEC1002CB4682300E3B181 /* cross.png in Resources */ = {isa = PBXBuildFile; fileRef = F2CEC0FA2CB4682300E3B181 /* cross.png */; };
-		F2CEC1012CB4682300E3B181 /* tick.png in Resources */ = {isa = PBXBuildFile; fileRef = F2CEC0FC2CB4682300E3B181 /* tick.png */; };
-		F2CEC1022CB4682300E3B181 /* CCActivityHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CEC0F92CB4682300E3B181 /* CCActivityHUD.m */; };
-		F2CEC1032CB4682300E3B181 /* UIImage+animatedGIF.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CEC0FE2CB4682300E3B181 /* UIImage+animatedGIF.m */; };
 		F2D0C5DA2C4BE1B80023CE53 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5D92C4BE1B80023CE53 /* AppDelegate.m */; };
 		F2D0C5DD2C4BE1B80023CE53 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5DC2C4BE1B80023CE53 /* SceneDelegate.m */; };
 		F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E42C4BE1BB0023CE53 /* Assets.xcassets */; };
@@ -1015,6 +966,9 @@
 		A6B710053020000100000001 /* PPMediaViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMediaViewer.swift; sourceTree = "<group>"; };
 		A810000B301E00010000000B /* PPChatCellBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPChatCellBridge.swift; sourceTree = "<group>"; };
 		A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceMessageSending.swift; sourceTree = "<group>"; };
+		A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfilesSwiftUI.swift; sourceTree = "<group>"; };
+		A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfileEditorSwiftUI.swift; sourceTree = "<group>"; };
+		A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfilesHostingControllers.swift; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
 		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
 		AA170DFB35D11ED0D638DF8B /* AttachmentButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentButton.swift; sourceTree = "<group>"; };
@@ -1071,9 +1025,6 @@
 		F209567B2F8567EA007C4ABA /* PPPetProfilesViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetProfilesViewController.m; sourceTree = "<group>"; };
 		F209567D2F85680A007C4ABA /* PPPetProfileEditorViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfileEditorViewController.h; sourceTree = "<group>"; };
 		F209567E2F856813007C4ABA /* PPPetProfileEditorViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileEditorViewController.m; sourceTree = "<group>"; };
-		A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfilesSwiftUI.swift; sourceTree = "<group>"; };
-		A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfileEditorSwiftUI.swift; sourceTree = "<group>"; };
-		A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetProfilesHostingControllers.swift; sourceTree = "<group>"; };
 		F20956802F856830007C4ABA /* PPPetRemindersViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetRemindersViewController.h; sourceTree = "<group>"; };
 		F20956812F856838007C4ABA /* PPPetRemindersViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetRemindersViewController.m; sourceTree = "<group>"; };
 		F20956832F856850007C4ABA /* PPReminderEditorViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderEditorViewController.h; sourceTree = "<group>"; };
@@ -1191,8 +1142,6 @@
 		F21C2B0E2CD01E3A00B2373D /* XLFormCustomCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormCustomCell.m; sourceTree = "<group>"; };
 		F21D1B5D2E9C727E00220F72 /* PPUniversalCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCell.h; sourceTree = "<group>"; };
 		F21D1B5E2E9C72B600220F72 /* PPUniversalCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCell.m; sourceTree = "<group>"; };
-		F21D1B702E9D640C00220F72 /* AKPickerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AKPickerView.h; sourceTree = "<group>"; };
-		F21D1B712E9D640C00220F72 /* AKPickerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AKPickerView.m; sourceTree = "<group>"; };
 		F21E092F2E451A4B00690BC5 /* Language.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Language.h; sourceTree = "<group>"; };
 		F21E09302E451A4B00690BC5 /* Language.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Language.m; sourceTree = "<group>"; };
 		F21E09332E452D8F00690BC5 /* ISO8601DateFormatter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ISO8601DateFormatter.h; sourceTree = "<group>"; };
@@ -1381,19 +1330,6 @@
 		F22C07802EF66C2F00C00EAC /* YYWeakProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YYWeakProxy.h; sourceTree = "<group>"; };
 		F22C07812EF66C2F00C00EAC /* YYWeakProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YYWeakProxy.m; sourceTree = "<group>"; };
 		F22C07832EF66C2F00C00EAC /* YYKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YYKit.h; sourceTree = "<group>"; };
-		F22CD3682C66F8710098B6E9 /* QuickSecurityCode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QuickSecurityCode.h; sourceTree = "<group>"; };
-		F22CD3692C66F8710098B6E9 /* QuickSecurityCode.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = QuickSecurityCode.m; sourceTree = "<group>"; };
-		F22CD36A2C66F8710098B6E9 /* UITextField+QuickSecurityCode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UITextField+QuickSecurityCode.h"; sourceTree = "<group>"; };
-		F22CD36B2C66F8710098B6E9 /* UITextField+QuickSecurityCode.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UITextField+QuickSecurityCode.m"; sourceTree = "<group>"; };
-		F22CD36D2C66F8710098B6E9 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
-		F22CD36E2C66F8710098B6E9 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		F22CD3742C6709650098B6E9 /* alert-round.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "alert-round.png"; sourceTree = "<group>"; };
-		F22CD3752C6709650098B6E9 /* checkmark-round.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "checkmark-round.png"; sourceTree = "<group>"; };
-		F22CD3762C6709650098B6E9 /* close-round.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "close-round.png"; sourceTree = "<group>"; };
-		F22CD3772C6709650098B6E9 /* heart.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = heart.png; sourceTree = "<group>"; };
-		F22CD3782C6709650098B6E9 /* star.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = star.png; sourceTree = "<group>"; };
-		F22CD37A2C6709650098B6E9 /* FCAlertView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FCAlertView.h; sourceTree = "<group>"; };
-		F22CD37B2C6709650098B6E9 /* FCAlertView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FCAlertView.m; sourceTree = "<group>"; };
 		F22EC0C42FD07D4F00AE5A5D /* PPImageSearchService.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageSearchService.h; sourceTree = "<group>"; };
 		F22EC0C52FD07D4F00AE5A5D /* PPImageSearchService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageSearchService.m; sourceTree = "<group>"; };
 		F22ED2412FA9FF4900F72C2B /* PPNovaProductMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaProductMessageCell.h; sourceTree = "<group>"; };
@@ -1727,8 +1663,6 @@
 		F27D66272E1FD8B10081943A /* OptionModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OptionModel.m; sourceTree = "<group>"; };
 		F27D66292E1FD8BB0081943A /* BottomOptionsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BottomOptionsViewController.h; sourceTree = "<group>"; };
 		F27D662A2E1FD8C80081943A /* BottomOptionsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BottomOptionsViewController.m; sourceTree = "<group>"; };
-		F27F45F62C701DE300876484 /* FFLoadingView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFLoadingView.h; sourceTree = "<group>"; };
-		F27F45F72C701DE300876484 /* FFLoadingView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FFLoadingView.m; sourceTree = "<group>"; };
 		F27FA1422CE492B000A9A078 /* NullSafe.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NullSafe.m; sourceTree = "<group>"; };
 		F27FAE502D2F250600EA6B56 /* CustomCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CustomCollectionViewCell.h; sourceTree = "<group>"; };
 		F27FAE512D2F250600EA6B56 /* CustomCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CustomCollectionViewCell.m; sourceTree = "<group>"; };
@@ -1972,10 +1906,6 @@
 		F29AB7892D5F5E99009D3060 /* RoundedImageViewWithShadow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RoundedImageViewWithShadow.m; sourceTree = "<group>"; };
 		F29CA1D22E94F4DE000C50BD /* DetailsTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DetailsTableViewCell.h; sourceTree = "<group>"; };
 		F29CA1D32E94F4DE000C50BD /* DetailsTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DetailsTableViewCell.m; sourceTree = "<group>"; };
-		F29E72602CBD23CE00CF441B /* SKSplashIcon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SKSplashIcon.h; sourceTree = "<group>"; };
-		F29E72612CBD23CE00CF441B /* SKSplashIcon.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SKSplashIcon.m; sourceTree = "<group>"; };
-		F29E72622CBD23CE00CF441B /* SKSplashView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SKSplashView.h; sourceTree = "<group>"; };
-		F29E72632CBD23CE00CF441B /* SKSplashView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SKSplashView.m; sourceTree = "<group>"; };
 		F29F01CF2D0D08CB00FF2180 /* StepperCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StepperCell.h; sourceTree = "<group>"; };
 		F29F01D02D0D08CB00FF2180 /* StepperCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StepperCell.m; sourceTree = "<group>"; };
 		F29F01D22D0D08FD00FF2180 /* PKYStepper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PKYStepper.h; sourceTree = "<group>"; };
@@ -1989,12 +1919,6 @@
 		F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TypingIndicatorView.m; sourceTree = "<group>"; };
 		F2A0F5F02CC842D300B38F14 /* KBSwipeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KBSwipeCell.h; sourceTree = "<group>"; };
 		F2A0F5F12CC842D300B38F14 /* KBSwipeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KBSwipeCell.m; sourceTree = "<group>"; };
-		F2A1DD5A2D03058F009F0B62 /* YIInnerShadowLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YIInnerShadowLayer.h; sourceTree = "<group>"; };
-		F2A1DD5B2D03058F009F0B62 /* YIInnerShadowLayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YIInnerShadowLayer.m; sourceTree = "<group>"; };
-		F2A1DD5C2D03058F009F0B62 /* YIInnerShadowView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YIInnerShadowView.h; sourceTree = "<group>"; };
-		F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YIInnerShadowView.m; sourceTree = "<group>"; };
-		F2A1DD622D031328009F0B62 /* UIView+Shadow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+Shadow.h"; sourceTree = "<group>"; };
-		F2A1DD632D031328009F0B62 /* UIView+Shadow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+Shadow.m"; sourceTree = "<group>"; };
 		F2A1DD732D0439FD009F0B62 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		F2A1DD792D043A72009F0B62 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		F2A1DD7B2D043A79009F0B62 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
@@ -2002,7 +1926,6 @@
 		F2A24AD13002DA7F003AB79D /* PPBackgroundView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBackgroundView.m; sourceTree = "<group>"; };
 		F2A25D732F195D5A00B5E0F6 /* PPInfoPillsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInfoPillsView.h; sourceTree = "<group>"; };
 		F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPInfoPillsView.m; sourceTree = "<group>"; };
-		F2A260922D20C55A00081E59 /* deletealert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deletealert.png; sourceTree = "<group>"; };
 		F2A260952D21BFC600081E59 /* ZMJTipView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZMJTipView.h; sourceTree = "<group>"; };
 		F2A260962D21BFC600081E59 /* ZMJTipView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZMJTipView.m; sourceTree = "<group>"; };
 		F2A2F1A72EAFCF4700BD1261 /* PPCollectionLayoutManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCollectionLayoutManager.h; sourceTree = "<group>"; };
@@ -2075,45 +1998,6 @@
 		F2AB48882C72CF3C00D88603 /* JGProgressHUDRingIndicatorView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JGProgressHUDRingIndicatorView.m; sourceTree = "<group>"; };
 		F2AB48892C72CF3C00D88603 /* JGProgressHUDShadow.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JGProgressHUDShadow.m; sourceTree = "<group>"; };
 		F2AB488A2C72CF3C00D88603 /* JGProgressHUDSuccessIndicatorView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JGProgressHUDSuccessIndicatorView.m; sourceTree = "<group>"; };
-		F2AB48982C72D43C00D88603 /* KafkaCategories.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaCategories.h; sourceTree = "<group>"; };
-		F2AB48992C72D43C00D88603 /* KafkaCategories.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaCategories.m; sourceTree = "<group>"; };
-		F2AB489B2C72D43C00D88603 /* UIScrollView+KafkaConfiguration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIScrollView+KafkaConfiguration.h"; sourceTree = "<group>"; };
-		F2AB489C2C72D43C00D88603 /* UIScrollView+KafkaConfiguration.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIScrollView+KafkaConfiguration.m"; sourceTree = "<group>"; };
-		F2AB489E2C72D43C00D88603 /* KafkaFootRefreshControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaFootRefreshControl.h; sourceTree = "<group>"; };
-		F2AB489F2C72D43C00D88603 /* KafkaFootRefreshControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaFootRefreshControl.m; sourceTree = "<group>"; };
-		F2AB48A02C72D43C00D88603 /* KafkaHeadRefreshControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaHeadRefreshControl.h; sourceTree = "<group>"; };
-		F2AB48A12C72D43C00D88603 /* KafkaHeadRefreshControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaHeadRefreshControl.m; sourceTree = "<group>"; };
-		F2AB48A22C72D43C00D88603 /* KafkaRefreshControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefreshControl.h; sourceTree = "<group>"; };
-		F2AB48A32C72D43C00D88603 /* KafkaRefreshControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaRefreshControl.m; sourceTree = "<group>"; };
-		F2AB48A42C72D43C00D88603 /* KafkaRefreshProtocol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefreshProtocol.h; sourceTree = "<group>"; };
-		F2AB48A52C72D43C00D88603 /* UIScrollView+KafkaRefreshControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIScrollView+KafkaRefreshControl.h"; sourceTree = "<group>"; };
-		F2AB48A62C72D43C00D88603 /* UIScrollView+KafkaRefreshControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIScrollView+KafkaRefreshControl.m"; sourceTree = "<group>"; };
-		F2AB48A82C72D43C00D88603 /* KafkaRefreshDefaults.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefreshDefaults.h; sourceTree = "<group>"; };
-		F2AB48A92C72D43C00D88603 /* KafkaRefreshDefaults.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaRefreshDefaults.m; sourceTree = "<group>"; };
-		F2AB48AB2C72D43C00D88603 /* Image.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Image.bundle; sourceTree = "<group>"; };
-		F2AB48AD2C72D43C00D88603 /* KafkaRefreshStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefreshStyle.h; sourceTree = "<group>"; };
-		F2AB48AF2C72D43C00D88603 /* KafkaArrowFooter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaArrowFooter.h; sourceTree = "<group>"; };
-		F2AB48B02C72D43C00D88603 /* KafkaArrowFooter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaArrowFooter.m; sourceTree = "<group>"; };
-		F2AB48B12C72D43C00D88603 /* KafkaNativeFooter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaNativeFooter.h; sourceTree = "<group>"; };
-		F2AB48B22C72D43C00D88603 /* KafkaNativeFooter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaNativeFooter.m; sourceTree = "<group>"; };
-		F2AB48B32C72D43C00D88603 /* KafkaReplicatorFooter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaReplicatorFooter.h; sourceTree = "<group>"; };
-		F2AB48B42C72D43C00D88603 /* KafkaReplicatorFooter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaReplicatorFooter.m; sourceTree = "<group>"; };
-		F2AB48B52C72D43C00D88603 /* KafkaRingIndicatorFooter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRingIndicatorFooter.h; sourceTree = "<group>"; };
-		F2AB48B62C72D43C00D88603 /* KafkaRingIndicatorFooter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaRingIndicatorFooter.m; sourceTree = "<group>"; };
-		F2AB48B82C72D43C00D88603 /* KafkaArrowHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaArrowHeader.h; sourceTree = "<group>"; };
-		F2AB48B92C72D43C00D88603 /* KafkaArrowHeader.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaArrowHeader.m; sourceTree = "<group>"; };
-		F2AB48BA2C72D43C00D88603 /* KafkaNativeHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaNativeHeader.h; sourceTree = "<group>"; };
-		F2AB48BB2C72D43C00D88603 /* KafkaNativeHeader.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaNativeHeader.m; sourceTree = "<group>"; };
-		F2AB48BC2C72D43C00D88603 /* KafkaReplicatorHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaReplicatorHeader.h; sourceTree = "<group>"; };
-		F2AB48BD2C72D43C00D88603 /* KafkaReplicatorHeader.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaReplicatorHeader.m; sourceTree = "<group>"; };
-		F2AB48BE2C72D43C00D88603 /* KafkaRingIndicatorHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRingIndicatorHeader.h; sourceTree = "<group>"; };
-		F2AB48BF2C72D43C00D88603 /* KafkaRingIndicatorHeader.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaRingIndicatorHeader.m; sourceTree = "<group>"; };
-		F2AB48C12C72D43C00D88603 /* KafkaAnimatableProtocol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaAnimatableProtocol.h; sourceTree = "<group>"; };
-		F2AB48C22C72D43C00D88603 /* KafkaArcLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaArcLayer.h; sourceTree = "<group>"; };
-		F2AB48C32C72D43C00D88603 /* KafkaArcLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaArcLayer.m; sourceTree = "<group>"; };
-		F2AB48C42C72D43C00D88603 /* KafkaReplicatorLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaReplicatorLayer.h; sourceTree = "<group>"; };
-		F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaReplicatorLayer.m; sourceTree = "<group>"; };
-		F2AB48C82C72D43C00D88603 /* KafkaRefresh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefresh.h; sourceTree = "<group>"; };
 		F2AC10013020000100BEE001 /* PPAccessoryViewerLegacyBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAccessoryViewerLegacyBridge.h; sourceTree = "<group>"; };
 		F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAccessoryViewerLegacyBridge.m; sourceTree = "<group>"; };
 		F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerModels.swift; sourceTree = "<group>"; };
@@ -2127,21 +2011,11 @@
 		F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
 		F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSectionHeaderSwiftUI.swift; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
-		F2AE2DA62CFD485E00D09E90 /* CALayer+TTSpringAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CALayer+TTSpringAnimation.h"; sourceTree = "<group>"; };
-		F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CALayer+TTSpringAnimation.m"; sourceTree = "<group>"; };
-		F2AE2DA82CFD485E00D09E90 /* TTAnimationButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TTAnimationButton.h; sourceTree = "<group>"; };
-		F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TTAnimationButton.m; sourceTree = "<group>"; };
 		F2AEC1452D6E6AB400B55427 /* MainController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainController.h; sourceTree = "<group>"; };
 		F2AEC1462D6E6AB400B55427 /* MainController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainController.m; sourceTree = "<group>"; };
 		F2AEC14B2D6E821200B55427 /* CardsCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CardsCell.h; sourceTree = "<group>"; };
 		F2AEC14C2D6E821200B55427 /* CardsCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CardsCell.m; sourceTree = "<group>"; };
 		F2AEC14D2D6E821200B55427 /* CardsCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = CardsCell.xib; sourceTree = "<group>"; };
-		F2AEC1502D6EBA6900B55427 /* LUNGradientView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LUNGradientView.h; sourceTree = "<group>"; };
-		F2AEC1512D6EBA6900B55427 /* LUNGradientView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LUNGradientView.m; sourceTree = "<group>"; };
-		F2AEC1522D6EBA6900B55427 /* LUNSegmentedControl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LUNSegmentedControl.h; sourceTree = "<group>"; };
-		F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LUNSegmentedControl.m; sourceTree = "<group>"; };
-		F2AEC1542D6EBA6900B55427 /* UIView+LUNRemoveConstraints.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+LUNRemoveConstraints.h"; sourceTree = "<group>"; };
-		F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+LUNRemoveConstraints.m"; sourceTree = "<group>"; };
 		F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedContainerView.swift; sourceTree = "<group>"; };
 		F2AF3844300AC36600FBF82D /* MatchedGeometryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedGeometryState.swift; sourceTree = "<group>"; };
 		F2AF3846300AC36600FBF82D /* TransitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitionManager.swift; sourceTree = "<group>"; };
@@ -2258,18 +2132,6 @@
 		F2C223CA2F061EE4006DB76A /* PPUniversalCellViewModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellViewModel.h; sourceTree = "<group>"; };
 		F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellViewModel.m; sourceTree = "<group>"; };
 		F2C2FE082D44535E00BB8828 /* PrefixHeader.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
-		F2C5F75E2CA00D3300D7897A /* AAicon_check@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AAicon_check@2x.png"; sourceTree = "<group>"; };
-		F2C5F75F2CA00D3300D7897A /* AAicon_check@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AAicon_check@3x.png"; sourceTree = "<group>"; };
-		F2C5F7622CA00D3300D7897A /* AAMultiSelectController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AAMultiSelectController.h; sourceTree = "<group>"; };
-		F2C5F7632CA00D3300D7897A /* AAMultiSelectModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AAMultiSelectModel.h; sourceTree = "<group>"; };
-		F2C5F7642CA00D3300D7897A /* AAMultiSelectModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AAMultiSelectModel.m; sourceTree = "<group>"; };
-		F2C5F7652CA00D3300D7897A /* AAMultiSelectTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AAMultiSelectTableViewCell.h; sourceTree = "<group>"; };
-		F2C5F7662CA00D3300D7897A /* AAMultiSelectTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AAMultiSelectTableViewCell.m; sourceTree = "<group>"; };
-		F2C5F7672CA00D3300D7897A /* AAMultiSelectViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AAMultiSelectViewController.h; sourceTree = "<group>"; };
-		F2C5F7682CA00D3300D7897A /* AAMultiSelectViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AAMultiSelectViewController.m; sourceTree = "<group>"; };
-		F2C5F7692CA00D3300D7897A /* AAPopupDefines.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AAPopupDefines.h; sourceTree = "<group>"; };
-		F2C5F76A2CA00D3300D7897A /* AAPopupView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AAPopupView.h; sourceTree = "<group>"; };
-		F2C5F76B2CA00D3300D7897A /* AAPopupView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AAPopupView.m; sourceTree = "<group>"; };
 		F2C5F7762CA01C0500D7897A /* UIView+DCAnimationKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+DCAnimationKit.h"; sourceTree = "<group>"; };
 		F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+DCAnimationKit.m"; sourceTree = "<group>"; };
 		F2C6385F2E5132A3007E4CE4 /* cities.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = cities.json; sourceTree = "<group>"; };
@@ -2298,13 +2160,6 @@
 		F2CE352B2C6D7CE6005A78CD /* PulsingHaloLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PulsingHaloLayer.m; sourceTree = "<group>"; };
 		F2CEC0C52CB3CB8300E3B181 /* archiveCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = archiveCell.h; sourceTree = "<group>"; };
 		F2CEC0C62CB3CB8300E3B181 /* archiveCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = archiveCell.m; sourceTree = "<group>"; };
-		F2CEC0F82CB4682300E3B181 /* CCActivityHUD.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CCActivityHUD.h; sourceTree = "<group>"; };
-		F2CEC0F92CB4682300E3B181 /* CCActivityHUD.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CCActivityHUD.m; sourceTree = "<group>"; };
-		F2CEC0FA2CB4682300E3B181 /* cross.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cross.png; sourceTree = "<group>"; };
-		F2CEC0FB2CB4682300E3B181 /* Size.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Size.h; sourceTree = "<group>"; };
-		F2CEC0FC2CB4682300E3B181 /* tick.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = tick.png; sourceTree = "<group>"; };
-		F2CEC0FD2CB4682300E3B181 /* UIImage+animatedGIF.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIImage+animatedGIF.h"; sourceTree = "<group>"; };
-		F2CEC0FE2CB4682300E3B181 /* UIImage+animatedGIF.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIImage+animatedGIF.m"; sourceTree = "<group>"; };
 		F2D0C5D52C4BE1B80023CE53 /* Pure Pets.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Pure Pets.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2D0C5D82C4BE1B80023CE53 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		F2D0C5D92C4BE1B80023CE53 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -2855,15 +2710,6 @@
 			path = LSLDatePickerDialog;
 			sourceTree = "<group>";
 		};
-		F21D1B722E9D640C00220F72 /* AKPickerView */ = {
-			isa = PBXGroup;
-			children = (
-				F21D1B702E9D640C00220F72 /* AKPickerView.h */,
-				F21D1B712E9D640C00220F72 /* AKPickerView.m */,
-			);
-			path = AKPickerView;
-			sourceTree = "<group>";
-		};
 		F21E09312E451A4B00690BC5 /* Language */ = {
 			isa = PBXGroup;
 			children = (
@@ -2908,37 +2754,26 @@
 				F276E5C82DE3362500926D56 /* FavoriteButton.h */,
 				F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */,
 				F21391D12D8BC16200B59E5B /* UIButton+PressAnimation.h */,
-				F2AEC1562D6EBA6900B55427 /* LUNSegmentedControl */,
 				F20F31A62D177602001D1D57 /* PGDatePicker */,
 				F29F01D42D0D08FD00FF2180 /* PKYStepper */,
 				F21A622B2D0AF04100A28792 /* LSLDatePickerDialog */,
-				F2A1DD5E2D03058F009F0B62 /* ClassesYIInnerShadow */,
 				F28C73F02D007FC90041F0BB /* PressButton.h */,
 				F28C73F12D007FC90041F0BB /* PressButton.m */,
-				F2CEC0FF2CB4682300E3B181 /* CCActivityHUD */,
 				F2CD9CA32CAB16AA00C0827B /* UISearchBar+FMAdd.h */,
 				F2CD9CA42CAB16AA00C0827B /* UISearchBar+FMAdd.m */,
-				F2C5F76D2CA00D3300D7897A /* AAMultiSelectController */,
 				F2FBFEDB2C82935200E84C14 /* FTPopOverMenu.h */,
 				F2FBFEDC2C82935200E84C14 /* FTPopOverMenu.m */,
 				F260D3272C7B36EF0098C8F0 /* FORScrollViewEmptyAssistant */,
-				F2AB48C92C72D43C00D88603 /* KafkaRefresh */,
 				F2AB488B2C72CF3C00D88603 /* JGProgressHUD */,
-				F27F45F82C701DE300876484 /* FFLoadingView */,
-				F22CD3802C6709650098B6E9 /* FCAlertView */,
-				F22CD36F2C66F8710098B6E9 /* QuickSecurityCode */,
 				F27CA8692C65933800E92897 /* TTGSnackbar */,
 				F299FDDB2C61C37A00C63506 /* CircularLoadingButton */,
-				F29E72642CBD23CE00CF441B /* SKSplashView */,
 				F2A260972D21BFC600081E59 /* ZMJTipViewClasses */,
 				F24C035D2D2C2D6E00A9F61F /* PYSearch */,
 				F28CBB5E2D30044D002993F0 /* GSIndeterminateProgress */,
 				F2916F0E2D54C6B600FF0394 /* PopupPickerView.h */,
 				F2916F0F2D54C6B600FF0394 /* PopupPickerView.m */,
-				F2AE2DAA2CFD485E00D09E90 /* TTAnimationButton */,
 				F2CE352C2C6D7CE6005A78CD /* PulsingHalo */,
 				F2DEF00A2D6FEF2B0015B7FB /* ODRefreshControl */,
-				F21D1B722E9D640C00220F72 /* AKPickerView */,
 			);
 			path = UIFieldsAndPicker;
 			sourceTree = "<group>";
@@ -3334,66 +3169,6 @@
 				F22C07832EF66C2F00C00EAC /* YYKit.h */,
 			);
 			path = YYKit;
-			sourceTree = "<group>";
-		};
-		F22CD36C2C66F8710098B6E9 /* QuickSecurityCode */ = {
-			isa = PBXGroup;
-			children = (
-				F22CD3682C66F8710098B6E9 /* QuickSecurityCode.h */,
-				F22CD3692C66F8710098B6E9 /* QuickSecurityCode.m */,
-				F22CD36A2C66F8710098B6E9 /* UITextField+QuickSecurityCode.h */,
-				F22CD36B2C66F8710098B6E9 /* UITextField+QuickSecurityCode.m */,
-			);
-			path = QuickSecurityCode;
-			sourceTree = "<group>";
-		};
-		F22CD36F2C66F8710098B6E9 /* QuickSecurityCode */ = {
-			isa = PBXGroup;
-			children = (
-				F22CD36C2C66F8710098B6E9 /* QuickSecurityCode */,
-				F22CD36D2C66F8710098B6E9 /* LICENSE */,
-				F22CD36E2C66F8710098B6E9 /* README.md */,
-			);
-			path = QuickSecurityCode;
-			sourceTree = "<group>";
-		};
-		F22CD3792C6709650098B6E9 /* Assets */ = {
-			isa = PBXGroup;
-			children = (
-				F2A260922D20C55A00081E59 /* deletealert.png */,
-				F22CD3742C6709650098B6E9 /* alert-round.png */,
-				F22CD3752C6709650098B6E9 /* checkmark-round.png */,
-				F22CD3762C6709650098B6E9 /* close-round.png */,
-				F22CD3772C6709650098B6E9 /* heart.png */,
-				F22CD3782C6709650098B6E9 /* star.png */,
-			);
-			path = Assets;
-			sourceTree = "<group>";
-		};
-		F22CD37C2C6709650098B6E9 /* Classes */ = {
-			isa = PBXGroup;
-			children = (
-				F22CD37A2C6709650098B6E9 /* FCAlertView.h */,
-				F22CD37B2C6709650098B6E9 /* FCAlertView.m */,
-			);
-			path = Classes;
-			sourceTree = "<group>";
-		};
-		F22CD37D2C6709650098B6E9 /* FCAlertView */ = {
-			isa = PBXGroup;
-			children = (
-				F22CD3792C6709650098B6E9 /* Assets */,
-				F22CD37C2C6709650098B6E9 /* Classes */,
-			);
-			path = FCAlertView;
-			sourceTree = "<group>";
-		};
-		F22CD3802C6709650098B6E9 /* FCAlertView */ = {
-			isa = PBXGroup;
-			children = (
-				F22CD37D2C6709650098B6E9 /* FCAlertView */,
-			);
-			path = FCAlertView;
 			sourceTree = "<group>";
 		};
 		F233B447300C7E6700D55489 /* Helpers */ = {
@@ -4057,15 +3832,6 @@
 			path = OptionsView;
 			sourceTree = "<group>";
 		};
-		F27F45F82C701DE300876484 /* FFLoadingView */ = {
-			isa = PBXGroup;
-			children = (
-				F27F45F62C701DE300876484 /* FFLoadingView.h */,
-				F27F45F72C701DE300876484 /* FFLoadingView.m */,
-			);
-			path = FFLoadingView;
-			sourceTree = "<group>";
-		};
 		F27FAE9A2D2F363200EA6B56 /* JPVideoPlayer */ = {
 			isa = PBXGroup;
 			children = (
@@ -4488,17 +4254,6 @@
 			path = CircularLoadingButton;
 			sourceTree = "<group>";
 		};
-		F29E72642CBD23CE00CF441B /* SKSplashView */ = {
-			isa = PBXGroup;
-			children = (
-				F29E72602CBD23CE00CF441B /* SKSplashIcon.h */,
-				F29E72612CBD23CE00CF441B /* SKSplashIcon.m */,
-				F29E72622CBD23CE00CF441B /* SKSplashView.h */,
-				F29E72632CBD23CE00CF441B /* SKSplashView.m */,
-			);
-			path = SKSplashView;
-			sourceTree = "<group>";
-		};
 		F29F01D42D0D08FD00FF2180 /* PKYStepper */ = {
 			isa = PBXGroup;
 			children = (
@@ -4517,19 +4272,6 @@
 				F2A0BBC32F1FD9AA003715F0 /* PPAudioPlaybackController.m */,
 			);
 			path = ChCells;
-			sourceTree = "<group>";
-		};
-		F2A1DD5E2D03058F009F0B62 /* ClassesYIInnerShadow */ = {
-			isa = PBXGroup;
-			children = (
-				F2A1DD622D031328009F0B62 /* UIView+Shadow.h */,
-				F2A1DD632D031328009F0B62 /* UIView+Shadow.m */,
-				F2A1DD5A2D03058F009F0B62 /* YIInnerShadowLayer.h */,
-				F2A1DD5B2D03058F009F0B62 /* YIInnerShadowLayer.m */,
-				F2A1DD5C2D03058F009F0B62 /* YIInnerShadowView.h */,
-				F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */,
-			);
-			path = ClassesYIInnerShadow;
 			sourceTree = "<group>";
 		};
 		F2A260972D21BFC600081E59 /* ZMJTipViewClasses */ = {
@@ -4648,132 +4390,6 @@
 			path = JGProgressHUD;
 			sourceTree = "<group>";
 		};
-		F2AB489A2C72D43C00D88603 /* Category */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48982C72D43C00D88603 /* KafkaCategories.h */,
-				F2AB48992C72D43C00D88603 /* KafkaCategories.m */,
-			);
-			path = Category;
-			sourceTree = "<group>";
-		};
-		F2AB489D2C72D43C00D88603 /* Configuration */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB489B2C72D43C00D88603 /* UIScrollView+KafkaConfiguration.h */,
-				F2AB489C2C72D43C00D88603 /* UIScrollView+KafkaConfiguration.m */,
-			);
-			path = Configuration;
-			sourceTree = "<group>";
-		};
-		F2AB48A72C72D43C00D88603 /* Core */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB489E2C72D43C00D88603 /* KafkaFootRefreshControl.h */,
-				F2AB489F2C72D43C00D88603 /* KafkaFootRefreshControl.m */,
-				F2AB48A02C72D43C00D88603 /* KafkaHeadRefreshControl.h */,
-				F2AB48A12C72D43C00D88603 /* KafkaHeadRefreshControl.m */,
-				F2AB48A22C72D43C00D88603 /* KafkaRefreshControl.h */,
-				F2AB48A32C72D43C00D88603 /* KafkaRefreshControl.m */,
-				F2AB48A42C72D43C00D88603 /* KafkaRefreshProtocol.h */,
-				F2AB48A52C72D43C00D88603 /* UIScrollView+KafkaRefreshControl.h */,
-				F2AB48A62C72D43C00D88603 /* UIScrollView+KafkaRefreshControl.m */,
-			);
-			path = Core;
-			sourceTree = "<group>";
-		};
-		F2AB48AA2C72D43C00D88603 /* Default */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48A82C72D43C00D88603 /* KafkaRefreshDefaults.h */,
-				F2AB48A92C72D43C00D88603 /* KafkaRefreshDefaults.m */,
-			);
-			path = Default;
-			sourceTree = "<group>";
-		};
-		F2AB48AC2C72D43C00D88603 /* Resource */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48AB2C72D43C00D88603 /* Image.bundle */,
-			);
-			path = Resource;
-			sourceTree = "<group>";
-		};
-		F2AB48AE2C72D43C00D88603 /* Style */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48AD2C72D43C00D88603 /* KafkaRefreshStyle.h */,
-			);
-			path = Style;
-			sourceTree = "<group>";
-		};
-		F2AB48B72C72D43C00D88603 /* FootKit */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48AF2C72D43C00D88603 /* KafkaArrowFooter.h */,
-				F2AB48B02C72D43C00D88603 /* KafkaArrowFooter.m */,
-				F2AB48B12C72D43C00D88603 /* KafkaNativeFooter.h */,
-				F2AB48B22C72D43C00D88603 /* KafkaNativeFooter.m */,
-				F2AB48B32C72D43C00D88603 /* KafkaReplicatorFooter.h */,
-				F2AB48B42C72D43C00D88603 /* KafkaReplicatorFooter.m */,
-				F2AB48B52C72D43C00D88603 /* KafkaRingIndicatorFooter.h */,
-				F2AB48B62C72D43C00D88603 /* KafkaRingIndicatorFooter.m */,
-			);
-			path = FootKit;
-			sourceTree = "<group>";
-		};
-		F2AB48C02C72D43C00D88603 /* HeadKit */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48B82C72D43C00D88603 /* KafkaArrowHeader.h */,
-				F2AB48B92C72D43C00D88603 /* KafkaArrowHeader.m */,
-				F2AB48BA2C72D43C00D88603 /* KafkaNativeHeader.h */,
-				F2AB48BB2C72D43C00D88603 /* KafkaNativeHeader.m */,
-				F2AB48BC2C72D43C00D88603 /* KafkaReplicatorHeader.h */,
-				F2AB48BD2C72D43C00D88603 /* KafkaReplicatorHeader.m */,
-				F2AB48BE2C72D43C00D88603 /* KafkaRingIndicatorHeader.h */,
-				F2AB48BF2C72D43C00D88603 /* KafkaRingIndicatorHeader.m */,
-			);
-			path = HeadKit;
-			sourceTree = "<group>";
-		};
-		F2AB48C62C72D43C00D88603 /* LayerKit */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48C12C72D43C00D88603 /* KafkaAnimatableProtocol.h */,
-				F2AB48C22C72D43C00D88603 /* KafkaArcLayer.h */,
-				F2AB48C32C72D43C00D88603 /* KafkaArcLayer.m */,
-				F2AB48C42C72D43C00D88603 /* KafkaReplicatorLayer.h */,
-				F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */,
-			);
-			path = LayerKit;
-			sourceTree = "<group>";
-		};
-		F2AB48C72C72D43C00D88603 /* UIKit */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB48B72C72D43C00D88603 /* FootKit */,
-				F2AB48C02C72D43C00D88603 /* HeadKit */,
-				F2AB48C62C72D43C00D88603 /* LayerKit */,
-			);
-			path = UIKit;
-			sourceTree = "<group>";
-		};
-		F2AB48C92C72D43C00D88603 /* KafkaRefresh */ = {
-			isa = PBXGroup;
-			children = (
-				F2AB489A2C72D43C00D88603 /* Category */,
-				F2AB489D2C72D43C00D88603 /* Configuration */,
-				F2AB48A72C72D43C00D88603 /* Core */,
-				F2AB48AA2C72D43C00D88603 /* Default */,
-				F2AB48AC2C72D43C00D88603 /* Resource */,
-				F2AB48AE2C72D43C00D88603 /* Style */,
-				F2AB48C72C72D43C00D88603 /* UIKit */,
-				F2AB48C82C72D43C00D88603 /* KafkaRefresh.h */,
-			);
-			path = KafkaRefresh;
-			sourceTree = "<group>";
-		};
 		F2AB5EE22CED3A1E00CC5231 /* Recovered References */ = {
 			isa = PBXGroup;
 			children = (
@@ -4800,17 +4416,6 @@
 			name = "Recovered References";
 			sourceTree = "<group>";
 		};
-		F2AE2DAA2CFD485E00D09E90 /* TTAnimationButton */ = {
-			isa = PBXGroup;
-			children = (
-				F2AE2DA62CFD485E00D09E90 /* CALayer+TTSpringAnimation.h */,
-				F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */,
-				F2AE2DA82CFD485E00D09E90 /* TTAnimationButton.h */,
-				F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */,
-			);
-			path = TTAnimationButton;
-			sourceTree = "<group>";
-		};
 		F2AEC14A2D6E818A00B55427 /* MianData_Files */ = {
 			isa = PBXGroup;
 			children = (
@@ -4834,19 +4439,6 @@
 				F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */,
 			);
 			path = MianData_Files;
-			sourceTree = "<group>";
-		};
-		F2AEC1562D6EBA6900B55427 /* LUNSegmentedControl */ = {
-			isa = PBXGroup;
-			children = (
-				F2AEC1502D6EBA6900B55427 /* LUNGradientView.h */,
-				F2AEC1512D6EBA6900B55427 /* LUNGradientView.m */,
-				F2AEC1522D6EBA6900B55427 /* LUNSegmentedControl.h */,
-				F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */,
-				F2AEC1542D6EBA6900B55427 /* UIView+LUNRemoveConstraints.h */,
-				F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */,
-			);
-			path = LUNSegmentedControl;
 			sourceTree = "<group>";
 		};
 		F2AF3848300AC36600FBF82D /* MatchedTransitions */ = {
@@ -5039,41 +4631,6 @@
 			path = Helpers;
 			sourceTree = "<group>";
 		};
-		F2C5F7602CA00D3300D7897A /* Assets */ = {
-			isa = PBXGroup;
-			children = (
-				F2C5F75E2CA00D3300D7897A /* AAicon_check@2x.png */,
-				F2C5F75F2CA00D3300D7897A /* AAicon_check@3x.png */,
-			);
-			path = Assets;
-			sourceTree = "<group>";
-		};
-		F2C5F76C2CA00D3300D7897A /* Classes */ = {
-			isa = PBXGroup;
-			children = (
-				F2C5F7622CA00D3300D7897A /* AAMultiSelectController.h */,
-				F2C5F7632CA00D3300D7897A /* AAMultiSelectModel.h */,
-				F2C5F7642CA00D3300D7897A /* AAMultiSelectModel.m */,
-				F2C5F7652CA00D3300D7897A /* AAMultiSelectTableViewCell.h */,
-				F2C5F7662CA00D3300D7897A /* AAMultiSelectTableViewCell.m */,
-				F2C5F7672CA00D3300D7897A /* AAMultiSelectViewController.h */,
-				F2C5F7682CA00D3300D7897A /* AAMultiSelectViewController.m */,
-				F2C5F7692CA00D3300D7897A /* AAPopupDefines.h */,
-				F2C5F76A2CA00D3300D7897A /* AAPopupView.h */,
-				F2C5F76B2CA00D3300D7897A /* AAPopupView.m */,
-			);
-			path = Classes;
-			sourceTree = "<group>";
-		};
-		F2C5F76D2CA00D3300D7897A /* AAMultiSelectController */ = {
-			isa = PBXGroup;
-			children = (
-				F2C5F7602CA00D3300D7897A /* Assets */,
-				F2C5F76C2CA00D3300D7897A /* Classes */,
-			);
-			path = AAMultiSelectController;
-			sourceTree = "<group>";
-		};
 		F2C7743D30245E1F000447CD /* SwiftUI */ = {
 			isa = PBXGroup;
 			children = (
@@ -5106,20 +4663,6 @@
 				F2CE352B2C6D7CE6005A78CD /* PulsingHaloLayer.m */,
 			);
 			path = PulsingHalo;
-			sourceTree = "<group>";
-		};
-		F2CEC0FF2CB4682300E3B181 /* CCActivityHUD */ = {
-			isa = PBXGroup;
-			children = (
-				F2CEC0F82CB4682300E3B181 /* CCActivityHUD.h */,
-				F2CEC0F92CB4682300E3B181 /* CCActivityHUD.m */,
-				F2CEC0FA2CB4682300E3B181 /* cross.png */,
-				F2CEC0FB2CB4682300E3B181 /* Size.h */,
-				F2CEC0FC2CB4682300E3B181 /* tick.png */,
-				F2CEC0FD2CB4682300E3B181 /* UIImage+animatedGIF.h */,
-				F2CEC0FE2CB4682300E3B181 /* UIImage+animatedGIF.m */,
-			);
-			path = CCActivityHUD;
 			sourceTree = "<group>";
 		};
 		F2D0939F2F2675CD00D4EE49 /* SubHelpers */ = {
@@ -5758,16 +5301,16 @@
 			mainGroup = F2D0C5CC2C4BE1B80023CE53;
 			packageReferences = (
 				F20CB1402EF50E1500CDD5AD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
-				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */,
+				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "PurePetsLayoutKit" */,
 				F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */,
 				F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				F22D551630215DE700A5EC3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				F2AEFEC13023025900892AB2 /* XCLocalSwiftPackageReference "MyFrames/PurePetsMessaging" */,
-				F2AEFEC63023057600892AB2 /* XCLocalSwiftPackageReference "MyFrames/PPWorldClassChatCell" */,
-				F2AEFECB30230B2000892AB2 /* XCLocalSwiftPackageReference "MyFrames/SpearLivingChatHeader" */,
-				F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */,
-				F2C7743930242EF6000447CD /* XCLocalSwiftPackageReference "MyFrames/PurePetsUserLayerApple" */,
-				F2C7743F30246714000447CD /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */,
+				F2AEFEC13023025900892AB2 /* XCLocalSwiftPackageReference "PurePetsMessaging" */,
+				F2AEFEC63023057600892AB2 /* XCLocalSwiftPackageReference "PPWorldClassChatCell" */,
+				F2AEFECB30230B2000892AB2 /* XCLocalSwiftPackageReference "SpearLivingChatHeader" */,
+				F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "PurePetsAdShareKit-1.0.0" */,
+				F2C7743930242EF6000447CD /* XCLocalSwiftPackageReference "PurePetsUserLayerApple" */,
+				F2C7743F30246714000447CD /* XCLocalSwiftPackageReference "PureLensPackage" */,
 			);
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
@@ -5804,14 +5347,8 @@
 				F2067D3C3020515B002C1F2B /* bag.json in Resources */,
 				F2067D3D3020515B002C1F2B /* bag2.json in Resources */,
 				F271468D2CCE6B5300F7F3BA /* XLForm.bundle in Resources */,
-				F2AB48D12C72D43D00D88603 /* Image.bundle in Resources */,
-				F2C5F7722CA00D3300D7897A /* AAicon_check@2x.png in Resources */,
-				F2C5F7732CA00D3300D7897A /* AAicon_check@3x.png in Resources */,
-				F2CEC1002CB4682300E3B181 /* cross.png in Resources */,
-				F2CEC1012CB4682300E3B181 /* tick.png in Resources */,
 				F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */,
 				F27FAEAF2D2F363200EA6B56 /* JPVideoPlayer.bundle in Resources */,
-				F22CD3852C6709650098B6E9 /* star.png in Resources */,
 				F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */,
 				F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
@@ -5819,9 +5356,7 @@
 				A11CE0022FEA000000000002 /* Profile.lottie in Resources */,
 				F2EE91DC2FD2687B00940729 /* SearchingLottile.lottie in Resources */,
 				F2F25BD62FC146070006BDF7 /* NovaTyping.json in Resources */,
-				F22CD3822C6709650098B6E9 /* checkmark-round.png in Resources */,
 				F2BA434C2CCA489D00943394 /* ABCellMailStyleMenuView.xib in Resources */,
-				F22CD3812C6709650098B6E9 /* alert-round.png in Resources */,
 				F20F31A72D177602001D1D57 /* PGDatePicker.bundle in Resources */,
 				F2A7E6BA2FF722F800BDC981 /* README.md in Resources */,
 				F20D112B2D376E4D00F8F0A5 /* ColorsAssets.xcassets in Resources */,
@@ -5829,9 +5364,6 @@
 				F2CDB0A92DCCB0AA0009E210 /* AppAssets.xcassets in Resources */,
 				F24C035E2D2C2D6E00A9F61F /* PYSearch.bundle in Resources */,
 				F2AEC14E2D6E821200B55427 /* CardsCell.xib in Resources */,
-				F2A260932D20C55A00081E59 /* deletealert.png in Resources */,
-				F22CD3832C6709650098B6E9 /* close-round.png in Resources */,
-				F22CD3842C6709650098B6E9 /* heart.png in Resources */,
 				F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */,
 				F28CBB682D30298C002993F0 /* JPCell.xib in Resources */,
 				F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */,
@@ -5872,13 +5404,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5893,13 +5421,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5949,8 +5473,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "
-";
+			shellScript = "\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -6001,13 +5524,11 @@
 				F2D5A8E42F970001009B6001 /* PPMediaPreviewView.swift in Sources */,
 				F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */,
 				F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */,
-				F22CD3712C66F8710098B6E9 /* UITextField+QuickSecurityCode.m in Sources */,
 				F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */,
 				F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */,
 				F2E0E8712E7A16D400F0C084 /* UIViewController+PPNavBar.m in Sources */,
 				F2449C432D0DD4FD00DB6BBC /* MainKindsModel.m in Sources */,
 				F2AB48932C72CF3C00D88603 /* JGProgressHUDIndicatorView.m in Sources */,
-				F2AB48CD2C72D43D00D88603 /* KafkaHeadRefreshControl.m in Sources */,
 				F2CDB0B02DCCD1030009E210 /* PetAdManager.m in Sources */,
 				F2AB488F2C72CF3C00D88603 /* JGProgressHUDFadeAnimation.m in Sources */,
 				F20F315A2D17717F001D1D57 /* NSDate+MinimalTimeAgo.m in Sources */,
@@ -6025,10 +5546,7 @@
 				F281B418301A5AB600040E59 /* HomeModelAdapter.swift in Sources */,
 				F20F315B2D17717F001D1D57 /* RelativeDateDescriptor.m in Sources */,
 				F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */,
-				F2AB48D52C72D43D00D88603 /* KafkaRingIndicatorFooter.m in Sources */,
 				F2449C492D0E0ED000DB6BBC /* subSubKindModel.m in Sources */,
-				F2AB48D22C72D43D00D88603 /* KafkaArrowFooter.m in Sources */,
-				F2AB48CF2C72D43D00D88603 /* UIScrollView+KafkaRefreshControl.m in Sources */,
 				F2449C4C2D0F169B00DB6BBC /* subKindItemsModel.m in Sources */,
 				F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */,
 				F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */,
@@ -6129,7 +5647,6 @@
 				F27146832CCE6B5300F7F3BA /* XLFormInlineSelectorCell.m in Sources */,
 				F27146842CCE6B5300F7F3BA /* NSString+XLFormAdditions.m in Sources */,
 				F2A0BBC42F1FD9BB003715F0 /* PPAudioPlaybackController.m in Sources */,
-				F21D1B732E9D640C00220F72 /* AKPickerView.m in Sources */,
 				F27146852CCE6B5300F7F3BA /* XLFormRightImageButton.m in Sources */,
 				F27146862CCE6B5300F7F3BA /* XLFormPickerCell.m in Sources */,
 				F27146872CCE6B5300F7F3BA /* XLFormStepCounterCell.m in Sources */,
@@ -6150,7 +5667,6 @@
 				F2DF5DD02EFC8E8F009C7B6F /* PPRootTabBarController.m in Sources */,
 				2262AF912E74B76A005C8EF0 /* PPBottomBar.m in Sources */,
 				F2A302F72EBA3D0B005E45F0 /* UserPaymentInstrument.m in Sources */,
-				F2AB48DB2C72D43D00D88603 /* KafkaReplicatorLayer.m in Sources */,
 				F27B81892C605DDE002C0A47 /* CabelCollectionViewCell.m in Sources */,
 				F27CA86B2C65933800E92897 /* TTGSnackbar.swift in Sources */,
 				F2BA433E2CCA27E000943394 /* PAAImageView.m in Sources */,
@@ -6159,7 +5675,6 @@
 				F2A2F1BE2EB1797C00BD1261 /* CountryModel.m in Sources */,
 				F2BA433B2CC9BAAE00943394 /* UIViewController+PopUpView.m in Sources */,
 				F2CE352D2C6D7CE6005A78CD /* PulsingHaloLayer.m in Sources */,
-				F2AB48D02C72D43D00D88603 /* KafkaRefreshDefaults.m in Sources */,
 				F25B38802E173DDB0066D504 /* OrderModel.m in Sources */,
 				F2D639712ECB4E2500FEBCBB /* PPUserSigningManager.m in Sources */,
 				F2E8B7CE2E5381CF00B88C38 /* Utils.m in Sources */,
@@ -6174,10 +5689,7 @@
 				F2710B162C4DB8CA0051B86A /* viewDataVC.m in Sources */,
 				F2AB48962C72CF3C00D88603 /* JGProgressHUDShadow.m in Sources */,
 				F294D3CF2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m in Sources */,
-				F2AB48CB2C72D43D00D88603 /* UIScrollView+KafkaConfiguration.m in Sources */,
 				F2AB48902C72CF3C00D88603 /* JGProgressHUDFadeZoomAnimation.m in Sources */,
-				F2AB48CC2C72D43D00D88603 /* KafkaFootRefreshControl.m in Sources */,
-				F2AB48CE2C72D43D00D88603 /* KafkaRefreshControl.m in Sources */,
 				F2F807C82E8BEBE90034FF2D /* MainBannerModel.m in Sources */,
 				F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */,
 				A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */,
@@ -6205,13 +5717,10 @@
 				F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */,
 				F20956762F85679C007C4ABA /* PPPetReminder.m in Sources */,
 				F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */,
-				F2A1DD642D031328009F0B62 /* UIView+Shadow.m in Sources */,
 				F21A622F2D0AF21400A28792 /* eggDatesCell.m in Sources */,
 				F28CB3842E4C6735009DD547 /* AdoptPetManager.m in Sources */,
 				F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */,
 				F24F363B2D87DFAB0094C6F2 /* BuyerModel.m in Sources */,
-				F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */,
-				F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */,
 				F207FA502E1881D5006A3150 /* LocationPickerViewController.m in Sources */,
 				F207D0B12F14793300BA6214 /* SearchCacheManager.m in Sources */,
 				F24C035F2D2C2D6E00A9F61F /* PYSearchConst.m in Sources */,
@@ -6265,9 +5774,6 @@
 				F28A09FE2EE772E900EE5055 /* YTScaledCenterCarouselPaginator.m in Sources */,
 				F28A09FF2EE772E900EE5055 /* YTScaledCenterCarouselLayout.m in Sources */,
 				F25B387E2E173CB60066D504 /* OrderDetailsViewController.m in Sources */,
-				F2AEC1572D6EBA6900B55427 /* LUNSegmentedControl.m in Sources */,
-				F2AEC1582D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m in Sources */,
-				F2AEC1592D6EBA6900B55427 /* LUNGradientView.m in Sources */,
 				F20F31B82D177602001D1D57 /* PGPickerColumnCell.m in Sources */,
 				F20F31B92D177602001D1D57 /* PGDatePicker+MonthDayHourMinuteSecond.m in Sources */,
 				F20F31BA2D177602001D1D57 /* PGDatePicker+YearAndMonth.m in Sources */,
@@ -6298,9 +5804,7 @@
 				F233B446300C72D900D55489 /* ModernSegmentedControl.swift in Sources */,
 				F24C02732D2AD59100A9F61F /* GM.m in Sources */,
 				F2B09F972D1E0A2100FB3B26 /* WelcomeView.m in Sources */,
-				F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */,
 				F28CB38A2E4C685C009DD547 /* AddAdoptPetViewController.m in Sources */,
-				F2A1DD612D03058F009F0B62 /* YIInnerShadowLayer.m in Sources */,
 				F20F316C2D177515001D1D57 /* UIView+Badge.m in Sources */,
 				F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */,
 				F25B38842E1740620066D504 /* OrderCell.m in Sources */,
@@ -6319,12 +5823,10 @@
 				F2A2F1B42EB13CE500BD1261 /* AddressFormVC.m in Sources */,
 				F2AB48912C72CF3C00D88603 /* JGProgressHUDImageIndicatorView.m in Sources */,
 				F2CDBD252D11526000FE7FA2 /* ChildModel.m in Sources */,
-				F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */,
 				F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */,
 				F2FF90032FFD000100C0D111 /* ProviderCompaniesListVC.m in Sources */,
 				F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */,
 				F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */,
-				F2AB48D72C72D43D00D88603 /* KafkaNativeHeader.m in Sources */,
 				F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */,
 				F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F281B4812FCB6735009118F2 /* PPRatingView.m in Sources */,
@@ -6333,7 +5835,6 @@
 				F281B4842FCB6735009118F2 /* PPModrenSegmrnted.m in Sources */,
 				F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */,
 				F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */,
-				F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */,
 				F27FA1432CE492B000A9A078 /* NullSafe.m in Sources */,
 				F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */,
 				F2E981EF2CBFD2A7005411D0 /* CountryCodeModel.m in Sources */,
@@ -6379,7 +5880,6 @@
 				F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */,
 				F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */,
 				F2A83AD72F88781C00930857 /* UITabBarItem+PPAdditions.m in Sources */,
-				F2AB48D62C72D43D00D88603 /* KafkaArrowHeader.m in Sources */,
 				F27314922F31995A00FFA0B8 /* PPPaymentMethodCell.m in Sources */,
 				F2AB48922C72CF3C00D88603 /* JGProgressHUDIndeterminateIndicatorView.m in Sources */,
 				F2B116B32C51E48E00A77F4A /* selectTableViewController.m in Sources */,
@@ -6390,8 +5890,6 @@
 				F20E9DAA2CF32E5300B810EB /* selectUserVC.m in Sources */,
 				F2D3FD993016601F003279B3 /* AnimatedAddToCartButton.swift in Sources */,
 				F2D3FD9B3016601F003279B3 /* PPAddToCartSuccessToast.swift in Sources */,
-				F29E72652CBD23CE00CF441B /* SKSplashIcon.m in Sources */,
-				F29E72662CBD23CE00CF441B /* SKSplashView.m in Sources */,
 				F20E9D6C2CF3193B00B810EB /* EmptyDataManager.m in Sources */,
 				F28CB3812E4C671C009DD547 /* AdoptPetModel.m in Sources */,
 				F29F01D52D0D08FD00FF2180 /* PKYStepper.m in Sources */,
@@ -6567,9 +6065,7 @@
 				F2CD36E02E901F350056F59C /* InstallationManager.m in Sources */,
 				F2C5F7782CA01C0500D7897A /* UIView+DCAnimationKit.m in Sources */,
 				F28DD5A22F049C2A00FF2671 /* PPDataViewVM.m in Sources */,
-				F22CD3702C66F8710098B6E9 /* QuickSecurityCode.m in Sources */,
 				F209567C2F8567FB007C4ABA /* PPPetProfilesViewController.m in Sources */,
-				F2C5F76E2CA00D3300D7897A /* AAMultiSelectViewController.m in Sources */,
 				F27FAE522D2F250600EA6B56 /* CustomCollectionViewCell.m in Sources */,
 				F2B5B1962CC753AA00ABAC04 /* StoriesReusableView.m in Sources */,
 				F2BA43492CCA489D00943394 /* UITableView+VisibleMenuCell.m in Sources */,
@@ -6587,16 +6083,12 @@
 				F28CB3872E4C67B5009DD547 /* HXPhotosFormCell.m in Sources */,
 				F20F31022D13F986001D1D57 /* ArchiveDetailsModel.m in Sources */,
 				F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */,
-				F2C5F76F2CA00D3300D7897A /* AAPopupView.m in Sources */,
 				F20DFEDF2EB2CB6D00318A8F /* PPAddressesManager.m in Sources */,
 				F2C223CC2F061EFD006DB76A /* PPUniversalCellViewModel.m in Sources */,
-				F2C5F7702CA00D3300D7897A /* AAMultiSelectTableViewCell.m in Sources */,
 				F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */,
-				F2C5F7712CA00D3300D7897A /* AAMultiSelectModel.m in Sources */,
 				F2B02B212EF86462001A7B19 /* PPTextField.m in Sources */,
 				F2EDCB272D6ED9DC00C83328 /* ArchCell.m in Sources */,
 				F299720B2F170CBB0014F7A1 /* PetImageItem.m in Sources */,
-				F2AB48D32C72D43D00D88603 /* KafkaNativeFooter.m in Sources */,
 				F2D0C5DA2C4BE1B80023CE53 /* AppDelegate.m in Sources */,
 				F2E0E8742E7A3A3E00F0C084 /* UserModel.m in Sources */,
 				F2F801010000000000000001 /* PPUserKitCompatibility.m in Sources */,
@@ -6644,7 +6136,6 @@
 				F2B5B9592E1E54B7003F463C /* DeliverySwitchCell.m in Sources */,
 				F2D100962C7B131B00F5EAE7 /* NewCageVC.m in Sources */,
 				F2A302FC2EBA41BB005E45F0 /* UserPaymentInstrumentManager.m in Sources */,
-				F27F45F92C701DE300876484 /* FFLoadingView.m in Sources */,
 				F2F750CE2E7C82EA00BACFA8 /* PPGradientView.m in Sources */,
 				F24D6EEC2EB9F00A009962D0 /* UserManager.m in Sources */,
 				F2B66C14301C51C100D868AC /* WorldGlassBackground.swift in Sources */,
@@ -6653,7 +6144,6 @@
 				F23AUTH02FC4000000000001 /* PPAuthStepIndicatorView.m in Sources */,
 				F23AUTH04FC4000000000001 /* PPAuthScaffoldView.m in Sources */,
 				F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */,
-				F2AB48D82C72D43D00D88603 /* KafkaReplicatorHeader.m in Sources */,
 				F27365F82F858773000AB3DD /* PPModernAvatarRenderer.m in Sources */,
 				F20956792F8567D2007C4ABA /* PPNotificationsHubViewController.m in Sources */,
 				F2F25BCC2FC1398C0006BDF7 /* PPNovaGenkitService.m in Sources */,
@@ -6684,8 +6174,6 @@
 				F2AEC14F2D6E821200B55427 /* CardsCell.m in Sources */,
 				F2E33F633006C485005E31C6 /* PPOrderProgressTimelineView.m in Sources */,
 				F260D3302C7B37B70098C8F0 /* UIScrollView+EmptyDataSet.m in Sources */,
-				F2CEC1022CB4682300E3B181 /* CCActivityHUD.m in Sources */,
-				F2CEC1032CB4682300E3B181 /* UIImage+animatedGIF.m in Sources */,
 				F27FAE9B2D2F363200EA6B56 /* JPVideoPlayerScrollViewProtocol.m in Sources */,
 				F27FAE9C2D2F363200EA6B56 /* JPVideoPlayerCompat.m in Sources */,
 				F27FAE9D2D2F363200EA6B56 /* JPVideoPlayerResourceLoader.m in Sources */,
@@ -6718,13 +6206,11 @@
 				F27FAEAC2D2F363200EA6B56 /* JPVideoPlayerCachePath.m in Sources */,
 				F27FAEAD2D2F363200EA6B56 /* UITableViewCell+WebVideoCache.m in Sources */,
 				F27FAEAE2D2F363200EA6B56 /* JPVideoPlayerManager.m in Sources */,
-				F2AB48CA2C72D43D00D88603 /* KafkaCategories.m in Sources */,
 				F27D662B2E1FD8D90081943A /* BottomOptionsViewController.m in Sources */,
 				F28CB4052E4C6901009DD547 /* AdoptPetSwiftUIStore.swift in Sources */,
 				F28CB4062E4C6902009DD547 /* AdoptPetListScreen.swift in Sources */,
 				F28CB4072E4C6903009DD547 /* AdoptPetDetailsScreen.swift in Sources */,
 				F28CB4082E4C6904009DD547 /* AdoptPetsHostingControllers.swift in Sources */,
-				F2AB48D42C72D43D00D88603 /* KafkaReplicatorFooter.m in Sources */,
 				F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */,
 				F229DCC02D3B0D070015B67D /* FileUploadManager.m in Sources */,
 				F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */,
@@ -6746,7 +6232,6 @@
 				F22EC0C62FD07D4F00AE5A5D /* PPImageSearchService.m in Sources */,
 				F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */,
 				F260D32C2C7B36EF0098C8F0 /* FOREmptyAssistantConfiger.m in Sources */,
-				F2AB48D92C72D43D00D88603 /* KafkaRingIndicatorHeader.m in Sources */,
 				59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */,
 				A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */,
 				8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */,
@@ -7083,8 +6568,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets Release.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
 				CURRENT_PROJECT_VERSION = 221;
@@ -7300,31 +6784,31 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */ = {
+		F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "PurePetsAdShareKit-1.0.0" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "MyFrames/PurePetsAdShareKit-1.0.0";
 		};
-		F2AEFEC13023025900892AB2 /* XCLocalSwiftPackageReference "MyFrames/PurePetsMessaging" */ = {
+		F2AEFEC13023025900892AB2 /* XCLocalSwiftPackageReference "PurePetsMessaging" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PurePetsMessaging;
 		};
-		F2AEFEC63023057600892AB2 /* XCLocalSwiftPackageReference "MyFrames/PPWorldClassChatCell" */ = {
+		F2AEFEC63023057600892AB2 /* XCLocalSwiftPackageReference "PPWorldClassChatCell" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PPWorldClassChatCell;
 		};
-		F2AEFECB30230B2000892AB2 /* XCLocalSwiftPackageReference "MyFrames/SpearLivingChatHeader" */ = {
+		F2AEFECB30230B2000892AB2 /* XCLocalSwiftPackageReference "SpearLivingChatHeader" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/SpearLivingChatHeader;
 		};
-		F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */ = {
+		F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "PurePetsLayoutKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PurePetsLayoutKit;
 		};
-		F2C7743930242EF6000447CD /* XCLocalSwiftPackageReference "MyFrames/PurePetsUserLayerApple" */ = {
+		F2C7743930242EF6000447CD /* XCLocalSwiftPackageReference "PurePetsUserLayerApple" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PurePetsUserLayerApple;
 		};
-		F2C7743F30246714000447CD /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */ = {
+		F2C7743F30246714000447CD /* XCLocalSwiftPackageReference "PureLensPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = MyFrames/PureLensPackage;
 		};
@@ -7391,7 +6875,7 @@
 		};
 		F2AD5A030000000000000001 /* PurePetsAdShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */;
+			package = F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "PurePetsAdShareKit-1.0.0" */;
 			productName = PurePetsAdShareKit;
 		};
 		F2AEFEC23023025900892AB2 /* PurePetsMessagingCore */ = {

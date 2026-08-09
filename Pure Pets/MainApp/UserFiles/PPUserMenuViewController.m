@@ -1371,16 +1371,6 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
                         destructive:NO];
     [sections addObject:[self pp_sectionWithTitleKey:@"user_menu_account_section" items:@[accountItem]]];
 
-    PPUserMenuItem *pureLensItem =
-        [self pp_itemWithTitleKey:@"pure_lens_account_title"
-                     subtitleKey:@""
-                        iconName:@"camera.viewfinder"
-                       tintColor:brand
-                          action:PPUserMenuActionPureLens
-                     destructive:NO];
-    [sections addObject:[self pp_sectionWithTitleKey:@"pure_lens_account_section"
-                                              items:@[pureLensItem]]];
-
     // Add Quick Access Settings section
     PPUserMenuSection *quickAccessSection = [self pp_buildQuickAccessSection];
     if (quickAccessSection) {

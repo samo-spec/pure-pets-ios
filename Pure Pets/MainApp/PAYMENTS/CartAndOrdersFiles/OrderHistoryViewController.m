@@ -135,8 +135,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, strong) UIView *heroCard;
 @property (nonatomic, strong) UIView *heroSurfaceView;
 @property (nonatomic, strong) UIView *heroFillView;
-@property (nonatomic, strong) UIView *heroTintView;
-@property (nonatomic, strong) UIView *heroStatusRailView;
 @property (nonatomic, strong) UIButton *searchToggleButton;
 @property (nonatomic, strong) UIButton *heroSupportButton;
 @property (nonatomic, assign) BOOL searchExpanded;
@@ -217,7 +215,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [super viewWillAppear:animated];
     self.worldGlassBackgroundController.isFaded = YES;
     [self pp_applyNavigationPresentationForCurrentContextAnimated:animated];
-    [self pp_prepareHeroEntranceIfNeeded];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -264,9 +261,41 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)pp_reduceMotionStatusDidChange
 {
-    self.ambientGlassBackground.PPHeroApexUseShimmer = !UIAccessibilityIsReduceMotionEnabled();
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    self.ambientGlassBackground.PPHeroApexUseShimmer = !reduceMotion;
     [self.ambientGlassBackground stopAnimations];
-    if (self.view.window && !UIAccessibilityIsReduceMotionEnabled()) {
+    if (reduceMotion) {
+        NSArray<UIView *> *heroViews = @[
+            self.heroCard,
+            self.heroEyebrowLabel,
+            self.heroTitleLabel,
+            self.heroSubtitleLabel,
+            self.summaryPanel,
+            self.ordersMetricValueLabel,
+            self.ordersMetricCaptionLabel,
+            self.spentMetricValueLabel,
+            self.spentMetricCaptionLabel,
+            self.activeMetricLabel,
+            self.searchToggleButton,
+            self.heroSupportButton,
+            self.searchView,
+            self.filterSummaryLabel
+        ];
+        for (UIView *view in heroViews) {
+            [view.layer removeAllAnimations];
+            view.transform = CGAffineTransformIdentity;
+            view.alpha = 1.0;
+        }
+        self.searchView.alpha = self.searchExpanded ? 1.0 : 0.0;
+        self.filterSummaryLabel.alpha = self.searchExpanded ? 1.0 : 0.0;
+        self.didPrepareHeroEntrance = YES;
+        self.didRunHeroEntrance = YES;
+        for (UITableViewCell *visibleCell in self.tableView.visibleCells) {
+            if ([visibleCell isKindOfClass:OrderCell.class]) {
+                [(OrderCell *)visibleCell playEntranceWithOrdinal:0 animated:NO];
+            }
+        }
+    } else if (self.view.window) {
         [self.ambientGlassBackground startAnimations];
     }
 }
@@ -431,9 +460,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [self.heroSurfaceView addSubview:self.searchView];
 
     self.filterSummaryLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.filterSummaryLabel.font = [GM MidFontWithSize:12];
+    self.filterSummaryLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+                                    scaledFontForFont:[GM MidFontWithSize:PPFontCaption1]];
     self.filterSummaryLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.filterSummaryLabel.textColor = UIColor.secondaryLabelColor;
+    self.filterSummaryLabel.adjustsFontForContentSizeCategory = YES;
     [self.heroSurfaceView addSubview:self.filterSummaryLabel];
 
     self.refreshControl = [[UIRefreshControl alloc] init];
@@ -451,7 +482,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     [self refreshStatusFilterMenu];
     [self refreshHeroHeader];
-    [self pp_prepareHeroEntranceIfNeeded];
 }
 
 - (void)layoutViews
@@ -511,12 +541,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroCard = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroCard.backgroundColor = UIColor.clearColor;
     self.heroCard.isAccessibilityElement = NO;
-    self.heroCard.layer.cornerRadius = PPCornerHero - 4.0;
+    self.heroCard.layer.cornerRadius = PPCornerCard + 2.0;
     self.heroCard.layer.masksToBounds = NO;
     [self.heroCard pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.22]];
-    self.heroCard.layer.shadowOpacity = 0.11;
-    self.heroCard.layer.shadowRadius = 24.0;
-    self.heroCard.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.heroCard.layer.shadowOpacity = 0.04;
+    self.heroCard.layer.shadowRadius = 14.0;
+    self.heroCard.layer.shadowOffset = CGSizeMake(0.0, 7.0);
     if (@available(iOS 13.0, *)) {
         self.heroCard.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -524,7 +554,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     // Card Surface View (Continuous corners)
     self.heroSurfaceView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.heroSurfaceView.layer.cornerRadius = PPCornerHero - 4.0;
+    self.heroSurfaceView.layer.cornerRadius = PPCornerCard + 2.0;
     self.heroSurfaceView.layer.masksToBounds = YES;
     self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
@@ -532,22 +562,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
     [self.heroCard addSubview:self.heroSurfaceView];
 
-    // Solid card fill: preserve the existing hierarchy and accent overlays
-    // without a blur/material surface.
+    // One calm ledger surface. Brand color is reserved for state and actions.
     self.heroFillView = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroFillView.userInteractionEnabled = NO;
     self.heroFillView.clipsToBounds = YES;
     [self.heroSurfaceView addSubview:self.heroFillView];
-
-    self.heroTintView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.heroTintView.userInteractionEnabled = NO;
-    [self.heroSurfaceView addSubview:self.heroTintView];
-
-    self.heroStatusRailView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.heroStatusRailView.userInteractionEnabled = NO;
-    self.heroStatusRailView.layer.cornerRadius = 2.0;
-    self.heroStatusRailView.layer.masksToBounds = YES;
-    [self.heroSurfaceView addSubview:self.heroStatusRailView];
 
     // Search Toggle Button (replaces trail icon)
     self.searchToggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -590,7 +609,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle1]
-                                scaledFontForFont:[GM boldFontWithSize:29.0]];
+                                scaledFontForFont:[GM boldFontWithSize:PPFontTitle1]];
     self.heroTitleLabel.textColor = UIColor.labelColor;
     self.heroTitleLabel.numberOfLines = 2;
     self.heroTitleLabel.adjustsFontSizeToFitWidth = YES;
@@ -601,15 +620,17 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroSubtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
-                                   scaledFontForFont:[GM MidFontWithSize:14.5]];
+                                   scaledFontForFont:[GM MidFontWithSize:PPFontSubheadline]];
     self.heroSubtitleLabel.textColor = UIColor.secondaryLabelColor;
     self.heroSubtitleLabel.numberOfLines = 2;
     self.heroSubtitleLabel.adjustsFontForContentSizeCategory = YES;
     [self.heroSurfaceView addSubview:self.heroSubtitleLabel];
 
-    // Summary Metric Panel Container
+    // A single journey strip replaces the previous nested dashboard card.
     self.summaryPanel = [[UIView alloc] initWithFrame:CGRectZero];
-    self.summaryPanel.backgroundColor = UIColor.clearColor;
+    self.summaryPanel.backgroundColor = AppBackgroundClr;
+    self.summaryPanel.layer.cornerRadius = PPCorner16;
+    self.summaryPanel.layer.masksToBounds = YES;
     self.summaryPanel.isAccessibilityElement = YES;
     self.summaryPanel.accessibilityTraits = UIAccessibilityTraitStaticText;
     [self.heroSurfaceView addSubview:self.summaryPanel];
@@ -619,8 +640,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [self.summaryPanel addSubview:self.summaryDividerView];
 
     self.ordersMetricValueLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.ordersMetricValueLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle1]
-                                        scaledFontForFont:[GM boldFontWithSize:32.0]];
+    self.ordersMetricValueLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+                                        scaledFontForFont:[GM boldFontWithSize:PPFontTitle3]];
     self.ordersMetricValueLabel.textColor = UIColor.labelColor;
     self.ordersMetricValueLabel.adjustsFontSizeToFitWidth = YES;
     self.ordersMetricValueLabel.minimumScaleFactor = 0.7;
@@ -638,8 +659,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [self.summaryPanel addSubview:self.ordersMetricCaptionLabel];
 
     self.spentMetricValueLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.spentMetricValueLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2]
-                                       scaledFontForFont:[GM boldFontWithSize:23.0]];
+    self.spentMetricValueLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+                                       scaledFontForFont:[GM boldFontWithSize:PPFontTitle3]];
     self.spentMetricValueLabel.textColor = UIColor.labelColor;
     self.spentMetricValueLabel.adjustsFontSizeToFitWidth = YES;
     self.spentMetricValueLabel.minimumScaleFactor = 0.66;
@@ -660,9 +681,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.activeMetricLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.activeMetricLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
-                                   scaledFontForFont:[GM boldFontWithSize:12.0]];
+                                   scaledFontForFont:[GM boldFontWithSize:PPFontCaption1]];
     self.activeMetricLabel.textAlignment = NSTextAlignmentCenter;
-    self.activeMetricLabel.layer.cornerRadius = 14.0;
+    self.activeMetricLabel.layer.cornerRadius = PPCorner16;
     self.activeMetricLabel.layer.masksToBounds = YES;
     self.activeMetricLabel.adjustsFontSizeToFitWidth = YES;
     self.activeMetricLabel.minimumScaleFactor = 0.76;
@@ -679,7 +700,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     CGFloat safeTop = MAX(self.view.safeAreaInsets.top, PPStatusBarHeight) + PPSpaceSM;
     BOOL isRTL = ([Language languageVal] == 1);
     BOOL showsHeroSupport = [self pp_isPresentedAsRootTab];
-    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    UIContentSizeCategory contentSizeCategory = self.traitCollection.preferredContentSizeCategory;
+    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(contentSizeCategory)
+        || [contentSizeCategory isEqualToString:UIContentSizeCategoryExtraExtraLarge]
+        || [contentSizeCategory isEqualToString:UIContentSizeCategoryExtraExtraExtraLarge];
     self.heroTitleLabel.numberOfLines = usesAccessibilityLayout ? 0 : 2;
     self.heroSubtitleLabel.numberOfLines = usesAccessibilityLayout ? 0 : 2;
     CGFloat horizontalMargin = PPSpaceBase;
@@ -702,11 +726,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
 
     CGFloat toggleX = isRTL ? padding : cardWidth - padding - 44.0;
-    self.searchToggleButton.frame = CGRectMake(toggleX, PPSpaceLG, 44.0, 44.0);
+    self.searchToggleButton.frame = CGRectMake(toggleX, PPSpaceBase, 44.0, 44.0);
 
     self.heroSupportButton.hidden = !showsHeroSupport;
     self.heroSupportButton.frame = CGRectMake(isRTL ? padding + 52.0 : toggleX - 52.0,
-                                              PPSpaceLG,
+                                              PPSpaceBase,
                                               44.0,
                                               44.0);
 
@@ -716,30 +740,45 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     CGFloat eyebrowX = (usesAccessibilityLayout && isRTL)
         ? padding + actionWidth + PPSpaceMD
         : textX;
-    self.heroEyebrowLabel.frame = CGRectMake(eyebrowX, PPSpaceLG, eyebrowWidth, 18.0);
+    self.heroEyebrowLabel.frame = CGRectMake(eyebrowX, PPSpaceBase, eyebrowWidth, 17.0);
 
     CGSize titleSize = [self.heroTitleLabel sizeThatFits:CGSizeMake(textWidth, CGFLOAT_MAX)];
-    CGFloat titleY = CGRectGetMaxY(self.heroEyebrowLabel.frame) + 5.0;
+    CGFloat titleY = CGRectGetMaxY(self.heroEyebrowLabel.frame) + PPSpaceXS;
     if (usesAccessibilityLayout) {
         titleY = MAX(titleY, CGRectGetMaxY(self.searchToggleButton.frame) + PPSpaceSM);
     }
     self.heroTitleLabel.frame = CGRectMake(textX,
                                            titleY,
                                            textWidth,
-                                           MAX(34.0, ceil(titleSize.height)));
+                                           MAX(32.0, ceil(titleSize.height)));
 
     CGSize subtitleSize = [self.heroSubtitleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)];
     self.heroSubtitleLabel.frame = CGRectMake(padding,
-                                              CGRectGetMaxY(self.heroTitleLabel.frame) + PPSpaceSM,
+                                              CGRectGetMaxY(self.heroTitleLabel.frame) + PPSpaceXS,
                                               contentWidth,
                                               MAX(20.0, ceil(subtitleSize.height)));
 
-    CGFloat summaryY = MAX(CGRectGetMaxY(self.heroSubtitleLabel.frame) + PPSpaceMD,
-                           CGRectGetMaxY(self.searchToggleButton.frame) + PPSpaceMD);
-    CGFloat metricPadding = 16.0;
-    CGFloat metricGap = 14.0;
-    CGFloat metricColumnWidth = floor((contentWidth - (metricPadding * 2.0) - metricGap) * 0.5);
-    CGFloat summaryHeight = 104.0;
+    CGFloat summaryY = MAX(CGRectGetMaxY(self.heroSubtitleLabel.frame) + PPSpaceBase,
+                           CGRectGetMaxY(self.searchToggleButton.frame) + PPSpaceSM);
+    CGFloat metricPadding = PPSpaceMD;
+    CGFloat metricGap = PPSpaceMD;
+    CGFloat summaryHeight = 60.0;
+    BOOL usesThreeColumnSummary = !usesAccessibilityLayout && contentWidth >= 330.0;
+
+    if (!usesAccessibilityLayout) {
+        self.activeMetricLabel.numberOfLines = 1;
+    }
+    [self.activeMetricLabel sizeToFit];
+    CGFloat preferredActiveWidth = CGRectGetWidth(self.activeMetricLabel.bounds) + (PPSpaceMD * 2.0);
+    CGFloat activeWidth = MIN(136.0, MAX(104.0, preferredActiveWidth));
+    CGFloat metricColumnWidth = usesThreeColumnSummary
+        ? floor((contentWidth - (metricPadding * 2.0) - activeWidth - (metricGap * 2.0)) * 0.5)
+        : floor((contentWidth - (metricPadding * 2.0) - metricGap) * 0.5);
+    metricColumnWidth = MAX(0.0, metricColumnWidth);
+    CGFloat metricValueHeight = ceil(MAX(self.ordersMetricValueLabel.font.lineHeight,
+                                         self.spentMetricValueLabel.font.lineHeight));
+    CGFloat metricCaptionHeight = ceil(MAX(self.ordersMetricCaptionLabel.font.lineHeight,
+                                           self.spentMetricCaptionLabel.font.lineHeight));
 
     CGFloat leadingMetricX = metricPadding;
     CGFloat trailingMetricX = contentWidth - metricPadding - metricColumnWidth;
@@ -749,6 +788,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
 
     if (usesAccessibilityLayout) {
+        self.summaryDividerView.hidden = NO;
         CGFloat fullMetricWidth = MAX(0.0, contentWidth - (metricPadding * 2.0));
         self.ordersMetricValueLabel.numberOfLines = 0;
         self.ordersMetricCaptionLabel.numberOfLines = 0;
@@ -759,6 +799,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         self.ordersMetricCaptionLabel.adjustsFontSizeToFitWidth = NO;
         self.spentMetricValueLabel.adjustsFontSizeToFitWidth = NO;
         self.spentMetricCaptionLabel.adjustsFontSizeToFitWidth = NO;
+        self.activeMetricLabel.adjustsFontSizeToFitWidth = NO;
 
         CGFloat metricY = 12.0;
         CGFloat ordersValueHeight = MAX(self.ordersMetricValueLabel.font.lineHeight,
@@ -807,9 +848,48 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
                                                   metricY,
                                                   fullMetricWidth,
                                                   activeHeight);
+        self.activeMetricLabel.layer.cornerRadius = activeHeight * 0.5;
         summaryHeight = CGRectGetMaxY(self.activeMetricLabel.frame) + 12.0;
         self.spentMetricValueLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
         self.spentMetricCaptionLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    } else if (usesThreeColumnSummary) {
+        self.ordersMetricValueLabel.numberOfLines = 1;
+        self.ordersMetricCaptionLabel.numberOfLines = 1;
+        self.spentMetricValueLabel.numberOfLines = 1;
+        self.spentMetricCaptionLabel.numberOfLines = 1;
+        self.activeMetricLabel.numberOfLines = 1;
+        self.ordersMetricValueLabel.adjustsFontSizeToFitWidth = YES;
+        self.ordersMetricCaptionLabel.adjustsFontSizeToFitWidth = YES;
+        self.spentMetricValueLabel.adjustsFontSizeToFitWidth = YES;
+        self.spentMetricCaptionLabel.adjustsFontSizeToFitWidth = YES;
+        self.activeMetricLabel.adjustsFontSizeToFitWidth = YES;
+        self.summaryDividerView.hidden = YES;
+        CGFloat metricBlockHeight = metricValueHeight + metricCaptionHeight;
+        CGFloat activeHeight = MAX(32.0, ceil(self.activeMetricLabel.font.lineHeight) + 12.0);
+        summaryHeight = MAX(60.0, MAX(metricBlockHeight + 14.0, activeHeight + 16.0));
+        CGFloat metricY = floor((summaryHeight - metricBlockHeight) * 0.5);
+        self.ordersMetricValueLabel.frame = CGRectMake(leadingMetricX,
+                                                       metricY,
+                                                       metricColumnWidth,
+                                                       metricValueHeight);
+        self.ordersMetricCaptionLabel.frame = CGRectMake(leadingMetricX,
+                                                         CGRectGetMaxY(self.ordersMetricValueLabel.frame),
+                                                         metricColumnWidth,
+                                                         metricCaptionHeight);
+        self.spentMetricValueLabel.frame = CGRectMake(trailingMetricX,
+                                                      metricY,
+                                                      metricColumnWidth,
+                                                      metricValueHeight);
+        self.spentMetricCaptionLabel.frame = CGRectMake(trailingMetricX,
+                                                        CGRectGetMaxY(self.spentMetricValueLabel.frame),
+                                                        metricColumnWidth,
+                                                        metricCaptionHeight);
+        CGFloat badgeX = floor((contentWidth - activeWidth) * 0.5);
+        self.activeMetricLabel.frame = CGRectMake(badgeX,
+                                                  floor((summaryHeight - activeHeight) * 0.5),
+                                                  activeWidth,
+                                                  activeHeight);
+        self.activeMetricLabel.layer.cornerRadius = activeHeight * 0.5;
     } else {
         self.ordersMetricValueLabel.numberOfLines = 1;
         self.ordersMetricCaptionLabel.numberOfLines = 1;
@@ -820,28 +900,40 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         self.ordersMetricCaptionLabel.adjustsFontSizeToFitWidth = YES;
         self.spentMetricValueLabel.adjustsFontSizeToFitWidth = YES;
         self.spentMetricCaptionLabel.adjustsFontSizeToFitWidth = YES;
-        self.ordersMetricValueLabel.frame = CGRectMake(leadingMetricX, 10.0, metricColumnWidth, 38.0);
+        self.activeMetricLabel.adjustsFontSizeToFitWidth = YES;
+        self.summaryDividerView.hidden = NO;
+        CGFloat metricY = PPSpaceSM;
+        CGFloat metricBlockHeight = metricValueHeight + metricCaptionHeight;
+        self.ordersMetricValueLabel.frame = CGRectMake(leadingMetricX,
+                                                       metricY,
+                                                       metricColumnWidth,
+                                                       metricValueHeight);
         self.ordersMetricCaptionLabel.frame = CGRectMake(leadingMetricX,
-                                                         CGRectGetMaxY(self.ordersMetricValueLabel.frame) + 2.0,
+                                                         CGRectGetMaxY(self.ordersMetricValueLabel.frame),
                                                          metricColumnWidth,
-                                                         18.0);
-        self.spentMetricValueLabel.frame = CGRectMake(trailingMetricX, 13.0, metricColumnWidth, 31.0);
+                                                         metricCaptionHeight);
+        self.spentMetricValueLabel.frame = CGRectMake(trailingMetricX,
+                                                      metricY,
+                                                      metricColumnWidth,
+                                                      metricValueHeight);
         self.spentMetricCaptionLabel.frame = CGRectMake(trailingMetricX,
-                                                        CGRectGetMaxY(self.spentMetricValueLabel.frame) + 4.0,
+                                                        CGRectGetMaxY(self.spentMetricValueLabel.frame),
                                                         metricColumnWidth,
-                                                        18.0);
+                                                        metricCaptionHeight);
         self.summaryDividerView.frame = CGRectMake(floor((contentWidth - 1.0) * 0.5),
-                                                   14.0,
+                                                   metricY,
                                                    1.0,
-                                                   50.0);
-        [self.activeMetricLabel sizeToFit];
+                                                   metricBlockHeight);
         CGFloat badgeWidth = MIN(contentWidth - (metricPadding * 2.0),
-                                 MAX(124.0, CGRectGetWidth(self.activeMetricLabel.bounds) + 22.0));
-        CGFloat badgeX = isRTL ? contentWidth - metricPadding - badgeWidth : metricPadding;
-        self.activeMetricLabel.frame = CGRectMake(badgeX,
-                                                  summaryHeight - 30.0,
+                                 MAX(112.0, preferredActiveWidth));
+        CGFloat activeHeight = MAX(24.0, ceil(self.activeMetricLabel.font.lineHeight) + 8.0);
+        CGFloat badgeY = metricY + metricBlockHeight + PPSpaceSM;
+        self.activeMetricLabel.frame = CGRectMake(floor((contentWidth - badgeWidth) * 0.5),
+                                                  badgeY,
                                                   badgeWidth,
-                                                  24.0);
+                                                  activeHeight);
+        self.activeMetricLabel.layer.cornerRadius = activeHeight * 0.5;
+        summaryHeight = CGRectGetMaxY(self.activeMetricLabel.frame) + PPSpaceSM;
     }
 
     self.summaryPanel.frame = CGRectMake(padding, summaryY, contentWidth, summaryHeight);
@@ -849,10 +941,15 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     // Inner Search Bar coordinates inside Card surface
     CGFloat searchY = CGRectGetMaxY(self.summaryPanel.frame) + PPSpaceMD;
     self.searchView.frame = CGRectMake(padding, searchY, contentWidth, 50.0);
+    self.filterSummaryLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+    CGFloat filterSummaryWidth = MAX(0.0, contentWidth - 16.0);
+    CGFloat filterSummaryHeight = MAX(ceil(self.filterSummaryLabel.font.lineHeight),
+                                      ceil([self.filterSummaryLabel sizeThatFits:
+                                            CGSizeMake(filterSummaryWidth, CGFLOAT_MAX)].height));
     self.filterSummaryLabel.frame = CGRectMake(padding + 8.0,
                                                CGRectGetMaxY(self.searchView.frame) + 6.0,
-                                               contentWidth - 16.0,
-                                               16.0);
+                                               filterSummaryWidth,
+                                               filterSummaryHeight);
 
     CGFloat finalHeroHeight;
     if (self.searchExpanded) {
@@ -869,12 +966,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroCard.frame = CGRectMake(cardX, safeTop, cardWidth, finalHeroHeight);
     self.heroSurfaceView.frame = self.heroCard.bounds;
     self.heroFillView.frame = self.heroSurfaceView.bounds;
-    self.heroTintView.frame = self.heroSurfaceView.bounds;
-    CGFloat railX = isRTL ? cardWidth - 5.0 : 1.0;
-    self.heroStatusRailView.frame = CGRectMake(railX,
-                                              PPSpaceXL,
-                                              4.0,
-                                              MAX(0.0, finalHeroHeight - (PPSpaceXL * 2.0)));
 
     self.headerContainer.frame = CGRectMake(0.0,
                                             0.0,
@@ -922,7 +1013,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     UIColor *accent = [self pp_currentHeroAccentColor];
 
     [self pp_applyHeroSurfaceWithAccent:accent];
-    self.summaryPanel.backgroundColor = UIColor.clearColor;
     self.activeMetricLabel.backgroundColor = [accent colorWithAlphaComponent:0.14];
     self.activeMetricLabel.textColor = accent;
     
@@ -981,14 +1071,15 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     }
 
-    UIColor *surfaceColor = AppForgroundColr ?: AppBackgroundClr ?: UIColor.systemBackgroundColor;
-    self.heroFillView.backgroundColor = [surfaceColor colorWithAlphaComponent:1.0];
-    self.heroCard.layer.cornerRadius = PPCornerHero - 4.0;
+    UIColor *surfaceColor = AppCardColor ?: UIColor.systemBackgroundColor;
+    self.heroFillView.backgroundColor = surfaceColor;
+    self.summaryPanel.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:isDark ? 0.72 : 0.82];
+    self.heroCard.layer.cornerRadius = PPCornerCard + 2.0;
     self.heroCard.layer.borderWidth = 0.0;
     self.heroCard.layer.masksToBounds = NO;
-    self.heroCard.layer.shadowOpacity = isDark ? 0.22 : 0.07;
-    self.heroCard.layer.shadowRadius = isDark ? 18.0 : 20.0;
-    self.heroCard.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
+    self.heroCard.layer.shadowOpacity = isDark ? 0.13 : 0.035;
+    self.heroCard.layer.shadowRadius = isDark ? 14.0 : 12.0;
+    self.heroCard.layer.shadowOffset = CGSizeMake(0.0, isDark ? 7.0 : 5.0);
 
     self.searchToggleButton.backgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.18 : 0.105];
     [self.searchToggleButton pp_setBorderColor:[resolvedAccent colorWithAlphaComponent:isDark ? 0.22 : 0.18]];
@@ -1000,10 +1091,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         self.searchToggleButton.configuration = configuration;
     }
 
-    self.heroTintView.backgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.055 : 0.030];
-    self.heroStatusRailView.backgroundColor = resolvedAccent;
-    self.heroSurfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [self.heroSurfaceView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.13 : 0.70]];
+    self.heroSurfaceView.layer.borderWidth = 0.0;
 
     self.summaryPanel.layer.borderWidth = 0.0;
     self.searchView.strokeColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.22 : 0.14];
@@ -1089,7 +1177,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         self.summaryPanel.transform = CGAffineTransformIdentity;
         self.searchToggleButton.transform = CGAffineTransformIdentity;
         self.heroSupportButton.transform = CGAffineTransformIdentity;
-        self.heroStatusRailView.transform = CGAffineTransformIdentity;
         return;
     }
 
@@ -1111,7 +1198,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.searchToggleButton.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
     self.heroSupportButton.alpha = 1.0;
     self.heroSupportButton.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    self.heroStatusRailView.transform = CGAffineTransformMakeScale(1.0, 0.08);
 }
 
 - (void)pp_runHeroEntranceIfNeeded
@@ -1159,7 +1245,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
                      animations:^{
         self.summaryPanel.alpha = 1.0;
         self.summaryPanel.transform = CGAffineTransformIdentity;
-        self.heroStatusRailView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.42

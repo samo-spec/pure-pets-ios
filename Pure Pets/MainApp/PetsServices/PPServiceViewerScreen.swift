@@ -29,8 +29,8 @@ public struct PPServiceViewerScreen: View {
                     let compact = contentWidth < 700
                     let horizontalPadding: CGFloat = compact ? 16 : 34
                     let heroHeight = compact
-                        ? min(max(proxy.size.height * 0.42, 370), 460)
-                        : min(max(contentWidth * 0.52, 420), 560)
+                        ? min(max(proxy.size.height * 0.39, 330), 430)
+                        : min(max(contentWidth * 0.48, 400), 530)
                     let topBarHeight: CGFloat = proxy.safeAreaInsets.top + 14
 
                     ZStack(alignment: .top) {
@@ -51,10 +51,8 @@ public struct PPServiceViewerScreen: View {
                                 .padding(.horizontal, horizontalPadding)
                                 .padding(.top, topBarHeight)
 
-                                VStack(spacing: 18) {
-                                    PPServiceViewerTitleCard(snapshot: snapshot)
-
-                                    PPServiceViewerProviderCard(
+                                VStack(spacing: 24) {
+                                    PPServiceViewerCarePassport(
                                         snapshot: snapshot,
                                         onCall: store.callProvider
                                     )
@@ -66,7 +64,7 @@ public struct PPServiceViewerScreen: View {
                                     reviewsSection
                                 }
                                 .padding(.horizontal, PPSpace.screenMargin)
-                                .padding(.top, -28)
+                                .padding(.top, -34)
                                 .padding(.bottom, 110)
                             }
                         }
@@ -91,16 +89,23 @@ public struct PPServiceViewerScreen: View {
                         PPServiceViewerActionBar(
                             snapshot: snapshot,
                             onShare: { store.shareService() },
-                            onCall: { store.callProvider() },
-                            onClose: onClose
+                            onCall: { store.callProvider() }
                         )
                         .frame(maxHeight: .infinity, alignment: .bottom)
-                        .ignoresSafeArea(.keyboard, edges: .bottom)
                     }
                 }
             } else {
-                ProgressView()
-                    .tint(Color.ppPrimary)
+                VStack(spacing: 12) {
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(Color.ppPrimary)
+                        .accessibilityHidden(true)
+
+                    ProgressView()
+                        .tint(Color.ppPrimary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(PPServiceViewerL10n.text("Loading", fallback: "Loading"))
             }
         }
         .environment(
@@ -113,11 +118,18 @@ public struct PPServiceViewerScreen: View {
     }
 
     private func descriptionCard(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(PPServiceViewerL10n.text("service_view_description_title", fallback: "Description"))
-                .font(PPAccessoryTypography.headline)
-                .foregroundStyle(Color.ppTextPrimary)
-                .accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "text.quote")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.ppPrimary)
+                    .accessibilityHidden(true)
+
+                Text(PPServiceViewerL10n.text("service_view_description_title", fallback: "Description"))
+                    .font(PPAccessoryTypography.headline)
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .accessibilityAddTraits(.isHeader)
+            }
 
             Text(text)
                 .font(PPAccessoryTypography.body)
@@ -125,14 +137,9 @@ public struct PPServiceViewerScreen: View {
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(18)
+        .padding(.vertical, 2)
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ppGlassSurface(
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous),
-            tint: Color.ppCard.opacity(0.85),
-            fallback: Color(uiColor: .systemBackground).opacity(0.95),
-            stroke: Color.white.opacity(0.18)
-        )
     }
 
     private var reviewsSection: some View {
@@ -155,13 +162,7 @@ public struct PPServiceViewerScreen: View {
                         PPServiceViewerReviewRow(item: review)
                     }
                 }
-                .padding(16)
-                .ppGlassSurface(
-                    in: RoundedRectangle(cornerRadius: 22, style: .continuous),
-                    tint: Color.ppCard.opacity(0.85),
-                    fallback: Color(uiColor: .systemBackground).opacity(0.95),
-                    stroke: Color.white.opacity(0.18)
-                )
+                .padding(.top, 4)
             }
         }
     }

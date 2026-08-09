@@ -11,9 +11,8 @@
 #import <Pure_Pets-Swift.h>
 #import "FTPopOverMenu.h"
 #import "TQImageViewer.h"
-#import "CCActivityHUD.h"
-#import "YIInnerShadowView.h"
-#import "PressButton.h"
+
+ #import "PressButton.h"
 #import <AVFoundation/AVFoundation.h>
 #import "PPSalesPDFGenerator.h"
 

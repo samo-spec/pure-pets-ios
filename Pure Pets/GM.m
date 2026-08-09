@@ -1945,7 +1945,8 @@ CGSize getImageSizeSafely(UIImage *image) {
                   message:(NSString *)message
                    imageName:(NSString *)imageName
         inViewController:(UIViewController *)viewController {
-    
+    return; // Paused FCAlertView
+    /*
     FCAlertView *alert = [[FCAlertView alloc] init];
 
  
@@ -1957,14 +1958,15 @@ CGSize getImageSizeSafely(UIImage *image) {
                 andButtons:@[]]; // "Cancel"
 
     [alert doneActionBlock:^{}];
-
+    */
 }
 
 // Helper method to show alerts
 + (void)showAlertWithTitle:(NSString *)title
                   message:(NSString *)message
         inViewController:(UIViewController *)viewController {
-    
+    return; // Paused FCAlertView
+    /*
     FCAlertView *alert = [[FCAlertView alloc] init];
 
  
@@ -1976,7 +1978,7 @@ CGSize getImageSizeSafely(UIImage *image) {
                 andButtons:@[]]; // "Cancel"
 
     [alert doneActionBlock:^{}];
-
+    */
 }
 
 
@@ -2150,6 +2152,8 @@ CGSize getImageSizeSafely(UIImage *image) {
 
 
 + (void)goToRegistrationFromController:(UIViewController *)controller {
+    return; // Paused FCAlertView
+    /*
     FCAlertView *alert = [[FCAlertView alloc] init];
 
  
@@ -2165,7 +2169,7 @@ CGSize getImageSizeSafely(UIImage *image) {
 
         //PPUserSigningController
     }];
-
+    */
     
 }
 
@@ -2272,6 +2276,7 @@ CGSize getImageSizeSafely(UIImage *image) {
 
     NSLog(@"LANG ----->> detail : %@",detail);
     
+    /*
     FCAlertView *alert = [[FCAlertView alloc] init];
 
     //[alert makeAlertTypeSuccess];
@@ -2295,6 +2300,7 @@ CGSize getImageSizeSafely(UIImage *image) {
        // [self reloadAppUI];
 
     }];
+    */
         
         
     } else {
@@ -2311,6 +2317,7 @@ CGSize getImageSizeSafely(UIImage *image) {
     NSString *title = kLang(@"Language Setup");
     //NSString *currentLangName = ([Language languageVal] == 0) ? @"English" : @"العربية";
 
+    /*
     FCAlertView *alert = [[FCAlertView alloc] init];
     alert.dismissOnOutsideTouch = NO;
     alert.hideDoneButton = NO;
@@ -2334,6 +2341,7 @@ CGSize getImageSizeSafely(UIImage *image) {
         [Language userSelectedLanguage:LanguageCode[newLangVal]];
          
     }];
+    */
 }
 
 
@@ -2461,7 +2469,8 @@ CGSize getImageSizeSafely(UIImage *image) {
                              title:(NSString *)title
                            message:(NSString *)message
                         completion:(void (^)(BOOL confirmed))completion {
-    
+    return; // Paused FCAlertView
+    /*
     NSString *deleteTitle = kLang(@"Delete");
     NSString *cancelTitle = kLang(@"Cancel");
     
@@ -2487,6 +2496,7 @@ CGSize getImageSizeSafely(UIImage *image) {
         //NSLog(@"❌ User cancelled delete");
         if (completion) completion(NO);
     }];
+    */
 }
 
 + (void)ActivityLoadingAnimationView:(BOOL)show onController:(UIViewController *)vc {

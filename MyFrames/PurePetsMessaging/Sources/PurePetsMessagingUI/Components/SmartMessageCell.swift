@@ -179,6 +179,7 @@ public struct SmartMessageCell: View {
     .padding(.vertical, bubbleVerticalPadding)
     .frame(
       minWidth: minimumBubbleSurfaceWidth,
+      minHeight: minimumBubbleSurfaceHeight,
       alignment: message.direction.isOutgoing ? .trailing : .leading
     )
     .background {
@@ -404,6 +405,14 @@ public struct SmartMessageCell: View {
     return nil
   }
 
+  private var minimumBubbleSurfaceHeight: CGFloat? {
+    guard !message.payload.usesTransparentChrome else { return nil }
+    if case .text = message.payload {
+      return 40
+    }
+    return nil
+  }
+
   private var resolvedPayloadDirection: LayoutDirection {
     guard case .text(let payload) = message.payload else {
       return contentLayoutDirection
@@ -432,11 +441,11 @@ public struct SmartMessageCell: View {
     case .image, .video:
       return 5
     case .voice:
-      return 6
+      return 7
     case .sticker:
       return 0
     default:
-      return 7
+      return 9
     }
   }
 

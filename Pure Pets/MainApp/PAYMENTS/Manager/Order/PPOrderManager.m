@@ -18,7 +18,11 @@
 #import "CitiesManager.h"
 #import "PPFirebaseSessionBridge.h"
 
+#if DEBUG
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+#else
+#define PPORDERLog(...)
+#endif
 
 static NSString *const PPOrderInventoryErrorDomain = @"PPOrderInventory";
 static NSString *const PPOrderSupportErrorDomain = @"PPOrderSupport";

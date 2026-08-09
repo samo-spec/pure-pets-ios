@@ -4,8 +4,8 @@ import UIKit
 // MARK: - Seamless Chat Header
 
 /// A living chat header that dissolves into the message surface.
-/// Uses a warm gradient field instead of a hard divider, with presence
-/// communicated through color atmosphere rather than explicit decoration.
+/// The app's semantic main background owns the large color field; brand color
+/// remains a quiet signal rather than becoming another painted surface.
 @available(iOS 17.0, *)
 public struct SpearChatHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -66,126 +66,50 @@ public struct SpearChatHeader<AvatarContent: View>: View {
         )
       }
     }
-    .background(seamlessBackground.ignoresSafeArea(.container, edges: .top))
+    .background(headerBackground.ignoresSafeArea(.container, edges: .top))
     .accessibilityIdentifier(SpearChatHeaderAccessibilityID.root)
   }
 
-  /// The seamless gradient dissolve — replaces the hard divider with a
-  /// non-brand cool atmosphere that fades into the conversation background.
-  /// The brand color is intentionally kept out of the background so the header
-  /// dissolves into the messaging aurora instead of painting the brand hue.
-  private var seamlessBackground: some View {
-    Group {
-      if reduceTransparency {
-        Color(uiColor: .systemBackground)
-          .overlay {
-            LinearGradient(
-              colors: [SpearHeaderAtmosphere.indigo.opacity(0.06), .clear],
-              startPoint: .top,
-              endPoint: .bottom
-            )
-          }
-          .overlay(alignment: .bottom) {
-            Rectangle()
-              .fill(Color.primary.opacity(contrast == .increased ? 0.16 : 0.07))
-              .frame(height: 1)
-          }
-      } else {
-        ZStack {
-          Rectangle().fill(.bar)
+  /// The main-background canopy removes the previous lilac/blue color cast.
+  /// A very low-mass brand bloom keeps identity without competing with status.
+  private var headerBackground: some View {
+    ZStack {
+      style.mainBackgroundColor
 
-          LinearGradient(
-            stops: gradientStops,
-            startPoint: .top,
-            endPoint: .bottom
-          )
+      if !reduceTransparency {
+        LinearGradient(
+          colors: [
+            Color.white.opacity(colorScheme == .dark ? 0.025 : 0.42),
+            .clear,
+          ],
+          startPoint: .top,
+          endPoint: .center
+        )
 
-          RadialGradient(
-            colors: [
-              SpearHeaderAtmosphere.indigo.opacity(colorScheme == .dark ? 0.12 : 0.10),
-              SpearHeaderAtmosphere.indigo.opacity(colorScheme == .dark ? 0.04 : 0.025),
-              .clear,
-            ],
-            center: .top,
-            startRadius: 0,
-            endRadius: 250
-          )
-
-          RadialGradient(
-            colors: [
-              SpearHeaderAtmosphere.aqua.opacity(colorScheme == .dark ? 0.06 : 0.04),
-              .clear,
-            ],
-            center: .topTrailing,
-            startRadius: 0,
-            endRadius: 210
-          )
-
-          LinearGradient(
-            colors: [
-              Color.white.opacity(colorScheme == .dark ? 0.025 : 0.26),
-              .clear,
-            ],
-            startPoint: .top,
-            endPoint: .center
-          )
-        }
-        .overlay(alignment: .bottom) {
-          LinearGradient(
-            colors: [
-              .clear,
-              SpearHeaderAtmosphere.indigo.opacity(contrast == .increased ? 0.20 : 0.09),
-              .clear,
-            ],
-            startPoint: .leading,
-            endPoint: .trailing
-          )
-          .frame(height: contrast == .increased ? 1.5 : 0.75)
-        }
+        RadialGradient(
+          colors: [
+            style.brandColor.opacity(colorScheme == .dark ? 0.045 : 0.026),
+            .clear,
+          ],
+          center: .topTrailing,
+          startRadius: 0,
+          endRadius: 230
+        )
       }
     }
-  }
-
-  private var gradientStops: [Gradient.Stop] {
-    let atmosphere = SpearHeaderAtmosphere.indigo
-
-    if colorScheme == .dark {
-      return [
-        .init(color: atmosphere.opacity(0.10), location: 0),
-        .init(color: atmosphere.opacity(0.045), location: 0.52),
-        .init(color: .clear, location: 1.0),
-      ]
-    } else {
-      return [
-        .init(color: atmosphere.opacity(0.075), location: 0),
-        .init(color: atmosphere.opacity(0.025), location: 0.62),
-        .init(color: .clear, location: 1.0),
-      ]
+    .overlay(alignment: .bottom) {
+      LinearGradient(
+        colors: [
+          .clear,
+          Color.primary.opacity(contrast == .increased ? 0.20 : 0.075),
+          .clear,
+        ],
+        startPoint: .leading,
+        endPoint: .trailing
+      )
+      .frame(height: contrast == .increased ? 1.5 : 0.75)
     }
   }
-}
-
-// MARK: - Non-brand header atmosphere (never the brand berry)
-//
-// Cool twilight hues that match the messaging aurora background so the header
-// reads as one continuous surface. Kept separate from the configurable
-// `style.brandColor`, which still drives identity/action accents. Declared
-// outside the generic `SpearChatHeader` because Swift forbids stored static
-// properties on generic types.
-internal enum SpearHeaderAtmosphere {
-  /// Periwinkle indigo `#5C6FC4`.
-  static let indigo = Color(
-    red: 92.0 / 255.0,
-    green: 111.0 / 255.0,
-    blue: 196.0 / 255.0
-  )
-
-  /// Cool aqua `#4FB6C9`.
-  static let aqua = Color(
-    red: 79.0 / 255.0,
-    green: 182.0 / 255.0,
-    blue: 201.0 / 255.0
-  )
 }
 
 

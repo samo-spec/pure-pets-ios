@@ -11,6 +11,7 @@ internal struct SpearIdentityExpansion: View {
   let metrics: [SpearIdentityMetric]
   let copy: SpearChatHeaderCopy
   let brandColor: Color
+  let mainBackgroundColor: Color
   let showsTrustDetail: Bool
   let profileAction: SpearHeaderAction
   let safetyAction: SpearHeaderAction
@@ -33,23 +34,22 @@ internal struct SpearIdentityExpansion: View {
       actionsLayout
     }
     .padding(.horizontal, 12)
-    .padding(.vertical, 10)
+    .padding(.vertical, 8)
     .background {
       RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .fill(
-          colorScheme == .dark
-            ? Color.white.opacity(0.05)
-            : Color.white.opacity(0.46)
-        )
+        .fill(mainBackgroundColor)
+        .overlay {
+          RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(Color.primary.opacity(colorScheme == .dark ? 0.035 : 0.018))
+        }
     }
     .overlay {
       RoundedRectangle(cornerRadius: 18, style: .continuous)
         .strokeBorder(
-          brandColor.opacity(contrast == .increased ? 0.28 : 0.11),
-          lineWidth: contrast == .increased ? 1.5 : 0.75
+          Color.primary.opacity(contrast == .increased ? 0.24 : 0.075),
+          lineWidth: contrast == .increased ? 1.5 : 0.7
         )
     }
-    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.12 : 0.04), radius: 10, y: 4)
     .transition(
       reduceMotion
         ? .opacity
@@ -69,7 +69,7 @@ internal struct SpearIdentityExpansion: View {
     {
       Label(detail, systemImage: symbol)
         .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
-        .foregroundStyle(trust.isRestricted ? Color.orange : Color.secondary)
+        .foregroundStyle(trust.isRestricted ? SpearHeaderSemanticColor.warning : Color.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityHidden(true)
     }
@@ -214,7 +214,7 @@ private struct SpearIdentityUtilityButtonStyle: ButtonStyle {
       )
       .opacity(configuration.isPressed ? 0.82 : 1)
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
-      .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
+      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
   }
 }
 

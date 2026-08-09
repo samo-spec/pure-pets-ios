@@ -13,7 +13,6 @@
 #import "PPAuthScaffoldView.h"
 
 static NSString * const kPPUsersCollection = @"UsersCol";
-static NSString * const kPPDefaultsAuthVerificationIDKey = @"authVerificationID";
 static NSString * const kPPDefaultsUserTokenKey = @"PPUserTokenID";
 static NSString * const kPPFirestoreUserNameField = @"UserName";
 static NSString * const kPPSheetCustomMediumDetentIdentifier = @"pp_auth_custom_medium";
@@ -1411,7 +1410,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
             }
             
             self.verificationID = verificationID;
-            [[NSUserDefaults standardUserDefaults] setObject:verificationID forKey:kPPDefaultsAuthVerificationIDKey];
             [self startPhoneSMSCooldown];
             
             [self promptForVerificationCode];
@@ -1783,14 +1781,21 @@ static inline void PPDispatchMain(void (^block)(void)) {
     NSString *fullPhone = [NSString stringWithFormat:@"%@%@",
                            self.currentPhoneCode ?: @"",
                            self.normalizedPhoneDigits ?: @""];
+    PPAuthDebugLog(@"[Auth][OTP] Presenting verification | phoneLength=%lu navVC=%@ presentedVC=%@",
+                   (unsigned long)fullPhone.length,
+                   NSStringFromClass(self.navigationController.class),
+                   NSStringFromClass(self.presentedViewController.class));
     PPVerificationCodeViewController *vc =
     [[PPVerificationCodeViewController alloc] initWithPhone:fullPhone];
+    vc.verificationID = self.verificationID;
     __weak typeof(self) weakSelf = self;
+    __weak PPVerificationCodeViewController *weakVerificationVC = vc;
     vc.onAuthResultSuccess = ^(FIRAuthDataResult *authResult) {
         PPDispatchMain(^{
             if (!weakSelf) {
                 return;
             }
+            PPAuthDebugLog(@"[Auth][OTP] Authentication callback received | hasUser=%d", authResult.user.uid.length > 0);
             [PPHUD dismiss];
             [weakSelf handleSuccessfulAuth:authResult method:PPSignInMethodPhone];
         });
@@ -1809,11 +1814,21 @@ static inline void PPDispatchMain(void (^block)(void)) {
         NSString *safeFullPhone = [NSString stringWithFormat:@"%@%@",
                                    strongSelf.currentPhoneCode ?: @"",
                                    strongSelf.normalizedPhoneDigits ?: @""];
-        [strongSelf resendVerificationCodeForPhone:safeFullPhone completion:completion];
+        PPAuthDebugLog(@"[Auth][OTP] Resend requested | phoneLength=%lu", (unsigned long)safeFullPhone.length);
+        [strongSelf resendVerificationCodeForPhone:safeFullPhone completion:^(BOOL success, NSError * _Nullable error) {
+            PPVerificationCodeViewController *verificationVC = weakVerificationVC;
+            if (success) {
+                verificationVC.verificationID = strongSelf.verificationID;
+            }
+            if (completion) {
+                completion(success, error);
+            }
+        }];
     };
     vc.onBackRequested = ^{
         PPDispatchMain(^{
             if (!weakSelf) return;
+            PPAuthDebugLog(@"[Auth][OTP] Back requested");
             [weakSelf resetPhoneSMSCooldown];
         });
     };
@@ -1821,8 +1836,10 @@ static inline void PPDispatchMain(void (^block)(void)) {
     [self.stepIndicatorView updateCurrentStepIndex:1 completedStepIndex:0 animated:YES];
     vc.modalPresentationStyle = UIModalPresentationFullScreen;
     if (self.navigationController) {
+        PPAuthDebugLog(@"[Auth][OTP] Pushing verification controller");
         [self.navigationController pushViewController:vc animated:YES];
     } else {
+        PPAuthDebugLog(@"[Auth][OTP] Presenting verification controller modally");
         UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
         nav.navigationBarHidden = NO;
         nav.modalPresentationStyle = UIModalPresentationFullScreen;
@@ -1870,7 +1887,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
             }
             
             self.verificationID = verificationID;
-            [[NSUserDefaults standardUserDefaults] setObject:verificationID forKey:kPPDefaultsAuthVerificationIDKey];
             [self startPhoneSMSCooldown];
             
             if (completion) {
@@ -2112,6 +2128,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 }
 
 - (void)handleSuccessfulAuth:(FIRAuthDataResult *)authResult method:(PPSignInMethod)method {
+    self.verificationID = nil;
     PPAuthDebugLog(@"[Auth] Successful %@ sign-in. resultUID=%@ currentUID=%@",
                    [self stringFromSignInMethod:method],
                    [self pp_safeAuthUIDForLog:authResult.user],
@@ -2124,6 +2141,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         [PPHUD dismiss];
         
         if (error) {
+            PPAuthDebugLog(@"[Auth] User-model resolution failed | domain=%@ code=%ld", error.domain ?: @"", (long)error.code);
             [self notifySignInFailure:error];
             [PPAlertHelper showErrorIn:self
                                  title:kLang(@"auth_error_title")
@@ -2147,6 +2165,9 @@ static inline void PPDispatchMain(void (^block)(void)) {
             userModel.UserEmail.length == 0
         );
 
+        PPAuthDebugLog(@"[Auth] User-model resolution succeeded | hasModelID=%d needsProfile=%d",
+                       userModel.ID.length > 0, needsProfile);
+
         // ----------------------------------------------------
         // STEP 2 — If incomplete → show PPCompleteProfileVC
         // ----------------------------------------------------
@@ -2155,6 +2176,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
             PPCompleteProfileVC *vc = [[PPCompleteProfileVC alloc] initWithUser:userModel];
 
             vc.onProfileCompleted = ^(UserModel *userModel) {
+                PPAuthDebugLog(@"[Auth] Profile completion callback received");
                 [self pp_completeSuccessfulSignInWithUser:userModel context:@"profile-complete"];
             };
 
@@ -2166,6 +2188,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 targetNav = (UINavigationController *)self.presentedViewController;
             }
 
+            PPAuthDebugLog(@"[Auth] Routing profile completion | hasTargetNav=%d", targetNav != nil);
+
             if (targetNav) {
                 NSMutableArray<UIViewController *> *vcs = [targetNav.viewControllers mutableCopy];
                 NSUInteger verificationIdx = NSNotFound;
@@ -2176,12 +2200,15 @@ static inline void PPDispatchMain(void (^block)(void)) {
                     }
                 }
                 if (verificationIdx != NSNotFound) {
+                    PPAuthDebugLog(@"[Auth] Replacing verification controller with profile completion | index=%lu", (unsigned long)verificationIdx);
                     [vcs replaceObjectAtIndex:verificationIdx withObject:vc];
                     [targetNav setViewControllers:vcs animated:YES];
                 } else {
+                    PPAuthDebugLog(@"[Auth] Pushing profile completion controller");
                     [targetNav pushViewController:vc animated:YES];
                 }
             } else {
+                PPAuthDebugLog(@"[Auth] Presenting profile completion controller modally");
                 UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
                 nav.navigationBarHidden = NO;
                 nav.modalPresentationStyle = UIModalPresentationFullScreen;
@@ -2194,6 +2221,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         // STEP 3 — Profile is complete, continue as normal
         // ----------------------------------------------------
 
+        NSLog(@"[PPVerticationOTP] [PPUserSigningController] Profile complete -> Proceeding to main root switch");
         [self pp_completeSuccessfulSignInWithUser:userModel context:[self stringFromSignInMethod:method]];
     }];
 }

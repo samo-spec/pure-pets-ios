@@ -9,6 +9,12 @@
 #import "Language.h"
 #import "PPAuthScaffoldView.h"
 
+#if DEBUG
+#define PPVerificationLog(...) NSLog(__VA_ARGS__)
+#else
+#define PPVerificationLog(...)
+#endif
+
 static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     NSString *uid = user.uid ?: @"";
     if (uid.length == 0) {
@@ -82,6 +88,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     if (self) {
         _phone = phone;
         _remainingSeconds = 30;
+        PPVerificationLog(@"[Auth][OTP] Controller initialized | phoneLength=%lu", (unsigned long)phone.length);
     }
     return self;
 }
@@ -90,6 +97,10 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    PPVerificationLog(@"[Auth][OTP] viewDidLoad | phoneLength=%lu | navVC=%@ | presentingVC=%@",
+                      (unsigned long)self.phone.length,
+                      NSStringFromClass(self.navigationController.class),
+                      NSStringFromClass(self.presentingViewController.class));
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
     self.edgesForExtendedLayout = UIRectEdgeAll;
     self.extendedLayoutIncludesOpaqueBars = YES;
@@ -124,12 +135,14 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     [super viewWillAppear:animated];
     self.cardView.alpha = 1.0;
     self.stepIndicatorView.alpha = 1.0;
+    PPVerificationLog(@"[Auth][OTP] viewWillAppear | animated=%d", animated);
     [self pp_configureNavigationChrome];
     [self animateVerificationEntranceIfNeeded];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    PPVerificationLog(@"[Auth][OTP] viewDidAppear");
     self.modalInPresentation = (self.navigationController == nil);
     self.presentationController.delegate = self;
     [self.codeField becomeFirstResponder];
@@ -138,10 +151,12 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    PPVerificationLog(@"[Auth][OTP] viewWillDisappear");
     [self.stepIndicatorView stopCurrentStepMotion];
 }
 
 - (void)dealloc {
+    PPVerificationLog(@"[Auth][OTP] dealloc");
     [self.timer invalidate];
     self.timer = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -595,8 +610,8 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
         }
         NSString *submittedCode = self.pendingAutomaticSubmissionCode;
         self.pendingAutomaticSubmissionCode = nil;
-        NSLog(@"[Auth][OTP] Auto-submitting one-time code suggestion. length=%lu",
-              (unsigned long)submittedCode.length);
+        PPVerificationLog(@"[Auth][OTP] Auto-submitting suggestion | length=%lu",
+                          (unsigned long)submittedCode.length);
         [self verifyPhoneCode:submittedCode on:self];
     });
 }
@@ -634,8 +649,8 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 - (void)didTapContinue {
     if (self.codeField.text.length == 6) {
-        NSLog(@"[Auth][OTP] Manual submit tapped. length=%lu",
-              (unsigned long)self.codeField.text.length);
+        PPVerificationLog(@"[Auth][OTP] Manual submit | length=%lu",
+                          (unsigned long)self.codeField.text.length);
         [self verifyPhoneCode:self.codeField.text on:self];
     }
 }
@@ -890,20 +905,20 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     self.backgroundTopGlowView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.10];
     self.backgroundBottomGlowView.backgroundColor = [[UIColor systemBlueColor] colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.07];
 
-    [Styling addLiquidGlassBorderToView:self.cardView cornerRadius:32];
-    [Styling addLiquidGlassBorderToView:self.heroIconWrapView cornerRadius:28 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
-    [Styling addLiquidGlassBorderToView:self.continueButton cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
-    [Styling addLiquidGlassBorderToView:self.resendButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
-    for (UIView *digitView in self.digitViews) {
-        [Styling addLiquidGlassBorderToView:digitView cornerRadius:16 color:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
+    if (!CGRectIsEmpty(self.cardView.bounds)) {
+        [Styling addLiquidGlassBorderToView:self.cardView cornerRadius:32];
+        [Styling addLiquidGlassBorderToView:self.heroIconWrapView cornerRadius:28 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+        [Styling addLiquidGlassBorderToView:self.continueButton cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
+        [Styling addLiquidGlassBorderToView:self.resendButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
+        for (UIView *digitView in self.digitViews) {
+            [Styling addLiquidGlassBorderToView:digitView cornerRadius:16 color:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
+        }
     }
-
 }
 
 -(void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    [self pp_applyModernChrome];
 }
 
 
@@ -983,25 +998,30 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 - (void)verifyPhoneCode:(NSString *)code on:(PPVerificationCodeViewController *)vc {
     if (self.isVerifyingCode || self.isRequestingResend) {
+        PPVerificationLog(@"[Auth][OTP] Verification ignored | verifying=%d resend=%d", self.isVerifyingCode, self.isRequestingResend);
         return;
     }
 
     if (code.length != 6) {
+        PPVerificationLog(@"[Auth][OTP] Verification rejected | codeLength=%lu", (unsigned long)code.length);
         return;
     }
     
     self.pendingAutomaticSubmissionCode = nil;
     self.isVerifyingCode = YES;
-    NSString *rawVerificationID = [[NSUserDefaults standardUserDefaults] stringForKey:@"authVerificationID"];
+    NSString *rawVerificationID = self.verificationID;
     NSString *verificationID = [rawVerificationID isKindOfClass:[NSString class]]
         ? [rawVerificationID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
         : @"";
-    NSLog(@"[Auth][OTP] Verification started. codeLength=%lu hasVerificationID=%@ currentUID=%@",
-          (unsigned long)code.length,
-          verificationID.length > 0 ? @"YES" : @"NO",
-          PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
+    PPVerificationLog(@"[Auth][OTP] Verification starting | codeLength=%lu verificationIDLength=%lu currentUID=%@ customHandler=%d authHandler=%d",
+                      (unsigned long)code.length,
+                      (unsigned long)verificationID.length,
+                      PPVerificationSafeUIDForLog([FIRAuth auth].currentUser),
+                      (self.onCodeVerificationRequested != nil),
+                      (self.onAuthResultSuccess != nil));
 
     if (self.onCodeVerificationRequested) {
+        PPVerificationLog(@"[Auth][OTP] Invoking custom verification handler");
         [self setLoadingState:YES];
         __weak typeof(self) weakSelf = self;
         self.onCodeVerificationRequested(code, ^(BOOL success, NSError * _Nullable error) {
@@ -1015,6 +1035,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
                 self.isVerifyingCode = NO;
 
                 if (!success) {
+                    PPVerificationLog(@"[Auth][OTP] Custom verification failed | domain=%@ code=%ld", error.domain ?: @"", (long)error.code);
                     NSString *domain = [error.domain lowercaseString];
                     BOOL invalidCode =
                     (error.code == FIRAuthErrorCodeInvalidVerificationCode) ||
@@ -1031,6 +1052,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
                     return;
                 }
 
+                PPVerificationLog(@"[Auth][OTP] Custom verification succeeded");
                 UINotificationFeedbackGenerator *gen = [[UINotificationFeedbackGenerator alloc] init];
                 [gen notificationOccurred:UINotificationFeedbackTypeSuccess];
                 [self.stepIndicatorView stopCurrentStepMotion];
@@ -1046,7 +1068,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     }
 
     if (!verificationID || verificationID.length == 0) {
-        NSLog(@"[Auth][OTP] Missing verificationID before Firebase credential creation.");
+        PPVerificationLog(@"[Auth][OTP] Missing in-memory verification binding");
         self.isVerifyingCode = NO;
         [self showInvalidCodeErrorWithMessage:kLang(@"auth_session_expired_message") ?: kLang(@"auth_verification_start_failed")];
         return;
@@ -1054,6 +1076,9 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
     __weak typeof(self) weakSelf = self;
     @try {
+        PPVerificationLog(@"[Auth][OTP] Creating Firebase credential | verificationIDLength=%lu codeLength=%lu",
+                          (unsigned long)verificationID.length,
+                          (unsigned long)code.length);
         FIRAuthCredential *credential =
             [[FIRPhoneAuthProvider provider] credentialWithVerificationID:verificationID
                                                         verificationCode:code];
@@ -1061,12 +1086,14 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
         // Loading indicator in button
         [self setLoadingState:YES];
 
+        PPVerificationLog(@"[Auth][OTP] Invoking Firebase credential sign-in");
         [[FIRAuth auth] signInWithCredential:credential
                                    completion:^(FIRAuthDataResult * _Nullable authResult,
                                                 NSError * _Nullable error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) self = weakSelf;
                 if (!self) {
+                    PPVerificationLog(@"[Auth][OTP] Sign-in completion arrived after controller deallocation");
                     return;
                 }
 
@@ -1075,25 +1102,25 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
                 self.isVerifyingCode = NO;
 
                 if (error) {
-                    NSLog(@"[Auth][OTP] Firebase sign-in failed. domain=%@ code=%ld message=%@ currentUID=%@",
-                          error.domain,
-                          (long)error.code,
-                          error.localizedDescription,
-                          PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
+                    PPVerificationLog(@"[Auth][OTP] Firebase sign-in failed | domain=%@ code=%ld currentUID=%@",
+                                      error.domain ?: @"",
+                                      (long)error.code,
+                                      PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
                     NSString *message = [self pp_localizedVerificationMessageForError:error
                                                                           fallbackKey:@"invalid_code_message"];
                     [self showInvalidCodeErrorWithMessage:message];
                     return;
                 }
 
-                NSLog(@"[Auth][OTP] Firebase sign-in succeeded. resultUID=%@ currentUID=%@",
-                      PPVerificationSafeUIDForLog(authResult.user),
-                      PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
+                PPVerificationLog(@"[Auth][OTP] Firebase sign-in succeeded | resultUID=%@ currentUID=%@ isNewUser=%d",
+                                  PPVerificationSafeUIDForLog(authResult.user),
+                                  PPVerificationSafeUIDForLog([FIRAuth auth].currentUser),
+                                  authResult.additionalUserInfo.isNewUser);
                 [self handleSuccessfulAuth:authResult];
             });
         }];
     } @catch (NSException *exception) {
-        NSLog(@"[Auth][OTP] Exception during Firebase credential/sign-in: %@", exception);
+        PPVerificationLog(@"[Auth][OTP] Credential creation exception | name=%@", exception.name ?: @"");
         self.isVerifyingCode = NO;
         [self setLoadingState:NO];
         [self showInvalidCodeErrorWithMessage:kLang(@"auth_session_expired_message") ?: kLang(@"auth_verification_start_failed")];
@@ -1103,31 +1130,26 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 #pragma mark - Success Handling
 
 - (void)handleSuccessfulAuth:(FIRAuthDataResult *)authResult {
+    PPVerificationLog(@"[Auth][OTP] Success handling started | resultUID=%@ hasCallback=%d",
+                      PPVerificationSafeUIDForLog(authResult.user),
+                      (self.onAuthResultSuccess != nil));
 
     // Haptic
     UINotificationFeedbackGenerator *gen = [[UINotificationFeedbackGenerator alloc] init];
     [gen notificationOccurred:UINotificationFeedbackTypeSuccess];
 
-    // Capture callback before dismissal so the signing controller's dismiss
-    // happens only after this sheet is fully gone (avoids the race where
-    // the parent's [self dismiss] is dropped while we're mid-transition).
     void (^successCallback)(FIRAuthDataResult *) = self.onAuthResultSuccess;
-    NSLog(@"[Auth][OTP] Dismissing verification sheet after success. currentUID=%@ presenting=%@ presented=%@",
-          PPVerificationSafeUIDForLog([FIRAuth auth].currentUser),
-          NSStringFromClass(self.presentingViewController.class),
-          NSStringFromClass(self.presentedViewController.class));
+    PPVerificationLog(@"[Auth][OTP] Dismissing verification sheet | currentUID=%@ presenting=%@ presented=%@",
+                      PPVerificationSafeUIDForLog([FIRAuth auth].currentUser),
+                      NSStringFromClass(self.presentingViewController.class),
+                      NSStringFromClass(self.presentedViewController.class));
 
-    // Fade out UI, then dismiss — fire the parent callback in the dismiss
-    // completion so the presentation chain is clean before the parent acts.
     [self.stepIndicatorView stopCurrentStepMotion];
     [UIView animateWithDuration:0.25 animations:^{
         self.cardView.alpha = 0.0;
         self.stepIndicatorView.alpha = 0.0;
     } completion:^(BOOL finished) {
-        NSLog(@"[Auth][OTP] Verification step completed. forwarding success=%@ currentUID=%@ navigationDepth=%lu",
-              successCallback ? @"YES" : @"NO",
-              PPVerificationSafeUIDForLog([FIRAuth auth].currentUser),
-              (unsigned long)self.navigationController.viewControllers.count);
+        PPVerificationLog(@"[Auth][OTP] Verification UI completed");
         if (successCallback) {
             successCallback(authResult);
         }

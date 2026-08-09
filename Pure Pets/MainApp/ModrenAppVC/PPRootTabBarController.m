@@ -1886,12 +1886,13 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [chatNavigationController setViewControllers:@[rootController] animated:NO];
     }
 
-    PPMessagingSwiftUIHostController *chatController =
-        [[PPMessagingSwiftUIHostController alloc] init];
-    [chatController configureWithChatThread:thread];
-    chatController.hidesBottomBarWhenPushed = NO;
-
-    [chatNavigationController pushViewController:chatController animated:animated];
+    BOOL didPresent = [PPOverlayCoordinator pp_openChatThread:thread
+                                                petAdContext:nil
+                                                      fromVC:chatNavigationController
+                                                    animated:animated];
+    if (!didPresent) {
+        return NO;
+    }
     [self pp_applyPremiumTabSelectionAnimated:animated];
     return YES;
 }

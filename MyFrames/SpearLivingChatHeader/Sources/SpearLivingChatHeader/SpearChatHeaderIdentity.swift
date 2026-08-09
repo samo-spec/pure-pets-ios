@@ -155,6 +155,6 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
   }
 
   private var trustTint: Color {
-    model.trust.isRestricted ? .orange : brandColor
+    model.trust.isRestricted ? SpearHeaderSemanticColor.warning : brandColor
   }
 }

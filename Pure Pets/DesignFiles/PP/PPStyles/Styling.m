@@ -934,17 +934,16 @@ static NSString *PPLottieStoragePathForAnimationName(NSString *fileName)
 {
     if (!view) return;
 
-    // Remove old glass layers
+    CGRect bounds = view.bounds;
+    if (CGRectIsEmpty(bounds)) return;
+
+    // Rebuild named layers so dynamic color, corner radius, and state changes
+    // are reflected even when the view bounds are unchanged.
     for (CALayer *layer in view.layer.sublayers.copy) {
         if ([layer.name hasPrefix:@"LiquidGlass"]) {
             [layer removeFromSuperlayer];
         }
     }
-
-    [view layoutIfNeeded];
-
-    CGRect bounds = view.bounds;
-    if (CGRectIsEmpty(bounds)) return;
 
     UIColor *strokeColor = color ?: [UIColor colorWithWhite:1 alpha:0.9];
 

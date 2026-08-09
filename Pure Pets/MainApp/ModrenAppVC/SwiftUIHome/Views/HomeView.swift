@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 private enum HomeSectionRawID {
+    static let pureLens = 20
     static let hero = 0
     static let quickActions = 1
     static let currentOrders = 2
@@ -23,7 +24,7 @@ private enum HomeSectionRawID {
     static let suggestionAccessories = 19
 
     static let supported: Set<Int> = [
-        hero, quickActions, currentOrders, carousel, mainKinds,
+        pureLens, hero, quickActions, currentOrders, carousel, mainKinds,
         suggestions, accessories, petProfile, premiumCare, lastFood,
         nearbyServices, adsNearby, adopt, buyAgain, premiumSearch,
         providerCategoryNav, marketplaceHero, suggestionAds,
@@ -235,6 +236,9 @@ struct HomeView: View {
                 return !store.state.pets.isEmpty
                     && !store.state.heroPages.isEmpty
             }
+            if section.id == HomeSectionRawID.pureLens {
+                return store.state.config.pureLensVisible
+            }
             return true
         }
     }
@@ -242,6 +246,12 @@ struct HomeView: View {
     @ViewBuilder
     private func configuredSection(_ section: HomeConfigSection) -> some View {
         switch section.id {
+        case HomeSectionRawID.pureLens:
+            if let pureLensAction {
+                HomePureLensSection(action: pureLensAction)
+                    .padding(.horizontal, PPSpace.screenMargin)
+            }
+
         case HomeSectionRawID.premiumSearch:
             HomePremiumSearchSection(
                 isRightToLeft: store.state.isRightToLeft,
@@ -365,8 +375,7 @@ struct HomeView: View {
                     selectedID: store.state.selectedPetID,
                     isLoading: store.state.phase.isLoading,
                     errorMessage: nil,
-                    action: store.openPetProfiles,
-                    onOpenPureLens: pureLensAction
+                    action: store.openPetProfiles
                 )
                 .padding(.horizontal, PPSpace.screenMargin)
             }

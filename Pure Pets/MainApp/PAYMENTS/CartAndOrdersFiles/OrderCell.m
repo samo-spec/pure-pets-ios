@@ -92,7 +92,6 @@
 @implementation OrderCell {
     UIView *_cardView;
     UIView *_surfaceView;
-    UIView *_surfaceTintView;
     UIView *_statusRailView;
 
     UIStackView *_rowStack;       // horizontal: image + textContainerStack + chevron
@@ -134,21 +133,22 @@
 
     // Card padding setup following PPDesignTokens
     CGFloat horizontalPadding = PPSpaceBase; // 16pt
-    CGFloat verticalPadding = PPSpaceMDHalf;
+    CGFloat verticalPadding = PPSpaceSM;
     CGFloat innerPadding = PPSpaceMD;
 
     // 1. Shadow Container (Card View)
     _cardView = [[UIView alloc] initWithFrame:CGRectZero];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardView.backgroundColor = PPIOS26()
-        ? UIColor.clearColor
-        : [AppForgroundColr colorWithAlphaComponent:0.70];
+    _cardView.backgroundColor = UIColor.clearColor;
     _cardView.userInteractionEnabled = NO;
     [self.contentView addSubview:_cardView];
 
-    // Ultra-premium continuous corners & soft elevated shadow on container
+    // Quiet route card: status and content establish hierarchy, not chrome.
     PPApplyContinuousCorners(_cardView, PPCornerCard);
-    PPApplyCardShadow(_cardView);
+    [_cardView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.18]];
+    _cardView.layer.shadowOpacity = 0.045;
+    _cardView.layer.shadowRadius = 12.0;
+    _cardView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
 
     // Constraints for Shadow Container
     [NSLayoutConstraint activateConstraints:@[
@@ -162,11 +162,11 @@
     // layout, but remove all blur/glass material from the reusable row.
     _surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.backgroundColor = [(AppForgroundColr ?: AppBackgroundClr ?: UIColor.systemBackgroundColor) colorWithAlphaComponent:1.0];
+    UIColor *cardColor = [UIColor colorNamed:@"cardColor"];
+    _surfaceView.backgroundColor = cardColor ?: AppCardColor ?: UIColor.systemBackgroundColor;
     PPApplyContinuousCorners(_surfaceView, PPCornerCard);
     _surfaceView.clipsToBounds = YES;
-    _surfaceView.layer.borderWidth = 0.7;
-    _surfaceView.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.45].CGColor;
+    _surfaceView.layer.borderWidth = 0.0;
     [_cardView addSubview:_surfaceView];
     [NSLayoutConstraint activateConstraints:@[
         [_surfaceView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor],
@@ -175,24 +175,18 @@
         [_surfaceView.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor]
     ]];
 
-    // Surface tint remains a semantic status accent, not a blur layer.
-    _surfaceTintView = [[UIView alloc] initWithFrame:CGRectZero];
-    _surfaceTintView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceTintView.userInteractionEnabled = NO;
-    [_surfaceView addSubview:_surfaceTintView];
-
     _statusRailView = [[UIView alloc] initWithFrame:CGRectZero];
     _statusRailView.translatesAutoresizingMaskIntoConstraints = NO;
     _statusRailView.userInteractionEnabled = NO;
-    _statusRailView.layer.cornerRadius = 1.5;
+    _statusRailView.layer.cornerRadius = 2.0;
     _statusRailView.layer.masksToBounds = YES;
     [_cardView addSubview:_statusRailView];
     [NSLayoutConstraint activateConstraints:@[
-        [_statusRailView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:PPSpaceSM],
-        [_statusRailView.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:PPSpaceMD],
-        [_statusRailView.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor constant:-PPSpaceMD],
-        [_statusRailView.widthAnchor constraintEqualToConstant:3.0],
-        [_cardView.heightAnchor constraintGreaterThanOrEqualToConstant:116.0]
+        [_statusRailView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:PPSpaceMD],
+        [_statusRailView.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:PPSpaceSM],
+        [_statusRailView.widthAnchor constraintEqualToConstant:34.0],
+        [_statusRailView.heightAnchor constraintEqualToConstant:4.0],
+        [_cardView.heightAnchor constraintGreaterThanOrEqualToConstant:108.0]
     ]];
 
     // 3. Image View
@@ -206,8 +200,8 @@
     _itemImageView.layer.borderWidth = 0.5;
 
     // Stable media plate keeps missing and loaded imagery from shifting the row.
-    _itemImageWidthConstraint = [_itemImageView.widthAnchor constraintEqualToConstant:84.0];
-    _itemImageHeightConstraint = [_itemImageView.heightAnchor constraintEqualToConstant:84.0];
+    _itemImageWidthConstraint = [_itemImageView.widthAnchor constraintEqualToConstant:76.0];
+    _itemImageHeightConstraint = [_itemImageView.heightAnchor constraintEqualToConstant:76.0];
     [NSLayoutConstraint activateConstraints:@[_itemImageWidthConstraint, _itemImageHeightConstraint]];
 
     // 4. Labels
@@ -395,11 +389,9 @@
             : (fallbackColor ?: PPOrderStatusAccentColorForKey(@"pending"));
         UIColor *resolvedAccent = PPOrderStatusResolvedColor(accent, self.traitCollection);
         _statusRailView.backgroundColor = resolvedAccent;
-        _surfaceTintView.backgroundColor = [resolvedAccent colorWithAlphaComponent:
-                                            PPOrderStatusUsesDarkAppearance(self.traitCollection) ? 0.055 : 0.026];
         _statusPillContainer.backgroundColor = PPOrderStatusSurfaceColorForAccent(accent, self.traitCollection);
-        _statusPillContainer.layer.borderWidth = 1.0;
-        _statusPillContainer.layer.borderColor = PPOrderStatusBorderColorForAccent(accent, self.traitCollection).CGColor;
+        _statusPillContainer.layer.borderWidth = 0.0;
+        _statusPillContainer.layer.borderColor = UIColor.clearColor.CGColor;
         _statusPillLabel.textColor = accent;
         UIImage *statusIcon = [UIImage systemImageNamed:PPOrderStatusSymbolNameForKey(_currentStatusKey)];
         if (!statusIcon) {
@@ -418,7 +410,6 @@
     } else {
         UIColor *neutral = PPOrderStatusAccentColorForKey(nil);
         _statusRailView.backgroundColor = neutral;
-        _surfaceTintView.backgroundColor = UIColor.clearColor;
         _statusIconView.image = nil;
     }
 
@@ -483,19 +474,10 @@
         _chevronImageView.tintColor = [UIColor colorWithWhite:0.0 alpha:0.3];
     }
 
-    // Dynamic borders resolved specifically for self.traitCollection (Fixes dark mode border caching)
+    // Keep only the media separator; the route surface is intentionally borderless.
     if (@available(iOS 13.0, *)) {
-        UIColor *borderColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-                return [UIColor colorWithWhite:1.0 alpha:0.08];
-            } else {
-                return [UIColor colorWithWhite:0.0 alpha:0.06];
-            }
-        }];
-        _surfaceView.layer.borderColor = [borderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
         _itemImageView.layer.borderColor = [[UIColor separatorColor] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     } else {
-        _surfaceView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.06].CGColor;
         _itemImageView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.1].CGColor;
     }
 
@@ -520,10 +502,13 @@
 
 - (void)pp_updateContentSizeLayout
 {
-    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    UIContentSizeCategory contentSizeCategory = self.traitCollection.preferredContentSizeCategory;
+    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(contentSizeCategory)
+        || [contentSizeCategory isEqualToString:UIContentSizeCategoryExtraExtraLarge]
+        || [contentSizeCategory isEqualToString:UIContentSizeCategoryExtraExtraExtraLarge];
 
-    _itemImageWidthConstraint.constant = usesAccessibilityLayout ? 64.0 : 84.0;
-    _itemImageHeightConstraint.constant = usesAccessibilityLayout ? 64.0 : 84.0;
+    _itemImageWidthConstraint.constant = usesAccessibilityLayout ? 60.0 : 76.0;
+    _itemImageHeightConstraint.constant = usesAccessibilityLayout ? 60.0 : 76.0;
     _headerRow.axis = usesAccessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
     _headerRow.alignment = usesAccessibilityLayout ? UIStackViewAlignmentFill : UIStackViewAlignmentCenter;
     _statusRow.axis = usesAccessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;

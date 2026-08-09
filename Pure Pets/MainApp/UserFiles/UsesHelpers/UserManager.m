@@ -1752,17 +1752,17 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
         return;
     }
     // This method will initiate an SMS to verify the new number, then update it.
-    NSLog(@"[UserManager] Updating current user's phone number to %@", phoneNumber);
+    DLog(@"[UserManager] Starting phone update | phoneLength=%lu", (unsigned long)phoneNumber.length);
     // Send verification code to new phone number
     [[FIRPhoneAuthProvider provider] verifyPhoneNumber:phoneNumber
                                            UIDelegate:nil
                                            completion:^(NSString * _Nullable verificationID, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"[UserManager] Failed to send verification SMS: %@", error);
+            DLog(@"[UserManager] Phone verification send failed | domain=%@ code=%ld", error.domain ?: @"", (long)error.code);
             if (completion) completion(error);
         } else {
             // Prompt user for the verification code via a UI prompt
-            NSLog(@"[UserManager] Verification code sent for phone update, requesting user input...");
+            DLog(@"[UserManager] Phone verification sent");
             [UserManager showPromptOnTopController];  // This should prompt user to enter the code
             // In a real implementation, the app should capture the code and call the following:
             // [self finalizePhoneNumberUpdateWithVerificationID:verificationID verificationCode:code completion:completion];
@@ -1817,11 +1817,11 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
         if (completion) completion(nil, err);
         return;
     }
-    NSLog(@"[UserManager] Linking phone number provider for number: %@", phoneNumber);
+    DLog(@"[UserManager] Starting phone-provider link | phoneLength=%lu", (unsigned long)phoneNumber.length);
     // Send verification SMS
     [[FIRPhoneAuthProvider provider] verifyPhoneNumber:phoneNumber UIDelegate:nil completion:^(NSString * _Nullable verificationID, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"[UserManager] Failed to send verification for linking phone: %@", error);
+            DLog(@"[UserManager] Phone-provider verification failed | domain=%@ code=%ld", error.domain ?: @"", (long)error.code);
             if (completion) completion(nil, error);
         } else {
             // Normally, here we should prompt for SMS code, but we'll assume code is obtained for this flow.
@@ -2644,10 +2644,10 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
         if (completion) completion(err);
         return;
     }
-    NSLog(@"[UserManager] Reauthenticating current user via phone number %@", phoneNumber);
+    DLog(@"[UserManager] Starting phone reauthentication | phoneLength=%lu", (unsigned long)phoneNumber.length);
     [[FIRPhoneAuthProvider provider] verifyPhoneNumber:phoneNumber UIDelegate:nil completion:^(NSString * _Nullable verificationID, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"[UserManager] Failed to send reauth SMS: %@", error);
+            DLog(@"[UserManager] Reauthentication SMS failed | domain=%@ code=%ld", error.domain ?: @"", (long)error.code);
             if (completion) completion(error);
         } else {
             [UserManager showPromptOnTopController];

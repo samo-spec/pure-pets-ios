@@ -17,69 +17,29 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
+#import "PPImageLoaderManager.h"
 #import <Pure_Pets-Swift.h>
  
 @import PhotosUI;
 
-// ─── Image cache ──────────────────────────────────────────
-
-static NSCache<NSString *, UIImage *> *PPEditorImgCache(void) {
-    static NSCache *c;
-    static dispatch_once_t t;
-    dispatch_once(&t, ^{ c = [NSCache new]; c.countLimit = 20; });
-    return c;
-}
-
-static NSURLSession *PPEditorURLSession(void) {
-    static NSURLSession *s;
-    static dispatch_once_t t;
-    dispatch_once(&t, ^{
-        NSURLSessionConfiguration *cfg = [NSURLSessionConfiguration defaultSessionConfiguration];
-        cfg.timeoutIntervalForRequest = 30;
-        cfg.timeoutIntervalForResource = 60;
-        s = [NSURLSession sessionWithConfiguration:cfg];
-    });
-    return s;
-}
+// ─── Shared Image Loader ──────────────────────────────────
 
 static void PPEditorLoadImage(UIImageView *iv, NSString *url, UIImage *ph) {
-    iv.image = ph;
-    if (!url.length) return;
-    UIImage *cached = [PPEditorImgCache() objectForKey:url];
-    if (cached) { iv.image = cached; return; }
-    NSURL *u = [NSURL URLWithString:url];
-    if (!u) return;
-    __weak UIImageView *w = iv;
-    [[PPEditorURLSession() dataTaskWithURL:u completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
-        if (!d) return;
-        UIImage *img = [UIImage imageWithData:d];
-        if (!img) return;
-        [PPEditorImgCache() setObject:img forKey:url];
-        dispatch_async(dispatch_get_main_queue(), ^{ w.image = img; });
-    }] resume];
+    if (!iv) return;
+    [[PPImageLoaderManager shared] setImageOnImageView:iv
+                                                   url:url
+                                           placeholder:ph
+                                       transitionStyle:PPImageTransitionStyleFade
+                                            complation:nil];
 }
 
-static NSURLSessionDataTask *PPEditorLoadImageValue(NSString *urlString, void (^completion)(UIImage *image)) {
-    if (urlString.length == 0 || !completion) return nil;
-    UIImage *cached = [PPEditorImgCache() objectForKey:urlString];
-    if (cached) {
-        completion(cached);
-        return nil;
-    }
-    NSURL *url = [NSURL URLWithString:urlString];
-    if (!url) return nil;
-    __weak typeof(completion) weakCompletion = completion;
-    NSURLSessionDataTask *task = [PPEditorURLSession() dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        if (data.length == 0) return;
-        UIImage *image = [UIImage imageWithData:data];
-        if (!image) return;
-        [PPEditorImgCache() setObject:image forKey:urlString];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (weakCompletion) weakCompletion(image);
-        });
+static void PPEditorLoadImageValue(NSString *urlString, void (^completion)(UIImage *image)) {
+    if (urlString.length == 0 || !completion) return;
+    [[PPImageLoaderManager shared] fetchImageWithURL:urlString completion:^(UIImage * _Nullable image) {
+        if (image && completion) {
+            completion(image);
+        }
     }];
-    [task resume];
-    return task;
 }
 
 // ─── Constants (matches ProfileVC.m exactly) ──────────────
@@ -113,6 +73,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     PPEditorFieldBreed = 101,
     PPEditorFieldAge   = 102
 };
+
 
 // ─── Base Cell (ProfileVC inset pattern) ──────────────────
 
@@ -274,7 +235,6 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 @property (nonatomic, assign) BOOL swiftUIDefault;
 @property (nonatomic, assign) BOOL swiftUISaveSucceeded;
 @property (nonatomic, strong) UIImage *swiftUIRemoteImage;
-@property (nonatomic, strong) NSURLSessionDataTask *swiftUIImageTask;
 @property (nonatomic, assign) BOOL previousNavigationBarHidden;
 @end
 
@@ -340,16 +300,14 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 }
 
 - (void)pp_loadSwiftUIRemoteImage {
-    [self.swiftUIImageTask cancel];
-    self.swiftUIImageTask = nil;
     self.swiftUIRemoteImage = nil;
     NSString *urlString = self.pet.imageURL ?: @"";
     if (urlString.length == 0) return;
 
     __weak typeof(self) weakSelf = self;
-    self.swiftUIImageTask = PPEditorLoadImageValue(urlString, ^(UIImage *image) {
+    PPEditorLoadImageValue(urlString, ^(UIImage *image) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self || ![self.pet.imageURL isEqualToString:urlString]) return;
+        if (!self || ![self.pet.imageURL isEqualToString:urlString] || !image) return;
         self.swiftUIRemoteImage = image;
         [self pp_updateSwiftUIEditorHost];
     });
@@ -379,7 +337,6 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 }
 
 - (void)dealloc {
-    [self.swiftUIImageTask cancel];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 

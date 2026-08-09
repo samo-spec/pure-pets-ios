@@ -20,7 +20,11 @@
 @import FirebaseFunctions;
 #import <math.h>
 
+#if DEBUG
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+#else
+#define PPORDERLog(...)
+#endif
 
 @interface PPCheckoutCoordinator ()
 

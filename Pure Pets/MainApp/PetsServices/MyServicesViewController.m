@@ -3,7 +3,7 @@
 #import "PPUniversalCellViewModel.h"
 #import "PPImageLoaderManager.h"
 #import "ServicesManager.h"
-#import "CCActivityHUD.h"
+//#import "CCActivityHUD.h"
 #import "CategoryModel.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 
@@ -32,7 +32,7 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
 @property (nonatomic, strong) UICollectionViewFlowLayout *collectionLayout;
 @property (nonatomic, strong) NSMutableArray<ServiceModel *> *services;
 @property (nonatomic, strong) NSMutableArray<ServiceModel *> *filteredServices;
-@property (nonatomic, strong) CCActivityHUD *activityHUD;
+//@property (nonatomic, strong) CCActivityHUD *activityHUD;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) NSString *selectedCategoryID;
@@ -61,11 +61,13 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
 }
 
 - (void)setupActivityHUD {
-    self.activityHUD = [CCActivityHUD new];
-    self.activityHUD.isTheOnlyActiveView = YES;
-    self.activityHUD.backColor = [UIColor clearColor];
-    self.activityHUD.indicatorColor = UIColor.systemBlueColor;
-    self.activityHUD.overlayType = CCActivityHUDOverlayTypeShadow;
+  /*
+   self.activityHUD = [CCActivityHUD new];
+   self.activityHUD.isTheOnlyActiveView = YES;
+   self.activityHUD.backColor = [UIColor clearColor];
+   self.activityHUD.indicatorColor = UIColor.systemBlueColor;
+   self.activityHUD.overlayType = CCActivityHUDOverlayTypeShadow;
+   */
 }
 
 - (void)setupSearchBar {
@@ -207,12 +209,12 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
     UIAlertAction *deleteAction = [UIAlertAction actionWithTitle:(kLang(@"delete") ?: @"Delete") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        [strongSelf.activityHUD show];
+        //[strongSelf.activityHUD show];
         [[ServicesManager sharedInstance] deleteService:service.serviceID completion:^(NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) ss = weakSelf;
                 if (!ss) return;
-                [ss.activityHUD dismiss];
+               // [ss.activityHUD dismiss];
                 if (error) {
                     [ss showAlert:(kLang(@"service_delete_failed") ?: @"Failed to delete service")];
                 }

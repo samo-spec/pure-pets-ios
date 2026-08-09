@@ -44,8 +44,13 @@ typedef NS_ENUM(NSInteger, PPPetCareVetFilter) {
 static CGFloat PPPetCareNavigationSegmentWidth(void)
 {
     CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
-    CGFloat availableWidth = screenWidth > 0.0 ? screenWidth - 150.0 : 280.0;
-    return floor(MAX(280.0, MIN(320.0, availableWidth)));
+    CGFloat availableWidth = screenWidth > 0.0 ? screenWidth - 156.0 : 260.0;
+    return floor(MAX(240.0, MIN(280.0, availableWidth)));
+}
+
+static BOOL PPPetCareUsesAccessibilityLayout(UITraitCollection *traitCollection)
+{
+    return UIContentSizeCategoryIsAccessibilityCategory(traitCollection.preferredContentSizeCategory);
 }
 
 
@@ -61,19 +66,6 @@ static UIColor *PPPetCareSearchSurfaceColor(void)
         }];
     }
     return [UIColor colorWithWhite:1.0 alpha:0.88];
-}
-
-static UIColor *PPPetCareSearchBorderColor(void)
-{
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-            BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark
-                ? [UIColor colorWithWhite:1.0 alpha:0.10]
-                : [UIColor colorWithWhite:1.0 alpha:0.56];
-        }];
-    }
-    return [UIColor colorWithWhite:1.0 alpha:0.56];
 }
 
 static NSString *PPPetCareNormalizedText(NSString *value)
@@ -433,6 +425,10 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
                                              selector:@selector(pp_handleCartUpdated:)
                                                  name:kCartUpdatedNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_reduceMotionStatusDidChange)
+                                                 name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                               object:nil];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -498,6 +494,9 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+        [self.collectionView.collectionViewLayout invalidateLayout];
+    }
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
             [self pp_applyTheme];
@@ -552,20 +551,20 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
     _heroView = [[UIView alloc] init];
     _heroView.translatesAutoresizingMaskIntoConstraints = NO;
-    _heroView.layer.cornerRadius = 32.0;
-    _heroView.layer.borderWidth = 0.8;
+    _heroView.layer.cornerRadius = 26.0;
+    _heroView.layer.borderWidth = 0.0;
     _heroView.clipsToBounds = NO;
     if (@available(iOS 13.0, *)) {
         _heroView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [_heroView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    _heroView.layer.shadowRadius = 24.0;
-    _heroView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    _heroView.layer.shadowRadius = 14.0;
+    _heroView.layer.shadowOffset = CGSizeMake(0.0, 7.0);
     [contentView addSubview:_heroView];
 
     _heroFill = [[UIView alloc] init];
     _heroFill.translatesAutoresizingMaskIntoConstraints = NO;
-    _heroFill.layer.cornerRadius = 32.0;
+    _heroFill.layer.cornerRadius = 26.0;
     _heroFill.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         _heroFill.layer.cornerCurve = kCACornerCurveContinuous;
@@ -580,17 +579,19 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     _largeOrbView = [[UIView alloc] init];
     _largeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _largeOrbView.layer.cornerRadius = 60.0;
+    _largeOrbView.hidden = YES;
     [_heroFill addSubview:_largeOrbView];
 
     _smallOrbView = [[UIView alloc] init];
     _smallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _smallOrbView.layer.cornerRadius = 24.0;
+    _smallOrbView.hidden = YES;
     [_heroFill addSubview:_smallOrbView];
 
     _iconPlateView = [[UIView alloc] init];
     _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconPlateView.layer.cornerRadius = 24.0;
-    _iconPlateView.layer.borderWidth = 0.8;
+    _iconPlateView.layer.cornerRadius = 20.0;
+    _iconPlateView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         _iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -635,9 +636,9 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     _counterLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _counterLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     _counterLabel.textAlignment = NSTextAlignmentCenter;
-    _counterLabel.layer.cornerRadius = 14.0;
+    _counterLabel.layer.cornerRadius = 12.0;
     _counterLabel.layer.masksToBounds = YES;
-    _counterLabel.layer.borderWidth = 0.8;
+    _counterLabel.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         _counterLabel.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -652,9 +653,9 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     _bottomSearchBarView = [[UIView alloc] init];
     _bottomSearchBarView.translatesAutoresizingMaskIntoConstraints = NO;
     _bottomSearchBarView.backgroundColor = UIColor.clearColor;
-    _bottomSearchBarView.layer.shadowRadius = 22.0;
-    _bottomSearchBarView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    _bottomSearchBarView.layer.shadowOpacity = 0.14;
+    _bottomSearchBarView.layer.shadowRadius = 14.0;
+    _bottomSearchBarView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    _bottomSearchBarView.layer.shadowOpacity = 0.07;
     [_bottomSearchBarView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     [contentView addSubview:_bottomSearchBarView];
 
@@ -671,8 +672,8 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
     _searchPillView = [[UIView alloc] init];
     _searchPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    _searchPillView.layer.cornerRadius = 28.0;
-    _searchPillView.layer.borderWidth = 0.7;
+    _searchPillView.layer.cornerRadius = 26.0;
+    _searchPillView.layer.borderWidth = 0.0;
     _searchPillView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         _searchPillView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -718,8 +719,8 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
     _filterButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _filterButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _filterButton.layer.cornerRadius = 30.0;
-    _filterButton.layer.borderWidth = 1.0;
+    _filterButton.layer.cornerRadius = 26.0;
+    _filterButton.layer.borderWidth = 0.0;
     _filterButton.clipsToBounds = NO;
     if (@available(iOS 13.0, *)) {
         _filterButton.layer.cornerCurve = kCACornerCurveContinuous;
@@ -802,7 +803,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         [_heroView.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:12.0],
         [_heroView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:18.0],
         [_heroView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-18.0],
-        [_heroView.heightAnchor constraintEqualToConstant:172.0],
+        [_heroView.heightAnchor constraintEqualToConstant:160.0],
 
         [_largeOrbView.widthAnchor constraintEqualToConstant:120.0],
         [_largeOrbView.heightAnchor constraintEqualToConstant:120.0],
@@ -816,8 +817,8 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
         [_iconPlateView.trailingAnchor constraintEqualToAnchor:_heroView.trailingAnchor constant:-18.0],
         [_iconPlateView.topAnchor constraintEqualToAnchor:_heroView.topAnchor constant:18.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant:48.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:48.0],
+        [_iconPlateView.widthAnchor constraintEqualToConstant:44.0],
+        [_iconPlateView.heightAnchor constraintEqualToConstant:44.0],
 
         [_heroIconView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_heroIconView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
@@ -826,8 +827,8 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
         [_heroAnimationView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_heroAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_heroAnimationView.widthAnchor constraintEqualToConstant:88.0],
-        [_heroAnimationView.heightAnchor constraintEqualToConstant:88.0],
+        [_heroAnimationView.widthAnchor constraintEqualToConstant:44.0],
+        [_heroAnimationView.heightAnchor constraintEqualToConstant:44.0],
 
         [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_heroView.leadingAnchor constant:20.0],
         [_eyebrowLabel.topAnchor constraintEqualToAnchor:_heroView.topAnchor constant:18.0],
@@ -842,19 +843,19 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
 
         [_counterLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_counterLabel.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
-        [_counterLabel.heightAnchor constraintEqualToConstant:28.0],
+        [_counterLabel.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:9.0],
+        [_counterLabel.heightAnchor constraintEqualToConstant:24.0],
         [_counterLabel.widthAnchor constraintGreaterThanOrEqualToConstant:76.0],
 
-        [_collectionView.topAnchor constraintEqualToAnchor:_heroView.bottomAnchor constant:14.0],
+        [_collectionView.topAnchor constraintEqualToAnchor:_heroView.bottomAnchor constant:10.0],
         [_collectionView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
         [_collectionView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
         [_collectionView.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
 
-        [_bottomSearchBarView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:18.0],
-        [_bottomSearchBarView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-18.0],
+        [_bottomSearchBarView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
+        [_bottomSearchBarView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-16.0],
         self.bottomSearchBarBottomConstraint,
-        [_bottomSearchBarView.heightAnchor constraintEqualToConstant:64.0],
+        [_bottomSearchBarView.heightAnchor constraintEqualToConstant:60.0],
 
         [_bottomSearchFadeView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
         [_bottomSearchFadeView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
@@ -863,13 +864,13 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
         [_searchPillView.leadingAnchor constraintEqualToAnchor:_bottomSearchBarView.leadingAnchor],
         [_searchPillView.centerYAnchor constraintEqualToAnchor:_bottomSearchBarView.centerYAnchor],
-        [_searchPillView.heightAnchor constraintEqualToConstant:56.0],
+        [_searchPillView.heightAnchor constraintEqualToConstant:52.0],
 
         [_filterButton.leadingAnchor constraintEqualToAnchor:_searchPillView.trailingAnchor constant:10.0],
         [_filterButton.trailingAnchor constraintEqualToAnchor:_bottomSearchBarView.trailingAnchor],
         [_filterButton.centerYAnchor constraintEqualToAnchor:_bottomSearchBarView.centerYAnchor],
-        [_filterButton.heightAnchor constraintEqualToConstant:56.0],
-        [_filterButton.widthAnchor constraintEqualToConstant:56.0],
+        [_filterButton.heightAnchor constraintEqualToConstant:52.0],
+        [_filterButton.widthAnchor constraintEqualToConstant:52.0],
 
         [_filterBadgeView.topAnchor constraintEqualToAnchor:_filterButton.topAnchor constant:14.0],
         [_filterBadgeView.trailingAnchor constraintEqualToAnchor:_filterButton.trailingAnchor constant:-14.0],
@@ -959,6 +960,11 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
 - (void)pp_prepareEntranceState
 {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyEntranceFinalState];
+        return;
+    }
+
     NSArray<UIView *> *floatingViews = @[self.backgroundGlowTopView,
                                          self.backgroundGlowMiddleView,
                                          self.backgroundGlowBottomView];
@@ -1006,12 +1012,55 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     self.heroAnimationView.transform = CGAffineTransformMakeScale(0.88, 0.88);
 }
 
+- (void)pp_applyEntranceFinalState
+{
+    for (UIView *view in @[self.backgroundGlowTopView,
+                           self.backgroundGlowMiddleView,
+                           self.backgroundGlowBottomView]) {
+        [view.layer removeAllAnimations];
+        view.hidden = YES;
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformIdentity;
+    }
+
+    for (UIView *view in @[self.sectionTitleContainer ?: [UIView new],
+                           self.navCartButton ?: [UIView new],
+                           self.heroView,
+                           self.iconPlateView,
+                           self.heroIconView,
+                           self.eyebrowLabel,
+                           self.titleLabel,
+                           self.subtitleLabel,
+                           self.counterLabel,
+                           self.bottomSearchBarView,
+                           self.bottomSearchFadeView,
+                           self.searchPillView,
+                           self.filterButton,
+                           self.collectionView]) {
+        view.alpha = 1.0;
+        view.transform = CGAffineTransformIdentity;
+    }
+
+    self.emptyView.alpha = self.emptyView.hidden ? 0.0 : 1.0;
+    self.emptyView.transform = CGAffineTransformIdentity;
+    [self.heroAnimationView stop];
+    self.heroAnimationView.hidden = YES;
+    self.heroAnimationView.alpha = 0.0;
+    self.heroAnimationView.transform = CGAffineTransformIdentity;
+    self.heroIconView.hidden = NO;
+}
+
 - (void)pp_beginEntranceAnimationIfNeeded
 {
     if (self.didAnimateEntrance) {
         return;
     }
     self.didAnimateEntrance = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyEntranceFinalState];
+        return;
+    }
 
     NSArray<UIView *> *topChromeViews = @[self.sectionTitleContainer ?: [UIView new],
                                           self.navCartButton ?: [UIView new]];
@@ -1084,6 +1133,21 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     } completion:nil];
 }
 
+- (void)pp_reduceMotionStatusDidChange
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopAmbientGlowAnimation];
+        [self pp_applyEntranceFinalState];
+        [self pp_revealResolvedHeroAnimation];
+        return;
+    }
+
+    if (self.didRevealLoadedDecor) {
+        [self pp_configureHeroAnimationIfNeeded];
+        [self pp_beginAmbientGlowAnimationIfNeeded];
+    }
+}
+
 - (void)pp_beginAmbientGlowAnimationIfNeeded
 {
     if (self.didStartGlowAnimation || !self.didRevealLoadedDecor || UIAccessibilityIsReduceMotionEnabled()) {
@@ -1144,8 +1208,8 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         for (UIView *view in glowViews) {
-            view.hidden = NO;
-            view.alpha = 1.0;
+            view.hidden = YES;
+            view.alpha = 0.0;
             view.transform = CGAffineTransformIdentity;
         }
         [self pp_configureHeroAnimationIfNeeded];
@@ -1242,18 +1306,22 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         return;
     }
 
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self.heroAnimationView stop];
+        self.heroAnimationView.hidden = YES;
+        self.heroAnimationView.alpha = 0.0;
+        self.heroIconView.hidden = NO;
+        self.heroIconView.alpha = 1.0;
+        self.heroIconView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
     self.heroAnimationView.loopAnimation = YES;
     self.heroAnimationView.hidden = NO;
     self.heroIconView.hidden = YES;
     [self.heroAnimationView setNeedsLayout];
     [self.heroAnimationView layoutIfNeeded];
     [self.heroAnimationView play];
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.heroAnimationView.alpha = 1.0;
-        self.heroAnimationView.transform = CGAffineTransformIdentity;
-        return;
-    }
 
     [UIView animateWithDuration:0.46
                           delay:self.didRevealLoadedDecor ? 0.20 : 0.34
@@ -1349,8 +1417,13 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     self.sectionControl.selectedSegmentTintColor = [PPPetCareAccentColor() colorWithAlphaComponent:0.18];
     self.sectionControl.tintColor = PPPetCareAccentColor();
     self.sectionControl.apportionsSegmentWidthsByContent = NO;
+    CGFloat availableWidth = CGRectGetWidth(self.sectionTitleContainer.bounds);
+    if (availableWidth <= 0.0) {
+        availableWidth = PPPetCareNavigationSegmentWidth();
+    }
+    CGFloat segmentWidth = floor(availableWidth / MAX((CGFloat)self.sectionControl.numberOfSegments, 1.0));
     for (NSInteger segmentIndex = 0; segmentIndex < self.sectionControl.numberOfSegments; segmentIndex++) {
-        [self.sectionControl setWidth:140.0 forSegmentAtIndex:segmentIndex];
+        [self.sectionControl setWidth:segmentWidth forSegmentAtIndex:segmentIndex];
     }
 }
 
@@ -1367,10 +1440,10 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
     if (!PPIOS26()) {
         cartNavBtn.backgroundColor = AppForgroundColr;
-        cartNavBtn.layer.cornerRadius = 20.0;
+        cartNavBtn.layer.cornerRadius = 22.0;
         cartNavBtn.clipsToBounds = NO;
-        [cartNavBtn.widthAnchor constraintEqualToConstant:40.0].active = YES;
-        [cartNavBtn.heightAnchor constraintEqualToConstant:40.0].active = YES;
+        [cartNavBtn.widthAnchor constraintEqualToConstant:44.0].active = YES;
+        [cartNavBtn.heightAnchor constraintEqualToConstant:44.0].active = YES;
     }
 
     self.navCartButton = cartNavBtn;
@@ -1533,8 +1606,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [self.filterButton setImage:filterIcon forState:UIControlStateNormal];
     self.filterButton.backgroundColor = PPPetCareSearchSurfaceColor();
     self.filterButton.tintColor = PPPetCareTextColor();
-    self.filterButton.layer.borderWidth = 1.0;
-    [self.filterButton pp_setBorderColor:PPPetCareSearchBorderColor()];
+    self.filterButton.layer.borderWidth = 0.0;
 }
 
 - (void)pp_keyboardWillChangeFrame:(NSNotification *)notification
@@ -1868,25 +1940,24 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     UIColor *accent = PPPetCareAccentColor();
     self.view.backgroundColor = AppBackgroundClr;
     self.heroView.backgroundColor = PPPetCareSurfaceColor();
-    [self.heroView pp_setBorderColor:PPPetCareBorderColor()];
-    self.heroView.layer.shadowOpacity = dark ? 0.0 : 0.08;
+    self.heroView.layer.borderWidth = 0.0;
+    self.heroView.layer.shadowOpacity = dark ? 0.10 : 0.045;
 
-    UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:dark ? 0.03 : 0.10];
     self.heroGradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:dark ? 0.20 : 0.13].CGColor,
+        (id)[accent colorWithAlphaComponent:dark ? 0.10 : 0.055].CGColor,
         (id)[UIColor clearColor].CGColor
     ];
-    self.backgroundGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.14 : 0.17];
-    self.backgroundGlowTopView.layer.shadowColor = [accent colorWithAlphaComponent:dark ? 0.24 : 0.22].CGColor;
-    self.backgroundGlowMiddleView.backgroundColor = glowHighlight;
-    self.backgroundGlowMiddleView.layer.shadowColor = glowHighlight.CGColor;
-    self.backgroundGlowBottomView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.12];
-    self.backgroundGlowBottomView.layer.shadowColor = [accent colorWithAlphaComponent:dark ? 0.16 : 0.18].CGColor;
-    self.largeOrbView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.08];
-    self.smallOrbView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.0 : 0.0];
+    self.backgroundGlowTopView.backgroundColor = UIColor.clearColor;
+    self.backgroundGlowTopView.layer.shadowOpacity = 0.0;
+    self.backgroundGlowMiddleView.backgroundColor = UIColor.clearColor;
+    self.backgroundGlowMiddleView.layer.shadowOpacity = 0.0;
+    self.backgroundGlowBottomView.backgroundColor = UIColor.clearColor;
+    self.backgroundGlowBottomView.layer.shadowOpacity = 0.0;
+    self.largeOrbView.backgroundColor = UIColor.clearColor;
+    self.smallOrbView.backgroundColor = UIColor.clearColor;
 
     self.iconPlateView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.11];
-    [self.iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.16]];
+    self.iconPlateView.layer.borderWidth = 0.0;
     self.heroIconView.tintColor = accent;
 
     self.eyebrowLabel.textColor = [accent colorWithAlphaComponent:dark ? 0.92 : 0.82];
@@ -1894,11 +1965,11 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     self.subtitleLabel.textColor = PPPetCareSecondaryTextColor();
     self.counterLabel.textColor = PPPetCareTextColor();
     self.counterLabel.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.15 : 0.09];
-    [self.counterLabel pp_setBorderColor:PPPetCareBorderColor()];
+    self.counterLabel.layer.borderWidth = 0.0;
 
-    self.bottomSearchBarView.layer.shadowOpacity = dark ? 0.22 : 0.14;
+    self.bottomSearchBarView.layer.shadowOpacity = dark ? 0.14 : 0.07;
     self.searchPillView.backgroundColor = PPPetCareSearchSurfaceColor();
-    [self.searchPillView pp_setBorderColor:PPPetCareSearchBorderColor()];
+    self.searchPillView.layer.borderWidth = 0.0;
     self.bottomSearchFadeLayer.colors = @[
         (id)[UIColor clearColor].CGColor,
         (id)[[AppBackgroundClr colorWithAlphaComponent:dark ? 0.05 : 0.035] CGColor],
@@ -2066,6 +2137,17 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         BOOL twoColumns = available >= 360.0;
         CGFloat itemWidth = twoColumns ? floor((available - 12.0) / 2.0) : available;
         return CGSizeMake(itemWidth, MAX(324.0, itemWidth * 1.42));
+    }
+    if (PPPetCareUsesAccessibilityLayout(self.traitCollection)) {
+        if (indexPath.item < self.filteredVets.count) {
+            VetModel *vet = self.filteredVets[indexPath.item];
+            CGFloat measuredHeight = [PPPetCareVetCell preferredHeightForVet:vet
+                                                                 mainKindName:[self pp_mainKindNameForID:vet.petMainKindID]
+                                                                        width:available
+                                                              traitCollection:self.traitCollection];
+            return CGSizeMake(available, measuredHeight);
+        }
+        return CGSizeMake(available, 420.0);
     }
     return CGSizeMake(available, 206.0);
 }

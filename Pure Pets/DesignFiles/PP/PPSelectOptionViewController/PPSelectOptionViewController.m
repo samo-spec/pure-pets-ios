@@ -1184,6 +1184,13 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     
 
 
+    if (self.optionTitleProvider) {
+        NSString *providedTitle = self.optionTitleProvider(option);
+        if ([providedTitle isKindOfClass:NSString.class] && providedTitle.length > 0) {
+            title = providedTitle;
+        }
+    }
+
     // --- Configure cell ---
     BOOL selected = [self pp_isOption:option selectedWithTitle:title];
     if (imageURLString.length > 0) {
@@ -1316,6 +1323,12 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 
 - (NSString *)displayTextForOption:(id)option {
     if (!option) return @"";
+    if (self.optionTitleProvider) {
+        NSString *providedTitle = self.optionTitleProvider(option);
+        if ([providedTitle isKindOfClass:NSString.class] && providedTitle.length > 0) {
+            return providedTitle;
+        }
+    }
     if ([option isKindOfClass:XLFormOptionsObject.class]) {
         return [(XLFormOptionsObject *)option displayText] ?: @"";
     } else if ([option respondsToSelector:@selector(UserName)] ||

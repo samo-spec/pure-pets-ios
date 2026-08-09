@@ -14,8 +14,9 @@
 #import "AppClasses.h"
 #import "Language.h"
 #import <Pure_Pets-Swift.h>
+@import Firebase;
 @import FirebaseFirestore;
-@import UserNotifications;
+@import FirebaseAuth;
 
 static CGFloat const kPPHubTopBarHeight = 46.0;
 static CGFloat const kPPHubActionButtonSize = 46.0;
@@ -48,6 +49,20 @@ static NSString *PPHubScalarString(id value)
     }
 
     return @"";
+}
+
+static NSDate *PPHubDateFromValue(id value)
+{
+    if ([value isKindOfClass:NSDate.class]) {
+        return (NSDate *)value;
+    }
+    if ([value isKindOfClass:FIRTimestamp.class]) {
+        return [(FIRTimestamp *)value dateValue];
+    }
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [NSDate dateWithTimeIntervalSince1970:[(NSNumber *)value doubleValue]];
+    }
+    return nil;
 }
 
 static NSDictionary *PPHubSafeDictionary(id value)
@@ -837,6 +852,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 @interface PPNotificationInboxItem : NSObject
 @property (nonatomic, copy) NSString *identifier;
+@property (nonatomic, copy, nullable) NSString *documentID;
 @property (nonatomic, copy) NSString *title;
 @property (nonatomic, copy) NSString *subtitle;
 @property (nonatomic, copy) NSString *categoryTitle;
@@ -844,6 +860,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UIColor *accentColor;
 @property (nonatomic, strong, nullable) NSDate *timestamp;
 @property (nonatomic, copy) NSDictionary *payload;
+@property (nonatomic, assign) BOOL isRead;
 @end
 
 @implementation PPNotificationInboxItem
@@ -969,6 +986,8 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     self.titleLabel.text = item.title ?: @"";
     self.subtitleLabel.text = item.subtitle ?: @"";
+    self.titleLabel.font = item.isRead ? [GM MidFontWithSize:16.0] : [GM boldFontWithSize:16.0];
+    self.cardView.alpha = item.isRead ? 0.86 : 1.0;
     NSString *dateText = @"";
     if ([item.timestamp isKindOfClass:NSDate.class]) {
         dateText = [formatter stringFromDate:item.timestamp] ?: @"";
@@ -998,6 +1017,9 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UILabel *emptySubtitleLabel;
 @property (nonatomic, strong) NSArray<PPNotificationInboxItem *> *items;
 @property (nonatomic, strong) NSDateFormatter *dateFormatter;
+@property (nonatomic, strong, nullable) id<FIRListenerRegistration> inboxListener;
+@property (nonatomic, assign) FIRAuthStateDidChangeListenerHandle authStateListenerHandle;
+@property (nonatomic, assign) NSUInteger inboxLoadGeneration;
 - (void)reloadNotifications;
 @end
 
@@ -1091,11 +1113,26 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
                                                  name:@"PPRemoteNotificationTapped"
                                                object:nil];
 
+    __weak typeof(self) weakSelf = self;
+    self.authStateListenerHandle = [[FIRAuth auth] addAuthStateDidChangeListener:^(FIRAuth * _Nonnull auth, FIRUser * _Nullable user) {
+        (void)auth;
+        (void)user;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf reloadNotifications];
+    }];
+
     [self reloadNotifications];
 }
 
 - (void)dealloc
 {
+    [self.inboxListener remove];
+    self.inboxListener = nil;
+    if (self.authStateListenerHandle) {
+        [[FIRAuth auth] removeAuthStateDidChangeListener:self.authStateListenerHandle];
+        self.authStateListenerHandle = 0;
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -1107,46 +1144,75 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)reloadNotifications
 {
-    NSLog(@"PPLAB NotificationsHub reload start");
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self reloadNotifications];
+        });
+        return;
+    }
+
+    DLog(@"[NotificationsInbox] Reload started");
+    [self.inboxListener remove];
+    self.inboxListener = nil;
+    NSUInteger generation = ++self.inboxLoadGeneration;
+    self.items = @[];
+    [self.tableView reloadData];
+    self.tableView.backgroundView.hidden = NO;
+
+    NSString *uid = PPHubTrimmedString([FIRAuth auth].currentUser.uid);
+    if (uid.length == 0) {
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRCollectionReference *inboxCollection = [[[db collectionWithPath:@"UsersCol"]
+                                                documentWithPath:uid]
+                                               collectionWithPath:@"inbox"];
+    FIRQuery *query = [[inboxCollection queryOrderedByField:@"createdAt" descending:YES] queryLimitedTo:50];
+
     __weak typeof(self) weakSelf = self;
-    [[UNUserNotificationCenter currentNotificationCenter] getDeliveredNotificationsWithCompletionHandler:^(NSArray<UNNotification *> * _Nonnull notifications) {
+    self.inboxListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || generation != strongSelf.inboxLoadGeneration) return;
+
+        if (error) {
+            DLog(@"[NotificationsInbox] Read failed | domain=%@ code=%ld",
+                 error.domain ?: @"",
+                 (long)error.code);
+            return;
+        }
+
         NSMutableArray<PPNotificationInboxItem *> *items = [NSMutableArray array];
-        NSMutableArray<NSString *> *providerOnlyIdentifiers = [NSMutableArray array];
-        for (UNNotification *notification in notifications ?: @[]) {
-            UNNotificationContent *content = notification.request.content;
-            NSDictionary *payload = [content.userInfo isKindOfClass:NSDictionary.class] ? content.userInfo : @{};
+        for (FIRDocumentSnapshot *document in snapshot.documents ?: @[]) {
+            NSDictionary *payload = [document.data isKindOfClass:NSDictionary.class] ? document.data : @{};
             if (PPHubIsProviderOnlyNotificationPayload(payload)) {
-                NSString *identifier = PPHubTrimmedString(notification.request.identifier);
-                if (identifier.length > 0) [providerOnlyIdentifiers addObject:identifier];
                 continue;
             }
 
-            NSString *rawTitle = PPHubTrimmedString(content.title);
-            NSString *title = PPHubLocalizedNotificationTitle(rawTitle, PPHubTrimmedString(content.body), payload);
+            NSString *rawTitle = PPHubTrimmedString(payload[@"title"]);
+            NSString *rawBody = PPHubTrimmedString(payload[@"body"]);
+            NSString *title = PPHubLocalizedNotificationTitle(rawTitle, rawBody, payload);
             if (title.length == 0) {
                 title = PPHubInboxCategoryTitle(payload);
             }
 
-            NSString *rawSubtitle = PPHubTrimmedString(content.body);
-            NSString *subtitle = PPHubLocalizedNotificationBody(rawSubtitle, rawTitle, payload);
+            NSString *subtitle = PPHubLocalizedNotificationBody(rawBody, rawTitle, payload);
             if (subtitle.length == 0) {
                 subtitle = PPHubTrimmedString(payload[@"message"] ?: payload[@"status"]);
             }
 
             PPNotificationInboxItem *item = [PPNotificationInboxItem new];
-            item.identifier = PPHubTrimmedString(notification.request.identifier);
+            item.identifier = PPHubTrimmedString(payload[@"notificationId"] ?: document.documentID);
+            item.documentID = PPHubTrimmedString(document.documentID);
             item.title = title;
             item.subtitle = subtitle;
             item.categoryTitle = PPHubInboxCategoryTitle(payload);
             item.symbolName = PPHubInboxSymbolName(payload);
             item.accentColor = PPHubInboxAccentColor(payload);
-            item.timestamp = notification.date;
+            item.timestamp = PPHubDateFromValue(payload[@"createdAt"] ?: payload[@"occurredAt"] ?: payload[@"updatedAt"]);
             item.payload = payload;
+            item.isRead = [payload[@"isRead"] boolValue] || [payload[@"read"] boolValue];
             [items addObject:item];
-        }
-
-        if (providerOnlyIdentifiers.count > 0) {
-            [[UNUserNotificationCenter currentNotificationCenter] removeDeliveredNotificationsWithIdentifiers:providerOnlyIdentifiers];
         }
 
         [items sortUsingComparator:^NSComparisonResult(PPNotificationInboxItem *a, PPNotificationInboxItem *b) {
@@ -1156,11 +1222,39 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         }];
 
         dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
+            if (generation != strongSelf.inboxLoadGeneration) return;
             strongSelf.items = items.copy;
             [strongSelf.tableView reloadData];
             strongSelf.tableView.backgroundView.hidden = (strongSelf.items.count > 0);
+        });
+    }];
+}
+
+- (void)markItemReadIfNeeded:(PPNotificationInboxItem *)item
+{
+    if (item.isRead || item.documentID.length == 0) return;
+
+    NSString *uid = PPHubTrimmedString([FIRAuth auth].currentUser.uid);
+    if (uid.length == 0) return;
+
+    FIRDocumentReference *inboxRef = [[[[[FIRFirestore firestore] collectionWithPath:@"UsersCol"]
+                                        documentWithPath:uid]
+                                       collectionWithPath:@"inbox"]
+                                       documentWithPath:item.documentID];
+    __weak typeof(self) weakSelf = self;
+    [inboxRef updateData:@{@"isRead": @YES} completion:^(NSError * _Nullable error) {
+        if (error) {
+            DLog(@"[NotificationsInbox] Read acknowledgement failed | domain=%@ code=%ld",
+                 error.domain ?: @"",
+                 (long)error.code);
+            return;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            item.isRead = YES;
+            [strongSelf.tableView reloadData];
         });
     }];
 }
@@ -1187,6 +1281,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     if (indexPath.row >= (NSInteger)self.items.count) return;
 
     PPNotificationInboxItem *item = self.items[indexPath.row];
+    [self markItemReadIfNeeded:item];
     NSDictionary *payload = item.payload ?: @{};
     NSDictionary *meta = PPHubSafeDictionary(payload[@"meta"]);
     NSString *threadID = PPHubTrimmedString(payload[@"threadID"] ?: payload[@"threadId"]);

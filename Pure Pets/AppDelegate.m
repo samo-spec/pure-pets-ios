@@ -642,7 +642,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
   #if DEBUG
     return [self pp_shouldForceDebugAppCheckProvider];
   #else
-    return [self pp_shouldForceDebugAppCheckProvider];
+    return NO;
   #endif
 #endif
 }
@@ -942,9 +942,8 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
         PPAppDelegateMergedNotificationReason(self.notificationV2PendingReason, safeReason);
 
     if (self.notificationV2RegistrationDebounceScheduled) {
-        NSLog(@"[NotificationsV2] Registration coalesced. reason=%@ uid=%@",
-              self.notificationV2PendingReason ?: @"unknown",
-              uid);
+        DLog(@"[NotificationsV2] Registration coalesced | reason=%@ hasUID=yes",
+             self.notificationV2PendingReason ?: @"unknown");
         return;
     }
 
@@ -981,9 +980,8 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     if (self.notificationV2RegistrationInFlight) {
         self.notificationV2PendingReason =
             PPAppDelegateMergedNotificationReason(self.notificationV2PendingReason, safeReason);
-        NSLog(@"[NotificationsV2] Registration coalesced while in flight. reason=%@ uid=%@",
-              safeReason.length > 0 ? safeReason : @"unknown",
-              uid);
+        DLog(@"[NotificationsV2] Registration coalesced in flight | reason=%@ hasUID=yes",
+             safeReason.length > 0 ? safeReason : @"unknown");
         return;
     }
 
@@ -1079,17 +1077,15 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
                        notificationScopeSignature] componentsJoinedByString:@"|"];
 
                 if ([registrationSignature isEqualToString:PPAppDelegateTrimmedString(strongSelf.notificationV2LastSuccessfulSignature)]) {
-                    NSLog(@"[NotificationsV2] Registration skipped. reason=%@ duplicateSignature=yes uid=%@",
-                          safeReason.length > 0 ? safeReason : @"unknown",
-                          uid);
+                    DLog(@"[NotificationsV2] Registration skipped | reason=%@ duplicateSignature=yes",
+                         safeReason.length > 0 ? safeReason : @"unknown");
                     [strongSelf pp_finishNotificationV2RegistrationCycle];
                     return;
                 }
 
                 if ([registrationSignature isEqualToString:PPAppDelegateTrimmedString(strongSelf.notificationV2InFlightSignature)]) {
-                    NSLog(@"[NotificationsV2] Registration skipped. reason=%@ inFlightSignature=yes uid=%@",
-                          safeReason.length > 0 ? safeReason : @"unknown",
-                          uid);
+                    DLog(@"[NotificationsV2] Registration skipped | reason=%@ inFlightSignature=yes",
+                         safeReason.length > 0 ? safeReason : @"unknown");
                     [strongSelf pp_finishNotificationV2RegistrationCycle];
                     return;
                 }
@@ -1262,10 +1258,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
     UIAlertAction *okAction = [UIAlertAction actionWithTitle:okButton
                                                        style:UIAlertActionStyleDefault
-                                                     handler:^(UIAlertAction * _Nonnull action) {
-        // Exit gracefully
-        exit(0);
-    }];
+                                                     handler:nil];
 
     [alert addAction:okAction];
 
@@ -1296,23 +1289,14 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
     NSString *orderId = PPAppDelegateOrderIDFromPayload(userInfo);
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
-    NSLog(@"PPLAB AppDelegate remote notification start | type=%@ orderId=%@ status=%@ paymentStatus=%@ threadID=%@",
-          type ?: @"",
-          orderId ?: @"",
-          status ?: @"",
-          paymentStatus ?: @"",
-          threadID ?: @"");
-    NSLog(@"[Push] didReceiveRemoteNotification | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@ | threadID=%@",
-          type ?: @"",
-          orderId,
-          status,
-          paymentStatus,
-          threadID ?: @"");
+    DLog(@"[Push] Background notification | type=%@ status=%@ paymentStatus=%@ hasOrder=%d hasThread=%d",
+         type ?: @"",
+         status ?: @"",
+         paymentStatus ?: @"",
+         orderId.length > 0,
+         threadID.length > 0);
     if ([type hasPrefix:@"order"]) {
-        NSLog(@"[Push] 📦 Order notification received in background | orderId=%@ | status=%@ | paymentStatus=%@",
-              orderId,
-              status,
-              paymentStatus);
+        DLog(@"[Push] Background order notification | status=%@ paymentStatus=%@", status, paymentStatus);
     }
     if ([type isEqualToString:@"chat"] || threadID.length > 0) {
 
@@ -1322,18 +1306,30 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
             return;
         }
 
-        __block UIBackgroundTaskIdentifier bgTask = [application beginBackgroundTaskWithExpirationHandler:^{
-            [application endBackgroundTask:bgTask];
-            bgTask = UIBackgroundTaskInvalid;
+        NSObject *completionLock = [NSObject new];
+        __block BOOL didFinishFetch = NO;
+        __block UIBackgroundTaskIdentifier bgTask = UIBackgroundTaskInvalid;
+        void (^finishFetch)(UIBackgroundFetchResult) = ^(UIBackgroundFetchResult result) {
+            @synchronized (completionLock) {
+                if (didFinishFetch) return;
+                didFinishFetch = YES;
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(result);
+                if (bgTask != UIBackgroundTaskInvalid) {
+                    [application endBackgroundTask:bgTask];
+                    bgTask = UIBackgroundTaskInvalid;
+                }
+            });
+        };
+
+        bgTask = [application beginBackgroundTaskWithExpirationHandler:^{
+            finishFetch(UIBackgroundFetchResultNoData);
         }];
 
         [[ChManager sharedManager] syncPendingDeliveriesForUser:nil
                                                      completion:^{
-            completionHandler(UIBackgroundFetchResultNewData);
-            if (bgTask != UIBackgroundTaskInvalid) {
-                [application endBackgroundTask:bgTask];
-                bgTask = UIBackgroundTaskInvalid;
-            }
+            finishFetch(UIBackgroundFetchResultNewData);
         }];
 
         return;
@@ -1358,16 +1354,8 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
     if (type.length > 0 || orderId.length > 0) {
-        NSLog(@"PPLAB AppDelegate will present notification start | type=%@ orderId=%@ status=%@ paymentStatus=%@",
-              type ?: @"",
-              orderId ?: @"",
-              status ?: @"",
-              paymentStatus ?: @"");
-        NSLog(@"[Push] willPresentNotification | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@",
-              type,
-              orderId,
-              status,
-              paymentStatus);
+        DLog(@"[Push] Foreground notification | type=%@ status=%@ paymentStatus=%@ hasOrder=%d",
+             type ?: @"", status ?: @"", paymentStatus ?: @"", orderId.length > 0);
     }
     if (!completionHandler) return;
     if (PPAppDelegateIsChatNotificationPayload(userInfo) &&
@@ -1402,16 +1390,8 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     NSString *orderId = PPAppDelegateOrderIDFromPayload(userInfo);
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";
-    NSLog(@"PPLAB AppDelegate notification tap start | type=%@ orderId=%@ status=%@ paymentStatus=%@",
-          type ?: @"",
-          orderId ?: @"",
-          status ?: @"",
-          paymentStatus ?: @"");
-    NSLog(@"[Push] Notification tapped | type=%@ | orderId=%@ | status=%@ | paymentStatus=%@",
-          type,
-          orderId,
-          status,
-          paymentStatus);
+    DLog(@"[Push] Notification opened | type=%@ status=%@ paymentStatus=%@ hasOrder=%d",
+         type ?: @"", status ?: @"", paymentStatus ?: @"", orderId.length > 0);
     [self pp_forwardNotificationTapToActiveScene:userInfo];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"PPRemoteNotificationTapped"
                                                         object:nil

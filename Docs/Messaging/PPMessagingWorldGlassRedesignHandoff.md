@@ -1,7 +1,17 @@
 # Pure Pets Messaging World-Glass Redesign Handoff
 
 Date: 2026-08-06  
-Implementation state: present in the current dirty working tree; not build-, test-, parser-, linter-, simulator-, or device-verified.
+Implementation state: present in the current dirty working tree; source-parsed and statically audited on 2026-08-08, but not build-, simulator-, or device-verified.
+
+## 2026-08-08 screenshot follow-up
+
+- Replaced the header package's cool indigo/aqua field with the app-provided semantic `mainBackground` (`Color.ppBackground` in the consumer host). The package default matches light `#F8F8F9` and dark `#0E0B0C`; messaging contains no direct `quietLilac` or `#618CB8` dependency.
+- Removed the host/package double background, large floating shadows, and perpetual online pulse. Identity, presence, actions, and support/listing/order context now form a shorter main-background canopy with state-scoped, sub-300 ms motion and Reduce Motion fallbacks.
+- Added adaptive live/warning colors with calculated source contrast above 4.5:1 against the light and dark main backgrounds. Rendered contrast remains unverified.
+- Increased text-bubble minimum height to 40 points and default vertical padding to 9 points while reducing continuation/end spacing to 3/7 points.
+- Centralized all active chat routes through `PPOverlayCoordinator` as `UIModalPresentationFullScreen`. The notification/tab entry no longer pushes `PPMessagingSwiftUIHostController`; existing callers retain their source controller, optional pet-ad context, duplicate-presentation guard, and animated flag.
+- Validation completed: Swift frontend parse for the header package, message cell, and messaging screen; 23/23 source contracts; strict SwiftyMax static audits; `git diff --check`; scoped route/color searches; CodeRabbit returned zero findings for the header, message-cell, and messaging-screen directories. A second header review attempt after contrast refinements was rate-limited and did not run.
+- No Xcode build, simulator, physical-device run, VoiceOver/AX5 session, or rendered before/after capture was performed. No connected physical iPhone was available during the follow-up, so a 98/100 world-class release score remains `UNVERIFIED` rather than claimed.
 
 ## Request and scope
 

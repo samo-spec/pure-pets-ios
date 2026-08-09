@@ -7,8 +7,6 @@ internal struct SpearHeaderLoadingRow: View {
   let copy: SpearChatHeaderCopy
   let actions: SpearChatHeaderActions
 
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
   var body: some View {
     HStack(spacing: 12) {
       SpearHeaderIconActionButton(
@@ -69,15 +67,7 @@ internal struct SpearHeaderLoadingRow: View {
       }
     }
 
-    if reduceMotion {
-      content.opacity(0.55)
-    } else {
-      content.phaseAnimator([0.35, 0.65]) { view, opacity in
-        view.opacity(opacity)
-      } animation: { _ in
-        .easeInOut(duration: 1.0)
-      }
-    }
+    content.opacity(0.58)
   }
 
   @ViewBuilder
@@ -165,7 +155,7 @@ internal struct SpearHeaderUnavailableRow: View {
         .accessibilityHidden(true)
 
       Text(title)
-        .font(.subheadline.weight(.medium))
+        .font(Font.ppBeirutiMedium(size: 15, relativeTo: .subheadline))
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -120,7 +120,7 @@ static NSArray<NSString *> *PPSupportUniqueStrings(NSArray<NSString *> *values) 
             [set addObject:safeValue];
         }
     }
-    return set.array ?: @[];
+    return [set.array sortedArrayUsingSelector:@selector(compare:)] ?: @[];
 }
 
 static BOOL PPSupportArrayContainsString(id value, NSString *needle) {
@@ -906,6 +906,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             }
         }];
 
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"forceReloadThreads" object:nil];
+
         (void)msg;
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -1160,15 +1162,16 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     //   can read these docs.
 
     FIRQuery *query =
-    [[[[FIRFirestore firestore]
+    [[[[[FIRFirestore firestore]
        collectionGroupWithID:@"Messages"]
       queryWhereField:@"receiverID" isEqualTo:resolvedUserID]
-     queryWhereField:@"status" isEqualTo:@(ChatMessageStatusSent)];
+     queryWhereField:@"status" isEqualTo:@(ChatMessageStatusSent)]
+     queryLimitedTo:500];
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error || !snapshot) {
-            NSLog(@"❌ [DeliverySync] Query failed: %@", error.localizedDescription);
+            DLog(@"[DeliverySync] Query failed | domain=%@ code=%ld", error.domain ?: @"", (long)error.code);
 
             // Helpful hint for the common permission failure
             // (e.g. auth not ready, user not a thread member, or rules too strict)
@@ -1176,10 +1179,10 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 NSLog(@"🚫 [DeliverySync] Permission denied. Ensure the user is authenticated and Firestore rules allow receiver to read Messages via collectionGroup.");
             }
 
-            if (completion) {
-                dispatch_async(dispatch_get_main_queue(), completion);
-            }
-            self.deliverySyncInFlightUserID = nil;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.deliverySyncInFlightUserID = nil;
+                if (completion) completion();
+            });
             return;
         }
 
@@ -1196,7 +1199,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         // We already filtered status == SENT in the query, so we can update without
         // reading each document again.
-        NSInteger updated = 0;
+        NSInteger attempted = 0;
+        dispatch_group_t updateGroup = dispatch_group_create();
 
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
 
@@ -1214,29 +1218,30 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
              collectionWithPath:@"Messages"]
              documentWithPath:messageID];
 
+            dispatch_group_enter(updateGroup);
             [ref updateData:@{
                 @"status": @(ChatMessageStatusDelivered),
                 @"deliveredAt": [FIRFieldValue fieldValueForServerTimestamp],
                 @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
             } completion:^(NSError * _Nullable updateError) {
                 if (updateError) {
-                    NSLog(@"❌ [DeliverySync] Failed to mark delivered msg=%@ thread=%@: %@",
-                          messageID, threadID, updateError.localizedDescription);
+                    DLog(@"[DeliverySync] Delivery write failed | domain=%@ code=%ld",
+                         updateError.domain ?: @"",
+                         (long)updateError.code);
                 }
+                dispatch_group_leave(updateGroup);
             }];
 
-            updated += 1;
+            attempted += 1;
         }
 
-        NSLog(@"✅ [DeliverySync] Marked %ld message(s) as delivered.", (long)updated);
-
-        self.lastDeliverySyncUserID = resolvedUserID;
-        self.lastDeliverySyncCompletedAt = [NSDate date];
-        self.deliverySyncInFlightUserID = nil;
-
-        if (completion) {
-            dispatch_async(dispatch_get_main_queue(), completion);
-        }
+        DLog(@"[DeliverySync] Awaiting %ld delivery write(s)", (long)attempted);
+        dispatch_group_notify(updateGroup, dispatch_get_main_queue(), ^{
+            self.lastDeliverySyncUserID = resolvedUserID;
+            self.lastDeliverySyncCompletedAt = [NSDate date];
+            self.deliverySyncInFlightUserID = nil;
+            if (completion) completion();
+        });
 
     }];
 }
@@ -1280,11 +1285,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     self.globalUnreadListenerUserID = resolvedUserID;
 
     FIRQuery *query =
-    [[[[FIRFirestore firestore]
+    [[[[[FIRFirestore firestore]
        collectionGroupWithID:@"Messages"]
       queryWhereField:@"receiverID" isEqualTo:resolvedUserID]
      queryWhereField:@"status"
-          isLessThan:@(ChatMessageStatusRead)];
+          isLessThan:@(ChatMessageStatusRead)]
+     queryLimitedTo:500];
 
     NSLog(@"📡 Global unread listener started");
 
@@ -1556,7 +1562,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
          collectionWithPath:@"Messages"];
 
         FIRQuery *query =
-        [messagesRef queryOrderedByField:@"timestamp"];
+        [[messagesRef queryOrderedByField:@"timestamp"] queryLimitedToLast:200];
 
         __weak typeof(self) weakSelf = self;
 
@@ -1895,6 +1901,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"lastMessage": @"",
             @"lastUpdated": [FIRFieldValue fieldValueForServerTimestamp],
             @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
+            @"messagesCount": @(0),
             @"mutedBy": @[],
             @"binnedBy": @[],
             @"reportedBy": @[],
@@ -1946,6 +1953,10 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
             [[NSNotificationCenter defaultCenter]
              postNotificationName:@"UnreadCountsUpdated"
+             object:nil];
+
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:@"forceReloadThreads"
              object:nil];
 
             if (completion) completion(thread, nil);
@@ -2023,7 +2034,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 : 0;
 
             // Skip empty threads (no messages yet)
-            if (thread.messagesCount == 0) {
+            if (thread.messagesCount == 0 && thread.lastMessage.length == 0) {
                 continue;
             }
 
@@ -2117,7 +2128,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 : 0;
 
             // Skip empty threads (design decision)
-            if (thread.messagesCount == 0) {
+            if (thread.messagesCount == 0 && thread.lastMessage.length == 0) {
                 continue;
             }
 

@@ -203,26 +203,10 @@
 
 - (void)openChatThread:(ChatThreadModel *)thread
 {
-    if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return; }
-    if (!thread) return;
-
-    UIViewController *presenter = [PPOverlayCoordinator pp_resolvedPresenterFrom:self.presenter];
-    if (![PPOverlayCoordinator pp_canPresentFrom:presenter]) return;
- 
-    // PPMessagingViewController *chatVC =
-    //     [[PPMessagingViewController alloc] initWithChatThread:thread];
-     //[PPFunc presentFloatingSheetFrom:presenter sheetVC:chatVC detentStyle:PPSheetDetentStyleSemiLargAndLarge];
-    //[nav pushViewController:chatVC animated:YES];
-    
-    PPMessagingSwiftUIHostController *chat = [[PPMessagingSwiftUIHostController alloc] init];
-    [chat configureWithChatThread:thread];
-
-    PPNavigationController *nav =
-        [[PPNavigationController alloc] initWithRootViewController:chat];
-
-    nav.modalPresentationStyle = UIModalPresentationFullScreen;
-
-    [presenter presentViewController:nav animated:YES completion:nil];
+    [PPOverlayCoordinator pp_openChatThread:thread
+                               petAdContext:nil
+                                     fromVC:self.presenter
+                                   animated:YES];
 }
 
 
@@ -236,6 +220,18 @@
 + (BOOL)pp_openChatThread:(ChatThreadModel *)thread
              petAdContext:(nullable PetAd *)petAd
                    fromVC:(UIViewController *)vc
+{
+    return [self pp_openChatThread:thread
+                      petAdContext:petAd
+                            fromVC:vc
+                          animated:YES];
+}
+
+
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+             petAdContext:(nullable PetAd *)petAd
+                   fromVC:(UIViewController *)vc
+                 animated:(BOOL)animated
 {
     if (!PPIsUserLoggedIn) {
         [UserManager showPromptOnTopController];
@@ -274,7 +270,8 @@
 
     PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:chat];
     nav.modalPresentationStyle = UIModalPresentationFullScreen;
-    [presenter presentViewController:nav animated:YES completion:nil];
+    nav.modalPresentationCapturesStatusBarAppearance = YES;
+    [presenter presentViewController:nav animated:animated completion:nil];
 
     NSLog(@"✅ [Chat] Chat screen presented successfully");
     return YES;

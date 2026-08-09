@@ -26,6 +26,7 @@ private enum HomeLegacySectionID: Int, CaseIterable {
     case marketplaceHero = 17
     case suggestionAds = 18
     case suggestionAccessories = 19
+    case pureLens = 20
 }
 
 private enum HomeHeroPresentationMode {

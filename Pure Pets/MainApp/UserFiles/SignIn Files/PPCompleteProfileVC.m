@@ -2057,16 +2057,16 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
             }
 
             currentVerificationID = verificationID ?: @"";
-            [[NSUserDefaults standardUserDefaults] setObject:currentVerificationID forKey:@"authVerificationID"];
-            [[NSUserDefaults standardUserDefaults] synchronize];
 
+            DLog(@"[Auth][OTP] Presenting profile verification | phoneLength=%lu", (unsigned long)safePhone.length);
             PPVerificationCodeViewController *vc = [[PPVerificationCodeViewController alloc] initWithPhone:safePhone];
+            vc.verificationID = currentVerificationID;
             __weak PPVerificationCodeViewController *weakVerificationVC = vc;
             vc.onCodeVerificationRequested = ^(NSString *code, PPVerificationCodeCheckCompletion codeCompletion) {
-                NSString *verificationIDForCode = currentVerificationID.length
-                    ? currentVerificationID
-                    : ([[NSUserDefaults standardUserDefaults] stringForKey:@"authVerificationID"] ?: @"");
+                DLog(@"[Auth][OTP] Profile verification submitted | codeLength=%lu", (unsigned long)code.length);
+                NSString *verificationIDForCode = currentVerificationID ?: @"";
                 if (verificationIDForCode.length == 0) {
+                    DLog(@"[Auth][OTP] Missing in-memory profile verification binding");
                     NSError *missingVerificationError = [NSError errorWithDomain:@"PPCompleteProfileVC.Phone"
                                                                             code:2004
                                                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"invalid_code_message")}];
@@ -2078,6 +2078,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
                 FIRUser *currentAuthUser = [FIRAuth auth].currentUser;
                 if (!currentAuthUser) {
+                    NSLog(@"[PPVerticationOTP] [PPCompleteProfileVC] ERROR: [FIRAuth auth].currentUser is nil!");
                     NSError *authMissingError = [NSError errorWithDomain:@"PPCompleteProfileVC.Phone"
                                                                     code:2005
                                                                 userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_register_required_title")}];
@@ -2087,17 +2088,22 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
                     return;
                 }
 
+                DLog(@"[Auth][OTP] Updating profile phone credential | hasUser=%d", currentAuthUser.uid.length > 0);
                 FIRPhoneAuthCredential *credential = [[FIRPhoneAuthProvider provider] credentialWithVerificationID:verificationIDForCode
                                                                                                   verificationCode:code ?: @""];
                 [currentAuthUser updatePhoneNumberCredential:credential completion:^(NSError * _Nullable updateError) {
                     PPCompleteProfileDispatchMain(^{
                         if (updateError) {
+                            DLog(@"[Auth][OTP] Profile phone credential update failed | domain=%@ code=%ld", updateError.domain ?: @"", (long)updateError.code);
                             if (codeCompletion) {
                                 codeCompletion(NO, updateError);
                             }
                             return;
                         }
 
+                        DLog(@"[Auth][OTP] Profile phone credential update succeeded");
+                        currentVerificationID = @"";
+                        weakVerificationVC.verificationID = nil;
                         if (completion) {
                             completion(nil);
                         }

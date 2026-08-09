@@ -21,7 +21,11 @@
 #import <SafariServices/SafariServices.h>
 #import <objc/runtime.h>
 
+#if DEBUG
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+#else
+#define PPORDERLog(...)
+#endif
 
 @implementation UIViewController (QIBFullscreenPresentationFix)
 + (void)load {

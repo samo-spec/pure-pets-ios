@@ -12,8 +12,8 @@
 #import "FTPopOverMenu.h"
 #import "TQImageViewer.h"
 #import "DetailsTableViewCell.h"
-#import "CCActivityHUD.h"
-#import "YIInnerShadowView.h"
+//#import "CCActivityHUD.h"
+//#import "YIInnerShadowView.h"
 #import "PressButton.h"
 #import <AVFoundation/AVFoundation.h>
 #import "YYAnimatedImageView.h"
@@ -73,7 +73,7 @@
 //@property  UIImage *cardImage;
 @property (strong, nonatomic) IBOutlet UILabel *CardTitle;
 @property (strong, nonatomic) IBOutlet UILabel *ageLabel;
-@property (strong, nonatomic) CCActivityHUD *activityHUD;
+//@property (strong, nonatomic) CCActivityHUD *activityHUD;
 @property (weak, nonatomic) IBOutlet UILabel *laName;
 @property (weak, nonatomic) IBOutlet UILabel *RingID;
 @property (weak, nonatomic) IBOutlet UILabel *CategoryLabel;

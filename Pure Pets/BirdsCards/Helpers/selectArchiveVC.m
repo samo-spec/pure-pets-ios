@@ -5,8 +5,7 @@
 //  Created by Mohammed Ahmed on 25/07/2024.
 //
 
-#import "AAPopupView.h"
-#import "ArchiveDetailsModel.h"
+ #import "ArchiveDetailsModel.h"
 #import "ImageModel.h"
 #import "JGProgressHUD.h"
 #import "Language.h"
@@ -16,7 +15,7 @@
     int reloadAnimationFlag;
 }
 @property (nonatomic, strong) TTGSnackbar *snakBar;
-@property (nonatomic, strong) AAPopupView *archivePopupView;
+//@property (nonatomic, strong) AAPopupView *archivePopupView;
 @property (nonatomic, strong) NSMutableArray<ArchiveDetailsModel *> *archiveDetails;
 @property (nonatomic, strong) UIButton *dismissButton;
 @property (nonatomic, strong) UIView *sheetHandleView;
@@ -421,12 +420,14 @@ static NSString *menuCellIdentifier = @"Default Cell";
 
     [self pp_applyElevatedStyleToView:self.topBarView cornerRadius:30.0];
     [self pp_applyElevatedStyleToView:self.archiveView cornerRadius:28.0];
-    self.archivePopupView =
-        [AAPopupView popupWithContentView:self.archiveView
-                                 showType:AAPopupViewShowTypeFadeIn
-                              dismissType:AAPopupViewDismissTypeFadeOut
-                                 maskType:AAPopupViewMaskTypeDimmed
-                 dismissOnBackgroundTouch:YES];
+    /*
+     self.archivePopupView =
+         [AAPopupView popupWithContentView:self.archiveView
+                                  showType:AAPopupViewShowTypeFadeIn
+                               dismissType:AAPopupViewDismissTypeFadeOut
+                                  maskType:AAPopupViewMaskTypeDimmed
+                  dismissOnBackgroundTouch:YES];
+     */
 }
 
 - (void)viewWillLayoutSubviews
@@ -659,7 +660,7 @@ CardModel *selectedCard;
 
 
     //archiveCard = CardData;
-    [self.archivePopupView show];
+   // [self.archivePopupView show];
     return;
     // update data source
 }
@@ -839,7 +840,7 @@ CardModel *selectedCard;
 }
 
 - (void)closeArchiveBTN:(id)sender {
-    [self.archivePopupView dismiss:YES];
+  //  [self.archivePopupView dismiss:YES];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView

@@ -70,17 +70,18 @@ struct PPServiceViewerHeroHeader: View {
     }
 }
 
-// MARK: - Title Card (Main Service Identity)
+// MARK: - Care Passport
 
-struct PPServiceViewerTitleCard: View {
+struct PPServiceViewerCarePassport: View {
     let snapshot: PPServiceViewerSnapshot
+    let onCall: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 9) {
                     if !snapshot.category.isEmpty {
-                        categoryBadge(snapshot.category)
+                        categoryLabel(snapshot.category)
                     }
 
                     Text(snapshot.title)
@@ -92,13 +93,13 @@ struct PPServiceViewerTitleCard: View {
                         .accessibilityAddTraits(.isHeader)
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: 6)
 
-                priceBadge(snapshot.price)
+                priceBlock(snapshot.price)
             }
 
             if !snapshot.serviceTypeText.isEmpty {
-                HStack(spacing: 6) {
+                HStack(spacing: 7) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.ppPrimary)
@@ -109,77 +110,30 @@ struct PPServiceViewerTitleCard: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-        }
-        .padding(18)
-        .ppGlassSurface(
-            in: RoundedRectangle(cornerRadius: 26, style: .continuous),
-            tint: Color.ppCard.opacity(0.85),
-            fallback: Color(uiColor: .systemBackground).opacity(0.95),
-            stroke: Color.white.opacity(0.22)
-        )
-        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
-    }
 
-    private func categoryBadge(_ text: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
+            Divider()
+                .overlay(Color.ppSeparator.opacity(0.42))
 
-            Text(text)
-                .font(PPAccessoryTypography.captionBold)
-                .foregroundStyle(Color.ppPrimaryDarker)
+            providerRow
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
+        .padding(20)
         .background(
-            Capsule()
-                .fill(Color.ppPrimary.opacity(0.12))
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color(uiColor: .systemBackground).opacity(0.96))
         )
-        .overlay(
+        .overlay(alignment: .topLeading) {
             Capsule()
-                .stroke(Color.ppPrimary.opacity(0.22), lineWidth: 0.8)
-        )
-    }
-
-    private func priceBadge(_ price: String) -> some View {
-        VStack(spacing: 2) {
-            Text(PPServiceViewerL10n.text("Price", fallback: "Price"))
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.80))
-
-            Text(price)
-                .font(PPAccessoryTypography.calloutBold)
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .fill(Color.ppPrimary)
+                .frame(width: 42, height: 4)
+                .padding(.leading, 20)
+                .padding(.top, 12)
+                .accessibilityHidden(true)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.ppPrimary, Color.ppPrimaryDarker],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        )
-        .shadow(color: Color.ppPrimary.opacity(0.3), radius: 6, y: 3)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(PPServiceViewerL10n.text("Price", fallback: "Price")): \(price)")
+        .shadow(color: Color.black.opacity(0.07), radius: 18, x: 0, y: 9)
     }
-}
 
-// MARK: - Provider Card (Trust Component)
-
-struct PPServiceViewerProviderCard: View {
-    let snapshot: PPServiceViewerSnapshot
-    let onCall: () -> Void
-
-    var body: some View {
-        HStack(spacing: 14) {
+    private var providerRow: some View {
+        HStack(spacing: 12) {
             if let avatarURL = snapshot.ownerAvatarURL, !avatarURL.isEmpty {
                 PPAccessoryRemoteImageView(
                     urlString: avatarURL,
@@ -187,21 +141,21 @@ struct PPServiceViewerProviderCard: View {
                     contentMode: .fit,
                     accessibilityLabel: snapshot.ownerName,
                     cacheKey: snapshot.ownerID,
-                    displaySize: CGSize(width: 48, height: 48)
+                    displaySize: CGSize(width: 44, height: 44)
                 )
-                .frame(width: 48, height: 48)
+                .frame(width: 44, height: 44)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Color.ppPrimary.opacity(0.24), lineWidth: 1))
+                .overlay(Circle().stroke(Color.ppPrimary.opacity(0.16), lineWidth: 1))
             } else {
                 ZStack {
                     Circle()
                         .fill(Color.ppPrimary.opacity(0.14))
 
                     Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 24, weight: .medium))
+                        .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(Color.ppPrimary)
                 }
-                .frame(width: 48, height: 48)
+                .frame(width: 44, height: 44)
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -223,30 +177,58 @@ struct PPServiceViewerProviderCard: View {
 
             Spacer(minLength: 8)
 
-            if snapshot.ownerPhone != nil {
+            if hasContact {
                 Button(action: onCall) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "phone.fill")
-                            .font(.system(size: 13, weight: .bold))
-                        Text(PPServiceViewerL10n.text("Call", fallback: "Call"))
-                            .font(PPAccessoryTypography.captionBold)
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .frame(height: 38)
-                    .background(Capsule().fill(Color.ppPrimary))
+                    Image(systemName: "phone.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.ppPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Color.ppPrimary.opacity(0.10)))
+                        .contentShape(Circle())
                 }
-                .buttonStyle(PPAccessoryPressStyle())
+                .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.90))
                 .accessibilityLabel("\(PPServiceViewerL10n.text("Call", fallback: "Call")) \(snapshot.ownerName)")
             }
         }
-        .padding(16)
-        .ppGlassSurface(
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous),
-            tint: Color.ppCard.opacity(0.85),
-            fallback: Color(uiColor: .systemBackground).opacity(0.95),
-            stroke: Color.white.opacity(0.18)
+    }
+
+    private func categoryLabel(_ text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 10, weight: .bold))
+                .accessibilityHidden(true)
+
+            Text(text)
+                .font(PPAccessoryTypography.captionBold)
+        }
+        .foregroundStyle(Color.ppPrimary)
+    }
+
+    private var hasContact: Bool {
+        guard let phone = snapshot.ownerPhone else { return false }
+        return !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func priceBlock(_ price: String) -> some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Text(PPServiceViewerL10n.text("Price", fallback: "Price"))
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.ppTextSecondary)
+
+            Text(price)
+                .font(PPAccessoryTypography.calloutBold)
+                .foregroundStyle(Color.ppPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.ppPrimary.opacity(0.09))
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(PPServiceViewerL10n.text("Price", fallback: "Price")): \(price)")
     }
 }
 
@@ -330,12 +312,10 @@ struct PPServiceViewerReviewComposer: View {
             .buttonStyle(PPAccessoryPressStyle())
             .disabled(isSubmitting)
         }
-        .padding(16)
-        .ppGlassSurface(
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous),
-            tint: Color.ppCard.opacity(0.85),
-            fallback: Color(uiColor: .systemBackground).opacity(0.95),
-            stroke: Color.white.opacity(0.18)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.88))
         )
     }
 }
@@ -411,48 +391,35 @@ struct PPServiceViewerReviewRow: View {
 
 // MARK: - Persistent Contact Action Bar
 
+@available(iOS 15.0, *)
 struct PPServiceViewerActionBar: View {
     let snapshot: PPServiceViewerSnapshot?
     let onShare: () -> Void
     let onCall: () -> Void
-    let onClose: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: onClose) {
-                Image(systemName: Language.isRTL() ? "chevron.right" : "chevron.left")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(Color.ppForeground.opacity(0.85)))
-                    .overlay(Circle().stroke(Color.ppSeparator.opacity(0.5), lineWidth: 1))
-            }
-            .buttonStyle(PPAccessoryPressStyle())
-            .accessibilityLabel(PPServiceViewerL10n.text("Back", fallback: "Back"))
-
             Button(action: onCall) {
                 HStack(spacing: 8) {
                     Image(systemName: "phone.fill")
                         .font(.system(size: 15, weight: .bold))
-                    Text(PPServiceViewerL10n.text("Contact Provider", fallback: "Contact Provider"))
+                    Text(contactTitle)
                         .font(PPAccessoryTypography.calloutBold)
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
                 .background(Capsule().fill(Color.ppPrimary))
-                .shadow(color: Color.ppPrimary.opacity(0.35), radius: 8, y: 4)
             }
             .buttonStyle(PPAccessoryPressStyle())
-            .accessibilityLabel(PPServiceViewerL10n.text("Contact Provider", fallback: "Contact Provider"))
+            .accessibilityLabel(contactTitle)
 
             Button(action: onShare) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(Color.ppForeground.opacity(0.85)))
-                    .overlay(Circle().stroke(Color.ppSeparator.opacity(0.5), lineWidth: 1))
+                    .foregroundStyle(Color.ppPrimary)
+                    .frame(width: 52, height: 52)
+                    .background(Circle().fill(Color.ppPrimary.opacity(0.10)))
             }
             .buttonStyle(PPAccessoryPressStyle())
             .accessibilityLabel(PPServiceViewerL10n.text("Share", fallback: "Share"))
@@ -460,10 +427,11 @@ struct PPServiceViewerActionBar: View {
         .padding(.horizontal, PPSpace.screenMargin)
         .padding(.top, 10)
         .padding(.bottom, 18)
-        .background(
-            Color.ppBackground.opacity(0.94)
-                .ignoresSafeArea(edges: .bottom)
-        )
+        .background(.regularMaterial)
+    }
+
+    private var contactTitle: String {
+        PPServiceViewerL10n.text("service_view_contact_provider", fallback: "Contact provider")
     }
 }
 

@@ -15,7 +15,7 @@
 }
 @property NSMutableArray<BuyerModel *> * _Nullable LocalBuyerArray;
 @property UITextField * _Nullable searchTextField;
-@property (strong, nonatomic) CCActivityHUD                     *activityHUD;
+//@property (strong, nonatomic) CCActivityHUD                     *activityHUD;
 @end
 
 @implementation SalesVCViewController
@@ -30,7 +30,7 @@
 
     // Do any additional setup after loading the view.
     [self setActivityIndecator];
-    [self.activityHUD show];
+   // [self.activityHUD show];
     [self setCollection];
     [self layoutSearchBar];
     
@@ -112,15 +112,17 @@
 
 // MARK: - Set Activity Indicator
 - (void)setActivityIndecator {
-    self.activityHUD = [CCActivityHUD new];
-    self.activityHUD.isTheOnlyActiveView = YES;
-    self.activityHUD.backColor = [UIColor clearColor];
-    self.activityHUD.indicatorColor = [GM appPrimaryColor];
-    self.activityHUD.overlayType = CCActivityHUDOverlayTypeShadow;
-    [self.activityHUD setAppearAnimationType:CCActivityHUDAppearAnimationTypeZoomIn];
-    [self.activityHUD setDisappearAnimationType:CCActivityHUDDisappearAnimationTypeZoomOut];
-    [self.activityHUD setAppearAnimationType:2];
-    [self.activityHUD show];
+  /*
+   self.activityHUD = [CCActivityHUD new];
+   self.activityHUD.isTheOnlyActiveView = YES;
+   self.activityHUD.backColor = [UIColor clearColor];
+   self.activityHUD.indicatorColor = [GM appPrimaryColor];
+   self.activityHUD.overlayType = CCActivityHUDOverlayTypeShadow;
+   [self.activityHUD setAppearAnimationType:CCActivityHUDAppearAnimationTypeZoomIn];
+   [self.activityHUD setDisappearAnimationType:CCActivityHUDDisappearAnimationTypeZoomOut];
+   [self.activityHUD setAppearAnimationType:2];
+   [self.activityHUD show];
+   */
 }
 
 -(void)layoutSearchBar
@@ -193,7 +195,7 @@
     _collectionView.delegate = self;
     _titleLabel.font =  [GM boldFontWithSize:17];
     [self.collectionView reloadData];
-    [self.activityHUD dismiss];
+    //[self.activityHUD dismiss];
 
 }
 
@@ -270,70 +272,72 @@
     
    // [buyerCell.uploadProgressView startAnimating];
    // return;
-    FCAlertView *alert = [[FCAlertView alloc] init];
+  /*
+   FCAlertView *alert = [[FCAlertView alloc] init];
 
-    [alert  showAlertInView:self
-                  withTitle:kLang(@"returnCard")
-               withSubtitle:kLang(@"returnSelledCard")
-            withCustomImage:[UIImage imageNamed:@"Return"]
-        withDoneButtonTitle:kLang(@"yes")
-                 andButtons:nil];
-    [alert addButton:kLang(@"no") withActionBlock:^{ }];
-    __weak typeof(self) weakSelf = self;
-    [alert doneActionBlock:^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        
-        [buyerCell.uploadProgressView startAnimating];
-        // Up
-        // Update Cards
-        NSDictionary *updates = @{
-            @"isSold": @(0),
-        };
-        CardModel *careToReturn = [CardModel getCardForID:b_model.birdID];
+   [alert  showAlertInView:self
+                 withTitle:kLang(@"returnCard")
+              withSubtitle:kLang(@"returnSelledCard")
+           withCustomImage:[UIImage imageNamed:@"Return"]
+       withDoneButtonTitle:kLang(@"yes")
+                andButtons:nil];
+   [alert addButton:kLang(@"no") withActionBlock:^{ }];
+   __weak typeof(self) weakSelf = self;
+   [alert doneActionBlock:^{
+       __strong typeof(weakSelf) strongSelf = weakSelf;
+       if (!strongSelf) return;
        
-        if(!careToReturn){
-            NSLog(@"Card Not Found");
-            
-            [BuyerModel deleteBuyerWithDocumentID:b_model.ID completion:^(NSError * _Nullable error) {
-                [buyerCell.uploadProgressView stopAnimating];
-                NSLog(@"Bird Returned successfully!");
-            }];
-            
-            //buyerCell.uploadProgressView stopAnimating];
-            //return;
-        }
-        [careToReturn updateCardWithID:careToReturn.ID updateDictionary:updates completion:^(NSError * _Nullable error) {
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if(error) {
-                NSLog(@"error %@", error);
-            } else {
-                
-                NSLog(@"Card updated successfully!");
-                [b_model updateCageIsSoldForCard:careToReturn withValue:0 completionHandler:^(int result) {
-                    NSLog(@"Gage updated successfully!");
-                }];
-                
-                [b_model updateArchiveIsSoldForCard:careToReturn withValue:0 completionHandler:^(int result) {
-                    NSLog(@"Archive updated successfully!");
-                }];
-                
-                [BuyerModel deleteBuyerWithDocumentID:b_model.ID completion:^(NSError * _Nullable error) {
-                    NSLog(@"Bird Returned successfully!");
-                }];
-                                
-                [buyerCell.uploadProgressView stopAnimating];
-                if (strongSelf) {
-                    [[AppManager sharedInstance] showSnakBar:kLang(@"Retutn_Compelete") withColor:[GM appPrimaryColor] andDuration:5 containerView:strongSelf.topView];
-                }
-            }
+       [buyerCell.uploadProgressView startAnimating];
+       // Up
+       // Update Cards
+       NSDictionary *updates = @{
+           @"isSold": @(0),
+       };
+       CardModel *careToReturn = [CardModel getCardForID:b_model.birdID];
+      
+       if(!careToReturn){
+           NSLog(@"Card Not Found");
            
-        }];
+           [BuyerModel deleteBuyerWithDocumentID:b_model.ID completion:^(NSError * _Nullable error) {
+               [buyerCell.uploadProgressView stopAnimating];
+               NSLog(@"Bird Returned successfully!");
+           }];
+           
+           //buyerCell.uploadProgressView stopAnimating];
+           //return;
+       }
+       [careToReturn updateCardWithID:careToReturn.ID updateDictionary:updates completion:^(NSError * _Nullable error) {
+           __strong typeof(weakSelf) strongSelf = weakSelf;
+           if(error) {
+               NSLog(@"error %@", error);
+           } else {
+               
+               NSLog(@"Card updated successfully!");
+               [b_model updateCageIsSoldForCard:careToReturn withValue:0 completionHandler:^(int result) {
+                   NSLog(@"Gage updated successfully!");
+               }];
+               
+               [b_model updateArchiveIsSoldForCard:careToReturn withValue:0 completionHandler:^(int result) {
+                   NSLog(@"Archive updated successfully!");
+               }];
+               
+               [BuyerModel deleteBuyerWithDocumentID:b_model.ID completion:^(NSError * _Nullable error) {
+                   NSLog(@"Bird Returned successfully!");
+               }];
+                               
+               [buyerCell.uploadProgressView stopAnimating];
+               if (strongSelf) {
+                   [[AppManager sharedInstance] showSnakBar:kLang(@"Retutn_Compelete") withColor:[GM appPrimaryColor] andDuration:5 containerView:strongSelf.topView];
+               }
+           }
+          
+       }];
+      
+          
        
-           
-        
-    }];
-    [alert setColorScheme:[GM appPrimaryColor]];
+   }];
+   [alert setColorScheme:[GM appPrimaryColor]];
+   */
 }
 
 

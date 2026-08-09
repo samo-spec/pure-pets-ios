@@ -1061,6 +1061,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
 - (NSArray<NSNumber *> *)defaultSectionOrder
 {
     return @[
+        @(PPHomeSectionPureLens),
         @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionMarketplaceHero),
         @(PPHomeSectionProviderCategoryNav),
@@ -1086,6 +1087,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
 - (NSString *)defaultTypeForSectionID:(NSInteger)sectionID
 {
     switch (sectionID) {
+        case PPHomeSectionPureLens: return @"PPHomeSectionPureLens";
         case PPHomeSectionHero: return @"PPHomeSectionHero";
         case PPHomeSectionQuickActions: return @"PPHomeSectionQuickActions";
         case PPHomeSectionCurrentOrders: return @"PPHomeSectionCurrentOrders";
@@ -1136,6 +1138,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         nameMap = @{
+            @"PPHomeSectionPureLens" : @(PPHomeSectionPureLens),
             @"PPHomeSectionHero" : @(PPHomeSectionHero),
             @"PPHomeSectionQuickActions" : @(PPHomeSectionQuickActions),
             @"PPHomeSectionCurrentOrders" : @(PPHomeSectionCurrentOrders),

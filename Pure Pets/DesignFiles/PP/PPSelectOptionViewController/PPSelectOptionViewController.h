@@ -11,6 +11,7 @@
 // Simple selection callback
 NS_ASSUME_NONNULL_BEGIN
 typedef void(^PPSelectOptionBlock)(id _Nullable selectedObject);
+typedef NSString * _Nonnull (^PPSelectOptionTitleProvider)(id option);
 
 // Presentation style
 typedef NS_ENUM(NSInteger, PPSelectOptionPresentationStyle) {
@@ -50,6 +51,7 @@ typedef NS_ENUM(NSInteger, PPSelectOptionPresentationStyle) {
 @property (nonatomic, copy, nullable) NSString *premiumHeroSymbolName;
 @property (nonatomic, copy, nullable) NSString *premiumHeroBadgeText;
 @property (nonatomic, strong, nullable) UIColor *premiumHeroAccentColor;
+@property (nonatomic, copy, nullable) PPSelectOptionTitleProvider optionTitleProvider;
 
 /// Callback when a row is picked (returns your original model)
 @property (nonatomic, copy) PPSelectOptionBlock onSelectOption;

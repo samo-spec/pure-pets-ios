@@ -9,7 +9,7 @@
 #import "PPImageLoaderManager.h"
 #import "PetCareHelpers.h"
 
-static const CGFloat PPPetCareVetCardRadius = 26.0;
+static const CGFloat PPPetCareVetCardRadius = 22.0;
 static const CGFloat PPPetCareVetInnerPadding = 16.0;
 
 static UIColor *PPPetCareVetResolvedColor(UIColor *color, UITraitCollection *traitCollection)
@@ -57,15 +57,43 @@ static BOOL PPPetCareVetIsDarkMode(UITraitCollection *traitCollection)
     return NO;
 }
 
-static UIFont *PPPetCareVetScaledFont(UIFont *font, UIFontTextStyle textStyle)
+static UIFont *PPPetCareVetScaledFontForTrait(UIFont *font,
+                                              UIFontTextStyle textStyle,
+                                              UITraitCollection *traitCollection)
 {
     if (!font) {
         font = [UIFont preferredFontForTextStyle:textStyle];
     }
     if (@available(iOS 11.0, *)) {
-        return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:font];
+        UIFontMetrics *metrics = [UIFontMetrics metricsForTextStyle:textStyle];
+        if (traitCollection) {
+            return [metrics scaledFontForFont:font compatibleWithTraitCollection:traitCollection];
+        }
+        return [metrics scaledFontForFont:font];
     }
     return font;
+}
+
+static UIFont *PPPetCareVetScaledFont(UIFont *font, UIFontTextStyle textStyle)
+{
+    return PPPetCareVetScaledFontForTrait(font, textStyle, nil);
+}
+
+static CGFloat PPPetCareVetMeasuredTextHeight(NSString *text, UIFont *font, CGFloat width)
+{
+    if (text.length == 0 || !font || width <= 0.0) {
+        return 0.0;
+    }
+    CGRect bounds = [text boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+                                       options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                    attributes:@{NSFontAttributeName: font}
+                                       context:nil];
+    return ceil(CGRectGetHeight(bounds));
+}
+
+static BOOL PPPetCareVetUsesAccessibilityLayout(UITraitCollection *traitCollection)
+{
+    return UIContentSizeCategoryIsAccessibilityCategory(traitCollection.preferredContentSizeCategory);
 }
 
 static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSymbolWeight weight)
@@ -97,8 +125,8 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     }
 
     self.translatesAutoresizingMaskIntoConstraints = NO;
-    self.layer.cornerRadius = 14.0;
-    self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.layer.cornerRadius = 13.0;
+    self.layer.borderWidth = 0.0;
     self.clipsToBounds = YES;
     self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitStaticText;
@@ -126,8 +154,8 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     _textLabel.font = PPPetCareVetScaledFont([GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold],
                                              UIFontTextStyleCaption2);
     _textLabel.adjustsFontForContentSizeCategory = YES;
-    _textLabel.numberOfLines = 1;
-    _textLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _textLabel.numberOfLines = 0;
+    _textLabel.lineBreakMode = NSLineBreakByWordWrapping;
     _textLabel.textAlignment = NSTextAlignmentCenter;
     _textLabel.isAccessibilityElement = NO;
     [_textLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
@@ -137,10 +165,12 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
         [_stackView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:8.0],
         [_stackView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8.0],
         [_stackView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+        [_stackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.topAnchor constant:5.0],
+        [_stackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-5.0],
 
         [_iconView.widthAnchor constraintEqualToConstant:12.0],
         [_iconView.heightAnchor constraintEqualToConstant:12.0],
-        [self.heightAnchor constraintEqualToConstant:28.0],
+        [self.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
         [self.widthAnchor constraintGreaterThanOrEqualToConstant:70.0]
     ]];
 
@@ -191,11 +221,95 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     UIButton *_detailsButton;
     CAGradientLayer *_detailsGradientLayer;
     UIButton *_callButton;
+    BOOL _canContact;
+
+    NSLayoutConstraint *_textLeadingToLogoConstraint;
+    NSLayoutConstraint *_textLeadingExpandedConstraint;
+    NSLayoutConstraint *_textCenterYConstraint;
+    NSLayoutConstraint *_textTopExpandedConstraint;
+    NSLayoutConstraint *_badgeTopToLogoConstraint;
+    NSLayoutConstraint *_badgeTopToTextConstraint;
 }
 
 + (NSString *)reuseIdentifier
 {
     return PPPetCareVetCellID;
+}
+
++ (CGFloat)preferredHeightForVet:(VetModel *)vet
+                    mainKindName:(NSString *)mainKindName
+                           width:(CGFloat)width
+                 traitCollection:(UITraitCollection *)traitCollection
+{
+    if (!PPPetCareVetUsesAccessibilityLayout(traitCollection)) {
+        return 206.0;
+    }
+
+    NSString *title = vet.title.length > 0
+        ? vet.title
+        : PPPetCareLocalized(@"pet_care_vet_untitled", @"Veterinarian");
+    NSString *subtitle = vet.descriptionText.length > 0
+        ? vet.descriptionText
+        : PPPetCareLocalized(@"pet_care_vet_default_subtitle", @"Care provider ready for pet health support.");
+    NSString *kind = mainKindName.length > 0
+        ? mainKindName
+        : PPPetCareLocalized(@"pet_care_all_pets", @"All pets");
+    NSString *type = vet.type == VetTypeCompany
+        ? PPPetCareLocalized(@"pet_care_vet_company", @"Clinic")
+        : PPPetCareLocalized(@"pet_care_vet_personal", @"Doctor");
+    BOOL canContact = (vet.phone.length > 0 || vet.whatsapp.length > 0);
+    NSString *contact = canContact
+        ? PPPetCareLocalized(@"pet_care_vet_contact_ready", @"Contact ready")
+        : PPPetCareLocalized(@"pet_care_vet_no_phone", @"Details only");
+
+    UIFont *titleFont = PPPetCareVetScaledFontForTrait(
+        [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightBold],
+        UIFontTextStyleHeadline,
+        traitCollection
+    );
+    UIFont *subtitleFont = PPPetCareVetScaledFontForTrait(
+        [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium],
+        UIFontTextStyleSubheadline,
+        traitCollection
+    );
+    UIFont *badgeFont = PPPetCareVetScaledFontForTrait(
+        [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold],
+        UIFontTextStyleCaption2,
+        traitCollection
+    );
+    UIFont *buttonFont = PPPetCareVetScaledFontForTrait(
+        [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightBold],
+        UIFontTextStyleCallout,
+        traitCollection
+    );
+
+    CGFloat innerWidth = MAX(0.0, width - (PPPetCareVetInnerPadding * 2.0));
+    CGFloat titleHeight = PPPetCareVetMeasuredTextHeight(title, titleFont, innerWidth);
+    CGFloat measuredSubtitleHeight = PPPetCareVetMeasuredTextHeight(subtitle, subtitleFont, innerWidth);
+    CGFloat subtitleHeight = MIN(measuredSubtitleHeight, ceil(subtitleFont.lineHeight * 3.0));
+    CGFloat textHeight = titleHeight + 4.0 + subtitleHeight;
+
+    CGFloat badgeTextWidth = MAX(0.0, innerWidth - 33.0);
+    CGFloat tallestBadgeHeight = 26.0;
+    for (NSString *badgeText in @[kind ?: @"", type ?: @"", contact ?: @""]) {
+        CGFloat badgeTextHeight = PPPetCareVetMeasuredTextHeight(badgeText, badgeFont, badgeTextWidth);
+        tallestBadgeHeight = MAX(tallestBadgeHeight, badgeTextHeight + 10.0);
+    }
+    CGFloat badgesHeight = (tallestBadgeHeight * 3.0) + 12.0;
+
+    CGFloat buttonTextWidth = MAX(0.0, innerWidth - 24.0);
+    CGFloat detailsHeight = MAX(44.0,
+                                PPPetCareVetMeasuredTextHeight(PPPetCareLocalized(@"pet_care_details", @"Details"),
+                                                               buttonFont,
+                                                               buttonTextWidth) + 16.0);
+    CGFloat callHeight = MAX(44.0,
+                             PPPetCareVetMeasuredTextHeight(PPPetCareLocalized(@"pet_care_call", @"Call"),
+                                                            buttonFont,
+                                                            buttonTextWidth) + 16.0);
+    CGFloat actionsHeight = (MAX(detailsHeight, callHeight) * 2.0) + 10.0;
+    CGFloat measuredHeight = 6.0 + 18.0 + 58.0 + 12.0 + textHeight + 12.0
+        + badgesHeight + 10.0 + actionsHeight + 14.0 + 6.0;
+    return MAX(420.0, ceil(measuredHeight));
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -233,7 +347,7 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     _surfaceFillView.translatesAutoresizingMaskIntoConstraints = NO;
     _surfaceFillView.clipsToBounds = YES;
     _surfaceFillView.layer.cornerRadius = PPPetCareVetCardRadius;
-    _surfaceFillView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    _surfaceFillView.layer.borderWidth = 0.0;
     _surfaceFillView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     if (@available(iOS 13.0, *)) {
         _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -250,6 +364,7 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     _ambientGlowView.clipsToBounds = YES;
     _ambientGlowView.userInteractionEnabled = NO;
     _ambientGlowView.layer.cornerRadius = 76.0;
+    _ambientGlowView.hidden = YES;
     [_surfaceFillView addSubview:_ambientGlowView];
 
     _ambientGlowLayer = [CAGradientLayer layer];
@@ -265,8 +380,8 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
 
     _logoPlateView = [[UIView alloc] init];
     _logoPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    _logoPlateView.layer.cornerRadius = 22.0;
-    _logoPlateView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    _logoPlateView.layer.cornerRadius = 19.0;
+    _logoPlateView.layer.borderWidth = 0.0;
     _logoPlateView.clipsToBounds = NO;
     if (@available(iOS 13.0, *)) {
         _logoPlateView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -277,7 +392,7 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     _logoImageView.translatesAutoresizingMaskIntoConstraints = NO;
     _logoImageView.contentMode = UIViewContentModeScaleAspectFill;
     _logoImageView.clipsToBounds = YES;
-    _logoImageView.layer.cornerRadius = 19.0;
+    _logoImageView.layer.cornerRadius = 16.0;
     _logoImageView.isAccessibilityElement = NO;
     if (@available(iOS 13.0, *)) {
         _logoImageView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -351,6 +466,13 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
 
 - (void)pp_activateLayout
 {
+    _textLeadingToLogoConstraint = [_textStackView.leadingAnchor constraintEqualToAnchor:_logoPlateView.trailingAnchor constant:14.0];
+    _textLeadingExpandedConstraint = [_textStackView.leadingAnchor constraintEqualToAnchor:_surfaceFillView.leadingAnchor constant:PPPetCareVetInnerPadding];
+    _textCenterYConstraint = [_textStackView.centerYAnchor constraintEqualToAnchor:_logoPlateView.centerYAnchor];
+    _textTopExpandedConstraint = [_textStackView.topAnchor constraintEqualToAnchor:_logoPlateView.bottomAnchor constant:12.0];
+    _badgeTopToLogoConstraint = [_badgeStackView.topAnchor constraintEqualToAnchor:_logoPlateView.bottomAnchor constant:12.0];
+    _badgeTopToTextConstraint = [_badgeStackView.topAnchor constraintEqualToAnchor:_textStackView.bottomAnchor constant:12.0];
+
     [NSLayoutConstraint activateConstraints:@[
         [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
         [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -368,14 +490,14 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
         [_ambientGlowView.heightAnchor constraintEqualToConstant:152.0],
 
         [_topAccentView.topAnchor constraintEqualToAnchor:_surfaceFillView.topAnchor constant:10.0],
-        [_topAccentView.centerXAnchor constraintEqualToAnchor:_surfaceFillView.centerXAnchor],
-        [_topAccentView.widthAnchor constraintEqualToConstant:42.0],
-        [_topAccentView.heightAnchor constraintEqualToConstant:5.0],
+        [_topAccentView.leadingAnchor constraintEqualToAnchor:_surfaceFillView.leadingAnchor constant:PPPetCareVetInnerPadding],
+        [_topAccentView.widthAnchor constraintEqualToConstant:36.0],
+        [_topAccentView.heightAnchor constraintEqualToConstant:4.0],
 
         [_logoPlateView.leadingAnchor constraintEqualToAnchor:_surfaceFillView.leadingAnchor constant:PPPetCareVetInnerPadding],
         [_logoPlateView.topAnchor constraintEqualToAnchor:_surfaceFillView.topAnchor constant:18.0],
-        [_logoPlateView.widthAnchor constraintEqualToConstant:62.0],
-        [_logoPlateView.heightAnchor constraintEqualToConstant:62.0],
+        [_logoPlateView.widthAnchor constraintEqualToConstant:58.0],
+        [_logoPlateView.heightAnchor constraintEqualToConstant:58.0],
 
         [_logoImageView.topAnchor constraintEqualToAnchor:_logoPlateView.topAnchor constant:4.0],
         [_logoImageView.leadingAnchor constraintEqualToAnchor:_logoPlateView.leadingAnchor constant:4.0],
@@ -387,21 +509,59 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
         [_logoStatusDotView.trailingAnchor constraintEqualToAnchor:_logoPlateView.trailingAnchor constant:-2.0],
         [_logoStatusDotView.bottomAnchor constraintEqualToAnchor:_logoPlateView.bottomAnchor constant:-2.0],
 
-        [_textStackView.leadingAnchor constraintEqualToAnchor:_logoPlateView.trailingAnchor constant:14.0],
+        _textLeadingToLogoConstraint,
         [_textStackView.trailingAnchor constraintEqualToAnchor:_surfaceFillView.trailingAnchor constant:-PPPetCareVetInnerPadding],
-        [_textStackView.centerYAnchor constraintEqualToAnchor:_logoPlateView.centerYAnchor],
+        _textCenterYConstraint,
 
         [_badgeStackView.leadingAnchor constraintEqualToAnchor:_surfaceFillView.leadingAnchor constant:PPPetCareVetInnerPadding],
         [_badgeStackView.trailingAnchor constraintEqualToAnchor:_surfaceFillView.trailingAnchor constant:-PPPetCareVetInnerPadding],
-        [_badgeStackView.topAnchor constraintEqualToAnchor:_logoPlateView.bottomAnchor constant:14.0],
-        [_badgeStackView.heightAnchor constraintEqualToConstant:28.0],
+        _badgeTopToLogoConstraint,
+        [_badgeStackView.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
 
         [_buttonStackView.leadingAnchor constraintEqualToAnchor:_surfaceFillView.leadingAnchor constant:PPPetCareVetInnerPadding],
         [_buttonStackView.trailingAnchor constraintEqualToAnchor:_surfaceFillView.trailingAnchor constant:-PPPetCareVetInnerPadding],
-        [_buttonStackView.bottomAnchor constraintEqualToAnchor:_surfaceFillView.bottomAnchor constant:-16.0],
+        [_buttonStackView.bottomAnchor constraintEqualToAnchor:_surfaceFillView.bottomAnchor constant:-14.0],
         [_buttonStackView.heightAnchor constraintGreaterThanOrEqualToConstant:44.0],
         [_buttonStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_badgeStackView.bottomAnchor constant:10.0]
     ]];
+
+    [self pp_updateTypographyLayout];
+}
+
+- (void)pp_updateTypographyLayout
+{
+    BOOL usesAccessibilityLayout = PPPetCareVetUsesAccessibilityLayout(self.traitCollection);
+
+    _titleLabel.numberOfLines = usesAccessibilityLayout ? 0 : 1;
+    _descriptionLabel.numberOfLines = usesAccessibilityLayout ? 3 : 2;
+    _badgeStackView.axis = usesAccessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    _buttonStackView.axis = usesAccessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+
+    if (usesAccessibilityLayout) {
+        [NSLayoutConstraint deactivateConstraints:@[
+            _textLeadingToLogoConstraint,
+            _textCenterYConstraint,
+            _badgeTopToLogoConstraint
+        ]];
+        [NSLayoutConstraint activateConstraints:@[
+            _textLeadingExpandedConstraint,
+            _textTopExpandedConstraint,
+            _badgeTopToTextConstraint
+        ]];
+    } else {
+        [NSLayoutConstraint deactivateConstraints:@[
+            _textLeadingExpandedConstraint,
+            _textTopExpandedConstraint,
+            _badgeTopToTextConstraint
+        ]];
+        [NSLayoutConstraint activateConstraints:@[
+            _textLeadingToLogoConstraint,
+            _textCenterYConstraint,
+            _badgeTopToLogoConstraint
+        ]];
+    }
+
+    [self setNeedsLayout];
 }
 
 - (UIButton *)pp_makeActionButtonPrimary:(BOOL)primary
@@ -411,10 +571,12 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     button.titleLabel.font = PPPetCareVetScaledFont([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightBold],
                                                     UIFontTextStyleCallout);
     button.titleLabel.adjustsFontForContentSizeCategory = YES;
-    button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 12.0, 0.0, 12.0);
+    button.titleLabel.numberOfLines = 0;
+    button.titleLabel.textAlignment = NSTextAlignmentCenter;
+    button.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    button.contentEdgeInsets = UIEdgeInsetsMake(8.0, 12.0, 8.0, 12.0);
     button.layer.cornerRadius = 22.0;
-    button.layer.borderWidth = primary ? 0.0 : 1.0 / UIScreen.mainScreen.scale;
+    button.layer.borderWidth = 0.0;
     button.clipsToBounds = YES;
     button.adjustsImageWhenHighlighted = NO;
     button.accessibilityTraits = UIAccessibilityTraitButton;
@@ -449,8 +611,6 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
 - (void)configureWithVet:(VetModel *)vet mainKindName:(NSString *)mainKindName
 {
     [self pp_updateSemanticContent];
-    [self pp_applyTheme];
-
     NSString *title = vet.title.length > 0
         ? vet.title
         : PPPetCareLocalized(@"pet_care_vet_untitled", @"Veterinarian");
@@ -464,6 +624,8 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
         ? PPPetCareLocalized(@"pet_care_vet_company", @"Clinic")
         : PPPetCareLocalized(@"pet_care_vet_personal", @"Doctor");
     BOOL canContact = (vet.phone.length > 0 || vet.whatsapp.length > 0);
+    _canContact = canContact;
+    [self pp_applyTheme];
     NSString *contact = canContact
         ? PPPetCareLocalized(@"pet_care_vet_contact_ready", @"Contact ready")
         : PPPetCareLocalized(@"pet_care_vet_no_phone", @"Details only");
@@ -526,6 +688,7 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     [_callButton setTitle:nil forState:UIControlStateNormal];
     _callButton.enabled = YES;
     _callButton.alpha = 1.0;
+    _canContact = NO;
     self.onDetailsTap = nil;
     self.onCallTap = nil;
     self.transform = CGAffineTransformIdentity;
@@ -593,6 +756,9 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+        [self pp_updateTypographyLayout];
+    }
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
             [self pp_applyTheme];
@@ -605,38 +771,26 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     BOOL dark = PPPetCareVetIsDarkMode(self.traitCollection);
     UIColor *accent = PPPetCareAccentColor();
     UIColor *surface = PPPetCareSurfaceColor();
-    UIColor *background = AppBackgroundClr ?: (dark ? UIColor.blackColor : UIColor.whiteColor);
     UIColor *surfaceHighlight = PPPetCareVetBlendColor(surface, UIColor.whiteColor, dark ? 0.07 : 0.18, self.traitCollection);
-    UIColor *surfaceTint = PPPetCareVetBlendColor(surface, accent, dark ? 0.11 : 0.055, self.traitCollection);
-    UIColor *surfaceTail = PPPetCareVetBlendColor(surface, background, dark ? 0.16 : 0.045, self.traitCollection);
-    UIColor *border = dark
-        ? [UIColor.whiteColor colorWithAlphaComponent:0.13]
-        : [UIColor.blackColor colorWithAlphaComponent:0.055];
-    UIColor *logoFill = [accent colorWithAlphaComponent:dark ? 0.13 : 0.075];
+    UIColor *logoFill = [accent colorWithAlphaComponent:dark ? 0.12 : 0.065];
 
-    _surfaceFillView.backgroundColor = UIColor.clearColor;
-    _surfaceFillView.layer.borderColor = border.CGColor;
+    _surfaceFillView.backgroundColor = surface;
+    _surfaceFillView.layer.borderWidth = 0.0;
+    _surfaceFillView.layer.borderColor = UIColor.clearColor.CGColor;
     _surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    _surfaceView.layer.shadowOpacity = dark ? 0.18 : 0.07;
-    _surfaceView.layer.shadowRadius = 20.0;
-    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    _surfaceView.layer.shadowOpacity = dark ? 0.14 : 0.045;
+    _surfaceView.layer.shadowRadius = 12.0;
+    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 7.0);
 
     BOOL rtl = Language.isRTL;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _surfaceGradientLayer.startPoint = rtl ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
     _surfaceGradientLayer.endPoint = rtl ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
-    _surfaceGradientLayer.opacity = dark ? 0.84 : 0.72;
-    _surfaceGradientLayer.colors = @[
-        (id)surfaceHighlight.CGColor,
-        (id)surfaceTint.CGColor,
-        (id)surfaceTail.CGColor
-    ];
+    _surfaceGradientLayer.opacity = 0.0;
+    _surfaceGradientLayer.colors = @[(id)surface.CGColor, (id)surface.CGColor, (id)surface.CGColor];
 
-    _ambientGlowLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:dark ? 0.105 : 0.095].CGColor,
-        (id)[accent colorWithAlphaComponent:0.0].CGColor
-    ];
+    _ambientGlowLayer.colors = @[(id)UIColor.clearColor.CGColor, (id)UIColor.clearColor.CGColor];
 
     _detailsGradientLayer.startPoint = rtl ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
     _detailsGradientLayer.endPoint = rtl ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
@@ -646,13 +800,14 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     ];
     [CATransaction commit];
 
-    _topAccentView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.72 : 0.62];
+    _topAccentView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.86 : 0.76];
     _logoPlateView.backgroundColor = logoFill;
-    _logoPlateView.layer.borderColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.12].CGColor;
+    _logoPlateView.layer.borderWidth = 0.0;
+    _logoPlateView.layer.borderColor = UIColor.clearColor.CGColor;
     _logoPlateView.layer.shadowColor = UIColor.blackColor.CGColor;
-    _logoPlateView.layer.shadowOpacity = dark ? 0.16 : 0.07;
-    _logoPlateView.layer.shadowRadius = 10.0;
-    _logoPlateView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    _logoPlateView.layer.shadowOpacity = dark ? 0.10 : 0.035;
+    _logoPlateView.layer.shadowRadius = 7.0;
+    _logoPlateView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     _logoImageView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.07];
     _logoImageView.tintColor = accent;
     _logoStatusDotView.backgroundColor = accent;
@@ -661,25 +816,23 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     _titleLabel.textColor = PPPetCareTextColor();
     _descriptionLabel.textColor = PPPetCareSecondaryTextColor();
 
-    UIColor *kindColor = dark
-        ? [UIColor colorWithRed:0.44 green:0.92 blue:0.76 alpha:1.0]
-        : [UIColor colorWithRed:0.00 green:0.56 blue:0.40 alpha:1.0];
-    UIColor *typeColor = dark
-        ? [UIColor colorWithRed:0.72 green:0.58 blue:0.98 alpha:1.0]
-        : [UIColor colorWithRed:0.45 green:0.30 blue:0.78 alpha:1.0];
-    UIColor *contactColor = dark
-        ? [UIColor colorWithRed:1.00 green:0.76 blue:0.38 alpha:1.0]
-        : [UIColor colorWithRed:0.86 green:0.42 blue:0.06 alpha:1.0];
-    [_kindBadgeView applyTintColor:kindColor fillAlpha:(dark ? 0.14 : 0.075) borderAlpha:(dark ? 0.24 : 0.16)];
-    [_typeBadgeView applyTintColor:typeColor fillAlpha:(dark ? 0.14 : 0.075) borderAlpha:(dark ? 0.24 : 0.16)];
-    [_contactBadgeView applyTintColor:contactColor fillAlpha:(dark ? 0.14 : 0.075) borderAlpha:(dark ? 0.24 : 0.16)];
+    UIColor *kindColor = accent;
+    UIColor *typeColor = PPPetCareSecondaryTextColor();
+    UIColor *contactColor = _canContact
+        ? (dark ? [UIColor colorWithRed:0.44 green:0.92 blue:0.76 alpha:1.0]
+                : [UIColor colorWithRed:0.00 green:0.50 blue:0.36 alpha:1.0])
+        : PPPetCareSecondaryTextColor();
+    [_kindBadgeView applyTintColor:kindColor fillAlpha:(dark ? 0.12 : 0.065) borderAlpha:0.0];
+    [_typeBadgeView applyTintColor:typeColor fillAlpha:(dark ? 0.10 : 0.055) borderAlpha:0.0];
+    [_contactBadgeView applyTintColor:contactColor fillAlpha:(dark ? 0.12 : 0.065) borderAlpha:0.0];
 
     [_detailsButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [_detailsButton setTitleColor:[UIColor.whiteColor colorWithAlphaComponent:0.82] forState:UIControlStateHighlighted];
     [_callButton setTitleColor:accent forState:UIControlStateNormal];
     [_callButton setTitleColor:[accent colorWithAlphaComponent:0.72] forState:UIControlStateHighlighted];
-    _callButton.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.062];
-    _callButton.layer.borderColor = [accent colorWithAlphaComponent:dark ? 0.22 : 0.13].CGColor;
+    _callButton.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.065];
+    _callButton.layer.borderWidth = 0.0;
+    _callButton.layer.borderColor = UIColor.clearColor.CGColor;
 
     [self pp_updateLayerFrames];
 }

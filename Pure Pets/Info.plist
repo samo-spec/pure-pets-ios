@@ -41,17 +41,6 @@
 		<string>comgooglemaps</string>
 		<string>google</string>
 	</array>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-		<key>NSAllowsArbitraryLoadsInWebContent</key>
-		<true/>
-	</dict>
-	<key>NSExtensionPointIdentifier</key>
-	<string>com.apple.usernotifications.service</string>
-	<key>NSExtensionPrincipalClass</key>
-	<string>$(PRODUCT_MODULE_NAME).NotificationService</string>
 	<key>NSLocalizedDescription</key>
 	<string>Request</string>
 	<key>NSCameraUsageDescription</key>

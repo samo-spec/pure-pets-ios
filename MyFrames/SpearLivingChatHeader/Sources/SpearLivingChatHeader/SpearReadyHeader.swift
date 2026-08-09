@@ -31,29 +31,32 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           metrics: model.metrics,
           copy: copy,
           brandColor: style.brandColor,
+          mainBackgroundColor: style.mainBackgroundColor,
           showsTrustDetail: model.context?.isSupport != true,
           profileAction: actionWithFeedback(actions.profile),
           safetyAction: actionWithFeedback(actions.safety)
         )
         .padding(.horizontal, style.horizontalPadding)
-        .padding(.bottom, 8)
+        .padding(.bottom, 6)
       }
 
       if let context = model.context {
         SpearContextRail(
           context: context,
           brandColor: style.brandColor,
+          mainBackgroundColor: style.mainBackgroundColor,
+          cornerRadius: min(style.cornerRadius, 16),
           action: contextActionWithFeedback,
           thumbnail: contextThumbnail
         )
         .padding(.horizontal, style.horizontalPadding)
-        .padding(.bottom, 10)
+        .padding(.bottom, 6)
         .transition(
           reduceMotion
             ? .opacity
             : .asymmetric(
-              insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .top)),
-              removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
+              insertion: .opacity.combined(with: .offset(y: -4)),
+              removal: .opacity
             )
         )
       }
@@ -76,18 +79,18 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
   }
 
-  // MARK: - Regular Layout (floating capsule actions)
+  // MARK: - Regular Layout
 
   private var regularLayout: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 8) {
       backButton
       identityButton(compact: false)
-      Spacer(minLength: 4)
+      Spacer(minLength: 2)
       actionCapsule
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.top, 8)
-    .padding(.bottom, 8)
+    .padding(.top, 5)
+    .padding(.bottom, 6)
   }
 
   // MARK: - Compact Layout
@@ -108,11 +111,11 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       }
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.top, 10)
-    .padding(.bottom, 10)
+    .padding(.top, 6)
+    .padding(.bottom, 7)
   }
 
-  // MARK: - Action Capsule (floating pill with grouped actions)
+  // MARK: - Action Cluster
 
   private var actionCapsule: some View {
     HStack(spacing: 2) {
@@ -137,16 +140,19 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     .padding(4)
     .background {
       Capsule(style: .continuous)
-        .fill(colorScheme == .dark ? Color.white.opacity(0.075) : Color.black.opacity(0.052))
+        .fill(style.mainBackgroundColor)
+        .overlay {
+          Capsule(style: .continuous)
+            .fill(Color.primary.opacity(colorScheme == .dark ? 0.065 : 0.035))
+        }
     }
     .overlay {
       Capsule(style: .continuous)
         .strokeBorder(
-          colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.72),
-          lineWidth: 0.75
+          Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.07),
+          lineWidth: 0.7
         )
     }
-    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.16 : 0.055), radius: 10, y: 4)
   }
 
   // MARK: - Buttons
@@ -257,7 +263,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     if reduceMotion {
       isExpanded = nextValue
     } else {
-      withAnimation(.smooth(duration: 0.38, extraBounce: 0.02)) {
+      withAnimation(nextValue ? SpearHeaderMotion.standard : SpearHeaderMotion.exit) {
         isExpanded = nextValue
       }
     }
