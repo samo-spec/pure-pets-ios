@@ -3502,6 +3502,8 @@
 "user_menu_tools_section" = "الدعم والإعدادات";
 "pure_lens_account_section" = "الاكتشاف البصري";
 "pure_lens_account_title" = "بيور لينس";
+"home_pure_lens_subtitle" = "تعرّف على الحيوان واكتشف ما يناسبه.";
+"home_pure_lens_action" = "افتح الكاميرا";
 "pure_lens_account_camera" = "كاميرا";
 "pure_lens_account_recognize" = "تعرّف";
 "pure_lens_account_discover" = "اكتشف";
