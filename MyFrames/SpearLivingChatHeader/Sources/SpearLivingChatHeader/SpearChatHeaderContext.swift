@@ -17,31 +17,33 @@ internal struct SpearContextRail: View {
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.colorSchemeContrast) private var contrast
   @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    SpearHeaderDeck(
-      brandColor: brandColor,
-      mainBackgroundColor: mainBackgroundColor,
-      cornerRadius: cornerRadius,
-      horizontalPadding: 10,
-      verticalPadding: context.isSupport ? 7 : 9
-    ) {
-      Group {
-        if context.isSupport {
+    Group {
+      if context.isSupport {
+        // Support status belongs to the conversation's live header, not a
+        // second competing card. This keeps its state legible while giving
+        // the transcript back its vertical room.
+        supportRail
+      } else {
+        SpearHeaderDeck(
+          brandColor: brandColor,
+          mainBackgroundColor: mainBackgroundColor,
+          cornerRadius: cornerRadius,
+          horizontalPadding: 10,
+          verticalPadding: 9
+        ) {
           if dynamicTypeSize.isAccessibilitySize {
-            supportAccessibilityLayout
-          } else {
-            supportLayout
-          }
-        } else if dynamicTypeSize.isAccessibilitySize {
-          verticalLayout
-        } else {
-          ViewThatFits(in: .horizontal) {
-            horizontalLayout
-              .frame(minWidth: 340)
             verticalLayout
+          } else {
+            ViewThatFits(in: .horizontal) {
+              horizontalLayout
+                .frame(minWidth: 340)
+              verticalLayout
+            }
           }
         }
       }
@@ -59,6 +61,50 @@ internal struct SpearContextRail: View {
     }
   }
 
+  private var supportRail: some View {
+    Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        supportAccessibilityLayout
+      } else {
+        supportLayout
+      }
+    }
+    .padding(.horizontal, 8)
+    .padding(.vertical, 4)
+    .background {
+      if reduceTransparency {
+        mainBackgroundColor
+      } else {
+        LinearGradient(
+          colors: [
+            brandColor.opacity(colorScheme == .dark ? 0.075 : 0.045),
+            .clear,
+          ],
+          startPoint: .leading,
+          endPoint: .trailing
+        )
+      }
+    }
+    .overlay(alignment: .bottom) {
+      LinearGradient(
+        colors: [
+          .clear,
+          Color.primary.opacity(contrast == .increased ? 0.24 : 0.08),
+          .clear,
+        ],
+        startPoint: .leading,
+        endPoint: .trailing
+      )
+      .frame(height: contrast == .increased ? 1.5 : 0.75)
+    }
+    .overlay(alignment: .leading) {
+      Capsule(style: .continuous)
+        .fill(brandColor.opacity(contrast == .increased ? 0.92 : 0.70))
+        .frame(width: contrast == .increased ? 3.5 : 2.5, height: 28)
+        .accessibilityHidden(true)
+    }
+  }
+
   private var supportLayout: some View {
     HStack(spacing: 9) {
       supportVisual
@@ -68,9 +114,11 @@ internal struct SpearContextRail: View {
         .foregroundStyle(.secondary)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
 
       contextAction
     }
+    .frame(minHeight: 36)
     .accessibilityElement(children: .contain)
   }
 
@@ -99,7 +147,7 @@ internal struct SpearContextRail: View {
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(brandColor)
     }
-    .frame(width: 32, height: 32)
+    .frame(width: 30, height: 30)
     .accessibilityHidden(true)
   }
 

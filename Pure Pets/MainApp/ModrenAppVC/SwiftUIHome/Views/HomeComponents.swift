@@ -3881,6 +3881,9 @@ private extension View {
 
 @available(iOS 16.0, *)
 struct HomePureLensSection: View {
+    let motionReady: Bool
+    let motionAlreadyPlayed: Bool
+    let onMotionSettled: () -> Void
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -3891,9 +3894,9 @@ struct HomePureLensSection: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var isFocused: Bool
-    @State private var revealPhase = HomePureLensRevealPhase.idle
-    @ScaledMetric(relativeTo: .body) private var lensMarkSize: CGFloat =
-        HomePureLensMetrics.lensMarkSize
+    @State private var signalPhase = HomePureLensSignalPhase.primed
+    @ScaledMetric(relativeTo: .body) private var signalWindowHeight: CGFloat =
+        HomePureLensMetrics.signalWindowHeight
     @ScaledMetric(relativeTo: .body) private var actionRowHeight: CGFloat =
         HomePureLensMetrics.actionHeight
 
@@ -3926,16 +3929,20 @@ struct HomePureLensSection: View {
         .buttonStyle(HomePureLensButtonStyle())
         .focused($isFocused)
         .hoverEffect(.highlight)
-        .task(id: reduceMotion) {
-            await runEntranceMotion()
+        .task(id: HomePureLensMotionTaskID(
+            motionReady: motionReady,
+            reduceMotion: reduceMotion,
+            motionAlreadyPlayed: motionAlreadyPlayed
+        )) {
+            await runSignalStory()
         }
         .onChange(of: scenePhase) { newPhase in
             if newPhase != .active {
-                settleRevealWithoutAnimation()
+                settleSignalWithoutAnimation()
             }
         }
         .onDisappear {
-            settleRevealWithoutAnimation()
+            settleSignalWithoutAnimation()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(HomeModelAdapter.localized(
@@ -3952,13 +3959,8 @@ struct HomePureLensSection: View {
 
     private var compactLayout: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(alignment: .top, spacing: PPSpace.md) {
-                copyPanel
-                    .layoutPriority(1)
-
-                lensMark(size: resolvedLensMarkSize)
-            }
-
+            copyPanel
+            signalWindow(height: resolvedSignalWindowHeight)
             actionPanel
         }
     }
@@ -3975,7 +3977,8 @@ struct HomePureLensSection: View {
             )
             .layoutPriority(1)
 
-            lensMark(size: HomePureLensMetrics.regularLensMarkSize)
+            signalWindow(height: HomePureLensMetrics.regularSignalWindowHeight)
+                .frame(maxWidth: HomePureLensMetrics.maximumRegularSignalWidth)
         }
         .frame(maxWidth: HomePureLensMetrics.maximumRegularContentWidth)
         .frame(maxWidth: .infinity)
@@ -3984,10 +3987,8 @@ struct HomePureLensSection: View {
     private var accessibilityLayout: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             copyPanel
+            signalWindow(height: resolvedSignalWindowHeight)
             actionPanel
-
-            lensMark(size: resolvedLensMarkSize)
-                .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
@@ -4000,36 +4001,100 @@ struct HomePureLensSection: View {
                 .foregroundStyle(palette.secondaryText)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+                .opacity(presentationPhase.reachedContext ? 1 : 0.74)
+                .offset(
+                    y: reduceMotion || presentationPhase.reachedContext
+                        ? 0
+                        : 5
+                )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var actionPanel: some View {
         actionLabel
+            .opacity(presentationPhase.reachedDiscovery ? 1 : 0.76)
+            .offset(
+                y: reduceMotion || presentationPhase.reachedDiscovery
+                    ? 0
+                    : 4
+            )
     }
 
     private var brandLockup: some View {
         VStack(alignment: .leading, spacing: PPSpace.xxs) {
-            Text(eyebrow)
-                .font(HomeFont.bold(12))
-                .foregroundStyle(palette.eyebrowText)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+            Group {
+                if usesAccessibilityLayout {
+                    VStack(alignment: .leading, spacing: PPSpace.xs) {
+                        eyebrowLabel
+                        aiBadge
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+                        eyebrowLabel
+
+                        Spacer(minLength: PPSpace.sm)
+
+                        aiBadge
+                    }
+                }
+            }
+            .opacity(presentationPhase.reachedIdentity ? 1 : 0.78)
+            .offset(
+                y: reduceMotion || presentationPhase.reachedIdentity
+                    ? 0
+                    : 4
+            )
 
             Text(title)
                 .font(HomeFont.bold(26))
                 .foregroundStyle(palette.primaryText)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
+                .opacity(presentationPhase.reachedIdentity ? 1 : 0.82)
+                .offset(
+                    y: reduceMotion || presentationPhase.reachedIdentity
+                        ? 0
+                        : 4
+                )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var aiBadge: some View {
+        HomePureLensAIBadge()
+            .scaleEffect(
+                reduceMotion || presentationPhase.reachedIdentity ? 1 : 0.94
+            )
+    }
+
+    private var eyebrowLabel: some View {
+        Text(eyebrow)
+            .font(HomeFont.bold(12))
+            .foregroundStyle(palette.eyebrowText)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var actionLabel: some View {
         HomePureLensActionLabel(
             title: actionTitle,
             minimumHeight: resolvedActionRowHeight,
-            allowsMultiline: usesAccessibilityLayout
+            allowsMultiline: usesAccessibilityLayout,
+            phase: presentationPhase
+        )
+    }
+
+    private func signalWindow(height: CGFloat) -> some View {
+        HomePureLensSignalWindow(
+            phase: presentationPhase,
+            height: height
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .opacity(presentationPhase.reachedContext ? 1 : 0.88)
+        .scaleEffect(
+            reduceMotion || presentationPhase.reachedContext ? 1 : 0.99
         )
     }
 
@@ -4045,6 +4110,7 @@ struct HomePureLensSection: View {
                     ? (contrast == .increased ? 3 : 2.4)
                     : (contrast == .increased ? 1.5 : 0.7)
             )
+            .opacity(presentationPhase.reachedIdentity ? 1 : 0.82)
             .accessibilityHidden(true)
     }
 
@@ -4094,12 +4160,12 @@ struct HomePureLensSection: View {
         usesAccessibilityLayout ? PPSpace.lg : PPSpace.base
     }
 
-    private var resolvedLensMarkSize: CGFloat {
+    private var resolvedSignalWindowHeight: CGFloat {
         min(
-            lensMarkSize,
+            signalWindowHeight,
             usesAccessibilityLayout
-                ? HomePureLensMetrics.maximumAccessibilityLensMarkSize
-                : HomePureLensMetrics.maximumStandardLensMarkSize
+                ? HomePureLensMetrics.maximumAccessibilitySignalWindowHeight
+                : HomePureLensMetrics.maximumStandardSignalWindowHeight
         )
     }
 
@@ -4110,12 +4176,6 @@ struct HomePureLensSection: View {
                 ? HomePureLensMetrics.maximumAccessibilityActionHeight
                 : HomePureLensMetrics.maximumStandardActionHeight
         )
-    }
-
-    private func lensMark(size: CGFloat) -> some View {
-        HomePureLensLensMark(phase: revealPhase, size: size)
-            .frame(width: size, height: size)
-            .fixedSize()
     }
 
     private var usesAccessibilityLayout: Bool {
@@ -4133,95 +4193,173 @@ struct HomePureLensSection: View {
         }
     }
 
+    private var presentationPhase: HomePureLensSignalPhase {
+        reduceMotion || motionAlreadyPlayed
+            ? .discoveryReady
+            : signalPhase
+    }
+
     @MainActor
     private func performAction() {
-        settleRevealWithoutAnimation()
+        settleSignalWithoutAnimation()
         action()
     }
 
     @MainActor
-    private func settleRevealWithoutAnimation() {
-        guard revealPhase != .settled else { return }
+    private func settleSignalWithoutAnimation() {
+        if signalPhase != .discoveryReady {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                signalPhase = .discoveryReady
+            }
+        }
 
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            revealPhase = .settled
+        if !motionAlreadyPlayed {
+            onMotionSettled()
         }
     }
 
     @MainActor
-    private func runEntranceMotion() async {
-        if reduceMotion || scenePhase != .active {
-            settleRevealWithoutAnimation()
+    private func runSignalStory() async {
+        guard motionReady else { return }
+
+        if reduceMotion || motionAlreadyPlayed {
+            settleSignalWithoutAnimation()
             return
         }
 
-        guard revealPhase == .idle else { return }
-
-        do {
-            try await Task.sleep(
-                nanoseconds: HomePureLensMetrics.acquireDelayNanoseconds
-            )
-        } catch {
+        if scenePhase != .active {
+            settleSignalWithoutAnimation()
             return
         }
+
+        guard signalPhase == .primed else { return }
 
         guard
-            !Task.isCancelled,
-            scenePhase == .active,
-            revealPhase == .idle
+            signalPhase == .primed,
+            motionReady
         else { return }
-        withAnimation(.easeOut(duration: HomePureLensMetrics.acquireDuration)) {
-            revealPhase = .acquired
+        withAnimation(
+            .easeOut(duration: HomePureLensMetrics.identityDuration)
+        ) {
+            signalPhase = .identityReady
         }
 
-        do {
-            try await Task.sleep(
-                nanoseconds: HomePureLensMetrics.relateDelayNanoseconds
-            )
-        } catch {
-            return
-        }
+        guard await waitForMotionDelay(
+            HomePureLensMetrics.contextStaggerNanoseconds
+        ) else { return }
 
         guard
-            !Task.isCancelled,
-            scenePhase == .active,
-            revealPhase == .acquired
+            signalPhase == .identityReady,
+            motionReady
+        else { return }
+        withAnimation(
+            .easeOut(duration: HomePureLensMetrics.contextDuration)
+        ) {
+            signalPhase = .contextReady
+        }
+
+        guard await waitForMotionDelay(
+            HomePureLensMetrics.acquisitionStaggerNanoseconds
+        ) else { return }
+
+        guard
+            signalPhase == .contextReady,
+            motionReady
+        else { return }
+        withAnimation(
+            .easeOut(duration: HomePureLensMetrics.recognitionDuration)
+        ) {
+            signalPhase = .animalAcquired
+        }
+
+        guard await waitForMotionDelay(
+            HomePureLensMetrics.discoveryDwellNanoseconds
+        ) else { return }
+
+        guard
+            signalPhase == .animalAcquired,
+            motionReady
         else { return }
         withAnimation(
             .spring(
-                response: HomePureLensMetrics.relateResponse,
-                dampingFraction: HomePureLensMetrics.relateDamping,
+                response: HomePureLensMetrics.discoveryResponse,
+                dampingFraction: HomePureLensMetrics.discoveryDamping,
                 blendDuration: 0.02
             )
         ) {
-            revealPhase = .settled
+            signalPhase = .discoveryReady
         }
+        onMotionSettled()
+    }
+
+    @MainActor
+    private func waitForMotionDelay(_ nanoseconds: UInt64) async -> Bool {
+        do {
+            try await Task.sleep(nanoseconds: nanoseconds)
+        } catch {
+            return false
+        }
+
+        return !Task.isCancelled && scenePhase == .active
     }
 }
 
-private enum HomePureLensRevealPhase: Equatable {
-    case idle
-    case acquired
-    case settled
+private enum HomePureLensSignalPhase: Equatable {
+    case primed
+    case identityReady
+    case contextReady
+    case animalAcquired
+    case discoveryReady
+
+    var reachedIdentity: Bool {
+        self != .primed
+    }
+
+    var reachedContext: Bool {
+        switch self {
+        case .primed, .identityReady:
+            return false
+        case .contextReady, .animalAcquired, .discoveryReady:
+            return true
+        }
+    }
+
+    var reachedRecognition: Bool {
+        self == .animalAcquired || self == .discoveryReady
+    }
+
+    var reachedDiscovery: Bool {
+        self == .discoveryReady
+    }
+}
+
+private struct HomePureLensMotionTaskID: Hashable {
+    let motionReady: Bool
+    let reduceMotion: Bool
+    let motionAlreadyPlayed: Bool
 }
 
 private enum HomePureLensMetrics {
-    static let lensMarkSize: CGFloat = 108
-    static let maximumStandardLensMarkSize: CGFloat = 116
-    static let maximumAccessibilityLensMarkSize: CGFloat = 128
-    static let regularLensMarkSize: CGFloat = 144
-    static let maximumRegularCopyWidth: CGFloat = 432
-    static let maximumRegularContentWidth: CGFloat = 720
-    static let actionHeight: CGFloat = 48
-    static let maximumStandardActionHeight: CGFloat = 56
-    static let maximumAccessibilityActionHeight: CGFloat = 72
-    static let acquireDuration: Double = 0.17
-    static let acquireDelayNanoseconds: UInt64 = 40_000_000
-    static let relateDelayNanoseconds: UInt64 = 90_000_000
-    static let relateResponse: Double = 0.24
-    static let relateDamping: Double = 0.92
+    static let signalWindowHeight: CGFloat = 136
+    static let maximumStandardSignalWindowHeight: CGFloat = 152
+    static let maximumAccessibilitySignalWindowHeight: CGFloat = 176
+    static let regularSignalWindowHeight: CGFloat = 176
+    static let maximumRegularSignalWidth: CGFloat = 340
+    static let maximumRegularCopyWidth: CGFloat = 356
+    static let maximumRegularContentWidth: CGFloat = 760
+    static let actionHeight: CGFloat = 50
+    static let maximumStandardActionHeight: CGFloat = 58
+    static let maximumAccessibilityActionHeight: CGFloat = 76
+    static let contextStaggerNanoseconds: UInt64 = 60_000_000
+    static let acquisitionStaggerNanoseconds: UInt64 = 80_000_000
+    static let discoveryDwellNanoseconds: UInt64 = 250_000_000
+    static let identityDuration: Double = 0.16
+    static let contextDuration: Double = 0.18
+    static let recognitionDuration: Double = 0.22
+    static let discoveryResponse: Double = 0.28
+    static let discoveryDamping: Double = 0.88
 }
 
 private struct HomePureLensPalette {
@@ -4248,32 +4386,44 @@ private struct HomePureLensPalette {
         Color.ppAccentText
     }
 
-    var lensBackground: Color {
+    var signalBackground: Color {
         isDark ? Color.black : Color.ppTextPrimary
     }
 
-    var lensRing: Color {
-        Color.white.opacity(reduceTransparency ? 0.34 : 0.22)
+    var signalBorder: Color {
+        Color.white.opacity(reduceTransparency ? 0.58 : 0.24)
     }
 
-    var lensArc: Color {
+    var signalActive: Color {
         Color.ppPrimary
     }
 
-    var lensCore: Color {
+    var signalSubjectFill: Color {
         Color.ppPrimaryDarker
     }
 
-    var lensSubject: Color {
+    var signalSubject: Color {
         Color.white.opacity(reduceTransparency ? 0.96 : 0.92)
     }
 
-    var lensGlint: Color {
-        Color.white.opacity(reduceTransparency ? 0.88 : 0.68)
+    var signalInactive: Color {
+        Color.white.opacity(reduceTransparency ? 0.30 : 0.16)
     }
 
-    var lensBorder: Color {
-        Color.white.opacity(reduceTransparency ? 0.50 : 0.20)
+    var signalInactiveContent: Color {
+        Color.white.opacity(reduceTransparency ? 0.72 : 0.48)
+    }
+
+    var signalContent: Color {
+        Color.white.opacity(reduceTransparency ? 1 : 0.94)
+    }
+
+    var badgeFill: Color {
+        Color.ppPrimary.opacity(isDark ? 0.20 : 0.10)
+    }
+
+    var badgeBorder: Color {
+        Color.ppPrimary.opacity(isDark ? 0.46 : 0.20)
     }
 
     func cardBorder(increasedContrast: Bool) -> Color {
@@ -4299,10 +4449,51 @@ private struct HomePureLensPalette {
     }
 }
 
+private struct HomePureLensAIBadge: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        HStack(spacing: PPSpace.xxs) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 10, weight: .bold))
+
+            Text(HomeModelAdapter.localized("AI", fallback: "AI"))
+                .font(HomeFont.bold(11))
+        }
+        .foregroundStyle(Color.ppAccentText)
+        .padding(.horizontal, PPSpace.sm)
+        .frame(minHeight: 28)
+        .background(
+            palette.badgeFill,
+            in: Capsule()
+        )
+        .overlay {
+            Capsule()
+                .strokeBorder(
+                    contrast == .increased
+                        ? Color.ppPrimary
+                        : palette.badgeBorder,
+                    lineWidth: contrast == .increased ? 1.5 : 0.7
+                )
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(
+            colorScheme: colorScheme,
+            reduceTransparency: reduceTransparency
+        )
+    }
+}
+
 private struct HomePureLensActionLabel: View {
     let title: String
     let minimumHeight: CGFloat
     let allowsMultiline: Bool
+    let phase: HomePureLensSignalPhase
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -4323,6 +4514,9 @@ private struct HomePureLensActionLabel: View {
                         cornerRadius: PPCorner.small,
                         style: .continuous
                     )
+                )
+                .scaleEffect(
+                    reduceMotion || phase.reachedDiscovery ? 1 : 0.92
                 )
                 .accessibilityHidden(true)
 
@@ -4394,9 +4588,17 @@ private struct HomePureLensButtonStyle: ButtonStyle {
         configuration.label
             .environment(\.homePureLensIsPressed, configuration.isPressed)
             .scaleEffect(
-                configuration.isPressed && !reduceMotion ? 0.992 : 1
+                configuration.isPressed && !reduceMotion ? 0.988 : 1
             )
-            .opacity(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.965 : 1)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : (configuration.isPressed
+                        ? .easeOut(duration: 0.14)
+                        : .easeOut(duration: 0.10)),
+                value: configuration.isPressed
+            )
     }
 }
 
@@ -4421,64 +4623,59 @@ private struct HomePureLensCardSurface: View {
     }
 }
 
-private struct HomePureLensLensMark: View {
-    let phase: HomePureLensRevealPhase
-    let size: CGFloat
+private struct HomePureLensSignalWindow: View {
+    let phase: HomePureLensSignalPhase
+    let height: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.homePureLensIsPressed) private var isPressed
 
     var body: some View {
-        let ringDiameter = size * 0.70
-        let coreDiameter = size * 0.42
-
         ZStack {
             RoundedRectangle(
                 cornerRadius: PPCorner.medium,
                 style: .continuous
             )
-            .fill(palette.lensBackground)
+            .fill(palette.signalBackground)
 
-            Circle()
+            HomePureLensFocusCorners()
                 .stroke(
-                    palette.lensRing,
-                    lineWidth: contrast == .increased ? 2 : 1
-                )
-                .frame(width: ringDiameter, height: ringDiameter)
-                .scaleEffect(ringScale)
-
-            Circle()
-                .trim(from: 0.08, to: 0.37)
-                .stroke(
-                    palette.lensArc,
+                    palette.signalContent,
                     style: StrokeStyle(
-                        lineWidth: contrast == .increased ? 4 : 3,
-                        lineCap: .round
+                        lineWidth: contrast == .increased ? 3 : 2,
+                        lineCap: .round,
+                        lineJoin: .round
                     )
                 )
-                .rotationEffect(.degrees(-40))
-                .frame(width: ringDiameter, height: ringDiameter)
-                .opacity(arcOpacity)
-                .scaleEffect(ringScale)
+                .padding(.horizontal, PPSpace.lg)
+                .padding(.vertical, PPSpace.base)
+                .scaleEffect(focusScale)
+                .opacity(focusOpacity)
 
-            Circle()
-                .fill(palette.lensCore)
-                .frame(width: coreDiameter, height: coreDiameter)
-                .scaleEffect(subjectScale)
+            ZStack {
+                Circle()
+                    .fill(palette.signalSubjectFill)
+                    .frame(width: subjectDiameter, height: subjectDiameter)
 
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: size * 0.23, weight: .bold))
-                .foregroundStyle(palette.lensSubject)
-                .scaleEffect(subjectScale)
+                Image(systemName: "pawprint.fill")
+                    .font(.system(
+                        size: subjectDiameter * 0.42,
+                        weight: .bold
+                    ))
+                    .foregroundStyle(palette.signalSubject)
+            }
+            .scaleEffect(subjectScale)
+            .opacity(subjectOpacity)
+            .offset(y: -PPSpace.md)
 
-            Circle()
-                .fill(palette.lensGlint)
-                .frame(width: max(5, size * 0.06), height: max(5, size * 0.06))
-                .offset(x: size * 0.23, y: -size * 0.23)
-                .opacity(arcOpacity)
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+
+                HomePureLensSignalRail(phase: phase)
+                    .padding(.bottom, PPSpace.md)
+            }
         }
         .clipShape(
             RoundedRectangle(
@@ -4492,21 +4689,25 @@ private struct HomePureLensLensMark: View {
                 style: .continuous
             )
             .strokeBorder(
-                palette.lensBorder,
+                palette.signalBorder,
                 lineWidth: contrast == .increased ? 2 : 1
             )
         }
         .accessibilityHidden(true)
     }
 
-    private var ringScale: CGFloat {
+    private var subjectDiameter: CGFloat {
+        min(58, max(46, height * 0.36))
+    }
+
+    private var focusScale: CGFloat {
         guard !reduceMotion else { return 1 }
         switch phase {
-        case .idle:
-            return 0.94
-        case .acquired:
-            return 0.98
-        case .settled:
+        case .primed, .identityReady, .contextReady:
+            return 1.03
+        case .animalAcquired:
+            return 0.99
+        case .discoveryReady:
             return 1
         }
     }
@@ -4517,27 +4718,32 @@ private struct HomePureLensLensMark: View {
             phaseScale = 1
         } else {
             switch phase {
-            case .idle:
-                phaseScale = 0.92
-            case .acquired:
-                phaseScale = 0.98
-            case .settled:
+            case .primed, .identityReady, .contextReady:
+                phaseScale = 0.95
+            case .animalAcquired:
+                phaseScale = 1.02
+            case .discoveryReady:
                 phaseScale = 1
             }
         }
-        return isPressed && !reduceMotion ? phaseScale * 0.96 : phaseScale
+        return phaseScale
     }
 
-    private var arcOpacity: Double {
+    private var subjectOpacity: Double {
         guard !reduceMotion else { return 1 }
         switch phase {
-        case .idle:
-            return 0.46
-        case .acquired:
-            return 0.74
-        case .settled:
+        case .primed, .identityReady, .contextReady:
+            return 0.72
+        case .animalAcquired:
+            return 1
+        case .discoveryReady:
             return 1
         }
+    }
+
+    private var focusOpacity: Double {
+        guard !reduceMotion else { return 1 }
+        return phase.reachedRecognition ? 1 : 0.74
     }
 
     private var palette: HomePureLensPalette {
@@ -4545,5 +4751,124 @@ private struct HomePureLensLensMark: View {
             colorScheme: colorScheme,
             reduceTransparency: reduceTransparency
         )
+    }
+}
+
+private struct HomePureLensSignalRail: View {
+    let phase: HomePureLensSignalPhase
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    var body: some View {
+        HStack(spacing: 6) {
+            phaseNode(symbol: "camera.fill", isReached: true)
+            connector(isReached: phase.reachedRecognition)
+            phaseNode(
+                symbol: "viewfinder",
+                isReached: phase.reachedRecognition
+            )
+            connector(isReached: phase.reachedDiscovery)
+            phaseNode(
+                symbol: "square.grid.2x2.fill",
+                isReached: phase.reachedDiscovery
+            )
+        }
+        .padding(.horizontal, PPSpace.md)
+        .frame(height: 40)
+        .background(
+            Color.black.opacity(reduceTransparency ? 0.58 : 0.30),
+            in: Capsule()
+        )
+        .overlay {
+            Capsule()
+                .strokeBorder(
+                    palette.signalBorder,
+                    lineWidth: contrast == .increased ? 1.5 : 0.7
+                )
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func phaseNode(symbol: String, isReached: Bool) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(
+                isReached
+                    ? palette.signalContent
+                    : palette.signalInactiveContent
+            )
+            .frame(width: 26, height: 26)
+            .background(
+                isReached
+                    ? palette.signalActive
+                    : palette.signalInactive,
+                in: Circle()
+            )
+            .overlay {
+                if contrast == .increased {
+                    Circle()
+                        .strokeBorder(
+                            palette.signalContent,
+                            lineWidth: isReached ? 1.5 : 1
+                        )
+                }
+            }
+            .scaleEffect(isReached ? 1 : 0.92)
+            .opacity(isReached ? 1 : 0.78)
+    }
+
+    private func connector(isReached: Bool) -> some View {
+        Capsule()
+            .fill(
+                isReached
+                    ? palette.signalActive
+                    : palette.signalInactive
+            )
+            .frame(width: 18, height: contrast == .increased ? 3 : 2)
+            .scaleEffect(
+                x: isReached ? 1 : 0.18,
+                y: 1,
+                anchor: connectorAnchor
+            )
+            .opacity(isReached ? 1 : 0.62)
+    }
+
+    private var connectorAnchor: UnitPoint {
+        layoutDirection == .rightToLeft ? .trailing : .leading
+    }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(
+            colorScheme: colorScheme,
+            reduceTransparency: reduceTransparency
+        )
+    }
+}
+
+private struct HomePureLensFocusCorners: Shape {
+    func path(in rect: CGRect) -> Path {
+        let segment = min(rect.width, rect.height) * 0.20
+        var path = Path()
+
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + segment))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + segment, y: rect.minY))
+
+        path.move(to: CGPoint(x: rect.maxX - segment, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + segment))
+
+        path.move(to: CGPoint(x: rect.maxX, y: rect.maxY - segment))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX - segment, y: rect.maxY))
+
+        path.move(to: CGPoint(x: rect.minX + segment, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - segment))
+
+        return path
     }
 }

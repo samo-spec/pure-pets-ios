@@ -2,8 +2,8 @@ import SwiftUI
 
 // MARK: - Conversation Deck
 
-/// A single semantic slot beneath the fixed identity row. Context and expanded
-/// identity utilities share this surface instead of stacking independent cards.
+/// A bounded semantic surface beneath the fixed identity row. Context and
+/// identity utilities use the same treatment while retaining independent state.
 @available(iOS 17.0, *)
 internal struct SpearHeaderDeck<Content: View>: View {
   let brandColor: Color

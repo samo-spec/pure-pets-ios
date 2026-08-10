@@ -29,7 +29,7 @@ For every row, test ready, loading, unavailable, online, typing, viewing offer, 
 
 Use Accessibility Inspector and real assistive technologies:
 
-- VoiceOver swipe order: Back → identity → Call → More → expanded profile/safety actions → context action.
+- VoiceOver swipe order: Back → identity → Call → More → context action → expanded profile/safety actions.
 - Collapsed identity announces name, trust state, presence, and collapsed state.
 - Expanded identity announces the expanded state without duplicating child labels.
 - Disabled actions announce their supplied reason.
@@ -39,6 +39,7 @@ Use Accessibility Inspector and real assistive technologies:
 - Reduce Transparency replaces the material shell with the system background.
 - Increased Contrast keeps boundaries and status distinctions legible.
 - Bold Text does not clip the name, trust detail, status, metrics, or context.
+- At accessibility sizes, expanded utilities remain reachable inside their bounded vertical region without trapping transcript scrolling.
 - Grayscale preserves meaning without relying on color alone.
 
 ## Interaction gate
@@ -49,8 +50,11 @@ Use Accessibility Inspector and real assistive technologies:
 - Disabled capabilities render a disabled control and announce the reason.
 - No visible enabled control may have a no-op callback.
 - Identity expands only when detail, metrics, profile, or safety content exists.
+- Expansion extends the header and reveals utilities without removing or reloading visible context.
+- Collapse removes only the revealed utilities and keeps context identity and action stable.
 - Switching conversation identity collapses the previous expansion.
 - Context changes do not reset the identity or trigger broad header animation.
+- Header height changes preserve the transcript bottom only when the reader was already at the latest message.
 - Active call shows one waveform animation only and always owns its End Call action.
 - Typing shows typing animation only.
 - Online presence shows one presence ripple only.

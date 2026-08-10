@@ -14,7 +14,8 @@ A release-candidate SwiftUI chat header for iOS 17+, designed for marketplace co
 - The reusable component no longer owns remote image loading. The app injects its cached, authenticated, downsampled avatar view.
 - VoiceOver identity output includes name, trust state, presence or call state, and expanded/collapsed state without repeating the visual trust detail.
 - Reduce Motion, Reduce Transparency, Increased Contrast, RTL, Dynamic Type, hidden/disabled actions, loading, error, and retry are first-class states.
-- Marketplace, order, and support context share one bounded conversation deck with expanded trust utilities; they never stack into competing cards.
+- Marketplace, order, and support context stays mounted while expanded trust utilities reveal beneath it, extending the header without replacing or reloading conversation context.
+- Accessibility-size utility content uses a bounded vertical region so every action stays reachable without consuming the entire transcript viewport.
 - Trust and presence remain legible without badge-on-badge decoration or a redundant status pill.
 - Production files are split by responsibility and remain below 300 lines.
 - A Swift package, contract tests, source guardrail script, Xcode release script, and manual QA matrix are included.

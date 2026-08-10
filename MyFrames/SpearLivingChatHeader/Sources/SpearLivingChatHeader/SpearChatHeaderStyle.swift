@@ -51,6 +51,7 @@ internal enum SpearHeaderLayout {
   static let topRowSpacing: CGFloat = 10
   static let deckSpacing: CGFloat = 7
   static let deckCornerRadius: CGFloat = 18
+  static let accessibilityExpansionMaximumHeight: CGFloat = 220
   static let avatarMaximumSize: CGFloat = 50
 }
 

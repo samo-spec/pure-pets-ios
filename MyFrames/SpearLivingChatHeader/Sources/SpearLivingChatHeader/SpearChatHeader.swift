@@ -39,15 +39,17 @@ public struct SpearChatHeader<AvatarContent: View>: View {
   }
 
   public var body: some View {
-    ZStack(alignment: .top) {
-      headerBackground
-        .ignoresSafeArea(.container, edges: .top)
-
-      headerContent
-        .frame(maxWidth: SpearHeaderLayout.maximumContentWidth)
-        .frame(maxWidth: .infinity)
-    }
-    .accessibilityIdentifier(SpearChatHeaderAccessibilityID.root)
+    headerContent
+      .frame(maxWidth: SpearHeaderLayout.maximumContentWidth)
+      .frame(maxWidth: .infinity)
+      // The content owns intrinsic header height. Keeping the Color field in
+      // a background prevents it from greedily competing with the transcript
+      // for the host's remaining vertical proposal.
+      .background {
+        headerBackground
+          .ignoresSafeArea(.container, edges: .top)
+      }
+      .accessibilityIdentifier(SpearChatHeaderAccessibilityID.root)
   }
 
   @ViewBuilder

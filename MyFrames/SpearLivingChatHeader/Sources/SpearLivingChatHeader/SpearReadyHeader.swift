@@ -24,7 +24,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   var body: some View {
     VStack(spacing: 0) {
       topSection
-      conversationDeck
+      subordinateContent
     }
     .sensoryFeedback(.selection, trigger: isExpanded)
   }
@@ -43,13 +43,24 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
   }
 
-  // MARK: - One-Slot Conversation Deck
+  // MARK: - Subordinate Conversation Content
 
   @ViewBuilder
-  private var conversationDeck: some View {
-    if deckIsVisible {
-      Group {
-        if isExpanded && canExpand {
+  private var subordinateContent: some View {
+    if hasSubordinateContent {
+      VStack(spacing: SpearHeaderLayout.deckSpacing) {
+        if let context = model.context {
+          SpearContextRail(
+            context: context,
+            brandColor: style.brandColor,
+            mainBackgroundColor: style.mainBackgroundColor,
+            cornerRadius: min(style.cornerRadius, SpearHeaderLayout.deckCornerRadius),
+            action: actions.context,
+            thumbnail: contextThumbnail
+          )
+        }
+
+        if showsIdentityExpansion {
           SpearIdentityExpansion(
             trust: model.trust,
             metrics: model.metrics,
@@ -60,38 +71,27 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
             profileAction: actions.profile,
             safetyAction: actions.safety
           )
-        } else if let context = model.context {
-          SpearContextRail(
-            context: context,
-            brandColor: style.brandColor,
-            mainBackgroundColor: style.mainBackgroundColor,
-            cornerRadius: min(style.cornerRadius, SpearHeaderLayout.deckCornerRadius),
-            action: actions.context,
-            thumbnail: contextThumbnail
-          )
+          .transition(expansionTransition)
         }
       }
-      .id(deckIdentity)
-      .transition(deckTransition)
       .padding(.horizontal, style.horizontalPadding)
       .padding(.bottom, SpearHeaderLayout.deckSpacing)
     }
   }
 
-  private var deckIsVisible: Bool {
-    (isExpanded && canExpand) || model.context != nil
+  private var showsIdentityExpansion: Bool {
+    isExpanded && canExpand
   }
 
-  private var deckIdentity: String {
-    if isExpanded && canExpand { return "identity" }
-    return model.context.map { "context:\($0.id)" } ?? "none"
+  private var hasSubordinateContent: Bool {
+    model.context != nil || showsIdentityExpansion
   }
 
-  private var deckTransition: AnyTransition {
+  private var expansionTransition: AnyTransition {
     if reduceMotion { return .opacity }
     return .asymmetric(
-      insertion: .opacity.combined(with: .offset(y: -5)),
-      removal: .opacity
+      insertion: .opacity.combined(with: .scale(scale: 0.985, anchor: .top)),
+      removal: .opacity.combined(with: .scale(scale: 0.99, anchor: .top))
     )
   }
 
@@ -106,7 +106,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
     .padding(.horizontal, style.horizontalPadding)
     .padding(.top, 8)
-    .padding(.bottom, deckIsVisible ? 5 : 9)
+    .padding(.bottom, topSectionBottomPadding)
   }
 
   // MARK: - Compact Layout
@@ -128,7 +128,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
     .padding(.horizontal, style.horizontalPadding)
     .padding(.top, 8)
-    .padding(.bottom, deckIsVisible ? 5 : 9)
+    .padding(.bottom, topSectionBottomPadding)
   }
 
   // MARK: - Action Cluster
@@ -253,6 +253,10 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
 
   private var hasTopActions: Bool {
     actions.call.isVisible || actions.more.availability.isVisible
+  }
+
+  private var topSectionBottomPadding: CGFloat {
+    model.context == nil ? 9 : 5
   }
 
   // MARK: - Actions

@@ -17,12 +17,9 @@ static NSString * const kFieldisOnline  = @"isOnline";
 static NSString * const kFieldLastSeen = @"lastSeen";
 static NSString * const kPPSupportAvatarToken = @"purepets://support-logo";
 @import FirebaseAuth;
-static NSString * const kPPConversationTypeSupport = @"support";
 static NSString * const kPPConversationTypeProviderChat = @"provider_chat";
-static NSString * const kPPThreadTypeSupport = @"support";
 static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
 static NSString * const kPPSupportOfficialActorKey = @"support:official";
-static NSString * const kPPSupportContextType = @"user_support";
 static NSInteger const kPPChatV2SchemaVersion = 2;
 static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
 static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
@@ -193,40 +190,6 @@ static NSDictionary *PPChatThreadV2Metadata(NSString *threadID,
     };
 }
 
-static NSDictionary *PPSupportThreadV2Metadata(NSString *threadID,
-                                               NSString *customerID,
-                                               NSString *supportUserID,
-                                               NSString *updatedByUID) {
-    NSString *safeThreadID = PPSupportTrimmedString(threadID);
-    NSString *safeCustomerID = PPSupportTrimmedString(customerID);
-    NSString *safeSupportUserID = PPSupportTrimmedString(supportUserID).length > 0
-        ? PPSupportTrimmedString(supportUserID)
-        : PURE_PETS_OFFICIAL_USER_ID;
-    NSString *customerActorKey = PPSupportUserActorKey(safeCustomerID);
-    NSString *safeUpdatedByUID = PPSupportTrimmedString(updatedByUID).length > 0
-        ? PPSupportTrimmedString(updatedByUID)
-        : safeCustomerID;
-
-    return @{
-        @"schemaVersion": @(kPPChatV2SchemaVersion),
-        @"conversationId": safeThreadID,
-        @"contextType": kPPSupportContextType,
-        @"contextId": safeThreadID,
-        @"threadId": safeThreadID,
-        @"threadID": safeThreadID,
-        @"supportActorKey": kPPSupportOfficialActorKey,
-        @"customerActorKey": customerActorKey,
-        @"participantKeys": PPSupportUniqueStrings(@[kPPSupportOfficialActorKey, customerActorKey]),
-        @"participantUids": PPSupportUniqueStrings(@[safeSupportUserID, safeCustomerID]),
-        @"targetUid": safeSupportUserID,
-        @"targetActorKey": kPPSupportOfficialActorKey,
-        @"route": @"chat",
-        @"notificationType": @"chat",
-        @"updatedByActorKey": PPSupportUserActorKey(safeUpdatedByUID),
-        @"updatedByUid": safeUpdatedByUID
-    };
-}
-
 static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSString *message) {
     if (!controller) {
         return;
@@ -384,24 +347,6 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         if (error || !threadId.length) {
             NSLog(@"❌ [SupportChat] Failed to create support thread: %@", error.localizedDescription ?: @"unknown error");
-            if (error && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
-                NSLog(@"⚠️ [SupportChat] Falling back to Firestore support thread open after credential preflight failure.");
-                [weakSelf pp_openSupportChatViaFirestoreFallbackWithSupportUser:supportUser
-                                                                     customerID:customerID
-                                                                     completion:^(ChatThreadModel * _Nullable fallbackThread, NSError * _Nullable fallbackError) {
-                    if (fallbackThread && !fallbackError) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            [PPOverlayCoordinator pp_openChatThread:fallbackThread fromVC:strongController];
-                        });
-                        return;
-                    }
-
-                    NSLog(@"❌ [SupportChat] Firestore fallback failed: %@", fallbackError.localizedDescription ?: @"unknown error");
-                    NSString *fallbackMessage = fallbackError ? [PPFirebaseSessionBridge publicMessageForError:fallbackError fallbackKey:@"pp_support_open_failed"] : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
-                    PPSupportPresentUnavailableAlert(strongController, fallbackMessage);
-                }];
-                return;
-            }
             NSString *message = error ? [PPFirebaseSessionBridge publicMessageForError:error fallbackKey:@"pp_support_open_failed"] : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
             PPSupportPresentUnavailableAlert(strongController, message);
             return;
@@ -413,43 +358,21 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable readError) {
             if (readError || !snapshot.exists) {
                 NSLog(@"❌ [SupportChat] Failed to read support thread after creation: %@", readError.localizedDescription);
-                [weakSelf pp_openSupportChatViaFirestoreFallbackWithSupportUser:supportUser
-                                                                     customerID:customerID
-                                                                     completion:^(ChatThreadModel * _Nullable fallbackThread, NSError * _Nullable fallbackError) {
-                    if (fallbackThread && !fallbackError) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            [PPOverlayCoordinator pp_openChatThread:fallbackThread fromVC:strongController];
-                        });
-                        return;
-                    }
-
-                    NSString *fallbackMessage = fallbackError
-                        ? [PPFirebaseSessionBridge publicMessageForError:fallbackError fallbackKey:@"pp_support_open_failed"]
-                        : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
-                    PPSupportPresentUnavailableAlert(strongController, fallbackMessage);
-                }];
+                NSString *message = readError
+                    ? [PPFirebaseSessionBridge publicMessageForError:readError fallbackKey:@"pp_support_open_failed"]
+                    : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
+                PPSupportPresentUnavailableAlert(strongController, message);
                 return;
             }
 
             NSDictionary *threadData = snapshot.data ?: @{};
             if (!PPSupportThreadDataCanAcceptCustomerMessage(threadData, customerID, PURE_PETS_OFFICIAL_USER_ID)) {
-                NSLog(@"⚠️ [SupportChat] HTTP support thread %@ is missing canonical participants. Opening canonical fallback thread.",
+                NSLog(@"❌ [SupportChat] HTTP support thread %@ is missing canonical participants.",
                       snapshot.documentID ?: @"");
-                [weakSelf pp_openSupportChatViaFirestoreFallbackWithSupportUser:supportUser
-                                                                     customerID:customerID
-                                                                     completion:^(ChatThreadModel * _Nullable fallbackThread, NSError * _Nullable fallbackError) {
-                    if (fallbackThread && !fallbackError) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            [PPOverlayCoordinator pp_openChatThread:fallbackThread fromVC:strongController];
-                        });
-                        return;
-                    }
-
-                    NSString *fallbackMessage = fallbackError
-                        ? [PPFirebaseSessionBridge publicMessageForError:fallbackError fallbackKey:@"pp_support_open_failed"]
-                        : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
-                    PPSupportPresentUnavailableAlert(strongController, fallbackMessage);
-                }];
+                PPSupportPresentUnavailableAlert(
+                    strongController,
+                    kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now."
+                );
                 return;
             }
 
@@ -460,149 +383,6 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             dispatch_async(dispatch_get_main_queue(), ^{
                 [PPOverlayCoordinator pp_openChatThread:thread fromVC:strongController];
             });
-        }];
-    }];
-}
-
-- (void)pp_openSupportChatViaFirestoreFallbackWithSupportUser:(UserModel *)supportUser
-                                                   customerID:(NSString *)customerID
-                                                   completion:(void (^)(ChatThreadModel * _Nullable thread, NSError * _Nullable error))completion
-{
-    NSString *authUID = [FIRAuth auth].currentUser.uid ?: @"";
-    NSString *resolvedCustomerID = authUID.length > 0 ? authUID : (customerID ?: @"");
-    NSString *supportUserID = PURE_PETS_OFFICIAL_USER_ID;
-
-    if (resolvedCustomerID.length == 0 || supportUserID.length == 0) {
-        if (completion) {
-            completion(nil, [NSError errorWithDomain:@"ChManager"
-                                                code:401
-                                            userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_auth_sign_in_required") ?: @"Please sign in to continue."}]);
-        }
-        return;
-    }
-
-    if ([resolvedCustomerID isEqualToString:supportUserID]) {
-        if (completion) {
-            completion(nil, [NSError errorWithDomain:@"ChManager"
-                                                code:400
-                                            userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now."}]);
-        }
-        return;
-    }
-
-    NSString *threadID = ([resolvedCustomerID compare:supportUserID] == NSOrderedAscending)
-        ? [NSString stringWithFormat:@"%@_%@", resolvedCustomerID, supportUserID]
-        : [NSString stringWithFormat:@"%@_%@", supportUserID, resolvedCustomerID];
-
-    FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
-    FIRDocumentReference *threadRef = [[db collectionWithPath:@"Chats"] documentWithPath:threadID];
-    NSArray<NSString *> *members = @[resolvedCustomerID, supportUserID];
-
-    NSMutableDictionary *canonicalMetadata = [@{
-        @"members": members,
-        @"conversationType": kPPConversationTypeSupport,
-        @"threadType": kPPThreadTypeSupport,
-        @"supportThread": @(YES),
-        @"supportUserId": supportUserID,
-        @"customerId": resolvedCustomerID,
-        @"sourcePlatform": @"ios",
-        @"supportDisplayName": @"Pure Pets",
-        @"supportPhotoUrl": @"",
-        @"supportStatus": @"waiting_for_agent",
-        @"sourceScreen": @"support_chat",
-        @"sourceType": @"general",
-        @"sourceEntityId": @""
-    } mutableCopy];
-    [canonicalMetadata addEntriesFromDictionary:PPSupportThreadV2Metadata(threadID,
-                                                                          resolvedCustomerID,
-                                                                          supportUserID,
-                                                                          resolvedCustomerID)];
-
-    NSDictionary *(^supportCreatePayload)(void) = ^NSDictionary *{
-        NSMutableDictionary *data = [canonicalMetadata mutableCopy];
-        [data addEntriesFromDictionary:@{
-            @"members": members,
-            @"lastMessage": @"",
-            @"lastUpdated": [FIRFieldValue fieldValueForServerTimestamp],
-            @"lastMessageAt": [FIRFieldValue fieldValueForServerTimestamp],
-            @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
-            @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
-            @"mutedBy": @[],
-            @"binnedBy": @[],
-            @"reportedBy": @[],
-            @"reportCount": @(0),
-            @"assignedTo": @""
-        }];
-        return data.copy;
-    };
-
-    void (^finishWithSnapshot)(FIRDocumentSnapshot * _Nullable) = ^(FIRDocumentSnapshot * _Nullable snapshot) {
-        NSMutableDictionary *threadData = [snapshot.exists ? (snapshot.data ?: @{}) : @{
-            @"members": members,
-            @"conversationType": kPPConversationTypeSupport,
-            @"threadType": kPPThreadTypeSupport,
-            @"supportThread": @(YES),
-            @"supportUserId": supportUserID,
-            @"customerId": resolvedCustomerID,
-            @"supportDisplayName": @"Pure Pets",
-            @"supportPhotoUrl": @"",
-            @"supportStatus": @"waiting_for_agent"
-        } mutableCopy];
-        [threadData addEntriesFromDictionary:PPSupportThreadV2Metadata(threadID,
-                                                                       resolvedCustomerID,
-                                                                       supportUserID,
-                                                                       resolvedCustomerID)];
-
-        ChatThreadModel *thread = [[ChatThreadModel alloc] initWithDictionary:threadData];
-        thread.ID = threadID;
-        thread.memberIDs = members;
-        thread.otherUser = supportUser;
-        thread.supportThread = YES;
-        thread.supportUserID = supportUserID;
-        thread.supportDisplayName = @"Pure Pets";
-        thread.supportPhotoURLString = @"";
-        if (!thread.timestamp) {
-            thread.timestamp = [NSDate date];
-        }
-        [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
-        if (completion) completion(thread, nil);
-    };
-
-    [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error) {
-            if (completion) completion(nil, error);
-            return;
-        }
-
-        if (snapshot.exists) {
-            [threadRef setData:canonicalMetadata merge:YES completion:^(NSError * _Nullable mergeError) {
-                if (mergeError) {
-                    NSLog(@"⚠️ [SupportChat] Could not canonicalize fallback support metadata: %@", mergeError.localizedDescription ?: @"unknown error");
-                }
-                [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable refreshedSnapshot, NSError * _Nullable refreshError) {
-                    if (refreshError || !refreshedSnapshot.exists) {
-                        finishWithSnapshot(snapshot);
-                        return;
-                    }
-                    finishWithSnapshot(refreshedSnapshot);
-                }];
-            }];
-            return;
-        }
-
-        [threadRef setData:supportCreatePayload() completion:^(NSError * _Nullable createError) {
-            if (createError) {
-                if (completion) completion(nil, createError);
-                return;
-            }
-
-            [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable createdSnapshot, NSError * _Nullable readError) {
-                if (readError || !createdSnapshot.exists) {
-                    finishWithSnapshot(nil);
-                    return;
-                }
-                finishWithSnapshot(createdSnapshot);
-            }];
         }];
     }];
 }
@@ -833,9 +613,59 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     // ─────────────────────────────
     NSDictionary *messageData = [msg toDictionary];
 
-    // ─────────────────────────────
-    // 2️⃣ Write message (single source of truth)
-    // ─────────────────────────────
+    if (YES) {
+        NSMutableDictionary *serverMessage = [messageData mutableCopy];
+        [serverMessage removeObjectsForKeys:@[
+            @"ID", @"id", @"senderID", @"receiverID", @"timestamp",
+            @"createdAt", @"status", @"read", @"readBy", @"hiddenFrom"
+        ]];
+        if (msg.fileURL.length > 0 || msg.thumbnailURL.length > 0) {
+            serverMessage[@"mediaThreadId"] = threadID;
+        }
+        BOOL isSupportMessage = [resolvedReceiverID isEqualToString:PURE_PETS_OFFICIAL_USER_ID];
+        NSDictionary *payload = @{
+            @"action": isSupportMessage ? @"send_customer_message" : @"send",
+            @"threadId": threadID,
+            @"messageId": msg.ID,
+            @"receiverID": resolvedReceiverID,
+            @"text": msg.text ?: @"",
+            @"sourceApp": @"user_ios",
+            @"sourcePlatform": @"ios",
+            @"message": serverMessage.copy
+        };
+        NSString *callableName = isSupportMessage ? @"supportChatCommand" : @"chatMessageCommand";
+        FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"] HTTPSCallableWithName:callableName];
+        callable.timeoutInterval = 30.0;
+        [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result,
+                                                       NSError * _Nullable error) {
+            (void)result;
+            if (error) {
+                NSLog(@"❌ [SendSupportMessage] Callable failed — code=%ld domain=%@ desc=%@",
+                      (long)error.code,
+                      error.domain,
+                      error.localizedDescription ?: @"unknown");
+                if (completion) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        completion(error);
+                    });
+                }
+                return;
+            }
+
+            msg.status = ChatMessageStatusSent;
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"forceReloadThreads" object:nil];
+            if (completion) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    completion(nil);
+                });
+            }
+        }];
+        return;
+    }
+
+    // Historical direct-write implementation retained only as migration
+    // reference. All runtime sends return through the callable above.
+#if 0
     [messageRef setData:messageData
              completion:^(NSError * _Nullable error) {
 
@@ -916,6 +746,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             });
         }
     }];
+#endif
 }
 
 - (void)pp_presentForegroundChatNotificationForThreadID:(NSString *)threadID
@@ -2403,7 +2234,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         FIRStorageReference *ref =
             [[[FIRStorage storage] reference]
-             child:[NSString stringWithFormat:@"chat_media/images/%@.jpg", msg.ID]];
+              child:[NSString stringWithFormat:@"Chats/%@/media/images/%@.jpg", threadID, msg.ID]];
 
         FIRStorageMetadata *metadata = [FIRStorageMetadata new];
         metadata.contentType = @"image/jpeg";
@@ -2630,7 +2461,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     FIRStorageReference *videoRef =
         [[[FIRStorage storage] reference]
-         child:[NSString stringWithFormat:@"chat_media/videos/%@.mp4", msg.ID]];
+          child:[NSString stringWithFormat:@"Chats/%@/media/videos/%@.mp4", threadID, msg.ID]];
 
     msg.isUploading = YES;
     msg.transferProgress = 0;

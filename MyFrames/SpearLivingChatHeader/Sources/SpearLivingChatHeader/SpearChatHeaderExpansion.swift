@@ -24,17 +24,36 @@ internal struct SpearIdentityExpansion: View {
       mainBackgroundColor: mainBackgroundColor,
       cornerRadius: SpearHeaderLayout.deckCornerRadius
     ) {
-      VStack(spacing: 9) {
-        if showsTrustDetail {
-          trustDetail
-        }
+      expansionContent
+    }
+  }
 
-        if !metrics.isEmpty {
-          metricsLayout
-        }
-
-        actionsLayout
+  @ViewBuilder
+  private var expansionContent: some View {
+    if dynamicTypeSize.isAccessibilitySize {
+      ScrollView(.vertical) {
+        contentStack
+          .frame(maxWidth: .infinity)
       }
+      .frame(maxHeight: SpearHeaderLayout.accessibilityExpansionMaximumHeight)
+      .scrollIndicators(.visible)
+      .scrollBounceBehavior(.basedOnSize)
+    } else {
+      contentStack
+    }
+  }
+
+  private var contentStack: some View {
+    VStack(spacing: 9) {
+      if showsTrustDetail {
+        trustDetail
+      }
+
+      if !metrics.isEmpty {
+        metricsLayout
+      }
+
+      actionsLayout
     }
   }
 

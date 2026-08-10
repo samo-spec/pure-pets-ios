@@ -40,6 +40,8 @@ struct HomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var loadedEntranceVisible = false
+    @State private var pureLensContentMotionReady = false
+    @State private var pureLensSignalStoryPlayed = false
     @State private var presentedOrder: HomeOrderModel?
 
     private let topAnchor = "pp-home-top"
@@ -203,7 +205,7 @@ struct HomeView: View {
                 Array(sections.enumerated()),
                 id: \.element.id
             ) { index, section in
-                configuredSection(section)
+                configuredSection(section, sectionIndex: index)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, sectionVerticalPadding(section.id))
                     .background(sectionBand(for: section.id))
@@ -247,12 +249,27 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private func configuredSection(_ section: HomeConfigSection) -> some View {
+    private func configuredSection(
+        _ section: HomeConfigSection,
+        sectionIndex: Int
+    ) -> some View {
         switch section.id {
         case HomeSectionRawID.pureLens:
             if #available(iOS 16.0, *), let pureLensAction {
-                HomePureLensSection(action: pureLensAction)
-                    .padding(.horizontal, PPSpace.screenMargin)
+                HomePureLensSection(
+                    motionReady: pureLensContentMotionReady,
+                    motionAlreadyPlayed: pureLensSignalStoryPlayed,
+                    onMotionSettled: {
+                        pureLensSignalStoryPlayed = true
+                    },
+                    action: pureLensAction
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+                .modifier(HomePureLensMotionGate(
+                    homeEntranceAlreadyPresented: loadedEntranceVisible,
+                    sectionIndex: sectionIndex,
+                    isReady: $pureLensContentMotionReady
+                ))
             }
 
         case HomeSectionRawID.premiumSearch:
@@ -1343,8 +1360,9 @@ private struct HomeSectionEntranceModifier: ViewModifier {
     let reduceMotion: Bool
 
     func body(content: Content) -> some View {
-        let cappedIndex = min(sectionIndex, 6)
-        let delay = Double(cappedIndex) * 0.045
+        let delay = HomeSectionEntranceMotion.staggerDelay(
+            sectionIndex: sectionIndex
+        )
         content
             .opacity(isVisible ? 1 : 0)
             .scaleEffect(
@@ -1356,7 +1374,7 @@ private struct HomeSectionEntranceModifier: ViewModifier {
                 reduceMotion
                     ? .easeOut(duration: 0.12)
                     : .spring(
-                        response: 0.52,
+                        response: HomeSectionEntranceMotion.response,
                         dampingFraction: 0.82,
                         blendDuration: 0.08
                     ).delay(delay),
@@ -1426,7 +1444,7 @@ private struct HomeVerticalSectionReveal: ViewModifier {
         guard entranceAlreadyPlayed else { return .easeOut(duration: 0) }
         if reduceMotion { return .easeOut(duration: 0.18) }
         return .spring(
-            response: 0.44,
+            response: HomeVerticalSectionMotion.response,
             dampingFraction: 0.82,
             blendDuration: 0.06
         )
@@ -1448,6 +1466,76 @@ private struct HomeVerticalSectionReveal: ViewModifier {
             guard !revealed else { return }
             revealed = true
         }
+    }
+}
+
+/// Releases the Pure Lens content story only after Home's section reveal has
+/// reached its stable pose. The structured task cancels if the section leaves.
+private struct HomePureLensMotionGate: ViewModifier {
+    let homeEntranceAlreadyPresented: Bool
+    let sectionIndex: Int
+    @Binding var isReady: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.task(id: reduceMotion) {
+            await releaseAfterHomeMotionSettles()
+        }
+    }
+
+    @MainActor
+    private func releaseAfterHomeMotionSettles() async {
+        guard !isReady else { return }
+
+        if reduceMotion {
+            isReady = true
+            return
+        }
+
+        let nanoseconds = homeEntranceAlreadyPresented
+            ? HomeVerticalSectionMotion.settleDelayNanoseconds
+            : HomeSectionEntranceMotion.settleDelayNanoseconds(
+                sectionIndex: sectionIndex
+            )
+
+        do {
+            try await Task.sleep(nanoseconds: nanoseconds)
+        } catch {
+            return
+        }
+
+        guard !Task.isCancelled else { return }
+        isReady = true
+    }
+}
+
+private enum HomeSectionEntranceMotion {
+    static let maximumStaggerIndex = 6
+    static let staggerStep: Double = 0.045
+    static let response: Double = 0.52
+    /// Allows the damped spring to visually settle beyond its response time.
+    static let settlementBuffer: Double = 0.12
+
+    static func staggerDelay(sectionIndex: Int) -> Double {
+        Double(min(sectionIndex, maximumStaggerIndex)) * staggerStep
+    }
+
+    static func settleDelayNanoseconds(sectionIndex: Int) -> UInt64 {
+        let seconds = staggerDelay(sectionIndex: sectionIndex)
+            + response
+            + settlementBuffer
+        return UInt64(seconds * 1_000_000_000)
+    }
+}
+
+private enum HomeVerticalSectionMotion {
+    static let response: Double = 0.44
+    /// Matches the initial entrance's post-response settlement allowance.
+    static let settlementBuffer: Double = 0.12
+
+    static var settleDelayNanoseconds: UInt64 {
+        UInt64((response + settlementBuffer) * 1_000_000_000)
     }
 }
 

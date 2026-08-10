@@ -1809,8 +1809,8 @@
 "empty_chats_title" = "لا توجد محادثات بعد";
 "empty_chats_subtitle" = "ابدأ الدردشة مع أصحاب الحيوانات والبائعين.";
 "empty_chats_button" = "ابدأ محادثة";
-"chat_empty_thread_title" = "لا توجد رسائل بعد";
-"chat_empty_thread_subtitle" = "أرسل أول رسالة عندما تكون جاهزاً. ستبقى هذه المحادثة هنا بعد أن تبدأ.";
+"chat_empty_thread_title" = "ابدأ المحادثة";
+"chat_empty_thread_subtitle" = "أرسل أول رسالة عندما تكون جاهزًا.";
 "chat_empty_thread_action" = "اكتب رسالة";
 
 
@@ -4280,6 +4280,7 @@
 "chat_support_context_status_resolved" = "تم حل حالة الدعم";
 "chat_support_context_status_closed" = "أُغلقت حالة الدعم";
 "chat_support_context_status_unavailable" = "حالة الدعم غير متاحة";
+"chat_support_context_terminal_reopen_hint" = "أُغلقت حالة الدعم. سيؤدي إرسال رسالة جديدة إلى إعادة فتحها.";
 
 "chat_support_context_detail_format" = "الحالة: %@";
 
