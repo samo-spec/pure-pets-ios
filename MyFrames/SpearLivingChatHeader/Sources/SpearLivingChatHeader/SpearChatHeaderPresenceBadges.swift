@@ -36,10 +36,11 @@ internal struct SpearPresenceBadge: View {
 internal struct SpearOnlineBadge: View {
   let isAnimated: Bool
   @State private var pulseExpanded = false
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ZStack {
-      if isAnimated {
+      if shouldAnimate {
         Circle()
           .fill(SpearHeaderSemanticColor.live.opacity(0.3))
           .scaleEffect(pulseExpanded ? 1.7 : 1)
@@ -59,10 +60,19 @@ internal struct SpearOnlineBadge: View {
         startPulseIfNeeded()
       }
     }
+    .onChange(of: scenePhase) { _, phase in
+      // Returning from the background renders current truth without replaying
+      // the online-entry acknowledgement.
+      pulseExpanded = phase == .active
+    }
+  }
+
+  private var shouldAnimate: Bool {
+    isAnimated && scenePhase == .active
   }
 
   private func startPulseIfNeeded() {
-    guard isAnimated, !pulseExpanded else { return }
+    guard shouldAnimate, !pulseExpanded else { return }
     withAnimation(SpearHeaderMotion.standard) {
       pulseExpanded = true
     }

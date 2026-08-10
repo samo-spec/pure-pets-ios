@@ -3,6 +3,7 @@
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
 #import <objc/runtime.h>
+@import FirebaseAuth;
 
 static const void *PPUserModelCoreKey = &PPUserModelCoreKey;
 

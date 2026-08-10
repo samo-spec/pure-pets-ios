@@ -70,7 +70,7 @@ struct PPPetAdMediaItem: Identifiable, Equatable {
         }
 
         return PPPetAdMediaItem(
-            id: "\(index)-\(resolvedVideoURL ?? resolvedImageURL ?? rawURL)",
+            id: "\(index)-\(resolvedVideoURL ?? "")-\(resolvedImageURL ?? rawURL)",
             imageURL: resolvedImageURL,
             videoURL: resolvedVideoURL,
             blurHash: item.blurHash,

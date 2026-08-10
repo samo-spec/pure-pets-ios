@@ -39,39 +39,48 @@ public struct SpearChatHeader<AvatarContent: View>: View {
   }
 
   public var body: some View {
-    VStack(spacing: 0) {
-      switch state {
-      case .loading:
-        SpearHeaderLoadingRow(copy: copy, actions: actions)
+    ZStack(alignment: .top) {
+      headerBackground
+        .ignoresSafeArea(.container, edges: .top)
 
-      case .ready(let model):
-        SpearReadyHeader(
-          model: model,
-          style: style,
-          copy: copy,
-          actions: actions,
-          onExpansionChanged: onExpansionChanged,
-          contextThumbnail: contextThumbnailBuilder,
-          avatarContent: avatarBuilder(model)
-        )
-        .id(model.id)
-
-      case .unavailable(let title, let retryTitle):
-        SpearHeaderUnavailableRow(
-          title: title,
-          retryTitle: retryTitle,
-          copy: copy,
-          brandColor: style.brandColor,
-          actions: actions
-        )
-      }
+      headerContent
+        .frame(maxWidth: SpearHeaderLayout.maximumContentWidth)
+        .frame(maxWidth: .infinity)
     }
-    .background(headerBackground.ignoresSafeArea(.container, edges: .top))
     .accessibilityIdentifier(SpearChatHeaderAccessibilityID.root)
   }
 
-  /// The main-background canopy removes the previous lilac/blue color cast.
-  /// A very low-mass brand bloom keeps identity without competing with status.
+  @ViewBuilder
+  private var headerContent: some View {
+    switch state {
+    case .loading:
+      SpearHeaderLoadingRow(copy: copy, actions: actions)
+
+    case .ready(let model):
+      SpearReadyHeader(
+        model: model,
+        style: style,
+        copy: copy,
+        actions: actions,
+        onExpansionChanged: onExpansionChanged,
+        contextThumbnail: contextThumbnailBuilder,
+        avatarContent: avatarBuilder(model)
+      )
+      .id(model.id)
+
+    case .unavailable(let title, let retryTitle):
+      SpearHeaderUnavailableRow(
+        title: title,
+        retryTitle: retryTitle,
+        copy: copy,
+        brandColor: style.brandColor,
+        actions: actions
+      )
+    }
+  }
+
+  /// The canopy remains one calm surface. Live state motion stays local to the
+  /// avatar and presence line, so content and layout never animate implicitly.
   private var headerBackground: some View {
     ZStack {
       style.mainBackgroundColor
@@ -88,30 +97,21 @@ public struct SpearChatHeader<AvatarContent: View>: View {
 
         RadialGradient(
           colors: [
-            style.brandColor.opacity(colorScheme == .dark ? 0.045 : 0.026),
+            style.brandColor.opacity(colorScheme == .dark ? 0.060 : 0.035),
             .clear,
           ],
-          center: .topTrailing,
+          center: .topLeading,
           startRadius: 0,
-          endRadius: 230
+          endRadius: 260
         )
       }
     }
     .overlay(alignment: .bottom) {
-      LinearGradient(
-        colors: [
-          .clear,
-          Color.primary.opacity(contrast == .increased ? 0.20 : 0.075),
-          .clear,
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-      )
-      .frame(height: contrast == .increased ? 1.5 : 0.75)
+      Color.primary.opacity(contrast == .increased ? 0.22 : 0.060)
+        .frame(height: contrast == .increased ? 2 : 1)
     }
   }
 }
-
 
 // MARK: - Default Avatar Convenience
 

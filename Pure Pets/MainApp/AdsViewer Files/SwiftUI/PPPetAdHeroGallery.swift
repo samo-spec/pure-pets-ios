@@ -384,7 +384,12 @@ struct PPPetAdThumbnailRail: View {
                     contentMode: .fill,
                     accessibilityLabel:
                         mediaAccessibilityLabel(index: index),
-                    cacheKey: item.id
+                    showsRetryOnFailure: false,
+                    cacheKey: item.id,
+                    displaySize: CGSize(
+                        width: Self.thumbnailSize,
+                        height: Self.thumbnailSize
+                    )
                 )
                 .frame(
                     width: Self.thumbnailSize,
@@ -787,9 +792,10 @@ final class PPPetFaceFocusDetector {
     }
 }
 
-private struct PPPetAdTopAnchoredFillImage: View {
+struct PPPetAdTopAnchoredFillImage: View {
     let image: UIImage
     @State private var focusPoint = CGPoint(x: 0.5, y: 0.38)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { proxy in
@@ -822,8 +828,12 @@ private struct PPPetAdTopAnchoredFillImage: View {
         .clipped()
         .onAppear {
             PPPetFaceFocusDetector.shared.detectFocusPoint(for: image) { point in
-                withAnimation(.easeOut(duration: 0.28)) {
+                if reduceMotion {
                     self.focusPoint = point
+                } else {
+                    withAnimation(.easeOut(duration: 0.28)) {
+                        self.focusPoint = point
+                    }
                 }
             }
         }

@@ -16,6 +16,7 @@
 #import "PPUserKitCompatibility.h"
 #import "PPFirestoreErrorNotifier.h"
 #import "PPFunc.h"
+@import FirebaseAuth;
 #import "PPImageCollection.h"
 @import Firebase;
 @import FirebaseFirestore;
@@ -2737,7 +2738,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
      [self.collectionView reloadData];
  }];
  */
-
 
 
 

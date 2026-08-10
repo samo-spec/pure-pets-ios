@@ -2,6 +2,7 @@
 
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
+@import FirebaseAuth;
 #import <float.h>
 #import <math.h>
 

@@ -251,6 +251,12 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
         }
         startMessageObservationIfNeeded()
         startConversationActivityObservationIfNeeded()
+        if let threadID = chatThread?.id, !threadID.isEmpty {
+            let participantID = screenState.participantID.trimmingCharacters(in: .whitespacesAndNewlines)
+            ChManager
+                .shared()
+                .markMessagesAsRead(inThread: threadID, fromUser: participantID)
+        }
     }
 
     public override func viewWillDisappear(_ animated: Bool) {
@@ -451,6 +457,8 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                     canLoadOlder: canLoadOlder,
                     animated: initialLoadCompleted
                 )
+                let participantID = self.screenState.participantID.trimmingCharacters(in: .whitespacesAndNewlines)
+                ChManager.shared().markMessagesAsRead(inThread: threadID, fromUser: participantID)
             }
         }
 

@@ -15,8 +15,12 @@ models_source = (SOURCE / "SpearChatHeaderModels.swift").read_text(encoding="utf
 copy_source = (SOURCE / "SpearChatHeaderCopy.swift").read_text(encoding="utf-8")
 context_source = (SOURCE / "SpearConversationContext.swift").read_text(encoding="utf-8")
 context_view_source = (SOURCE / "SpearChatHeaderContext.swift").read_text(encoding="utf-8")
+expansion_source = (SOURCE / "SpearChatHeaderExpansion.swift").read_text(encoding="utf-8")
 states_source = (SOURCE / "SpearChatHeaderStates.swift").read_text(encoding="utf-8")
 header_source = (SOURCE / "SpearChatHeader.swift").read_text(encoding="utf-8")
+ready_source = (SOURCE / "SpearReadyHeader.swift").read_text(encoding="utf-8")
+presence_source = (SOURCE / "SpearChatHeaderPresence.swift").read_text(encoding="utf-8")
+deck_source = (SOURCE / "SpearChatHeaderDeck.swift").read_text(encoding="utf-8")
 style_source = (SOURCE / "SpearChatHeaderStyle.swift").read_text(encoding="utf-8")
 
 checks: list[tuple[str, bool]] = []
@@ -44,6 +48,10 @@ checks.append(("stable UI-test identifiers exist", "public enum SpearChatHeaderA
 checks.append(("semantic main background owns the header field", "mainBackgroundColor" in style_source and "style.mainBackgroundColor" in header_source))
 checks.append(("legacy lilac and community blue are absent from the header", "quietLilac" not in text and "618CB8" not in text and "SpearHeaderAtmosphere" not in text))
 checks.append(("live and warning states use adaptive semantic colors", "SpearHeaderSemanticColor" in style_source and ".green" not in text and ".orange" not in text))
+checks.append(("context and trust share one conversation deck", "if isExpanded && canExpand" in ready_source and "else if let context = model.context" in ready_source and "SpearHeaderDeck" in context_view_source and "SpearHeaderDeck" in expansion_source and "struct SpearHeaderDeck" in deck_source))
+checks.append(("presence meaning is not wrapped in a redundant status pill", ".background(semanticColor.opacity" not in presence_source))
+checks.append(("loading reserves the More action footprint", "actions.more.availability.isVisible" in states_source and "hasLoadingActionFootprint" in states_source))
+checks.append(("header motion has no unbounded repeat loop", "repeatForever" not in text))
 
 failed = [name for name, passed in checks if not passed]
 for name, passed in checks:

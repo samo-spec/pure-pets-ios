@@ -149,7 +149,8 @@ public struct SpearChatHeaderCopy: Equatable, Sendable {
     let seconds = max(0, elapsedSeconds)
     let locale = Locale(identifier: localeIdentifier)
     let number = IntegerFormatStyle<Int>.number.locale(locale)
-    let twoDigits = number
+    let twoDigits =
+      number
       .precision(.integerLength(2))
     let hours = seconds / 3600
     let minutes = (seconds % 3600) / 60

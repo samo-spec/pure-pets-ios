@@ -8,6 +8,10 @@
 
 #import "AdoptPetModel.h"
 
+static NSInteger PPAdoptIntegerValue(id value) {
+    return [value respondsToSelector:@selector(integerValue)] ? [value integerValue] : 0;
+}
+
 @implementation AdoptPetModel
 
 - (instancetype)init {
@@ -34,11 +38,11 @@
         _documentID = snapshot.documentID ?: @"";
         NSDictionary *d = snapshot.data ?: @{};
         _name      = [d[@"name"] isKindOfClass:NSString.class] ? d[@"name"] : ([d[@"adTitle"] isKindOfClass:NSString.class] ? d[@"adTitle"] : ([d[@"title"] isKindOfClass:NSString.class] ? d[@"title"] : @""));
-        _kindID    = [(d[@"kindID"] ?: d[@"category"] ?: d[@"mainCategoryID"] ?: @(0)) integerValue];
-        _breedID   = [(d[@"breedID"] ?: d[@"subcategory"] ?: d[@"subCategoryID"] ?: @(0)) integerValue];
-        _ageMonths = [(d[@"ageMonths"] ?: d[@"petAge"] ?: d[@"petAgeMonths"] ?: d[@"age"] ?: @(0)) integerValue];
+        _kindID    = PPAdoptIntegerValue(d[@"kindID"] ?: d[@"category"] ?: d[@"mainCategoryID"]);
+        _breedID   = PPAdoptIntegerValue(d[@"breedID"] ?: d[@"subcategory"] ?: d[@"subCategoryID"]);
+        _ageMonths = PPAdoptIntegerValue(d[@"ageMonths"] ?: d[@"petAge"] ?: d[@"petAgeMonths"] ?: d[@"age"]);
         _gender    = [d[@"gender"] isKindOfClass:NSString.class] ? d[@"gender"] : @"Male";
-        _cityID    = [(d[@"cityID"] ?: d[@"adLocation"] ?: @(0)) integerValue];
+        _cityID    = PPAdoptIntegerValue(d[@"cityID"] ?: d[@"adLocation"]);
         _details   = [d[@"details"] isKindOfClass:NSString.class] ? d[@"details"] : ([d[@"desc"] isKindOfClass:NSString.class] ? d[@"desc"] : ([d[@"adDescription"] isKindOfClass:NSString.class] ? d[@"adDescription"] : ([d[@"description"] isKindOfClass:NSString.class] ? d[@"description"] : @"")));
         _ownerID   = [d[@"ownerID"] isKindOfClass:NSString.class] ? d[@"ownerID"] : ([d[@"uid"] isKindOfClass:NSString.class] ? d[@"uid"] : ([d[@"userId"] isKindOfClass:NSString.class] ? d[@"userId"] : @""));
         if ([d[@"visibility"] respondsToSelector:@selector(integerValue)]) {
@@ -56,7 +60,15 @@
             }
         }
         _imageURLs = urls.copy;
-        _imageMeta = [d[@"imageMeta"] isKindOfClass:NSArray.class] ? d[@"imageMeta"] : @[];
+        NSMutableArray<NSDictionary *> *validImageMeta = [NSMutableArray array];
+        if ([d[@"imageMeta"] isKindOfClass:NSArray.class]) {
+            for (id item in d[@"imageMeta"]) {
+                if ([item isKindOfClass:NSDictionary.class]) {
+                    [validImageMeta addObject:item];
+                }
+            }
+        }
+        _imageMeta = validImageMeta.copy;
 
         id ts = d[@"createdAt"] ?: d[@"postedDate"] ?: d[@"updatedAt"];
         if ([ts isKindOfClass:[FIRTimestamp class]]) {
@@ -86,7 +98,19 @@
 
 -(NSString *)mCityName
 {
-    return [CitiesManager.shared cityNameForID:self.cityID];
+    return [CitiesManager.shared cityNameForID:self.cityID] ?: @"";
+}
+
+-(NSString *)mKindName
+{
+    return [MainKindsModel kindNameForID:self.kindID] ?: @"";
+}
+
+-(NSString *)mBreedName
+{
+    MainKindsModel *mainKind = [MainKindsModel mainKindClassForID:self.kindID inArray:MKM.MainKindsArray];
+    SubKindModel *subKind = [mainKind subKindForID:self.breedID];
+    return subKind.SubKindName ?: @"";
 }
 
 -(MainKindsModel *)mainKindModel

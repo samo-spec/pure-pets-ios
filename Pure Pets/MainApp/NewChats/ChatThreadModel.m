@@ -6,6 +6,7 @@
 #import "ChatThreadModel.h"
 #import <FirebaseFirestore/FirebaseFirestore.h>
 #import <FirebaseAuth/FirebaseAuth.h>
+@import FirebaseAuth;
 #import "UserManager.h"
 #import "UserModel.h"
 

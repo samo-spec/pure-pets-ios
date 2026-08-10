@@ -14,9 +14,18 @@
 #import "UserManager.h"
 #import "UserModel.h"
 #import "ImagePicker.h"
+@import FirebaseAuth;
 #import "GM.h"
 #import "PPHUD.h"
 #import <FirebaseAuth/FirebaseAuth.h>
+
+
+@import Firebase;
+@import FirebaseAuth;
+@import FirebaseFunctions;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+
 
 static const CGFloat PPStoriesSidePadding        = 18.0;
 static const CGFloat PPStoriesTopPadding         = 10.0;

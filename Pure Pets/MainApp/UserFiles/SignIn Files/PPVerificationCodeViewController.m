@@ -8,6 +8,7 @@
 #import "PPVerificationCodeViewController.h"
 #import "Language.h"
 #import "PPAuthScaffoldView.h"
+@import FirebaseAuth;
 
 #if DEBUG
 #define PPVerificationLog(...) NSLog(__VA_ARGS__)

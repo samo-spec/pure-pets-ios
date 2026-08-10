@@ -17,47 +17,25 @@ internal struct SpearIdentityExpansion: View {
   let safetyAction: SpearHeaderAction
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.colorSchemeContrast) private var contrast
-  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    VStack(spacing: 9) {
-      if showsTrustDetail {
-        trustDetail
-      }
-
-      if !metrics.isEmpty {
-        metricsLayout
-      }
-
-      actionsLayout
-    }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 8)
-    .background {
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .fill(mainBackgroundColor)
-        .overlay {
-          RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.primary.opacity(colorScheme == .dark ? 0.035 : 0.018))
+    SpearHeaderDeck(
+      brandColor: trust.isRestricted ? SpearHeaderSemanticColor.warning : brandColor,
+      mainBackgroundColor: mainBackgroundColor,
+      cornerRadius: SpearHeaderLayout.deckCornerRadius
+    ) {
+      VStack(spacing: 9) {
+        if showsTrustDetail {
+          trustDetail
         }
+
+        if !metrics.isEmpty {
+          metricsLayout
+        }
+
+        actionsLayout
+      }
     }
-    .overlay {
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .strokeBorder(
-          Color.primary.opacity(contrast == .increased ? 0.24 : 0.075),
-          lineWidth: contrast == .increased ? 1.5 : 0.7
-        )
-    }
-    .transition(
-      reduceMotion
-        ? .opacity
-        : .asymmetric(
-          insertion: .opacity.combined(with: .offset(y: -5)),
-          removal: .opacity
-        )
-    )
   }
 
   // MARK: - Trust Detail
@@ -187,8 +165,9 @@ internal struct SpearIdentityExpansion: View {
           .frame(minHeight: 44)
       }
       .buttonStyle(SpearIdentityUtilityButtonStyle(brandColor: brandColor))
+      .hoverEffect(.highlight)
       .disabled(!action.availability.isEnabled)
-      .opacity(action.availability.isEnabled ? 1 : 0.42)
+      .opacity(action.availability.isEnabled ? 1 : 0.56)
       .accessibilityIdentifier(accessibilityIdentifier)
       .modifier(
         SpearDisabledReasonModifier(
@@ -214,7 +193,9 @@ private struct SpearIdentityUtilityButtonStyle: ButtonStyle {
       )
       .opacity(configuration.isPressed ? 0.82 : 1)
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
-      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed)
   }
 }
 

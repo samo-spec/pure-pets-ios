@@ -237,7 +237,10 @@ struct HomeView: View {
                     && !store.state.heroPages.isEmpty
             }
             if section.id == HomeSectionRawID.pureLens {
-                return store.state.config.pureLensVisible
+                if #available(iOS 16.0, *) {
+                    return store.state.config.pureLensVisible
+                }
+                return false
             }
             return true
         }
@@ -247,7 +250,7 @@ struct HomeView: View {
     private func configuredSection(_ section: HomeConfigSection) -> some View {
         switch section.id {
         case HomeSectionRawID.pureLens:
-            if let pureLensAction {
+            if #available(iOS 16.0, *), let pureLensAction {
                 HomePureLensSection(action: pureLensAction)
                     .padding(.horizontal, PPSpace.screenMargin)
             }

@@ -9,6 +9,7 @@
 #import <objc/runtime.h>
 #import "ChatPresenceManager.h"
 #import "PPModernAvatarRenderer.h"
+@import FirebaseAuth;
 #pragma mark - Accessors
 
 static inline UIView *PPBarForVC(UIViewController *vc) {

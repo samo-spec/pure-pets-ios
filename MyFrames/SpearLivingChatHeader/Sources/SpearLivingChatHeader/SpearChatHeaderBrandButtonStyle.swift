@@ -32,6 +32,8 @@ internal struct SpearBrandButtonStyle: ButtonStyle {
       )
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
       .opacity(configuration.isPressed ? 0.86 : 1)
-      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed)
   }
 }

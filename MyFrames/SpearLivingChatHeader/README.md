@@ -2,7 +2,7 @@
 
 A release-candidate SwiftUI chat header for iOS 17+, designed for marketplace conversations, verified identities, active orders, support cases, and live communication states.
 
-## What changed in the 100/100 upgrade
+## What changed in the Conversation Compass redesign
 
 - A single typed `SpearTrustState` now owns the badge, visible trust detail, and VoiceOver trust description.
 - Semantic `SpearPresence` owns real presence data: typed response speed and an offline timestamp rather than caller-authored status text.
@@ -14,6 +14,8 @@ A release-candidate SwiftUI chat header for iOS 17+, designed for marketplace co
 - The reusable component no longer owns remote image loading. The app injects its cached, authenticated, downsampled avatar view.
 - VoiceOver identity output includes name, trust state, presence or call state, and expanded/collapsed state without repeating the visual trust detail.
 - Reduce Motion, Reduce Transparency, Increased Contrast, RTL, Dynamic Type, hidden/disabled actions, loading, error, and retry are first-class states.
+- Marketplace, order, and support context share one bounded conversation deck with expanded trust utilities; they never stack into competing cards.
+- Trust and presence remain legible without badge-on-badge decoration or a redundant status pill.
 - Production files are split by responsibility and remain below 300 lines.
 - A Swift package, contract tests, source guardrail script, Xcode release script, and manual QA matrix are included.
 
@@ -32,6 +34,7 @@ SpearLivingChatHeader/
 │   ├── SpearChatHeaderPresence.swift
 │   ├── SpearChatHeaderExpansion.swift
 │   ├── SpearChatHeaderContext.swift
+│   ├── SpearChatHeaderDeck.swift
 │   ├── SpearChatHeaderStates.swift
 │   ├── SpearChatHeaderControls.swift
 │   ├── SpearChatHeaderCopy.swift

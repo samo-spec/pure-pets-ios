@@ -39,6 +39,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 @property (nonatomic, copy) NSString *mCityName;
+@property (nonatomic, copy, readonly) NSString *mKindName;
+@property (nonatomic, copy, readonly) NSString *mBreedName;
 @property (nonatomic, strong) MainKindsModel *mainKindModel;
 @property (nonatomic, strong) SubKindModel *subKindModel;
 

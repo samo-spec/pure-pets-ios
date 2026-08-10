@@ -20,6 +20,7 @@
 
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <UIKit/UIKit.h>
+@import FirebaseAuth;
 
 static const CGFloat PPChatStoriesHeaderHiddenHeight = 8.0;
 static const CGFloat PPChatStoriesHeaderVisibleHeight = 208.0;

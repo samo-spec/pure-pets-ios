@@ -9,8 +9,7 @@ struct PPPetAdRemoteImageView: View {
     let showsRetryOnFailure: Bool
     let cacheKey: String?
     let displaySize: CGSize?
-
-    @State private var blurHashImage: UIImage?
+    let usesPetFocus: Bool
 
     init(
         urlString: String?,
@@ -19,7 +18,8 @@ struct PPPetAdRemoteImageView: View {
         accessibilityLabel: String,
         showsRetryOnFailure: Bool = true,
         cacheKey: String? = nil,
-        displaySize: CGSize? = nil
+        displaySize: CGSize? = nil,
+        usesPetFocus: Bool = false
     ) {
         self.urlString = urlString
         self.blurHash = blurHash
@@ -28,56 +28,122 @@ struct PPPetAdRemoteImageView: View {
         self.showsRetryOnFailure = showsRetryOnFailure
         self.cacheKey = cacheKey
         self.displaySize = displaySize
+        self.usesPetFocus = usesPetFocus
     }
 
     var body: some View {
-        AppRemoteImage(
-            urlString: urlString,
+        PPPetAdRemoteImageContent(
+            urlString: normalizedURLString,
+            blurHash: normalizedBlurHash,
+            contentMode: contentMode,
+            showsRetryOnFailure: showsRetryOnFailure,
             cacheKey: cacheKey,
             displaySize: displaySize,
-            contentMode: contentMode,
-            showsRetryAction: showsRetryOnFailure
-        ) {
-            ZStack {
-                placeholder
-                if let blurHashImage {
-                    Image(uiImage: blurHashImage)
-                        .resizable()
-                        .aspectRatio(contentMode: contentMode)
+            usesPetFocus: usesPetFocus
+        )
+        .id(contentIdentity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(.isImage)
+    }
+
+    private var normalizedURLString: String? {
+        normalized(urlString)
+    }
+
+    private var normalizedBlurHash: String? {
+        normalized(blurHash)
+    }
+
+    private var contentIdentity: String {
+        [
+            normalizedURLString ?? "invalid",
+            normalizedBlurHash ?? "no-blurhash",
+            cacheKey ?? "default-cache",
+            usesPetFocus ? "focused" : "centered"
+        ]
+        .joined(separator: "|")
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+}
+
+private struct PPPetAdRemoteImageContent: View {
+    let urlString: String?
+    let blurHash: String?
+    let contentMode: ContentMode
+    let showsRetryOnFailure: Bool
+    let cacheKey: String?
+    let displaySize: CGSize?
+    let usesPetFocus: Bool
+
+    @State private var blurHashImage: UIImage?
+    @State private var loadedImage: UIImage?
+
+    var body: some View {
+        ZStack {
+            AppRemoteImage(
+                urlString: urlString,
+                cacheKey: cacheKey,
+                displaySize: displaySize,
+                contentMode: contentMode,
+                showsRetryAction: showsRetryOnFailure,
+                onImageLoaded: { image in
+                    loadedImage = image
                 }
-                ProgressView()
-                    .tint(Color.ppPrimary)
-                    .accessibilityLabel(
-                        PPPetAdLocalization.text(
-                            "loading_images",
-                            fallback: "Loading image"
+            ) {
+                ZStack {
+                    placeholder
+                    if let blurHashImage {
+                        Image(uiImage: blurHashImage)
+                            .resizable()
+                            .aspectRatio(contentMode: contentMode)
+                    }
+                    ProgressView()
+                        .tint(Color.ppPrimary)
+                        .accessibilityLabel(
+                            PPPetAdLocalization.text(
+                                "loading_images",
+                                fallback: "Loading image"
+                            )
                         )
-                    )
+                }
+            } failurePlaceholder: {
+                if showsRetryOnFailure {
+                    VStack(spacing: PPSpace.sm) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.system(size: 26, weight: .semibold))
+                        Text(
+                            PPPetAdLocalization.text(
+                                "Retry",
+                                fallback: "Retry"
+                            )
+                        )
+                        .font(
+                            .custom(
+                                "Beiruti-Bold",
+                                size: 14,
+                                relativeTo: .callout
+                            )
+                        )
+                    }
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                } else {
+                    placeholder
+                }
             }
-        } failurePlaceholder: {
-            if showsRetryOnFailure {
-                VStack(spacing: PPSpace.sm) {
-                    Image(systemName: "photo.badge.exclamationmark")
-                        .font(.system(size: 26, weight: .semibold))
-                    Text(
-                        PPPetAdLocalization.text(
-                            "Retry",
-                            fallback: "Retry"
-                        )
-                    )
-                    .font(
-                        .custom(
-                            "Beiruti-Bold",
-                            size: 14,
-                            relativeTo: .callout
-                        )
-                    )
-                }
-                .foregroundStyle(Color.ppTextSecondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-            } else {
-                placeholder
+            .opacity(usesPetFocus && loadedImage != nil ? 0 : 1)
+
+            if usesPetFocus, let loadedImage {
+                PPPetAdTopAnchoredFillImage(image: loadedImage)
             }
         }
         .background(Color.ppForeground)
@@ -85,12 +151,6 @@ struct PPPetAdRemoteImageView: View {
         .onAppear {
             decodeBlurHashIfNeeded()
         }
-        .onChange(of: blurHash) { _ in
-            decodeBlurHashIfNeeded()
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityAddTraits(.isImage)
     }
 
     private var placeholder: some View {
@@ -111,23 +171,16 @@ struct PPPetAdRemoteImageView: View {
     }
 
     private func decodeBlurHashIfNeeded() {
-        let normalizedHash = blurHash?.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        guard let normalizedHash, !normalizedHash.isEmpty else {
+        guard let blurHash else {
             blurHashImage = nil
             return
         }
+
         PPBlurHashBridge.image(
-            from: normalizedHash,
+            from: blurHash,
             size: CGSize(width: 40, height: 40),
             punch: 1
         ) { image in
-            guard normalizedHash == blurHash?.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ) else {
-                return
-            }
             blurHashImage = image
         }
     }

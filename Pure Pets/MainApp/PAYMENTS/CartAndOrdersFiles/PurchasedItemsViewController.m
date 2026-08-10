@@ -12,6 +12,7 @@
 #import "UserManager.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
+@import FirebaseAuth;
 
 static NSString * const PPPurchasedItemCellID = @"PPPurchasedItemCell";
 static NSInteger const PPPurchasedItemsOrderLimit = 120;

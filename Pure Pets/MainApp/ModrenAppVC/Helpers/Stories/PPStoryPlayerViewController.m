@@ -15,7 +15,11 @@
 #import "ImagePicker.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <AVFoundation/AVFoundation.h>
-
+@import Firebase;
+@import FirebaseAuth;
+@import FirebaseFunctions;
+@import FirebaseFirestore;
+@import FirebaseStorage;
 static NSString * const PPStoryProgressPulseAnimationKey = @"pp.story.progress.pulse";
 static NSString * const PPStoryProgressSlideAnimationKey = @"pp.story.progress.slide";
 static NSString * const PPStoryCaptionEntranceAnimationKey = @"pp.story.caption.entrance";

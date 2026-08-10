@@ -27,6 +27,7 @@
 
 @import FirebaseAuth;
 @import FirebaseFirestore;
+@import FirebaseFunctions;
 
 static NSString * const PPPetAdViewerBridgeErrorDomain =
     @"com.purepets.pet-ad-viewer";
@@ -226,7 +227,8 @@ static CGFloat PPPetAdViewerBottomNavigationClearance(
         NSError *error = [NSError errorWithDomain:PPPetAdViewerBridgeErrorDomain
                                              code:1002
                                          userInfo:@{
-            NSLocalizedDescriptionKey: @"Authentication is required."
+            NSLocalizedDescriptionKey: [Language get:@"pet_ad_viewer_authentication_required"
+                                                alter:nil]
         }];
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(error);
@@ -262,7 +264,8 @@ static CGFloat PPPetAdViewerBottomNavigationClearance(
         NSError *error = [NSError errorWithDomain:PPPetAdViewerBridgeErrorDomain
                                              code:1003
                                          userInfo:@{
-            NSLocalizedDescriptionKey: @"Authentication is required."
+            NSLocalizedDescriptionKey: [Language get:@"pet_ad_viewer_authentication_required"
+                                                alter:nil]
         }];
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(error);
@@ -274,7 +277,8 @@ static CGFloat PPPetAdViewerBottomNavigationClearance(
         NSError *error = [NSError errorWithDomain:PPPetAdViewerBridgeErrorDomain
                                              code:1004
                                          userInfo:@{
-            NSLocalizedDescriptionKey: @"This advertisement cannot be reported."
+            NSLocalizedDescriptionKey: [Language get:@"pet_ad_viewer_report_unavailable"
+                                                alter:nil]
         }];
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(error);
@@ -282,41 +286,26 @@ static CGFloat PPPetAdViewerBottomNavigationClearance(
         return;
     }
 
-    FIRFirestore *database = FIRFirestore.firestore;
-    FIRDocumentReference *adReference =
-        [[database collectionWithPath:kPetAdsCollection]
-         documentWithPath:ad.adID];
-
-    [adReference updateData:@{
-        @"reportedBy": [FIRFieldValue fieldValueForArrayUnion:@[userID]],
-        @"reportCount": [FIRFieldValue fieldValueForIntegerIncrement:1],
-        @"lastReportedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    } completion:nil];
-
-    NSString *reportID =
-        [NSString stringWithFormat:@"%@_%@", ad.adID, userID];
-    FIRDocumentReference *reportReference =
-        [[database collectionWithPath:@"reports"] documentWithPath:reportID];
-
+    // submitContentReport derives the reporter, listing owner, collection,
+    // timestamps, and status from authoritative records. It also increments
+    // pet-ad report counters only when it creates a new case.
     NSDictionary *reportData = @{
-        @"reportId": reportID,
-        @"contentId": ad.adID,
+        @"contentID": ad.adID,
         @"contentType": @"pet_ad",
-        @"collection": kPetAdsCollection,
         @"reason": reason ?: @"other",
-        @"reporterUid": userID,
-        @"reportedOwnerUid": ad.ownerID ?: @"",
-        @"status": @"pending",
-        @"platform": @"ios",
-        @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
-        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+        @"platform": @"ios"
     };
-
-    [reportReference setData:reportData
-                       merge:YES
-                  completion:^(NSError * _Nullable error) {
+    FIRHTTPSCallable *callable =
+        [[FIRFunctions functionsForRegion:@"us-central1"]
+         HTTPSCallableWithName:@"submitContentReport"];
+    callable.timeoutInterval = 30.0;
+    [callable callWithObject:reportData
+                  completion:^(__unused FIRHTTPSCallableResult * _Nullable result,
+                               NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            completion(error);
+            if (completion) {
+                completion(error);
+            }
         });
     }];
 }

@@ -16,6 +16,7 @@ static NSString * const kFieldOnline  = @"online";
 static NSString * const kFieldisOnline  = @"isOnline";
 static NSString * const kFieldLastSeen = @"lastSeen";
 static NSString * const kPPSupportAvatarToken = @"purepets://support-logo";
+@import FirebaseAuth;
 static NSString * const kPPConversationTypeSupport = @"support";
 static NSString * const kPPConversationTypeProviderChat = @"provider_chat";
 static NSString * const kPPThreadTypeSupport = @"support";

@@ -10,6 +10,7 @@
 #import "PPFulfillmentOrder.h"
 #import <FirebaseFirestore/FirebaseFirestore.h>
 #import <FirebaseAuth/FirebaseAuth.h>
+@import FirebaseAuth;
 @import FirebaseFunctions;
 @import FirebaseStorage;
 #import <math.h>

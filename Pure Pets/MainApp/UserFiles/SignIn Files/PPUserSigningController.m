@@ -11,6 +11,7 @@
 #import "CountryModel.h"
 #import "PPRootTabBarController.h"
 #import "PPAuthScaffoldView.h"
+@import FirebaseAuth;
 
 static NSString * const kPPUsersCollection = @"UsersCol";
 static NSString * const kPPDefaultsUserTokenKey = @"PPUserTokenID";

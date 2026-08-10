@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Capsule Action Button (new floating pill style)
+// MARK: - Grouped Header Action
 
 internal struct SpearHeaderCapsuleButton: View {
   let systemName: String
@@ -17,13 +17,14 @@ internal struct SpearHeaderCapsuleButton: View {
         Image(systemName: systemName)
           .font(.body.weight(.medium))
           .foregroundStyle(tint)
-          .frame(width: 38, height: 38)
+          .frame(width: 44, height: 44)
           .contentShape(Circle())
           .background { activeGlow }
       }
       .buttonStyle(SpearCapsuleItemStyle())
+      .hoverEffect(.highlight)
       .disabled(!action.availability.isEnabled)
-      .opacity(action.availability.isEnabled ? 1 : 0.42)
+      .opacity(action.availability.isEnabled ? 1 : 0.56)
       .accessibilityLabel(accessibilityLabel)
       .accessibilityIdentifier(accessibilityIdentifier)
       .modifier(SpearDisabledReasonModifier(reason: action.availability.disabledReason))
@@ -58,8 +59,9 @@ internal struct SpearHeaderIconActionButton: View {
           .contentShape(Circle())
       }
       .buttonStyle(SpearIconButtonStyle())
+      .hoverEffect(.highlight)
       .disabled(!action.availability.isEnabled)
-      .opacity(action.availability.isEnabled ? 1 : 0.42)
+      .opacity(action.availability.isEnabled ? 1 : 0.56)
       .accessibilityLabel(accessibilityLabel)
       .accessibilityIdentifier(accessibilityIdentifier)
       .modifier(SpearDisabledReasonModifier(reason: action.availability.disabledReason))
@@ -87,30 +89,12 @@ internal struct SpearHeaderLabeledActionButton: View {
           .frame(minHeight: 44)
       }
       .buttonStyle(SpearSecondaryButtonStyle())
+      .hoverEffect(.highlight)
       .disabled(!action.availability.isEnabled)
-      .opacity(action.availability.isEnabled ? 1 : 0.42)
+      .opacity(action.availability.isEnabled ? 1 : 0.56)
       .accessibilityLabel(accessibilityLabel)
       .accessibilityIdentifier(accessibilityIdentifier)
       .modifier(SpearDisabledReasonModifier(reason: action.availability.disabledReason))
-    }
-  }
-}
-
-// MARK: - Text Action Button
-
-internal struct SpearTextActionButton: View {
-  let title: String
-  let accessibilityIdentifier: String
-  let action: SpearHeaderAction
-
-  var body: some View {
-    if action.availability.isVisible {
-      Button(title, action: action.perform)
-        .buttonStyle(SpearSecondaryButtonStyle())
-        .disabled(!action.availability.isEnabled)
-        .opacity(action.availability.isEnabled ? 1 : 0.42)
-        .accessibilityIdentifier(accessibilityIdentifier)
-        .modifier(SpearDisabledReasonModifier(reason: action.availability.disabledReason))
     }
   }
 }
@@ -123,6 +107,8 @@ internal struct SpearContextActionButton: View {
   let context: SpearConversationContext
   let action: SpearContextHeaderAction
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   var body: some View {
     if action.availability.isVisible {
       Button {
@@ -130,15 +116,17 @@ internal struct SpearContextActionButton: View {
       } label: {
         HStack(spacing: 6) {
           Text(title)
-            .lineLimit(1)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            .multilineTextAlignment(.leading)
           Image(systemName: "chevron.forward")
             .font(.caption.weight(.bold))
             .accessibilityHidden(true)
         }
       }
       .buttonStyle(SpearContextButtonStyle(color: brandColor))
+      .hoverEffect(.highlight)
       .disabled(!action.availability.isEnabled)
-      .opacity(action.availability.isEnabled ? 1 : 0.42)
+      .opacity(action.availability.isEnabled ? 1 : 0.56)
       .accessibilityLabel("\(title), \(context.title)")
       .accessibilityIdentifier(SpearChatHeaderAccessibilityID.contextAction)
       .modifier(SpearDisabledReasonModifier(reason: action.availability.disabledReason))
@@ -166,7 +154,9 @@ internal struct SpearContextButtonStyle: ButtonStyle {
       )
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
       .opacity(configuration.isPressed ? 0.84 : 1)
-      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed)
   }
 }
 
@@ -195,7 +185,9 @@ internal struct SpearCapsuleItemStyle: ButtonStyle {
     configuration.label
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
       .opacity(configuration.isPressed ? 0.72 : 1)
-      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed)
   }
 }
 
@@ -203,7 +195,6 @@ internal struct SpearCapsuleItemStyle: ButtonStyle {
 internal struct SpearIconButtonStyle: ButtonStyle {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorSchemeContrast) private var contrast
-  @Environment(\.colorScheme) private var colorScheme
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
@@ -225,14 +216,11 @@ internal struct SpearIconButtonStyle: ButtonStyle {
             lineWidth: contrast == .increased ? 1.5 : 0.5
           )
       }
-      .shadow(
-        color: Color.black.opacity(colorScheme == .dark ? 0.10 : 0.035),
-        radius: 4,
-        y: 1
-      )
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
       .opacity(configuration.isPressed ? 0.82 : 1)
-      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed)
   }
 }
 
@@ -251,7 +239,9 @@ internal struct SpearIdentityButtonStyle: ButtonStyle {
       )
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
       .opacity(configuration.isPressed ? 0.86 : 1)
-      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed)
   }
 }
 
@@ -285,6 +275,8 @@ internal struct SpearSecondaryButtonStyle: ButtonStyle {
       }
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
       .opacity(configuration.isPressed ? 0.84 : 1)
-      .animation(reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed), value: configuration.isPressed)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed)
   }
 }

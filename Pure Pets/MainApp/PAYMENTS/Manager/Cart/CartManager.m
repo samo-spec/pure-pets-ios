@@ -11,6 +11,7 @@
 #import "PPAlertHelper.h"
 #import <UIKit/UIKit.h>
 #import <math.h>
+@import FirebaseAuth;
 
 @interface CartManager()
 @property (nonatomic, strong) CartItem *lastRemovedItem;

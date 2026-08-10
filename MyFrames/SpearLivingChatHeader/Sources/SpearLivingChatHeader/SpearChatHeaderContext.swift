@@ -21,43 +21,30 @@ internal struct SpearContextRail: View {
   @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    Group {
-      if context.isSupport {
-        supportLayout
-      } else if dynamicTypeSize.isAccessibilitySize {
-        verticalLayout
-      } else {
-        ViewThatFits(in: .horizontal) {
-          horizontalLayout
-            .frame(minWidth: 340)
+    SpearHeaderDeck(
+      brandColor: brandColor,
+      mainBackgroundColor: mainBackgroundColor,
+      cornerRadius: cornerRadius,
+      horizontalPadding: 10,
+      verticalPadding: context.isSupport ? 7 : 9
+    ) {
+      Group {
+        if context.isSupport {
+          if dynamicTypeSize.isAccessibilitySize {
+            supportAccessibilityLayout
+          } else {
+            supportLayout
+          }
+        } else if dynamicTypeSize.isAccessibilitySize {
           verticalLayout
+        } else {
+          ViewThatFits(in: .horizontal) {
+            horizontalLayout
+              .frame(minWidth: 340)
+            verticalLayout
+          }
         }
       }
-    }
-    .padding(.horizontal, 10)
-    .padding(.vertical, context.isSupport ? 6 : 8)
-    .background {
-      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        .fill(mainBackgroundColor)
-        .overlay {
-          LinearGradient(
-            colors: [
-              Color.white.opacity(colorScheme == .dark ? 0.02 : 0.30),
-              brandColor.opacity(colorScheme == .dark ? 0.025 : 0.015),
-              .clear,
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-          .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        }
-    }
-    .overlay {
-      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        .strokeBorder(
-          Color.primary.opacity(contrast == .increased ? 0.34 : 0.18),
-          lineWidth: contrast == .increased ? 1.5 : 1.0
-        )
     }
     .animation(contextMotion, value: context.contentTransitionIdentity)
   }
@@ -74,15 +61,7 @@ internal struct SpearContextRail: View {
 
   private var supportLayout: some View {
     HStack(spacing: 9) {
-      ZStack {
-        Circle()
-          .fill(brandColor.opacity(colorScheme == .dark ? 0.16 : 0.09))
-        Image(systemName: context.symbolSystemName)
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(brandColor)
-      }
-      .frame(width: 32, height: 32)
-      .accessibilityHidden(true)
+      supportVisual
 
       Text(context.detail)
         .font(Font.ppBeirutiMedium(size: 13, relativeTo: .subheadline))
@@ -93,6 +72,35 @@ internal struct SpearContextRail: View {
       contextAction
     }
     .accessibilityElement(children: .contain)
+  }
+
+  private var supportAccessibilityLayout: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .top, spacing: 12) {
+        supportVisual
+
+        Text(context.detail)
+          .font(Font.ppBeirutiMedium(size: 13, relativeTo: .subheadline))
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+
+      contextAction
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+    .accessibilityElement(children: .contain)
+  }
+
+  private var supportVisual: some View {
+    ZStack {
+      Circle()
+        .fill(brandColor.opacity(colorScheme == .dark ? 0.16 : 0.09))
+      Image(systemName: context.symbolSystemName)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(brandColor)
+    }
+    .frame(width: 32, height: 32)
+    .accessibilityHidden(true)
   }
 
   private var verticalLayout: some View {
@@ -145,7 +153,7 @@ internal struct SpearContextRail: View {
 
       Text(context.title)
         .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
-        .lineLimit(1)
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
 
       if !context.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
         Text(context.detail)

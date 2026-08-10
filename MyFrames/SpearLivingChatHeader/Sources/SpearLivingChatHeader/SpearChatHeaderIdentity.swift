@@ -69,6 +69,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
         identityContent
       }
       .buttonStyle(SpearIdentityButtonStyle())
+      .hoverEffect(.highlight)
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(accessibilityLabel)
       .accessibilityHint(
@@ -100,7 +101,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
       VStack(alignment: .leading, spacing: 2) {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
           Text(model.name)
-            .font(Font.ppBeirutiSemiBold(size: 16, relativeTo: .headline))
+            .font(Font.ppBeirutiBold(size: 17, relativeTo: .headline))
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
             .multilineTextAlignment(.leading)
             .layoutPriority(1)
@@ -109,6 +110,8 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
             Image(systemName: badge)
               .font(.caption.weight(.semibold))
               .foregroundStyle(trustTint)
+              .symbolRenderingMode(.hierarchical)
+              .frame(minWidth: 18, minHeight: 18)
               .accessibilityHidden(true)
           }
         }
@@ -125,8 +128,9 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
 
       if canExpand {
         Image(systemName: "chevron.down")
-          .font(.caption2.weight(.bold))
-          .foregroundStyle(.tertiary)
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(isExpanded ? brandColor : Color.secondary)
+          .frame(width: 28, height: 44)
           .rotationEffect(.degrees(isExpanded ? 180 : 0))
           .accessibilityHidden(true)
       }

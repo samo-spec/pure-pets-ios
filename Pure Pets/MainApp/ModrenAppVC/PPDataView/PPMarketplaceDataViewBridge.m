@@ -2,6 +2,15 @@
 
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
+
+
+@import Firebase;
+@import FirebaseAuth;
+@import FirebaseFunctions;
+@import FirebaseFirestore;
+@import FirebaseStorage;
+
+
 #import <Pure_Pets-Swift.h>
 
 #import "AddNewAccessory.h"
@@ -1882,43 +1891,31 @@ static NSString *PPMarketplaceTrimmedString(id value)
                          reporterID:(NSString *)reporterID
                              reason:(NSString *)reason
 {
-    NSString *reportID = [NSString stringWithFormat:@"%@_%@", contentID, reporterID];
+    // These client values remain useful for the local action-sheet guard, but
+    // report ownership and target metadata are deliberately derived again by
+    // the server before any moderation case is written.
+    (void)collection;
+    (void)ownerID;
+    (void)reporterID;
+    if (contentID.length == 0 || contentType.length == 0 || reason.length == 0) {
+        [PPHUD showError:kLang(@"report_submit_failed_message")];
+        return;
+    }
+
     NSDictionary *reportData = @{
-        @"reportId": reportID,
-        @"contentId": contentID,
+        @"contentID": contentID,
         @"contentType": contentType,
-        @"collection": collection,
         @"reason": reason,
-        @"reporterUid": reporterID,
-        @"reportedOwnerUid": ownerID ?: @"",
-        @"status": @"pending",
-        @"platform": @"ios",
-        @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
-        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+        @"platform": @"ios"
     };
-    FIRDocumentReference *reportReference =
-        [[[FIRFirestore firestore] collectionWithPath:@"reports"]
-            documentWithPath:reportID];
     [PPHUD showLoading:kLang(@"Loading")];
-    [[FIRFirestore firestore]
-        runTransactionWithBlock:^id _Nullable(
-            FIRTransaction * _Nonnull transaction,
-            NSError * _Nullable __autoreleasing * _Nullable errorPointer
-        ) {
-            FIRDocumentSnapshot *snapshot =
-                [transaction getDocument:reportReference error:errorPointer];
-            if (!snapshot || (errorPointer && *errorPointer)) {
-                return nil;
-            }
-            if (snapshot.exists) {
-                // A report ID is deterministic per content/reporter. Never
-                // reopen a resolved case or rewrite its original timestamp.
-                return @NO;
-            }
-            [transaction setData:reportData forDocument:reportReference];
-            return @YES;
-        }
-        completion:^(__unused id _Nullable result, NSError * _Nullable error) {
+    FIRHTTPSCallable *callable =
+        [[FIRFunctions functionsForRegion:@"us-central1"]
+         HTTPSCallableWithName:@"submitContentReport"];
+    callable.timeoutInterval = 30.0;
+    [callable callWithObject:reportData
+                  completion:^(__unused FIRHTTPSCallableResult * _Nullable result,
+                               NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [PPHUD dismiss];
             if (error) {

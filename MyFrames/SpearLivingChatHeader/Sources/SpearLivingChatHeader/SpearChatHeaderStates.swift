@@ -52,22 +52,35 @@ internal struct SpearHeaderLoadingRow: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
-      // Action skeleton pills
-      if actions.call.isVisible && !actions.call.isActive {
-        HStack(spacing: 2) {
-          Circle()
-            .fill(.quaternary)
-            .frame(width: 28, height: 28)
-          Circle()
-            .fill(.quaternary)
-            .frame(width: 28, height: 28)
+      // Preserve the ready row's action footprint to avoid a loading-to-ready
+      // width jump. Active calls remain real controls outside the skeleton.
+      if !actions.call.isActive && hasLoadingActionFootprint {
+        HStack(spacing: 0) {
+          if actions.call.isVisible {
+            loadingActionPlaceholder
+          }
+          if actions.more.availability.isVisible {
+            loadingActionPlaceholder
+          }
         }
-        .padding(4)
+        .padding(2)
         .background(Color.primary.opacity(0.02), in: Capsule(style: .continuous))
       }
     }
 
     content.opacity(0.58)
+  }
+
+  private var hasLoadingActionFootprint: Bool {
+    actions.call.isVisible || actions.more.availability.isVisible
+  }
+
+  private var loadingActionPlaceholder: some View {
+    Circle()
+      .fill(.quaternary)
+      .frame(width: 28, height: 28)
+      .frame(width: 44, height: 44)
+      .accessibilityHidden(true)
   }
 
   @ViewBuilder

@@ -4,6 +4,7 @@
 #import "UserManager.h"
 @import FirebaseFunctions;
 @import Firebase;
+@import FirebaseAuth;
 @import FirebaseFirestore;
 @import FirebaseStorage;
 @import FirebaseFirestore;

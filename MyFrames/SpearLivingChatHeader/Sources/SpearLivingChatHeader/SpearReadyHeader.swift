@@ -9,6 +9,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.colorSchemeContrast) private var contrast
 
   let model: SpearChatHeaderModel
   let style: SpearChatHeaderStyle
@@ -19,50 +20,13 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   let avatarContent: AvatarContent
 
   @State private var isExpanded = false
-  @State private var actionFeedback = 0
 
   var body: some View {
     VStack(spacing: 0) {
       topSection
-
-      if isExpanded && canExpand {
-        SpearIdentityExpansion(
-          trust: model.trust,
-          metrics: model.metrics,
-          copy: copy,
-          brandColor: style.brandColor,
-          mainBackgroundColor: style.mainBackgroundColor,
-          showsTrustDetail: model.context?.isSupport != true,
-          profileAction: actionWithFeedback(actions.profile),
-          safetyAction: actionWithFeedback(actions.safety)
-        )
-        .padding(.horizontal, style.horizontalPadding)
-        .padding(.bottom, 6)
-      }
-
-      if let context = model.context {
-        SpearContextRail(
-          context: context,
-          brandColor: style.brandColor,
-          mainBackgroundColor: style.mainBackgroundColor,
-          cornerRadius: min(style.cornerRadius, 16),
-          action: contextActionWithFeedback,
-          thumbnail: contextThumbnail
-        )
-        .padding(.horizontal, style.horizontalPadding)
-        .padding(.bottom, 6)
-        .transition(
-          reduceMotion
-            ? .opacity
-            : .asymmetric(
-              insertion: .opacity.combined(with: .offset(y: -4)),
-              removal: .opacity
-            )
-        )
-      }
+      conversationDeck
     }
     .sensoryFeedback(.selection, trigger: isExpanded)
-    .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.6), trigger: actionFeedback)
   }
 
   // MARK: - Top Section
@@ -79,18 +43,70 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
   }
 
+  // MARK: - One-Slot Conversation Deck
+
+  @ViewBuilder
+  private var conversationDeck: some View {
+    if deckIsVisible {
+      Group {
+        if isExpanded && canExpand {
+          SpearIdentityExpansion(
+            trust: model.trust,
+            metrics: model.metrics,
+            copy: copy,
+            brandColor: style.brandColor,
+            mainBackgroundColor: style.mainBackgroundColor,
+            showsTrustDetail: model.context?.isSupport != true,
+            profileAction: actions.profile,
+            safetyAction: actions.safety
+          )
+        } else if let context = model.context {
+          SpearContextRail(
+            context: context,
+            brandColor: style.brandColor,
+            mainBackgroundColor: style.mainBackgroundColor,
+            cornerRadius: min(style.cornerRadius, SpearHeaderLayout.deckCornerRadius),
+            action: actions.context,
+            thumbnail: contextThumbnail
+          )
+        }
+      }
+      .id(deckIdentity)
+      .transition(deckTransition)
+      .padding(.horizontal, style.horizontalPadding)
+      .padding(.bottom, SpearHeaderLayout.deckSpacing)
+    }
+  }
+
+  private var deckIsVisible: Bool {
+    (isExpanded && canExpand) || model.context != nil
+  }
+
+  private var deckIdentity: String {
+    if isExpanded && canExpand { return "identity" }
+    return model.context.map { "context:\($0.id)" } ?? "none"
+  }
+
+  private var deckTransition: AnyTransition {
+    if reduceMotion { return .opacity }
+    return .asymmetric(
+      insertion: .opacity.combined(with: .offset(y: -5)),
+      removal: .opacity
+    )
+  }
+
   // MARK: - Regular Layout
 
   private var regularLayout: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: SpearHeaderLayout.topRowSpacing) {
       backButton
       identityButton(compact: false)
       Spacer(minLength: 2)
       actionCapsule
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.top, 5)
-    .padding(.bottom, 6)
+    .padding(.top, 8)
+    .padding(.bottom, deckIsVisible ? 5 : 9)
   }
 
   // MARK: - Compact Layout
@@ -111,47 +127,56 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       }
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.top, 6)
-    .padding(.bottom, 7)
+    .padding(.top, 8)
+    .padding(.bottom, deckIsVisible ? 5 : 9)
   }
 
   // MARK: - Action Cluster
 
+  @ViewBuilder
   private var actionCapsule: some View {
-    HStack(spacing: 2) {
-      SpearHeaderCapsuleButton(
-        systemName: callSystemName,
-        accessibilityLabel: callAccessibilityLabel,
-        accessibilityIdentifier: SpearChatHeaderAccessibilityID.call,
-        action: callActionWithFeedback,
-        tint: actions.call.isActive ? .red : .primary,
-        isActive: actions.call.isActive
-      )
-
-      SpearHeaderCapsuleButton(
-        systemName: "ellipsis",
-        accessibilityLabel: copy.moreAccessibilityLabel,
-        accessibilityIdentifier: SpearChatHeaderAccessibilityID.more,
-        action: actionWithFeedback(actions.more),
-        tint: .primary,
-        isActive: false
-      )
-    }
-    .padding(4)
-    .background {
-      Capsule(style: .continuous)
-        .fill(style.mainBackgroundColor)
-        .overlay {
-          Capsule(style: .continuous)
-            .fill(Color.primary.opacity(colorScheme == .dark ? 0.065 : 0.035))
-        }
-    }
-    .overlay {
-      Capsule(style: .continuous)
-        .strokeBorder(
-          Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.07),
-          lineWidth: 0.7
+    if hasTopActions {
+      HStack(spacing: 0) {
+        SpearHeaderCapsuleButton(
+          systemName: callSystemName,
+          accessibilityLabel: callAccessibilityLabel,
+          accessibilityIdentifier: SpearChatHeaderAccessibilityID.call,
+          action: actions.call.buttonAction,
+          tint: actions.call.isActive ? .red : .primary,
+          isActive: actions.call.isActive
         )
+
+        if actions.call.isVisible && actions.more.availability.isVisible {
+          Divider()
+            .frame(height: 20)
+            .opacity(contrast == .increased ? 0.72 : 0.42)
+        }
+
+        SpearHeaderCapsuleButton(
+          systemName: "ellipsis",
+          accessibilityLabel: copy.moreAccessibilityLabel,
+          accessibilityIdentifier: SpearChatHeaderAccessibilityID.more,
+          action: actions.more,
+          tint: .primary,
+          isActive: false
+        )
+      }
+      .padding(2)
+      .background {
+        Capsule(style: .continuous)
+          .fill(style.mainBackgroundColor)
+          .overlay {
+            Capsule(style: .continuous)
+              .fill(Color.primary.opacity(colorScheme == .dark ? 0.070 : 0.040))
+          }
+      }
+      .overlay {
+        Capsule(style: .continuous)
+          .strokeBorder(
+            Color.primary.opacity(contrast == .increased ? 0.24 : 0.09),
+            lineWidth: contrast == .increased ? 1.5 : 0.75
+          )
+      }
     }
   }
 
@@ -192,7 +217,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       systemName: callSystemName,
       accessibilityLabel: callAccessibilityLabel,
       accessibilityIdentifier: SpearChatHeaderAccessibilityID.call,
-      action: callActionWithFeedback,
+      action: actions.call.buttonAction,
       tint: actions.call.isActive ? .red : .primary
     )
   }
@@ -203,7 +228,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       systemName: "ellipsis.circle",
       accessibilityLabel: copy.moreAccessibilityLabel,
       accessibilityIdentifier: SpearChatHeaderAccessibilityID.more,
-      action: actionWithFeedback(actions.more)
+      action: actions.more
     )
   }
 
@@ -219,10 +244,6 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       : copy.startCallAccessibilityLabel
   }
 
-  private var callActionWithFeedback: SpearHeaderAction {
-    actionWithFeedback(actions.call.buttonAction)
-  }
-
   private var canExpand: Bool {
     model.trust.detailText != nil
       || !model.metrics.isEmpty
@@ -230,28 +251,13 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       || actions.safety.availability.isVisible
   }
 
-  private var contextActionWithFeedback: SpearContextHeaderAction {
-    SpearContextHeaderAction(
-      availability: actions.context.availability
-    ) { context in
-      guard actions.context.availability.isEnabled else { return }
-      actionFeedback += 1
-      actions.context.perform(context)
-    }
+  private var hasTopActions: Bool {
+    actions.call.isVisible || actions.more.availability.isVisible
   }
 
   // MARK: - Actions
 
-  private func actionWithFeedback(_ action: SpearHeaderAction) -> SpearHeaderAction {
-    SpearHeaderAction(availability: action.availability) {
-      guard action.availability.isEnabled else { return }
-      actionFeedback += 1
-      action.perform()
-    }
-  }
-
   private func performBack() {
-    actionFeedback += 1
     actions.onBack()
   }
 
@@ -263,7 +269,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     if reduceMotion {
       isExpanded = nextValue
     } else {
-      withAnimation(nextValue ? SpearHeaderMotion.standard : SpearHeaderMotion.exit) {
+      withAnimation(nextValue ? SpearHeaderMotion.deck : SpearHeaderMotion.exit) {
         isExpanded = nextValue
       }
     }

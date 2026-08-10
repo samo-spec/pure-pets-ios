@@ -12,6 +12,7 @@
 #import "PPModernAvatarRenderer.h"
 
 #import "AppDelegate.h"
+@import FirebaseAuth;
 @import FirebaseStorage;
 
 @interface selectUserVC ()<UITableViewDelegate,UITableViewDataSource,UISearchBarDelegate>
@@ -161,7 +162,7 @@
         searchField.bounds = bounds;
         searchField.borderStyle =UITextBorderStyleRoundedRect;
         [searchField setClearButtonMode:UITextFieldViewModeNever];
-        searchField.textAlignment = UITextAlignmentCenter;
+        searchField.textAlignment = NSTextAlignmentCenter;
     }
     
     //3. 设置按钮文字和颜色
@@ -222,11 +223,6 @@
 
 -(void)LoadData
 { 
-   
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    // getting an NSString
-   
-     
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
             [self.selectTableView reloadData];
         }];

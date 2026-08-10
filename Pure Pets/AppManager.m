@@ -10,6 +10,7 @@
 #import "FBLPromises.h"
 #import "Pure_Pets-Swift.h"
  @import Firebase;
+@import FirebaseAuth;
 @import FirebaseFirestore;
 @import FirebaseStorage;
 @import FirebaseFirestore;

@@ -7,6 +7,7 @@
 #import "PPStoriesManager.h"
 #import <math.h>
 #import <FirebaseAuth/FirebaseAuth.h>
+@import FirebaseAuth;
 #import "UserManager.h"
 #import "UserModel.h"
 #import "GM.h"

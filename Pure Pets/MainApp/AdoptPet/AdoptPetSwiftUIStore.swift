@@ -10,10 +10,28 @@ import SwiftUI
 import UIKit
 import Combine
 import FirebaseFirestore
+import FirebaseFunctions
 
 func PPAdoptLang(_ key: String) -> String {
-    let localized = Bundle.main.localizedString(forKey: key, value: nil, table: nil)
+    let localized = Language.get(key, alter: key) ?? key
     return localized.isEmpty ? key : localized
+}
+
+/// Normalizes legacy English/Arabic gender values before presenting them.
+/// The Firestore model remains unchanged; this only prevents a stored key such
+/// as "male" from leaking into an Arabic interface.
+func PPAdoptGenderLabel(_ rawValue: String?) -> String {
+    let raw = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    guard !raw.isEmpty else { return "" }
+
+    let normalized = raw.lowercased()
+    if normalized.contains("female") || normalized.contains("انث") || normalized.contains("أنث") || normalized.contains("بنت") {
+        return PPAdoptLang("Female")
+    }
+    if normalized.contains("male") || normalized.contains("ذكر") || normalized.contains("ولد") {
+        return PPAdoptLang("Male")
+    }
+    return raw
 }
 
 // MARK: - Adopt Pet List Store
@@ -42,6 +60,9 @@ final class AdoptPetListStore: ObservableObject {
     @Published var hasReceivedInitialSnapshot: Bool = false
 
     private var listenerRegistration: ListenerRegistration?
+    private var observationGeneration = 0
+    private var refreshContinuation: CheckedContinuation<Void, Never>?
+    private var refreshTimeoutWorkItem: DispatchWorkItem?
 
     init() {
         startObserving()
@@ -53,16 +74,28 @@ final class AdoptPetListStore: ObservableObject {
 
     func startObserving() {
         stopObserving()
-        isLoading = true
+        beginObserving(showLoading: pets.isEmpty)
+    }
+
+    private func beginObserving(showLoading: Bool) {
+        observationGeneration += 1
+        let currentGeneration = observationGeneration
+
+        isLoading = showLoading
         isOffline = false
         errorMessage = nil
 
         listenerRegistration = AdoptPetManager.shared().observeAllPets(update: { [weak self] updatedPets, error in
             Task { @MainActor in
                 guard let self = self else { return }
+                guard self.observationGeneration == currentGeneration else { return }
                 self.isLoading = false
                 self.isRefreshing = false
                 self.hasReceivedInitialSnapshot = true
+
+                defer {
+                    self.finishRefreshIfNeeded()
+                }
 
                 if let error = error {
                     let nsError = error as NSError
@@ -86,13 +119,71 @@ final class AdoptPetListStore: ObservableObject {
     }
 
     func stopObserving() {
+        observationGeneration += 1
         listenerRegistration?.remove()
         listenerRegistration = nil
+        isRefreshing = false
+        finishRefreshIfNeeded()
     }
 
-    func refresh() {
+    func refresh() async {
+        guard !isRefreshing else { return }
+
+        stopObserving()
         isRefreshing = true
-        startObserving()
+        await withCheckedContinuation { continuation in
+            refreshContinuation = continuation
+            scheduleRefreshTimeout()
+            beginObserving(showLoading: pets.isEmpty)
+        }
+    }
+
+    func requestRefresh() {
+        Task { @MainActor [weak self] in
+            await self?.refresh()
+        }
+    }
+
+    var hasStaleConnectionIssue: Bool {
+        !pets.isEmpty && (isOffline || errorMessage != nil)
+    }
+
+    private func scheduleRefreshTimeout() {
+        refreshTimeoutWorkItem?.cancel()
+        let timeoutWorkItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.handleRefreshTimeout()
+            }
+        }
+        refreshTimeoutWorkItem = timeoutWorkItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 15,
+            execute: timeoutWorkItem
+        )
+    }
+
+    private func handleRefreshTimeout() {
+        guard isRefreshing else { return }
+
+        // A listener that never resolves must not leave pull-to-refresh active
+        // forever. Preserve any cached results and surface the same explicit
+        // recovery path used for an offline listener error.
+        observationGeneration += 1
+        listenerRegistration?.remove()
+        listenerRegistration = nil
+        isLoading = false
+        isRefreshing = false
+        isOffline = true
+        errorMessage = PPAdoptLang("adopt_list_refresh_timeout")
+        finishRefreshIfNeeded()
+    }
+
+    private func finishRefreshIfNeeded() {
+        refreshTimeoutWorkItem?.cancel()
+        refreshTimeoutWorkItem = nil
+        guard let refreshContinuation else { return }
+        self.refreshContinuation = nil
+        refreshContinuation.resume()
     }
 
     func applyFilters() {
@@ -127,8 +218,8 @@ final class AdoptPetListStore: ObservableObject {
                 let nameMatch = pet.name.lowercased().contains(trimmedQuery)
                 let detailsMatch = pet.details.lowercased().contains(trimmedQuery)
                 let cityMatch = pet.mCityName.lowercased().contains(trimmedQuery)
-                let kindMatch = pet.mainKindModel.kindName.lowercased().contains(trimmedQuery)
-                let breedMatch = pet.subKindModel.subKindName.lowercased().contains(trimmedQuery)
+                let kindMatch = pet.mKindName.lowercased().contains(trimmedQuery)
+                let breedMatch = pet.mBreedName.lowercased().contains(trimmedQuery)
 
                 if !(nameMatch || detailsMatch || cityMatch || kindMatch || breedMatch) {
                     return false
@@ -172,6 +263,7 @@ final class AdoptPetDetailsStore: ObservableObject {
     @Published var isLoadingOwner: Bool = true
     @Published var isDeleting: Bool = false
     @Published var isUpdatingVisibility: Bool = false
+    @Published var isReporting: Bool = false
     @Published var errorMessage: String? = nil
 
     private let collectionName = "favoritesAdoptPets"
@@ -189,6 +281,7 @@ final class AdoptPetDetailsStore: ObservableObject {
             self.ownerUser = cachedOwner
             self.isLoadingOwner = false
         } else if !pet.ownerID.isEmpty {
+            self.ownerUser = nil
             self.isLoadingOwner = true
             UserManager.shared().getOtherUserModelFromFirestore(withUID: pet.ownerID) { [weak self] user, _ in
                 Task { @MainActor in
@@ -208,6 +301,27 @@ final class AdoptPetDetailsStore: ObservableObject {
                 }
             }
         }
+    }
+
+    var isOwnerContactUnavailable: Bool {
+        !isLoadingOwner && ownerUser == nil
+    }
+
+    var canCallOwner: Bool {
+        guard !isLoadingOwner,
+              let mobile = ownerUser?.mobileNo?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return false
+        }
+        return !mobile.isEmpty
+    }
+
+    var canChatOwner: Bool {
+        !isLoadingOwner && ownerUser != nil
+    }
+
+    func retryOwnerLoading() {
+        guard !pet.ownerID.isEmpty, !isLoadingOwner else { return }
+        loadOwnerAndFavoriteState()
     }
 
     func toggleFavorite() {
@@ -246,16 +360,7 @@ final class AdoptPetDetailsStore: ObservableObject {
 
     func contactOwnerByCall(from viewController: UIViewController?) {
         guard let owner = ownerUser else {
-            if !pet.ownerID.isEmpty {
-                UserManager.shared().getOtherUserModelFromFirestore(withUID: pet.ownerID) { [weak self] fetchedUser, _ in
-                    Task { @MainActor in
-                        self?.ownerUser = fetchedUser
-                        if let u = fetchedUser {
-                            self?.performCall(for: u, from: viewController)
-                        }
-                    }
-                }
-            }
+            presentContactUnavailable(from: viewController)
             return
         }
         performCall(for: owner, from: viewController)
@@ -278,6 +383,11 @@ final class AdoptPetDetailsStore: ObservableObject {
     }
 
     func contactOwnerByChat(from viewController: UIViewController?) {
+        guard let owner = ownerUser else {
+            presentContactUnavailable(from: viewController)
+            return
+        }
+
         guard UserManager.shared().isUserLoggedIn() else {
             UserManager.showPromptOnTopController()
             return
@@ -285,18 +395,17 @@ final class AdoptPetDetailsStore: ObservableObject {
 
         guard let targetVC = viewController else { return }
 
-        if let owner = ownerUser {
-            ChManager.shared().startChat(with: owner, from: targetVC)
-        } else if !pet.ownerID.isEmpty {
-            UserManager.shared().getOtherUserModelFromFirestore(withUID: pet.ownerID) { [weak self] fetchedUser, _ in
-                Task { @MainActor in
-                    self?.ownerUser = fetchedUser
-                    if let u = fetchedUser {
-                        ChManager.shared().startChat(with: u, from: targetVC)
-                    }
-                }
-            }
-        }
+        ChManager.shared().startChat(with: owner, from: targetVC)
+    }
+
+    private func presentContactUnavailable(from viewController: UIViewController?) {
+        guard let viewController else { return }
+        GM.showAlert(
+            withTitle: PPAdoptLang("adopt_detail_contact_unavailable"),
+            message: PPAdoptLang("adopt_detail_contact_unavailable_message"),
+            imageName: "exclamationmark.triangle.fill",
+            in: viewController
+        )
     }
 
     func sharePet(from viewController: UIViewController?) {
@@ -319,24 +428,60 @@ final class AdoptPetDetailsStore: ObservableObject {
         vc.present(activityVC, animated: true)
     }
 
-    func reportPet(reason: String, completion: @escaping (Bool) -> Void) {
-        guard !pet.documentID.isEmpty else {
-            completion(false)
+    func reportPet(reason: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard !isReporting else {
+            completion(.failure(reportError(code: 409)))
             return
         }
 
-        let reporterUID = UserManager.shared().currentUser?.id ?? "anonymous"
+        guard UserManager.shared().isUserLoggedIn() else {
+            UserManager.showPromptOnTopController()
+            completion(.failure(reportError(code: 401)))
+            return
+        }
+
+        guard !isOwner, !pet.documentID.isEmpty else {
+            completion(.failure(reportError(code: 400)))
+            return
+        }
+
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedReason.isEmpty else {
+            completion(.failure(reportError(code: 422)))
+            return
+        }
+
+        // Reports are server-owned. The callable derives the reporter and
+        // owner from authenticated/authoritative records, retains the original
+        // case timestamps, and treats a repeat submission as idempotent.
         let reportData: [String: Any] = [
-            "targetID": pet.documentID,
-            "targetType": "adopt_pet",
-            "reason": reason,
-            "reporterID": reporterUID,
-            "createdAt": FieldValue.serverTimestamp()
+            "contentID": pet.documentID,
+            "contentType": "adopt_pet",
+            "reason": trimmedReason,
+            "platform": "ios"
         ]
 
-        Firestore.firestore().collection("reports").addDocument(data: reportData) { error in
-            completion(error == nil)
-        }
+        isReporting = true
+        Functions.functions(region: "us-central1")
+            .httpsCallable("submitContentReport")
+            .call(reportData) { [weak self] _, error in
+                Task { @MainActor in
+                    self?.isReporting = false
+                    if let error {
+                        completion(.failure(error))
+                    } else {
+                        completion(.success(()))
+                    }
+                }
+            }
+    }
+
+    private func reportError(code: Int) -> NSError {
+        NSError(
+            domain: "AdoptPetDetailsStore.Report",
+            code: code,
+            userInfo: [NSLocalizedDescriptionKey: PPAdoptLang("adopt_detail_report_failed_message")]
+        )
     }
 
     func togglePetVisibility(completion: @escaping (Bool) -> Void) {

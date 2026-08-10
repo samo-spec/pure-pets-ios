@@ -14,21 +14,11 @@ internal struct SpearAvatarFrame<Content: View>: View {
 
   @ScaledMetric(relativeTo: .body) private var scaledSize = 44
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    let size = min(scaledSize, 52)
+    let size = min(scaledSize, SpearHeaderLayout.avatarMaximumSize)
 
     ZStack(alignment: .bottomTrailing) {
-      // A restrained state halo keeps availability visible without a
-      // perpetual decorative glow.
-      Circle()
-        .fill(presenceGlowColor.opacity(glowOpacity))
-        .frame(width: size + 6, height: size + 6)
-        .blur(radius: 3)
-        .opacity(reduceMotion ? 0.6 : 1)
-
-      // Avatar content
       content
         .frame(width: size, height: size)
         .clipShape(Circle())
@@ -36,57 +26,25 @@ internal struct SpearAvatarFrame<Content: View>: View {
           Circle()
             .strokeBorder(ringStrokeColor, lineWidth: 1.5)
         }
-        .shadow(
-          color: presenceGlowColor.opacity(colorScheme == .dark ? 0.3 : 0.15),
-          radius: 4,
-          y: 1
-        )
 
-      // Presence badge
       SpearPresenceBadge(
         presence: presence,
         callIsActive: call.isActive,
         animateOnline: motionMode == .onlinePresence && !reduceMotion
       )
     }
-    .frame(width: size + 8, height: size + 8)
-    .animation(reduceMotion ? nil : SpearHeaderMotion.liveIndicator, value: presence.transitionIdentity)
+    .frame(width: size, height: size)
+    .animation(
+      reduceMotion ? nil : SpearHeaderMotion.liveIndicator, value: presence.transitionIdentity
+    )
     .animation(reduceMotion ? nil : SpearHeaderMotion.liveIndicator, value: motionMode)
     .accessibilityHidden(true)
-  }
-
-  private var presenceGlowColor: Color {
-    if call.isActive { return SpearHeaderSemanticColor.live }
-    switch presence {
-    case .online, .typing, .viewingOffer:
-      return SpearHeaderSemanticColor.live
-    case .offline:
-      return .clear
-    }
-  }
-
-  private var glowOpacity: Double {
-    if call.isActive { return 0.25 }
-    switch presence {
-    case .online:
-      return 0.15
-    case .typing, .viewingOffer:
-      return 0.2
-    case .offline:
-      return 0
-    }
   }
 
   private var ringStrokeColor: Color {
     if trust.isRestricted { return SpearHeaderSemanticColor.warning.opacity(0.7) }
     if trust.isVerified { return brandColor.opacity(0.6) }
-
-    switch presence {
-    case .online, .typing, .viewingOffer:
-      return SpearHeaderSemanticColor.live.opacity(0.4)
-    case .offline:
-      return Color.primary.opacity(0.1)
-    }
+    return Color.primary.opacity(0.1)
   }
 }
 
@@ -101,10 +59,14 @@ internal struct SpearPresenceLine: View {
   let brandColor: Color
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     Group {
-      if case .offline = presence, !call.isActive {
+      if case .offline = presence,
+        !call.isActive,
+        scenePhase == .active
+      {
         TimelineView(.periodic(from: .now, by: 60)) { _ in
           lineContent
         }
@@ -129,8 +91,13 @@ internal struct SpearPresenceLine: View {
         SpearCallWaveform()
       }
     }
+    .frame(minHeight: 18, alignment: .leading)
     .id(transitionIdentity)
-    .transition(.opacity)
+    .transition(
+      reduceMotion
+        ? .opacity
+        : .opacity.combined(with: .offset(y: -2))
+    )
     .animation(reduceMotion ? nil : SpearHeaderMotion.liveIndicator, value: transitionIdentity)
   }
 
@@ -166,9 +133,10 @@ internal struct SpearPresenceLine: View {
 @available(iOS 17.0, *)
 internal struct SpearTypingDots: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
-    if reduceMotion {
+    if reduceMotion || scenePhase != .active {
       dots(activeIndex: nil)
     } else {
       PhaseAnimator([0, 1, 2]) { activeIndex in
@@ -199,9 +167,10 @@ internal struct SpearTypingDots: View {
 @available(iOS 17.0, *)
 internal struct SpearCallWaveform: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
-    if reduceMotion {
+    if reduceMotion || scenePhase != .active {
       bars(phase: 0)
     } else {
       PhaseAnimator([0, 1, 2, 3]) { phase in

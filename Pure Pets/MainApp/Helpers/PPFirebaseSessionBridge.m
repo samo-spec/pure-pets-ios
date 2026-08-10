@@ -5,6 +5,7 @@
 
 #import "PPFirebaseSessionBridge.h"
 #import <FirebaseAuth/FirebaseAuth.h>
+@import FirebaseAuth;
 #if __has_include(<FirebaseAppCheck/FirebaseAppCheck.h>)
 @import FirebaseAppCheck;
 #define PP_SESSION_HAS_FIREBASE_APPCHECK 1
