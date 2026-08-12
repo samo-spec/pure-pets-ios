@@ -8,7 +8,7 @@
 #import "PPNotificationsHubViewController.h"
 #import "PPPetRemindersViewController.h"
 #import "UserChatsViewController.h"
-#import "OrderDetailsViewController.h"
+#import "PPOrderDetailsRouter.h"
 #import "PPOrder.h"
 #import "ChNotificationRouter.h"
 #import "AppClasses.h"
@@ -1324,8 +1324,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
                 return;
             }
 
-            OrderDetailsViewController *detailsVC = [[OrderDetailsViewController alloc] initWithOrder:order];
-            detailsVC.order = order;
+            UIViewController *detailsVC = [PPOrderDetailsRouter controllerWithOrder:order];
             [strongSelf.navigationController pushViewController:detailsVC animated:YES];
         });
     }];

@@ -154,6 +154,9 @@
 		F2201FE82E11D7CA005DBD9F /* CartItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FE72E11D7C9005DBD9F /* CartItem.m */; };
 		F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEC2E11DB7E005DBD9F /* CartViewController.m */; };
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
+		D4A102000000000000000001 /* PPOrderHistorySurfaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A101000000000000000001 /* PPOrderHistorySurfaceModels.swift */; };
+		D4A102000000000000000002 /* PPOrderHistorySurfaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A101000000000000000002 /* PPOrderHistorySurfaceController.swift */; };
+		D4A102000000000000000003 /* PPOrderHistorySurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A101000000000000000003 /* PPOrderHistorySurfaceView.swift */; };
 		F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */; };
 		F22389903017C8CA001E5DBB /* CartLineController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F223898F3017C8CA001E5DBB /* CartLineController.swift */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
@@ -300,6 +303,13 @@
 		F25971AE2D1BEF3F00708763 /* ArchiveManagerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */; };
 		F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F259DDDC2D29622E005524F8 /* XLFormButtonCell.m */; };
 		F25B387E2E173CB60066D504 /* OrderDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */; };
+		C0D410020000000000000001 /* PPOrderDetailsRouter.m in Sources */ = {isa = PBXBuildFile; fileRef = C0D400010000000000000002 /* PPOrderDetailsRouter.m */; };
+		C0D410020000000000000002 /* PPOrderDetailsMissionControlBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = C0D400010000000000000004 /* PPOrderDetailsMissionControlBridge.m */; };
+		C0D410020000000000000003 /* PPOrderDetailsMissionControlModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D400010000000000000005 /* PPOrderDetailsMissionControlModels.swift */; };
+		C0D410020000000000000004 /* PPOrderDetailsMissionControlStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D400010000000000000006 /* PPOrderDetailsMissionControlStore.swift */; };
+		C0D410020000000000000005 /* PPOrderDetailsMissionControlViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D400010000000000000007 /* PPOrderDetailsMissionControlViews.swift */; };
+		C0D410020000000000000006 /* PPOrderDetailsMissionControlSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D400010000000000000008 /* PPOrderDetailsMissionControlSheets.swift */; };
+		C0D410020000000000000007 /* PPOrderDetailsMissionControlViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D400010000000000000009 /* PPOrderDetailsMissionControlViewController.swift */; };
 		F25B38802E173DDB0066D504 /* OrderModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387F2E173DDB0066D504 /* OrderModel.m */; };
 		F25B38842E1740620066D504 /* OrderCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B38832E1740620066D504 /* OrderCell.m */; };
 		F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F25D68BD2F82761700700694 /* PrivacyInfo.xcprivacy */; };
@@ -442,6 +452,9 @@
 		F27FAEAF2D2F363200EA6B56 /* JPVideoPlayer.bundle in Resources */ = {isa = PBXBuildFile; fileRef = F27FAE762D2F363200EA6B56 /* JPVideoPlayer.bundle */; };
 		F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FC16F2C52F63B007B855C /* selectTableViewCell.m */; };
 		F281B40E301A5AB600040E59 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B40C301A5AB600040E59 /* HomeView.swift */; };
+		C1A0000000000000000000A2 /* PPHomePresentationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A0000000000000000000A1 /* PPHomePresentationPlan.swift */; };
+		C1A0000000000000000000B2 /* PPHomeZoneComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A0000000000000000000B1 /* PPHomeZoneComponents.swift */; };
+		C1A0000000000000000000C2 /* PPHomePresentationResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A0000000000000000000C1 /* PPHomePresentationResolverTests.swift */; };
 		F281B40F301A5AB600040E59 /* PPHomeDataBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B3FD301A5AB600040E59 /* PPHomeDataBridge.m */; };
 		F281B410301A5AB600040E59 /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B409301A5AB600040E59 /* HomeComponents.swift */; };
 		F281B411301A5AB600040E59 /* HomeUniversalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */; };
@@ -1152,6 +1165,9 @@
 		F2201FEC2E11DB7E005DBD9F /* CartViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartViewController.m; sourceTree = "<group>"; };
 		F2201FEE2E11F3D1005DBD9F /* OrderHistoryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderHistoryViewController.h; sourceTree = "<group>"; };
 		F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderHistoryViewController.m; sourceTree = "<group>"; };
+		D4A101000000000000000001 /* PPOrderHistorySurfaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderHistorySurfaceModels.swift; sourceTree = "<group>"; };
+		D4A101000000000000000002 /* PPOrderHistorySurfaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderHistorySurfaceController.swift; sourceTree = "<group>"; };
+		D4A101000000000000000003 /* PPOrderHistorySurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderHistorySurfaceView.swift; sourceTree = "<group>"; };
 		F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PurchasedItemsViewController.h; sourceTree = "<group>"; };
 		F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchasedItemsViewController.m; sourceTree = "<group>"; };
 		F223898F3017C8CA001E5DBB /* CartLineController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartLineController.swift; sourceTree = "<group>"; };
@@ -1439,6 +1455,15 @@
 		F259DDDC2D29622E005524F8 /* XLFormButtonCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormButtonCell.m; sourceTree = "<group>"; };
 		F25B387C2E173C9F0066D504 /* OrderDetailsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderDetailsViewController.h; sourceTree = "<group>"; };
 		F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderDetailsViewController.m; sourceTree = "<group>"; };
+		C0D400010000000000000001 /* PPOrderDetailsRouter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrderDetailsRouter.h; sourceTree = "<group>"; };
+		C0D400010000000000000002 /* PPOrderDetailsRouter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderDetailsRouter.m; sourceTree = "<group>"; };
+		C0D400010000000000000003 /* PPOrderDetailsMissionControlBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrderDetailsMissionControlBridge.h; sourceTree = "<group>"; };
+		C0D400010000000000000004 /* PPOrderDetailsMissionControlBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderDetailsMissionControlBridge.m; sourceTree = "<group>"; };
+		C0D400010000000000000005 /* PPOrderDetailsMissionControlModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderDetailsMissionControlModels.swift; sourceTree = "<group>"; };
+		C0D400010000000000000006 /* PPOrderDetailsMissionControlStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderDetailsMissionControlStore.swift; sourceTree = "<group>"; };
+		C0D400010000000000000007 /* PPOrderDetailsMissionControlViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderDetailsMissionControlViews.swift; sourceTree = "<group>"; };
+		C0D400010000000000000008 /* PPOrderDetailsMissionControlSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderDetailsMissionControlSheets.swift; sourceTree = "<group>"; };
+		C0D400010000000000000009 /* PPOrderDetailsMissionControlViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderDetailsMissionControlViewController.swift; sourceTree = "<group>"; };
 		F25B387F2E173DDB0066D504 /* OrderModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderModel.m; sourceTree = "<group>"; };
 		F25B38812E173DF10066D504 /* OrderModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderModel.h; sourceTree = "<group>"; };
 		F25B38822E17404E0066D504 /* OrderItemCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderItemCell.h; sourceTree = "<group>"; };
@@ -1727,6 +1752,9 @@
 		F281B40A301A5AB600040E59 /* HomeHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeroView.swift; sourceTree = "<group>"; };
 		F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeUniversalCard.swift; sourceTree = "<group>"; };
 		F281B40C301A5AB600040E59 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		C1A0000000000000000000A1 /* PPHomePresentationPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomePresentationPlan.swift; sourceTree = "<group>"; };
+		C1A0000000000000000000B1 /* PPHomeZoneComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeZoneComponents.swift; sourceTree = "<group>"; };
+		C1A0000000000000000000C1 /* PPHomePresentationResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomePresentationResolverTests.swift; sourceTree = "<group>"; };
 		F281B4692FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormRowFullWidthTextFieldCell.h; sourceTree = "<group>"; };
 		F281B46A2FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormRowFullWidthTextFieldCell.m; sourceTree = "<group>"; };
 		F281B46C2FCB6735009118F2 /* PPDiscountBadge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDiscountBadge.h; sourceTree = "<group>"; };
@@ -3900,6 +3928,14 @@
 			path = Data;
 			sourceTree = "<group>";
 		};
+		C1A0000000000000000000D1 /* Presentation */ = {
+			isa = PBXGroup;
+			children = (
+				C1A0000000000000000000A1 /* PPHomePresentationPlan.swift */,
+			);
+			path = Presentation;
+			sourceTree = "<group>";
+		};
 		F281B403301A5AB600040E59 /* Hosting */ = {
 			isa = PBXGroup;
 			children = (
@@ -3929,6 +3965,7 @@
 			isa = PBXGroup;
 			children = (
 				F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */,
+				C1A0000000000000000000B1 /* PPHomeZoneComponents.swift */,
 				F281B409301A5AB600040E59 /* HomeComponents.swift */,
 				F281B40A301A5AB600040E59 /* HomeHeroView.swift */,
 				F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */,
@@ -4754,6 +4791,7 @@
 				F2D0C5F42C4BE1BB0023CE53 /* Pure_PetsTests.m */,
 				A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */,
 				F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */,
+				C1A0000000000000000000C1 /* PPHomePresentationResolverTests.swift */,
 				B8CA00010000000000000001 /* PPMarketplaceDataViewTests.swift */,
 			);
 			path = "Pure PetsTests";
@@ -4951,8 +4989,20 @@
 				F25B387F2E173DDB0066D504 /* OrderModel.m */,
 				F25B387C2E173C9F0066D504 /* OrderDetailsViewController.h */,
 				F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */,
+				C0D400010000000000000001 /* PPOrderDetailsRouter.h */,
+				C0D400010000000000000002 /* PPOrderDetailsRouter.m */,
+				C0D400010000000000000003 /* PPOrderDetailsMissionControlBridge.h */,
+				C0D400010000000000000004 /* PPOrderDetailsMissionControlBridge.m */,
+				C0D400010000000000000005 /* PPOrderDetailsMissionControlModels.swift */,
+				C0D400010000000000000006 /* PPOrderDetailsMissionControlStore.swift */,
+				C0D400010000000000000007 /* PPOrderDetailsMissionControlViews.swift */,
+				C0D400010000000000000008 /* PPOrderDetailsMissionControlSheets.swift */,
+				C0D400010000000000000009 /* PPOrderDetailsMissionControlViewController.swift */,
 				F2201FEE2E11F3D1005DBD9F /* OrderHistoryViewController.h */,
 				F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */,
+				D4A101000000000000000001 /* PPOrderHistorySurfaceModels.swift */,
+				D4A101000000000000000002 /* PPOrderHistorySurfaceController.swift */,
+				D4A101000000000000000003 /* PPOrderHistorySurfaceView.swift */,
 				F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */,
 				F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */,
 				F2201FEB2E11DB6A005DBD9F /* CartViewController.h */,
@@ -5198,6 +5248,7 @@
 				F281B3FE301A5AB600040E59 /* Bridge */,
 				F281B401301A5AB600040E59 /* Data */,
 				F281B403301A5AB600040E59 /* Hosting */,
+				C1A0000000000000000000D1 /* Presentation */,
 				F281B405301A5AB600040E59 /* Routing */,
 				F281B408301A5AB600040E59 /* State */,
 				F281B40D301A5AB600040E59 /* Views */,
@@ -5533,6 +5584,8 @@
 				F2AB488F2C72CF3C00D88603 /* JGProgressHUDFadeAnimation.m in Sources */,
 				F20F315A2D17717F001D1D57 /* NSDate+MinimalTimeAgo.m in Sources */,
 				F281B40E301A5AB600040E59 /* HomeView.swift in Sources */,
+				C1A0000000000000000000A2 /* PPHomePresentationPlan.swift in Sources */,
+				C1A0000000000000000000B2 /* PPHomeZoneComponents.swift in Sources */,
 				F281B40F301A5AB600040E59 /* PPHomeDataBridge.m in Sources */,
 				F281B410301A5AB600040E59 /* HomeComponents.swift in Sources */,
 				F281B411301A5AB600040E59 /* HomeUniversalCard.swift in Sources */,
@@ -5774,6 +5827,13 @@
 				F28A09FE2EE772E900EE5055 /* YTScaledCenterCarouselPaginator.m in Sources */,
 				F28A09FF2EE772E900EE5055 /* YTScaledCenterCarouselLayout.m in Sources */,
 				F25B387E2E173CB60066D504 /* OrderDetailsViewController.m in Sources */,
+				C0D410020000000000000001 /* PPOrderDetailsRouter.m in Sources */,
+				C0D410020000000000000002 /* PPOrderDetailsMissionControlBridge.m in Sources */,
+				C0D410020000000000000003 /* PPOrderDetailsMissionControlModels.swift in Sources */,
+				C0D410020000000000000004 /* PPOrderDetailsMissionControlStore.swift in Sources */,
+				C0D410020000000000000005 /* PPOrderDetailsMissionControlViews.swift in Sources */,
+				C0D410020000000000000006 /* PPOrderDetailsMissionControlSheets.swift in Sources */,
+				C0D410020000000000000007 /* PPOrderDetailsMissionControlViewController.swift in Sources */,
 				F20F31B82D177602001D1D57 /* PGPickerColumnCell.m in Sources */,
 				F20F31B92D177602001D1D57 /* PGDatePicker+MonthDayHourMinuteSecond.m in Sources */,
 				F20F31BA2D177602001D1D57 /* PGDatePicker+YearAndMonth.m in Sources */,
@@ -5875,6 +5935,9 @@
 				F241C4522E254D3A00CC9BE9 /* ServiceModel.m in Sources */,
 				F2449C402D0DBACA00DB6BBC /* AppManager.m in Sources */,
 				F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */,
+				D4A102000000000000000001 /* PPOrderHistorySurfaceModels.swift in Sources */,
+				D4A102000000000000000002 /* PPOrderHistorySurfaceController.swift in Sources */,
+				D4A102000000000000000003 /* PPOrderHistorySurfaceView.swift in Sources */,
 				F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */,
 				F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */,
 				F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */,
@@ -6267,6 +6330,7 @@
 				F2D0C5F52C4BE1BB0023CE53 /* Pure_PetsTests.m in Sources */,
 				A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */,
 				F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */,
+				C1A0000000000000000000C2 /* PPHomePresentationResolverTests.swift in Sources */,
 				B8CA00020000000000000002 /* PPMarketplaceDataViewTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -2,8 +2,9 @@
 //  AdoptPetDetailsScreen.swift
 //  Pure Pets
 //
-//  Production SwiftUI Adopt Pet Details Experience.
-//  Redesign: Cover-to-Contact Adoption Profile — World-Class UI/UX.
+//  Adoption profile viewer. Presentation only: navigation, live data,
+//  favorites, contact, sharing, and reporting remain owned by their
+//  existing UIKit and store seams.
 //
 
 import SwiftUI
@@ -26,12 +27,12 @@ struct AdoptPetDetailsScreen: View {
 
     var hostViewControllerProvider: () -> UIViewController?
 
-    @State private var currentImageIndex: Int = 0
-    @State private var showingReportAlert: Bool = false
-    @State private var reportReasonText: String = ""
-    @State private var showingReportSuccess: Bool = false
-    @State private var showingReportFailure: Bool = false
-    @State private var reportFailureMessage: String = ""
+    @State private var currentImageIndex = 0
+    @State private var showingReportAlert = false
+    @State private var reportReasonText = ""
+    @State private var showingReportSuccess = false
+    @State private var showingReportFailure = false
+    @State private var reportFailureMessage = ""
     @State private var hasAppeared = false
 
     init(
@@ -46,624 +47,769 @@ struct AdoptPetDetailsScreen: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .bottom) {
-                detailAtmosphere
-                    .ignoresSafeArea()
+        ZStack(alignment: .top) {
+            adoptionAtmosphere
+                .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        heroGallery
-                            .frame(minHeight: heroHeight(geometry: geometry))
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 0) {
+                    heroGallery
+                        .frame(height: heroHeight)
 
-                        VStack(spacing: PPSpace.xxl) {
-                            identityOverview
-                            factsSection
-                            storySection
-                            ownerSection
-                            if !store.isOwner {
-                                reportButton
-                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-                            }
+                    VStack(alignment: .leading, spacing: PPSpace.xl) {
+                        profileIdentity
+                            .padding(.top, -PPSpace.xxxl)
+
+                        factsSection
+                        storySection
+                        ownerSection
+
+                        if !store.isOwner {
+                            reportButton
                         }
-                        .padding(.horizontal, PPSpace.screenMargin)
-                        .padding(.top, -PPSpace.xl)
-
-                        Spacer(minLength: store.isOwner ? PPSpace.xxxl : bottomDockClearance)
                     }
+                    .padding(.horizontal, pageInset)
+                    .padding(.bottom, PPSpace.xxxl)
                 }
-                .background(Color.ppBackground.ignoresSafeArea())
-
-                topOverlayNavigationBar
-                    .zIndex(1)
-
+            }
+            .ignoresSafeArea(.container, edges: .top)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !store.isOwner {
                     bottomContactDock
-                        .background(Color.clear)
                 }
             }
-            .navigationBarHidden(true)
-            .animation(reduceMotion ? .none : .easeOut(duration: 0.34), value: hasAppeared)
-            .onAppear {
-                guard !hasAppeared else { return }
-                if reduceMotion {
-                    hasAppeared = true
-                } else {
-                    withAnimation(.easeOut(duration: 0.34)) {
-                        hasAppeared = true
-                    }
-                }
-            }
-            .alert(PPAdoptLang("adopt_detail_report_title"), isPresented: $showingReportAlert) {
-                TextField(PPAdoptLang("adopt_detail_report_prompt"), text: $reportReasonText)
-                    .textFieldStyle(.roundedBorder)
-                    .disableAutocorrection(true)
-                Button(PPAdoptLang("adopt_detail_report_submit"), action: submitReport)
-                    .disabled(
-                        reportReasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || store.isReporting
-                    )
-                Button(PPAdoptLang("Cancel"), role: .cancel) { }
-            } message: {
-                Text(PPAdoptLang("adopt_detail_report_explanation"))
-                    .font(.body)
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .padding(.vertical, PPSpace.xs)
-            }
-            .alert(PPAdoptLang("adopt_detail_report_success_title"), isPresented: $showingReportSuccess) {
-                Button(PPAdoptLang("OK"), role: .cancel) { }
-            } message: {
-                Text(PPAdoptLang("adopt_detail_report_success_message"))
-            }
-            .alert(PPAdoptLang("adopt_detail_report_failed_title"), isPresented: $showingReportFailure) {
-                Button(PPAdoptLang("OK"), role: .cancel) { }
-            } message: {
-                Text(reportFailureMessage)
-            }
+
+            topOverlayNavigationBar
+        }
+        .navigationBarHidden(true)
+        .onAppear(perform: beginEntrance)
+        .alert(PPAdoptLang("adopt_detail_report_title"), isPresented: $showingReportAlert) {
+            TextField(PPAdoptLang("adopt_detail_report_prompt"), text: $reportReasonText)
+                .textFieldStyle(.roundedBorder)
+                .disableAutocorrection(true)
+
+            Button(PPAdoptLang("adopt_detail_report_submit"), action: submitReport)
+                .disabled(
+                    reportReasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || store.isReporting
+                )
+            Button(PPAdoptLang("Cancel"), role: .cancel) { }
+        } message: {
+            Text(PPAdoptLang("adopt_detail_report_explanation"))
+        }
+        .alert(PPAdoptLang("adopt_detail_report_success_title"), isPresented: $showingReportSuccess) {
+            Button(PPAdoptLang("OK"), role: .cancel) { }
+        } message: {
+            Text(PPAdoptLang("adopt_detail_report_success_message"))
+        }
+        .alert(PPAdoptLang("adopt_detail_report_failed_title"), isPresented: $showingReportFailure) {
+            Button(PPAdoptLang("OK"), role: .cancel) { }
+        } message: {
+            Text(reportFailureMessage)
         }
     }
 
-    private var detailAtmosphere: some View {
+    // MARK: - Layout and semantic content
+
+    private var pageInset: CGFloat {
+        horizontalSizeClass == .regular ? PPSpace.xxxl : PPSpace.screenMargin
+    }
+
+    private var heroHeight: CGFloat {
+        if dynamicTypeSize.isAccessibilitySize {
+            return 286
+        }
+        return horizontalSizeClass == .regular ? 500 : 416
+    }
+
+    private var galleryImages: [AdoptionGalleryImage] {
+        store.pet.imageURLs
+            .compactMap { URL(string: $0) }
+            .enumerated()
+            .map { offset, url in
+                AdoptionGalleryImage(
+                    id: "\(offset)-\(url.absoluteString)",
+                    ordinal: offset,
+                    url: url
+                )
+            }
+    }
+
+    private var metadataLine: String {
+        [store.pet.mBreedName, store.pet.mKindName, store.pet.mCityName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && $0 != "-" }
+            .joined(separator: "  •  ")
+    }
+
+    private var adoptionFacts: [AdoptionDetailFact] {
+        var facts: [AdoptionDetailFact] = []
+
+        if !store.pet.gender.isEmpty {
+            facts.append(
+                AdoptionDetailFact(
+                    id: "gender",
+                    symbol: "person.fill",
+                    title: PPAdoptLang("Gender"),
+                    value: PPAdoptGenderLabel(store.pet.gender)
+                )
+            )
+        }
+
+        if store.pet.ageMonths > 0 {
+            facts.append(
+                AdoptionDetailFact(
+                    id: "age",
+                    symbol: "calendar",
+                    title: PPAdoptLang("Age"),
+                    value: String(format: PPAdoptLang("%ld Months"), store.pet.ageMonths)
+                )
+            )
+        }
+
+        if !store.pet.mCityName.isEmpty {
+            facts.append(
+                AdoptionDetailFact(
+                    id: "city",
+                    symbol: "mappin.and.ellipse",
+                    title: PPAdoptLang("City"),
+                    value: store.pet.mCityName
+                )
+            )
+        }
+
+        let breed = store.pet.mBreedName
+        if !breed.isEmpty && breed != "-" {
+            facts.append(
+                AdoptionDetailFact(
+                    id: "breed",
+                    symbol: "pawprint.fill",
+                    title: PPAdoptLang("Breed"),
+                    value: breed
+                )
+            )
+        }
+
+        return facts
+    }
+
+    // MARK: - Surface
+
+    private var adoptionAtmosphere: some View {
         ZStack {
             Color.ppBackground
 
             if colorSchemeContrast != .increased {
                 RadialGradient(
                     colors: [
-                        Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                        Color.ppPrimary.opacity(colorScheme == .dark ? 0.13 : 0.09),
                         .clear
                     ],
                     center: .topTrailing,
-                    startRadius: 16,
-                    endRadius: 360
+                    startRadius: 24,
+                    endRadius: 420
                 )
-                .ignoresSafeArea()
             }
         }
         .accessibilityHidden(true)
-        .id("atmosphere")
     }
 
-    // MARK: - Top Chrome
+    // MARK: - Top chrome
 
     private var topOverlayNavigationBar: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: PPSpace.sm) {
-                Button(action: handleClose) {
-                    HStack(spacing: PPSpace.xs) {
-                        Image(systemName: layoutDirection == .rightToLeft ? "chevron.right" : "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                        Text(PPAdoptLang("Back"))
-                            .font(.caption.bold())
-                    }
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(Color.ppSurface.opacity(0.92), in: Circle())
-                    .overlay(
-                        Circle()
-                            .strokeBorder(Color.ppBorder.opacity(0.75), lineWidth: 0.8)
-                    )
-                    .shadow(
-                        color: Color.black.opacity(0.08),
-                        radius: 8,
-                        y: 3
-                    )
-                }
-                .buttonStyle(AdoptDetailsPressStyle())
-                .accessibilityLabel(PPAdoptLang("Back"))
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: PPSpace.sm) {
-                    iconAction(
-                        symbol: "square.and.arrow.up",
-                        label: PPAdoptLang("Share"),
-                        action: { store.sharePet(from: hostViewControllerProvider()) }
-                    )
-
-                    iconAction(
-                        symbol: store.isFavorited ? "heart.fill" : "heart",
-                        label: store.isFavorited ? PPAdoptLang("Unfavorite") : PPAdoptLang("Favorite")
-                    ) {
-                        store.toggleFavorite()
-                    }
-                    .foregroundStyle(store.isFavorited ? Color.ppPrimary : Color.ppTextPrimary)
-                }
-            }
-            .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.top, PPSpace.md)
-            .padding(.bottom, PPSpace.xs)
+        HStack(spacing: PPSpace.sm) {
+            navigationAction(
+                symbol: layoutDirection == .rightToLeft ? "chevron.right" : "chevron.left",
+                label: PPAdoptLang("Back"),
+                hint: PPAdoptLang("adopt_detail_back_hint"),
+                action: handleClose
+            )
 
             Spacer(minLength: 0)
+
+            HStack(spacing: PPSpace.sm) {
+                navigationAction(
+                    symbol: "square.and.arrow.up",
+                    label: PPAdoptLang("Share"),
+                    hint: PPAdoptLang("adopt_detail_share_hint"),
+                    action: { store.sharePet(from: hostViewControllerProvider()) }
+                )
+
+                navigationAction(
+                    symbol: store.isFavorited ? "heart.fill" : "heart",
+                    label: store.isFavorited
+                        ? PPAdoptLang("Unfavorite")
+                        : PPAdoptLang("Favorite"),
+                    hint: store.isFavorited
+                        ? PPAdoptLang("adopt_detail_favorite_remove_hint")
+                        : PPAdoptLang("adopt_detail_favorite_add_hint"),
+                    action: store.toggleFavorite,
+                    isHighlighted: store.isFavorited
+                )
+                .accessibilityValue(
+                    store.isFavorited
+                        ? PPAdoptLang("adopt_detail_favorite_saved")
+                        : PPAdoptLang("adopt_detail_favorite_unsaved")
+                )
+            }
         }
+        .padding(.horizontal, pageInset)
+        .padding(.top, PPSpace.sm)
         .accessibilityElement(children: .contain)
     }
 
-    @ViewBuilder
-    private func iconAction(symbol: String, label: String, action: @escaping () -> Void = {}) -> some View {
+    private func navigationAction(
+        symbol: String,
+        label: String,
+        hint: String,
+        action: @escaping () -> Void,
+        isHighlighted: Bool = false
+    ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(Color.ppTextPrimary)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(isHighlighted ? Color.ppPrimary : Color.ppTextPrimary)
                 .frame(width: 44, height: 44)
-                .background(Color.ppSurface.opacity(0.92), in: Circle())
-                .overlay(
+                .background(Color.ppSurface.opacity(reduceTransparency ? 1 : 0.94), in: Circle())
+                .overlay {
                     Circle()
-                        .strokeBorder(Color.ppBorder.opacity(0.75), lineWidth: 0.8)
-                )
+                        .strokeBorder(
+                            Color.ppBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.74),
+                            lineWidth: colorSchemeContrast == .increased ? 1.4 : 0.8
+                        )
+                }
                 .shadow(
-                    color: Color.black.opacity(0.08),
+                    color: colorSchemeContrast == .increased ? .clear : Color.black.opacity(0.10),
                     radius: 8,
                     y: 3
                 )
         }
         .buttonStyle(AdoptDetailsPressStyle())
         .accessibilityLabel(label)
+        .accessibilityHint(hint)
     }
 
-    // MARK: - Hero Gallery
-
-    private func heroHeight(geometry: GeometryProxy) -> CGFloat {
-        let baseHeight: CGFloat = horizontalSizeClass == .regular ? 456 : 390
-        let dynamicTypeAdjustment: CGFloat = dynamicTypeSize.isAccessibilitySize ? 318 : baseHeight
-        let safeAreaPadding = geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
-        return max(dynamicTypeAdjustment - safeAreaPadding * 0.5, 280)
-    }
-
-    private var bottomDockClearance: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 184 : 112
-    }
-
-    private var imageURLs: [URL] {
-        store.pet.imageURLs.compactMap { URL(string: $0) }
-    }
+    // MARK: - Gallery
 
     private var heroGallery: some View {
-        let hasImages = !imageURLs.isEmpty
+        let hasImages = !galleryImages.isEmpty
 
         return ZStack(alignment: .bottom) {
             Group {
                 if hasImages {
                     TabView(selection: $currentImageIndex) {
-                        ForEach(imageURLs.indices, id: \.self) { index in
-                            AdoptPetRemoteImageView(url: imageURLs[index])
-                                .tag(index)
+                        ForEach(galleryImages) { image in
+                            AdoptPetRemoteImageView(url: image.url, allowsRetry: true)
+                                .tag(image.ordinal)
                         }
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .accessibilityLabel(PPAdoptLang("adopt_detail_gallery_label"))
-                    .accessibilityValue(
-                        String(
-                            format: PPAdoptLang("adopt_detail_gallery_value_format"),
-                            currentImageIndex + 1,
-                            imageURLs.count
-                        )
-                    )
                 } else {
-                    ZStack {
-                        Color.ppSecondarySurface
-                        Image(systemName: "pawprint.fill")
-                            .font(.system(size: 48, weight: .semibold))
-                            .foregroundStyle(Color.ppQuickActionAdoption.opacity(0.48))
-                    }
-                    .accessibilityLabel(PPAdoptLang("adopt_detail_media_unavailable"))
+                    noMediaHero
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .opacity(hasAppeared ? 1 : 0)
-            .offset(y: hasAppeared || reduceMotion ? 0 : 20)
+            .clipped()
 
             LinearGradient(
-                colors: [.clear, .black.opacity(colorScheme == .dark ? 0.62 : 0.42)],
+                colors: [.clear, .black.opacity(colorScheme == .dark ? 0.64 : 0.46)],
                 startPoint: .center,
                 endPoint: .bottom
             )
-            .frame(height: 128)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
 
-            HStack(alignment: .center, spacing: PPSpace.sm) {
-                if hasImages {
-                    availabilityBadge
-                }
+            HStack(alignment: .bottom, spacing: PPSpace.sm) {
+                availabilityBadge
 
-                Spacer(minLength: 0)
+                Spacer(minLength: PPSpace.md)
 
-                if hasImages && imageURLs.count > 1 {
-                    Text(
-                        String(
-                            format: PPAdoptLang("adopt_detail_gallery_value_format"),
-                            currentImageIndex + 1,
-                            imageURLs.count
-                        )
-                    )
-                    .font(PPFont.bold(12))
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, PPSpace.sm)
-                    .padding(.vertical, PPSpace.xs)
-                    .background(Color.black.opacity(0.32), in: Capsule())
-                    .accessibilityHidden(true)
+                if hasImages && galleryImages.count > 1 {
+                    galleryIndicator
                 }
             }
-            .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.bottom, PPSpace.xxl)
+            .padding(.horizontal, pageInset)
+            .padding(.bottom, PPSpace.xxxl + PPSpace.xs)
         }
-        .frame(maxWidth: .infinity)
+        .opacity(hasAppeared || reduceMotion ? 1 : 0.01)
+        .offset(y: hasAppeared || reduceMotion ? 0 : 12)
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.32),
+            value: hasAppeared
+        )
+        .accessibilityElement(children: hasImages ? .contain : .ignore)
+        .accessibilityLabel(
+            hasImages
+                ? PPAdoptLang("adopt_detail_gallery_label")
+                : PPAdoptLang("adopt_detail_media_unavailable")
+        )
+        .accessibilityValue(
+            hasImages
+                ? String(
+                    format: PPAdoptLang("adopt_detail_gallery_value_format"),
+                    currentImageIndex + 1,
+                    galleryImages.count
+                )
+                : ""
+        )
+        .accessibilityHint(
+            hasImages && galleryImages.count > 1
+                ? PPAdoptLang("adopt_detail_gallery_adjust_hint")
+                : ""
+        )
+        .accessibilityAdjustableAction { direction in
+            guard galleryImages.count > 1 else { return }
+            switch direction {
+            case .increment:
+                currentImageIndex = min(currentImageIndex + 1, galleryImages.count - 1)
+            case .decrement:
+                currentImageIndex = max(currentImageIndex - 1, 0)
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    private var noMediaHero: some View {
+        ZStack {
+            Color.ppSecondarySurface
+            Circle()
+                .fill(Color.ppPrimary.opacity(colorScheme == .dark ? 0.20 : 0.14))
+                .frame(width: 132, height: 132)
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 54, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+        }
+        .accessibilityHidden(true)
     }
 
     private var availabilityBadge: some View {
         HStack(spacing: PPSpace.xs) {
-            Image(systemName: "circle.fill")
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(Color.ppSuccess)
-                .accessibility(hidden: true)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .accessibilityHidden(true)
             Text(PPAdoptLang("adopt_detail_available_now"))
-                .font(PPFont.medium(11))
-                .foregroundStyle(Color.white)
+                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
                 .lineLimit(1)
         }
+        .foregroundStyle(Color.white)
         .padding(.horizontal, PPSpace.md)
         .padding(.vertical, PPSpace.sm)
-        .background(Color.ppQuickActionAdoption.opacity(0.96), in: Capsule())
+        .background(Color.ppPrimary, in: Capsule())
         .accessibilityHidden(true)
     }
 
-    // MARK: - Identity Overview
+    private var galleryIndicator: some View {
+        VStack(alignment: .trailing, spacing: PPSpace.xs) {
+            Text(
+                String(
+                    format: PPAdoptLang("adopt_detail_gallery_value_format"),
+                    currentImageIndex + 1,
+                    galleryImages.count
+                )
+            )
+            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
 
-    private var identityOverview: some View {
+            HStack(spacing: 4) {
+                ForEach(galleryImages) { image in
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(image.ordinal == currentImageIndex ? 1 : 0.42))
+                        .frame(width: image.ordinal == currentImageIndex ? 18 : 5, height: 5)
+                }
+            }
+        }
+        .foregroundStyle(Color.white)
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.xs)
+        .background(Color.black.opacity(0.32), in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous))
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Adoption profile
+
+    private var profileIdentity: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
+            identityStatusRow
+
             Text(store.pet.name.isEmpty ? PPAdoptLang("AdoptPet") : store.pet.name)
-                .font(.largeTitle)
-                .fontWeight(.bold)
+                .font(.custom("Beiruti-Bold", size: 30, relativeTo: .title))
                 .foregroundStyle(Color.ppTextPrimary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                .minimumScaleFactor(0.75)
+                .multilineTextAlignment(.leading)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
 
-            let kind = store.pet.mKindName
-            let breed = store.pet.mBreedName
-            let city = store.pet.mCityName
-            let subtitleParts = [breed, kind, city].filter { !$0.isEmpty && $0 != "-" }
-
-            Text(subtitleParts.isEmpty ? PPAdoptLang("adopt_detail_available_now") : subtitleParts.joined(separator: "  •  "))
-                .font(.subheadline)
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: PPSpace.xs) {
-                Image(systemName: "circle.fill")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(Color.ppSuccess)
-                    .accessibility(hidden: true)
-                Text(PPAdoptLang("adopt_detail_available_now"))
-                    .font(.caption.bold())
-                    .foregroundStyle(Color.ppQuickActionAdoption)
-                    .lineLimit(1)
+            if !metadataLine.isEmpty {
+                Text(metadataLine)
+                    .font(.custom("Beiruti-Regular", size: 15, relativeTo: .subheadline))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(PPAdoptLang("adopt_detail_available_now")): \(PPAdoptLang("adopt_detail_available_now"))")
         }
-        .padding(PPSpace.base)
-        .padding(.top, PPSpace.lg)
-        .background(Color.ppSurface)
-        .clipShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+        .padding(.horizontal, PPSpace.lg)
+        .padding(.vertical, PPSpace.base)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
                 .strokeBorder(
-                    Color.ppBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.8),
-                    lineWidth: colorSchemeContrast == .increased ? 1.4 : 0.8
+                    Color.ppBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.78),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
                 )
-        )
+        }
         .shadow(
-            color: colorSchemeContrast == .increased
-                ? .clear
-                : Color.black.opacity(colorScheme == .dark ? 0.16 : 0.06),
-            radius: 16,
-            y: 6
+            color: colorSchemeContrast == .increased ? .clear : Color.black.opacity(colorScheme == .dark ? 0.18 : 0.09),
+            radius: 22,
+            y: 10
         )
-        .padding(.horizontal, PPSpace.screenMargin)
+        .opacity(hasAppeared || reduceMotion ? 1 : 0.01)
+        .offset(y: hasAppeared || reduceMotion ? 0 : 8)
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.30).delay(0.04),
+            value: hasAppeared
+        )
+    }
+
+    @ViewBuilder
+    private var identityStatusRow: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                adoptionEyebrow
+                availabilityLine
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: PPSpace.md) {
+                adoptionEyebrow
+                Spacer(minLength: PPSpace.sm)
+                availabilityLine
+            }
+        }
+    }
+
+    private var adoptionEyebrow: some View {
+        Text(PPAdoptLang("adopt_detail_eyebrow"))
+            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+            .tracking(0.45)
+            .foregroundStyle(Color.ppAccentText)
+    }
+
+    private var availabilityLine: some View {
+        HStack(spacing: PPSpace.xs) {
+            Circle()
+                .fill(Color.ppSuccess)
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+            Text(PPAdoptLang("adopt_detail_available_now"))
+                .font(.custom("Beiruti-Medium", size: 13, relativeTo: .footnote))
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(PPAdoptLang("adopt_detail_available_now"))
+        .accessibilityHint(PPAdoptLang("adopt_detail_availability_hint"))
     }
 
     // MARK: - Facts
-
-    private var factColumns: [GridItem] {
-        dynamicTypeSize.isAccessibilitySize
-            ? [GridItem(.flexible())]
-            : [GridItem(.flexible()), GridItem(.flexible())]
-    }
 
     private var factsSection: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             sectionHeading(
                 title: PPAdoptLang("adopt_detail_section_facts"),
-                systemImage: "doc.text.magnifyingglass"
+                subtitle: PPAdoptLang("adopt_detail_facts_caption"),
+                systemImage: "sparkle.magnifyingglass"
             )
 
-            LazyVGrid(columns: factColumns, spacing: PPSpace.sm) {
-                if !store.pet.gender.isEmpty {
-                    factTile(
-                        systemImage: "person.fill",
-                        title: PPAdoptLang("Gender"),
-                        value: PPAdoptGenderLabel(store.pet.gender)
-                    )
-                }
-
-                if store.pet.ageMonths > 0 {
-                    let ageText = String(format: PPAdoptLang("%ld Months"), store.pet.ageMonths)
-                    factTile(
-                        systemImage: "calendar",
-                        title: PPAdoptLang("Age"),
-                        value: ageText
-                    )
-                }
-
-                if !store.pet.mCityName.isEmpty {
-                    factTile(
-                        systemImage: "mappin.circle.fill",
-                        title: PPAdoptLang("City"),
-                        value: store.pet.mCityName
-                    )
-                }
-
-                let breed = store.pet.mBreedName
-                if !breed.isEmpty && breed != "-" {
-                    factTile(
-                        systemImage: "pawprint.fill",
-                        title: PPAdoptLang("Breed"),
-                        value: breed
-                    )
-                }
-            }
-        }
-        .padding(.horizontal, PPSpace.screenMargin)
-    }
-
-    private func sectionHeading(title: String, systemImage: String) -> some View {
-        HStack(spacing: PPSpace.sm) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Color.ppQuickActionAdoption)
-                .frame(width: 32, height: 32)
-                .background(Color.ppQuickActionAdoption.opacity(0.11), in: Circle())
-                .accessibilityHidden(true)
-
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(Color.ppTextPrimary)
-        }
-    }
-
-    private func factTile(systemImage: String, title: String, value: String) -> some View {
-        HStack(spacing: PPSpace.sm) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.ppQuickActionAdoption)
-                .frame(width: 36, height: 36)
-                .background(Color.ppQuickActionAdoption.opacity(0.12), in: Circle())
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
+            if adoptionFacts.isEmpty {
+                Text(PPAdoptLang("adopt_detail_facts_unavailable"))
+                    .font(.custom("Beiruti-Regular", size: 16, relativeTo: .body))
                     .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(1)
-
-                Text(value)
-                    .font(.body.bold())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(PPSpace.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .adoptionSectionSurface()
+            } else if dynamicTypeSize.isAccessibilitySize {
+                factList
+                    .adoptionSectionSurface()
+            } else {
+                factGrid(columns: horizontalSizeClass == .regular ? 4 : 2)
+                    .adoptionSectionSurface()
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(PPSpace.base)
-        .background(Color.ppSecondarySurface)
-        .clipShape(RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous))
+    }
+
+    private func factGrid(columns: Int) -> some View {
+        let grid = Array(repeating: GridItem(.flexible(), spacing: 0), count: columns)
+        return LazyVGrid(columns: grid, alignment: .leading, spacing: PPSpace.md) {
+            ForEach(adoptionFacts) { fact in
+                factMeasure(fact)
+            }
+        }
+        .padding(PPSpace.lg)
+    }
+
+    private var factList: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(adoptionFacts.enumerated()), id: \.element.id) { index, fact in
+                factRow(fact)
+                if index < adoptionFacts.count - 1 {
+                    Divider()
+                        .overlay(Color.ppSeparator)
+                }
+            }
+        }
+        .padding(.horizontal, PPSpace.lg)
+    }
+
+    private func factMeasure(_ fact: AdoptionDetailFact) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Image(systemName: fact.symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 32, height: 32)
+                .background(Color.ppPrimary.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
+
+            Text(fact.title)
+                .font(.custom("Beiruti-Regular", size: 13, relativeTo: .footnote))
+                .foregroundStyle(Color.ppTextSecondary)
+
+            Text(fact.value)
+                .font(.custom("Beiruti-Bold", size: 17, relativeTo: .headline))
+                .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title): \(value)")
+        .accessibilityLabel(factAccessibilityLabel(fact))
+    }
+
+    private func factRow(_ fact: AdoptionDetailFact) -> some View {
+        HStack(spacing: PPSpace.md) {
+            Image(systemName: fact.symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 36, height: 36)
+                .background(Color.ppPrimary.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
+
+            Text(fact.title)
+                .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
+                .foregroundStyle(Color.ppTextSecondary)
+
+            Spacer(minLength: PPSpace.sm)
+
+            Text(fact.value)
+                .font(.custom("Beiruti-Bold", size: 17, relativeTo: .headline))
+                .foregroundStyle(Color.ppTextPrimary)
+                .multilineTextAlignment(.trailing)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        }
+        .padding(.vertical, PPSpace.md)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(factAccessibilityLabel(fact))
     }
 
     // MARK: - Story
 
     private var storySection: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
+        let details = store.pet.details.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return VStack(alignment: .leading, spacing: PPSpace.md) {
             sectionHeading(
                 title: PPAdoptLang("adopt_detail_story_title"),
-                systemImage: "text.quote"
+                subtitle: PPAdoptLang("adopt_detail_story_caption"),
+                systemImage: "quote.opening"
             )
 
-            let details = store.pet.details.trimmingCharacters(in: .whitespacesAndNewlines)
-            VStack(alignment: .leading, spacing: 0) {
-                Capsule(style: .continuous)
-                    .fill(Color.ppQuickActionAdoption)
-                    .frame(width: 6, height: 44)
+            HStack(alignment: .top, spacing: PPSpace.md) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(Color.ppPrimary)
+                    .frame(width: 4)
                     .accessibilityHidden(true)
 
                 Text(details.isEmpty ? PPAdoptLang("adopt_detail_no_details") : details)
-                    .font(.body)
+                    .font(.custom("Beiruti-Regular", size: 17, relativeTo: .body))
                     .foregroundStyle(Color.ppTextPrimary)
-                    .lineSpacing(6)
+                    .lineSpacing(5)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(PPSpace.base)
-            .background(Color.ppSurface)
-            .clipShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+            .padding(PPSpace.lg)
+            .adoptionSectionSurface()
         }
-        .padding(.horizontal, PPSpace.screenMargin)
     }
 
-    // MARK: - Listing Owner
+    // MARK: - Listing owner
 
     private var ownerSection: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             sectionHeading(
                 title: PPAdoptLang("adopt_detail_owner_title"),
+                subtitle: PPAdoptLang("adopt_detail_owner_caption"),
                 systemImage: "person.crop.circle"
             )
 
             HStack(alignment: .center, spacing: PPSpace.md) {
-                avatarView
+                ownerAvatar
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
                     if store.isLoadingOwner {
-                        ProgressView()
-                            .controlSize(.small)
-                            .accessibilityLabel(PPAdoptLang("adopt_detail_owner_loading"))
+                        HStack(spacing: PPSpace.xs) {
+                            ProgressView()
+                                .controlSize(.small)
+                                .accessibilityHidden(true)
+                            Text(PPAdoptLang("adopt_detail_owner_loading"))
+                                .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
+                                .foregroundStyle(Color.ppTextSecondary)
+                        }
+                        .accessibilityElement(children: .combine)
                     }
 
                     Text(store.ownerUser?.bestDisplayName() ?? PPAdoptLang("adopt_detail_owner_fallback"))
-                        .font(.headline)
+                        .font(.custom("Beiruti-Bold", size: 18, relativeTo: .headline))
                         .foregroundStyle(Color.ppTextPrimary)
-                        .lineLimit(1)
-
-                    Text(
-                        store.isOwnerContactUnavailable
-                            ? PPAdoptLang("adopt_detail_contact_unavailable")
-                            : PPAdoptLang("adopt_detail_owner_caption")
-                    )
-                    .font(.caption)
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
 
                     if store.isOwnerContactUnavailable {
+                        Text(PPAdoptLang("adopt_detail_contact_unavailable"))
+                            .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
+                            .foregroundStyle(Color.ppTextSecondary)
+
                         Button(PPAdoptLang("Retry")) {
                             store.retryOwnerLoading()
                         }
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.ppQuickActionAdoption)
-                        .buttonStyle(PPSimpleButtonStroke())
-                        .accessibilityLabel(PPAdoptLang("Retry"))
+                        .buttonStyle(AdoptionQuietButtonStyle())
+                        .accessibilityHint(PPAdoptLang("adopt_detail_owner_retry_hint"))
                     }
                 }
 
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, PPSpace.base)
-            .accessibilityElement(children: .contain)
+            .padding(PPSpace.lg)
+            .adoptionSectionSurface()
         }
-        .padding(.horizontal, PPSpace.screenMargin)
-        .background(Color.ppSecondarySurface)
-        .clipShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .strokeBorder(Color.ppBorder.opacity(0.8), lineWidth: 0.8)
-        )
     }
 
     @ViewBuilder
-    private var avatarView: some View {
+    private var ownerAvatar: some View {
         if let owner = store.ownerUser,
            let photoURLString = owner.userImageUrl?.absoluteString,
            !photoURLString.isEmpty {
             AdoptPetRemoteImageView(urlString: photoURLString)
-                .frame(width: 56, height: 56)
+                .frame(width: 58, height: 58)
                 .clipShape(Circle())
-                .overlay(
+                .overlay {
                     Circle()
-                        .strokeBorder(Color.ppBorder.opacity(0.7), lineWidth: 0.8)
-                )
-                .shadow(color: Color.black.opacity(0.06), radius: 4, y: 2)
+                        .strokeBorder(Color.ppBorder.opacity(0.74), lineWidth: 0.8)
+                }
+                .accessibilityHidden(true)
         } else {
-            ZStack {
-                Color.ppSecondarySurface
-                Image(systemName: "person.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(Color.ppTextTertiary)
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(Circle())
-            .overlay(
-                Circle()
-                    .strokeBorder(Color.ppBorder.opacity(0.5), lineWidth: 0.5)
-            )
+            Image(systemName: "person.fill")
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundStyle(Color.ppTextTertiary)
+                .frame(width: 58, height: 58)
+                .background(Color.ppSecondarySurface, in: Circle())
+                .overlay {
+                    Circle()
+                        .strokeBorder(Color.ppBorder.opacity(0.62), lineWidth: 0.8)
+                }
+                .accessibilityHidden(true)
         }
     }
 
-    // MARK: - Report Button
+    // MARK: - Report
 
     private var reportButton: some View {
         Button(action: beginReport) {
-            HStack(spacing: PPSpace.xs) {
+            HStack(spacing: PPSpace.sm) {
                 if store.isReporting {
                     ProgressView()
                         .controlSize(.small)
-                        .scaleEffect(0.8)
                         .accessibilityHidden(true)
                 } else {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                    Image(systemName: "exclamationmark.bubble")
+                        .font(.system(size: 15, weight: .semibold))
+                        .accessibilityHidden(true)
                 }
+
                 Text(
                     store.isReporting
                         ? PPAdoptLang("adopt_detail_report_submitting")
                         : PPAdoptLang("adopt_detail_report_action")
                 )
-                .font(.body.bold())
+                .font(.custom("Beiruti-Bold", size: 15, relativeTo: .body))
+
+                Spacer(minLength: 0)
+
+                Image(systemName: layoutDirection == .rightToLeft ? "chevron.left" : "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .accessibilityHidden(true)
             }
             .foregroundStyle(Color.ppTextSecondary)
-            .frame(minHeight: 52.0)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, PPSpace.base)
-            .background(Color.ppSecondarySurface)
-            .clipShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                    .strokeBorder(Color.ppBorder.opacity(0.6), lineWidth: 0.5)
-            )
+            .frame(minHeight: 48)
+            .padding(.horizontal, PPSpace.md)
         }
         .buttonStyle(AdoptDetailsPressStyle(pressedScale: 0.98))
         .disabled(store.isReporting)
         .accessibilityLabel(PPAdoptLang("adopt_detail_report_action"))
+        .accessibilityHint(PPAdoptLang("adopt_detail_report_hint"))
     }
 
-    // MARK: - Bottom Contact Dock
+    // MARK: - Contact dock
 
     private var bottomContactDock: some View {
         VStack(spacing: 0) {
-            Rectangle()
-                .fill(Color.ppSeparator.opacity(0.65))
-                .frame(height: 0.5)
-                .accessibilityHidden(true)
+            Divider()
+                .overlay(Color.ppSeparator.opacity(0.8))
 
-            contactActions
-                .padding(.horizontal, PPSpace.screenMargin)
-                .padding(.vertical, PPSpace.md)
-                .background {
-                    if reduceTransparency {
-                        Color.ppElevatedSurface
-                    } else {
-                        Color.ppElevatedSurface
-                            .opacity(colorScheme == .dark ? 0.9 : 0.96)
-                            .background(.ultraThinMaterial)
-                    }
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                if let contactStateMessage {
+                    contactStatus(message: contactStateMessage)
                 }
+
+                contactActions
+            }
+            .padding(.horizontal, pageInset)
+            .padding(.top, PPSpace.sm)
+            .padding(.bottom, PPSpace.sm)
+            .background(dockSurface)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var dockSurface: Color {
+        Color.ppElevatedSurface
+    }
+
+    private var contactStateMessage: String? {
+        if store.isLoadingOwner {
+            return PPAdoptLang("adopt_detail_contact_loading")
+        }
+        if !store.canCallOwner && !store.canChatOwner {
+            return PPAdoptLang("adopt_detail_contact_unavailable_message")
+        }
+        return nil
+    }
+
+    private func contactStatus(message: String) -> some View {
+        HStack(spacing: PPSpace.xs) {
+            if store.isLoadingOwner {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityHidden(true)
+            } else {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .accessibilityHidden(true)
+            }
+            Text(message)
+                .font(.custom("Beiruti-Regular", size: 13, relativeTo: .footnote))
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -674,9 +820,8 @@ struct AdoptPetDetailsScreen: View {
                 callActionButton
             }
         } else {
-            HStack(spacing: PPSpace.md) {
+            HStack(spacing: PPSpace.sm) {
                 callActionButton
-                Spacer()
                 chatActionButton
             }
         }
@@ -686,42 +831,28 @@ struct AdoptPetDetailsScreen: View {
         Button {
             store.contactOwnerByCall(from: hostViewControllerProvider())
         } label: {
-            HStack(spacing: PPSpace.sm) {
-                Image(systemName: "phone.fill")
-                    .font(.system(size: 18, weight: .bold))
-                if store.isLoadingOwner {
-                    ProgressView()
-                        .controlSize(.small)
-                        .accessibilityHidden(true)
+            Label(PPAdoptLang("Call"), systemImage: "phone.fill")
+                .font(.custom("Beiruti-Bold", size: 16, relativeTo: .body))
+                .foregroundStyle(Color.ppTextPrimary)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: PPBottomDecisionBarGeometry.controlHeight)
+                .padding(.horizontal, PPSpace.md)
+                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                        .strokeBorder(
+                            Color.ppBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.82),
+                            lineWidth: colorSchemeContrast == .increased ? 1.4 : 0.8
+                        )
                 }
-                Text(
-                    store.isLoadingOwner
-                        ? PPAdoptLang("adopt_detail_contact_loading")
-                        : PPAdoptLang("Call")
-                )
-                .font(.body.bold())
-                .lineLimit(1)
-            }
-            .foregroundStyle(Color.ppTextPrimary)
-            .padding(.horizontal, PPSpace.base)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 52)
-            .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                    .strokeBorder(Color.ppBorder.opacity(0.8), lineWidth: 0.8)
-            )
         }
         .buttonStyle(AdoptDetailsPressStyle())
         .disabled(!store.canCallOwner)
-        .opacity(store.canCallOwner || store.isLoadingOwner ? 1 : 0.55)
         .accessibilityLabel(PPAdoptLang("Call"))
         .accessibilityHint(
             store.canCallOwner
-                ? ""
-                : (store.isLoadingOwner
-                    ? PPAdoptLang("adopt_detail_contact_loading")
-                    : PPAdoptLang("adopt_detail_contact_unavailable_message"))
+                ? PPAdoptLang("adopt_detail_call_hint")
+                : PPAdoptLang("adopt_detail_contact_unavailable_message")
         )
     }
 
@@ -729,55 +860,80 @@ struct AdoptPetDetailsScreen: View {
         Button {
             store.contactOwnerByChat(from: hostViewControllerProvider())
         } label: {
-            HStack(spacing: PPSpace.sm) {
-                Image(systemName: "heart.text.square.fill")
-                    .font(.system(size: 20, weight: .bold))
-                if store.isLoadingOwner {
-                    ProgressView()
-                        .tint(.white)
-                        .controlSize(.small)
-                        .accessibilityHidden(true)
-                }
-                Text(
-                    store.isLoadingOwner
-                        ? PPAdoptLang("adopt_detail_contact_loading")
-                        : PPAdoptLang("adopt_detail_contact_action")
+            Label(PPAdoptLang("adopt_detail_contact_action"), systemImage: "message.fill")
+                .font(.custom("Beiruti-Bold", size: 16, relativeTo: .body))
+                .foregroundStyle(Color.white)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: PPBottomDecisionBarGeometry.controlHeight)
+                .padding(.horizontal, PPSpace.md)
+                .background(PPGradient.hero, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+                .shadow(
+                    color: colorSchemeContrast == .increased ? .clear : Color.ppPrimary.opacity(0.25),
+                    radius: 10,
+                    y: 4
                 )
-                .font(.body.bold())
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-            }
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, PPSpace.lg)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 52)
-            .background(PPGradient.hero, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
-            .shadow(
-                color: Color.ppPrimary.opacity(colorSchemeContrast == .increased ? 0 : 0.24),
-                radius: 10,
-                y: 4
-            )
         }
         .buttonStyle(AdoptDetailsPressStyle())
         .disabled(!store.canChatOwner)
-        .opacity(store.canChatOwner || store.isLoadingOwner ? 1 : 0.55)
         .accessibilityLabel(PPAdoptLang("adopt_detail_contact_action"))
         .accessibilityHint(
             store.canChatOwner
-                ? ""
-                : (store.isLoadingOwner
-                    ? PPAdoptLang("adopt_detail_contact_loading")
-                    : PPAdoptLang("adopt_detail_contact_unavailable_message"))
+                ? PPAdoptLang("adopt_detail_chat_hint")
+                : PPAdoptLang("adopt_detail_contact_unavailable_message")
         )
     }
 
-    // MARK: - Actions
+    // MARK: - Shared pieces
+
+    private func sectionHeading(title: String, subtitle: String, systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.ppPrimary)
+                    .frame(width: 30, height: 30)
+                    .background(Color.ppPrimary.opacity(0.12), in: Circle())
+                    .accessibilityHidden(true)
+
+                Text(title)
+                    .font(.custom("Beiruti-Bold", size: 21, relativeTo: .title3))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .accessibilityAddTraits(.isHeader)
+            }
+
+            Text(subtitle)
+                .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func factAccessibilityLabel(_ fact: AdoptionDetailFact) -> String {
+        String(
+            format: PPAdoptLang("adopt_detail_fact_accessibility_format"),
+            fact.title,
+            fact.value
+        )
+    }
+
+    private func beginEntrance() {
+        guard !hasAppeared else { return }
+        guard !reduceMotion else {
+            hasAppeared = true
+            return
+        }
+        withAnimation(.easeOut(duration: 0.32)) {
+            hasAppeared = true
+        }
+    }
 
     private func handleClose() {
-        if let vc = hostViewControllerProvider() {
-            if vc.navigationController != nil && vc.navigationController?.viewControllers.first != vc {
-                vc.navigationController?.popViewController(animated: true)
+        if let viewController = hostViewControllerProvider() {
+            if let navigationController = viewController.navigationController,
+               navigationController.viewControllers.first != viewController {
+                navigationController.popViewController(animated: true)
             } else {
-                vc.dismiss(animated: true)
+                viewController.dismiss(animated: true)
             }
         } else {
             presentationMode.wrappedValue.dismiss()
@@ -811,7 +967,48 @@ struct AdoptPetDetailsScreen: View {
     }
 }
 
-// MARK: - Remote Image View
+private struct AdoptionDetailFact: Identifiable {
+    let id: String
+    let symbol: String
+    let title: String
+    let value: String
+}
+
+private struct AdoptionGalleryImage: Identifiable {
+    let id: String
+    let ordinal: Int
+    let url: URL
+}
+
+private struct AdoptionSectionSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+        content
+            .background(Color.ppSurface, in: shape)
+            .overlay {
+                shape.strokeBorder(
+                    Color.ppBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.76),
+                    lineWidth: colorSchemeContrast == .increased ? 1.4 : 0.8
+                )
+            }
+            .shadow(
+                color: colorSchemeContrast == .increased ? .clear : Color.black.opacity(colorScheme == .dark ? 0.12 : 0.045),
+                radius: 14,
+                y: 5
+            )
+    }
+}
+
+private extension View {
+    func adoptionSectionSurface() -> some View {
+        modifier(AdoptionSectionSurface())
+    }
+}
+
+// MARK: - Remote image view
 
 struct AdoptPetRemoteImageView: View {
     let url: URL?
@@ -823,42 +1020,37 @@ struct AdoptPetRemoteImageView: View {
     }
 
     init(urlString: String?, allowsRetry: Bool = false) {
-        if let urlString = urlString, let parsedURL = URL(string: urlString) {
-            self.url = parsedURL
+        if let urlString, let parsedURL = URL(string: urlString) {
+            url = parsedURL
         } else {
-            self.url = nil
+            url = nil
         }
         self.allowsRetry = allowsRetry
     }
 
-    @State private var loadedImage: UIImage? = nil
+    @State private var loadedImage: UIImage?
     @State private var isLoading = false
     @State private var didFailToLoad = false
     @State private var activeRequestID = UUID()
 
     var body: some View {
         Group {
-            if let image = loadedImage {
-                Image(uiImage: image)
+            if let loadedImage {
+                Image(uiImage: loadedImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .accessibilityHidden(true)
             } else if didFailToLoad {
-                if allowsRetry {
-                    retryView
-                } else {
-                    placeholderView
-                }
+                allowsRetry ? AnyView(retryView) : AnyView(placeholderView)
             } else {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle(tint: .ppTextTertiary))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.ppSecondarySurface)
+                    .accessibilityLabel(PPAdoptLang("adopt_detail_media_loading"))
             }
         }
-        .onAppear {
-            loadImageIfNeeded()
-        }
+        .onAppear(perform: loadImageIfNeeded)
         .onChange(of: url) { _ in
             loadedImage = nil
             isLoading = false
@@ -867,7 +1059,6 @@ struct AdoptPetRemoteImageView: View {
         }
     }
 
-    @ViewBuilder
     private var placeholderView: some View {
         ZStack {
             Color.ppSecondarySurface
@@ -878,14 +1069,13 @@ struct AdoptPetRemoteImageView: View {
         .accessibilityHidden(true)
     }
 
-    @ViewBuilder
     private var retryView: some View {
         Button(action: retry) {
             VStack(spacing: PPSpace.sm) {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 28, weight: .semibold))
                 Text(PPAdoptLang("adopt_detail_media_retry"))
-                    .font(.caption.bold())
+                    .font(.custom("Beiruti-Bold", size: 13, relativeTo: .footnote))
             }
             .foregroundStyle(Color.ppTextSecondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -902,7 +1092,6 @@ struct AdoptPetRemoteImageView: View {
         }
         guard loadedImage == nil, !isLoading, !didFailToLoad else { return }
 
-        let requestedURLString = validURL.absoluteString
         let requestID = UUID()
         activeRequestID = requestID
         isLoading = true
@@ -911,7 +1100,7 @@ struct AdoptPetRemoteImageView: View {
             with: validURL,
             options: [.continueInBackground, .lowPriority],
             progress: nil
-        ) { image, _, error, _, _, _ in
+        ) { image, _, _, _, _, _ in
             DispatchQueue.main.async {
                 guard activeRequestID == requestID else { return }
                 isLoading = false
@@ -933,7 +1122,7 @@ struct AdoptPetRemoteImageView: View {
     }
 }
 
-// MARK: - Press Style
+// MARK: - Interaction styles
 
 private struct AdoptDetailsPressStyle: ButtonStyle {
     var pressedScale: CGFloat = 0.96
@@ -943,52 +1132,25 @@ private struct AdoptDetailsPressStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(
-                reduceMotion || !configuration.isPressed || !isEnabled
-                    ? 1
-                    : pressedScale
-            )
-            .opacity(
-                !isEnabled
-                    ? 0.46
-                    : (configuration.isPressed ? 0.88 : 1)
-            )
+            .scaleEffect(reduceMotion || !configuration.isPressed || !isEnabled ? 1 : pressedScale)
+            .opacity(!isEnabled ? 0.46 : (configuration.isPressed ? 0.88 : 1))
             .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.08)
-                    : .spring(response: 0.22, dampingFraction: 0.86),
+                reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.86),
                 value: configuration.isPressed
             )
     }
 }
 
-// MARK: - Simple Button Stroke
-
-struct PPSimpleButtonStroke: ButtonStyle {
-    var pressedScale: CGFloat = 0.97
-
+private struct AdoptionQuietButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.caption.bold())
-            .foregroundStyle(Color.ppQuickActionAdoption)
-            .scaleEffect(
-                reduceMotion || !configuration.isPressed || !isEnabled
-                    ? 1
-                    : pressedScale
-            )
-            .opacity(
-                !isEnabled
-                    ? 0.46
-                    : (configuration.isPressed ? 0.8 : 1)
-            )
-            .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.08)
-                    : .spring(response: 0.22, dampingFraction: 0.86),
-                value: configuration.isPressed
-            )
+            .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
+            .foregroundStyle(Color.ppAccentText)
+            .padding(.top, PPSpace.xs)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.98)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
     }
 }

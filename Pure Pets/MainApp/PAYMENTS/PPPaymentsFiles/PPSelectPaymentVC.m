@@ -21,7 +21,7 @@
 #import "CountryCodeModel.h"
 #import "PPSelectOptionViewController.h"
 #import "PPCommerceFeedbackManager.h"
-#import "OrderDetailsViewController.h"
+#import "PPOrderDetailsRouter.h"
 #import "Styling.h"
 #import "PetCareHelpers.h"
 
@@ -2653,9 +2653,10 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         return;
     }
 
-    OrderDetailsViewController *detailsVC = [[OrderDetailsViewController alloc] initWithOrder:order];
-    detailsVC.entryPresentationState = presentationState;
-    detailsVC.entryPresentationMessage = message ?: @"";
+    UIViewController *detailsVC =
+        [PPOrderDetailsRouter controllerWithOrder:order
+                          entryPresentationState:presentationState
+                                         message:message ?: @""];
     [self.navigationController pushViewController:detailsVC animated:YES];
 }
 @end

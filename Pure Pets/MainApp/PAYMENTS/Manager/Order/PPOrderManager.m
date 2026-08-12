@@ -685,6 +685,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     request.status = PPOrderNormalizedStatusString(dictionary[@"status"]);
     request.finalResolution = PPOrderNormalizedStatusString(dictionary[@"finalResolution"]);
     request.dedupeKey = PPOrderSupportSafeString(dictionary[@"dedupeKey"]);
+    request.orderCancelled = [dictionary[@"orderCancelled"] boolValue];
+    request.fulfillmentV1 = [dictionary[@"fulfillmentV1"] boolValue];
+    request.cancellationDisposition = PPOrderNormalizedStatusString(dictionary[@"cancellationDisposition"]);
     request.itemIDs = PPOrderSupportStringArray(dictionary[@"itemIDs"]);
     request.itemSnapshots = [dictionary[@"itemSnapshots"] isKindOfClass:NSArray.class] ? dictionary[@"itemSnapshots"] : @[];
 
@@ -781,6 +784,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     if ([normalized isEqualToString:PPOrderRequestStatusCompleted]) return kLang(@"order_request_status_completed");
     if ([normalized isEqualToString:PPOrderRequestStatusRefunded]) return kLang(@"order_request_status_refunded");
     if ([normalized isEqualToString:PPOrderRequestStatusPartiallyRefunded]) return kLang(@"order_request_status_partially_refunded");
+    if ([normalized isEqualToString:@"pending_settlement"]) return kLang(@"order_request_status_pending_settlement");
+    if ([normalized isEqualToString:@"settlement_retryable"]) return kLang(@"order_request_status_settlement_retryable");
+    if ([normalized isEqualToString:@"settlement_failed"]) return kLang(@"order_request_status_settlement_failed");
     if ([normalized isEqualToString:PPOrderRequestStatusCancelled]) return kLang(@"order_request_status_cancelled");
     if ([normalized isEqualToString:PPOrderRequestStatusClosed]) return kLang(@"order_request_status_closed");
     return kLang(@"order_request_status_pending_review");
@@ -1220,16 +1226,37 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
           statusKey ?: @"",
           order.deliveryStatus ?: @"");
 
-    if (PPOrderStatusIsCancelledLike(statusKey) || PPOrderStatusIsFailureLike(statusKey)) {
+    BOOL isUncapturedCheckoutFailure =
+        PPOrderStatusIsFailureLike(statusKey) &&
+        ![order isCashOnDelivery] &&
+        ![order hasCapturedPayment] &&
+        [statusKey isEqualToString:@"failed"];
+    if (PPOrderStatusIsCancelledLike(statusKey) ||
+        (PPOrderStatusIsFailureLike(statusKey) && !isUncapturedCheckoutFailure)) {
         return kLang(@"order_action_cancel_unavailable_closed");
     }
 
-    if (PPOrderStatusIsPackingLike(statusKey)) {
-        return kLang(@"order_action_cancel_unavailable_preparing");
-    }
+    if (order.fulfillmentVersion == 1) {
+        // Fulfillment-v1 cancellation is arbitrated by the server against every
+        // child. Pre-custody children remain cancellable through
+        // `awaiting_handover`; later/unknown combinations become a support
+        // review rather than a client-invented cancellation.
+        NSString *deliveryStatus = PPOrderNormalizedStatusString([order effectiveDeliveryStatus]);
+        BOOL custodyTransferred = PPOrderStatusMatchesAnyKeyword(deliveryStatus, @[
+            @"picked_up", @"in_transit", @"shipped", @"out_for_delivery",
+            @"delivered", @"completed", @"returned_to_store"
+        ]);
+        if (custodyTransferred || PPOrderStatusIsDeliveredLike(statusKey)) {
+            return kLang(@"order_action_cancel_unavailable_fulfillment");
+        }
+    } else {
+        if (PPOrderStatusIsPackingLike(statusKey)) {
+            return kLang(@"order_action_cancel_unavailable_preparing");
+        }
 
-    if (PPOrderStatusIsShippedLike(statusKey) || PPOrderStatusIsDeliveredLike(statusKey)) {
-        return kLang(@"order_action_cancel_unavailable_fulfillment");
+        if (PPOrderStatusIsShippedLike(statusKey) || PPOrderStatusIsDeliveredLike(statusKey)) {
+            return kLang(@"order_action_cancel_unavailable_fulfillment");
+        }
     }
 
     if (![order isCashOnDelivery] && ![order hasCapturedPayment]) {
@@ -1647,18 +1674,33 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
 - (id<FIRListenerRegistration>)listenToSupportRequestsForOrderID:(NSString *)orderID
                                                           update:(void (^)(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable error))update
 {
+    return [self listenToSupportRequestsForOrderID:orderID
+                                    metadataUpdate:^(NSArray<PPOrderSupportRequest *> *requests,
+                                                     BOOL isFromCache,
+                                                     NSError * _Nullable error) {
+        (void)isFromCache;
+        if (update) update(requests, error);
+    }];
+}
+
+- (id<FIRListenerRegistration>)listenToSupportRequestsForOrderID:(NSString *)orderID
+                                                  metadataUpdate:(void (^)(NSArray<PPOrderSupportRequest *> *requests,
+                                                                           BOOL isFromCache,
+                                                                           NSError * _Nullable error))update
+{
     if (orderID.length == 0) return nil;
     FIRQuery *query = [[self pp_requestsCollectionForOrderID:orderID] queryOrderedByField:@"createdAt" descending:YES];
-    return [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    return [query addSnapshotListenerWithIncludeMetadataChanges:YES
+                                                       listener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
-            if (update) update(@[], error);
+            if (update) update(@[], NO, error);
             return;
         }
         NSMutableArray<PPOrderSupportRequest *> *requests = [NSMutableArray array];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             [requests addObject:[PPOrderSupportRequest requestFromSnapshot:doc]];
         }
-        if (update) update(requests.copy, nil);
+        if (update) update(requests.copy, snapshot.metadata.isFromCache, nil);
     }];
 }
 
@@ -1682,11 +1724,26 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
 - (id<FIRListenerRegistration>)listenToTimelineEventsForOrder:(PPOrder *)order
                                                        update:(void (^)(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable error))update
 {
+    return [self listenToTimelineEventsForOrder:order
+                                 metadataUpdate:^(NSArray<PPOrderTimelineEvent *> *events,
+                                                  BOOL isFromCache,
+                                                  NSError * _Nullable error) {
+        (void)isFromCache;
+        if (update) update(events, error);
+    }];
+}
+
+- (id<FIRListenerRegistration>)listenToTimelineEventsForOrder:(PPOrder *)order
+                                               metadataUpdate:(void (^)(NSArray<PPOrderTimelineEvent *> *events,
+                                                                        BOOL isFromCache,
+                                                                        NSError * _Nullable error))update
+{
     if (!order.orderId.length) return nil;
     FIRQuery *query = [[self pp_eventsCollectionForOrderID:order.orderId] queryOrderedByField:@"createdAt" descending:NO];
-    return [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    return [query addSnapshotListenerWithIncludeMetadataChanges:YES
+                                                       listener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
-            if (update) update([self pp_fallbackTimelineForOrder:order], error);
+            if (update) update([self pp_fallbackTimelineForOrder:order], NO, error);
             return;
         }
         NSMutableArray<PPOrderTimelineEvent *> *events = [NSMutableArray array];
@@ -1696,7 +1753,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         if (events.count == 0) {
             events = [[self pp_fallbackTimelineForOrder:order] mutableCopy];
         }
-        if (update) update(events.copy, nil);
+        if (update) update(events.copy, snapshot.metadata.isFromCache, nil);
     }];
 }
 
@@ -1771,6 +1828,41 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         BOOL deduplicated = [data[@"deduplicated"] boolValue];
         NSLog(@"PPLAB order request accepted orderId=%@ requestId=%@ type=%@ deduplicated=%d", order.orderId, requestID, requestType, deduplicated);
 
+        if (deduplicated && requestID.length > 0) {
+            FIRDocumentReference *requestReference =
+                [[self pp_requestsCollectionForOrderID:order.orderId]
+                 documentWithPath:requestID];
+            [requestReference getDocumentWithCompletion:^(
+                FIRDocumentSnapshot * _Nullable snapshot,
+                NSError * _Nullable error
+            ) {
+                PPOrderSupportRequest *existingRequest = snapshot.exists
+                    ? [PPOrderSupportRequest requestFromSnapshot:snapshot]
+                    : nil;
+                if (!existingRequest) {
+                    NSError *truthError = error ?: [NSError
+                        errorWithDomain:PPOrderSupportErrorDomain
+                                   code:404
+                               userInfo:@{
+                        NSLocalizedDescriptionKey:
+                            kLang(@"pp_order_support_submit_failed")
+                    }];
+                    if (completion) {
+                        completion(
+                            nil,
+                            YES,
+                            [PPFirebaseSessionBridge
+                                publicErrorForError:truthError
+                                fallbackKey:@"pp_order_support_submit_failed"]
+                        );
+                    }
+                    return;
+                }
+                if (completion) completion(existingRequest, YES, nil);
+            }];
+            return;
+        }
+
         PPOrderSupportRequest *request = nil;
         if (requestID.length > 0) {
             request = [PPOrderSupportRequest requestFromDictionary:@{
@@ -1787,6 +1879,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[],
                 @"status": data[@"status"] ?: PPOrderRequestStatusPendingReview,
                 @"finalResolution": data[@"finalResolution"] ?: PPOrderRequestStatusPendingReview,
+                @"orderCancelled": @([data[@"orderCancelled"] boolValue]),
+                @"fulfillmentV1": @([data[@"fulfillmentV1"] boolValue]),
+                @"cancellationDisposition": data[@"cancellationDisposition"] ?: @"",
                 @"createdAt": [NSDate date],
                 @"updatedAt": [NSDate date]
             } documentID:requestID];

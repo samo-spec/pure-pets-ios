@@ -28,14 +28,6 @@ static UIColor *PPDynamicColor(UIColor *lightColor, UIColor *darkColor)
     return lightColor;
 }
 
-static void PPApplyContinuousCorners(UIView *view, CGFloat radius)
-{
-    view.layer.cornerRadius = radius;
-    if (@available(iOS 13.0, *)) {
-        view.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-}
-
 static UIFont *PPScaledFont(CGFloat size, UIFontWeight weight, UIFontTextStyle textStyle)
 {
     UIFont *font = weight >= UIFontWeightSemibold ? [GM boldFontWithSize:size] : [GM MidFontWithSize:size];
@@ -146,7 +138,7 @@ static UIImage *PPInitialsImage(NSString *title, UIColor *accentColor, CGSize si
 
     NSString *trimmed = [title stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSString *initial = trimmed.length > 0 ? [[trimmed substringToIndex:1] uppercaseString] : @"P";
-    UIFont *font = PPPcaledFont(MIN(size.width, size.height) * 0.34, UIFontWeightHeavy, UIFontTextStyleLargeTitle);
+    UIFont *font = PPScaledFont(MIN(size.width, size.height) * 0.34, UIFontWeightHeavy, UIFontTextStyleLargeTitle);
     NSDictionary *attrs = @{
         NSFontAttributeName: font,
         NSForegroundColorAttributeName: PPAccentTint(accentColor, 0.82)
@@ -177,7 +169,7 @@ static NSAttributedString *PPMetricText(NSString *valueText, NSString *titleText
     ps.alignment = NSTextAlignmentCenter;
     ps.lineBreakMode = NSLineBreakByTruncatingTail;
     NSMutableAttributedString *result = [[NSMutableAttributedString alloc] initWithString:full attributes:@{
-        NSFontAttributeName: PPPScaledFont(11.0, UIFontWeightSemibold, UIFontTextStyleCaption1),
+        NSFontAttributeName: PPScaledFont(11.0, UIFontWeightSemibold, UIFontTextStyleCaption1),
         NSForegroundColorAttributeName: PPAccentTint(PPPrimaryText(), 0.70),
         NSParagraphStyleAttributeName: ps
     }];
@@ -185,7 +177,7 @@ static NSAttributedString *PPMetricText(NSString *valueText, NSString *titleText
         NSRange vr = [full rangeOfString:value];
         if (vr.location != NSNotFound) {
             [result addAttributes:@{
-                NSFontAttributeName: PPPScaledFont(11.0, UIFontWeightHeavy, UIFontTextStyleCaption1),
+                NSFontAttributeName: PPScaledFont(11.0, UIFontWeightHeavy, UIFontTextStyleCaption1),
                 NSForegroundColorAttributeName: PPAccentTint(accent, 0.92)
             } range:vr];
         }
@@ -230,7 +222,7 @@ static CGFloat PPCoverHeightForTableWidth(CGFloat tableWidth)
     return self;
 }
 
-- (id)copyWithZone:(NSZone)zone
+- (id)copyWithZone:(NSZone *)zone
 {
     PPProviderCompanyPremiumCardViewModel *copy = [[[self class] allocWithZone:zone] init];
     copy.providerIdentifier = self.providerIdentifier;
@@ -448,7 +440,7 @@ static CGFloat PPCoverHeightForTableWidth(CGFloat tableWidth)
     _avatarBadgeIconView = [[UIImageView alloc] init];
     _avatarBadgeIconView.translatesAutoresizingMaskIntoConstraints = NO;
     _avatarBadgeIconView.contentMode = UIViewContentModeScaleAspectFit;
-    _avatarBadgeIconView.image = PPPSymbol(@"checkmark.seal.fill", 14.0, UIImageSymbolWeightBold);
+    _avatarBadgeIconView.image = PPSymbol(@"checkmark.seal.fill", 14.0, UIImageSymbolWeightBold);
     _avatarBadgeIconView.tintColor = PPVerifiedGreen();
     [_avatarBadgeView addSubview:_avatarBadgeIconView];
 
@@ -518,7 +510,7 @@ static CGFloat PPCoverHeightForTableWidth(CGFloat tableWidth)
     _contactIconView = [[UIImageView alloc] init];
     _contactIconView.translatesAutoresizingMaskIntoConstraints = NO;
     _contactIconView.contentMode = UIViewContentModeScaleAspectFit;
-    _contactIconView.image = PPPSymbol(@"mappin.and.ellipse", 10.0, UIImageSymbolWeightSemibold);
+    _contactIconView.image = PPSymbol(@"mappin.and.ellipse", 10.0, UIImageSymbolWeightSemibold);
     [_contactPillView addSubview:_contactIconView];
 
     _contactLabel = [[UILabel alloc] init];
@@ -540,7 +532,7 @@ static CGFloat PPCoverHeightForTableWidth(CGFloat tableWidth)
     _ratingIconView = [[UIImageView alloc] init];
     _ratingIconView.translatesAutoresizingMaskIntoConstraints = NO;
     _ratingIconView.contentMode = UIViewContentModeScaleAspectFit;
-    _ratingIconView.image = PPPSymbol(@"star.fill", 10.0, UIImageSymbolWeightBold);
+    _ratingIconView.image = PPSymbol(@"star.fill", 10.0, UIImageSymbolWeightBold);
     _ratingIconView.tintColor = [UIColor colorWithRed:0.86 green:0.62 blue:0.15 alpha:1.0];
     [_ratingPillView addSubview:_ratingIconView];
 
@@ -747,7 +739,7 @@ static CGFloat PPCoverHeightForTableWidth(CGFloat tableWidth)
     self.topBadgeLabel.hidden = YES;
     self.topBadgeView.backgroundColor = PPDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
                                                        [UIColor colorWithWhite:0.18 alpha:0.88]);
-    self.topBadgeIconView.image = PPPSymbol(@"tag.fill", 10.0, UIImageSymbolWeightSemibold);
+    self.topBadgeIconView.image = PPSymbol(@"tag.fill", 10.0, UIImageSymbolWeightSemibold);
     self.topBadgeIconView.tintColor = PPAccentTint(accent, 0.78);
     self.topBadgeLabel.attributedText = nil;
 
@@ -763,7 +755,7 @@ static CGFloat PPCoverHeightForTableWidth(CGFloat tableWidth)
     self.avatarBadgeView.hidden = !showsVerifiedBadge;
     self.avatarBadgeView.backgroundColor = UIColor.clearColor;
     self.avatarBadgeIconView.image = showsVerifiedBadge
-        ? PPPSymbol(@"checkmark.seal.fill", 14.0, UIImageSymbolWeightBold) : nil;
+        ? PPSymbol(@"checkmark.seal.fill", 14.0, UIImageSymbolWeightBold) : nil;
     self.avatarBadgeIconView.tintColor = PPVerifiedGreen();
 
     // Content surface
@@ -963,7 +955,7 @@ static CGFloat PPCoverHeightForTableWidth(CGFloat tableWidth)
         tintColor = self.viewModel.accentColor ?: tintColor;
     }
 
-    UIImage *image = PPPSymbol(symbolName, 14.0, weight);
+    UIImage *image = PPSymbol(symbolName, 14.0, weight);
     void (^changes)(void) = ^{
         [self.accessoryButton setImage:image forState:UIControlStateNormal];
         self.accessoryButton.tintColor = tintColor;

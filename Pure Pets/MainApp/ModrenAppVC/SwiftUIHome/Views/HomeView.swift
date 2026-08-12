@@ -1,35 +1,25 @@
 import SwiftUI
 import UIKit
 
-private enum HomeSectionRawID {
-    static let pureLens = 20
-    static let hero = 0
-    static let quickActions = 1
-    static let currentOrders = 2
-    static let carousel = 4
-    static let mainKinds = 5
-    static let suggestions = 6
-    static let accessories = 7
-    static let petProfile = 8
-    static let premiumCare = 9
-    static let lastFood = 10
-    static let nearbyServices = 11
-    static let adsNearby = 12
-    static let adopt = 13
-    static let buyAgain = 14
-    static let premiumSearch = 15
-    static let providerCategoryNav = 16
-    static let marketplaceHero = 17
-    static let suggestionAds = 18
-    static let suggestionAccessories = 19
+// MARK: - Render rows
 
-    static let supported: Set<Int> = [
-        pureLens, hero, quickActions, currentOrders, carousel, mainKinds,
-        suggestions, accessories, petProfile, premiumCare, lastFood,
-        nearbyServices, adsNearby, adopt, buyAgain, premiumSearch,
-        providerCategoryNav, marketplaceHero, suggestionAds,
-        suggestionAccessories,
-    ]
+/// A flattened, ordered, stably identified render list derived from the
+/// deterministic presentation plan. Zones stay a product concept; this is what
+/// the lazy vertical container actually walks.
+private struct HomeRenderRow: Identifiable {
+    enum Content {
+        case module(PPHomeModule)
+        case exploreMore
+    }
+
+    let id: String
+    let zone: PPHomeZoneID
+    let content: Content
+
+    var rawID: Int? {
+        if case let .module(module) = content { return module.rawID }
+        return nil
+    }
 }
 
 @available(iOS 15.0, *)
@@ -39,12 +29,23 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     @State private var loadedEntranceVisible = false
     @State private var pureLensContentMotionReady = false
     @State private var pureLensSignalStoryPlayed = false
     @State private var presentedOrder: HomeOrderModel?
+    /// Local paging index for the campaign lane. `HomeStore` owns hero rotation
+    /// for its own pet-context pages; it publishes no promotion index, so the
+    /// presentation owns this one and nothing else.
+    @State private var campaignIndex = 0
 
     private let topAnchor = "pp-home-top"
+
+    // MARK: Plan
+
+    private var plan: PPHomePresentationPlan {
+        PPHomePresentationResolver.plan(for: store.state)
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -62,9 +63,11 @@ struct HomeView: View {
                     } header: {
                         HomeCommandBar(
                             state: store.state,
+                            searchProminence: plan.searchProminence,
                             searchAction: store.router.openSearch,
                             cartAction: store.router.openCart,
-                            locationAction: store.locationTapped
+                            locationAction: store.locationTapped,
+                            novaAction: store.router.openNova
                         )
                         .zIndex(10)
                     }
@@ -116,7 +119,13 @@ struct HomeView: View {
                 store.setReduceMotion(value)
             }
         }
+        .onChange(of: store.state.promotionPages.map(\.id)) { identifiers in
+            guard campaignIndex >= identifiers.count else { return }
+            campaignIndex = max(0, identifiers.count - 1)
+        }
     }
+
+    // MARK: Content
 
     @ViewBuilder
     private var content: some View {
@@ -150,28 +159,454 @@ struct HomeView: View {
             case .empty:
                 emptyContent
             case .loaded, .refreshing, .partial:
-                loadedContent
+                zonedContent(plan)
             }
         }
     }
 
-    private var loadingContent: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xl) {
-            if !store.state.heroPages.isEmpty {
-                HomeHeroView(
-                    pages: store.state.heroPages,
-                    selectedIndex: store.state.selectedHeroIndex,
-                    onSelect: store.selectHero,
-                    onPrimaryAction: store.performSelectedHeroAction,
-                    onSecondaryAction: store.performSelectedHeroSecondaryAction,
-                    onInteractionChanged: store.setHeroInteractionActive
+    // MARK: Loaded
+
+    private func zonedContent(
+        _ resolvedPlan: PPHomePresentationPlan
+    ) -> some View {
+        let rows = renderRows(for: resolvedPlan)
+
+        return LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                renderRow(row, plan: resolvedPlan)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, verticalPadding(for: row))
+                    .background(band(for: row))
+                    .homeSectionEntrance(
+                        isVisible: loadedEntranceVisible,
+                        sectionIndex: index,
+                        reduceMotion: reduceMotion
+                    )
+                    .homeVerticalSectionReveal(
+                        entranceAlreadyPlayed: loadedEntranceVisible
+                    )
+                    .homeSectionDataReload(
+                        revision: row.rawID.map(store.sectionDataRevision) ?? 0,
+                        accent: reloadAccent(for: row)
+                    )
+                    .id("home-row-\(row.id)")
+            }
+        }
+        .onAppear(perform: startLoadedEntranceIfNeeded)
+    }
+
+    /// Zone precedence is the product hierarchy. Order *inside* a zone is the
+    /// Console order the resolver preserved.
+    private func renderRows(
+        for resolvedPlan: PPHomePresentationPlan
+    ) -> [HomeRenderRow] {
+        var rows: [HomeRenderRow] = []
+        let orderedZones: [PPHomeZoneID] = [
+            .marketingStage, .ecosystemLauncher, .livePriority,
+            .commerceDiscovery,
+        ]
+
+        for zone in orderedZones {
+            for module in resolvedPlan.modules(in: zone) {
+                rows.append(
+                    HomeRenderRow(
+                        id: "\(zone.rawValue)-\(module.rawID)",
+                        zone: zone,
+                        content: .module(module)
+                    )
+                )
+            }
+        }
+
+        if !exploreMoreEntries(for: resolvedPlan).isEmpty {
+            rows.append(
+                HomeRenderRow(
+                    id: "explore-more",
+                    zone: .commerceDiscovery,
+                    content: .exploreMore
+                )
+            )
+        }
+
+        return rows
+    }
+
+    @ViewBuilder
+    private func renderRow(
+        _ row: HomeRenderRow,
+        plan resolvedPlan: PPHomePresentationPlan
+    ) -> some View {
+        switch row.content {
+        case let .module(module):
+            moduleView(module, plan: resolvedPlan)
+        case .exploreMore:
+            PPHomeExploreMoreRow(entries: exploreMoreEntries(for: resolvedPlan))
+                .padding(.horizontal, PPSpace.screenMargin)
+        }
+    }
+
+    @ViewBuilder
+    private func moduleView(
+        _ module: PPHomeModule,
+        plan resolvedPlan: PPHomePresentationPlan
+    ) -> some View {
+        switch module.kind {
+        case .discoveryPrompt:
+            // Owned by the pinned command bar's search lane, never by a row.
+            EmptyView()
+
+        case let .marketingStage(source):
+            marketingStage(source)
+                .padding(.horizontal, PPSpace.screenMargin)
+
+        case .ecosystemLauncher:
+            PPHomeEcosystemLauncher(
+                actions: PPHomePresentationResolver.ecosystemLauncherActions(
+                    for: store.state,
+                    plan: resolvedPlan
+                ),
+                onSelect: store.performPriorityAction
+            )
+            .padding(.horizontal, PPSpace.screenMargin)
+
+        case .livePriorityOrder:
+            if let order = store.state.featuredOrder {
+                HomeOrderCard(
+                    order: order,
+                    onTap: { store.openOrder(order) }
                 )
                 .padding(.horizontal, PPSpace.screenMargin)
             }
 
-            HomePriorityGrid(
+        case .livePriorityCare:
+            if let reminder = store.state.heroPages.first(where: {
+                $0.kind == .reminder
+            }) {
+                PPHomeStatusCard(
+                    page: reminder,
+                    action: { store.performHeroAction(reminder) }
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+            }
+
+        case .discoveryRail:
+            HomeCategoryRail(
+                categories: store.state.categories,
+                selectedID: store.state.selectedMainKindID,
+                entrancePresented: loadedEntranceVisible,
+                onSelect: store.selectCategory
+            )
+
+        case .commerceRail:
+            if let feed = store.state.sections.first(where: {
+                $0.id == module.rawID
+            }) {
+                HomeFeedSection(
+                    section: feed,
+                    store: store,
+                    entrancePresented: loadedEntranceVisible
+                )
+            }
+
+        case let .partnerFeature(source):
+            partnerFeature(source)
+                .padding(.horizontal, PPSpace.screenMargin)
+
+        case let .careGateway(variant):
+            careGateway(variant)
+                .padding(.horizontal, PPSpace.screenMargin)
+
+        case .adoptionGateway:
+            HomeAdoptionSection(action: store.openAdoption)
+                .padding(.horizontal, PPSpace.screenMargin)
+
+        case .petContext:
+            PPHomePetContextStrip(
+                pets: store.state.pets,
+                selectedID: store.state.selectedPetID,
+                onSelect: store.selectPet,
+                onEdit: store.editSelectedPet,
+                onOpenProfiles: store.openPetProfiles
+            )
+
+        case .pureLensFeature:
+            if #available(iOS 16.0, *), let pureLensAction {
+                HomePureLensSection(
+                    motionReady: pureLensContentMotionReady,
+                    motionAlreadyPlayed: pureLensSignalStoryPlayed,
+                    onMotionSettled: {
+                        pureLensSignalStoryPlayed = true
+                    },
+                    action: pureLensAction
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+                .modifier(HomePureLensMotionGate(
+                    homeEntranceAlreadyPresented: loadedEntranceVisible,
+                    sectionIndex: 0,
+                    isReady: $pureLensContentMotionReady
+                ))
+            }
+        }
+    }
+
+    // MARK: Zone 2
+
+    @ViewBuilder
+    private func marketingStage(_ source: PPHomeMarketingSource) -> some View {
+        switch source {
+        case .petContext:
+            // `HomeStore` already owns rotation for these pages, so the stage
+            // never starts a second timer for them.
+            PPHomeMarketingStage(
+                pages: store.state.heroPages,
+                selectedIndex: store.state.selectedHeroIndex,
+                discloseCampaign: false,
+                autoAdvances: false,
+                onSelect: store.selectHero,
+                onPrimary: store.performHeroAction,
+                onSecondary: store.performHeroSecondaryAction,
+                onInteractionChanged: store.setHeroInteractionActive
+            )
+
+        case .promotions:
+            PPHomeMarketingStage(
+                pages: store.state.promotionPages,
+                selectedIndex: clampedCampaignIndex,
+                discloseCampaign: true,
+                autoAdvances: true,
+                onSelect: { campaignIndex = $0 },
+                onPrimary: store.performHeroAction,
+                onSecondary: store.performHeroSecondaryAction,
+                onInteractionChanged: { _ in }
+            )
+
+        case .marketplace:
+            if let page = store.state.marketplaceHeroPage {
+                PPHomeMarketingStage(
+                    pages: [page],
+                    selectedIndex: 0,
+                    discloseCampaign: false,
+                    autoAdvances: false,
+                    onSelect: { _ in },
+                    onPrimary: store.performHeroAction,
+                    onSecondary: store.performHeroSecondaryAction,
+                    onInteractionChanged: { _ in }
+                )
+            }
+        }
+    }
+
+    private var clampedCampaignIndex: Int {
+        let count = store.state.promotionPages.count
+        guard count > 0 else { return 0 }
+        return min(max(campaignIndex, 0), count - 1)
+    }
+
+    // MARK: Zone 5 helpers
+
+    @ViewBuilder
+    private func partnerFeature(_ source: PPHomeMarketingSource) -> some View {
+        switch source {
+        case .promotions:
+            PPHomePartnerFeature(
+                pages: store.state.promotionPages,
+                discloseCampaign: true,
+                onPrimary: store.performHeroAction
+            )
+        case .marketplace:
+            if let page = store.state.marketplaceHeroPage {
+                PPHomePartnerFeature(
+                    pages: [page],
+                    discloseCampaign: false,
+                    onPrimary: store.performHeroAction
+                )
+            }
+        case .petContext:
+            EmptyView()
+        }
+    }
+
+    private func careGateway(
+        _ variant: PPHomeCareGatewayVariant
+    ) -> some View {
+        PPHomeServiceGateway(
+            // No eyebrow: the care gateway is the only banded row, and brand
+            // text measures 4.45:1 on the dark section band. The title already
+            // carries the same meaning.
+            eyebrow: nil,
+            title: variant == .premiumCare
+                ? PPHomeZoneCopy.careGatewayTitle
+                : HomeModelAdapter.localized(
+                    "home_provider_navigation_title",
+                    fallback: "Trusted care"
+                ),
+            subtitle: variant == .premiumCare
+                ? PPHomeZoneCopy.careGatewaySubtitle
+                : HomeModelAdapter.localized(
+                    "home_provider_navigation_subtitle",
+                    fallback: "Choose the care destination you need"
+                ),
+            destinations: careDestinations,
+            onSelect: { destination in
+                store.openProviderCategory(destination.id)
+            }
+        )
+    }
+
+    private var careDestinations: [PPHomeServiceDestination] {
+        [
+            PPHomeServiceDestination(
+                id: "veterinarians",
+                title: HomeModelAdapter.localized(
+                    "provider_vets_title",
+                    fallback: "Veterinarians"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "provider_vets_subtitle",
+                    fallback: ""
+                ),
+                symbol: "stethoscope",
+                accent: .homeVeterinary
+            ),
+            PPHomeServiceDestination(
+                id: "pharmacy",
+                title: HomeModelAdapter.localized(
+                    "provider_pharmacies_title",
+                    fallback: "Pharmacies"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "provider_pharmacies_subtitle",
+                    fallback: ""
+                ),
+                symbol: "cross.case.fill",
+                accent: .homePharmacy
+            ),
+        ]
+    }
+
+    // MARK: Explore more
+
+    /// Every bounded-out module, rendered through the destination the resolver
+    /// already proved reachable. Duplicated destinations collapse to one entry.
+    private func exploreMoreEntries(
+        for resolvedPlan: PPHomePresentationPlan
+    ) -> [PPHomeExploreMoreRow.Entry] {
+        var seen = Set<String>()
+        var entries: [PPHomeExploreMoreRow.Entry] = []
+
+        for suppressed in resolvedPlan.suppressedModules {
+            guard let entry = exploreEntry(for: suppressed) else { continue }
+            guard seen.insert(destinationKey(suppressed.destination)).inserted
+            else { continue }
+            entries.append(entry)
+        }
+        return entries
+    }
+
+    private func destinationKey(
+        _ destination: PPHomeSuppressedDestination
+    ) -> String {
+        switch destination {
+        case let .commerceSeeAll(kind): return "see-all-\(kind.rawValue)"
+        case .marketplaceCampaign: return "marketplace"
+        case .careGateway: return "care"
+        case .adoption: return "adoption"
+        case .petProfiles: return "pets"
+        case .orderHistory: return "orders"
+        case .search: return "search"
+        }
+    }
+
+    private func exploreEntry(
+        for suppressed: PPHomeSuppressedModule
+    ) -> PPHomeExploreMoreRow.Entry? {
+        switch suppressed.destination {
+        case let .commerceSeeAll(kind):
+            let title = store.state.sections
+                .first { $0.kind == kind }?
+                .title ?? PPHomeZoneCopy.exploreMarketplace
+            return PPHomeExploreMoreRow.Entry(
+                id: suppressed.rawID,
+                title: title,
+                symbol: symbol(for: kind),
+                action: { store.seeAll(kind) }
+            )
+        case .marketplaceCampaign:
+            return PPHomeExploreMoreRow.Entry(
+                id: suppressed.rawID,
+                title: PPHomeZoneCopy.exploreMarketplace,
+                symbol: "bag.fill",
+                action: store.exploreMarketplace
+            )
+        case .careGateway:
+            return PPHomeExploreMoreRow.Entry(
+                id: suppressed.rawID,
+                title: PPHomeZoneCopy.careGatewayTitle,
+                symbol: "stethoscope",
+                action: { store.openProviderCategory("veterinarians") }
+            )
+        case .adoption:
+            return PPHomeExploreMoreRow.Entry(
+                id: suppressed.rawID,
+                title: PPHomeZoneCopy.adoption,
+                symbol: "heart.fill",
+                action: store.openAdoption
+            )
+        case .petProfiles:
+            return PPHomeExploreMoreRow.Entry(
+                id: suppressed.rawID,
+                title: PPHomeZoneCopy.myPet,
+                symbol: "pawprint.fill",
+                action: store.openPetProfiles
+            )
+        case .orderHistory:
+            return PPHomeExploreMoreRow.Entry(
+                id: suppressed.rawID,
+                title: PPHomeZoneCopy.orders,
+                symbol: "shippingbox.fill",
+                action: { store.seeAll(.currentOrder) }
+            )
+        case .search:
+            return PPHomeExploreMoreRow.Entry(
+                id: suppressed.rawID,
+                title: PPHomeZoneCopy.search,
+                symbol: "magnifyingglass",
+                action: store.router.openSearch
+            )
+        }
+    }
+
+    private func symbol(for kind: HomeSectionID) -> String {
+        switch kind {
+        case .currentOrder: return "shippingbox.fill"
+        case .buyAgain: return "arrow.counterclockwise"
+        case .recommendations: return "sparkles"
+        case .accessories: return "bag.fill"
+        case .advertisements: return "megaphone.fill"
+        case .food: return "cart.fill"
+        case .nearbyAdvertisements: return "location.fill"
+        case .services: return "wrench.and.screwdriver.fill"
+        }
+    }
+
+    // MARK: Loading / empty
+
+    private var loadingContent: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xl) {
+            PPHomeMarketingStage(
+                pages: [],
+                selectedIndex: 0,
+                discloseCampaign: false,
+                autoAdvances: false,
+                onSelect: { _ in },
+                onPrimary: { _ in },
+                onSecondary: { _ in },
+                onInteractionChanged: { _ in }
+            )
+            .padding(.horizontal, PPSpace.screenMargin)
+
+            PPHomeEcosystemLauncher(
                 actions: placeholderActions,
-                featuredPet: nil,
                 onSelect: { _ in }
             )
             .redacted(reason: .placeholder)
@@ -197,230 +632,6 @@ struct HomeView: View {
         .padding(.vertical, PPSpace.lg)
     }
 
-    private var loadedContent: some View {
-        let sections = visibleSupportedSections
-
-        return LazyVStack(alignment: .leading, spacing: 0) {
-            ForEach(
-                Array(sections.enumerated()),
-                id: \.element.id
-            ) { index, section in
-                configuredSection(section, sectionIndex: index)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, sectionVerticalPadding(section.id))
-                    .background(sectionBand(for: section.id))
-                    .homeSectionEntrance(
-                        isVisible: loadedEntranceVisible,
-                        sectionIndex: index,
-                        reduceMotion: reduceMotion
-                    )
-                    .homeVerticalSectionReveal(
-                        entranceAlreadyPlayed: loadedEntranceVisible
-                    )
-                    .homeSectionDataReload(
-                        revision: store.sectionDataRevision(for: section.id),
-                        accent: sectionReloadAccent(for: section.id)
-                    )
-                    .id("home-section-\(section.id)")
-            }
-        }
-        .onAppear(perform: startLoadedEntranceIfNeeded)
-    }
-
-    private var visibleSupportedSections: [HomeConfigSection] {
-        store.state.config.sections.filter { section in
-            guard section.isVisible,
-                  HomeSectionRawID.supported.contains(section.id)
-            else {
-                return false
-            }
-            if section.id == HomeSectionRawID.hero {
-                return !store.state.pets.isEmpty
-                    && !store.state.heroPages.isEmpty
-            }
-            if section.id == HomeSectionRawID.pureLens {
-                if #available(iOS 16.0, *) {
-                    return store.state.config.pureLensVisible
-                }
-                return false
-            }
-            return true
-        }
-    }
-
-    @ViewBuilder
-    private func configuredSection(
-        _ section: HomeConfigSection,
-        sectionIndex: Int
-    ) -> some View {
-        switch section.id {
-        case HomeSectionRawID.pureLens:
-            if #available(iOS 16.0, *), let pureLensAction {
-                HomePureLensSection(
-                    motionReady: pureLensContentMotionReady,
-                    motionAlreadyPlayed: pureLensSignalStoryPlayed,
-                    onMotionSettled: {
-                        pureLensSignalStoryPlayed = true
-                    },
-                    action: pureLensAction
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-                .modifier(HomePureLensMotionGate(
-                    homeEntranceAlreadyPresented: loadedEntranceVisible,
-                    sectionIndex: sectionIndex,
-                    isReady: $pureLensContentMotionReady
-                ))
-            }
-
-        case HomeSectionRawID.premiumSearch:
-            HomePremiumSearchSection(
-                isRightToLeft: store.state.isRightToLeft,
-                showsNova: store.state.config.novaFloatingVisible,
-                searchAction: store.router.openSearch,
-                novaAction: store.router.openNova
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
-
-        case HomeSectionRawID.marketplaceHero:
-            if let page = store.state.marketplaceHeroPage {
-                HomeSingleHeroSection(
-                    page: page,
-                    primaryAction: { store.performHeroAction(page) },
-                    secondaryAction: { store.performHeroSecondaryAction(page) }
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-            }
-
-        case HomeSectionRawID.providerCategoryNav:
-            HomeProviderCategoryNavigation(
-                action: store.openProviderCategory
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
-
-        case HomeSectionRawID.hero:
-            if !store.state.heroPages.isEmpty {
-                HomeHeroView(
-                    pages: store.state.heroPages,
-                    selectedIndex: store.state.selectedHeroIndex,
-                    onSelect: store.selectHero,
-                    onPrimaryAction: store.performSelectedHeroAction,
-                    onSecondaryAction: store.performSelectedHeroSecondaryAction,
-                    onInteractionChanged: store.setHeroInteractionActive
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-            }
-
-        case HomeSectionRawID.mainKinds:
-            if !store.state.categories.isEmpty {
-                HomeCategoryRail(
-                    categories: store.state.categories,
-                    selectedID: store.state.selectedMainKindID,
-                    entrancePresented: loadedEntranceVisible,
-                    onSelect: store.selectCategory
-                )
-            }
-
-        case HomeSectionRawID.premiumCare:
-            HomePremiumCareSection(
-                openVeterinary: {
-                    store.openProviderCategory("veterinarians")
-                },
-                openPharmacy: {
-                    store.openProviderCategory("pharmacy")
-                }
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
-
-        case HomeSectionRawID.quickActions:
-            HomePriorityGrid(
-                actions: store.state.priorityActions,
-                featuredPet: selectedPriorityPet,
-                onSelect: store.performPriorityAction
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
-
-        case HomeSectionRawID.currentOrders:
-            if let order = store.state.featuredOrder {
-                HomeOrderCard(
-                    order: order,
-                    onTap: { store.openOrder(order) }
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-            }
-
-        case HomeSectionRawID.carousel:
-            if store.state.promotionPages.isEmpty {
-                HomeInlineState(
-                    symbol: "photo.on.rectangle.angled",
-                    title: HomeModelAdapter.localized(
-                        "home_carousel_empty_title",
-                        fallback: "Offers are being prepared"
-                    ),
-                    message: HomeModelAdapter.localized(
-                        "home_carousel_empty_message",
-                        fallback: "New offers will appear here when available."
-                    ),
-                    actionTitle: HomeModelAdapter.localized(
-                        "Retry",
-                        fallback: "Retry"
-                    ),
-                    action: store.retryAll
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-            } else {
-                HomePromotionCarousel(
-                    pages: store.state.promotionPages,
-                    primaryAction: store.performHeroAction,
-                    secondaryAction: store.performHeroSecondaryAction
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-            }
-
-        case HomeSectionRawID.adopt:
-            HomeAdoptionSection(action: store.openAdoption)
-                .padding(.horizontal, PPSpace.screenMargin)
-
-        case HomeSectionRawID.petProfile:
-            VStack(alignment: .leading, spacing: PPSpace.lg) {
-                if !store.state.pets.isEmpty {
-                    HomePetSwitcher(
-                        pets: store.state.pets,
-                        selectedID: store.state.selectedPetID,
-                        onSelect: store.selectPet,
-                        onEdit: store.editSelectedPet
-                    )
-                }
-                HomeMyPetProfileCard(
-                    pets: store.state.pets,
-                    selectedID: store.state.selectedPetID,
-                    isLoading: store.state.phase.isLoading,
-                    errorMessage: nil,
-                    action: store.openPetProfiles
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-            }
-
-        case HomeSectionRawID.suggestions,
-             HomeSectionRawID.accessories,
-             HomeSectionRawID.lastFood,
-             HomeSectionRawID.nearbyServices,
-             HomeSectionRawID.adsNearby,
-             HomeSectionRawID.buyAgain,
-             HomeSectionRawID.suggestionAds,
-             HomeSectionRawID.suggestionAccessories:
-            if let feed = store.state.sections.first(where: { $0.id == section.id }) {
-                HomeFeedSection(
-                    section: feed,
-                    store: store,
-                    entrancePresented: loadedEntranceVisible
-                )
-            }
-
-        default:
-            EmptyView()
-        }
-    }
-
     private var emptyContent: some View {
         VStack(alignment: .leading, spacing: PPSpace.xl) {
             HomeInlineState(
@@ -433,10 +644,7 @@ struct HomeView: View {
                     "home_pulse_empty_message",
                     fallback: "Explore pet listings, products, and care destinations while new recommendations arrive."
                 ),
-                actionTitle: HomeModelAdapter.localized(
-                    "home_pulse_explore_market",
-                    fallback: "Explore marketplace"
-                ),
+                actionTitle: PPHomeZoneCopy.exploreMarketplace,
                 action: store.exploreMarketplace
             )
         }
@@ -450,51 +658,46 @@ struct HomeView: View {
         .onAppear(perform: startLoadedEntranceIfNeeded)
     }
 
+    // MARK: Chrome
+
     private var background: some View {
         WorldGlassBackground(
             isFaded: store.state.config.backgroundGlowsFaded
         )
     }
 
-    private func sectionBand(for rawID: Int) -> Color {
-        switch rawID {
-        case HomeSectionRawID.suggestions,
-             HomeSectionRawID.suggestionAds,
-             HomeSectionRawID.suggestionAccessories:
-            return .ppQuietLilac
-        case HomeSectionRawID.premiumCare:
-            return .homeSectionBand
-        case HomeSectionRawID.nearbyServices:
-            return .homeAmbientField
-        default:
-            return .clear
+    /// One rhythm break for the whole page. The care gateway is the only banded
+    /// row, so Home never reads as a stack of decorated boxes.
+    private func band(for row: HomeRenderRow) -> Color {
+        guard case let .module(module) = row.content else { return .clear }
+        if case .careGateway = module.kind { return .homeSectionBand }
+        return .clear
+    }
+
+    private func reloadAccent(for row: HomeRenderRow) -> Color {
+        guard case let .module(module) = row.content else { return .homeBrand }
+        switch module.kind {
+        case .discoveryRail, .commerceRail, .partnerFeature, .marketingStage:
+            return selectedMainKindAccent
+        case .petContext, .ecosystemLauncher:
+            return .homeStatusSuccess
+        case .careGateway:
+            return .homeVeterinary
+        case .livePriorityOrder, .livePriorityCare:
+            return .homeFocus
+        case .adoptionGateway:
+            return Color.ppAdoptionAccent
+        case .pureLensFeature, .discoveryPrompt:
+            return .homeBrand
         }
     }
 
-    private func sectionReloadAccent(for rawID: Int) -> Color {
-        switch rawID {
-        case HomeSectionRawID.mainKinds,
-             HomeSectionRawID.marketplaceHero,
-             HomeSectionRawID.suggestions,
-             HomeSectionRawID.accessories,
-             HomeSectionRawID.lastFood,
-             HomeSectionRawID.adsNearby,
-             HomeSectionRawID.suggestionAds,
-             HomeSectionRawID.suggestionAccessories:
-            return selectedMainKindAccent
-        case HomeSectionRawID.petProfile,
-             HomeSectionRawID.quickActions:
-            return .homeStatusSuccess
-        case HomeSectionRawID.premiumCare:
-            return .homeVeterinary
-        case HomeSectionRawID.nearbyServices,
-             HomeSectionRawID.providerCategoryNav:
-            return .homeServices
-        case HomeSectionRawID.currentOrders,
-             HomeSectionRawID.buyAgain:
-            return .homeFocus
-        default:
-            return .homeBrand
+    private func verticalPadding(for row: HomeRenderRow) -> CGFloat {
+        guard case let .module(module) = row.content else { return PPSpace.lg }
+        switch module.kind {
+        case .discoveryRail: return PPSpace.sm
+        case .marketingStage: return PPSpace.md
+        default: return PPSpace.lg
         }
     }
 
@@ -519,16 +722,6 @@ struct HomeView: View {
         }
     }
 
-    private func sectionVerticalPadding(_ rawID: Int) -> CGFloat {
-        switch rawID {
-        case HomeSectionRawID.mainKinds: return PPSpace.sm
-        case HomeSectionRawID.carousel,
-             HomeSectionRawID.hero,
-             HomeSectionRawID.marketplaceHero: return PPSpace.md
-        default: return PPSpace.lg
-        }
-    }
-
     private var bottomPadding: CGFloat {
         store.state.bottomContentClearance +
             (dynamicTypeSize.isAccessibilitySize ? 144 : 96)
@@ -536,24 +729,12 @@ struct HomeView: View {
 
     private func startLoadedEntranceIfNeeded() {
         guard !loadedEntranceVisible else { return }
-        // Commit on the next run loop so the initial visible shelves are
-        // already in their staged pose before the one-shot phase changes.
+        // Commit on the next run loop so the initial visible rows are already
+        // in their staged pose before the one-shot phase changes.
         DispatchQueue.main.async {
             guard !loadedEntranceVisible else { return }
             loadedEntranceVisible = true
         }
-    }
-
-    private var selectedPriorityPet: HomePetModel? {
-        if let selectedID = store.state.selectedPetID,
-           let selectedPet = store.state.pets.first(where: {
-               $0.id == selectedID
-           }) {
-            return selectedPet
-        }
-
-        return store.state.pets.first(where: \.isDefault) ??
-            store.state.pets.first
     }
 
     private var placeholderActions: [HomePriorityAction] {
@@ -571,281 +752,13 @@ struct HomeView: View {
     }
 }
 
+/// Shared Nova affordance, rendered by `HomeCommandBar`. It uses the same
+/// squircle, surface, and border vocabulary as the other command-surface
+/// controls so the bar reads as one system rather than four styles.
 @available(iOS 15.0, *)
-private struct HomeSingleHeroSection: View {
-    let page: HomeHeroPage
-    let primaryAction: () -> Void
-    let secondaryAction: () -> Void
-
-    var body: some View {
-        HomeHeroView(
-            pages: [page],
-            selectedIndex: 0,
-            onSelect: { _ in },
-            onPrimaryAction: primaryAction,
-            onSecondaryAction: secondaryAction,
-            onInteractionChanged: { _ in }
-        )
-    }
-}
-
-@available(iOS 15.0, *)
-private struct HomePromotionCarousel: View {
-    let pages: [HomeHeroPage]
-    let primaryAction: (HomeHeroPage) -> Void
-    let secondaryAction: (HomeHeroPage) -> Void
-
-    @State private var selection = 0
-
-    private var cards: [PPPromoCard] {
-        pages.enumerated().map { index, page in
-            PPPromoCard(homeHeroPage: page, position: index, totalCount: pages.count)
-        }
-    }
-
-    private var selectedPage: HomeHeroPage? {
-        guard pages.indices.contains(selection) else { return nil }
-        return pages[selection]
-    }
-
-    var body: some View {
-        PPPeekCarousel(
-            cards: cards,
-            isActive: !pages.isEmpty,
-            onAction: performPromoAction,
-            selection: $selection
-        )
-        .onAppear(perform: resolveSelection)
-        .onChange(of: pages.map(\.id)) { _ in resolveSelection() }
-    }
-
-    private func resolveSelection() {
-        guard !pages.isEmpty else {
-            selection = 0
-            return
-        }
-        selection = min(max(selection, 0), pages.count - 1)
-    }
-
-    private func performPromoAction(_ action: PPPromoAction) {
-        guard let page = page(for: action.cardID) else { return }
-        switch action.source {
-        case .card, .primaryButton:
-            primaryAction(page)
-        case .secondaryButton:
-            secondaryAction(page)
-        }
-    }
-
-    private func page(for cardID: String) -> HomeHeroPage? {
-        pages.first(where: { $0.id == cardID })
-    }
-}
-
-private extension PPPromoCard {
-    init(homeHeroPage page: HomeHeroPage, position: Int, totalCount: Int) {
-        let primaryTitle =
-            page.primaryTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let secondaryTitle =
-            page.secondaryTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        self.init(
-            id: page.id,
-            position: position,
-            totalCount: totalCount,
-            badgeText: page.eyebrow,
-            title: page.title,
-            subtitle: page.subtitle,
-            primaryButtonTitle: primaryTitle,
-            secondaryButtonTitle: secondaryTitle,
-            showsPrimaryButton: !primaryTitle.isEmpty,
-            showsSecondaryButton: !secondaryTitle.isEmpty,
-            artworkURL: page.imageURL.flatMap(URL.init(string:)),
-            localArtworkName: nil,
-            startColorHex: page.accentHex,
-            endColorHex: page.accentHex,
-            accentColorHex: page.accentHex,
-            cardActionRawValue: 0,
-            cardActionValue: "",
-            primaryActionRawValue: 0,
-            primaryActionValue: "",
-            secondaryActionRawValue: 0,
-            secondaryActionValue: "",
-            autoScrollInterval: page.autoScrollInterval
-        )
-    }
-}
-
-@available(iOS 15.0, *)
-private struct HomePremiumSearchSection: View {
-    let isRightToLeft: Bool
-    let showsNova: Bool
-    let searchAction: () -> Void
-    let novaAction: () -> Void
-
+struct HomeHeaderSparkleMotion: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            discoveryHeader
-
-            VStack(spacing: 0) {
-                searchButton
-            }
-            .ppElevation(.floating, cornerRadius: PPCorner.card)
-        }
-        .padding(PPSpace.base)
-        .background(sectionAtmosphere, in: outerShape)
-        .overlay {
-            outerShape.stroke(
-                Color.homeBrand.opacity(contrast == .increased ? 0.42 : 0.10),
-                lineWidth: contrast == .increased ? 1.5 : 0.8
-            )
-        }
-        .environment(
-            \.layoutDirection,
-            isRightToLeft ? .rightToLeft : .leftToRight
-        )
-    }
-
-    private var discoveryHeader: some View {
-        HStack(alignment: .top, spacing: PPSpace.md) {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                Text(HomeModelAdapter.localized(
-                    "home_search_hint",
-                    fallback: "What are you looking for?"
-                ))
-                .font(HomeFont.title2())
-                .foregroundStyle(Color.homeTextPrimary)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-
-                Text(HomeModelAdapter.localized(
-                    "home_pulse_search_prompt",
-                    fallback: "Search products, pets, and services"
-                ))
-                .font(HomeFont.subheadline())
-                .foregroundStyle(Color.homeTextSecondary)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            if showsNova {
-                Button(action: novaAction) {
-                    HomeHeaderSparkleMotion()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(HomeModelAdapter.localized(
-                    "nova_empty_title",
-                    fallback: "Ask Nova"
-                ))
-                .accessibilityHint(HomeModelAdapter.localized(
-                    "nova_empty_subtitle",
-                    fallback: "Smart shopping assistant from Pure Pets"
-                ))
-            } else {
-                HomeHeaderSparkleMotion()
-            }
-        }
-    }
-
-    private var searchButton: some View {
-        Button(action: searchAction) {
-            HStack(spacing: PPSpace.md) {
-                ZStack(alignment: .bottomTrailing) {
-                    RoundedRectangle(
-                        cornerRadius: PPCorner.small,
-                        style: .continuous
-                    )
-                    .fill(Color.ppAdoptionAccent)
-
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Color.white)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    Circle()
-                        .fill(Color.homeRaisedSurface)
-                        .frame(width: 10, height: 10)
-                        .overlay(Circle().fill(Color.ppAdoptionAccent).padding(3))
-                        .offset(x: 2, y: 2)
-                }
-                .frame(width: 46, height: 46)
-                .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: PPSpace.xs) {
-                    Text(HomeModelAdapter.localized(
-                        "home_pulse_search_a11y",
-                        fallback: "Search Pure Pets"
-                    ))
-                    .font(HomeFont.headline())
-                    .foregroundStyle(Color.homeTextPrimary)
-                    .multilineTextAlignment(.leading)
-
-                    HomeCommandBar.HomeAnimatedSearchSuggestionView(
-                        isRTL: isRightToLeft
-                    )
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                directionalArrow
-            }
-            .padding(.horizontal, PPSpace.base)
-            .padding(.vertical, PPSpace.md)
-            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(HomePremiumSearchButtonStyle(reduceMotion: reduceMotion))
-        .accessibilityLabel(HomeModelAdapter.localized(
-            "home_pulse_search_a11y",
-            fallback: "Search Pure Pets"
-        ))
-        .accessibilityHint(HomeModelAdapter.localized(
-            "home_pulse_search_prompt",
-            fallback: "Search products, pets, and services"
-        ))
-    }
-
-    private var directionalArrow: some View {
-        Image(systemName: isRightToLeft ? "arrow.left" : "arrow.right")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(Color.ppAdoptionAccent)
-            .frame(width: 32, height: 32)
-            .background(Color.ppAdoptionAccent.opacity(0.12), in: Circle())
-            .accessibilityHidden(true)
-    }
-
-    private var sectionAtmosphere: Color {
-        Color.ppAdoptionAccent.opacity(colorScheme == .dark ? 0.12 : 0.08)
-    }
-
-    private var outerShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.section, style: .continuous)
-    }
-
-}
-
-@available(iOS 15.0, *)
-private struct HomePremiumSearchButtonStyle: ButtonStyle {
-    let reduceMotion: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.988 : 1)
-            .opacity(configuration.isPressed ? 0.86 : 1)
-            .animation(
-                reduceMotion ? nil : .easeOut(duration: 0.16),
-                value: configuration.isPressed
-            )
-    }
-}
-
-@available(iOS 15.0, *)
-private struct HomeHeaderSparkleMotion: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isAnimating = false
 
@@ -853,15 +766,22 @@ private struct HomeHeaderSparkleMotion: View {
         Image(systemName: "sparkles")
             .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(Color.ppAdoptionAccent)
-            .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.12 : 0.94))
-            .rotationEffect(.degrees(reduceMotion ? 0 : (isAnimating ? 10 : -6)))
-            .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.82))
-            .frame(width: 42, height: 42)
-            .background(Color.homeRaisedSurface.opacity(0.86), in: Circle())
+            .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.08 : 0.96))
+            .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.86))
+            .frame(
+                width: HomeCommandBar.controlSide,
+                height: HomeCommandBar.controlSide
+            )
+            .background(HomeCommandBar.controlShape.fill(Color.homeSurface))
             .overlay {
-                Circle().stroke(Color.ppAdoptionAccent.opacity(isAnimating ? 0.28 : 0.13), lineWidth: 0.8)
+                HomeCommandBar.controlShape.stroke(
+                    Color.ppAdoptionAccent.opacity(
+                        contrast == .increased ? 0.5 : 0.18
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
             }
-            .shadow(color: Color.ppAdoptionAccent.opacity(reduceMotion ? 0 : (isAnimating ? 0.25 : 0.05)), radius: 8)
+            .contentShape(HomeCommandBar.controlShape)
             .onAppear {
                 guard !reduceMotion else { return }
                 withAnimation(
@@ -872,177 +792,6 @@ private struct HomeHeaderSparkleMotion: View {
                 }
             }
             .accessibilityHidden(true)
-    }
-}
-
-@available(iOS 15.0, *)
-private struct HomeProviderCategoryNavigation: View {
-    let action: (String) -> Void
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    private let categories = [
-        HomeProviderCategory(
-            id: "pharmacy",
-            titleKey: "provider_pharmacies_title",
-            subtitleKey: "provider_pharmacies_subtitle",
-            symbol: "cross.case.fill",
-            color: .homePharmacy
-        ),
-        HomeProviderCategory(
-            id: "veterinarians",
-            titleKey: "provider_vets_title",
-            subtitleKey: "provider_vets_subtitle",
-            symbol: "stethoscope",
-            color: .homeVeterinary
-        ),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HomeSectionHeader(
-                title: HomeModelAdapter.localized(
-                    "home_provider_navigation_title",
-                    fallback: "Trusted care"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "home_provider_navigation_subtitle",
-                    fallback: "Choose the care destination you need"
-                ),
-                actionTitle: nil,
-                action: nil
-            )
-
-            LazyVGrid(columns: columns, spacing: PPSpace.sm) {
-                ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
-                    Button { action(category.id) } label: {
-                        VStack(alignment: .leading, spacing: PPSpace.sm) {
-                            Image(systemName: category.symbol)
-                                .font(.system(size: 19, weight: .bold))
-                                .foregroundStyle(category.color)
-                                .frame(width: 42, height: 42)
-                                .background(category.color.opacity(0.12), in: RoundedRectangle(
-                                    cornerRadius: PPCorner.small,
-                                    style: .continuous
-                                ))
-                            Text(HomeModelAdapter.localized(category.titleKey, fallback: ""))
-                                .font(HomeFont.headline())
-                                .foregroundStyle(Color.homeTextPrimary)
-                            Text(HomeModelAdapter.localized(category.subtitleKey, fallback: ""))
-                                .font(HomeFont.footnote())
-                                .foregroundStyle(Color.homeTextSecondary)
-                                .lineLimit(2)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
-                        .padding(PPSpace.md)
-                        .background(Color.homeSurface, in: RoundedRectangle(
-                            cornerRadius: PPCorner.card,
-                            style: .continuous
-                        ))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                                .stroke(category.color.opacity(0.24), lineWidth: 1)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private var columns: [GridItem] {
-        let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
-        return Array(
-            repeating: GridItem(.flexible(), spacing: PPSpace.sm),
-            count: count
-        )
-    }
-}
-
-private struct HomeProviderCategory: Identifiable {
-    let id: String
-    let titleKey: String
-    let subtitleKey: String
-    let symbol: String
-    let color: Color
-}
-
-@available(iOS 15.0, *)
-private struct HomePremiumCareSection: View {
-    let openVeterinary: () -> Void
-    let openPharmacy: () -> Void
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            Text(HomeModelAdapter.localized(
-                "home_premium_care_eyebrow",
-                fallback: "Premium care"
-            ))
-            .font(HomeFont.bold(12))
-            .foregroundStyle(Color.homeBrandDeep)
-
-            Text(HomeModelAdapter.localized(
-                "home_premium_care_title",
-                fallback: "Medicines and vets"
-            ))
-            .font(HomeFont.title1())
-            .foregroundStyle(Color.homeTextPrimary)
-
-            Text(HomeModelAdapter.localized(
-                "home_premium_care_subtitle",
-                fallback: "Pet medicine and veterinarian care in one refined place."
-            ))
-            .font(HomeFont.callout())
-            .foregroundStyle(Color.homeTextSecondary)
-
-            LazyVGrid(columns: columns, spacing: PPSpace.sm) {
-                careButton(
-                    titleKey: "provider_vets_title",
-                    symbol: "stethoscope",
-                    color: .homeVeterinary,
-                    action: openVeterinary
-                )
-                careButton(
-                    titleKey: "provider_pharmacies_title",
-                    symbol: "cross.case.fill",
-                    color: .homePharmacy,
-                    action: openPharmacy
-                )
-            }
-        }
-    }
-
-    private var columns: [GridItem] {
-        let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
-        return Array(
-            repeating: GridItem(.flexible(), spacing: PPSpace.sm),
-            count: count
-        )
-    }
-
-    private func careButton(
-        titleKey: String,
-        symbol: String,
-        color: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Label(HomeModelAdapter.localized(titleKey, fallback: ""), systemImage: symbol)
-                .font(HomeFont.bold(15))
-                .foregroundStyle(color)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .background(Color.homeRaisedSurface, in: RoundedRectangle(
-                    cornerRadius: PPCorner.small,
-                    style: .continuous
-                ))
-                .overlay {
-                    RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
-                        .stroke(color.opacity(0.28), lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
     }
 }
 

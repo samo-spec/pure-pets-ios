@@ -212,3 +212,477 @@ data ownership remain independent.
 - The scoped CodeRabbit review inspected all 12 SwiftUI Home source files and initially returned 12 findings. Eleven valid findings were fixed: listener lifecycle guards, restart cleanup, listener-driven HomeConfig delivery, robust boolean parsing, main-actor event forwarding, stable source identity, canonical main-kind IDs, and loading-state accessibility. The remaining tint suggestion was intentionally declined because the explicit accepted product requirement is a solid black paw. The post-fix scoped CodeRabbit rerun completed with zero findings.
 - Live English, VoiceOver order, accessibility category 5, dark mode, increased contrast, Reduce Motion, detailed lower-feed scrolling, Instruments metrics, and leak checks remain `UNVERIFIED`.
 - Launch logging still exposes existing Splash CoreGraphics `NaN` warnings, one unrelated local-Lottie “Animation Not Found” message, and transient network-path noise. Entering the existing `PPDataViewVC` category route also logs an existing conflicting 44-point/zero-height button constraint. None produced a crash, but all remain separate runtime-noise investigations.
+
+
+---
+
+# 2026-08-12 — Home zone architecture pass (supersedes the Pet Pulse presentation thesis)
+
+Baseline commit: `18a74a63d50fcc52855bd5d46a75b830e88396ed` (branch `main`)
+Production entry point: `PPHomeViewController` — **unchanged by this pass**
+SwiftUI owner: `PPHomeHostingController` → `HomeStore` → `HomeView` — **preserved**
+
+## Product-DNA supersession
+
+The `Pet Pulse` **presentation thesis** recorded above is superseded. Its
+technical, runtime-compatibility, parity, data-ownership, routing, listener,
+backend, and migration-safety contracts are **not** superseded and are carried
+forward unchanged.
+
+New north star: Home is a **premium commercial and discovery surface with
+intelligent personalization**. Pet context is a contextual signal, not a
+territory. The giant `HomeMyPetProfileCard` territory and the pet-first
+hierarchy are replaced by a compact pet-context strip inside Zone 5.
+
+## Selected concept
+
+Three structurally different Home architectures were scored on the twelve
+required dimensions with a declared 0–5 scale (60 points maximum). No dimension
+scored `0` for any concept, and the weights were fixed before scoring.
+
+| Dimension (0–5) | A · Editorial Storefront | B · Command Console | C · Category Spine |
+|---|---:|---:|---:|
+| Five-second clarity | 5 | 3 | 4 |
+| Marketing effectiveness | 5 | 2 | 3 |
+| Commerce / discovery strength | 5 | 3 | 5 |
+| Brand identity without the logo | 5 | 3 | 4 |
+| Originality / anti-template | 4 | 2 | 4 |
+| Native iOS behaviour | 5 | 4 | 4 |
+| Arabic RTL resilience | 5 | 4 | 3 |
+| AX5 / accessibility resilience | 5 | 3 | 3 |
+| Dark-mode resilience | 5 | 4 | 4 |
+| Performance feasibility | 4 | 4 | 3 |
+| Migration safety | 5 | 3 | 3 |
+| Partner ecosystem support | 5 | 2 | 3 |
+| **Total** | **58/60** | **37/60** | **43/60** |
+
+**Winner: A — Editorial Storefront.**
+
+- Signature interaction: the Marketing Stage's keyed editorial page transition,
+  where media, copy, and actions move as one page; second signature moment is
+  the existing one-shot Home entrance stagger.
+- Biggest risk: dependence on real campaign artwork quality. Mitigated by the
+  split composition (media band above a token copy plate) plus a deterministic
+  accent-field fallback for missing, low-resolution, or offline media.
+- Why B lost: status-first topology reads as a dashboard, which the target
+  explicitly rejects, and it demotes marketing below operational state.
+- Why C lost: a permanently pinned category spine costs fixed screen height and
+  subordinates the Marketing Stage to a filter, weakening commercial dominance.
+
+Anti-template gates: five-second clarity, no-logo identity, content transplant,
+grayscale hierarchy, long-Arabic and AX5 stress, one-hand reachability,
+card-deletion, and novelty-tax were all applied to concept A during design.
+Grayscale hierarchy and contrast are backed by the measured token audit below;
+transplant resistance is structural (the stage, launcher, and gateway are
+content-shaped, not decoration-shaped).
+
+## New presentation engine
+
+`Pure Pets/MainApp/ModrenAppVC/SwiftUIHome/Presentation/PPHomePresentationPlan.swift`
+
+| Type | Responsibility |
+|---|---|
+| `PPHomeSectionRegistry` | The 20 persisted Console identifiers, declared once. |
+| `PPHomePresentationLimits` | The presentation bounds (1 stage, 1 live priority, 5 launcher actions, 3 commerce rails, 1 partner feature). |
+| `PPHomeZoneID` / `PPHomeZone` / `PPHomeModule` | Zone and module identity. `PPHomeModule.id == rawID`. |
+| `PPHomeSuppressedModule` / `PPHomeSuppressedDestination` | Bounded-out modules mapped onto existing routes. |
+| `PPHomePresentationPlan` | The complete deterministic output. |
+| `PPHomePresentationResolver` | Pure `HomeViewState` → `PPHomePresentationPlan`. |
+
+The resolver owns no fetching, listener, persistence, routing, analytics, or
+business mutation. It is `Equatable`-comparable and unit-testable.
+
+### Frozen resolver precedence
+
+1. Hidden and unsupported modules are removed without changing raw identity.
+2. Console order is preserved exactly **within** each zone; zone precedence is
+   the product hierarchy (command surface → marketing → ecosystem → live
+   priority → commerce/discovery).
+3. Explicit backend priority metadata is **not** consulted. No `HomeConfig`
+   field has a proven ranking meaning in source, and none was invented.
+4. User/application state is used only for eligibility, never as a new ranking
+   signal.
+5. Each bounded slot takes the first eligible candidate in server order.
+6. **5a.** The Live Priority slot prefers the operational order candidate over
+   the care-reminder candidate; only the order is a transaction the user already
+   committed to, and the reminder stays reachable through pet context.
+7. Remaining eligible modules keep stable identity and original relative order.
+8. Every bounded-out module is mapped to an existing reachable destination;
+   anything unmappable is reported in `unmappedSuppressedModuleIDs` rather than
+   silently discarded.
+
+The partner slot adds one invariant-derived rule: when several demoted campaign
+modules compete, a candidate with **no** alternative reachable destination wins,
+because suppressing it would otherwise violate rule 8. Ties break by server
+order. Pet context (`0`) is never presented as a partner treatment.
+
+### Invariants held
+
+- `isVisible == false` never renders.
+- Every raw section ID and its server metadata survive at the model/config
+  boundary (`HomeModelAdapter.config` is unchanged).
+- Unknown future IDs land in `retainedUnknownModuleIDs`, are never rendered, and
+  are never reinterpreted as another module.
+- Identical input yields an identical plan (`Equatable`, asserted in tests).
+
+## Zone map
+
+| Zone | Modules | Component |
+|---|---|---|
+| 1 Command surface | pinned bar (always) + `15` | `HomeCommandBar` (unchanged) + `HomeDiscoveryPromptRow` |
+| 2 Marketing stage | first eligible of `4` / `17` / `0` | `PPHomeMarketingStage` |
+| 3 Ecosystem launcher | `1`, ≤ 5 actions | `PPHomeEcosystemLauncher` |
+| 4 Live priority | `2`, else `0` reminder | `HomeOrderCard` (unchanged) / `PPHomeStatusCard` |
+| 5 Commerce / discovery | `5`, ≤ 3 of `6·7·10·11·12·14·18·19`, demoted campaign, `20`, one of `9`/`16`, `13`, `8` | `HomeCategoryRail`, `HomeFeedSection`, `PPHomePartnerFeature`, `HomePureLensSection`, `PPHomeServiceGateway`, `HomeAdoptionSection`, `PPHomePetContextStrip` |
+| 5 overflow | every suppressed module | `PPHomeExploreMoreRow` |
+
+## Component family
+
+New — `SwiftUIHome/Views/PPHomeZoneComponents.swift`:
+`PPHomeSectionHeading`, `PPHomeMarketingStage`, `PPHomePartnerFeature`,
+`PPHomeEcosystemLauncher`, `PPHomeStatusCard`, `PPHomeServiceGateway`,
+`PPHomePetContextStrip`, `PPHomeExploreMoreRow`, plus `PPHomeDisclosureChip`,
+`PPHomePrimaryAction`, `PPHomeQuietAction`, `PPHomePageControl`,
+`PPHomeSurfacePressStyle`, `PPHomeZoneMetrics`, `PPHomeZoneTone`,
+`PPHomeZoneCopy`.
+
+Reused unchanged: `HomeCommandBar`, `HomeCategoryRail`, `HomeFeedSection`,
+`HomeOrderCard`, `HomePetSwitcher`, `HomeStatusBanner`, `HomeInlineState`,
+`HomeRemoteImage`, `HomeHeroField`, `HomePureLensSection`, `HomeAdoptionSection`,
+`HomeUniversalCard` / `PPUniversalCardView`, and every Home motion modifier.
+
+Removed duplicate presentations (destinations and features all preserved
+elsewhere): `HomeSingleHeroSection`, `HomePromotionCarousel` and its
+`PPPromoCard` adapter, `HomePremiumSearchSection` (+ button style),
+`HomeProviderCategoryNavigation` (+ `HomeProviderCategory`),
+`HomePremiumCareSection`. `HomeMyPetProfileCard` and `HomePriorityGrid` are no
+longer rendered by Home; both remain in `HomeComponents.swift` untouched.
+
+`HomeView.swift` went from 1878 to 1732 lines while gaining the zone engine.
+
+## Visual system
+
+No colour was introduced. Brand-coloured **text** now resolves through
+`Color.ppAccentText` (the existing accent-text token) instead of the fill tokens
+`Color.homeBrand` / `Color.homeBrandDeep`, which measured below `4.5:1` in dark
+mode. `Color.homeBrand` remains a **fill** only. `Color.homeFocus` is restricted
+to the status symbol, plate, and border (non-text). The page indicator uses
+measured tokens and additionally encodes selection by width, so state never
+depends on colour alone. Exactly one banded row exists (the care gateway), and
+its eyebrow was dropped because brand text measured `4.45:1` on the dark band.
+
+Measured token contrast, computed from the real `PPPaletteHex` values —
+**26 pairs × light and dark = 52/52 pass** (text ≥ `4.5:1`, non-text ≥ `3:1`).
+Lowest text pair: `4.85:1` (light band subtitle). Lowest non-text pair:
+`3.58:1` (light veterinary symbol).
+
+## Runtime and seam ledger
+
+| Seam | Direction | Owner | Change |
+|---|---|---|---|
+| `PPHomeViewController` | ObjC runtime shell | itself | **Zero modifications in this pass.** Class name, `buildDataViewVCForTarget:mainKind:source:`, `mainKindsLayoutMode`, `initialSelectedMainKindID`, every `pp_home*` selector, and all `PPUniversalCellDelegate` selectors are byte-identical. |
+| `PPHomeHostingController` | ObjC → SwiftUI | itself | Unchanged, including the `99182` splash-cover first-render gate. |
+| `HomeStore` | SwiftUI state | itself | Unchanged. Still the only state owner, listener owner, hero-rotation owner, and observer owner. |
+| `HomeRouter` | SwiftUI → UIKit | itself | Unchanged. Still the only route bridge, with its `performOnce` route-once guard. |
+| `HomeRepository` / `PPHomeDataBridge` | data | themselves | Unchanged. No new listener, query, collection, or field. |
+| `HomeView` | SwiftUI | itself | Presentation only: renders the plan instead of switching on raw IDs. |
+| `PPHomeZoneComponents` | SwiftUI | new | Presentation only. No store, router, analytics, listener, or persistence ownership. |
+| `PPHomePresentationResolver` | pure function | new | Presentation only. |
+
+Route-once is unchanged: every navigation still flows through `HomeRouter`, and
+card taps still reach `PPUniversalCellDelegate` on the shell. The only local
+state the new presentation owns is `campaignIndex`, the promotion paging index,
+which `HomeStore` does not publish.
+
+Timer ownership: `HomeStore` keeps rotating its own pet-context hero pages, so
+`PPHomeMarketingStage` is constructed with `autoAdvances: false` for that lane
+and never starts a second timer. Promotion auto-advance is a `.task(id:)` keyed
+on page, count, interaction, Reduce Motion, scene phase, and the auto-advance
+flag, so it cancels on teardown and re-arms per page. Each tick additionally
+re-checks VoiceOver, Switch Control, and Reduce Motion before advancing.
+
+## Analytics
+
+`HomeStore` contains no `Analytics.logEvent` call and no impression tracking;
+the only analytics owner in Home is `HomeRouter`'s Pure Lens allow-list. This
+pass adds no event, parameter, PII, consent state, or tracking field, so
+analytics parity is structural: there is nothing to duplicate. The existing
+`os_signpost` `home.reload` / `home.section.reload` telemetry and the
+`sectionDataRevisions` mechanism are unchanged, and the renderer still feeds
+`sectionDataRevision(for:)` per raw ID.
+
+## Localization
+
+Ten new keys were **appended** to both `ar.lproj` and `en.lproj`
+(`home_marketing_promotion_disclosure`, `home_marketing_stage_page_a11y`,
+`home_marketing_stage_next`, `home_marketing_stage_previous`,
+`home_partner_feature_title`, `home_ecosystem_launcher_title`,
+`home_ecosystem_launcher_subtitle`, `home_live_priority_title`,
+`home_zone_explore_more_title`, `home_zone_explore_more_subtitle`). All 45
+literal keys referenced by the new presentation resolve in both languages.
+
+## Tests
+
+`Pure PetsTests/PPHomePresentationResolverTests.swift` — 25 tests covering
+determinism, raw-identity preservation, hidden IDs, duplicate IDs, unknown IDs,
+empty config, stage arbitration and reordering, missing campaign, missing pet,
+partner bound and reachability preference, live-priority bound and order
+preference, missing order, launcher bound, missing rail, single care gateway,
+Pure Lens visibility, no-pet, signed-out, the no-silent-discard invariant, the
+command-surface prompt, and zone order stability.
+
+**`BLOCKED` — the tests cannot be executed.** `build-for-testing` on the
+connected device fails inside the pre-existing `Pure PetsTests` target:
+
+```
+PPRootParityTests.swift:11: error: unable to resolve module dependency: 'PurePetsSwiftUIRefactor'
+error: compilation search paths unable to resolve module dependency: 'HXPhotoPicker'
+error: unable to resolve module dependency: 'SDWebImage'
+Pure Pets-Bridging-Header.h:16 -> PPCompleteProfileVC.h:10:
+  fatal error: 'TOCropViewController/TOCropViewController.h' file not found
+```
+
+Root cause, confirmed in source: `Podfile` declares only `target 'Pure Pets'`,
+so CocoaPods never generates a `Pure PetsTests` xcconfig and the test target has
+no Pod search paths. No error references the new test file. The minimal repair is
+a `Podfile` change plus `pod install`:
+
+```ruby
+target 'Pure PetsTests' do
+  inherit! :search_paths
+end
+```
+
+That is a workspace-wide dependency change outside this pass's scope and was not
+performed.
+
+## Verification record
+
+| Gate | Command / method | Result |
+|---|---|---|
+| Syntax | `xcrun swiftc -frontend -parse` on all 4 changed/new Swift files | pass |
+| Localization | `plutil -lint` on both `Localizable.strings` | OK |
+| Key parity | 45 referenced keys resolved in `ar` + `en` | 45/45 |
+| Project file | `plutil -lint "Pure Pets.xcodeproj/project.pbxproj"` | OK |
+| Whitespace | `git diff --check` | clean |
+| Device build | `xcodebuild -workspace "Pure Pets.xcworkspace" -scheme "Pure Pets" -configuration Debug -destination "id=4A693B80-A35D-51F8-BE4B-027200738B05" -allowProvisioningUpdates build` (default DerivedData) | `** BUILD SUCCEEDED **`, 0 errors |
+| Install | `xcrun devicectl device install app` | installed, `com.PB.Pure-Bird` |
+| Launch | `xcrun devicectl device process launch --terminate-existing` | launched |
+| Launch stability | `xcrun devicectl device info processes` after 20 s | process alive, no launch crash |
+| Contrast | computed WCAG ratios from real `PPPaletteHex` values | 52/52 pairs pass |
+| Hit targets | source audit of every new interactive control | all ≥ 44 pt |
+
+Device: iPhone 13 Pro Max, `iPhone14,3`, iOS 26.5.2, identifier
+`4A693B80-A35D-51F8-BE4B-027200738B05`.
+Products: `~/Library/Developer/Xcode/DerivedData/Pure_Pets-gfwbkroryubthqewjpxxbonnzisq/Build/Products/Debug-iphoneos/Pure Pets.app`.
+App binary SHA-256: `f935aa44e57e368d0ab5f51cc75a6ef20a34c7a2558153850852c5256b1de47f`.
+Build logs: `/tmp/pp_home_build1.log`, `/tmp/pp_home_build2.log`,
+`/tmp/pp_home_build3.log`, `/tmp/pp_home_test_build.log`.
+
+## `BLOCKED` / `UNVERIFIED`
+
+| Gate | Status | Reason |
+|---|---|---|
+| Executed resolver / routing / lifecycle tests | `BLOCKED` | Pre-existing `Pure PetsTests` target has no CocoaPods search paths (see above). |
+| Rendered visual matrix (RTL/LTR × light/dark × normal/AX5 × compact/regular × populated/loading/partial/error/empty) | `UNVERIFIED` | No physical-device screenshot capability is reachable in this host: `devicectl` has no screenshot subcommand, `libimobiledevice`/`idevicescreenshot` is not installed, `simctl` is simulator-only and simulators are prohibited, and XCUITest capture depends on the blocked test target. Nothing was rendered, so nothing is claimed. |
+| Baseline vs candidate visual comparison | `UNVERIFIED` | Same missing capability; no baseline capture was possible. |
+| VoiceOver reading order, custom actions, announcements, focus restoration | `UNVERIFIED` | Requires a live assistive-technology session on device. The stage now carries the disclosure on a combined focusable element rather than a container label to reduce this risk, but that is construction, not proof. |
+| Dynamic Type AX5, Bold Text, Button Shapes, Differentiate Without Color, Increased Contrast, Reduce Transparency runtime behaviour | `UNVERIFIED` | All are handled in source; none observed on device. |
+| Performance baseline vs candidate (first meaningful Home content, hitching, CPU, memory peak, image/cache pressure, long SwiftUI updates, listeners, cancellation, teardown) | `UNVERIFIED` | No Instruments or XCTest-metrics run was performed; no threshold was declared before measurement, so no performance claim is made. |
+| Live route-once proof (one tap → exactly one destination) | `UNVERIFIED` | `HomeRouter.performOnce` and single-owner routing are preserved by construction and by diff, but no runtime route spy was executed. |
+| Genuine sponsored/partner attribution | `BLOCKED` | `PPHomePromoCarouselCard` has no `sponsored`, `advertiser`, or `partnerName` field, and `HomeConfig` metadata carries none. A sponsorship claim would be fabricated. The implemented disclosure is the factual, non-attributive `home_marketing_promotion_disclosure` ("عرض ترويجي" / "Promotion"). A true partner attribution requires an Infra field. |
+| Contrast under Increased Contrast and against server-provided campaign accent hex | `UNVERIFIED` | Measured pairs cover the semantic tokens only. Server `accentColorHex` is arbitrary, so it is confined to fields, borders, and media backdrops and never carries text or state; the page indicator was moved off it for this reason. |
+
+Historical device screenshots recorded earlier in this ledger predate this pass
+and are not evidence for it.
+
+
+## 2026-08-12 addendum — command surface consolidation and stage artwork
+
+Three follow-up directives were applied on top of the zone pass.
+
+### 1. The Home search section is gone; its design became the top search bar
+
+Raw section `15` (`PPHomeSectionPremiumSearch`) no longer renders a separate Home
+row. It now resolves to `PPHomeSearchProminence`, read off the plan through
+`PPHomePresentationPlan.searchProminence`, and upgrades the pinned command
+surface instead:
+
+| Console state | Command surface |
+|---|---|
+| `15` visible, `titleViewMode == "location"` | Two lanes: location + cart, then the full-width search field + Nova |
+| `15` visible, `titleViewMode == "search"` | One lane: search field + Nova + cart |
+| `15` hidden | One lane: location + compact search + Nova + cart |
+
+The Console visibility contract is therefore still honoured — a hidden module
+still changes what renders — while Home no longer shows two search affordances.
+`HomeDiscoveryPromptRow` was deleted. `PPHomeModuleKind.discoveryPrompt` is
+retained so raw `15` stays accounted for by the resolver invariants and the
+existing tests, and `moduleView` maps it to `EmptyView()` because the bar owns
+it. The resolver's precedence, bounds, and suppression logic are unchanged.
+
+### 2. One command-surface vocabulary
+
+`HomeCommandBar` previously mixed a two-tone `searchGlyph` plate, a
+gradient-stroked `searchSurface`, a plain circular magnifier, an inner-plate
+location card, and a circular cart on a different surface token. All five now
+share one vocabulary:
+
+- Lanes (location, search): `PPCorner.card`, `Color.homeSurface`, one
+  brand-tinted border rule, `resolvedSearchControlHeight`, an accent leading
+  symbol, and a semantic-trailing chevron. The location lane uses the same
+  pattern as search, with `chevron.down` because it opens a picker.
+- Icon controls (compact search, Nova, cart): a single 52 pt `PPCorner.medium`
+  squircle on `Color.homeSurface` with the same border rule.
+- Press feedback: `HomeSearchButtonStyle` on every control, replacing the
+  mixed `.plain` / styled usage.
+
+Cart redesign: the glyph is deliberately neutral `Color.ppTextPrimary`, so brand
+colour is spent only on the count badge — the one meaningful priority signal in
+the bar. The badge keeps its `Color.ppPrimary` capsule and white label
+(`5.32:1`) and is stroked against `Color.homeSurface`. `accessibilityLabel` and
+`accessibilityValue` are unchanged, so the count is never conveyed by the badge
+alone. `searchGlyph` and `searchSurface` were removed.
+
+Nova moved into the command surface and adopted the same squircle, surface, and
+border, keeping its existing sparkle motion and Reduce Motion behaviour. Its
+visibility still follows `novaFloatingVisible` only, so hiding raw `15` does not
+remove the Nova entry point.
+
+Contrast: every new pair reuses tokens already measured in the audit above —
+`ppAccentText` on `homeSurface` (`5.32:1` light / `5.24:1` dark),
+`ppTextPrimary` on `homeSurface` (`16.20` / `17.70`), `ppTextSecondary` on
+`homeSurface` (`5.43` / `9.29`), white on `ppPrimary` (`5.32`), and
+`ppAdoptionAccent` on `homeSurface` (`4.58` / `6.14`, non-text). No new pair was
+introduced.
+
+### 3. Marketing Stage artwork uses the production hero Lottie assets
+
+The stage's no-media placeholder was an SF Symbol. It is now
+`PPHomeStageArtwork`, which renders the **same animation files** the production
+`HomeHeroView` resolves, through the same existing `PPHomeHeroAnimationView`
+Objective-C Lottie runtime, on the same accent→`ppSurfaceRaised` plate those
+tints were authored against:
+
+| Hero kind | Animation | Source |
+|---|---|---|
+| `pet` | `Profile.lottie` | Firebase-backed |
+| `reminder` | `Caretiming` | Firebase-backed |
+| `promotion` | `HomePromotionSpark` | bundled |
+| `marketplace` | `Shop2.json` | bundled |
+| `petOnboarding` | `LottieAnimations/Boy Giving Food To Rabbit New.json` | Firebase-backed |
+| `pharmacy` | `PetMedicine` | bundled |
+
+Per-animation scale and tint follow the legacy `lottieScale` / `lottieTintColor`
+rules verbatim. Reduce Motion keeps the artwork and sets
+`playbackEnabled: false`, matching the legacy hero instead of substituting a
+different image. No new asset, no second animation dependency, and no Firebase
+path was introduced. The three bundled files plus `Profile.lottie` were
+confirmed present in the built `Pure Pets.app`; `Caretiming` and the onboarding
+animation resolve remotely exactly as they already do in the legacy hero.
+
+Note: the ledger's earlier `HomePetPulse.json` / `HomeCareReminder.json` /
+`petstore` description of the hero plate does not match current source. The
+mapping above is what `HomeHeroView.heroArtworkAsset(for:)` actually returns.
+
+### Addendum verification
+
+| Gate | Result |
+|---|---|
+| `swiftc -frontend -parse` on 5 changed/new Swift files | pass |
+| `plutil -lint` on both strings files and `project.pbxproj` | OK |
+| `git diff --check` | clean |
+| Device build | `** BUILD SUCCEEDED **`, 0 errors (`/tmp/pp_home_build7.log`) |
+| Install + launch on iPhone 13 Pro Max | succeeded |
+| Launch stability | process alive 22 s after launch |
+| Bundled Lottie presence | `HomePromotionSpark.json`, `Shop2.json`, `PetMedicine.json`, `Profile.lottie` all present in the built app |
+
+App binary SHA-256: `8d0f748f9d10527c72cb094f44a0c393e355ac0f30a2f8b952cf4c39042a1f7e`.
+
+The visual, VoiceOver, Dynamic Type, performance, and executed-test gates listed
+as `BLOCKED` / `UNVERIFIED` above remain unchanged — the addendum adds no
+rendered, assistive-technology, or measured evidence. In particular the stacked
+two-lane command surface (~104 pt pinned when raw `15` is visible) and the new
+Lottie artwork have **not** been visually inspected on device.
+
+
+## 2026-08-12 addendum 2 — reversible presentation switches
+
+Three further directives were applied. All three are expressed as documented
+booleans in one place, `PPHomePresentationFlags`, so each is a one-line revert
+and none deletes a module, route, Console contract, or asset.
+
+```swift
+enum PPHomePresentationFlags {
+    static let temporarilyHidesSearchLane = true
+    static let hidesNovaInCommandSurface = true
+    static let launcherExcludedActionIDs: Set<String> = ["pet"]
+}
+```
+
+### Search lane hidden (temporary)
+
+`PPHomePresentationPlan.searchProminence` is pinned to `.compact`, so the command
+surface stays on its single lane and the dedicated search lane is not rendered.
+Raw section `15` is still resolved and still satisfies the resolver invariants;
+search remains reachable from the command bar's compact control. When
+`titleViewMode == "search"` the search field is the title view itself, not a
+section, so that server mode is unaffected.
+
+### Nova hidden from the command surface
+
+`HomeCommandBar.showsNova` now also requires
+`!PPHomePresentationFlags.hidesNovaInCommandSurface`.
+
+Nova itself is untouched, and this does **not** remove its only entry point:
+`NovaAmbientAssistantCoordinator.openNovaChat()` (`MainApp/GEMENI/`) and the root
+`PPRootObjCAdapter.handleOpenNovaChat()` path are both intact, and
+`HomeRouter.openNova()` remains wired. The `novaFloatingVisible` Console flag is
+still honoured and still gates Nova when the switch is turned back off.
+
+### Ecosystem launcher: `my pet` removed, remaining four redesigned
+
+`PPHomePresentationResolver.ecosystemLauncherActions` filters
+`launcherExcludedActionIDs` before applying the bound, preserving configured
+order for everything else. The pet destination stays reachable through raw
+section `8` (`PPHomePetContextStrip` → pet profiles), through `HomePetSwitcher`'s
+Edit action, and through the suppression map's `.petProfiles` entry — so the
+exclusion is presentation only.
+
+The launcher was redesigned for four items rather than five: a two-column grid of
+horizontal cells, each rendering the action's **real `subtitle`**, which the
+previous five-across row had no width to show. Icon plate 44 pt, cell minimum
+72 pt, `PPCorner.card` on `Color.homeSurface` with one accent-tinted border rule;
+one column at accessibility sizes. Density stays lighter than
+`PPHomeServiceGateway` (horizontal, single surface) so the two components share a
+vocabulary without reading as the same block twice.
+
+Contrast introduces no new pair: title `ppTextPrimary` on `homeSurface`
+(`16.20` / `17.70`), subtitle `ppTextSecondary` on `homeSurface` (`5.43` /
+`9.29`), and the icon accents were already measured at `4.32`–`6.99` against the
+3:1 non-text bar.
+
+Tests: `testEcosystemLauncherNeverExceedsFiveActions` became
+`testEcosystemLauncherNeverExceedsItsBound` and now derives its expectation from
+the exclusion set instead of hardcoding `pet`. A new
+`testLauncherExcludedDestinationsStayReachableElsewhere` asserts that every
+excluded destination is absent from the launcher **and** that the pet context
+module still presents it. Both remain unexecuted for the reason recorded above.
+
+### Addendum 2 verification
+
+| Gate | Result |
+|---|---|
+| `swiftc -frontend -parse` on all changed Swift files | pass |
+| `plutil -lint` strings + `project.pbxproj` | OK |
+| `git diff --check` | clean |
+| Device build | `** BUILD SUCCEEDED **`, 0 errors (`/tmp/pp_home_build9.log`) |
+| Install + launch on iPhone 13 Pro Max | succeeded |
+| Launch stability | process alive 22 s after launch |
+
+App binary SHA-256: `5ef8d9473dd2c83d7642680e1b4287c4b695a35a52e4f45bd2a8a7c760373a42`.
+
+The redesigned launcher, the single-lane command surface, and the Nova removal
+have **not** been visually inspected on device; the visual, VoiceOver, Dynamic
+Type, performance, and executed-test gates remain `BLOCKED` / `UNVERIFIED` as
+recorded above.

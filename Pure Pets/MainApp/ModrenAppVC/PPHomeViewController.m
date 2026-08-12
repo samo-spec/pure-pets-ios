@@ -8,7 +8,7 @@
 #import "LocationPickerViewController.h"
 #import "MainKindsArrayManager.h"
 #import "MainKindsModel.h"
-#import "OrderDetailsViewController.h"
+#import "PPOrderDetailsRouter.h"
 #import "OrderHistoryViewController.h"
 #import "PPAdSharingHelper.h"
 #import "PPBannersManager.h"
@@ -358,9 +358,8 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
         return;
     }
     PPOrder *order = (PPOrder *)object;
-    OrderDetailsViewController *destination =
-        [[OrderDetailsViewController alloc] initWithOrder:order];
-    destination.order = order;
+    UIViewController *destination =
+        [PPOrderDetailsRouter controllerWithOrder:order];
     [PPHomeHelper pushViewControllerSafely:destination
                                       from:self
                                   animated:YES];

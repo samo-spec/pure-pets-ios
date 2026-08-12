@@ -76,9 +76,13 @@ enum HomeFont {
 @available(iOS 15.0, *)
 struct HomeCommandBar: View {
     let state: HomeViewState
+    /// Resolved by `PPHomePresentationResolver`. `spotlight` gives search its own
+    /// full-width lane in the command surface instead of a separate Home row.
+    var searchProminence: PPHomeSearchProminence = .compact
     let searchAction: () -> Void
     let cartAction: () -> Void
     let locationAction: () -> Void
+    var novaAction: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -86,15 +90,49 @@ struct HomeCommandBar: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .body) private var searchControlHeight: CGFloat = 54
 
+    private var showsLocationLane: Bool {
+        state.config.titleViewMode == "location"
+    }
+
+    private var showsNova: Bool {
+        !PPHomePresentationFlags.hidesNovaInCommandSurface
+            && state.config.novaFloatingVisible
+            && novaAction != nil
+    }
+
+    /// Search only earns its own stacked lane when the Console enabled the
+    /// premium search module *and* the location control also needs a lane.
+    private var usesStackedSearchLane: Bool {
+        searchProminence == .spotlight && showsLocationLane
+    }
+
     var body: some View {
-        HStack(spacing: PPSpace.sm) {
-            if state.config.titleViewMode == "location" {
-                locationButton
-                compactSearchButton
+        Group {
+            if usesStackedSearchLane {
+                VStack(spacing: PPSpace.sm) {
+                    HStack(spacing: PPSpace.sm) {
+                        locationButton
+                        cartButton
+                    }
+                    HStack(spacing: PPSpace.sm) {
+                        searchField
+                        novaButton
+                    }
+                }
+            } else if showsLocationLane {
+                HStack(spacing: PPSpace.sm) {
+                    locationButton
+                    compactSearchButton
+                    novaButton
+                    cartButton
+                }
             } else {
-                searchButton
+                HStack(spacing: PPSpace.sm) {
+                    searchField
+                    novaButton
+                    cartButton
+                }
             }
-            cartButton
         }
         .padding(.horizontal, PPSpace.screenMargin)
         .padding(.vertical, PPSpace.sm)
@@ -109,66 +147,107 @@ struct HomeCommandBar: View {
         )
     }
 
+    /// Same lane pattern as search: an accent symbol, the live value, and a
+    /// semantic-trailing disclosure on one token surface with one border rule.
     private var locationButton: some View {
         Button(action: locationAction) {
-            HStack(spacing: PPSpace.sm) {
+            HStack(spacing: PPSpace.md) {
                 Image(systemName: "location.fill")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.homeBrand)
-                    .frame(width: 38, height: 38)
-                    .background(Color.homeAmbientField, in: RoundedRectangle(
-                        cornerRadius: PPCorner.small,
-                        style: .continuous
-                    ))
+                    .foregroundStyle(Color.ppAccentText)
+                    .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(HomeModelAdapter.localized(
                         "home_pulse_location_context",
                         fallback: "Your area"
                     ))
-                    .font(HomeFont.caption1())
+                    .font(HomeFont.caption2())
                     .foregroundStyle(Color.homeTextSecondary)
+                    .lineLimit(1)
+
                     Text(locationTitle)
-                        .font(HomeFont.headline())
+                        .font(HomeFont.bold(15))
                         .foregroundStyle(Color.homeTextPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color.homeTextSecondary)
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, PPSpace.sm)
-            .frame(maxWidth: .infinity, minHeight: resolvedSearchControlHeight)
-            .background(Color.homeRaisedSurface, in: RoundedRectangle(
-                cornerRadius: PPCorner.medium,
-                style: .continuous
-            ))
+            .padding(.horizontal, PPSpace.base)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: resolvedSearchControlHeight,
+                alignment: .leading
+            )
+            .background(searchLaneSurface)
             .overlay {
-                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                    .stroke(Color.homeSeparator, lineWidth: contrast == .increased ? 1.5 : 0.8)
+                searchLaneShape.stroke(
+                    searchLaneBorder,
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
             }
+            .contentShape(searchLaneShape)
         }
         .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
-        .accessibilityLabel(locationTitle)
+        .accessibilityLabel(HomeModelAdapter.localized(
+            "home_pulse_location_context",
+            fallback: "Your area"
+        ))
+        .accessibilityValue(locationTitle)
     }
 
     private var compactSearchButton: some View {
         Button(action: searchAction) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color.homeBrand)
-                .frame(width: 48, height: 48)
-                .background(Color.homeRaisedSurface, in: Circle())
-                .overlay(Circle().stroke(Color.homeSeparator, lineWidth: 0.8))
+                .foregroundStyle(Color.ppAccentText)
+                .frame(
+                    width: HomeCommandBar.controlSide,
+                    height: HomeCommandBar.controlSide
+                )
+                .background(controlSurface)
+                .overlay {
+                    HomeCommandBar.controlShape.stroke(
+                        searchLaneBorder,
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
+                }
+                .contentShape(HomeCommandBar.controlShape)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(HomeModelAdapter.localized(
             "home_pulse_search_a11y",
             fallback: "Search Pure Pets"
         ))
+        .accessibilityHint(HomeModelAdapter.localized(
+            "home_pulse_search_prompt",
+            fallback: "Search products, pets, and services"
+        ))
+    }
+
+    @ViewBuilder
+    private var novaButton: some View {
+        if showsNova, let novaAction {
+            Button(action: novaAction) {
+                HomeHeaderSparkleMotion()
+            }
+            .buttonStyle(.plain)
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityLabel(HomeModelAdapter.localized(
+                "nova_empty_title",
+                fallback: "Ask Nova"
+            ))
+            .accessibilityHint(HomeModelAdapter.localized(
+                "nova_empty_subtitle",
+                fallback: "Smart shopping assistant from Pure Pets"
+            ))
+        }
     }
 
     private var locationTitle: String {
@@ -192,58 +271,42 @@ struct HomeCommandBar: View {
         }
     }
 
-    private var searchButton: some View {
+    /// The one Home search treatment: an accent magnifier, the live rotating
+    /// suggestion, and a semantic-trailing chevron on a token surface. Text and
+    /// symbol both resolve through measured tokens, so contrast is provable in
+    /// light, dark, and Increased Contrast.
+    private var searchField: some View {
         Button(action: searchAction) {
-            HStack(spacing: PPSpace.sm) {
-                searchGlyph
+            HStack(spacing: PPSpace.md) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.ppAccentText)
+                    .accessibilityHidden(true)
 
                 HomeAnimatedSearchSuggestionView(isRTL: state.isRightToLeft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .layoutPriority(1)
+
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .flipsForRightToLeftLayoutDirection(true)
+                    .accessibilityHidden(true)
             }
-            .padding(.horizontal, PPSpace.sm)
+            .padding(.horizontal, PPSpace.base)
             .frame(
                 maxWidth: .infinity,
                 minHeight: resolvedSearchControlHeight,
                 alignment: .leading
             )
-            .background(searchSurface)
+            .background(searchLaneSurface)
             .overlay {
-                RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
-                )
-                .stroke(
-                    contrast == .increased
-                        ? AnyShapeStyle(Color.ppTextPrimary.opacity(0.66))
-                        : AnyShapeStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color.ppPrimary.opacity(0.20),
-                                    Color.ppBorder,
-                                    Color.white.opacity(
-                                        colorScheme == .dark ? 0.05 : 0.70
-                                    ),
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                searchLaneShape.stroke(
+                    searchLaneBorder,
+                    lineWidth: contrast == .increased ? 1.5 : 1
                 )
             }
-            .shadow(
-                color: contrast == .increased
-                    ? .clear
-                    : Color.black.opacity(colorScheme == .dark ? 0.22 : 0.07),
-                radius: colorScheme == .dark ? 10 : 14,
-                y: colorScheme == .dark ? 4 : 7
-            )
-            .contentShape(
-                RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
-                )
-            )
+            .contentShape(searchLaneShape)
         }
         .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(
@@ -252,57 +315,44 @@ struct HomeCommandBar: View {
                 fallback: "Search Pure Pets"
             )
         )
+        .accessibilityHint(
+            HomeModelAdapter.localized(
+                "home_pulse_search_prompt",
+                fallback: "Search products, pets, and services"
+            )
+        )
+    }
+
+    /// One squircle vocabulary for every icon control in the command surface.
+    static let controlSide: CGFloat = 52
+
+    static var controlShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+    }
+
+    private var controlSurface: some View {
+        HomeCommandBar.controlShape.fill(Color.homeSurface)
+    }
+
+    private var searchLaneShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    }
+
+    private var searchLaneSurface: some View {
+        searchLaneShape.fill(Color.homeSurface)
+    }
+
+    private var searchLaneBorder: Color {
+        Color.homeBrand.opacity(
+            contrast == .increased
+                ? 0.5
+                : (colorScheme == .dark ? 0.22 : 0.12)
+        )
     }
 
     private var resolvedSearchControlHeight: CGFloat {
         let maximum: CGFloat = dynamicTypeSize.isAccessibilitySize ? 68 : 58
         return min(max(searchControlHeight, 54), maximum)
-    }
-
-    private var searchGlyph: some View {
-        ZStack(alignment: .bottomTrailing) {
-            RoundedRectangle(
-                cornerRadius: PPCorner.small,
-                style: .continuous
-            )
-            .fill(
-                Color.ppSoftRose.opacity(colorScheme == .dark ? 0.34 : 0.72)
-            )
-
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            Circle()
-                .fill(Color.ppPrimary)
-                .frame(width: 7, height: 7)
-                .overlay(Circle().stroke(Color.ppSurfaceElevated, lineWidth: 2))
-                .offset(x: 2, y: 2)
-        }
-        .frame(width: 38, height: 38)
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.small,
-                style: .continuous
-            )
-            .stroke(Color.ppPrimary.opacity(0.10), lineWidth: 0.7)
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var searchSurface: some View {
-        RoundedRectangle(
-            cornerRadius: PPCorner.medium,
-            style: .continuous
-        )
-        .fill(
-            Color.ppSurfaceElevated.opacity(
-                contrast == .increased
-                    ? 1
-                    : (colorScheme == .dark ? 0.96 : 0.92)
-            )
-        )
     }
 
     private struct HomeSearchButtonStyle: ButtonStyle {
@@ -424,15 +474,27 @@ struct HomeAnimatedSearchSuggestionView: View {
     }
 }
 
+    /// Redesigned onto the command-surface vocabulary. The glyph stays neutral so
+    /// brand colour is spent only on the badge, which is the one meaningful
+    /// priority signal here. Count is also exposed as an accessibility value, so
+    /// the state never depends on the badge alone.
     private var cartButton: some View {
         Button(action: cartAction) {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: "cart.fill")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.ppTextPrimary)
-                    .frame(width: 48, height: 48)
-                    .background(Color.ppSurfaceRaised.opacity(0.9), in: Circle())
-                    .overlay(Circle().stroke(Color.ppBorder, lineWidth: 0.7))
+                    .frame(
+                        width: HomeCommandBar.controlSide,
+                        height: HomeCommandBar.controlSide
+                    )
+                    .background(controlSurface)
+                    .overlay {
+                        HomeCommandBar.controlShape.stroke(
+                            searchLaneBorder,
+                            lineWidth: contrast == .increased ? 1.5 : 1
+                        )
+                    }
 
                 if state.cartCount > 0 {
                     Text(state.cartCount > 99 ? "99+" : "\(state.cartCount)")
@@ -441,13 +503,19 @@ struct HomeAnimatedSearchSuggestionView: View {
                         .padding(.horizontal, state.cartCount > 9 ? 5 : 0)
                         .frame(minWidth: 20, minHeight: 20)
                         .background(Color.ppPrimary, in: Capsule())
-                        .overlay(Capsule().stroke(Color.ppSurfaceRaised, lineWidth: 2))
-                        .offset(x: 3, y: -3)
+                        .overlay {
+                            Capsule().stroke(Color.homeSurface, lineWidth: 2)
+                        }
+                        .offset(x: 6, y: -6)
                 }
             }
-            .frame(width: 52, height: 52)
+            .frame(
+                width: HomeCommandBar.controlSide,
+                height: HomeCommandBar.controlSide
+            )
+            .contentShape(HomeCommandBar.controlShape)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(
             HomeModelAdapter.localized(
                 "home_pulse_cart_a11y",
@@ -464,6 +532,7 @@ struct HomeAnimatedSearchSuggestionView: View {
             )
         )
     }
+
 }
 
 private struct HomeTopFadeBackdrop: View {
@@ -4342,10 +4411,10 @@ private struct HomePureLensMotionTaskID: Hashable {
 }
 
 private enum HomePureLensMetrics {
-    static let signalWindowHeight: CGFloat = 136
-    static let maximumStandardSignalWindowHeight: CGFloat = 152
+    static let signalWindowHeight: CGFloat = 128
+    static let maximumStandardSignalWindowHeight: CGFloat = 144
     static let maximumAccessibilitySignalWindowHeight: CGFloat = 176
-    static let regularSignalWindowHeight: CGFloat = 176
+    static let regularSignalWindowHeight: CGFloat = 160
     static let maximumRegularSignalWidth: CGFloat = 340
     static let maximumRegularCopyWidth: CGFloat = 356
     static let maximumRegularContentWidth: CGFloat = 760
@@ -4406,14 +4475,6 @@ private struct HomePureLensPalette {
         Color.white.opacity(reduceTransparency ? 0.96 : 0.92)
     }
 
-    var signalInactive: Color {
-        Color.white.opacity(reduceTransparency ? 0.30 : 0.16)
-    }
-
-    var signalInactiveContent: Color {
-        Color.white.opacity(reduceTransparency ? 0.72 : 0.48)
-    }
-
     var signalContent: Color {
         Color.white.opacity(reduceTransparency ? 1 : 0.94)
     }
@@ -4433,19 +4494,12 @@ private struct HomePureLensPalette {
         return increasedContrast ? Color.ppTextPrimary : Color.ppSurfaceBorder
     }
 
-    var actionText: Color {
-        isDark ? Color.ppAccentText : Color.ppPrimaryDarker
-    }
-
-    func actionIconFill(isPressed: Bool) -> Color {
+    func ctaFill(isPressed: Bool) -> Color {
         isPressed ? Color.ppPrimaryDarker : Color.ppPrimary
     }
 
-    func actionSeparator(increasedContrast: Bool) -> Color {
-        if isDark {
-            return Color.white.opacity(increasedContrast ? 0.70 : 0.20)
-        }
-        return increasedContrast ? Color.ppTextPrimary : Color.ppSurfaceBorder
+    var ctaContent: Color {
+        Color.white
     }
 }
 
@@ -4505,51 +4559,48 @@ private struct HomePureLensActionLabel: View {
     var body: some View {
         HStack(spacing: PPSpace.sm) {
             Image(systemName: "camera.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.white)
-                .frame(width: 32, height: 32)
-                .background(
-                    palette.actionIconFill(isPressed: isPressed),
-                    in: RoundedRectangle(
-                        cornerRadius: PPCorner.small,
-                        style: .continuous
-                    )
-                )
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(palette.ctaContent)
                 .scaleEffect(
                     reduceMotion || phase.reachedDiscovery ? 1 : 0.92
                 )
                 .accessibilityHidden(true)
 
             Text(title)
-                .font(HomeFont.bold(15))
-                .foregroundStyle(palette.actionText)
+                .font(HomeFont.bold(16))
+                .foregroundStyle(palette.ctaContent)
                 .lineLimit(allowsMultiline ? nil : 2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: PPSpace.sm)
 
             Image(systemName: directionalArrowSymbol)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(palette.actionText)
-                .frame(width: 32, height: 32)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(palette.ctaContent)
                 .offset(x: forwardOffset)
                 .accessibilityHidden(true)
         }
+        .padding(.horizontal, PPSpace.base)
         .frame(
             maxWidth: .infinity,
             minHeight: minimumHeight,
             alignment: .center
         )
-        .padding(.top, PPSpace.sm)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(
-                    palette.actionSeparator(
-                        increasedContrast: contrast == .increased
-                    )
+        .background(
+            palette.ctaFill(isPressed: isPressed),
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+        )
+        .overlay {
+            if contrast == .increased {
+                RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
                 )
-                .frame(height: contrast == .increased ? 1.5 : 0.7)
-                .accessibilityHidden(true)
+                .strokeBorder(palette.ctaContent, lineWidth: 1.5)
+            }
         }
     }
 
@@ -4640,6 +4691,18 @@ private struct HomePureLensSignalWindow: View {
             )
             .fill(palette.signalBackground)
 
+            HomePureLensViewfinderGrid()
+                .stroke(
+                    palette.signalContent.opacity(
+                        reduceTransparency ? 0.18 : 0.10
+                    ),
+                    lineWidth: 0.7
+                )
+                .padding(.horizontal, PPSpace.lg)
+                .padding(.vertical, PPSpace.base)
+                .opacity(focusOpacity)
+                .accessibilityHidden(true)
+
             HomePureLensFocusCorners()
                 .stroke(
                     palette.signalContent,
@@ -4656,6 +4719,18 @@ private struct HomePureLensSignalWindow: View {
 
             ZStack {
                 Circle()
+                    .strokeBorder(
+                        palette.signalActive,
+                        lineWidth: contrast == .increased ? 3 : 2
+                    )
+                    .frame(
+                        width: recognitionRingDiameter,
+                        height: recognitionRingDiameter
+                    )
+                    .scaleEffect(recognitionRingScale)
+                    .opacity(recognitionRingOpacity)
+
+                Circle()
                     .fill(palette.signalSubjectFill)
                     .frame(width: subjectDiameter, height: subjectDiameter)
 
@@ -4668,13 +4743,13 @@ private struct HomePureLensSignalWindow: View {
             }
             .scaleEffect(subjectScale)
             .opacity(subjectOpacity)
-            .offset(y: -PPSpace.md)
+            .offset(y: -PPSpace.lg)
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                HomePureLensSignalRail(phase: phase)
-                    .padding(.bottom, PPSpace.md)
+                HomePureLensResultChip(phase: phase)
+                    .padding(.bottom, PPSpace.sm)
             }
         }
         .clipShape(
@@ -4698,6 +4773,19 @@ private struct HomePureLensSignalWindow: View {
 
     private var subjectDiameter: CGFloat {
         min(58, max(46, height * 0.36))
+    }
+
+    private var recognitionRingDiameter: CGFloat {
+        subjectDiameter + PPSpace.md * 2
+    }
+
+    private var recognitionRingScale: CGFloat {
+        guard !reduceMotion else { return 1 }
+        return phase.reachedRecognition ? 1 : 1.18
+    }
+
+    private var recognitionRingOpacity: Double {
+        phase.reachedRecognition ? 1 : 0
     }
 
     private var focusScale: CGFloat {
@@ -4754,90 +4842,65 @@ private struct HomePureLensSignalWindow: View {
     }
 }
 
-private struct HomePureLensSignalRail: View {
+private struct HomePureLensResultChip: View {
     let phase: HomePureLensSignalPhase
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        HStack(spacing: 6) {
-            phaseNode(symbol: "camera.fill", isReached: true)
-            connector(isReached: phase.reachedRecognition)
-            phaseNode(
-                symbol: "viewfinder",
-                isReached: phase.reachedRecognition
-            )
-            connector(isReached: phase.reachedDiscovery)
-            phaseNode(
-                symbol: "square.grid.2x2.fill",
-                isReached: phase.reachedDiscovery
-            )
+        HStack(spacing: PPSpace.xs) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .bold))
+
+            Text(label)
+                .font(HomeFont.bold(12))
+                .lineLimit(1)
         }
+        .foregroundStyle(palette.signalContent)
         .padding(.horizontal, PPSpace.md)
-        .frame(height: 40)
-        .background(
-            Color.black.opacity(reduceTransparency ? 0.58 : 0.30),
-            in: Capsule()
-        )
+        .frame(height: 34)
+        .background(chipFill, in: Capsule())
         .overlay {
             Capsule()
                 .strokeBorder(
-                    palette.signalBorder,
+                    contrast == .increased
+                        ? palette.signalContent
+                        : palette.signalBorder,
                     lineWidth: contrast == .increased ? 1.5 : 0.7
                 )
         }
+        .scaleEffect(reduceMotion || phase.reachedRecognition ? 1 : 0.9)
+        .opacity(phase.reachedRecognition ? 1 : 0)
         .accessibilityHidden(true)
     }
 
-    private func phaseNode(symbol: String, isReached: Bool) -> some View {
-        Image(systemName: symbol)
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(
-                isReached
-                    ? palette.signalContent
-                    : palette.signalInactiveContent
-            )
-            .frame(width: 26, height: 26)
-            .background(
-                isReached
-                    ? palette.signalActive
-                    : palette.signalInactive,
-                in: Circle()
-            )
-            .overlay {
-                if contrast == .increased {
-                    Circle()
-                        .strokeBorder(
-                            palette.signalContent,
-                            lineWidth: isReached ? 1.5 : 1
-                        )
-                }
-            }
-            .scaleEffect(isReached ? 1 : 0.92)
-            .opacity(isReached ? 1 : 0.78)
+    private var isDiscovery: Bool {
+        phase.reachedDiscovery
     }
 
-    private func connector(isReached: Bool) -> some View {
-        Capsule()
-            .fill(
-                isReached
-                    ? palette.signalActive
-                    : palette.signalInactive
-            )
-            .frame(width: 18, height: contrast == .increased ? 3 : 2)
-            .scaleEffect(
-                x: isReached ? 1 : 0.18,
-                y: 1,
-                anchor: connectorAnchor
-            )
-            .opacity(isReached ? 1 : 0.62)
+    private var symbol: String {
+        isDiscovery ? "sparkles" : "viewfinder"
     }
 
-    private var connectorAnchor: UnitPoint {
-        layoutDirection == .rightToLeft ? .trailing : .leading
+    private var label: String {
+        isDiscovery
+            ? HomeModelAdapter.localized(
+                "pure_lens_account_discover",
+                fallback: "Discover"
+            )
+            : HomeModelAdapter.localized(
+                "pure_lens_account_recognize",
+                fallback: "Recognize"
+            )
+    }
+
+    private var chipFill: Color {
+        isDiscovery
+            ? palette.signalActive
+            : Color.black.opacity(reduceTransparency ? 0.58 : 0.34)
     }
 
     private var palette: HomePureLensPalette {
@@ -4868,6 +4931,28 @@ private struct HomePureLensFocusCorners: Shape {
         path.move(to: CGPoint(x: rect.minX + segment, y: rect.maxY))
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - segment))
+
+        return path
+    }
+}
+
+private struct HomePureLensViewfinderGrid: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let columnWidth = rect.width / 3
+        let rowHeight = rect.height / 3
+
+        for index in 1...2 {
+            let x = rect.minX + columnWidth * CGFloat(index)
+            path.move(to: CGPoint(x: x, y: rect.minY))
+            path.addLine(to: CGPoint(x: x, y: rect.maxY))
+        }
+
+        for index in 1...2 {
+            let y = rect.minY + rowHeight * CGFloat(index)
+            path.move(to: CGPoint(x: rect.minX, y: y))
+            path.addLine(to: CGPoint(x: rect.maxX, y: y))
+        }
 
         return path
     }

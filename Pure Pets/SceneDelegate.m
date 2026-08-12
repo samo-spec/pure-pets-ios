@@ -8,7 +8,7 @@
 @import GoogleSignIn;
 #import "ChNotificationRouter.h"
 #import "PPOrder.h"
-#import "OrderDetailsViewController.h"
+#import "PPOrderDetailsRouter.h"
 #import <Pure_Pets-Swift.h>
 
 
@@ -385,8 +385,7 @@ willConnectToSession:(UISceneSession *)session
                 return;
             }
 
-            OrderDetailsViewController *detailsVC = [[OrderDetailsViewController alloc] initWithOrder:order];
-            detailsVC.order = order;
+            UIViewController *detailsVC = [PPOrderDetailsRouter controllerWithOrder:order];
             [strongSelf pp_pushOrderDetails:detailsVC];
         });
     }];

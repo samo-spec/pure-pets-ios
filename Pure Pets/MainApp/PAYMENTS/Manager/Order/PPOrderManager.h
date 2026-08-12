@@ -45,6 +45,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *status;
 @property (nonatomic, copy) NSString *finalResolution;
 @property (nonatomic, copy) NSString *dedupeKey;
+/// Server-authoritative outcome for cancellation requests. A request may be
+/// accepted for review without the order being cancelled immediately.
+@property (nonatomic, assign) BOOL orderCancelled;
+@property (nonatomic, assign) BOOL fulfillmentV1;
+@property (nonatomic, copy) NSString *cancellationDisposition;
 @property (nonatomic, copy) NSArray<NSString *> *itemIDs;
 @property (nonatomic, copy) NSArray<NSDictionary *> *itemSnapshots;
 @property (nonatomic, copy) NSArray<PPOrderSupportAttachment *> *attachments;
@@ -178,11 +183,23 @@ NS_ASSUME_NONNULL_BEGIN
 - (id<FIRListenerRegistration> _Nullable)listenToSupportRequestsForOrderID:(NSString *)orderID
                                                                      update:(void (^)(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable error))update;
 
+/// Metadata-aware variant used when commands must wait for a server-confirmed
+/// request snapshot rather than treating an offline cache miss as authoritative.
+- (id<FIRListenerRegistration> _Nullable)listenToSupportRequestsForOrderID:(NSString *)orderID
+                                                            metadataUpdate:(void (^)(NSArray<PPOrderSupportRequest *> *requests,
+                                                                                     BOOL isFromCache,
+                                                                                     NSError * _Nullable error))update;
+
 - (void)fetchSupportRequestsForOrderID:(NSString *)orderID
                             completion:(void (^)(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable error))completion;
 
 - (id<FIRListenerRegistration> _Nullable)listenToTimelineEventsForOrder:(PPOrder *)order
                                                                  update:(void (^)(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable error))update;
+
+- (id<FIRListenerRegistration> _Nullable)listenToTimelineEventsForOrder:(PPOrder *)order
+                                                          metadataUpdate:(void (^)(NSArray<PPOrderTimelineEvent *> *events,
+                                                                                  BOOL isFromCache,
+                                                                                  NSError * _Nullable error))update;
 
 - (void)fetchTimelineEventsForOrder:(PPOrder *)order
                          completion:(void (^)(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable error))completion;

@@ -8,7 +8,7 @@
 #import "OrderHistoryViewController.h"
 #import "OrderCell.h"
 #import "PPOrderStatusAppearance.h"
-#import "OrderDetailsViewController.h"
+#import "PPOrderDetailsRouter.h"
 #import "PPOrder.h"
 #import "UserManager.h"
 #import "AppClasses.h"
@@ -126,7 +126,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 #pragma mark - OrderHistoryViewController Private Interface
 
-@interface OrderHistoryViewController () <UITableViewDataSource, UITableViewDelegate, PPSDelegate, UIScrollViewDelegate>
+@interface OrderHistoryViewController () <UITableViewDataSource, UITableViewDelegate, PPSDelegate, UIScrollViewDelegate, PPOrderHistorySurfaceControllerDelegate>
+
+// SwiftUI owns presentation and local discovery state. This controller remains
+// the single Firebase, pagination, support, and routing owner.
+@property (nonatomic, strong) PPOrderHistorySurfaceController *orderHistorySurfaceController;
 
 // Passthrough header layout
 @property (nonatomic, strong) PPPassThroughHeaderContainer *headerContainer;
@@ -189,6 +193,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, copy, nullable) dispatch_block_t loadingTimeoutBlock;
 @property (nonatomic, copy, nullable) NSString *lastFetchErrorMessage;
 @property (nonatomic, copy, nullable) NSString *renderedAccentFilterKey;
+@property (nonatomic, assign) BOOL orderHistorySnapshotFromCache;
 
 @end
 
@@ -215,6 +220,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [super viewWillAppear:animated];
     self.worldGlassBackgroundController.isFaded = YES;
     [self pp_applyNavigationPresentationForCurrentContextAnimated:animated];
+    [self pp_publishOrderHistorySnapshot];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -228,6 +234,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    if (self.orderHistorySurfaceController) {
+        return;
+    }
     [self pp_runHeroEntranceIfNeeded];
     if (!UIAccessibilityIsReduceMotionEnabled()) {
         [self.ambientGlassBackground startAnimations];
@@ -261,6 +270,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)pp_reduceMotionStatusDidChange
 {
+    if (self.orderHistorySurfaceController) {
+        return;
+    }
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     self.ambientGlassBackground.PPHeroApexUseShimmer = !reduceMotion;
     [self.ambientGlassBackground stopAnimations];
@@ -345,6 +357,18 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)pp_applyNavigationPresentationForCurrentContextAnimated:(BOOL)animated
 {
+    if (self.orderHistorySurfaceController) {
+        if (!self.didCaptureNavigationBarHiddenState && self.navigationController) {
+            self.previousNavigationBarHiddenState = self.navigationController.navigationBarHidden;
+            self.didCaptureNavigationBarHiddenState = YES;
+        }
+        [self.navigationController setNavigationBarHidden:YES animated:animated];
+        self.navigationItem.leftBarButtonItems = nil;
+        self.navigationItem.rightBarButtonItems = nil;
+        [self pp_publishOrderHistorySnapshot];
+        return;
+    }
+
     if ([self pp_isPresentedAsRootTab]) {
         if (!self.didCaptureNavigationBarHiddenState) {
             self.previousNavigationBarHiddenState = self.navigationController.navigationBarHidden;
@@ -392,6 +416,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)setupViews
 {
+    if (@available(iOS 17.0, *)) {
+        [self pp_installOrderHistorySurface];
+        return;
+    }
+
     [self setupBackdrop];
 
     UITableViewStyle tableStyle = UITableViewStyleGrouped;
@@ -484,8 +513,29 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [self refreshHeroHeader];
 }
 
+- (void)pp_installOrderHistorySurface API_AVAILABLE(ios(17.0))
+{
+    PPOrderHistorySurfaceController *surface =
+        [[PPOrderHistorySurfaceController alloc] initWithDelegate:self];
+    surface.view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addChildViewController:surface];
+    [self.view addSubview:surface.view];
+    [NSLayoutConstraint activateConstraints:@[
+        [surface.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [surface.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [surface.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [surface.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
+    [surface didMoveToParentViewController:self];
+    self.orderHistorySurfaceController = surface;
+    [self pp_publishOrderHistorySnapshot];
+}
+
 - (void)layoutViews
 {
+    if (self.orderHistorySurfaceController) {
+        return;
+    }
     self.ambientGlassBackground.frame = self.view.bounds;
     self.tableView.frame = self.view.bounds;
     [self layoutHeroHeader];
@@ -1329,6 +1379,150 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 #pragma mark - Data Management
 
+- (void)pp_publishOrderHistorySnapshot
+{
+    if (!self.orderHistorySurfaceController) {
+        return;
+    }
+
+    PPOrderHistorySnapshotDescriptor *snapshot = [PPOrderHistorySnapshotDescriptor new];
+    NSMutableArray<PPOrderHistoryItemDescriptor *> *items = [NSMutableArray arrayWithCapacity:self.orders.count];
+
+    for (PPOrder *order in self.orders ?: @[]) {
+        if (![order isKindOfClass:PPOrder.class]) continue;
+
+        PPOrderHistoryItemDescriptor *item = [PPOrderHistoryItemDescriptor new];
+        item.identifier = PPOrderHistoryTrimmedString(order.orderId);
+        if (item.identifier.length == 0) {
+            item.identifier = PPOrderHistoryTrimmedString([order displayOrderReference]);
+        }
+        item.reference = PPOrderHistoryTrimmedString([order displayOrderReference]);
+        item.statusKey = [self customerStatusKeyForOrder:order] ?: @"";
+        item.filterKey = [self canonicalStatusFilterKeyForOrder:order] ?: kOrderHistoryFilterPending;
+        item.statusTitle = [self displayTitleForOrder:order] ?: @"";
+        item.dateText = [self formattedDate:order.createdAt] ?: @"";
+        item.primaryDescription = [self primaryDescriptionForOrder:order] ?: @"";
+        item.amountText = [self formattedAmountForOrder:order] ?: @"";
+        item.quantity = [self totalQuantityForOrder:order];
+        item.progressStage = [self pp_progressStageForFilterKey:item.filterKey];
+        item.isActive = ![item.filterKey isEqualToString:kOrderHistoryFilterDelivered] &&
+            ![item.filterKey isEqualToString:kOrderHistoryFilterCancelled] &&
+            ![item.filterKey isEqualToString:kOrderHistoryFilterFailed];
+
+        NSString *imageURL = [self firstEmbeddedImageURLForOrder:order];
+        NSString *firstItemID = [self firstItemIDForOrder:order];
+        if (imageURL.length == 0 && firstItemID.length > 0) {
+            imageURL = [self imageURLFromAccessoryData:self.accessoryCache[firstItemID]];
+            if (imageURL.length == 0) {
+                [self fetchAccessoryPreviewForItemID:firstItemID orderID:order.orderId];
+            }
+        }
+        item.imageURL = imageURL ?: @"";
+        item.searchIndex = [self pp_searchIndexForOrder:order item:item];
+        [items addObject:item];
+    }
+
+    NSMutableArray<PPOrderHistoryFilterDescriptor *> *filters = [NSMutableArray array];
+    for (NSDictionary *definition in [self statusFilterDefinitions]) {
+        NSString *key = PPOrderHistoryTrimmedString(definition[@"key"]);
+        PPOrderHistoryFilterDescriptor *filter = [PPOrderHistoryFilterDescriptor new];
+        filter.key = key.length > 0 ? key : kOrderHistoryFilterAll;
+        filter.title = PPOrderHistoryTrimmedString(definition[@"title"]);
+        filter.count = [self countForStatusFilterKey:filter.key];
+        [filters addObject:filter];
+    }
+
+    snapshot.items = items;
+    snapshot.filters = filters;
+    snapshot.totalCount = self.orders.count;
+    snapshot.activeCount = [self activeOrdersCountForOrders:self.orders];
+    snapshot.totalSpentText = [self formattedSummaryAmount:[self totalSpentForOrders:self.orders]
+                                                  currency:[self preferredCurrencyCodeForOrders:self.orders]];
+    snapshot.errorMessage = self.lastFetchErrorMessage;
+    BOOL awaitingFirstRequest = self.orders.count == 0 &&
+        self.ordersListener == nil &&
+        self.lastFetchErrorMessage.length == 0;
+    snapshot.isInitialLoading = self.isFetchingInitial || awaitingFirstRequest;
+    snapshot.isLoadingMore = self.isFetchingMore;
+    snapshot.hasMore = self.hasMorePages;
+    snapshot.showsBackButton = [self pp_shouldShowOrderHistoryBackButton];
+    snapshot.isShowingCachedData = self.orderHistorySnapshotFromCache;
+    [self.orderHistorySurfaceController applySnapshot:snapshot];
+}
+
+- (NSInteger)pp_progressStageForFilterKey:(NSString *)filterKey
+{
+    if ([filterKey isEqualToString:kOrderHistoryFilterDelivered]) return 4;
+    if ([filterKey isEqualToString:kOrderHistoryFilterShipped]) return 3;
+    if ([filterKey isEqualToString:kOrderHistoryFilterProcessing]) return 2;
+    if ([filterKey isEqualToString:kOrderHistoryFilterPaid]) return 1;
+    if ([filterKey isEqualToString:kOrderHistoryFilterCancelled] ||
+        [filterKey isEqualToString:kOrderHistoryFilterFailed]) return 0;
+    return 1;
+}
+
+- (BOOL)pp_shouldShowOrderHistoryBackButton
+{
+    BOOL pushed = self.navigationController &&
+        self.navigationController.viewControllers.firstObject != self;
+    BOOL presented = self.presentingViewController != nil ||
+        self.navigationController.presentingViewController != nil;
+    return pushed || presented;
+}
+
+- (NSString *)pp_searchIndexForOrder:(PPOrder *)order
+                                item:(PPOrderHistoryItemDescriptor *)item
+{
+    NSMutableArray<NSString *> *tokens = [NSMutableArray array];
+    NSArray<NSString *> *baseValues = @[
+        item.reference ?: @"",
+        PPOrderHistoryTrimmedString(order.orderId),
+        PPOrderHistoryTrimmedString(order.transactionId),
+        PPOrderHistoryTrimmedString(order.paymentProvider),
+        PPOrderHistoryTrimmedString(order.failureReason),
+        item.statusTitle ?: @"",
+        item.statusKey ?: @"",
+        item.filterKey ?: @"",
+        item.dateText ?: @"",
+        item.amountText ?: @"",
+        item.primaryDescription ?: @""
+    ];
+    for (NSString *value in baseValues) {
+        if (value.length > 0) [tokens addObject:value];
+    }
+
+    NSDictionary *address = [order.shippingAddressSnapshot isKindOfClass:NSDictionary.class]
+        ? order.shippingAddressSnapshot
+        : nil;
+    for (id value in address.allValues ?: @[]) {
+        NSString *text = PPOrderHistoryTrimmedString(value);
+        if (text.length > 0) [tokens addObject:text];
+    }
+
+    for (id rawItem in order.items ?: @[]) {
+        if ([rawItem isKindOfClass:NSString.class]) {
+            NSString *text = PPOrderHistoryTrimmedString(rawItem);
+            if (text.length > 0) [tokens addObject:text];
+            continue;
+        }
+        if (![rawItem isKindOfClass:NSDictionary.class]) continue;
+        NSDictionary *dictionary = (NSDictionary *)rawItem;
+        NSArray *values = @[
+            dictionary[@"name"] ?: @"",
+            dictionary[@"title"] ?: @"",
+            dictionary[@"id"] ?: @"",
+            dictionary[@"itemID"] ?: @"",
+            dictionary[@"productId"] ?: @"",
+            dictionary[@"productID"] ?: @""
+        ];
+        for (id value in values) {
+            NSString *text = PPOrderHistoryTrimmedString(value);
+            if (text.length > 0) [tokens addObject:text];
+        }
+    }
+    return [tokens componentsJoinedByString:@" \u2022 "];
+}
+
 - (void)cancelLoadingTimeout
 {
     if (self.loadingTimeoutBlock) {
@@ -1347,9 +1541,17 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         if (!strongSelf) return;
         strongSelf.loadingTimeoutBlock = nil;
 
-        if (strongSelf.initialLoader.isAnimating) {
-            [strongSelf finishFetchingWithErrorMessage:nil reset:YES];
-            [strongSelf showLoadingTimeoutErrorWithRetry];
+        BOOL isStillLoading = strongSelf.orderHistorySurfaceController
+            ? strongSelf.isFetchingInitial
+            : strongSelf.initialLoader.isAnimating;
+        if (isStillLoading) {
+            if (strongSelf.orderHistorySurfaceController) {
+                [strongSelf finishFetchingWithErrorMessage:kLang(@"connection_timeout_message")
+                                                     reset:YES];
+            } else {
+                [strongSelf finishFetchingWithErrorMessage:nil reset:YES];
+                [strongSelf showLoadingTimeoutErrorWithRetry];
+            }
         }
     });
     self.loadingTimeoutBlock = timeoutBlock;
@@ -1360,6 +1562,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)showLoadingTimeoutErrorWithRetry
 {
+    if (self.orderHistorySurfaceController) {
+        self.lastFetchErrorMessage = kLang(@"connection_timeout_message");
+        [self pp_publishOrderHistorySnapshot];
+        return;
+    }
     if (self.presentedViewController) return;
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"connection_timeout_title")
@@ -1513,6 +1720,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)setPaginationLoading:(BOOL)loading
 {
+    if (self.orderHistorySurfaceController) {
+        [self pp_publishOrderHistorySnapshot];
+        return;
+    }
     if (!loading) {
         [self.paginationLoader stopAnimating];
         self.tableView.tableFooterView = [[UIView alloc] initWithFrame:CGRectZero];
@@ -1644,6 +1855,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
 
     self.displayedOrders = results.copy;
+    if (self.orderHistorySurfaceController) {
+        [self pp_publishOrderHistorySnapshot];
+        return;
+    }
     [self refreshStatusFilterMenu];
     [self refreshHeroHeader];
     [self updateEmptyState];
@@ -1895,8 +2110,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.row >= self.displayedOrders.count) return;
     PPOrder *selectedOrder = self.displayedOrders[indexPath.row];
-    OrderDetailsViewController *detailsVC = [[OrderDetailsViewController alloc] initWithOrder:selectedOrder];
-    detailsVC.order = selectedOrder;
+    UIViewController *detailsVC = [PPOrderDetailsRouter controllerWithOrder:selectedOrder];
     [self.navigationController pushViewController:detailsVC animated:YES];
 }
 
@@ -2010,6 +2224,61 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
 
     [self presentViewController:menu animated:YES completion:nil];
+}
+
+#pragma mark - PPOrderHistorySurfaceControllerDelegate
+
+- (void)orderHistorySurfaceDidRequestBack
+{
+    if (self.navigationController &&
+        self.navigationController.viewControllers.firstObject != self) {
+        [self.navigationController popViewControllerAnimated:YES];
+        return;
+    }
+    if (self.navigationController.presentingViewController) {
+        [self.navigationController dismissViewControllerAnimated:YES completion:nil];
+        return;
+    }
+    if (self.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+}
+
+- (void)orderHistorySurfaceDidRequestRefresh
+{
+    [self refreshOrders];
+}
+
+- (void)orderHistorySurfaceDidRequestLoadMore
+{
+    [self fetchOrdersReset:NO];
+}
+
+- (void)orderHistorySurfaceDidRequestSupport
+{
+    [self contactSupportTapped];
+}
+
+- (void)orderHistorySurfaceDidOpenOrder:(NSString *)orderID
+{
+    NSString *safeOrderID = PPOrderHistoryTrimmedString(orderID);
+    if (safeOrderID.length == 0) return;
+
+    PPOrder *selectedOrder = nil;
+    for (PPOrder *order in self.orders ?: @[]) {
+        NSString *identity = PPOrderHistoryTrimmedString(order.orderId);
+        if (identity.length == 0) {
+            identity = PPOrderHistoryTrimmedString([order displayOrderReference]);
+        }
+        if ([identity isEqualToString:safeOrderID]) {
+            selectedOrder = order;
+            break;
+        }
+    }
+    if (!selectedOrder) return;
+
+    UIViewController *detailsVC = [PPOrderDetailsRouter controllerWithOrder:selectedOrder];
+    [self.navigationController pushViewController:detailsVC animated:YES];
 }
 
 #pragma mark - Status Calculations & Mappings
@@ -2130,6 +2399,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
             if (!data) return;
 
             weakSelf.accessoryCache[itemID] = data;
+            if (weakSelf.orderHistorySurfaceController) {
+                [weakSelf pp_publishOrderHistorySnapshot];
+                return;
+            }
             NSIndexPath *indexPath = [weakSelf indexPathForOrderID:orderID];
             if (!indexPath) return;
             if (indexPath.row >= weakSelf.displayedOrders.count) return;
@@ -2394,6 +2667,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)showErrorMessage:(NSString *)message
 {
+    if (self.orderHistorySurfaceController) {
+        return;
+    }
     if (message.length == 0 || self.presentedViewController) return;
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"Error")
