@@ -11,8 +11,6 @@ struct PPOrderHistoryScreen: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.layoutDirection) private var inheritedLayoutDirection
-
     private var resolvedLayoutDirection: LayoutDirection {
         Language.isRTL() ? .rightToLeft : .leftToRight
     }
@@ -35,7 +33,6 @@ struct PPOrderHistoryScreen: View {
             .scrollDismissesKeyboard(.interactively)
             .refreshable {
                 store.requestRefresh()
-                await Task.yield()
             }
         }
         .environment(\.layoutDirection, resolvedLayoutDirection)
@@ -53,8 +50,8 @@ struct PPOrderHistoryScreen: View {
         HStack(spacing: PPSpace.md) {
             if store.snapshot.showsBackButton {
                 PPOrderHistoryRoundButton(
-                    symbol: "chevron.backward",
-                    accessibilityLabel: PPOrderHistoryText("Back"),
+                    symbol: store.snapshot.navigationSymbol,
+                    accessibilityLabel: store.snapshot.navigationAccessibilityLabel,
                     action: store.requestBack
                 )
             }
@@ -130,7 +127,10 @@ struct PPOrderHistoryScreen: View {
                             : Color.ppBorder,
                         lineWidth: 1
                     )
-                Text("\(store.snapshot.activeCount)")
+                Text(
+                    store.snapshot.activeCount,
+                    format: .number.locale(PPOrderHistoryLocale)
+                )
                     .font(PPOrderHistoryTypography.display(30))
                     .foregroundStyle(
                         store.snapshot.activeCount > 0
@@ -145,13 +145,17 @@ struct PPOrderHistoryScreen: View {
                 Text(
                     store.snapshot.activeCount > 0
                         ? PPOrderHistoryText("order_history_active_now")
-                        : PPOrderHistoryText("order_history_all_caught_up")
+                        : PPOrderHistoryText("order_history_no_active_shown")
                 )
                 .font(PPOrderHistoryTypography.headline())
                 .foregroundStyle(Color.ppTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
-                Text(PPOrderHistoryText("order_history_active_explanation"))
+                Text(
+                    store.snapshot.activeCount > 0
+                        ? PPOrderHistoryText("order_history_active_explanation")
+                        : PPOrderHistoryText("order_history_no_active_explanation")
+                )
                     .font(PPOrderHistoryTypography.caption())
                     .foregroundStyle(Color.ppTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -164,23 +168,27 @@ struct PPOrderHistoryScreen: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: PPSpace.xl) {
                 metric(
-                    value: "\(store.snapshot.totalCount)",
-                    title: PPOrderHistoryText("order_history_metric_orders")
+                    value: store.snapshot.totalCount.formatted(
+                        .number.locale(PPOrderHistoryLocale)
+                    ),
+                    title: PPOrderHistoryText("order_history_metric_orders_loaded")
                 )
                 metric(
                     value: store.snapshot.totalSpentText,
-                    title: PPOrderHistoryText("order_history_metric_spent"),
+                    title: PPOrderHistoryText("order_history_metric_loaded_value"),
                     forceLeftToRight: true
                 )
             }
             VStack(alignment: .leading, spacing: PPSpace.md) {
                 metric(
-                    value: "\(store.snapshot.totalCount)",
-                    title: PPOrderHistoryText("order_history_metric_orders")
+                    value: store.snapshot.totalCount.formatted(
+                        .number.locale(PPOrderHistoryLocale)
+                    ),
+                    title: PPOrderHistoryText("order_history_metric_orders_loaded")
                 )
                 metric(
                     value: store.snapshot.totalSpentText,
-                    title: PPOrderHistoryText("order_history_metric_spent"),
+                    title: PPOrderHistoryText("order_history_metric_loaded_value"),
                     forceLeftToRight: true
                 )
             }
@@ -261,7 +269,10 @@ struct PPOrderHistoryScreen: View {
                             HStack(spacing: 6) {
                                 Text(filter.title)
                                     .font(PPOrderHistoryTypography.callout())
-                                Text("\(filter.count)")
+                                Text(
+                                    filter.count,
+                                    format: .number.locale(PPOrderHistoryLocale)
+                                )
                                     .font(PPOrderHistoryTypography.caption(12))
                                     .monospacedDigit()
                                     .contentTransition(.numericText())
@@ -288,7 +299,12 @@ struct PPOrderHistoryScreen: View {
                         }
                         .buttonStyle(PPOrderHistoryPressStyle())
                         .accessibilityLabel(filter.title)
-                        .accessibilityValue("\(filter.count)")
+                        .accessibilityValue(
+                            Text(
+                                filter.count,
+                                format: .number.locale(PPOrderHistoryLocale)
+                            )
+                        )
                         .accessibilityAddTraits(
                             store.selectedFilterID == filter.id ? .isSelected : []
                         )
@@ -306,6 +322,9 @@ struct PPOrderHistoryScreen: View {
         } else if let error = store.snapshot.errorMessage,
                   store.snapshot.items.isEmpty {
             errorState(message: error)
+        } else if store.snapshot.isShowingCachedData &&
+                    store.snapshot.items.isEmpty {
+            cachedEmptyState
         } else if store.visibleItems.isEmpty {
             emptyState
         } else {
@@ -315,6 +334,10 @@ struct PPOrderHistoryScreen: View {
 
     private var orderList: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
+            if store.snapshot.isShowingCachedData {
+                PPOrderHistoryCacheNotice(retry: store.requestRefresh)
+            }
+
             if let error = store.snapshot.errorMessage {
                 PPOrderHistoryInlineNotice(
                     message: error,
@@ -328,8 +351,8 @@ struct PPOrderHistoryScreen: View {
                         .font(PPOrderHistoryTypography.title())
                         .foregroundStyle(Color.ppTextPrimary)
                     Text(
-                        String(
-                            format: PPOrderHistoryText("order_history_visible_count_format"),
+                        PPOrderHistoryFormat(
+                            "order_history_visible_count_format",
                             store.visibleItems.count
                         )
                     )
@@ -446,6 +469,36 @@ struct PPOrderHistoryScreen: View {
         .ppOrderHistorySurface(active: false)
     }
 
+    private var cachedEmptyState: some View {
+        VStack(spacing: PPSpace.base) {
+            Image(systemName: "icloud.slash")
+                .font(.system(size: 30, weight: .medium))
+                .foregroundStyle(Color.ppWarning)
+                .frame(width: 66, height: 66)
+                .background(Color.ppWarning.opacity(0.10), in: Circle())
+                .accessibilityHidden(true)
+            Text(PPOrderHistoryText("order_history_cached_empty_title"))
+                .font(PPOrderHistoryTypography.title())
+                .foregroundStyle(Color.ppTextPrimary)
+                .multilineTextAlignment(.center)
+            Text(PPOrderHistoryText("order_history_cached_empty_subtitle"))
+                .font(PPOrderHistoryTypography.body())
+                .foregroundStyle(Color.ppTextSecondary)
+                .multilineTextAlignment(.center)
+            Button(PPOrderHistoryText("retry"), action: store.requestRefresh)
+                .font(PPOrderHistoryTypography.headline())
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, PPSpace.xl)
+                .frame(minHeight: 50)
+                .background(Color.ppPrimary, in: Capsule())
+                .buttonStyle(PPOrderHistoryPressStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, PPSpace.xl)
+        .padding(.vertical, 44)
+        .ppOrderHistorySurface(active: false)
+    }
+
     private func errorState(message: String) -> some View {
         VStack(spacing: PPSpace.base) {
             Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
@@ -476,9 +529,11 @@ struct PPOrderHistoryScreen: View {
     }
 
     private var summaryAccessibilityLabel: String {
-        String(
-            format: PPOrderHistoryText("order_history_summary_accessibility_format"),
-            "\(store.snapshot.totalCount)",
+        PPOrderHistoryFormat(
+            "order_history_loaded_summary_accessibility_format",
+            store.snapshot.totalCount.formatted(
+                .number.locale(PPOrderHistoryLocale)
+            ),
             store.snapshot.totalSpentText,
             store.snapshot.activeCount
         )
@@ -612,8 +667,8 @@ private struct PPOrderHistoryJourneyCard: View {
 
                 if item.quantity > 0 {
                     Text(
-                        String(
-                            format: PPOrderHistoryText("order_history_quantity_format"),
+                        PPOrderHistoryFormat(
+                            "order_history_quantity_format",
                             item.quantity
                         )
                     )
@@ -666,8 +721,8 @@ private struct PPOrderHistoryJourneyCard: View {
     }
 
     private var accessibilityLabel: String {
-        String(
-            format: PPOrderHistoryText("order_history_row_accessibility_format"),
+        PPOrderHistoryFormat(
+            "order_history_row_accessibility_format",
             item.reference,
             item.statusTitle,
             item.primaryDescription,
@@ -742,6 +797,37 @@ private struct PPOrderHistoryInlineNotice: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(Color.ppError.opacity(0.18), lineWidth: 0.75)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+@available(iOS 17.0, *)
+private struct PPOrderHistoryCacheNotice: View {
+    let retry: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            Image(systemName: "icloud.slash")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.ppWarning)
+                .accessibilityHidden(true)
+            Text(PPOrderHistoryText("order_history_cached_notice"))
+                .font(PPOrderHistoryTypography.callout())
+                .foregroundStyle(Color.ppTextSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(PPOrderHistoryText("retry"), action: retry)
+                .font(PPOrderHistoryTypography.callout())
+                .foregroundStyle(Color.ppAccentText)
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+        }
+        .padding(.horizontal, PPSpace.base)
+        .padding(.vertical, PPSpace.sm)
+        .background(Color.ppWarning.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.ppWarning.opacity(0.22), lineWidth: 0.75)
         }
         .accessibilityElement(children: .combine)
     }

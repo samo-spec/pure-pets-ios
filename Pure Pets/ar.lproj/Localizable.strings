@@ -1994,9 +1994,14 @@
 "order_history_active_now" = "قيد التنفيذ الآن";
 "order_history_all_caught_up" = "كل شيء مكتمل";
 "order_history_active_explanation" = "طلبات ما زالت تمر بالدفع أو التجهيز أو التوصيل.";
+"order_history_no_active_shown" = "لا توجد طلبات نشطة معروضة";
+"order_history_no_active_explanation" = "الطلبات المحمّلة في هذه الصفحة مكتملة أو مغلقة.";
+"order_history_metric_orders_loaded" = "المحمّلة";
+"order_history_metric_loaded_value" = "قيمة الطلبات المحمّلة";
+"order_history_loaded_summary_accessibility_format" = "الطلبات المحمّلة: %1$@. قيمة الطلبات المحمّلة: %2$@. الطلبات النشطة المعروضة: %3$ld.";
 "order_history_list_title" = "طلباتك";
-"order_history_visible_count_format" = "%ld طلب";
-"order_history_quantity_format" = "%ld صنف";
+"order_history_visible_count_format" = "المعروض: %ld";
+"order_history_quantity_format" = "عدد الأصناف: %ld";
 "order_history_loading_title" = "جارٍ تحميل رحلة طلباتك";
 "order_history_loading_subtitle" = "نجمع لك أحدث تحديثات الدفع والتجهيز والتوصيل.";
 "order_history_loading_more" = "جارٍ تحميل الطلبات السابقة…";
@@ -2004,6 +2009,10 @@
 "order_history_refresh_accessibility" = "تحديث الطلبات";
 "order_history_support_accessibility" = "التواصل مع دعم الطلبات";
 "order_history_clear_search_accessibility" = "مسح البحث في الطلبات";
+"order_history_cached_notice" = "نعرض آخر تحديثات محفوظة. اتصل بالإنترنت لتحديث الحالة مباشرة.";
+"order_history_cached_empty_title" = "تعذر التحقق من الطلبات المباشرة";
+"order_history_cached_empty_subtitle" = "اتصل بالإنترنت لتأكيد طلباتك الحالية. لن نعتبر الذاكرة المؤقتة الفارغة سجلًا فارغًا.";
+"order_history_permission_denied" = "سجل الطلبات غير متاح لهذا الحساب. سجّل الدخول مجددًا ثم أعد المحاولة.";
 "NoOrders" = "لا توجد طلبات بعد";
 "UserNotAuthenticated" = "سجّل الدخول لعرض طلباتك.";
 "order_change_delivery_address" = "تغيير عنوان التوصيل";

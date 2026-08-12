@@ -2014,9 +2014,14 @@
 "order_history_active_now" = "Active now";
 "order_history_all_caught_up" = "All caught up";
 "order_history_active_explanation" = "Orders still moving through payment, preparation, or delivery.";
+"order_history_no_active_shown" = "No active orders shown";
+"order_history_no_active_explanation" = "The orders loaded in this view are completed or closed.";
+"order_history_metric_orders_loaded" = "Loaded";
+"order_history_metric_loaded_value" = "Loaded value";
+"order_history_loaded_summary_accessibility_format" = "Loaded orders: %1$@. Loaded value: %2$@. Active shown: %3$ld.";
 "order_history_list_title" = "Your orders";
-"order_history_visible_count_format" = "%ld orders";
-"order_history_quantity_format" = "%ld items";
+"order_history_visible_count_format" = "Shown: %ld";
+"order_history_quantity_format" = "Items: %ld";
 "order_history_loading_title" = "Loading your journey";
 "order_history_loading_subtitle" = "We’re bringing your latest payment and delivery updates together.";
 "order_history_loading_more" = "Loading earlier orders…";
@@ -2024,6 +2029,10 @@
 "order_history_refresh_accessibility" = "Refresh orders";
 "order_history_support_accessibility" = "Contact order support";
 "order_history_clear_search_accessibility" = "Clear order search";
+"order_history_cached_notice" = "Showing the latest saved updates. Connect to refresh live status.";
+"order_history_cached_empty_title" = "Live orders unavailable";
+"order_history_cached_empty_subtitle" = "Connect to confirm your current orders. We won’t treat an empty cache as an empty history.";
+"order_history_permission_denied" = "Your order history is not available for this account. Sign in again, then retry.";
 "NoOrders" = "No orders yet";
 "UserNotAuthenticated" = "Sign in to view your orders.";
 "order_change_delivery_address" = "Change Delivery Address";

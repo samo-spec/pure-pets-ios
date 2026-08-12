@@ -178,6 +178,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, strong, nullable) FIRDocumentSnapshot *lastDocument;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> ordersListener;
 @property (nonatomic, copy, nullable) NSString *ordersListenerUserID;
+@property (nonatomic, strong, nullable) FIRAuthStateDidChangeListenerHandle authStateListenerHandle;
 
 @property (nonatomic, copy) NSString *selectedStatusFilterKey;
 @property (nonatomic, assign) NSInteger pageSize;
@@ -189,7 +190,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, assign) BOOL didRunHeroEntrance;
 @property (nonatomic, assign) BOOL didCaptureNavigationBarHiddenState;
 @property (nonatomic, assign) BOOL previousNavigationBarHiddenState;
+@property (nonatomic, assign) BOOL didCaptureInteractivePopState;
+@property (nonatomic, assign) BOOL previousInteractivePopEnabled;
 @property (nonatomic, strong) NSDateFormatter *orderDateFormatter;
+@property (nonatomic, strong) NSNumberFormatter *orderAmountFormatter;
 @property (nonatomic, copy, nullable) dispatch_block_t loadingTimeoutBlock;
 @property (nonatomic, copy, nullable) NSString *lastFetchErrorMessage;
 @property (nonatomic, copy, nullable) NSString *renderedAccentFilterKey;
@@ -213,6 +217,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
                                                  name:UIAccessibilityReduceMotionStatusDidChangeNotification
                                                object:nil];
     [self fetchOrdersReset:YES];
+    [self pp_startOrderHistoryAuthObservation];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -253,6 +258,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if (self.authStateListenerHandle) {
+        [[FIRAuth auth] removeAuthStateDidChangeListener:self.authStateListenerHandle];
+        self.authStateListenerHandle = nil;
+    }
     [self stopOrdersRealtimeListener];
     [self.ambientGlassBackground stopAnimations];
 }
@@ -260,6 +269,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (self.orderHistorySurfaceController) {
+        return;
+    }
     [self.ambientGlassBackground stopAnimations];
     [self.ambientGlassBackground reapplyPalette];
     if (self.view.window && !UIAccessibilityIsReduceMotionEnabled()) {
@@ -330,8 +342,15 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.inFlightAccessoryIDs = [NSMutableSet set];
     self.animatedOrderIDs = [NSMutableSet set];
     self.orderDateFormatter = [[NSDateFormatter alloc] init];
-    self.orderDateFormatter.locale = [NSLocale currentLocale];
+    NSString *localeIdentifier = [Language isRTL] ? @"ar_QA" : @"en_QA";
+    self.orderDateFormatter.locale = [[NSLocale alloc] initWithLocaleIdentifier:localeIdentifier];
     [self.orderDateFormatter setLocalizedDateFormatFromTemplate:@"EEE d MMM yyyy h:mm a"];
+    self.orderAmountFormatter = [[NSNumberFormatter alloc] init];
+    self.orderAmountFormatter.numberStyle = NSNumberFormatterDecimalStyle;
+    self.orderAmountFormatter.locale = [[NSLocale alloc] initWithLocaleIdentifier:localeIdentifier];
+    self.orderAmountFormatter.minimumFractionDigits = 2;
+    self.orderAmountFormatter.maximumFractionDigits = 2;
+    self.orderAmountFormatter.usesGroupingSeparator = YES;
     self.view.backgroundColor = AppBackgroundClr;
     [self emptyViewConfiger];
 }
@@ -363,6 +382,15 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
             self.didCaptureNavigationBarHiddenState = YES;
         }
         [self.navigationController setNavigationBarHidden:YES animated:animated];
+        UIGestureRecognizer *interactivePop = self.navigationController.interactivePopGestureRecognizer;
+        BOOL isPushed = self.navigationController.viewControllers.firstObject != self;
+        if (interactivePop && isPushed) {
+            if (!self.didCaptureInteractivePopState) {
+                self.previousInteractivePopEnabled = interactivePop.enabled;
+                self.didCaptureInteractivePopState = YES;
+            }
+            interactivePop.enabled = YES;
+        }
         self.navigationItem.leftBarButtonItems = nil;
         self.navigationItem.rightBarButtonItems = nil;
         [self pp_publishOrderHistorySnapshot];
@@ -401,6 +429,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         return;
     }
     [self.navigationController setNavigationBarHidden:self.previousNavigationBarHiddenState animated:animated];
+    if (self.didCaptureInteractivePopState &&
+        self.navigationController.interactivePopGestureRecognizer) {
+        self.navigationController.interactivePopGestureRecognizer.enabled =
+            self.previousInteractivePopEnabled;
+        self.didCaptureInteractivePopState = NO;
+    }
     self.didCaptureNavigationBarHiddenState = NO;
 }
 
@@ -1379,6 +1413,45 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 #pragma mark - Data Management
 
+- (void)pp_startOrderHistoryAuthObservation
+{
+    if (self.authStateListenerHandle) return;
+
+    __weak typeof(self) weakSelf = self;
+    self.authStateListenerHandle = [[FIRAuth auth] addAuthStateDidChangeListener:^(
+        FIRAuth * _Nonnull auth,
+        FIRUser * _Nullable user
+    ) {
+        (void)auth;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+
+            NSString *nextUserID = PPOrderHistoryTrimmedString(user.uid);
+            NSString *listeningUserID = PPOrderHistoryTrimmedString(self.ordersListenerUserID);
+            if ([nextUserID isEqualToString:listeningUserID]) return;
+
+            [self stopOrdersRealtimeListener];
+            [self cancelLoadingTimeout];
+            [self.orders removeAllObjects];
+            self.displayedOrders = @[];
+            self.lastDocument = nil;
+            self.isFetchingInitial = NO;
+            self.isFetchingMore = NO;
+            self.hasMorePages = YES;
+            self.orderHistorySnapshotFromCache = NO;
+            self.lastFetchErrorMessage = nextUserID.length == 0
+                ? kLang(@"UserNotAuthenticated")
+                : nil;
+            [self applyFiltersAndReload];
+
+            if (nextUserID.length > 0) {
+                [self fetchOrdersReset:YES];
+            }
+        });
+    }];
+}
+
 - (void)pp_publishOrderHistorySnapshot
 {
     if (!self.orderHistorySurfaceController) {
@@ -1447,6 +1520,14 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     snapshot.hasMore = self.hasMorePages;
     snapshot.showsBackButton = [self pp_shouldShowOrderHistoryBackButton];
     snapshot.isShowingCachedData = self.orderHistorySnapshotFromCache;
+    BOOL isModalRoot = (self.navigationController &&
+                        self.navigationController.viewControllers.firstObject == self &&
+                        self.navigationController.presentingViewController != nil) ||
+                       (self.navigationController == nil && self.presentingViewController != nil);
+    snapshot.navigationSymbol = isModalRoot ? @"xmark" : @"chevron.backward";
+    snapshot.navigationAccessibilityLabel = isModalRoot
+        ? kLang(@"Close")
+        : kLang(@"Back");
     [self.orderHistorySurfaceController applySnapshot:snapshot];
 }
 
@@ -1649,7 +1730,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
           (long)self.pageSize);
 
     __weak typeof(self) weakSelf = self;
-    self.ordersListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    self.ordersListener = [query addSnapshotListenerWithIncludeMetadataChanges:YES
+                                                                       listener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
@@ -1673,9 +1755,16 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)handleOrdersSnapshot:(FIRQuerySnapshot * _Nullable)snapshot error:(NSError * _Nullable)error reset:(BOOL)reset
 {
     if (error) {
-        [self finishFetchingWithErrorMessage:error.localizedDescription ?: kLang(@"Error") reset:reset];
+        BOOL permissionDenied = [error.domain isEqualToString:FIRFirestoreErrorDomain] &&
+            error.code == FIRFirestoreErrorCodePermissionDenied;
+        NSString *message = permissionDenied
+            ? kLang(@"order_history_permission_denied")
+            : (error.localizedDescription ?: kLang(@"Error"));
+        [self finishFetchingWithErrorMessage:message reset:reset];
         return;
     }
+
+    self.orderHistorySnapshotFromCache = snapshot.metadata.isFromCache;
 
     NSArray<FIRDocumentSnapshot *> *documents = snapshot.documents ?: @[];
     self.hasMorePages = (documents.count >= self.pageSize);
@@ -1739,15 +1828,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (NSString *)currentUserID
 {
-    NSString *userID = @"";
-    id value = UserManager.sharedManager.currentUser.ID;
-    if ([value isKindOfClass:NSString.class]) {
-        userID = [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    }
-    if (userID.length == 0) {
-        userID = [FIRAuth auth].currentUser.uid ?: @"";
-    }
-    return userID;
+    NSString *authenticatedUserID = PPOrderHistoryTrimmedString([FIRAuth auth].currentUser.uid);
+    return authenticatedUserID;
 }
 
 #pragma mark - Filter & Search Management
@@ -2495,12 +2577,20 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 #pragma mark - Formatting Utilities
 
+- (NSString *)pp_localizedDecimalString:(double)value
+{
+    NSString *formatted = [self.orderAmountFormatter stringFromNumber:@(MAX(0.0, value))];
+    return formatted.length > 0 ? formatted : @"0.00";
+}
+
 - (NSString *)formattedAmountForOrder:(PPOrder *)order
 {
     NSString *currency = PPOrderHistoryTrimmedString(order.currency);
     if (currency.length == 0) currency = PPOrderHistoryTrimmedString([CountryModel safeCurrentCurrencyCode]);
     if (currency.length == 0) currency = @"QAR";
-    return [NSString stringWithFormat:@"%.2f %@", [self displayAmountValueForOrder:order], currency];
+    return [NSString stringWithFormat:@"%@ %@",
+            [self pp_localizedDecimalString:[self displayAmountValueForOrder:order]],
+            currency];
 }
 
 - (NSString *)formattedDate:(NSDate *)date
@@ -2518,7 +2608,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     if (resolvedCurrency.length == 0) {
         resolvedCurrency = @"QAR";
     }
-    return [NSString stringWithFormat:@"%.2f %@", MAX(0.0, amount), resolvedCurrency];
+    return [NSString stringWithFormat:@"%@ %@",
+            [self pp_localizedDecimalString:amount],
+            resolvedCurrency];
 }
 
 - (NSString *)preferredCurrencyCodeForOrders:(NSArray<PPOrder *> *)orders

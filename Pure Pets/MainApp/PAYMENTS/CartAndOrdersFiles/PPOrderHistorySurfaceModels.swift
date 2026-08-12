@@ -14,6 +14,19 @@ func PPOrderHistoryText(_ key: String) -> String {
     return localized.isEmpty ? key : localized
 }
 
+var PPOrderHistoryLocale: Locale {
+    let code = Language.currentLanguageCode() ?? "en"
+    return Locale(identifier: code == "ar" ? "ar_QA" : "en_QA")
+}
+
+func PPOrderHistoryFormat(_ key: String, _ arguments: CVarArg...) -> String {
+    String(
+        format: PPOrderHistoryText(key),
+        locale: PPOrderHistoryLocale,
+        arguments: arguments
+    )
+}
+
 enum PPOrderHistoryTypography {
     static func display(_ size: CGFloat = 32) -> Font {
         .custom("Beiruti-Bold", size: size, relativeTo: .largeTitle)
@@ -77,6 +90,8 @@ final class PPOrderHistorySnapshotDescriptor: NSObject {
     var hasMore = false
     var showsBackButton = false
     var isShowingCachedData = false
+    var navigationSymbol = "chevron.backward"
+    var navigationAccessibilityLabel = ""
 }
 
 @objc(PPOrderHistorySurfaceControllerDelegate)
@@ -144,6 +159,8 @@ struct PPOrderHistorySnapshot {
     var hasMore = false
     var showsBackButton = false
     var isShowingCachedData = false
+    var navigationSymbol = "chevron.backward"
+    var navigationAccessibilityLabel = ""
 
     init() {}
 
@@ -159,6 +176,8 @@ struct PPOrderHistorySnapshot {
         hasMore = descriptor.hasMore
         showsBackButton = descriptor.showsBackButton
         isShowingCachedData = descriptor.isShowingCachedData
+        navigationSymbol = descriptor.navigationSymbol
+        navigationAccessibilityLabel = descriptor.navigationAccessibilityLabel
     }
 }
 
