@@ -59,6 +59,10 @@ final class HomeStore: ObservableObject {
     @Published private(set) var state: HomeViewState
     @Published private(set) var scrollToTopGeneration = 0
     @Published private(set) var sectionDataRevisions: [Int: Int] = [:]
+    /// The campaign lane has the same lifecycle authority as Home's contextual
+    /// hero. Keeping this published makes live banner updates and automatic
+    /// paging deterministic across SwiftUI view re-composition.
+    @Published private(set) var promotionIndex = 0
 
     let router: HomeRouter
 
@@ -83,14 +87,19 @@ final class HomeStore: ObservableObject {
     private var sourceErrors: [Int: String] = [:]
     private var observers: [NSObjectProtocol] = []
     private var heroRotationTask: Task<Void, Never>?
+    private var promotionRotationTask: Task<Void, Never>?
     private var heroPauseGeneration = 0
+    private var promotionPauseGeneration = 0
+    private var promotionRotationGeneration = 0
     private var initialMainKindID: Int?
     private var orderResolutionGeneration = 0
     private var started = false
     private var visible = false
     private var sceneActive = true
     private var heroInteractionActive = false
+    private var promotionInteractionActive = false
     private var voiceOverRunning = UIAccessibility.isVoiceOverRunning
+    private var switchControlRunning = UIAccessibility.isSwitchControlRunning
     private var reduceMotion = UIAccessibility.isReduceMotionEnabled
     private var hasPublishedLoadedState = false
     private var refreshRequestGeneration = 0
@@ -102,6 +111,13 @@ final class HomeStore: ObservableObject {
 
     private static let selectedMainKindKey = "PPHome.lastSelectedMainKindID.v1"
     private static let selectedPetKey = "pp.home.selectedPetID.v2"
+
+    /// Content re-composition after a pet switch: a calm, non-bouncing settle.
+    /// Springy motion would make inserted care rows overshoot while the reader
+    /// is still scanning the newly scoped page.
+    private static let petContextSwitchAnimation: Animation = .smooth(
+        duration: 0.28
+    )
     private static let refreshLog = OSLog(
         subsystem: "com.purepets.ios",
         category: "HomeReload"
@@ -140,6 +156,7 @@ final class HomeStore: ObservableObject {
 
     deinit {
         heroRotationTask?.cancel()
+        promotionRotationTask?.cancel()
         refreshTimeoutTask?.cancel()
         observers.forEach(NotificationCenter.default.removeObserver)
     }
@@ -156,18 +173,22 @@ final class HomeStore: ObservableObject {
         state.phase = state.config.cameFromCache ? .warmLoading : .coldLoading
         repository.start()
         restartHeroRotation()
+        restartPromotionRotation()
     }
 
     func setVisible(_ value: Bool) {
         guard visible != value else { return }
         heroPauseGeneration += 1
+        promotionPauseGeneration += 1
         heroInteractionActive = false
+        promotionInteractionActive = false
         visible = value
         if value {
             state.bottomContentClearance = router.bottomContentClearance()
             repository.refresh()
         }
         restartHeroRotation()
+        restartPromotionRotation()
     }
 
     func setSceneActive(_ active: Bool) {
@@ -177,18 +198,27 @@ final class HomeStore: ObservableObject {
             repository.refresh()
         }
         restartHeroRotation()
+        restartPromotionRotation()
     }
 
     func setReduceMotion(_ enabled: Bool) {
         guard reduceMotion != enabled else { return }
         reduceMotion = enabled
         restartHeroRotation()
+        restartPromotionRotation()
     }
 
     func setVoiceOverRunning(_ enabled: Bool) {
         guard voiceOverRunning != enabled else { return }
         voiceOverRunning = enabled
         restartHeroRotation()
+        restartPromotionRotation()
+    }
+
+    func setSwitchControlRunning(_ enabled: Bool) {
+        guard switchControlRunning != enabled else { return }
+        switchControlRunning = enabled
+        restartPromotionRotation()
     }
 
     func setHeroInteractionActive(_ active: Bool) {
@@ -196,6 +226,13 @@ final class HomeStore: ObservableObject {
         heroPauseGeneration += 1
         heroInteractionActive = active
         restartHeroRotation()
+    }
+
+    func setPromotionInteractionActive(_ active: Bool) {
+        guard promotionInteractionActive != active else { return }
+        promotionPauseGeneration += 1
+        promotionInteractionActive = active
+        restartPromotionRotation()
     }
 
     func refresh() async {
@@ -254,6 +291,25 @@ final class HomeStore: ObservableObject {
         state.selectedHeroIndex = next
     }
 
+    func selectPromotion(index: Int) {
+        guard state.promotionPages.indices.contains(index),
+              promotionIndex != index
+        else {
+            return
+        }
+        promotionIndex = index
+        restartPromotionRotation()
+    }
+
+    func advancePromotion(direction: Int = 1) {
+        guard state.promotionPages.count > 1 else { return }
+        let count = state.promotionPages.count
+        let next = (promotionIndex + direction + count) % count
+        guard next != promotionIndex else { return }
+        promotionIndex = next
+        restartPromotionRotation()
+    }
+
     func performSelectedHeroAction() {
         guard state.heroPages.indices.contains(state.selectedHeroIndex) else {
             return
@@ -270,6 +326,9 @@ final class HomeStore: ObservableObject {
 
     func performHeroAction(_ page: HomeHeroPage) {
         pauseHeroForNavigation()
+        if case .promotion = page.kind {
+            pausePromotionForNavigation()
+        }
         router.openHeroAction(page.action)
     }
 
@@ -280,6 +339,7 @@ final class HomeStore: ObservableObject {
         case .promotion:
             if case let .openPromotion(card, _) = page.action {
                 pauseHeroForNavigation()
+                pausePromotionForNavigation()
                 router.openHeroAction(
                     .openPromotion(card, interaction: "secondary")
                 )
@@ -334,19 +394,49 @@ final class HomeStore: ObservableObject {
     }
 
     func selectPet(_ pet: HomePetModel) {
-        state.selectedPetID = pet.id
-        UserDefaults.standard.set(pet.id, forKey: Self.selectedPetKey)
-        if pet.categoryID > 0,
-           state.categories.contains(where: {
-               HomeModelAdapter.mainKindID($0.raw) == pet.categoryID
-           }) {
-            state.selectedMainKindID = pet.categoryID
-            UserDefaults.standard.set(
-                pet.categoryID,
-                forKey: Self.selectedMainKindKey
-            )
+        // Reuse the same section set and fingerprint gate as a backend pet
+        // change so a user-driven switch animates through one owner instead of
+        // a second, competing reload path.
+        let candidateSectionIDs = sectionIDsAffected(
+            by: PPHomeBridgeSource.petProfiles.rawValue
+        )
+        let previousFingerprints = sectionPresentationFingerprints(
+            for: candidateSectionIDs
+        )
+
+        let applySelection = {
+            self.state.selectedPetID = pet.id
+            UserDefaults.standard.set(pet.id, forKey: Self.selectedPetKey)
+            if pet.categoryID > 0,
+               self.state.categories.contains(where: {
+                   HomeModelAdapter.mainKindID($0.raw) == pet.categoryID
+               }) {
+                self.state.selectedMainKindID = pet.categoryID
+                UserDefaults.standard.set(
+                    pet.categoryID,
+                    forKey: Self.selectedMainKindKey
+                )
+            }
+            self.rebuildState()
         }
-        rebuildState()
+
+        // The re-composition is the causal story: the page just re-scoped to
+        // this pet. Reduce Motion keeps the same outcome without movement.
+        if UIAccessibility.isReduceMotionEnabled {
+            applySelection()
+        } else {
+            withAnimation(Self.petContextSwitchAnimation) {
+                applySelection()
+            }
+        }
+
+        queueOrPublishSectionDataReload(
+            changedSectionIDs(
+                in: candidateSectionIDs,
+                comparedWith: previousFingerprints
+            )
+        )
+
         UISelectionFeedbackGenerator().selectionChanged()
         UIAccessibility.post(
             notification: .announcement,
@@ -1063,6 +1153,7 @@ final class HomeStore: ObservableObject {
 
     private func rebuildState() {
         let previousHeroIDs = state.heroPages.map(\.id)
+        let previousPromotionIDs = state.promotionPages.map(\.id)
         state.categories = HomeModelAdapter.categories(from: mainKinds)
         state.pets = HomeModelAdapter.pets(from: petProfiles)
 
@@ -1112,6 +1203,14 @@ final class HomeStore: ObservableObject {
                 state.heroPages.count - 1
             )
         }
+        if state.promotionPages.isEmpty {
+            promotionIndex = 0
+        } else {
+            promotionIndex = min(
+                max(promotionIndex, 0),
+                state.promotionPages.count - 1
+            )
+        }
         state.priorityActions = buildPriorityActions()
         state.featuredOrder = HomeModelAdapter.featuredOrder(from: recentOrders)
         state.sections = buildSections()
@@ -1119,6 +1218,9 @@ final class HomeStore: ObservableObject {
         updateScreenPhase()
         if previousHeroIDs != state.heroPages.map(\.id) {
             restartHeroRotation()
+        }
+        if previousPromotionIDs != state.promotionPages.map(\.id) {
+            restartPromotionRotation()
         }
     }
 
@@ -1452,6 +1554,25 @@ final class HomeStore: ObservableObject {
                 systemImage: "cross.case.fill",
                 accent: UIColor(red: 0.31, green: 0.53, blue: 0.70, alpha: 1.0),
                 destination: .veterinary
+            ),
+            // Services (grooming / training). Its destination was already
+            // routed (`HomePriorityDestination.services` →
+            // `HomeRouter.openServices`) and both string tables already carried
+            // the copy; only the action itself was missing, so Home never
+            // surfaced the destination.
+            HomePriorityAction(
+                id: "services",
+                title: HomeModelAdapter.localized(
+                    "home_pulse_priority_services",
+                    fallback: "Services"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "home_pulse_priority_services_subtitle",
+                    fallback: "Grooming & training"
+                ),
+                systemImage: "hands.sparkles.fill",
+                accent: .ppQuickActionServices,
+                destination: .services
             ),
         ]
     }
@@ -2143,6 +2264,23 @@ final class HomeStore: ObservableObject {
         }
     }
 
+    private func pausePromotionForNavigation() {
+        promotionPauseGeneration += 1
+        let generation = promotionPauseGeneration
+        promotionInteractionActive = true
+        restartPromotionRotation()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self,
+                  generation == self.promotionPauseGeneration,
+                  self.visible
+            else {
+                return
+            }
+            self.promotionInteractionActive = false
+            self.restartPromotionRotation()
+        }
+    }
+
     private func restartHeroRotation() {
         heroRotationTask?.cancel()
         heroRotationTask = nil
@@ -2164,6 +2302,51 @@ final class HomeStore: ObservableObject {
                 guard !Task.isCancelled, let self else { return }
                 self.advanceHero()
             }
+        }
+    }
+
+    /// The offer carousel is data-driven. Its timer belongs to the long-lived
+    /// Home store rather than the transient stage body so a cache-to-live
+    /// update (one card to several cards) cannot strand the visible page.
+    private func restartPromotionRotation() {
+        promotionRotationTask?.cancel()
+        promotionRotationTask = nil
+        promotionRotationGeneration += 1
+        let rotationGeneration = promotionRotationGeneration
+        guard visible,
+              sceneActive,
+              !promotionInteractionActive,
+              !voiceOverRunning,
+              !switchControlRunning,
+              !reduceMotion,
+              state.promotionPages.count > 1
+        else {
+            return
+        }
+
+        let page = state.promotionPages[promotionIndex]
+        let interval = max(2.0, page.autoScrollInterval)
+        promotionRotationTask = Task { @MainActor [weak self] in
+            do {
+                try await Task<Never, Never>.sleep(
+                    nanoseconds: UInt64(interval * 1_000_000_000)
+                )
+            } catch {
+                return
+            }
+            guard !Task.isCancelled,
+                  let self,
+                  rotationGeneration == self.promotionRotationGeneration,
+                  self.visible,
+                  self.sceneActive,
+                  !self.promotionInteractionActive,
+                  !self.voiceOverRunning,
+                  !self.switchControlRunning,
+                  !self.reduceMotion
+            else {
+                return
+            }
+            self.advancePromotion()
         }
     }
 
@@ -2217,6 +2400,19 @@ final class HomeStore: ObservableObject {
             ) { [weak self] _ in
                 Task { @MainActor [weak self] in
                     self?.setVoiceOverRunning(UIAccessibility.isVoiceOverRunning)
+                }
+            }
+        )
+        observers.append(
+            center.addObserver(
+                forName: UIAccessibility.switchControlStatusDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.setSwitchControlRunning(
+                        UIAccessibility.isSwitchControlRunning
+                    )
                 }
             }
         )

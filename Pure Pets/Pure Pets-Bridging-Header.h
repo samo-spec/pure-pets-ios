@@ -23,6 +23,7 @@
 #import "PPPetProfile.h"
 #import "PPPetProfilesViewController.h"
 #import "PetAccessoryManager.h"
+#import "MainApp/Accessories/AccessFiles/PPProviderCompanyPremiumCardCell.h"
 
 #import <IQKeyboardManager/IQKeyboardManager.h>
 #import "DesignFiles/PP/PPStyles/PPHUD.h"

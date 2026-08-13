@@ -17,8 +17,6 @@ static CGFloat const kOrderDetailsButtonCornerRadius = 22.0;
 static CGFloat const kOrderDetailsContentBottomInset = 132.0;
 
 static CGFloat const kOrderDetailsSectionSpacing = 12.0;
-static CGFloat const kOrderDetailsTopGlowRestingAlpha = 0.98;
-static CGFloat const kOrderDetailsBottomGlowRestingAlpha = 0.96;
 static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
 static NSInteger const kOrderSupportComposerMaxAttachments = 4;
 

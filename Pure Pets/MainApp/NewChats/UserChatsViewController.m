@@ -25,7 +25,9 @@
 static const CGFloat PPChatStoriesHeaderHiddenHeight = 8.0;
 static const CGFloat PPChatStoriesHeaderVisibleHeight = 208.0;
 static const CGFloat PPChatListContentTopInset = 10.0;
-static const CGFloat PPChatListContentBottomInset = 128.0;
+// The root tab controller owns the floating Command Deck clearance and applies
+// its measured value to visible lists. This is only the list's base spacing.
+static const CGFloat PPChatListBaseBottomInset = PPSpaceMD;
 static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 static const CGFloat PPChatInboxHeaderSideInset = 18.0;
 static const CGFloat PPChatInboxHeaderTopInset = 8.0;
@@ -226,7 +228,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.delaysContentTouches = NO;
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.tableView.contentInset = UIEdgeInsetsMake(PPChatListContentTopInset, 0.0, PPChatListContentBottomInset, 0.0);
+    self.tableView.contentInset = UIEdgeInsetsMake(PPChatListContentTopInset, 0.0, PPChatListBaseBottomInset, 0.0);
     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAlways;
     self.tableView.tableFooterView = [UIView new];
@@ -253,12 +255,12 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     }
     UIEdgeInsets contentInset = self.tableView.contentInset;
     contentInset.top = PPChatListContentTopInset;
-    contentInset.bottom = MAX(contentInset.bottom, PPChatListContentBottomInset);
+    contentInset.bottom = MAX(contentInset.bottom, PPChatListBaseBottomInset);
     self.tableView.contentInset = contentInset;
 
     UIEdgeInsets indicatorInset = self.tableView.scrollIndicatorInsets;
     indicatorInset.top = PPChatListContentTopInset;
-    indicatorInset.bottom = MAX(indicatorInset.bottom, PPChatListContentBottomInset);
+    indicatorInset.bottom = MAX(indicatorInset.bottom, PPChatListBaseBottomInset);
     self.tableView.scrollIndicatorInsets = indicatorInset;
 }
 

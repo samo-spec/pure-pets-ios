@@ -723,9 +723,14 @@ struct HomePetSwitcher: View {
                     }
                 }
                 .padding(.horizontal, PPSpace.screenMargin)
-                .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                // The pill shadow reaches ~28pt below its frame. Pre-iOS 17
+                // this padding is the only room it has; from iOS 17 the scroll
+                // clip is lifted so the elevation is never sliced.
+                .padding(.top, dynamicTypeSize.isAccessibilitySize ? 8 : 6)
+                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 18 : 16)
             }
             .contentMarginsCompat()
+            .scrollShadowClipDisabledCompat()
         }
     }
 }
@@ -3942,6 +3947,21 @@ private extension View {
     func contentMarginsCompat() -> some View {
         if #available(iOS 17.0, *) {
             self.contentMargins(.horizontal, 0, for: .scrollContent)
+        } else {
+            self
+        }
+    }
+
+    /// Lets soft cell elevation render outside the scroll viewport.
+    ///
+    /// A horizontal `ScrollView` clips to its own bounds, which cuts the
+    /// elevation of cells that carry a shadow larger than the scroll content
+    /// padding. Disabling the scroll clip keeps the cells' own geometry intact
+    /// while allowing only their shadow to bleed.
+    @ViewBuilder
+    func scrollShadowClipDisabledCompat() -> some View {
+        if #available(iOS 17.0, *) {
+            self.scrollClipDisabled()
         } else {
             self
         }

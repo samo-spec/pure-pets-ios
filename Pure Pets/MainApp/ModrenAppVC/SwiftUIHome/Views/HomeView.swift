@@ -34,10 +34,6 @@ struct HomeView: View {
     @State private var pureLensContentMotionReady = false
     @State private var pureLensSignalStoryPlayed = false
     @State private var presentedOrder: HomeOrderModel?
-    /// Local paging index for the campaign lane. `HomeStore` owns hero rotation
-    /// for its own pet-context pages; it publishes no promotion index, so the
-    /// presentation owns this one and nothing else.
-    @State private var campaignIndex = 0
 
     private let topAnchor = "pp-home-top"
 
@@ -119,10 +115,6 @@ struct HomeView: View {
                 store.setReduceMotion(value)
             }
         }
-        .onChange(of: store.state.promotionPages.map(\.id)) { identifiers in
-            guard campaignIndex >= identifiers.count else { return }
-            campaignIndex = max(0, identifiers.count - 1)
-        }
     }
 
     // MARK: Content
@@ -177,13 +169,11 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, verticalPadding(for: row))
                     .background(band(for: row))
-                    .homeSectionEntrance(
+                    .homeResolvedSectionEntrance(
                         isVisible: loadedEntranceVisible,
                         sectionIndex: index,
-                        reduceMotion: reduceMotion
-                    )
-                    .homeVerticalSectionReveal(
-                        entranceAlreadyPlayed: loadedEntranceVisible
+                        reduceMotion: reduceMotion,
+                        usesEcosystemMotion: row.zone == .ecosystemLauncher
                     )
                     .homeSectionDataReload(
                         revision: row.rawID.map(store.sectionDataRevision) ?? 0,
@@ -195,29 +185,43 @@ struct HomeView: View {
         .onAppear(perform: startLoadedEntranceIfNeeded)
     }
 
-    /// Zone precedence is the product hierarchy. Order *inside* a zone is the
-    /// Console order the resolver preserved.
+    /// `AppConfigCol/HomeConfig.sections` is the Console's persisted ordering
+    /// authority. The resolver assigns a presentation zone for visual treatment
+    /// and bounds, but it must not move a configured module ahead of another
+    /// configured module. In particular, raw section `1` (Explore Pure Pets)
+    /// now follows an operator's Home Control drag position.
     private func renderRows(
         for resolvedPlan: PPHomePresentationPlan
     ) -> [HomeRenderRow] {
         var rows: [HomeRenderRow] = []
-        let orderedZones: [PPHomeZoneID] = [
-            .marketingStage, .ecosystemLauncher, .livePriority,
-            .commerceDiscovery,
-        ]
+        var modulesByRawID: [
+            Int: (zone: PPHomeZoneID, module: PPHomeModule)
+        ] = [:]
 
-        for zone in orderedZones {
-            for module in resolvedPlan.modules(in: zone) {
-                rows.append(
-                    HomeRenderRow(
-                        id: "\(zone.rawValue)-\(module.rawID)",
-                        zone: zone,
-                        content: .module(module)
-                    )
-                )
+        for zone in resolvedPlan.zones where zone.id != .commandSurface {
+            for module in zone.modules {
+                modulesByRawID[module.rawID] = (zone.id, module)
             }
         }
 
+        // Removing the module as it is emitted preserves the resolver's
+        // duplicate suppression if malformed legacy configuration repeats an
+        // identifier.
+        for rawID in store.state.config.orderedSectionIDs {
+            guard let resolved = modulesByRawID.removeValue(forKey: rawID)
+            else { continue }
+            rows.append(
+                HomeRenderRow(
+                    id: "\(resolved.zone.rawValue)-\(resolved.module.rawID)",
+                    zone: resolved.zone,
+                    content: .module(resolved.module)
+                )
+            )
+        }
+
+        // This is not a Home Control section: it is an in-app recovery surface
+        // for bounded modules. It therefore follows all operator-configured
+        // sections instead of being assigned a fabricated Console position.
         if !exploreMoreEntries(for: resolvedPlan).isEmpty {
             rows.append(
                 HomeRenderRow(
@@ -361,7 +365,6 @@ struct HomeView: View {
                 pages: store.state.heroPages,
                 selectedIndex: store.state.selectedHeroIndex,
                 discloseCampaign: false,
-                autoAdvances: false,
                 onSelect: store.selectHero,
                 onPrimary: store.performHeroAction,
                 onSecondary: store.performHeroSecondaryAction,
@@ -371,13 +374,12 @@ struct HomeView: View {
         case .promotions:
             PPHomeMarketingStage(
                 pages: store.state.promotionPages,
-                selectedIndex: clampedCampaignIndex,
+                selectedIndex: store.promotionIndex,
                 discloseCampaign: true,
-                autoAdvances: true,
-                onSelect: { campaignIndex = $0 },
+                onSelect: store.selectPromotion,
                 onPrimary: store.performHeroAction,
                 onSecondary: store.performHeroSecondaryAction,
-                onInteractionChanged: { _ in }
+                onInteractionChanged: store.setPromotionInteractionActive
             )
 
         case .marketplace:
@@ -386,7 +388,6 @@ struct HomeView: View {
                     pages: [page],
                     selectedIndex: 0,
                     discloseCampaign: false,
-                    autoAdvances: false,
                     onSelect: { _ in },
                     onPrimary: store.performHeroAction,
                     onSecondary: store.performHeroSecondaryAction,
@@ -394,12 +395,6 @@ struct HomeView: View {
                 )
             }
         }
-    }
-
-    private var clampedCampaignIndex: Int {
-        let count = store.state.promotionPages.count
-        guard count > 0 else { return 0 }
-        return min(max(campaignIndex, 0), count - 1)
     }
 
     // MARK: Zone 5 helpers
@@ -597,7 +592,6 @@ struct HomeView: View {
                 pages: [],
                 selectedIndex: 0,
                 discloseCampaign: false,
-                autoAdvances: false,
                 onSelect: { _ in },
                 onPrimary: { _ in },
                 onSecondary: { _ in },
@@ -1132,6 +1126,108 @@ private struct HomeSectionEntranceModifier: ViewModifier {
     }
 }
 
+/// Selects exactly one section-entrance owner. The ecosystem launcher uses its
+/// quieter, product-specific settle; every other Home row keeps the established
+/// initial and viewport entrance behavior unchanged.
+private struct HomeResolvedSectionEntranceModifier: ViewModifier {
+    let isVisible: Bool
+    let sectionIndex: Int
+    let reduceMotion: Bool
+    let usesEcosystemMotion: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if usesEcosystemMotion {
+            content.modifier(
+                HomeEcosystemEntranceModifier(
+                    isVisible: isVisible,
+                    sectionIndex: sectionIndex,
+                    reduceMotion: reduceMotion
+                )
+            )
+        } else {
+            content
+                .modifier(HomeSectionEntranceModifier(
+                    isVisible: isVisible,
+                    sectionIndex: sectionIndex,
+                    reduceMotion: reduceMotion
+                ))
+                .modifier(HomeVerticalSectionReveal(
+                    entranceAlreadyPlayed: isVisible
+                ))
+        }
+    }
+}
+
+/// A single restrained entrance for the connected ecosystem surface.
+///
+/// It replaces, rather than layers over, Home's generic scale-and-rise reveal:
+/// opacity plus an 8pt vertical settle communicate hierarchy without making a
+/// five-action navigation surface feel unstable. Home's existing loaded-state
+/// visibility is the sole entrance driver; accessibility and lifecycle changes
+/// move the phase to rest without starting a second animation owner.
+private struct HomeEcosystemEntranceModifier: ViewModifier {
+    let isVisible: Bool
+    let sectionIndex: Int
+    let reduceMotion: Bool
+
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @State private var settledAfterDisappearance = false
+
+    func body(content: Content) -> some View {
+        let currentPhase = phase
+        return content
+            .opacity(currentPhase == .staged ? 0 : 1)
+            .offset(y: currentPhase == .staged ? 8 : 0)
+            .animation(
+                currentPhase == .presented ? entranceAnimation : nil,
+                value: currentPhase
+            )
+            .onDisappear(perform: settleAfterDisappearance)
+    }
+
+    private var phase: Phase {
+        if motionSuppressed { return .settled }
+        return isVisible ? .presented : .staged
+    }
+
+    private var motionSuppressed: Bool {
+        reduceMotion ||
+            voiceOverEnabled ||
+            switchControlEnabled ||
+            scenePhase != .active ||
+            settledAfterDisappearance
+    }
+
+    private var entranceAnimation: Animation {
+        .spring(
+            response: 0.34,
+            dampingFraction: 0.90,
+            blendDuration: 0.04
+        )
+        .delay(HomeSectionEntranceMotion.staggerDelay(
+            sectionIndex: sectionIndex
+        ))
+    }
+
+    private func settleAfterDisappearance() {
+        guard !settledAfterDisappearance else { return }
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            settledAfterDisappearance = true
+        }
+    }
+
+    private enum Phase: Equatable {
+        case staged
+        case presented
+        case settled
+    }
+}
+
 // MARK: - HomeVerticalSectionReveal — willDisplaySection equivalent
 
 /// World-class scroll-in animation for sections inside the vertical home feed.
@@ -1511,23 +1607,17 @@ private extension View {
         ))
     }
 
-    func homeSectionEntrance(
+    func homeResolvedSectionEntrance(
         isVisible: Bool,
         sectionIndex: Int,
-        reduceMotion: Bool
+        reduceMotion: Bool,
+        usesEcosystemMotion: Bool
     ) -> some View {
-        modifier(HomeSectionEntranceModifier(
+        modifier(HomeResolvedSectionEntranceModifier(
             isVisible: isVisible,
             sectionIndex: sectionIndex,
-            reduceMotion: reduceMotion
-        ))
-    }
-
-    func homeVerticalSectionReveal(
-        entranceAlreadyPlayed: Bool
-    ) -> some View {
-        modifier(HomeVerticalSectionReveal(
-            entranceAlreadyPlayed: entranceAlreadyPlayed
+            reduceMotion: reduceMotion,
+            usesEcosystemMotion: usesEcosystemMotion
         ))
     }
 

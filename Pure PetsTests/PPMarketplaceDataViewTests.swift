@@ -171,6 +171,77 @@ final class PPMarketplaceDataViewTests: XCTestCase {
         XCTAssertEqual(ltr, rtl)
     }
 
+    func testHeaderV2CollapseUsesOneClampedScrollProgress() {
+        XCTAssertEqual(
+            PPMarketplaceHeaderV2ScrollMetrics.progress(for: 40),
+            0
+        )
+        XCTAssertEqual(
+            PPMarketplaceHeaderV2ScrollMetrics.progress(
+                for: -PPMarketplaceHeaderV2ScrollMetrics.collapseDistance / 2
+            ),
+            0.5,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceHeaderV2ScrollMetrics.progress(for: -10_000),
+            1
+        )
+    }
+
+    func testHeaderV2ReduceMotionKeepsOneActiveRepresentation() {
+        let threshold =
+            PPMarketplaceHeaderV2ScrollMetrics.compactActivationProgress
+
+        XCTAssertEqual(
+            PPMarketplaceHeaderV2ScrollMetrics.expandedVisibility(
+                for: threshold - 0.01,
+                reduceMotion: true
+            ),
+            1
+        )
+        XCTAssertEqual(
+            PPMarketplaceHeaderV2ScrollMetrics.compactVisibility(
+                for: threshold - 0.01,
+                reduceMotion: true
+            ),
+            0
+        )
+        XCTAssertEqual(
+            PPMarketplaceHeaderV2ScrollMetrics.expandedVisibility(
+                for: threshold,
+                reduceMotion: true
+            ),
+            0
+        )
+        XCTAssertEqual(
+            PPMarketplaceHeaderV2ScrollMetrics.compactVisibility(
+                for: threshold,
+                reduceMotion: true
+            ),
+            1
+        )
+    }
+
+    func testHeaderV2ControlsMeetMinimumTargetAndKeepEverySection() {
+        XCTAssertGreaterThanOrEqual(
+            PPMarketplaceHeaderV2Geometry.expandedControlSize,
+            PPMarketplaceHeaderV2Geometry.minimumTouchTarget
+        )
+        XCTAssertGreaterThanOrEqual(
+            PPMarketplaceHeaderV2Geometry.compactControlSize,
+            PPMarketplaceHeaderV2Geometry.minimumTouchTarget
+        )
+        XCTAssertGreaterThanOrEqual(
+            PPMarketplaceHeaderV2Geometry.expandedSearchHeight,
+            PPMarketplaceHeaderV2Geometry.minimumTouchTarget
+        )
+        XCTAssertEqual(
+            PPMarketplaceSectionDescriptor.all.map(\.rawValue),
+            [0, 1, 2, 3]
+        )
+    }
+
     private func makeFixture() -> (
         bridge: PPMarketplaceDataViewBridge,
         viewModel: PPDataViewVM

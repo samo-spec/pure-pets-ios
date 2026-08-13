@@ -182,7 +182,6 @@ private struct PPPetEditorTextField: View {
                     tint: focusedField == field ? Color.ppSoftRose.opacity(0.50) : Color.ppSurface,
                     elevation: false
                 )
-                .animation(.easeOut(duration: 0.16), value: focusedField == field)
         }
     }
 }
@@ -191,8 +190,6 @@ private struct PPPetIdentityHeader: View {
     @ObservedObject var store: PPPetProfileEditorStore
     let isEditing: Bool
     let onPhoto: () -> Void
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var identityTitle: String {
         let value = store.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -214,7 +211,6 @@ private struct PPPetIdentityHeader: View {
                                 .scaledToFill()
                                 .frame(width: 106, height: 106)
                                 .clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
-                                .transition(.opacity)
                         } else {
                             Image(systemName: "pawprint.fill")
                                 .font(.system(size: 38, weight: .medium))
@@ -259,7 +255,6 @@ private struct PPPetIdentityHeader: View {
                             .font(PPPetProfileFont.medium())
                             .foregroundStyle(Color.ppTextSecondary)
                             .lineLimit(2)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
                         Text(PPPetLang("pet_photo_tap"))
                             .font(PPPetProfileFont.footnote())
@@ -289,7 +284,6 @@ private struct PPPetIdentityHeader: View {
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
                         .background(Color.ppPremiumAccent.opacity(0.15), in: Capsule())
-                        .transition(.scale.combined(with: .opacity))
                 }
 
                 Spacer(minLength: 0)
@@ -297,8 +291,6 @@ private struct PPPetIdentityHeader: View {
         }
         .padding(20)
         .ppPetSurface(radius: 30, tint: Color.ppSurfaceRaised, elevation: true)
-        .animation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.84), value: store.name)
-        .animation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.84), value: store.breed)
     }
 }
 
@@ -375,7 +367,6 @@ private struct PPPetDefaultSetting: View {
             tint: store.isDefault ? Color.ppPremiumAccent.opacity(0.10) : Color.ppSurface,
             elevation: false
         )
-        .animation(.easeOut(duration: 0.18), value: store.isDefault)
         .accessibilityValue(store.isDefault ? PPPetLang("Enabled") : PPPetLang("Disabled"))
     }
 }
@@ -388,32 +379,33 @@ private struct PPPetVaccinationSummary: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(PPPetLang("pet_section_vaccinations"))
-                    .font(PPPetProfileFont.headline())
-                    .foregroundStyle(Color.ppTextPrimary)
-                Spacer(minLength: 12)
-                Text(PPPetCountText("pet_profiles_vaccine_count_format", count: store.vaccinations.count))
-                    .font(PPPetProfileFont.footnote())
-                    .foregroundStyle(Color.ppCareAccent)
-            }
+            Text(PPPetCountText("pet_profiles_vaccine_count_format", count: store.vaccinations.count))
+                .font(PPPetProfileFont.footnote())
+                .foregroundStyle(Color.ppCareAccent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.ppCareAccent.opacity(0.10), in: Capsule())
 
             if store.vaccinations.isEmpty {
-                HStack(spacing: 10) {
+                HStack(alignment: .top, spacing: 11) {
                     Image(systemName: "cross.case")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Color.ppTextSecondary)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.ppCareAccent)
+                        .frame(width: 34, height: 34)
+                        .background(Color.ppCareAccent.opacity(0.10), in: Circle())
                         .accessibilityHidden(true)
                     Text(PPPetLang("pet_vaccine_no_date"))
                         .font(PPPetProfileFont.footnote())
                         .foregroundStyle(Color.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
-                .padding(.vertical, 6)
+                .padding(.vertical, 4)
             } else {
-                ForEach(Array(store.vaccinations.enumerated()), id: \.element.id) { index, vaccination in
-                    HStack(alignment: .top, spacing: 11) {
-                        Button(action: { onEdit(index) }) {
+                ForEach(store.vaccinations) { vaccination in
+                    if let index = store.vaccinations.firstIndex(where: { $0.id == vaccination.id }) {
+                        HStack(alignment: .top, spacing: 11) {
+                            Button(action: { onEdit(index) }) {
                             HStack(alignment: .top, spacing: 11) {
                                 Image(systemName: "cross.case.fill")
                                     .font(.system(size: 15, weight: .semibold))
@@ -441,21 +433,22 @@ private struct PPPetVaccinationSummary: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .contentShape(Rectangle())
-                        }
-                        .buttonStyle(PPPetProfilePressStyle())
-                        .accessibilityLabel(vaccination.name.isEmpty ? PPPetLang("pet_vaccine_name") : vaccination.name)
-                        .accessibilityValue(vaccination.dateSummary)
-                        .accessibilityHint(PPPetLang("Edit"))
+                            }
+                            .buttonStyle(PPPetProfilePressStyle())
+                            .accessibilityLabel(vaccination.name.isEmpty ? PPPetLang("pet_vaccine_name") : vaccination.name)
+                            .accessibilityValue(vaccination.dateSummary)
+                            .accessibilityHint(PPPetLang("Edit"))
 
-                        Button(role: .destructive, action: { onDelete(index) }) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 15, weight: .semibold))
-                                .frame(width: PPPetProfileMetrics.minimumHitSize, height: PPPetProfileMetrics.minimumHitSize)
+                            Button(role: .destructive, action: { onDelete(index) }) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(width: PPPetProfileMetrics.minimumHitSize, height: PPPetProfileMetrics.minimumHitSize)
+                            }
+                            .buttonStyle(PPPetProfilePressStyle())
+                            .accessibilityLabel(PPPetLang("Delete"))
                         }
-                        .buttonStyle(PPPetProfilePressStyle())
-                        .accessibilityLabel(PPPetLang("Delete"))
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
                 }
             }
 
@@ -516,6 +509,371 @@ private struct PPPetEditorSaveBar: View {
 
 // MARK: - Add/Edit screen
 
+private struct PPPetEditorV4NavigationBar: View {
+    let title: String
+    let canSave: Bool
+    let isSaving: Bool
+    let onBack: () -> Void
+    let onSave: () -> Void
+
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: onBack) {
+                Image(systemName: layoutDirection == .rightToLeft ? "chevron.right" : "chevron.left")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.ppSurface, in: Circle())
+                    .overlay(Circle().stroke(Color.ppSurfaceBorder.opacity(0.70), lineWidth: 0.8))
+            }
+            .buttonStyle(PPPetProfilePressStyle())
+            .accessibilityLabel(PPPetLang("Back"))
+
+            Text(title)
+                .font(PPPetProfileFont.title())
+                .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+                .accessibilityAddTraits(.isHeader)
+
+            Button(action: onSave) {
+                Group {
+                    if isSaving {
+                        ProgressView().tint(.ppPrimary)
+                    } else {
+                        Text(PPPetLang("Save"))
+                    }
+                }
+                .font(PPPetProfileFont.medium())
+                .foregroundStyle(canSave ? Color.ppPrimary : Color.ppTextSecondary)
+                .frame(minWidth: 54, minHeight: 44)
+            }
+            .buttonStyle(PPPetProfilePressStyle())
+            .disabled(!canSave)
+            .accessibilityLabel(PPPetLang("Save"))
+        }
+        .padding(.horizontal, PPPetProfileMetrics.screenMargin)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(Color.ppBackground.opacity(0.97))
+    }
+}
+
+private struct PPPetEditorV4Hero: View {
+    @ObservedObject var store: PPPetProfileEditorStore
+    let isEditing: Bool
+    let onPhoto: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var identityTitle: String {
+        let value = store.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? PPPetLang("pet_profiles_add_first") : value
+    }
+
+    private var hasImage: Bool {
+        store.selectedImage != nil || store.remoteImage != nil
+    }
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityLayout
+            } else {
+                compactLayout
+            }
+        }
+        .padding(dynamicTypeSize.isAccessibilitySize ? 18 : 16)
+        .ppPetSurface(radius: 28, tint: Color.ppSurfaceRaised, elevation: true)
+    }
+
+    private var compactLayout: some View {
+        HStack(alignment: .center, spacing: 16) {
+            photoButton(side: 108)
+            identityCopy
+        }
+    }
+
+    private var accessibilityLayout: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            photoButton(side: 96)
+            identityCopy
+        }
+    }
+
+    private func photoButton(side: CGFloat) -> some View {
+        Button(action: onPhoto) {
+            ZStack(alignment: .bottomTrailing) {
+                RoundedRectangle(cornerRadius: side * 0.28, style: .continuous)
+                    .fill(Color.ppSoftRose.opacity(0.58))
+
+                if let image = store.selectedImage ?? store.remoteImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .clipShape(RoundedRectangle(cornerRadius: side * 0.24, style: .continuous))
+                        .padding(4)
+                } else {
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: side * 0.34, weight: .medium))
+                        .foregroundStyle(Color.ppPrimary.opacity(0.72))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: side * 0.24, style: .continuous))
+                        .padding(4)
+                }
+
+                Image(systemName: hasImage ? "camera.fill" : "plus")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 38, height: 38)
+                    .background(Color.ppPrimary, in: Circle())
+                    .overlay(Circle().stroke(Color.ppSurfaceRaised, lineWidth: 3))
+                    .offset(x: 4, y: 4)
+            }
+            .frame(width: side, height: side)
+        }
+        .buttonStyle(PPPetProfilePressStyle())
+        .accessibilityLabel(PPPetLang(hasImage ? "pet_photo_change" : "pet_photo_pick"))
+        .accessibilityHint(PPPetLang("pet_photo_tap"))
+    }
+
+    private var identityCopy: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Label(
+                isEditing ? PPPetLang("pet_edit_title") : PPPetLang("pet_add_title"),
+                systemImage: "pawprint.fill"
+            )
+            .font(PPPetProfileFont.caption())
+            .foregroundStyle(Color.ppPrimary)
+
+            Text(identityTitle)
+                .font(PPPetProfileFont.title())
+                .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Label(
+                store.breed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? PPPetLang("pet_photo_tap")
+                    : store.breed,
+                systemImage: "circle.hexagongrid.fill"
+            )
+            .font(PPPetProfileFont.footnote())
+            .foregroundStyle(Color.ppTextSecondary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 7) {
+                Label(
+                    PPPetCountText("pet_profiles_vaccine_count_format", count: store.vaccinations.count),
+                    systemImage: "cross.case.fill"
+                )
+                .font(PPPetProfileFont.footnote())
+                .foregroundStyle(Color.ppCareAccent)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Color.ppCareAccent.opacity(0.10), in: Capsule())
+
+                if store.isDefault {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.ppPremiumAccent)
+                        .frame(width: 28, height: 28)
+                        .background(Color.ppPremiumAccent.opacity(0.12), in: Circle())
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct PPPetEditorV4Field<Content: View>: View {
+    let title: String
+    let content: () -> Content
+
+    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(PPPetProfileFont.caption())
+                .foregroundStyle(Color.ppTextSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            content()
+        }
+    }
+}
+
+private struct PPPetEditorV4TextField: View {
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+    let field: PPPetEditorField
+    @FocusState.Binding var focusedField: PPPetEditorField?
+    let keyboardType: UIKeyboardType
+    let onChanged: (String) -> Void
+
+    var body: some View {
+        PPPetEditorV4Field(title: title) {
+            TextField(placeholder, text: $text)
+                .font(PPPetProfileFont.body())
+                .foregroundStyle(Color.ppTextPrimary)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(true)
+                .keyboardType(keyboardType)
+                .focused($focusedField, equals: field)
+                .submitLabel(field == .name ? .next : .done)
+                .onChange(of: text) { value in onChanged(value) }
+                .onSubmit {
+                    focusedField = field == .name ? .age : nil
+                }
+                .padding(.horizontal, 16)
+                .frame(minHeight: 56)
+                .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(
+                            focusedField == field ? Color.ppPrimary.opacity(0.72) : Color.ppSurfaceBorder.opacity(0.70),
+                            lineWidth: focusedField == field ? 1.4 : 0.8
+                        )
+                )
+        }
+    }
+}
+
+private struct PPPetEditorV4CategoryField: View {
+    let title: String
+    let value: String
+    let placeholder: String
+    let action: () -> Void
+
+    var body: some View {
+        PPPetEditorV4Field(title: title) {
+            Button(action: action) {
+                HStack(spacing: 12) {
+                    Text(value.isEmpty ? placeholder : value)
+                        .font(PPPetProfileFont.body())
+                        .foregroundStyle(value.isEmpty ? Color.ppTextSecondary : Color.ppTextPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .frame(width: 40, height: 40)
+                        .accessibilityHidden(true)
+                }
+                .padding(.leading, 16)
+                .padding(.trailing, 4)
+                .frame(minHeight: 56)
+                .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(Color.ppSurfaceBorder.opacity(0.70), lineWidth: 0.8)
+                )
+            }
+            .buttonStyle(PPPetProfilePressStyle())
+            .accessibilityLabel(title)
+            .accessibilityValue(value.isEmpty ? placeholder : value)
+            .accessibilityHint(PPPetLang("Select"))
+        }
+    }
+}
+
+private struct PPPetEditorV4Setting: View {
+    @ObservedObject var store: PPPetProfileEditorStore
+    let onChanged: (Bool) -> Void
+
+    var body: some View {
+        Toggle(
+            isOn: Binding(
+                get: { store.isDefault },
+                set: { value in
+                    store.isDefault = value
+                    onChanged(value)
+                }
+            )
+        ) {
+            Label {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(PPPetLang("pet_default_toggle"))
+                        .font(PPPetProfileFont.body())
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Text(PPPetLang("pet_profiles_default_badge"))
+                        .font(PPPetProfileFont.footnote())
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+            } icon: {
+                Image(systemName: "star.circle.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Color.ppPremiumAccent)
+            }
+        }
+        .toggleStyle(SwitchToggleStyle(tint: .ppPrimary))
+        .padding(.horizontal, 16)
+        .frame(minHeight: 76)
+        .background(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .fill(store.isDefault ? Color.ppPremiumAccent.opacity(0.10) : Color.ppSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .stroke(Color.ppSurfaceBorder.opacity(0.70), lineWidth: 0.8)
+        )
+        .accessibilityValue(store.isDefault ? PPPetLang("Enabled") : PPPetLang("Disabled"))
+    }
+}
+
+private struct PPPetEditorV4SaveBar: View {
+    @ObservedObject var store: PPPetProfileEditorStore
+    let onSave: () -> Void
+
+    var body: some View {
+        Button(action: onSave) {
+            HStack(spacing: 10) {
+                if store.isSaving {
+                    ProgressView().tint(.white)
+                } else if store.saveSucceeded {
+                    Image(systemName: "checkmark")
+                } else {
+                    Image(systemName: "checkmark.circle.fill")
+                }
+                Text(
+                    store.isSaving
+                        ? PPPetLang("please_wait")
+                        : store.saveSucceeded
+                            ? PPPetLang("Done")
+                            : PPPetLang("Save")
+                )
+            }
+        }
+        .buttonStyle(PPPetProfilePrimaryButtonStyle())
+        .disabled(!store.canSave && !store.saveSucceeded)
+        .accessibilityLabel(
+            store.isSaving
+                ? PPPetLang("please_wait")
+                : store.saveSucceeded ? PPPetLang("Done") : PPPetLang("Save")
+        )
+        .padding(.horizontal, PPPetProfileMetrics.screenMargin)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background(Color.ppBackground.opacity(0.98))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.ppSurfaceBorder.opacity(0.62))
+                .frame(height: 0.8)
+        }
+    }
+}
+
 struct PPPetProfileEditorScreen: View {
     @ObservedObject var store: PPPetProfileEditorStore
 
@@ -532,37 +890,23 @@ struct PPPetProfileEditorScreen: View {
     let onDeleteVaccination: (Int) -> Void
 
     @FocusState private var focusedField: PPPetEditorField?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         PPPetProfileCanvas {
             VStack(spacing: 0) {
-                PPPetProfileNavigationHeader(
+                PPPetEditorV4NavigationBar(
                     title: isEditing ? PPPetLang("pet_edit_title") : PPPetLang("pet_add_title"),
+                    canSave: store.canSave,
+                    isSaving: store.isSaving,
                     onBack: onBack,
-                    trailing: AnyView(
-                        Button(action: onSave) {
-                            Group {
-                                if store.isSaving {
-                                    ProgressView().tint(.ppPrimary)
-                                } else {
-                                    Text(PPPetLang("Save"))
-                                }
-                            }
-                            .font(PPPetProfileFont.medium())
-                            .foregroundStyle(store.canSave ? Color.ppPrimary : Color.ppTextSecondary)
-                            .frame(minWidth: PPPetProfileMetrics.minimumHitSize, minHeight: PPPetProfileMetrics.minimumHitSize)
-                            .padding(.horizontal, 4)
-                        }
-                        .buttonStyle(PPPetProfilePressStyle())
-                        .disabled(!store.canSave)
-                        .accessibilityLabel(PPPetLang("Save"))
-                    )
+                    onSave: onSave
                 )
 
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 28) {
-                            PPPetIdentityHeader(
+                        VStack(alignment: .leading, spacing: 26) {
+                            PPPetEditorV4Hero(
                                 store: store,
                                 isEditing: isEditing,
                                 onPhoto: onPhoto
@@ -578,7 +922,7 @@ struct PPPetProfileEditorScreen: View {
                                     )
                                 )
 
-                                PPPetEditorTextField(
+                                PPPetEditorV4TextField(
                                     title: PPPetLang("pet_field_name"),
                                     placeholder: PPPetLang("pet_name_placeholder"),
                                     text: $store.name,
@@ -589,14 +933,14 @@ struct PPPetProfileEditorScreen: View {
                                 )
                                 .id(PPPetEditorField.name)
 
-                                PPPetCategoryField(
+                                PPPetEditorV4CategoryField(
                                     title: PPPetLang("pet_field_breed"),
                                     value: store.breed,
                                     placeholder: PPPetLang("pet_breed_placeholder"),
                                     action: onBreed
                                 )
 
-                                PPPetEditorTextField(
+                                PPPetEditorV4TextField(
                                     title: PPPetLang(
                                         "pet_field_age_short",
                                         fallback: PPPetLang("pet_field_age")
@@ -619,7 +963,7 @@ struct PPPetProfileEditorScreen: View {
                                         fallback: PPPetLang("pet_default_toggle")
                                     )
                                 )
-                                PPPetDefaultSetting(store: store, onChanged: onDefaultChanged)
+                                PPPetEditorV4Setting(store: store, onChanged: onDefaultChanged)
                             }
 
                             VStack(alignment: .leading, spacing: 14) {
@@ -638,22 +982,24 @@ struct PPPetProfileEditorScreen: View {
                                 )
                             }
                         }
-                        .frame(maxWidth: 760)
+                        .frame(maxWidth: PPPetProfileMetrics.contentMaxWidth)
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, PPPetProfileMetrics.screenMargin)
-                        .padding(.top, 12)
-                        .padding(.bottom, 28)
+                        .padding(.top, 14)
+                        .padding(.bottom, 30)
                     }
+                    .scrollDismissesKeyboard(.interactively)
                     .onChange(of: focusedField) { field in
                         guard let field else { return }
-                        withAnimation(.easeOut(duration: 0.20)) {
+                        if reduceMotion {
                             proxy.scrollTo(field, anchor: .center)
+                        } else {
+                            withAnimation(.easeOut(duration: 0.20)) {
+                                proxy.scrollTo(field, anchor: .center)
+                            }
                         }
                     }
                 }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                PPPetEditorSaveBar(store: store, onSave: onSave)
             }
             .overlay {
                 if store.saveSucceeded {
@@ -668,14 +1014,10 @@ struct PPPetProfileEditorScreen: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 18)
                     .ppPetGlass(radius: 22, tint: Color.ppSuccess.opacity(0.12))
-                    .transition(.scale.combined(with: .opacity))
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(PPPetLang("Done"))
                 }
             }
-        }
-        .onTapGesture {
-            focusedField = nil
         }
         .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
         .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar_QA" : "en_QA"))
@@ -683,6 +1025,35 @@ struct PPPetProfileEditorScreen: View {
 }
 
 // MARK: - Vaccination sheet
+
+private struct PPPetVaccinationV5Card<Content: View>: View {
+    let title: String
+    let symbol: String
+    let content: () -> Content
+
+    init(
+        title: String,
+        symbol: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.symbol = symbol
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(title, systemImage: symbol)
+                .font(PPPetProfileFont.medium())
+                .foregroundStyle(Color.ppTextPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            content()
+        }
+        .padding(16)
+        .ppPetSurface(radius: 22, tint: Color.ppSurfaceRaised, elevation: false)
+    }
+}
 
 struct PPPetVaccinationEditorScreen: View {
     let record: PPPetVaccinationRecord
@@ -697,6 +1068,7 @@ struct PPPetVaccinationEditorScreen: View {
     @State private var nextDueDate: Date
     @State private var showValidation = false
     @FocusState private var focusedField: PPPetEditorField?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         record: PPPetVaccinationRecord,
@@ -747,16 +1119,12 @@ struct PPPetVaccinationEditorScreen: View {
                     .buttonStyle(PPPetProfilePressStyle())
                     .accessibilityLabel(PPPetLang("Cancel"))
 
-                    VStack(spacing: 3) {
-                        Text(isNewRecord ? PPPetLang("pet_vaccine_add") : PPPetLang("pet_vaccine_edit"))
-                            .font(PPPetProfileFont.headline())
-                            .foregroundStyle(Color.ppTextPrimary)
-                        Text(isNewRecord ? PPPetLang("pet_vaccine_add_subtitle") : PPPetLang("pet_vaccine_edit_subtitle"))
-                            .font(PPPetProfileFont.footnote())
-                            .foregroundStyle(Color.ppTextSecondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                    }
+                    Text(isNewRecord ? PPPetLang("pet_vaccine_add") : PPPetLang("pet_vaccine_edit"))
+                        .font(PPPetProfileFont.headline())
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity)
 
                     Button(action: save) {
@@ -774,103 +1142,140 @@ struct PPPetVaccinationEditorScreen: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 12)
+                .padding(.bottom, 10)
                 .background(Color.ppBackground.opacity(0.96))
 
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            PPPetEditorFieldLabel(title: PPPetLang("pet_vaccine_name"))
-                            TextField(PPPetLang("pet_vaccine_name_prompt"), text: $name)
-                                .font(PPPetProfileFont.body())
-                                .foregroundStyle(Color.ppTextPrimary)
-                                .focused($focusedField, equals: .vaccineName)
-                                .submitLabel(.next)
-                                .onSubmit { focusedField = .notes }
-                                .padding(.horizontal, 15)
-                                .frame(minHeight: 52)
-                                .ppPetSurface(
-                                    radius: 16,
-                                    tint: showValidation ? Color.ppError.opacity(0.08) : Color.ppSurface,
-                                    elevation: false
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(showValidation ? Color.ppError.opacity(0.72) : .clear, lineWidth: 1)
-                                )
-                            if showValidation {
-                                Text(PPPetLang("pet_vaccine_name_required", fallback: PPPetLang("pet_name_required_msg")))
-                                    .font(PPPetProfileFont.footnote())
-                                    .foregroundStyle(Color.ppError)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(alignment: .center, spacing: 12) {
+                                Image(systemName: "cross.case.fill")
+                                    .font(.system(size: 22, weight: .semibold))
+                                    .foregroundStyle(Color.ppCareAccent)
+                                    .frame(width: 48, height: 48)
+                                    .background(Color.ppCareAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .accessibilityHidden(true)
+
+                                Text(isNewRecord ? PPPetLang("pet_vaccine_add_subtitle") : PPPetLang("pet_vaccine_edit_subtitle"))
+                                    .font(PPPetProfileFont.body())
+                                    .foregroundStyle(Color.ppTextSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                        }
+                            .padding(16)
+                            .ppPetSurface(radius: 24, tint: Color.ppCareAccent.opacity(0.09), elevation: false)
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            PPPetEditorFieldLabel(title: PPPetLang("pet_vaccine_date"))
-                            DatePicker(
-                                PPPetLang("pet_vaccine_applied"),
-                                selection: $appliedDate,
-                                displayedComponents: .date
-                            )
-                            .font(PPPetProfileFont.medium())
-                            .tint(.ppPrimary)
-                            .labelsHidden()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 15)
-                            .frame(minHeight: 52)
-                            .ppPetSurface(radius: 16, tint: Color.ppSurface, elevation: false)
-                        }
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            PPPetEditorFieldLabel(title: PPPetLang("pet_vaccine_notes_label"))
-                            TextField(PPPetLang("pet_vaccine_notes_placeholder"), text: $notes)
-                                .font(PPPetProfileFont.body())
-                                .foregroundStyle(Color.ppTextPrimary)
-                                .focused($focusedField, equals: .notes)
-                                .padding(.horizontal, 15)
-                                .frame(minHeight: 52)
-                                .ppPetSurface(radius: 16, tint: Color.ppSurface, elevation: false)
-                        }
-
-                        Toggle(isOn: $nextDueEnabled) {
-                            Label {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(PPPetLang("pet_vaccine_next_due"))
+                            PPPetVaccinationV5Card(
+                                title: PPPetLang("pet_section_vaccinations"),
+                                symbol: "cross.case.fill"
+                            ) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    PPPetEditorFieldLabel(title: PPPetLang("pet_vaccine_name"))
+                                    TextField(PPPetLang("pet_vaccine_name_prompt"), text: $name)
                                         .font(PPPetProfileFont.body())
                                         .foregroundStyle(Color.ppTextPrimary)
-                                    Text(PPPetLang("pet_vaccine_remind"))
-                                        .font(PPPetProfileFont.footnote())
-                                        .foregroundStyle(Color.ppTextSecondary)
+                                        .focused($focusedField, equals: .vaccineName)
+                                        .submitLabel(.next)
+                                        .onSubmit { focusedField = .notes }
+                                        .padding(.horizontal, 15)
+                                        .frame(minHeight: 56)
+                                        .ppPetSurface(
+                                            radius: 16,
+                                            tint: showValidation ? Color.ppError.opacity(0.08) : Color.ppSurface,
+                                            elevation: false
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                .stroke(showValidation ? Color.ppError.opacity(0.72) : .clear, lineWidth: 1)
+                                        )
+                                        .id(PPPetEditorField.vaccineName)
+
+                                    if showValidation {
+                                        Text(PPPetLang("pet_vaccine_name_required", fallback: PPPetLang("pet_name_required_msg")))
+                                            .font(PPPetProfileFont.footnote())
+                                            .foregroundStyle(Color.ppError)
+                                    }
                                 }
-                            } icon: {
-                                Image(systemName: "bell.badge.fill")
-                                    .foregroundStyle(Color.ppPrimary)
+
+                                Divider().overlay(Color.ppSurfaceBorder.opacity(0.72))
+
+                                DatePicker(
+                                    PPPetLang("pet_vaccine_applied"),
+                                    selection: $appliedDate,
+                                    displayedComponents: .date
+                                )
+                                .font(PPPetProfileFont.medium())
+                                .foregroundStyle(Color.ppTextPrimary)
+                                .tint(.ppPrimary)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 56)
+                                .ppPetSurface(radius: 16, tint: Color.ppSurface, elevation: false)
+                            }
+
+                            PPPetVaccinationV5Card(
+                                title: PPPetLang("pet_vaccine_notes_label"),
+                                symbol: "note.text"
+                            ) {
+                                TextField(PPPetLang("pet_vaccine_notes_placeholder"), text: $notes)
+                                    .font(PPPetProfileFont.body())
+                                    .foregroundStyle(Color.ppTextPrimary)
+                                    .focused($focusedField, equals: .notes)
+                                    .padding(.horizontal, 15)
+                                    .frame(minHeight: 56)
+                                    .ppPetSurface(radius: 16, tint: Color.ppSurface, elevation: false)
+                                    .id(PPPetEditorField.notes)
+                            }
+
+                            PPPetVaccinationV5Card(
+                                title: PPPetLang("pet_vaccine_remind"),
+                                symbol: "bell.badge.fill"
+                            ) {
+                                Toggle(isOn: $nextDueEnabled) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(PPPetLang("pet_vaccine_next_due"))
+                                            .font(PPPetProfileFont.body())
+                                            .foregroundStyle(Color.ppTextPrimary)
+                                        Text(PPPetLang("pet_vaccine_remind"))
+                                            .font(PPPetProfileFont.footnote())
+                                            .foregroundStyle(Color.ppTextSecondary)
+                                    }
+                                }
+                                .toggleStyle(SwitchToggleStyle(tint: .ppPrimary))
+                                .padding(.horizontal, 2)
+                                .frame(minHeight: 52)
+
+                                if nextDueEnabled {
+                                    DatePicker(
+                                        PPPetLang("pet_vaccine_next_due"),
+                                        selection: $nextDueDate,
+                                        displayedComponents: .date
+                                    )
+                                    .font(PPPetProfileFont.medium())
+                                    .foregroundStyle(Color.ppTextPrimary)
+                                    .tint(.ppPrimary)
+                                    .padding(.horizontal, 14)
+                                    .frame(minHeight: 56)
+                                    .ppPetSurface(radius: 16, tint: Color.ppSoftRose.opacity(0.34), elevation: false)
+                                }
                             }
                         }
-                        .toggleStyle(SwitchToggleStyle(tint: .ppPrimary))
-                        .padding(.horizontal, 15)
-                        .frame(minHeight: 70)
-                        .ppPetSurface(radius: 18, tint: Color.ppSurface, elevation: false)
-
-                        if nextDueEnabled {
-                            DatePicker(
-                                PPPetLang("pet_vaccine_next_due"),
-                                selection: $nextDueDate,
-                                displayedComponents: .date
-                            )
-                            .font(PPPetProfileFont.medium())
-                            .tint(.ppPrimary)
-                            .padding(.horizontal, 15)
-                            .frame(minHeight: 52)
-                            .ppPetSurface(radius: 16, tint: Color.ppSoftRose.opacity(0.34), elevation: false)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                        .frame(maxWidth: PPPetProfileMetrics.contentMaxWidth)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, PPPetProfileMetrics.screenMargin)
+                        .padding(.top, 14)
+                        .padding(.bottom, 36)
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: focusedField) { field in
+                        guard let field else { return }
+                        if reduceMotion {
+                            proxy.scrollTo(field, anchor: .center)
+                        } else {
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                proxy.scrollTo(field, anchor: .center)
+                            }
                         }
                     }
-                    .frame(maxWidth: 760)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, PPPetProfileMetrics.screenMargin)
-                    .padding(.top, 12)
-                    .padding(.bottom, 36)
                 }
             }
         }
@@ -880,7 +1285,6 @@ struct PPPetVaccinationEditorScreen: View {
                 focusedField = .vaccineName
             }
         }
-        .animation(.easeOut(duration: 0.20), value: nextDueEnabled)
         .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
         .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar_QA" : "en_QA"))
     }

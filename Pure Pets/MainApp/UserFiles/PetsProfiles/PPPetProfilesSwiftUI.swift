@@ -320,119 +320,9 @@ private extension PPPetProfile {
     }
 }
 
-private struct PPPetProfilesOverviewBand: View {
-    let profileCount: Int
-    let vaccinationCount: Int
-    let onAdd: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(PPPetLang("pet_profiles_manage"))
-                    .font(PPPetProfileFont.caption())
-                    .foregroundStyle(Color.ppPrimary)
-                    .textCase(.uppercase)
-                    .tracking(0.8)
-
-                Text(PPPetLang("pet_profiles_subtitle"))
-                    .font(PPPetProfileFont.title())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: 14) {
-                    PPPetProfileMetric(
-                        value: profileCount,
-                        label: PPPetLang("pet_profiles_profile_count_label"),
-                        accessibilityKey: "pet_profiles_profile_count_accessibility_format"
-                    )
-                    PPPetProfileMetric(
-                        value: vaccinationCount,
-                        label: PPPetLang("pet_profiles_vaccination_count_label"),
-                        accessibilityKey: nil
-                    )
-                }
-                .padding(.top, 2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Button(action: onAdd) {
-                VStack(spacing: 6) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 19, weight: .bold))
-                    Text(PPPetLang("pet_add_title"))
-                        .font(PPPetProfileFont.caption())
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-                .foregroundStyle(Color.white)
-                .frame(width: 82, height: 82)
-                .background(Color.ppPrimary, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: Color.ppPrimary.opacity(0.22), radius: 12, x: 0, y: 6)
-            }
-            .buttonStyle(PPPetProfilePressStyle())
-            .accessibilityLabel(PPPetLang("pet_add_title"))
-            .accessibilityHint(PPPetLang("pet_profiles_add_first"))
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 20)
-        .ppPetSurface(radius: 28, tint: Color.ppSurfaceRaised, elevation: true)
-    }
-}
-
-private struct PPPetProfileMetric: View {
-    let value: Int
-    let label: String
-    let accessibilityKey: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text("\(value)")
-                .font(PPPetProfileFont.headline())
-                .foregroundStyle(Color.ppTextPrimary)
-            Text(label)
-                .font(PPPetProfileFont.footnote())
-                .foregroundStyle(Color.ppTextSecondary)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            accessibilityKey.map { PPPetCountText($0, count: value) } ?? "\(value) \(label)"
-        )
-    }
-}
-
-private struct PPPetProfilesSectionHeading: View {
-    let count: Int
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(PPPetLang("pet_profiles_manage"))
-                    .font(PPPetProfileFont.headline())
-                    .foregroundStyle(Color.ppTextPrimary)
-                Text(PPPetLang("pet_profiles_section_subtitle"))
-                    .font(PPPetProfileFont.footnote())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text("\(count)")
-                .font(PPPetProfileFont.headline())
-                .foregroundStyle(Color.ppPrimary)
-                .padding(.horizontal, 12)
-                .frame(minWidth: 44, minHeight: 36)
-                .background(Color.ppSoftRose.opacity(0.60), in: Capsule())
-                .accessibilityLabel(PPPetCountText("pet_profiles_profile_count_accessibility_format", count: count))
-        }
-        .padding(.horizontal, 2)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 private struct PPPetProfilesLoadingState: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 10) {
                 ProgressView()
                     .tint(.ppPrimary)
@@ -442,26 +332,64 @@ private struct PPPetProfilesLoadingState: View {
             }
             .padding(.horizontal, 2)
 
-            ForEach(["loading.first", "loading.second"], id: \.self) { _ in
-                HStack(spacing: 14) {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.ppSurfaceBorder.opacity(0.45))
-                        .frame(width: 76, height: 76)
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 16) {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(Color.ppSurfaceBorder.opacity(0.42))
+                        .frame(width: 116, height: 116)
                     VStack(alignment: .leading, spacing: 9) {
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
                             .fill(Color.ppSurfaceBorder.opacity(0.50))
-                            .frame(width: 150, height: 18)
+                            .frame(maxWidth: 170)
+                            .frame(height: 22)
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
                             .fill(Color.ppSurfaceBorder.opacity(0.34))
-                            .frame(width: 190, height: 14)
+                            .frame(maxWidth: 220)
+                            .frame(height: 15)
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(Color.ppSurfaceBorder.opacity(0.32))
-                            .frame(width: 112, height: 24)
+                            .frame(maxWidth: 136)
+                            .frame(height: 26)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.ppSurfaceBorder.opacity(0.30))
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.ppSurfaceBorder.opacity(0.30))
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                }
+            }
+            .padding(20)
+            .ppPetSurface(radius: 30, tint: Color.ppSurfaceRaised, elevation: false)
+            .accessibilityHidden(true)
+
+            ForEach(["loading.first", "loading.second"], id: \.self) { _ in
+                HStack(spacing: 14) {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.ppSurfaceBorder.opacity(0.38))
+                        .frame(width: 72, height: 72)
+                    VStack(alignment: .leading, spacing: 9) {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(Color.ppSurfaceBorder.opacity(0.44))
+                            .frame(maxWidth: 150)
+                            .frame(height: 17)
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(Color.ppSurfaceBorder.opacity(0.30))
+                            .frame(maxWidth: 190)
+                            .frame(height: 14)
                     }
                     Spacer(minLength: 0)
                 }
                 .padding(16)
-                .ppPetSurface(radius: PPPetProfileMetrics.cardRadius, tint: Color.ppSurface, elevation: false)
+                .ppPetSurface(
+                    radius: PPPetProfileMetrics.cardRadius,
+                    tint: Color.ppSurface,
+                    elevation: false
+                )
                 .accessibilityHidden(true)
             }
         }
@@ -540,6 +468,385 @@ private struct PPPetProfileAvatar: View {
                 .stroke(Color.ppPrimary.opacity(0.16), lineWidth: 1)
         )
         .accessibilityHidden(true)
+    }
+}
+
+private struct PPPetProfilesCarePassport: View {
+    let pet: PPPetProfile
+    let image: UIImage?
+    let profileCount: Int
+    let vaccinationCount: Int
+    let onSelect: () -> Void
+    let onAdd: () -> Void
+    let onReminders: () -> Void
+    let onMakeDefault: () -> Void
+    let onDelete: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    private var vaccinationText: String {
+        PPPetCountText(
+            "pet_profiles_vaccine_count_format",
+            count: pet.vaccinations.count
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            passportHeader
+            identity
+            careLedger
+            actionRail
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(Color.ppSurfaceRaised)
+        )
+        .overlay(alignment: .leading) {
+            Capsule()
+                .fill(Color.ppPrimary)
+                .frame(width: contrast == .increased ? 6 : 4, height: 74)
+                .padding(.leading, 1)
+                .accessibilityHidden(true)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .strokeBorder(
+                    contrast == .increased
+                        ? Color.ppTextPrimary.opacity(0.58)
+                        : Color.ppPrimary.opacity(0.22),
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+        )
+        .shadow(
+            color: contrast == .increased ? .clear : Color.black.opacity(0.075),
+            radius: 22,
+            x: 0,
+            y: 10
+        )
+        .contextMenu {
+            Button(action: onSelect) {
+                Label(PPPetLang("Edit"), systemImage: "pencil")
+            }
+            if !pet.isDefaultPet {
+                Button(action: onMakeDefault) {
+                    Label(PPPetLang("pet_default_action"), systemImage: "star")
+                }
+            }
+            Button(role: .destructive, action: onDelete) {
+                Label(PPPetLang("Delete"), systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive, action: onDelete) {
+                Label(PPPetLang("Delete"), systemImage: "trash.fill")
+            }
+
+            if !pet.isDefaultPet {
+                Button(action: onMakeDefault) {
+                    Label(PPPetLang("pet_default_action"), systemImage: "star.fill")
+                }
+                .tint(.ppPremiumAccent)
+            }
+        }
+    }
+
+    private var passportHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(PPPetLang("pet_profiles_manage"))
+                    .font(PPPetProfileFont.caption())
+                    .foregroundStyle(Color.ppPrimary)
+                    .textCase(.uppercase)
+                    .tracking(0.7)
+                Text(PPPetLang("pet_profiles_title"))
+                    .font(PPPetProfileFont.footnote())
+                    .foregroundStyle(Color.ppTextSecondary)
+            }
+
+            Spacer(minLength: 8)
+
+            if pet.isDefaultPet {
+                Label(
+                    PPPetLang("pet_profiles_default_badge"),
+                    systemImage: "star.fill"
+                )
+                .font(PPPetProfileFont.caption())
+                .foregroundStyle(Color.ppPremiumAccent)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 34)
+                .background(
+                    Color.ppPremiumAccent.opacity(0.14),
+                    in: Capsule()
+                )
+            }
+
+            Menu {
+                Button(action: onSelect) {
+                    Label(PPPetLang("Edit"), systemImage: "pencil")
+                }
+                if !pet.isDefaultPet {
+                    Button(action: onMakeDefault) {
+                        Label(PPPetLang("pet_default_action"), systemImage: "star")
+                    }
+                }
+                Button(role: .destructive, action: onDelete) {
+                    Label(PPPetLang("Delete"), systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.ppSecondarySurface, in: Circle())
+            }
+            .accessibilityLabel(PPPetLang("Edit"))
+        }
+    }
+
+    @ViewBuilder
+    private var identity: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 16) {
+                passportPortrait
+                identityCopy
+            }
+        } else {
+            HStack(alignment: .center, spacing: 18) {
+                passportPortrait
+                identityCopy
+            }
+        }
+    }
+
+    private var passportPortrait: some View {
+        ZStack(alignment: .bottomTrailing) {
+            PPPetProfileAvatar(
+                pet: pet,
+                image: image,
+                size: dynamicTypeSize.isAccessibilitySize ? 132 : 124
+            )
+
+            Image(systemName: "heart.text.square.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: 36, height: 36)
+                .background(Color.ppCareAccent, in: Circle())
+                .overlay(Circle().stroke(Color.ppSurfaceRaised, lineWidth: 3))
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var identityCopy: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(pet.ppDisplayName)
+                    .font(PPPetProfileFont.largeTitle())
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(pet.ppDisplayDetail)
+                    .font(PPPetProfileFont.body())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Label(vaccinationText, systemImage: "cross.case.fill")
+                    .font(PPPetProfileFont.medium())
+                    .foregroundStyle(Color.ppCareAccent)
+                    .padding(.top, 2)
+
+                HStack(spacing: 6) {
+                    Text(PPPetLang("Edit"))
+                    Image(systemName: "chevron.forward")
+                        .accessibilityHidden(true)
+                }
+                .font(PPPetProfileFont.caption())
+                .foregroundStyle(Color.ppPrimary)
+                .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PPPetProfilePressStyle())
+        .accessibilityLabel(
+            "\(pet.ppDisplayName), \(pet.ppDisplayDetail), \(vaccinationText)"
+        )
+        .accessibilityHint(
+            PPPetLang("pet_profiles_card_hint", fallback: "Opens this pet profile")
+        )
+        .accessibilityAddTraits(pet.isDefaultPet ? .isSelected : [])
+        .accessibilityAction(named: PPPetLang("pet_default_action")) {
+            guard !pet.isDefaultPet else { return }
+            onMakeDefault()
+        }
+        .accessibilityAction(named: PPPetLang("Delete")) {
+            onDelete()
+        }
+    }
+
+    private var careLedger: some View {
+        HStack(spacing: 0) {
+            PPPetPassportMetric(
+                value: profileCount,
+                label: PPPetLang("pet_profiles_profile_count_label"),
+                symbol: "pawprint.fill",
+                color: .ppPrimary,
+                accessibilityLabel: PPPetCountText(
+                    "pet_profiles_profile_count_accessibility_format",
+                    count: profileCount
+                )
+            )
+
+            Rectangle()
+                .fill(Color.ppSurfaceBorder)
+                .frame(width: 1, height: 48)
+                .accessibilityHidden(true)
+
+            PPPetPassportMetric(
+                value: vaccinationCount,
+                label: PPPetLang("pet_profiles_vaccination_count_label"),
+                symbol: "cross.case.fill",
+                color: .ppCareAccent,
+                accessibilityLabel: PPPetCountText(
+                    "pet_profiles_vaccine_count_format",
+                    count: vaccinationCount
+                )
+            )
+        }
+        .padding(.vertical, 12)
+        .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var actionRail: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 10) {
+                passportAction(
+                    title: PPPetLang("pet_add_title"),
+                    symbol: "plus",
+                    filled: true,
+                    action: onAdd
+                )
+                passportAction(
+                    title: PPPetLang("pet_reminders_tab"),
+                    symbol: "bell.fill",
+                    filled: false,
+                    action: onReminders
+                )
+            }
+        } else {
+            HStack(spacing: 10) {
+                passportAction(
+                    title: PPPetLang("pet_add_title"),
+                    symbol: "plus",
+                    filled: true,
+                    action: onAdd
+                )
+                passportAction(
+                    title: PPPetLang("pet_reminders_tab"),
+                    symbol: "bell.fill",
+                    filled: false,
+                    action: onReminders
+                )
+            }
+        }
+    }
+
+    private func passportAction(
+        title: String,
+        symbol: String,
+        filled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(PPPetProfileFont.medium())
+                .foregroundStyle(filled ? Color.white : Color.ppPrimary)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .padding(.horizontal, 12)
+                .background(
+                    filled ? Color.ppPrimary : Color.ppSoftRose,
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(
+                            filled ? Color.clear : Color.ppPrimary.opacity(0.18),
+                            lineWidth: 1
+                        )
+                )
+        }
+        .buttonStyle(PPPetProfilePressStyle())
+    }
+}
+
+private struct PPPetPassportMetric: View {
+    let value: Int
+    let label: String
+    let symbol: String
+    let color: Color
+    let accessibilityLabel: String
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 32, height: 32)
+                .background(color.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(value)")
+                    .font(PPPetProfileFont.headline())
+                    .foregroundStyle(Color.ppTextPrimary)
+                Text(label)
+                    .font(PPPetProfileFont.footnote())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+private struct PPPetProfilesRosterHeading: View {
+    let count: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(PPPetLang("pet_profiles_manage"))
+                    .font(PPPetProfileFont.title())
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                Text("\(count)")
+                    .font(PPPetProfileFont.caption())
+                    .foregroundStyle(Color.ppPrimary)
+                    .frame(minWidth: 32, minHeight: 28)
+                    .background(Color.ppSoftRose, in: Circle())
+                    .accessibilityHidden(true)
+            }
+
+            Text(PPPetLang("pet_profiles_section_subtitle"))
+                .font(PPPetProfileFont.footnote())
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            PPPetCountText(
+                "pet_profiles_profile_count_accessibility_format",
+                count: count
+            )
+        )
     }
 }
 
@@ -688,9 +995,26 @@ struct PPPetProfilesListScreen: View {
     let onDelete: (PPPetProfile) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var vaccinationCount: Int {
         store.pets.reduce(0) { $0 + $1.vaccinations.count }
+    }
+
+    private var featuredPet: PPPetProfile? {
+        store.pets.first(where: \.isDefaultPet) ?? store.pets.first
+    }
+
+    private var rosterPets: [PPPetProfile] {
+        guard let featuredPet else { return store.pets }
+        return store.pets.filter {
+            $0.ppStableIdentifier != featuredPet.ppStableIdentifier
+        }
+    }
+
+    private var usesRegularLayout: Bool {
+        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
     }
 
     var body: some View {
@@ -719,12 +1043,6 @@ struct PPPetProfilesListScreen: View {
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 24) {
-                        PPPetProfilesOverviewBand(
-                            profileCount: store.isLoading ? 0 : store.pets.count,
-                            vaccinationCount: store.isLoading ? 0 : vaccinationCount,
-                            onAdd: onAdd
-                        )
-
                         if store.isLoading {
                             PPPetProfilesLoadingState()
                         } else if store.hasError {
@@ -732,32 +1050,17 @@ struct PPPetProfilesListScreen: View {
                         } else if store.pets.isEmpty {
                             PPPetProfilesStateView(isError: false, onAction: onAdd)
                         } else {
-                            PPPetProfilesSectionHeading(count: store.pets.count)
-
-                            LazyVStack(spacing: 14) {
-                                ForEach(store.pets, id: \.ppStableIdentifier) { pet in
-                                    PPPetProfileCard(
-                                        pet: pet,
-                                        image: store.images[pet.ppStableIdentifier] ?? store.images[pet.petID],
-                                        onSelect: { onSelect(pet) },
-                                        onMakeDefault: { onMakeDefault(pet) },
-                                        onDelete: { onDelete(pet) }
-                                    )
-                                    .transition(
-                                        .asymmetric(
-                                            insertion: .move(edge: .bottom).combined(with: .opacity),
-                                            removal: .opacity
-                                        )
-                                    )
-                                }
-                            }
-                            .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.86), value: store.pets.map(\.ppStableIdentifier))
+                            populatedContent
                         }
                     }
-                    .frame(maxWidth: PPPetProfileMetrics.contentMaxWidth)
+                    .frame(
+                        maxWidth: usesRegularLayout
+                            ? 1120
+                            : PPPetProfileMetrics.contentMaxWidth
+                    )
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, PPPetProfileMetrics.screenMargin)
-                    .padding(.top, 12)
+                    .padding(.top, 18)
                     .padding(.bottom, 84)
                 }
                 .refreshable {
@@ -768,5 +1071,75 @@ struct PPPetProfilesListScreen: View {
         .accessibilityElement(children: .contain)
         .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
         .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar_QA" : "en_QA"))
+    }
+
+    @ViewBuilder
+    private var populatedContent: some View {
+        if usesRegularLayout, let featuredPet {
+            HStack(alignment: .top, spacing: 24) {
+                passport(for: featuredPet)
+                    .frame(maxWidth: 480)
+
+                roster
+                    .frame(maxWidth: .infinity)
+            }
+        } else if let featuredPet {
+            VStack(alignment: .leading, spacing: 28) {
+                passport(for: featuredPet)
+                roster
+            }
+        }
+    }
+
+    private func passport(for pet: PPPetProfile) -> some View {
+        PPPetProfilesCarePassport(
+            pet: pet,
+            image: image(for: pet),
+            profileCount: store.pets.count,
+            vaccinationCount: vaccinationCount,
+            onSelect: { onSelect(pet) },
+            onAdd: onAdd,
+            onReminders: onReminders,
+            onMakeDefault: { onMakeDefault(pet) },
+            onDelete: { onDelete(pet) }
+        )
+        .transition(.opacity.combined(with: .scale(scale: 0.985)))
+    }
+
+    @ViewBuilder
+    private var roster: some View {
+        if !rosterPets.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                PPPetProfilesRosterHeading(count: rosterPets.count)
+
+                LazyVStack(spacing: 12) {
+                    ForEach(rosterPets, id: \.ppStableIdentifier) { pet in
+                        PPPetProfileCard(
+                            pet: pet,
+                            image: image(for: pet),
+                            onSelect: { onSelect(pet) },
+                            onMakeDefault: { onMakeDefault(pet) },
+                            onDelete: { onDelete(pet) }
+                        )
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .opacity
+                            )
+                        )
+                    }
+                }
+            }
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(response: 0.34, dampingFraction: 0.88),
+                value: store.pets.map(\.ppStableIdentifier)
+            )
+        }
+    }
+
+    private func image(for pet: PPPetProfile) -> UIImage? {
+        store.images[pet.ppStableIdentifier] ?? store.images[pet.petID]
     }
 }

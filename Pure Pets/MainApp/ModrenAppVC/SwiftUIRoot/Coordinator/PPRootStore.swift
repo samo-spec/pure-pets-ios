@@ -71,7 +71,10 @@ public final class PPRootStore: ObservableObject {
     // MARK: - Reactive Visibility Rules
     
     public var shouldShowDock: Bool {
-        false
+        !usesLegacyBar
+            && !isDockHidden
+            && !isExternallyHidden
+            && !sessionState.isAnyBlocked
     }
     
     public var shouldShowCartBar: Bool {
@@ -86,18 +89,44 @@ public final class PPRootStore: ObservableObject {
         shouldShowDock || shouldShowCartBar || shouldShowNovaButton
     }
     
-    /// Adaptive safe-area-aware content clearance calculation (Fixes Risk #1).
+    /// Safe-area-aware content clearance for a custom deck hosted over UIKit.
     public var computedBottomContentClearance: CGFloat {
         if cartState.isVisible {
             let baseBarHeight: CGFloat = 56.0
             return ceil(baseBarHeight + 12.0)
         }
-        return 8.0
+
+        guard shouldShowDock else {
+            return 0.0
+        }
+
+        if #available(iOS 17.0, *) {
+            // The deck rests a fixed distance from the screen edge, so this
+            // clearance already spans the bottom safe area and must not add it
+            // again.
+            let fallbackClearance =
+                PPCommandDeckTabBar.minimumBottomContentClearance
+            return ceil(max(bottomOverlayHeight, fallbackClearance))
+        }
+
+        return 0.0
     }
     
     // MARK: - State Mutations & Actions
     
     public func selectTab(_ tab: PPRootTab) {
+        // Mirror the root tab-controller gate before any command changes
+        // UIKit selection, preserving blocked-account and chat-login behavior.
+        if sessionState.isAnyBlocked {
+            refreshAllState()
+            return
+        }
+
+        if tab == .chats && !sessionState.isLoggedIn {
+            UserManager.showPromptOnTopController()
+            return
+        }
+
         if tab == .create {
             PPHaptics.softImpact()
             actionHandler?.handlePresentCreateOptionPicker()
@@ -143,6 +172,15 @@ public final class PPRootStore: ObservableObject {
 
     public func setUsesLegacyBar(_ enabled: Bool) {
         usesLegacyBar = enabled
+    }
+
+    /// Synchronizes visual selection after UIKit changes tabs programmatically
+    /// (restoration, notifications, and legacy routes) without replaying a
+    /// navigation action or haptic.
+    public func synchronizeSelectedTab(with tab: PPRootTab) {
+        guard tab != .create, selectedTab != tab else { return }
+        lastSelectedTab = selectedTab
+        selectedTab = tab
     }
     
     public func activateFloatingCart(

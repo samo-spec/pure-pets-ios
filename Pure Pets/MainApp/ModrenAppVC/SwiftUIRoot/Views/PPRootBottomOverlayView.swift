@@ -45,14 +45,11 @@ private extension View {
     }
 }
 
-/// Composite bottom overlay view enclosing the native SwiftUI TabBar, Nova AI Action Button, and Floating Cart Bar.
+/// Composite bottom overlay view enclosing the Command Deck and floating cart bar.
 public struct PPRootBottomOverlayView: View {
     @ObservedObject public var store: PPRootStore
     private let interactiveFramesDidChange: ([CGRect]) -> Void
-    
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.layoutDirection) private var layoutDirection
-    
+
     public init(
         store: PPRootStore,
         interactiveFramesDidChange: @escaping ([CGRect]) -> Void = { _ in }
@@ -60,21 +57,38 @@ public struct PPRootBottomOverlayView: View {
         self.store = store
         self.interactiveFramesDidChange = interactiveFramesDidChange
     }
-    
+
     public var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
                 Spacer()
                     .passthroughTouches(true)
-                
+
                 ZStack(alignment: .bottomTrailing) {
-                    // Main Dock TabBar (if custom SwiftUI dock is active)
                     if store.shouldShowDock {
-                        PPRootDock(store: store)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        if #available(iOS 17.0, *) {
+                            PPRootCommandDeck(store: store)
+                                .padding(
+                                    .horizontal,
+                                    PPCommandDeckTabBar.hostHorizontalInset
+                                )
+                                .padding(
+                                    .top,
+                                    PPCommandDeckTabBar.hostTopInset
+                                )
+                                .padding(
+                                    .bottom,
+                                    PPCommandDeckTabBar.hostBottomInset
+                                )
+                                .reportsBottomOverlayInteractiveFrame()
+                                .transition(
+                                    .move(edge: .bottom).combined(with: .opacity)
+                                )
+                        }
                     }
-                    
-                    // Floating Cart Bar surface (floats neatly above tab bar when active, or near screen bottom when dock hidden)
+
+                    // The floating cart remains an independent surface. Its
+                    // existing state machine hides the dock while active.
                     if store.shouldShowCartBar {
                         PPCartFloatingBarView(state: store.cartState) {
                             store.handleCartTapped()
@@ -82,27 +96,29 @@ public struct PPRootBottomOverlayView: View {
                         .passthroughTouches(false)
                         .reportsBottomOverlayInteractiveFrame()
                         .padding(.horizontal, 16)
-                        .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
+                        .padding(
+                            .bottom,
+                            proxy.safeAreaInsets.bottom
+                                + (store.shouldShowDock ? 54 : 12)
+                        )
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    
                 }
                 .passthroughTouches(true)
-                .background(
+                .background {
                     GeometryReader { geo in
                         Color.clear.preference(
                             key: PPRootBottomOverlayHeightKey.self,
                             value: geo.size.height
                         )
                     }
-                )
+                }
             }
             .onPreferenceChange(PPRootBottomOverlayHeightKey.self) { measuredHeight in
-                let safeAreaBottom = proxy.safeAreaInsets.bottom
                 DispatchQueue.main.async {
                     store.updateMeasuredBottomOverlayHeight(
                         measuredHeight,
-                        safeAreaBottom: safeAreaBottom
+                        safeAreaBottom: proxy.safeAreaInsets.bottom
                     )
                 }
             }
@@ -113,5 +129,63 @@ public struct PPRootBottomOverlayView: View {
             PPRootBottomOverlayInteractiveFramesKey.self,
             perform: interactiveFramesDidChange
         )
+    }
+}
+
+@available(iOS 17.0, *)
+private struct PPRootCommandDeck: View {
+    @ObservedObject var store: PPRootStore
+
+    var body: some View {
+        PPCommandDeckTabBar(
+            selection: Binding(
+                get: { store.selectedTab.ppCommandDeckTab },
+                set: { store.selectTab($0.ppRootTab) }
+            ),
+            unreadChats: store.unreadChatsCount,
+            copy: PPCommandDeckCopy(
+                navigationLabel: "a11y_command_deck_navigation",
+                createLabel: "a11y_tab_add",
+                createHint: "a11y_btn_add_new_hint"
+            )
+        ) {
+            // Create is intentionally an action, not a selected destination.
+            store.selectTab(.create)
+        }
+    }
+}
+
+@available(iOS 17.0, *)
+private extension PPRootTab {
+    var ppCommandDeckTab: PPCommandDeckTab {
+        switch self {
+        case .home:
+            .home
+        case .myAds:
+            .myAds
+        case .chats:
+            .chats
+        case .menu:
+            .menu
+        case .create:
+            // Create never owns selection; retain the existing destination.
+            .home
+        }
+    }
+}
+
+@available(iOS 17.0, *)
+private extension PPCommandDeckTab {
+    var ppRootTab: PPRootTab {
+        switch self {
+        case .home:
+            .home
+        case .myAds:
+            .myAds
+        case .chats:
+            .chats
+        case .menu:
+            .menu
+        }
     }
 }

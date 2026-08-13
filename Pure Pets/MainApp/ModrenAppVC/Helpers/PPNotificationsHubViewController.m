@@ -18,14 +18,15 @@
 @import FirebaseFirestore;
 @import FirebaseAuth;
 
-static CGFloat const kPPHubTopBarHeight = 46.0;
-static CGFloat const kPPHubActionButtonSize = 46.0;
-static CGFloat const kPPHubHeroHeight = 162.0;
-static CGFloat const kPPHubHeroHorizontalInset = 16.0;
+static CGFloat const kPPHubTopBarHeight = 52.0;
+static CGFloat const kPPHubActionButtonSize = 48.0;
+static CGFloat const kPPHubHeroHorizontalInset = 20.0;
 static CGFloat const kPPHubHeroTopInset = 8.0;
-static CGFloat const kPPHubContentTopGap = 10.0;
-static BOOL const kPPHubHeroBackgroundAnimationEnabled = YES;
-static PPWaveCardBGShape const kPPHubHeroBackgroundShape = PPWaveCardBGShapeRounded;
+static CGFloat const kPPHubContentTopGap = 12.0;
+// The root tab controller owns the floating Command Deck clearance and raises
+// visible list insets dynamically. Keep only the screen's intrinsic breathing
+// room here so a measured deck can also shrink or hide without leaving a hole.
+static CGFloat const kPPHubListBaseBottomInset = PPSpaceMD;
 static NSInteger const kPPHubSegmentIconTag = 4701;
 static NSInteger const kPPHubSegmentTitleTag = 4702;
 
@@ -529,12 +530,12 @@ static NSString *PPHubInboxCategoryTitle(NSDictionary *payload)
     NSString *orderID = PPHubOrderIDFromPayload(payload);
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
-        return kLang(@"notifications_inbox_category_chat") ?: @"Chats";
+        return kLang(@"notifications_inbox_category_chat") ?: @"";
     }
     if (orderID.length > 0 || [type hasPrefix:@"order"]) {
-        return kLang(@"notifications_inbox_category_orders") ?: @"Orders";
+        return kLang(@"notifications_inbox_category_orders") ?: @"";
     }
-    return kLang(@"notifications_inbox_category_updates") ?: @"Updates";
+    return kLang(@"notifications_inbox_category_updates") ?: @"";
 }
 
 static UIColor *PPHubInboxAccentColor(NSDictionary *payload)
@@ -548,15 +549,15 @@ static UIColor *PPHubInboxAccentColor(NSDictionary *payload)
         return [GM appPrimaryColor];
     }
     if ([status containsString:@"deliver"] || [status containsString:@"paid"]) {
-        return UIColor.systemGreenColor;
+        return [UIColor ppSuccess];
     }
     if ([status containsString:@"ship"]) {
-        return UIColor.systemBlueColor;
+        return [UIColor ppInfo];
     }
     if ([status containsString:@"fail"] || [status containsString:@"cancel"]) {
-        return UIColor.systemRedColor;
+        return [UIColor ppError];
     }
-    return UIColor.systemOrangeColor;
+    return [UIColor ppWarning];
 }
 
 static NSString *PPHubInboxSymbolName(NSDictionary *payload)
@@ -591,6 +592,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, copy) void (^onSelectionChanged)(NSInteger index);
 - (instancetype)initWithTitles:(NSArray<NSString *> *)titles icons:(NSArray<NSString *> *)icons;
 - (void)selectIndex:(NSInteger)index animated:(BOOL)animated;
+- (void)updateTitles:(NSArray<NSString *> *)titles;
 @end
 
 @implementation PPHubTopTabsView
@@ -605,15 +607,11 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.98 : 0.82];
-    _surfaceView.layer.cornerRadius = 23.0;
-    _surfaceView.layer.masksToBounds = NO;
-    _surfaceView.layer.borderWidth = 0.0;
-    [_surfaceView pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.12]];
-    [_surfaceView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.12]];
-    _surfaceView.layer.shadowOpacity = 0.04;
-    _surfaceView.layer.shadowRadius = 10.0;
-    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    _surfaceView.backgroundColor = [UIColor ppSecondarySurface];
+    _surfaceView.layer.cornerRadius = PPCornerMedium;
+    _surfaceView.layer.masksToBounds = YES;
+    _surfaceView.layer.borderWidth = 0.75;
+    [_surfaceView pp_setBorderColor:[UIColor ppBorder]];
     if (@available(iOS 13.0, *)) {
         _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -631,10 +629,11 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _selectionIndicator = [[UIView alloc] initWithFrame:CGRectZero];
     _selectionIndicator.translatesAutoresizingMaskIntoConstraints = NO;
-    _selectionIndicator.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.127];
-    _selectionIndicator.layer.cornerRadius = 19.0;
+    _selectionIndicator.backgroundColor = [UIColor ppPrimary];
+    _selectionIndicator.layer.cornerRadius = PPCornerSmall;
     _selectionIndicator.layer.masksToBounds = YES;
     _selectionIndicator.hidden = YES;
+    _selectionIndicator.isAccessibilityElement = NO;
     if (@available(iOS 13.0, *)) {
         _selectionIndicator.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -645,14 +644,14 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     stackView.axis = UILayoutConstraintAxisHorizontal;
     stackView.alignment = UIStackViewAlignmentFill;
     stackView.distribution = UIStackViewDistributionFillEqually;
-    stackView.spacing = 6.0;
+    stackView.spacing = PPSpaceXS;
     stackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [_contentClipView addSubview:stackView];
     self.stackView = stackView;
 
     UIImageSymbolConfiguration *symbolConfig = nil;
     if (@available(iOS 13.0, *)) {
-        symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:13.5 weight:UIImageSymbolWeightSemibold];
+        symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:14.5 weight:UIImageSymbolWeightSemibold];
     }
 
     NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
@@ -678,14 +677,14 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
         [self.surfaceView.heightAnchor constraintEqualToConstant:kPPHubTopBarHeight],
 
-        [self.contentClipView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:4.0],
-        [self.contentClipView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:4.0],
-        [self.contentClipView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-4.0],
-        [self.contentClipView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-4.0],
+        [self.contentClipView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceXS],
+        [self.contentClipView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceXS],
+        [self.contentClipView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceXS],
+        [self.contentClipView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceXS],
 
         self.indicatorLeadingConstraint,
-        [self.selectionIndicator.topAnchor constraintEqualToAnchor:self.contentClipView.topAnchor constant:2.0],
-        [self.selectionIndicator.bottomAnchor constraintEqualToAnchor:self.contentClipView.bottomAnchor constant:-2.0],
+        [self.selectionIndicator.topAnchor constraintEqualToAnchor:self.contentClipView.topAnchor],
+        [self.selectionIndicator.bottomAnchor constraintEqualToAnchor:self.contentClipView.bottomAnchor],
         self.indicatorWidthConstraint,
 
         [stackView.topAnchor constraintEqualToAnchor:self.contentClipView.topAnchor],
@@ -708,7 +707,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     button.tag = index;
     button.backgroundColor = UIColor.clearColor;
     button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    button.layer.cornerRadius = 18.0;
+    button.layer.cornerRadius = PPCornerSmall;
     button.layer.borderWidth = 0.0;
     button.layer.masksToBounds = YES;
     [button pp_setBorderColor:UIColor.clearColor];
@@ -732,11 +731,13 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.tag = kPPHubSegmentTitleTag;
     titleLabel.text = title ?: @"";
-    titleLabel.font = [GM boldFontWithSize:12.2] ?: [UIFont systemFontOfSize:12.2 weight:UIFontWeightSemibold];
+    UIFont *tabBaseFont = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
+    titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout] scaledFontForFont:tabBaseFont];
+    titleLabel.adjustsFontForContentSizeCategory = YES;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 1;
     titleLabel.adjustsFontSizeToFitWidth = YES;
-    titleLabel.minimumScaleFactor = 0.76;
+    titleLabel.minimumScaleFactor = 0.82;
     titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     titleLabel.allowsDefaultTighteningForTruncation = YES;
 
@@ -745,19 +746,19 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     contentStack.axis = UILayoutConstraintAxisHorizontal;
     contentStack.alignment = UIStackViewAlignmentCenter;
     contentStack.distribution = UIStackViewDistributionFill;
-    contentStack.spacing = 5.0;
+    contentStack.spacing = PPSpaceMDHalf;
     contentStack.userInteractionEnabled = NO;
     contentStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [button addSubview:contentStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [iconView.widthAnchor constraintEqualToConstant:18.0],
-        [iconView.heightAnchor constraintEqualToConstant:18.0],
+        [iconView.widthAnchor constraintEqualToConstant:19.0],
+        [iconView.heightAnchor constraintEqualToConstant:19.0],
 
         [contentStack.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [contentStack.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [contentStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:button.leadingAnchor constant:7.0],
-        [contentStack.trailingAnchor constraintLessThanOrEqualToAnchor:button.trailingAnchor constant:-7.0],
+        [contentStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:button.leadingAnchor constant:PPSpaceSM],
+        [contentStack.trailingAnchor constraintLessThanOrEqualToAnchor:button.trailingAnchor constant:-PPSpaceSM],
         [contentStack.topAnchor constraintGreaterThanOrEqualToAnchor:button.topAnchor constant:4.0],
         [contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:button.bottomAnchor constant:-4.0],
     ]];
@@ -771,12 +772,29 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super layoutSubviews];
 
-    UIBezierPath *shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.surfaceView.bounds
-                                                         cornerRadius:self.surfaceView.layer.cornerRadius];
-    self.surfaceView.layer.shadowPath = shadowPath.CGPath;
+    BOOL usesAccessibilityCategory = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    for (UIButton *button in self.tabButtons) {
+        UILabel *titleLabel = [button viewWithTag:kPPHubSegmentTitleTag];
+        titleLabel.hidden = usesAccessibilityCategory;
+    }
 
     if (self.selectedIndex != NSNotFound) {
         [self pp_updateSelectionIndicatorForIndex:self.selectedIndex animated:NO];
+    }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+
+    if (![self.traitCollection.preferredContentSizeCategory
+          isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+        BOOL usesAccessibilityCategory = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+        for (UIButton *button in self.tabButtons) {
+            UILabel *titleLabel = [button viewWithTag:kPPHubSegmentTitleTag];
+            titleLabel.hidden = usesAccessibilityCategory;
+        }
+        [self setNeedsLayout];
     }
 }
 
@@ -786,6 +804,28 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.selectedIndex = index;
     [self pp_updateSelectionIndicatorForIndex:index animated:animated];
     [self pp_refreshButtonAppearance];
+}
+
+- (void)updateTitles:(NSArray<NSString *> *)titles
+{
+    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.surfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.contentClipView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.stackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    NSUInteger count = MIN(titles.count, self.tabButtons.count);
+    for (NSUInteger index = 0; index < count; index++) {
+        UIButton *button = self.tabButtons[index];
+        NSString *title = titles[index] ?: @"";
+        UILabel *titleLabel = [button viewWithTag:kPPHubSegmentTitleTag];
+        titleLabel.text = title;
+        titleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        button.accessibilityLabel = title;
+    }
+
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 
 - (void)pp_handleTap:(UIButton *)sender
@@ -800,21 +840,22 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_updateSelectionIndicatorForIndex:(NSInteger)index animated:(BOOL)animated
 {
-    CGFloat containerWidth = CGRectGetWidth(self.surfaceView.bounds);
+    CGFloat containerWidth = CGRectGetWidth(self.contentClipView.bounds);
     if (containerWidth <= 0.0 || self.tabButtons.count == 0) return;
 
     CGFloat tabWidth = floor(containerWidth / (CGFloat)self.tabButtons.count);
-    CGFloat width = MAX(68.0, tabWidth - 10.0);
+    CGFloat width = MAX(68.0, tabWidth - PPSpaceSM);
     CGFloat leading = (tabWidth * (CGFloat)index) + ((tabWidth - width) * 0.5);
 
     self.indicatorLeadingConstraint.constant = leading;
     self.indicatorWidthConstraint.constant = width;
+    self.selectionIndicator.hidden = NO;
 
     void (^animations)(void) = ^{
         [self.surfaceView layoutIfNeeded];
     };
 
-    if (!animated) {
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
         animations();
         return;
     }
@@ -830,20 +871,20 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_refreshButtonAppearance
 {
-    UIColor *inactiveColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    UIColor *selectedColor = AppPrimaryClr ?: [GM appPrimaryColor] ?: UIColor.systemPinkColor;
+    UIColor *inactiveColor = [UIColor ppTextSecondary];
+    UIColor *selectedColor = UIColor.whiteColor;
     for (NSInteger index = 0; index < (NSInteger)self.tabButtons.count; index++) {
         BOOL isSelected = (index == self.selectedIndex);
         UIButton *button = self.tabButtons[index];
         UIImageView *iconView = [button viewWithTag:kPPHubSegmentIconTag];
         UILabel *titleLabel = [button viewWithTag:kPPHubSegmentTitleTag];
-        UIColor *contentColor = isSelected ? selectedColor : [inactiveColor colorWithAlphaComponent:0.82];
-        button.backgroundColor = isSelected ? [selectedColor colorWithAlphaComponent:0.11] : UIColor.clearColor;
-        [button pp_setBorderColor:isSelected ? [selectedColor colorWithAlphaComponent:0.18] : UIColor.clearColor];
+        UIColor *contentColor = isSelected ? selectedColor : inactiveColor;
+        button.backgroundColor = UIColor.clearColor;
+        [button pp_setBorderColor:UIColor.clearColor];
         button.tintColor = contentColor;
         iconView.tintColor = contentColor;
         titleLabel.textColor = contentColor;
-        button.alpha = isSelected ? 1.0 : 0.86;
+        button.alpha = 1.0;
         button.accessibilityTraits = UIAccessibilityTraitButton | (isSelected ? UIAccessibilityTraitSelected : 0);
     }
 }
@@ -868,6 +909,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 @interface PPNotificationInboxCell : UITableViewCell
 @property (nonatomic, strong) UIView *cardView;
+@property (nonatomic, strong) UIView *unreadRailView;
 @property (nonatomic, strong) UIView *iconContainerView;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
@@ -886,24 +928,32 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     _cardView = [[UIView alloc] initWithFrame:CGRectZero];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.96];
-    _cardView.layer.cornerRadius = 24.0;
-    _cardView.layer.masksToBounds = NO;
-    [_cardView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.16]];
-    _cardView.layer.shadowOpacity = 0.10;
-    _cardView.layer.shadowRadius = 14.0;
-    _cardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    _cardView.backgroundColor = [UIColor ppSurface];
+    _cardView.layer.cornerRadius = PPCornerCard;
+    _cardView.layer.masksToBounds = YES;
+    _cardView.layer.borderWidth = 0.75;
+    [_cardView pp_setBorderColor:[UIColor ppBorder]];
+    _cardView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
         _cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.contentView addSubview:_cardView];
 
+    _unreadRailView = [[UIView alloc] initWithFrame:CGRectZero];
+    _unreadRailView.translatesAutoresizingMaskIntoConstraints = NO;
+    _unreadRailView.backgroundColor = [UIColor ppPrimary];
+    _unreadRailView.layer.cornerRadius = 1.5;
+    _unreadRailView.userInteractionEnabled = NO;
+    [_cardView addSubview:_unreadRailView];
+
     _iconContainerView = [[UIView alloc] initWithFrame:CGRectZero];
     _iconContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconContainerView.layer.cornerRadius = 20.0;
+    _iconContainerView.layer.cornerRadius = PPCorner16;
     _iconContainerView.layer.masksToBounds = YES;
     [_cardView addSubview:_iconContainerView];
 
@@ -914,54 +964,76 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:16.0];
-    _titleLabel.textColor = UIColor.labelColor;
-    _titleLabel.numberOfLines = 2;
+    UIFont *titleBaseFont = [GM boldFontWithSize:16.5] ?: [UIFont systemFontOfSize:16.5 weight:UIFontWeightSemibold];
+    _titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:titleBaseFont];
+    _titleLabel.adjustsFontForContentSizeCategory = YES;
+    _titleLabel.textColor = [UIColor ppTextPrimary];
+    _titleLabel.numberOfLines = 0;
+    _titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    _titleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [_cardView addSubview:_titleLabel];
 
     _subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:13.0];
-    _subtitleLabel.textColor = UIColor.secondaryLabelColor;
-    _subtitleLabel.numberOfLines = 2;
+    UIFont *subtitleBaseFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightRegular];
+    _subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:subtitleBaseFont];
+    _subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    _subtitleLabel.textColor = [UIColor ppTextSecondary];
+    _subtitleLabel.numberOfLines = 0;
+    _subtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    _subtitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [_cardView addSubview:_subtitleLabel];
 
     _metaLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _metaLabel.font = [GM MidFontWithSize:12.0];
-    _metaLabel.textColor = UIColor.tertiaryLabelColor;
-    _metaLabel.numberOfLines = 1;
+    UIFont *metaBaseFont = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    _metaLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:metaBaseFont];
+    _metaLabel.adjustsFontForContentSizeCategory = YES;
+    _metaLabel.textColor = [UIColor ppTextSecondary];
+    _metaLabel.numberOfLines = 2;
+    _metaLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    _metaLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [_cardView addSubview:_metaLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
-        [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6.0],
+        [self.cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceXS],
+        [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceXS],
 
-        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16.0],
+        [self.unreadRailView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:PPSpaceXS],
+        [self.unreadRailView.centerYAnchor constraintEqualToAnchor:self.cardView.centerYAnchor],
+        [self.unreadRailView.widthAnchor constraintEqualToConstant:3.0],
+        [self.unreadRailView.heightAnchor constraintEqualToConstant:32.0],
+
+        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:PPSpaceBase],
         [self.iconContainerView.centerYAnchor constraintEqualToAnchor:self.cardView.centerYAnchor],
-        [self.iconContainerView.widthAnchor constraintEqualToConstant:40.0],
-        [self.iconContainerView.heightAnchor constraintEqualToConstant:40.0],
+        [self.iconContainerView.widthAnchor constraintEqualToConstant:46.0],
+        [self.iconContainerView.heightAnchor constraintEqualToConstant:46.0],
+        [self.iconContainerView.topAnchor constraintGreaterThanOrEqualToAnchor:self.cardView.topAnchor constant:PPSpaceBase],
+        [self.iconContainerView.bottomAnchor constraintLessThanOrEqualToAnchor:self.cardView.bottomAnchor constant:-PPSpaceBase],
 
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconContainerView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconContainerView.centerYAnchor],
-        [self.iconView.widthAnchor constraintEqualToConstant:18.0],
-        [self.iconView.heightAnchor constraintEqualToConstant:18.0],
+        [self.iconView.widthAnchor constraintEqualToConstant:20.0],
+        [self.iconView.heightAnchor constraintEqualToConstant:20.0],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:16.0],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:14.0],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16.0],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:PPSpaceBase],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:PPSpaceMD],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-PPSpaceBase],
 
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:PPSpaceXS],
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor],
 
-        [self.metaLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:8.0],
+        [self.metaLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:PPSpaceSM],
         [self.metaLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.metaLabel.trailingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor],
-        [self.metaLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.cardView.bottomAnchor constant:-16.0],
+        [self.metaLabel.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-PPSpaceBase],
     ]];
+
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
 
     return self;
 }
@@ -980,14 +1052,40 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.subtitleLabel.text = @"";
     self.metaLabel.text = @"";
     self.iconView.image = nil;
+    self.cardView.transform = CGAffineTransformIdentity;
+    self.cardView.alpha = 1.0;
+}
+
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
+{
+    [super setHighlighted:highlighted animated:animated];
+    CGAffineTransform transform = highlighted ? CGAffineTransformMakeScale(0.985, 0.985) : CGAffineTransformIdentity;
+    CGFloat alpha = highlighted ? 0.92 : 1.0;
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        self.cardView.transform = transform;
+        self.cardView.alpha = alpha;
+        return;
+    }
+
+    [UIView animateWithDuration:highlighted ? 0.12 : 0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.cardView.transform = transform;
+        self.cardView.alpha = alpha;
+    } completion:nil];
 }
 
 - (void)configureWithItem:(PPNotificationInboxItem *)item formatter:(NSDateFormatter *)formatter
 {
     self.titleLabel.text = item.title ?: @"";
     self.subtitleLabel.text = item.subtitle ?: @"";
-    self.titleLabel.font = item.isRead ? [GM MidFontWithSize:16.0] : [GM boldFontWithSize:16.0];
-    self.cardView.alpha = item.isRead ? 0.86 : 1.0;
+    UIFont *titleBaseFont = item.isRead
+        ? ([GM MidFontWithSize:16.5] ?: [UIFont systemFontOfSize:16.5 weight:UIFontWeightMedium])
+        : ([GM boldFontWithSize:16.5] ?: [UIFont systemFontOfSize:16.5 weight:UIFontWeightSemibold]);
+    self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:titleBaseFont];
+    self.unreadRailView.hidden = item.isRead;
+    self.cardView.backgroundColor = item.isRead ? [UIColor ppSurface] : [UIColor ppElevatedSurface];
     NSString *dateText = @"";
     if ([item.timestamp isKindOfClass:NSDate.class]) {
         dateText = [formatter stringFromDate:item.timestamp] ?: @"";
@@ -998,7 +1096,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         self.metaLabel.text = item.categoryTitle.length > 0 ? item.categoryTitle : dateText;
     }
 
-    UIColor *accent = item.accentColor ?: [GM appPrimaryColor] ?: UIColor.systemOrangeColor;
+    UIColor *accent = item.accentColor ?: [UIColor ppPrimary];
     self.iconContainerView.backgroundColor = [accent colorWithAlphaComponent:0.14];
     self.iconView.tintColor = accent;
     if (@available(iOS 13.0, *)) {
@@ -1007,20 +1105,41 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     } else {
         self.iconView.image = [UIImage imageNamed:item.symbolName ?: @"bell.fill"];
     }
+
+    NSMutableArray<NSString *> *accessibilityParts = [NSMutableArray array];
+    if (item.title.length > 0) [accessibilityParts addObject:item.title];
+    if (item.subtitle.length > 0) [accessibilityParts addObject:item.subtitle];
+    if (self.metaLabel.text.length > 0) [accessibilityParts addObject:self.metaLabel.text];
+    self.accessibilityLabel = [accessibilityParts componentsJoinedByString:@", "];
+    self.accessibilityValue = item.isRead ? nil : (kLang(@"New") ?: @"");
 }
 
 @end
 
+typedef NS_ENUM(NSInteger, PPNotificationsInboxState) {
+    PPNotificationsInboxStateLoading,
+    PPNotificationsInboxStateContent,
+    PPNotificationsInboxStateEmpty,
+    PPNotificationsInboxStateError,
+};
+
 @interface PPNotificationsInboxViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIView *stateView;
+@property (nonatomic, strong) UIImageView *stateIconView;
+@property (nonatomic, strong) UIActivityIndicatorView *stateActivityIndicator;
 @property (nonatomic, strong) UILabel *emptyTitleLabel;
 @property (nonatomic, strong) UILabel *emptySubtitleLabel;
+@property (nonatomic, strong) UIButton *stateRetryButton;
 @property (nonatomic, strong) NSArray<PPNotificationInboxItem *> *items;
 @property (nonatomic, strong) NSDateFormatter *dateFormatter;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> inboxListener;
 @property (nonatomic, assign) FIRAuthStateDidChangeListenerHandle authStateListenerHandle;
 @property (nonatomic, assign) NSUInteger inboxLoadGeneration;
+@property (nonatomic, assign) PPNotificationsInboxState inboxState;
+@property (nonatomic, copy) NSString *observedUID;
 - (void)reloadNotifications;
+- (void)pp_renderInboxState:(PPNotificationsInboxState)state;
 @end
 
 @implementation PPNotificationsInboxViewController
@@ -1032,26 +1151,32 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.items = @[];
 
     self.dateFormatter = [[NSDateFormatter alloc] init];
-    self.dateFormatter.locale = [NSLocale currentLocale];
+    self.dateFormatter.locale = [NSLocale localeWithLocaleIdentifier:Language.isRTL ? @"ar_QA" : @"en_QA"];
     [self.dateFormatter setLocalizedDateFormatFromTemplate:@"EEE d MMM h:mm a"];
 
-    UITableViewStyle style = UITableViewStyleGrouped;
-    if (@available(iOS 13.0, *)) {
-        style = UITableViewStyleInsetGrouped;
-    }
-    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:style];
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.showsVerticalScrollIndicator = NO;
-    self.tableView.rowHeight = 100.0;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 112.0;
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
-    self.tableView.contentInset = UIEdgeInsetsMake(8.0, 0.0, 32.0, 0.0);
+    self.tableView.contentInset = UIEdgeInsetsMake(PPSpaceSM, 0.0, kPPHubListBaseBottomInset, 0.0);
+    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
+    self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
     [self.tableView registerClass:PPNotificationInboxCell.class forCellReuseIdentifier:@"PPNotificationInboxCell"];
+
+    UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
+    refreshControl.tintColor = [UIColor ppPrimary];
+    refreshControl.accessibilityLabel = kLang(@"empty_retry_button") ?: @"";
+    [refreshControl addTarget:self action:@selector(reloadNotifications) forControlEvents:UIControlEventValueChanged];
+    self.tableView.refreshControl = refreshControl;
     [self.view addSubview:self.tableView];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -1063,46 +1188,82 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     UIView *emptyView = [[UIView alloc] initWithFrame:CGRectZero];
     emptyView.backgroundColor = UIColor.clearColor;
+    emptyView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.stateView = emptyView;
 
     UIImageView *emptyIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
     emptyIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    emptyIconView.tintColor = UIColor.secondaryLabelColor;
+    emptyIconView.tintColor = [UIColor ppTextSecondary];
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:42.0 weight:UIImageSymbolWeightRegular];
         emptyIconView.image = [UIImage systemImageNamed:@"bell.slash.fill" withConfiguration:config];
     }
     [emptyView addSubview:emptyIconView];
+    self.stateIconView = emptyIconView;
+
+    self.stateActivityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    self.stateActivityIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+    self.stateActivityIndicator.color = [UIColor ppPrimary];
+    self.stateActivityIndicator.hidesWhenStopped = YES;
+    [emptyView addSubview:self.stateActivityIndicator];
 
     self.emptyTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.emptyTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.emptyTitleLabel.font = [GM boldFontWithSize:20.0];
-    self.emptyTitleLabel.textColor = UIColor.labelColor;
+    UIFont *stateTitleBaseFont = [GM boldFontWithSize:20.0] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightBold];
+    self.emptyTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2] scaledFontForFont:stateTitleBaseFont];
+    self.emptyTitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.emptyTitleLabel.textColor = [UIColor ppTextPrimary];
     self.emptyTitleLabel.textAlignment = NSTextAlignmentCenter;
-    self.emptyTitleLabel.text = kLang(@"notifications_inbox_empty_title") ?: @"No notifications yet";
+    self.emptyTitleLabel.text = kLang(@"notifications_inbox_empty_title") ?: @"";
     [emptyView addSubview:self.emptyTitleLabel];
 
     self.emptySubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.emptySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.emptySubtitleLabel.font = [GM MidFontWithSize:14.0];
-    self.emptySubtitleLabel.textColor = UIColor.secondaryLabelColor;
+    UIFont *stateSubtitleBaseFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightRegular];
+    self.emptySubtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:stateSubtitleBaseFont];
+    self.emptySubtitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.emptySubtitleLabel.textColor = [UIColor ppTextSecondary];
     self.emptySubtitleLabel.textAlignment = NSTextAlignmentCenter;
     self.emptySubtitleLabel.numberOfLines = 0;
-    self.emptySubtitleLabel.text = kLang(@"notifications_inbox_empty_subtitle") ?: @"Order updates and chat alerts will show up here.";
+    self.emptySubtitleLabel.text = kLang(@"notifications_inbox_empty_subtitle") ?: @"";
     [emptyView addSubview:self.emptySubtitleLabel];
+
+    self.stateRetryButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.stateRetryButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.stateRetryButton.tintColor = [UIColor ppPrimary];
+    self.stateRetryButton.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+                                             scaledFontForFont:([GM boldFontWithSize:15.0]
+                                                                ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold])];
+    self.stateRetryButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    [self.stateRetryButton setTitle:(kLang(@"retry") ?: @"") forState:UIControlStateNormal];
+    [self.stateRetryButton addTarget:self action:@selector(reloadNotifications) forControlEvents:UIControlEventTouchUpInside];
+    self.stateRetryButton.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceSM, PPSpaceBase, PPSpaceSM, PPSpaceBase);
+    self.stateRetryButton.layer.cornerRadius = PPCornerSmall;
+    self.stateRetryButton.layer.borderWidth = 0.75;
+    [self.stateRetryButton pp_setBorderColor:[UIColor ppBorder]];
+    [emptyView addSubview:self.stateRetryButton];
 
     [NSLayoutConstraint activateConstraints:@[
         [emptyIconView.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor],
         [emptyIconView.centerYAnchor constraintEqualToAnchor:emptyView.centerYAnchor constant:-38.0],
 
-        [self.emptyTitleLabel.topAnchor constraintEqualToAnchor:emptyIconView.bottomAnchor constant:16.0],
+        [self.stateActivityIndicator.centerXAnchor constraintEqualToAnchor:emptyIconView.centerXAnchor],
+        [self.stateActivityIndicator.centerYAnchor constraintEqualToAnchor:emptyIconView.centerYAnchor],
+
+        [self.emptyTitleLabel.topAnchor constraintEqualToAnchor:emptyIconView.bottomAnchor constant:PPSpaceBase],
         [self.emptyTitleLabel.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor constant:28.0],
         [self.emptyTitleLabel.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor constant:-28.0],
 
-        [self.emptySubtitleLabel.topAnchor constraintEqualToAnchor:self.emptyTitleLabel.bottomAnchor constant:8.0],
+        [self.emptySubtitleLabel.topAnchor constraintEqualToAnchor:self.emptyTitleLabel.bottomAnchor constant:PPSpaceSM],
         [self.emptySubtitleLabel.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor constant:34.0],
         [self.emptySubtitleLabel.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor constant:-34.0],
+
+        [self.stateRetryButton.topAnchor constraintEqualToAnchor:self.emptySubtitleLabel.bottomAnchor constant:PPSpaceBase],
+        [self.stateRetryButton.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor],
+        [self.stateRetryButton.heightAnchor constraintGreaterThanOrEqualToConstant:44.0],
     ]];
     self.tableView.backgroundView = emptyView;
+    [self pp_renderInboxState:PPNotificationsInboxStateLoading];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(pp_handleRefreshNotification:)
@@ -1111,6 +1272,14 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(pp_handleRefreshNotification:)
                                                  name:@"PPRemoteNotificationTapped"
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handleLanguageNotification:)
+                                                 name:@"LanguageDidChangeNotification"
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handleLanguageNotification:)
+                                                 name:PPLanguageDidChangeNotification
                                                object:nil];
 
     __weak typeof(self) weakSelf = self;
@@ -1142,6 +1311,67 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     [self reloadNotifications];
 }
 
+- (void)pp_handleLanguageNotification:(NSNotification *)notification
+{
+    (void)notification;
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.stateView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.dateFormatter.locale = [NSLocale localeWithLocaleIdentifier:Language.isRTL ? @"ar_QA" : @"en_QA"];
+    [self.dateFormatter setLocalizedDateFormatFromTemplate:@"EEE d MMM h:mm a"];
+    self.tableView.refreshControl.accessibilityLabel = kLang(@"empty_retry_button") ?: @"";
+    [self.stateRetryButton setTitle:(kLang(@"retry") ?: @"") forState:UIControlStateNormal];
+    [self pp_renderInboxState:self.inboxState];
+    [self.tableView reloadData];
+}
+
+- (void)pp_renderInboxState:(PPNotificationsInboxState)state
+{
+    self.inboxState = state;
+    BOOL hasItems = self.items.count > 0;
+    self.tableView.backgroundView.hidden = hasItems || state == PPNotificationsInboxStateContent;
+
+    [self.stateActivityIndicator stopAnimating];
+    self.stateIconView.hidden = NO;
+    self.stateRetryButton.hidden = YES;
+
+    UIImageSymbolConfiguration *symbolConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:38.0
+                                                        weight:UIImageSymbolWeightRegular];
+
+    switch (state) {
+        case PPNotificationsInboxStateLoading:
+            self.stateIconView.hidden = YES;
+            [self.stateActivityIndicator startAnimating];
+            self.emptyTitleLabel.text = kLang(@"Loading") ?: @"";
+            self.emptySubtitleLabel.text = kLang(@"notifications_hub_hero_notifications_subtitle") ?: @"";
+            break;
+        case PPNotificationsInboxStateError:
+            self.stateIconView.image = [UIImage systemImageNamed:@"wifi.exclamationmark"
+                                                withConfiguration:symbolConfig];
+            self.stateIconView.tintColor = [UIColor ppAccentText];
+            self.emptyTitleLabel.text = kLang(@"load_error_title") ?: @"";
+            self.emptySubtitleLabel.text = kLang(@"connection_timeout_message") ?: (kLang(@"notifications_inbox_empty_subtitle") ?: @"");
+            self.stateRetryButton.hidden = NO;
+            break;
+        case PPNotificationsInboxStateEmpty:
+            self.stateIconView.image = [UIImage systemImageNamed:@"bell.slash"
+                                                withConfiguration:symbolConfig];
+            self.stateIconView.tintColor = [UIColor ppTextSecondary];
+            self.emptyTitleLabel.text = kLang(@"notifications_inbox_empty_title") ?: @"";
+            self.emptySubtitleLabel.text = kLang(@"notifications_inbox_empty_subtitle") ?: @"";
+            break;
+        case PPNotificationsInboxStateContent:
+            break;
+    }
+
+    NSString *stateLabel = self.emptyTitleLabel.text ?: @"";
+    self.stateView.accessibilityLabel = stateLabel;
+    self.stateView.accessibilityElements = self.stateRetryButton.hidden
+        ? @[self.emptyTitleLabel, self.emptySubtitleLabel]
+        : @[self.emptyTitleLabel, self.emptySubtitleLabel, self.stateRetryButton];
+}
+
 - (void)reloadNotifications
 {
     if (![NSThread isMainThread]) {
@@ -1154,13 +1384,22 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     DLog(@"[NotificationsInbox] Reload started");
     [self.inboxListener remove];
     self.inboxListener = nil;
-    NSUInteger generation = ++self.inboxLoadGeneration;
-    self.items = @[];
-    [self.tableView reloadData];
-    self.tableView.backgroundView.hidden = NO;
-
     NSString *uid = PPHubTrimmedString([FIRAuth auth].currentUser.uid);
+    NSString *previousUID = self.observedUID ?: @"";
+    if (![previousUID isEqualToString:uid]) {
+        self.observedUID = uid;
+        self.items = @[];
+        [self.tableView reloadData];
+    }
+
+    NSUInteger generation = ++self.inboxLoadGeneration;
+    if (self.items.count == 0) {
+        [self pp_renderInboxState:PPNotificationsInboxStateLoading];
+    }
+
     if (uid.length == 0) {
+        [self.tableView.refreshControl endRefreshing];
+        [self pp_renderInboxState:PPNotificationsInboxStateEmpty];
         return;
     }
 
@@ -1179,6 +1418,16 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
             DLog(@"[NotificationsInbox] Read failed | domain=%@ code=%ld",
                  error.domain ?: @"",
                  (long)error.code);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (generation != strongSelf.inboxLoadGeneration) return;
+                [strongSelf.tableView.refreshControl endRefreshing];
+                if (strongSelf.items.count == 0) {
+                    [strongSelf pp_renderInboxState:PPNotificationsInboxStateError];
+                } else {
+                    [strongSelf pp_renderInboxState:PPNotificationsInboxStateContent];
+                    [PPHUD showInfo:kLang(@"load_error_title") ?: @""];
+                }
+            });
             return;
         }
 
@@ -1225,7 +1474,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
             if (generation != strongSelf.inboxLoadGeneration) return;
             strongSelf.items = items.copy;
             [strongSelf.tableView reloadData];
-            strongSelf.tableView.backgroundView.hidden = (strongSelf.items.count > 0);
+            [strongSelf.tableView.refreshControl endRefreshing];
+            [strongSelf pp_renderInboxState:strongSelf.items.count > 0
+                ? PPNotificationsInboxStateContent
+                : PPNotificationsInboxStateEmpty];
         });
     }];
 }
@@ -1302,7 +1554,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     }
 
     if (orderID.length == 0) {
-        [PPHUD showInfo:kLang(@"notifications_inbox_empty_subtitle") ?: @"Notifications"];
+        [PPHUD showInfo:kLang(@"notifications_inbox_empty_subtitle") ?: @""];
         return;
     }
 
@@ -1314,13 +1566,13 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
             if (!strongSelf) return;
 
             if (error || !snapshot.exists) {
-                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @"Order data is unavailable right now."];
+                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @""];
                 return;
             }
 
             PPOrder *order = [PPOrder orderFromSnapshot:snapshot];
             if (!order) {
-                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @"Order data is unavailable right now."];
+                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @""];
                 return;
             }
 
@@ -1333,12 +1585,8 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @end
 
 @interface PPNotificationsHubViewController ()
-@property (nonatomic, strong) UIView *backgroundTopGlowView;
-@property (nonatomic, strong) UIView *backgroundMidGlowView;
-@property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) PPWaveCardBGHostingController *waveCardBackgroundController;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -1362,7 +1610,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super viewDidLoad];
 
-    self.view.backgroundColor = AppBackgroundClr;
+    self.view.backgroundColor = [UIColor ppBackground];
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.selectedIndex = 0;
 
@@ -1377,6 +1625,20 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     [self pp_setupTopChrome];
     [self pp_setupContentContainer];
     [self pp_showChildAtIndex:self.selectedIndex animated:NO];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handleLanguageNotification:)
+                                                 name:@"LanguageDidChangeNotification"
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handleLanguageNotification:)
+                                                 name:PPLanguageDidChangeNotification
+                                               object:nil];
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -1409,54 +1671,6 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-
-    CGFloat width = CGRectGetWidth(self.view.bounds);
-    CGFloat height = CGRectGetHeight(self.view.bounds);
-    CGFloat safeTop = self.view.safeAreaInsets.top;
-
-    CGFloat topSize = MIN(360.0, MAX(248.0, width * 0.74));
-    CGFloat midSize = MIN(300.0, MAX(210.0, width * 0.58));
-    CGFloat bottomSize = MIN(340.0, MAX(220.0, width * 0.66));
-
-    self.backgroundTopGlowView.frame = CGRectMake(width - (topSize * 0.62),
-                                                  safeTop - (topSize * 0.72),
-                                                  topSize, topSize);
-
-    self.backgroundMidGlowView.frame = CGRectMake(-(midSize * 0.44),
-                                                  MAX(112.0, height * 0.28),
-                                                  midSize, midSize);
-
-    self.backgroundBottomGlowView.frame = CGRectMake(width - (bottomSize * 0.56),
-                                                     height - (bottomSize * 0.62),
-                                                     bottomSize, bottomSize);
-
-    NSArray<UIView *> *glowViews = @[
-        self.backgroundTopGlowView,
-        self.backgroundMidGlowView,
-        self.backgroundBottomGlowView
-    ];
-
-    for (UIView *glowView in glowViews) {
-        CGFloat radius = CGRectGetWidth(glowView.bounds) * 0.5;
-        glowView.layer.cornerRadius = radius;
-        glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
-    }
-    self.backgroundMidGlowView.alpha = 0.5;
-
-    CGFloat heroWidth = MAX(0.0, width - (kPPHubHeroHorizontalInset * 2.0));
-    CGFloat heroTop = safeTop + kPPHubHeroTopInset;
-    self.heroContainerView.frame = CGRectMake(kPPHubHeroHorizontalInset,
-                                              heroTop,
-                                              heroWidth,
-                                              kPPHubHeroHeight);
-    self.heroContainerView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.heroContainerView.bounds
-                                   cornerRadius:28.0].CGPath;
-
-    CGFloat contentTop = CGRectGetMaxY(self.heroContainerView.frame) + kPPHubContentTopGap;
-    CGFloat contentHeight = MAX(0.0, height - contentTop);
-    self.contentContainerView.frame = CGRectMake(0.0, contentTop, width, contentHeight);
-    self.activeChild.view.frame = self.contentContainerView.bounds;
 }
 
 #pragma mark - Setup
@@ -1472,76 +1686,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_setupBackdrop
 {
-    self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.backgroundTopGlowView.userInteractionEnabled = NO;
-    self.backgroundTopGlowView.clipsToBounds = NO;
-    self.backgroundTopGlowView.layer.masksToBounds = NO;
-    self.backgroundTopGlowView.layer.shadowOffset = CGSizeZero;
-    [self.view insertSubview:self.backgroundTopGlowView atIndex:0];
-
-    self.backgroundMidGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.backgroundMidGlowView.userInteractionEnabled = NO;
-    self.backgroundMidGlowView.clipsToBounds = NO;
-    self.backgroundMidGlowView.layer.masksToBounds = NO;
-    self.backgroundMidGlowView.layer.shadowOffset = CGSizeZero;
-    self.backgroundMidGlowView.alpha = 0.5;
-    [self.view insertSubview:self.backgroundMidGlowView atIndex:0];
-
-    self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.backgroundBottomGlowView.userInteractionEnabled = NO;
-    self.backgroundBottomGlowView.clipsToBounds = NO;
-    self.backgroundBottomGlowView.layer.masksToBounds = NO;
-    self.backgroundBottomGlowView.layer.shadowOffset = CGSizeZero;
-    [self.view insertSubview:self.backgroundBottomGlowView atIndex:0];
-
-    [self pp_updateGlowAppearance];
-}
-
-- (void)pp_updateGlowAppearance
-{
-    BOOL isDark = NO;
-    if (@available(iOS 12.0, *)) {
-        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    }
-
-    UIColor *primaryColor = NewBgColor ?: AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *secondaryColor = AppPrimaryClr ?: [primaryColor colorWithAlphaComponent:1.0];
-    UIColor *bottomFadeColor = isDark
-        ? UIColor.blackColor
-        : [UIColor colorWithRed:0.98 green:0.66 blue:0.46 alpha:1.0];
-
-    [self pp_applyGlowView:self.backgroundTopGlowView
-                    color:AppSurfColor
-             surfaceAlpha:isDark ? 0.10 : 0.060
-            shadowOpacity:isDark ? 0.13f : 0.080f
-             shadowRadius:isDark ? 76.0 : 68.0];
-
-    [self pp_applyGlowView:self.backgroundMidGlowView
-                    color:secondaryColor
-             surfaceAlpha:isDark ? 0.080 : 0.044
-            shadowOpacity:isDark ? 0.10f : 0.060f
-             shadowRadius:isDark ? 66.0 : 58.0];
-
-    [self pp_applyGlowView:self.backgroundBottomGlowView
-                    color:bottomFadeColor
-             surfaceAlpha:isDark ? 0.024 : 0.040
-            shadowOpacity:isDark ? 0.065f : 0.036f
-             shadowRadius:isDark ? 56.0 : 48.0];
-}
-
-- (void)pp_applyGlowView:(UIView *)glowView
-                   color:(UIColor *)color
-            surfaceAlpha:(CGFloat)surfaceAlpha
-           shadowOpacity:(CGFloat)shadowOpacity
-            shadowRadius:(CGFloat)shadowRadius
-{
-    if (!glowView || !color) return;
-
-    glowView.alpha = 1.0;
-    glowView.backgroundColor = [color colorWithAlphaComponent:surfaceAlpha];
-    glowView.layer.shadowColor = AppClearClr.CGColor;
-    glowView.layer.shadowOpacity = 0;
-    glowView.layer.shadowRadius = 0;
+    self.view.backgroundColor = [UIColor ppBackground];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -1549,10 +1694,35 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
         if (self.traitCollection.userInterfaceStyle != previousTraitCollection.userInterfaceStyle) {
-            [self pp_updateGlowAppearance];
-            self.view.backgroundColor = AppBackgroundClr;
+            self.view.backgroundColor = [UIColor ppBackground];
         }
     }
+}
+
+- (void)pp_handleLanguageNotification:(NSNotification *)notification
+{
+    (void)notification;
+    UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+    NSTextAlignment alignment = [Language alignmentForCurrentLanguage];
+    self.view.semanticContentAttribute = semantic;
+    self.heroContainerView.semanticContentAttribute = semantic;
+    self.heroSurfaceView.semanticContentAttribute = semantic;
+    self.contentContainerView.semanticContentAttribute = semantic;
+    self.heroEyebrowLabel.semanticContentAttribute = semantic;
+    self.heroTitleLabel.semanticContentAttribute = semantic;
+    self.heroSubtitleLabel.semanticContentAttribute = semantic;
+    self.heroEyebrowLabel.textAlignment = alignment;
+    self.heroTitleLabel.textAlignment = alignment;
+    self.heroSubtitleLabel.textAlignment = alignment;
+    self.heroEyebrowLabel.text = kLang(@"notifications_hub_hero_eyebrow") ?: @"";
+    [self.tabsView updateTitles:@[
+        kLang(@"pet_chats_tab") ?: @"",
+        kLang(@"pet_reminders_tab") ?: @"",
+        kLang(@"notifications_inbox_tab") ?: @""
+    ]];
+    [self.tabsView selectIndex:self.selectedIndex animated:NO];
+    [self pp_refreshHeroTextForIndex:self.selectedIndex animated:NO];
+    [self pp_refreshActionButtonForIndex:self.selectedIndex];
 }
 
 - (void)pp_setupTopChrome
@@ -1560,51 +1730,25 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     if (self.heroContainerView) return;
 
     self.heroContainerView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.heroContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroContainerView.backgroundColor = UIColor.clearColor;
-    self.heroContainerView.clipsToBounds = NO;
-    self.heroContainerView.layer.cornerRadius = 28.0;
-    [self.heroContainerView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.16]];
-    self.heroContainerView.layer.shadowOpacity = 0.08;
-    self.heroContainerView.layer.shadowRadius = 18.0;
-    self.heroContainerView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    if (@available(iOS 13.0, *)) {
-        self.heroContainerView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    self.heroContainerView.clipsToBounds = YES;
+    self.heroContainerView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.view addSubview:self.heroContainerView];
 
     self.heroSurfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSurfaceView.backgroundColor = UIColor.clearColor;
-    self.heroSurfaceView.layer.cornerRadius = 28.0;
+    self.heroSurfaceView.backgroundColor = [UIColor ppBackground];
     self.heroSurfaceView.layer.masksToBounds = YES;
     self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    if (@available(iOS 13.0, *)) {
-        self.heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
     [self.heroContainerView addSubview:self.heroSurfaceView];
-
-    self.waveCardBackgroundController =
-        [[PPWaveCardBGHostingController alloc] initWithAnimationEnabled:kPPHubHeroBackgroundAnimationEnabled
-                                                                    shape:kPPHubHeroBackgroundShape
-                                                              cornerRadius:28.0
-                                                       accentColorOverride:nil];
-    [self addChildViewController:self.waveCardBackgroundController];
-    UIView *backgroundView = self.waveCardBackgroundController.view;
-    backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
-    backgroundView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.heroSurfaceView insertSubview:backgroundView atIndex:0];
-    [NSLayoutConstraint activateConstraints:@[
-        [backgroundView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
-        [backgroundView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
-        [backgroundView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
-        [backgroundView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor]
-    ]];
-    [self.waveCardBackgroundController didMoveToParentViewController:self];
 
     self.heroEyebrowLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroEyebrowLabel.font = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold];
-    self.heroEyebrowLabel.textColor = [AppPrimaryClr colorWithAlphaComponent:0.86] ?: [GM appPrimaryColor];
+    UIFont *eyebrowBaseFont = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    self.heroEyebrowLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:eyebrowBaseFont];
+    self.heroEyebrowLabel.adjustsFontForContentSizeCategory = YES;
+    self.heroEyebrowLabel.textColor = [UIColor ppAccentText];
     self.heroEyebrowLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.heroEyebrowLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.heroEyebrowLabel.text = kLang(@"notifications_hub_hero_eyebrow");
@@ -1612,28 +1756,43 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTitleLabel.font = [GM boldFontWithSize:26.0] ?: [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
-    self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    UIFont *titleBaseFont = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
+    self.heroTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleLargeTitle] scaledFontForFont:titleBaseFont];
+    self.heroTitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.heroTitleLabel.textColor = [UIColor ppTextPrimary];
     self.heroTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.heroTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.heroTitleLabel.numberOfLines = 1;
-    self.heroTitleLabel.adjustsFontSizeToFitWidth = YES;
-    self.heroTitleLabel.minimumScaleFactor = 0.82;
+    self.heroTitleLabel.numberOfLines = 2;
+    self.heroTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
     [self.heroSurfaceView addSubview:self.heroTitleLabel];
 
     self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSubtitleLabel.font = [GM MidFontWithSize:13.2] ?: [UIFont systemFontOfSize:13.2 weight:UIFontWeightMedium];
-    self.heroSubtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.82] ?: UIColor.secondaryLabelColor;
+    UIFont *subtitleBaseFont = [GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightRegular];
+    self.heroSubtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:subtitleBaseFont];
+    self.heroSubtitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.heroSubtitleLabel.textColor = [UIColor ppTextSecondary];
     self.heroSubtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.heroSubtitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.heroSubtitleLabel.numberOfLines = 2;
+    self.heroSubtitleLabel.numberOfLines = 0;
     [self.heroSurfaceView addSubview:self.heroSubtitleLabel];
 
+    // This header and the child-content container share the available vertical
+    // space. Without an intrinsic-height preference, any multiline label may
+    // expand to consume that space and push the tabs/list below the viewport.
+    // Keep the text chain at its natural Dynamic Type height; the child content
+    // receives the remaining room.
+    for (UILabel *label in @[self.heroEyebrowLabel, self.heroTitleLabel, self.heroSubtitleLabel]) {
+        [label setContentHuggingPriority:UILayoutPriorityRequired
+                                forAxis:UILayoutConstraintAxisVertical];
+        [label setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisVertical];
+    }
+
     NSArray<NSString *> *titles = @[
-        (kLang(@"pet_chats_tab") ?: @"Chats"),
-        (kLang(@"pet_reminders_tab") ?: @"Reminders"),
-        (kLang(@"notifications_inbox_tab") ?: @"Notifications")
+        (kLang(@"pet_chats_tab") ?: @""),
+        (kLang(@"pet_reminders_tab") ?: @""),
+        (kLang(@"notifications_inbox_tab") ?: @"")
     ];
     NSArray<NSString *> *icons = @[
         @"ellipsis.message.fill",
@@ -1649,16 +1808,12 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionButton.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.52];
-    self.actionButton.tintColor = [GM appPrimaryColor];
-    self.actionButton.layer.cornerRadius = kPPHubActionButtonSize * 0.5;
-    self.actionButton.clipsToBounds = NO;
-    self.actionButton.layer.borderWidth = 0.0;
-    [self.actionButton pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.12]];
-    [self.actionButton pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.18]];
-    self.actionButton.layer.shadowOpacity = 0.06;
-    self.actionButton.layer.shadowRadius = 9.0;
-    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    self.actionButton.backgroundColor = [UIColor ppSurface];
+    self.actionButton.tintColor = [UIColor ppPrimary];
+    self.actionButton.layer.cornerRadius = PPCorner16;
+    self.actionButton.clipsToBounds = YES;
+    self.actionButton.layer.borderWidth = 0.75;
+    [self.actionButton pp_setBorderColor:[UIColor ppBorder]];
     self.actionButton.accessibilityHint = kLang(@"empty_retry_button") ?: @"";
     if (@available(iOS 13.0, *)) {
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
@@ -1672,26 +1827,27 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
         [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
 
-        [self.actionButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:16.0],
-        [self.actionButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-16.0],
+        [self.actionButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPSpaceXS],
+        [self.actionButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
         [self.actionButton.widthAnchor constraintEqualToConstant:kPPHubActionButtonSize],
         [self.actionButton.heightAnchor constraintEqualToConstant:kPPHubActionButtonSize],
 
-        [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:17.0],
-        [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
+        [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPSpaceXS],
+        [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
         [self.heroEyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
 
-        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroEyebrowLabel.bottomAnchor constant:3.0],
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroEyebrowLabel.bottomAnchor constant:PPSpaceXXS],
         [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroEyebrowLabel.leadingAnchor],
         [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
 
-        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:8.0],
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:PPSpaceXS],
         [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroEyebrowLabel.leadingAnchor],
         [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
 
-        [self.tabsView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:14.0],
-        [self.tabsView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-14.0],
-        [self.tabsView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-14.0],
+        [self.tabsView.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:PPSpaceMD],
+        [self.tabsView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
+        [self.tabsView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
+        [self.tabsView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-PPSpaceSM],
         [self.tabsView.heightAnchor constraintEqualToConstant:kPPHubTopBarHeight],
     ]];
 
@@ -1705,9 +1861,29 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 - (void)pp_setupContentContainer
 {
     self.contentContainerView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.contentContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentContainerView.backgroundColor = UIColor.clearColor;
-    self.contentContainerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.contentContainerView];
+
+    NSLayoutConstraint *minimumContentHeight =
+        [self.contentContainerView.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin];
+    minimumContentHeight.priority = UILayoutPriorityDefaultHigh;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heroContainerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor
+                                                         constant:kPPHubHeroTopInset],
+        [self.heroContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor
+                                                             constant:kPPHubHeroHorizontalInset],
+        [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor
+                                                              constant:-kPPHubHeroHorizontalInset],
+
+        [self.contentContainerView.topAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor
+                                                            constant:kPPHubContentTopGap],
+        [self.contentContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.contentContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.contentContainerView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        minimumContentHeight,
+    ]];
 }
 
 - (void)pp_applyNavigationItems
@@ -1724,12 +1900,12 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     switch (index) {
         case 0:
-            return kLang(@"pet_chats_tab") ?: @"Chats";
+            return kLang(@"pet_chats_tab") ?: @"";
         case 1:
-            return kLang(@"pet_reminders_tab") ?: @"Reminders";
+            return kLang(@"pet_reminders_tab") ?: @"";
         case 2:
         default:
-            return kLang(@"notifications_inbox_tab") ?: @"Notifications";
+            return kLang(@"notifications_inbox_tab") ?: @"";
     }
 }
 
@@ -1758,7 +1934,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         self.heroSubtitleLabel.text = subtitle;
     };
 
-    if (!animated || self.heroTitleLabel.text.length == 0) {
+    if (!animated || UIAccessibilityIsReduceMotionEnabled() || self.heroTitleLabel.text.length == 0) {
         updates();
         return;
     }
@@ -1794,16 +1970,30 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 #pragma mark - Child Flow
 
+- (void)pp_installChildView:(UIView *)childView
+{
+    if (!childView) return;
+    childView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentContainerView addSubview:childView];
+    [NSLayoutConstraint activateConstraints:@[
+        [childView.topAnchor constraintEqualToAnchor:self.contentContainerView.topAnchor],
+        [childView.leadingAnchor constraintEqualToAnchor:self.contentContainerView.leadingAnchor],
+        [childView.trailingAnchor constraintEqualToAnchor:self.contentContainerView.trailingAnchor],
+        [childView.bottomAnchor constraintEqualToAnchor:self.contentContainerView.bottomAnchor],
+    ]];
+}
+
 - (void)pp_showChildAtIndex:(NSInteger)index animated:(BOOL)animated
 {
     if (index < 0 || index >= (NSInteger)self.childControllers.count) return;
+    BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
 
     UIViewController *nextChild = self.childControllers[index];
     if (self.activeChild == nextChild) {
         self.selectedIndex = index;
         [self pp_refreshActionButtonForIndex:index];
-        [self pp_refreshHeroTextForIndex:index animated:animated];
-        [self.tabsView selectIndex:index animated:animated];
+        [self pp_refreshHeroTextForIndex:index animated:shouldAnimate];
+        [self.tabsView selectIndex:index animated:shouldAnimate];
         if (index == 2) {
             [self.notificationsVC reloadNotifications];
         }
@@ -1812,25 +2002,23 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     UIViewController *previousChild = self.activeChild;
     self.selectedIndex = index;
-    [self.tabsView selectIndex:index animated:animated];
-    [self pp_refreshHeroTextForIndex:index animated:animated];
+    [self.tabsView selectIndex:index animated:shouldAnimate];
+    [self pp_refreshHeroTextForIndex:index animated:shouldAnimate];
 
     if (previousChild) {
         [previousChild willMoveToParentViewController:nil];
     }
 
     [self addChildViewController:nextChild];
-    nextChild.view.frame = self.contentContainerView.bounds;
-    nextChild.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-    if (!animated || !previousChild) {
+    if (!shouldAnimate || !previousChild) {
         [previousChild.view removeFromSuperview];
         [previousChild removeFromParentViewController];
-        [self.contentContainerView addSubview:nextChild.view];
+        [self pp_installChildView:nextChild.view];
         [nextChild didMoveToParentViewController:self];
         self.activeChild = nextChild;
         [self pp_refreshActionButtonForIndex:index];
-        [self pp_refreshHeroTextForIndex:index animated:animated];
+        [self pp_refreshHeroTextForIndex:index animated:shouldAnimate];
         if (index == 2) {
             [self.notificationsVC reloadNotifications];
         }
@@ -1839,7 +2027,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     nextChild.view.alpha = 0.0;
     nextChild.view.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    [self.contentContainerView addSubview:nextChild.view];
+    [self pp_installChildView:nextChild.view];
 
     [UIView animateWithDuration:0.26
                           delay:0.0
@@ -1857,7 +2045,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [nextChild didMoveToParentViewController:self];
         self.activeChild = nextChild;
         [self pp_refreshActionButtonForIndex:index];
-        [self pp_refreshHeroTextForIndex:index animated:animated];
+        [self pp_refreshHeroTextForIndex:index animated:shouldAnimate];
         if (index == 2) {
             [self.notificationsVC reloadNotifications];
         }
@@ -1867,24 +2055,24 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 - (void)pp_refreshActionButtonForIndex:(NSInteger)index
 {
     NSString *symbolName = @"arrow.clockwise";
-    NSString *accessibilityLabel = kLang(@"empty_retry_button") ?: @"Refresh";
+    NSString *accessibilityLabel = kLang(@"empty_retry_button") ?: @"";
     BOOL enabled = YES;
 
     switch (index) {
         case 0:
             symbolName = @"square.and.pencil";
-            accessibilityLabel = kLang(@"empty_chats_button") ?: @"Start chat";
+            accessibilityLabel = kLang(@"empty_chats_button") ?: @"";
             enabled = [self.chatsVC respondsToSelector:@selector(startNewChat)];
             break;
         case 1:
             symbolName = @"plus";
-            accessibilityLabel = kLang(@"pet_reminder_add") ?: @"Add Reminder";
+            accessibilityLabel = kLang(@"pet_reminder_add") ?: @"";
             enabled = [self.remindersVC respondsToSelector:@selector(pp_addReminder)];
             break;
         case 2:
         default:
             symbolName = @"arrow.clockwise";
-            accessibilityLabel = kLang(@"empty_retry_button") ?: @"Refresh";
+            accessibilityLabel = kLang(@"empty_retry_button") ?: @"";
             enabled = YES;
             break;
     }
@@ -1892,25 +2080,8 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightSemibold];
     UIImage *image = [UIImage systemImageNamed:symbolName withConfiguration:symCfg];
 
-    if (@available(iOS 26.0, *)) {
-        // Update the existing glass configuration in-place — no button recreation
-        UIButtonConfiguration *btnCfg = self.actionButton.configuration;
-        if (!btnCfg) {
-            btnCfg = [UIButtonConfiguration glassButtonConfiguration];
-        }
-        btnCfg.image = image;
-        self.actionButton.configuration = btnCfg;
-    } else if (@available(iOS 15.0, *)) {
-        UIButtonConfiguration *btnCfg = self.actionButton.configuration;
-        if (btnCfg) {
-            btnCfg.image = image;
-            self.actionButton.configuration = btnCfg;
-        } else {
-            [self.actionButton setImage:image forState:UIControlStateNormal];
-        }
-    } else {
-        [self.actionButton setImage:image forState:UIControlStateNormal];
-    }
+    self.actionButton.configuration = nil;
+    [self.actionButton setImage:image forState:UIControlStateNormal];
 
     self.actionButton.accessibilityLabel = accessibilityLabel;
     self.actionButton.enabled = enabled;

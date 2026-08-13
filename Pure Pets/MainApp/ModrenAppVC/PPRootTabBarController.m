@@ -1415,6 +1415,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
     [super setSelectedIndex:selectedIndex];
+    if (self.swiftCoordinator) {
+        [self.swiftCoordinator syncSelectedTabFromHost];
+    }
     [self pp_assertPremiumTabBarState];
     [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:YES];
     if (self.premiumTabItems.count > 0) {
@@ -1733,7 +1736,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:viewController];
     BOOL shouldHideBottomNavigation = requestedKind != PPBottomSurfaceKindPremiumTabBar;
     if (shouldHideBottomNavigation || !self.cartFloatingBarCoordinator.state.isVisible) {
-        [self pp_setPremiumBottomNavigationHidden:shouldHideBottomNavigation animated:animated];
+        [self pp_setBottomNavigationHidden:shouldHideBottomNavigation animated:animated];
     }
     // After the transition completes, re-assert in case UIKit altered state mid-animation
     if (animated) {
@@ -1859,6 +1862,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 {
     if (self.swiftCoordinator) {
         [self.swiftCoordinator setBottomNavigationHidden:hidden animated:animated];
+        if ([self.swiftCoordinator isUsingCommandDeck]) {
+            return;
+        }
     }
     [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
 }
@@ -2895,6 +2901,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (CGFloat)pp_bottomNavigationContentClearance
 {
+    if (self.swiftCoordinator) {
+        return [self.swiftCoordinator currentBottomNavigationContentClearance];
+    }
+
     CGFloat floatingCartClearance = [self.cartFloatingBarCoordinator currentBottomClearance];
     if (floatingCartClearance > 0.0) {
         return floatingCartClearance;
@@ -4001,6 +4011,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (UIView *)pp_novaAmbientBottomNavigationAnchorView
 {
+    if (self.swiftCoordinator) {
+        UIView *commandDeckAnchor = [self.swiftCoordinator bottomNavigationAnchorView];
+        if (commandDeckAnchor) {
+            return commandDeckAnchor;
+        }
+    }
     if (!self.tabBar.hidden && self.tabBar.alpha > 0.01) {
         return self.tabBar;
     }

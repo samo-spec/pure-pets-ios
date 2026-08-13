@@ -19,6 +19,8 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     
     private var bottomOverlayController: PPRootPassthroughHostingController<PPRootBottomOverlayView>?
     private var blockedAccountController: PPRootPassthroughHostingController<PPBlockedAccountOverlayView>?
+    private var commandDeckAnchorView: UIView?
+    private var commandDeckAnchorHeightConstraint: NSLayoutConstraint?
     private var bottomOverlayInteractiveFrames: [CGRect] = []
     
     private var navigationProxies: [ObjectIdentifier: PPRootNavigationDelegateProxy] = [:]
@@ -48,20 +50,31 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     @objc public func start() {
         guard let host = hostController, !isStarted else { return }
         isStarted = true
-        
-        print("🚀 [PurePets SwiftUI Root] PPRootSwiftCoordinator STARTED. Native UITabBar active.")
-        
+
+        if #available(iOS 17.0, *) {
+            store.setUsesLegacyBar(false)
+        } else {
+            store.setUsesLegacyBar(true)
+        }
+        if let selectedTab = PPRootTab(rawValue: host.selectedIndex) {
+            store.synchronizeSelectedTab(with: selectedTab)
+        }
+
+        print("🚀 [PurePets SwiftUI Root] PPRootSwiftCoordinator STARTED. Command Deck ownership active.")
+
         // Wrap navigation controller delegates using proxy to prevent overriding existing delegates (Fixes Risk #4)
         attachNavigationProxies(in: host)
-        
+
         // Embed UIHostingControllers with hit-test pass-through (Fixes Risk #2)
         installBottomOverlay(in: host)
+        installBottomNavigationAnchor(in: host)
         installBlockedOverlay(in: host)
-        
+
         bindStoreState()
         applySystemTabBarState()
-        
+
         store.start()
+        updateOverlayZIndex()
     }
     
     @objc public func stop() {
@@ -79,6 +92,10 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
         bottomOverlayController?.removeFromParent()
         bottomOverlayController = nil
         bottomOverlayInteractiveFrames = []
+
+        commandDeckAnchorView?.removeFromSuperview()
+        commandDeckAnchorView = nil
+        commandDeckAnchorHeightConstraint = nil
         
         blockedAccountController?.willMove(toParent: nil)
         blockedAccountController?.view.removeFromSuperview()
@@ -123,6 +140,26 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     
     @objc public func currentBottomNavigationContentClearance() -> CGFloat {
         store.computedBottomContentClearance
+    }
+
+    /// Keeps Command Deck selection in sync with UIKit-originated routes such
+    /// as restoration and notification handoffs without dispatching a route.
+    @objc public func syncSelectedTabFromHost() {
+        guard let host = hostController,
+              let tab = PPRootTab(rawValue: host.selectedIndex) else { return }
+        store.synchronizeSelectedTab(with: tab)
+    }
+
+    @objc public func isUsingCommandDeck() -> Bool {
+        !store.usesLegacyBar
+    }
+
+    @objc public func bottomNavigationAnchorView() -> UIView? {
+        guard store.shouldShowDock,
+              let anchor = commandDeckAnchorView,
+              !anchor.isHidden,
+              anchor.window != nil else { return nil }
+        return anchor
     }
     
     @objc public func activateFloatingCart(
@@ -229,6 +266,33 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
         hostingController.didMove(toParent: host)
         self.bottomOverlayController = hostingController
     }
+
+    /// A non-interactive geometry proxy preserves existing Nova positioning
+    /// APIs while the actual Command Deck remains SwiftUI-rendered.
+    private func installBottomNavigationAnchor(in host: UITabBarController) {
+        guard commandDeckAnchorView == nil else { return }
+
+        let anchor = UIView()
+        anchor.translatesAutoresizingMaskIntoConstraints = false
+        anchor.backgroundColor = .clear
+        anchor.isUserInteractionEnabled = false
+        anchor.accessibilityElementsHidden = true
+        anchor.isHidden = true
+
+        guard let overlayView = bottomOverlayController?.view else { return }
+        host.view.insertSubview(anchor, belowSubview: overlayView)
+
+        let height = anchor.heightAnchor.constraint(equalToConstant: 0.0)
+        NSLayoutConstraint.activate([
+            anchor.leadingAnchor.constraint(equalTo: host.view.leadingAnchor),
+            anchor.trailingAnchor.constraint(equalTo: host.view.trailingAnchor),
+            anchor.bottomAnchor.constraint(equalTo: host.view.bottomAnchor),
+            height
+        ])
+
+        commandDeckAnchorView = anchor
+        commandDeckAnchorHeightConstraint = height
+    }
     
     private func installBlockedOverlay(in host: UITabBarController) {
         let rootView = PPBlockedAccountOverlayView(store: store)
@@ -268,15 +332,19 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     
     private func applySystemTabBarState() {
         guard let host = hostController else { return }
-        host.tabBar.isHidden = store.isExternallyHidden
-        host.tabBar.alpha = store.isExternallyHidden ? 0.0 : 1.0
-        host.tabBar.isUserInteractionEnabled = !store.isExternallyHidden
+
+        let shouldShowSystemTabBar =
+            store.usesLegacyBar && !store.isExternallyHidden
+        host.tabBar.isHidden = !shouldShowSystemTabBar
+        host.tabBar.alpha = shouldShowSystemTabBar ? 1.0 : 0.0
+        host.tabBar.isUserInteractionEnabled = shouldShowSystemTabBar
     }
     
     private func updateOverlayZIndex() {
         guard let host = hostController else { return }
         
         let blocked = store.sessionState.isAnyBlocked
+        let shouldShowDock = store.shouldShowDock
         
         if let blockedView = blockedAccountController?.view {
             blockedView.isHidden = !blocked
@@ -289,6 +357,32 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
             bottomView.isHidden = blocked || !store.shouldShowBottomOverlay
             if !blocked && store.shouldShowBottomOverlay {
                 host.view.bringSubviewToFront(bottomView)
+            }
+        }
+
+        if let anchor = commandDeckAnchorView {
+            let desiredAnchorHidden = !shouldShowDock
+            let desiredAnchorHeight = shouldShowDock
+                ? store.computedBottomContentClearance
+                : 0.0
+            var anchorLayoutChanged = false
+
+            if anchor.isHidden != desiredAnchorHidden {
+                anchor.isHidden = desiredAnchorHidden
+                anchorLayoutChanged = true
+            }
+
+            if let heightConstraint = commandDeckAnchorHeightConstraint,
+               abs(heightConstraint.constant - desiredAnchorHeight) > 0.5 {
+                heightConstraint.constant = desiredAnchorHeight
+                anchorLayoutChanged = true
+            }
+
+            // This method is called from `viewDidLayoutSubviews`; scheduling
+            // another pass without a state change creates a layout feedback
+            // loop that can starve the splash-to-root transition.
+            if anchorLayoutChanged {
+                host.view.setNeedsLayout()
             }
         }
     }

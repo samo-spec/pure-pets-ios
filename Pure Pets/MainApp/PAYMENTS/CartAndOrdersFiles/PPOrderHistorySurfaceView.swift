@@ -19,20 +19,38 @@ struct PPOrderHistoryScreen: View {
         ZStack {
             Color.ppBackground.ignoresSafeArea()
 
-            ScrollView {
-                LazyVStack(spacing: PPSpace.base) {
-                    navigationHeader
-                    summarySurface
-                    discoveryControls
-                    operationalState
+            VStack(spacing: 0) {
+                navigationHeader
+                    .padding(.horizontal, PPSpace.screenMargin)
+                    .padding(.top, PPSpace.sm)
+
+                // Keep the pinned controls on the same vertical grid as the
+                // custom navigation header without introducing a second bar.
+                Color.clear
+                    .frame(height: PPSpace.md)
+                    .accessibilityHidden(true)
+
+                ScrollView {
+                    LazyVStack(
+                        spacing: PPSpace.base,
+                        pinnedViews: [.sectionHeaders]
+                    ) {
+                        summarySurface
+                            .padding(.horizontal, PPSpace.screenMargin)
+
+                        Section {
+                            operationalState
+                                .padding(.horizontal, PPSpace.screenMargin)
+                        } header: {
+                            stickyDiscoveryHeader
+                        }
+                    }
+                    .padding(.bottom, 128)
                 }
-                .padding(.horizontal, PPSpace.screenMargin)
-                .padding(.top, PPSpace.sm)
-                .padding(.bottom, 128)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .refreshable {
-                store.requestRefresh()
+                .scrollDismissesKeyboard(.interactively)
+                .refreshable {
+                    store.requestRefresh()
+                }
             }
         }
         .environment(\.layoutDirection, resolvedLayoutDirection)
@@ -313,6 +331,13 @@ struct PPOrderHistoryScreen: View {
                 .padding(.horizontal, 1)
             }
         }
+    }
+
+    private var stickyDiscoveryHeader: some View {
+        discoveryControls
+            .padding(.horizontal, PPSpace.screenMargin)
+            .background(Color.ppBackground)
+            .zIndex(1)
     }
 
     @ViewBuilder

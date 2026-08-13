@@ -58,11 +58,13 @@
         self.animationView = localAnim;
         [self.stackView addArrangedSubview:self.animationView];*/
     }
-    self.animationView.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.animationView.widthAnchor constraintEqualToConstant:self.animationViewSize],
-        [self.animationView.heightAnchor constraintEqualToConstant:self.animationViewSize]
-    ]];
+    if (self.animationView.superview) {
+        self.animationView.translatesAutoresizingMaskIntoConstraints = NO;
+        [NSLayoutConstraint activateConstraints:@[
+            [self.animationView.widthAnchor constraintEqualToConstant:self.animationViewSize],
+            [self.animationView.heightAnchor constraintEqualToConstant:self.animationViewSize]
+        ]];
+    }
 
     // --- Title Label ---
     self.titleLabel = [[UILabel alloc] init];

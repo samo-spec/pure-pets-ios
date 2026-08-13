@@ -3495,6 +3495,8 @@
 "provider_companies_error_subtitle" = "Check your connection and try again.";
 "provider_retry" = "Retry";
 "provider_company_status_active" = "Active";
+"favorite" = "Favorite";
+"view_details" = "View details";
 "provider_storefront_subtitle_marketplace" = "Browse trusted pet essentials from this provider.";
 "provider_storefront_subtitle_pharmacy" = "Curated pet medicines prepared by trusted pharmacies.";
 "provider_storefront_description_marketplace" = "Only this provider’s published products appear here, with the same viewer and cart behavior you already use.";
@@ -4205,6 +4207,8 @@
 "marketplace_search_title" = "Search the whole marketplace";
 "marketplace_search_prompt" = "Pets, products, providers, services, and categories";
 "marketplace_search_hint" = "Opens the full marketplace search experience.";
+"marketplace_header_search_format" = "Search in %@";
+"marketplace_header_market_format" = "%@ market";
 "marketplace_category_title" = "Category";
 "marketplace_category_main_kind_format" = "Main Kind: %@";
 "marketplace_category_subkind_format" = "Subkind: %@";
@@ -4530,3 +4534,10 @@
 "home_live_priority_title" = "Happening now";
 "home_zone_explore_more_title" = "More destinations";
 "home_zone_explore_more_subtitle" = "Everything else, one tap away";
+
+
+/* Command Deck */
+"a11y_command_deck_navigation" = "Main navigation";
+"a11y_command_deck_selected" = "Selected";
+"a11y_command_deck_unread_count" = "%ld unread";
+"pp_command_deck_demo_create_description" = "Create is a command, not a navigation destination.";

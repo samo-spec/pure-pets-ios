@@ -18,21 +18,46 @@ public final class PPRootObjCAdapter: PPRootActionHandling {
     // MARK: - Tab Actions
 
     public func handleSelectTab(_ tab: PPRootTab) {
-        guard let controller = targetController else { return }
-        if controller.selectedIndex != tab.rawValue,
-           tab.rawValue < (controller.viewControllers?.count ?? 0) {
-            controller.selectedIndex = tab.rawValue
-        }
+        guard let controller = targetController,
+              let viewControllers = controller.viewControllers,
+              tab.rawValue < viewControllers.count,
+              controller.selectedIndex != tab.rawValue else { return }
+
+        let selectedController = viewControllers[tab.rawValue]
+        controller.selectedIndex = tab.rawValue
+        notifyLegacyDelegate(
+            controller,
+            didSelect: selectedController
+        )
     }
 
     public func handleTabReselected(_ tab: PPRootTab) {
         guard let controller = targetController,
-              let vcs = controller.viewControllers,
-              tab.rawValue < vcs.count else { return }
-        if let nav = vcs[tab.rawValue] as? UINavigationController,
+              let viewControllers = controller.viewControllers,
+              tab.rawValue < viewControllers.count else { return }
+
+        let selectedController = viewControllers[tab.rawValue]
+        if let nav = selectedController as? UINavigationController,
            nav.viewControllers.count > 1 {
             nav.popViewController(animated: true)
         }
+
+        // The UIKit delegate owns Home's specialized reselection behavior,
+        // commerce feedback, bottom surfaces, and legacy bookkeeping.
+        notifyLegacyDelegate(
+            controller,
+            didSelect: selectedController
+        )
+    }
+
+    private func notifyLegacyDelegate(
+        _ controller: UITabBarController,
+        didSelect selectedController: UIViewController
+    ) {
+        controller.delegate?.tabBarController?(
+            controller,
+            didSelect: selectedController
+        )
     }
 
     // MARK: - Root Controller Actions

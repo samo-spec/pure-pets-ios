@@ -3474,6 +3474,8 @@
 "provider_companies_error_subtitle" = "تحقق من الاتصال وحاول مرة أخرى.";
 "provider_retry" = "إعادة المحاولة";
 "provider_company_status_active" = "نشط";
+"favorite" = "المفضلة";
+"view_details" = "عرض التفاصيل";
 "provider_storefront_subtitle_marketplace" = "تصفح احتياجات موثوقة لحيوانك الأليف من هذا المزود.";
 "provider_storefront_subtitle_pharmacy" = "أدوية مختارة بعناية من صيدليات موثوقة.";
 "provider_storefront_description_marketplace" = "ستظهر هنا منتجات هذا المزود المنشورة فقط، مع نفس عارض الصور ومسار السلة الحالي.";
@@ -4207,6 +4209,8 @@
 "marketplace_search_title" = "ابحث في السوق بالكامل";
 "marketplace_search_prompt" = "حيوانات ومنتجات وموردون وخدمات وفئات";
 "marketplace_search_hint" = "يفتح تجربة البحث الكاملة في السوق.";
+"marketplace_header_search_format" = "ابحث في %@";
+"marketplace_header_market_format" = "سوق %@";
 "marketplace_category_title" = "الفئة";
 "marketplace_category_main_kind_format" = "النوع الرئيسي: %@";
 "marketplace_category_subkind_format" = "النوع الفرعي: %@";
@@ -4517,3 +4521,10 @@
 "home_live_priority_title" = "يحدث الآن";
 "home_zone_explore_more_title" = "المزيد من الوجهات";
 "home_zone_explore_more_subtitle" = "كل ما لم يظهر أعلاه على بعد نقرة واحدة";
+
+
+/* Command Deck */
+"a11y_command_deck_navigation" = "التنقل الرئيسي";
+"a11y_command_deck_selected" = "محدد";
+"a11y_command_deck_unread_count" = "%ld غير مقروءة";
+"pp_command_deck_demo_create_description" = "الإضافة إجراء وليست وجهة تنقل.";

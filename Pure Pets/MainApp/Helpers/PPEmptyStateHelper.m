@@ -125,16 +125,7 @@ static const void *kPPEmptyStateTokenKey = &kPPEmptyStateTokenKey;
         }
     };
 
-    if (count == 0 && delayWhenEmpty) {
-        // ⏱ Delay ONLY when empty
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-                                     (int64_t)(1.0 * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(),
-                       applyBlock);
-    } else {
-        // ⚡ No delay when data exists
-        dispatch_async(dispatch_get_main_queue(), applyBlock);
-    }
+    dispatch_async(dispatch_get_main_queue(), applyBlock);
 }
 
 

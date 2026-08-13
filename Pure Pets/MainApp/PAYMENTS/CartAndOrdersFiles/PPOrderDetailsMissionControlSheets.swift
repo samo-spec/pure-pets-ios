@@ -222,6 +222,13 @@ private struct PPOrderMissionRequestDetailsSheet: View {
     let request: PPOrderMissionRequest
     @ObservedObject var store: PPOrderDetailsMissionControlStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @State private var hasPresentedContent = false
+    @State private var entranceTask: Task<Void, Never>?
 
     private var currentRequest: PPOrderMissionRequest {
         store.state.requests.first {
@@ -298,24 +305,11 @@ private struct PPOrderMissionRequestDetailsSheet: View {
                         }
                     }
 
-                    if currentRequest.type == "cancel" ||
-                        !currentRequest.cancellationDisposition.isEmpty {
-                        detailsSection(
-                            title: PPOrderMissionText(
-                                "order_mission_cancellation_outcome"
-                            ),
-                            symbol: currentRequest.orderCancelled
-                                ? "checkmark.shield"
-                                : "clock.badge.questionmark"
-                        ) {
-                            Text(cancellationOutcomeText)
-                                .font(PPOrderMissionTypography.body())
-                                .foregroundStyle(Color.ppTextPrimary)
-                                .fixedSize(
-                                    horizontal: false,
-                                    vertical: true
-                                )
-                        }
+                    if showsCancellationJourney {
+                        PPOrderMissionCancellationJourney(
+                            stages: cancellationStages,
+                            accent: Color.ppPrimary
+                        )
                     }
 
                     if !currentRequest.attachments.isEmpty {
@@ -353,7 +347,8 @@ private struct PPOrderMissionRequestDetailsSheet: View {
                         }
                     }
 
-                    if !currentRequest.adminReviewSummary.isEmpty {
+                    if !showsCancellationJourney,
+                        !currentRequest.adminReviewSummary.isEmpty {
                         detailsSection(
                             title: PPOrderMissionText(
                                 "order_mission_admin_review"
@@ -366,8 +361,9 @@ private struct PPOrderMissionRequestDetailsSheet: View {
                         }
                     }
 
-                    if !currentRequest.resolutionSummary.isEmpty ||
-                        !currentRequest.finalResolution.isEmpty {
+                    if !showsCancellationJourney,
+                        (!currentRequest.resolutionSummary.isEmpty ||
+                        !currentRequest.finalResolution.isEmpty) {
                         detailsSection(
                             title: PPOrderMissionText(
                                 "order_mission_resolution"
@@ -439,6 +435,24 @@ private struct PPOrderMissionRequestDetailsSheet: View {
                 .padding(PPSpace.base)
             }
             .background(Color.ppBackground)
+            .opacity(contentEntranceOpacity)
+            .offset(y: contentEntranceOffset)
+            .onAppear(perform: beginContentEntranceIfNeeded)
+            .onChange(of: shouldReduceEntranceMotion) { isReduced in
+                guard isReduced else { return }
+                entranceTask?.cancel()
+                entranceTask = nil
+                var transaction = Transaction()
+                transaction.animation = nil
+                withTransaction(transaction) {
+                    hasPresentedContent = true
+                }
+            }
+            .onDisappear {
+                entranceTask?.cancel()
+                entranceTask = nil
+                hasPresentedContent = false
+            }
             .navigationTitle(
                 PPOrderMissionText("order_mission_request_details")
             )
@@ -454,39 +468,61 @@ private struct PPOrderMissionRequestDetailsSheet: View {
     }
 
     private var requestHero: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(alignment: .top, spacing: PPSpace.md) {
-                Image(systemName: "shield.lefthalf.filled")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(Color.ppPrimary)
-                    .frame(width: 52, height: 52)
-                    .background(Color.ppPrimary.opacity(0.11), in: Circle())
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(currentRequest.typeTitle)
-                        .font(PPOrderMissionTypography.title())
-                        .foregroundStyle(Color.ppTextPrimary)
-                    Text(currentRequest.reasonTitle)
-                        .font(PPOrderMissionTypography.body())
-                        .foregroundStyle(Color.ppTextSecondary)
-                }
-                Spacer(minLength: 0)
-            }
-
-            HStack {
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            if dynamicTypeSize.isAccessibilitySize {
+                requestIdentity
                 PPOrderMissionStatusChip(
                     title: currentRequest.statusTitle,
                     color: Color.ppPrimary
                 )
-                Spacer()
-                Text(currentRequest.createdAtText)
-                    .font(PPOrderMissionTypography.caption())
-                    .foregroundStyle(Color.ppTextSecondary)
+            } else {
+                HStack(alignment: .top, spacing: PPSpace.md) {
+                    requestIdentity
+                    Spacer(minLength: PPSpace.sm)
+                    PPOrderMissionStatusChip(
+                        title: currentRequest.statusTitle,
+                        color: Color.ppPrimary
+                    )
+                }
+            }
+
+            if !currentRequest.createdAtText.isEmpty {
+                Divider()
+                    .overlay(Color.ppSurfaceBorder)
+                Label(
+                    currentRequest.createdAtText,
+                    systemImage: "calendar"
+                )
+                .font(PPOrderMissionTypography.caption())
+                .foregroundStyle(Color.ppTextSecondary)
             }
         }
-        .padding(PPSpace.lg)
+        .padding(PPSpace.base)
         .modifier(PPOrderMissionGlassCard(accent: Color.ppPrimary, emphasis: true))
         .accessibilityElement(children: .combine)
+    }
+
+    private var requestIdentity: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            Image(systemName: "shield.lefthalf.filled")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 46, height: 46)
+                .background(Color.ppPrimary.opacity(0.11), in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(currentRequest.typeTitle)
+                    .font(PPOrderMissionTypography.title())
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !currentRequest.reasonTitle.isEmpty {
+                    Text(currentRequest.reasonTitle)
+                        .font(PPOrderMissionTypography.body())
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
     }
 
     private var cancellationOutcomeText: String {
@@ -508,6 +544,89 @@ private struct PPOrderMissionRequestDetailsSheet: View {
         }
     }
 
+    private var resolutionText: String {
+        currentRequest.resolutionSummary.isEmpty
+            ? currentRequest.finalResolution
+            : currentRequest.resolutionSummary
+    }
+
+    private var showsCancellationJourney: Bool {
+        currentRequest.type == "cancel" ||
+            !currentRequest.cancellationDisposition.isEmpty
+    }
+
+    private var cancellationStages: [PPOrderMissionCancellationStage] {
+        var stages = [
+            PPOrderMissionCancellationStage(
+                id: "cancellation",
+                title: PPOrderMissionText("order_mission_cancellation_outcome"),
+                detail: cancellationOutcomeText,
+                symbol: currentRequest.orderCancelled
+                    ? "checkmark.shield"
+                    : "clock.badge.questionmark"
+            )
+        ]
+
+        if !currentRequest.adminReviewSummary.isEmpty {
+            stages.append(
+                PPOrderMissionCancellationStage(
+                    id: "admin-review",
+                    title: PPOrderMissionText("order_mission_admin_review"),
+                    detail: currentRequest.adminReviewSummary,
+                    symbol: "person.badge.shield.checkmark"
+                )
+            )
+        }
+
+        if !resolutionText.isEmpty {
+            stages.append(
+                PPOrderMissionCancellationStage(
+                    id: "resolution",
+                    title: PPOrderMissionText("order_mission_resolution"),
+                    detail: resolutionText,
+                    symbol: "checkmark.seal"
+                )
+            )
+        }
+
+        return stages
+    }
+
+    private var shouldReduceEntranceMotion: Bool {
+        reduceMotion || voiceOverEnabled || switchControlEnabled ||
+            dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var contentEntranceOpacity: Double {
+        hasPresentedContent || shouldReduceEntranceMotion ? 1 : 0
+    }
+
+    private var contentEntranceOffset: CGFloat {
+        hasPresentedContent || shouldReduceEntranceMotion ? 0 : 10
+    }
+
+    private func beginContentEntranceIfNeeded() {
+        guard !hasPresentedContent else { return }
+        entranceTask?.cancel()
+
+        guard !reduceMotion,
+            !voiceOverEnabled,
+            !switchControlEnabled,
+            !dynamicTypeSize.isAccessibilitySize else {
+            hasPresentedContent = true
+            return
+        }
+
+        entranceTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.24)) {
+                hasPresentedContent = true
+            }
+            entranceTask = nil
+        }
+    }
+
     private func detailsSection<Content: View>(
         title: String,
         symbol: String,
@@ -521,6 +640,80 @@ private struct PPOrderMissionRequestDetailsSheet: View {
         }
         .padding(PPSpace.base)
         .modifier(PPOrderMissionGlassCard(accent: Color.ppPrimary))
+    }
+}
+
+@available(iOS 17.0, *)
+private struct PPOrderMissionCancellationStage: Identifiable {
+    let id: String
+    let title: String
+    let detail: String
+    let symbol: String
+}
+
+@available(iOS 17.0, *)
+private struct PPOrderMissionCancellationJourney: View {
+    let stages: [PPOrderMissionCancellationStage]
+    let accent: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            ForEach(stages) { stage in
+                PPOrderMissionCancellationStageRow(
+                    stage: stage,
+                    accent: accent,
+                    isLast: stage.id == stages.last?.id
+                )
+            }
+        }
+        .padding(PPSpace.base)
+        .modifier(PPOrderMissionGlassCard(accent: accent, emphasis: true))
+        .accessibilityElement(children: .contain)
+    }
+}
+
+@available(iOS 17.0, *)
+private struct PPOrderMissionCancellationStageRow: View {
+    let stage: PPOrderMissionCancellationStage
+    let accent: Color
+    let isLast: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            VStack(spacing: 0) {
+                Image(systemName: stage.symbol)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(accent)
+                    .frame(width: 36, height: 36)
+                    .background(accent.opacity(0.11), in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(accent.opacity(0.22), lineWidth: 1)
+                    )
+                    .accessibilityHidden(true)
+
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.ppSurfaceBorder)
+                        .frame(width: 1, height: PPSpace.lg)
+                        .padding(.vertical, 4)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(stage.title)
+                    .font(PPOrderMissionTypography.headline())
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(stage.detail)
+                    .font(PPOrderMissionTypography.body())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

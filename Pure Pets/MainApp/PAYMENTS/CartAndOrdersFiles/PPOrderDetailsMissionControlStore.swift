@@ -15,7 +15,6 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
     @Published private(set) var state: PPOrderMissionState = .empty
     @Published var activeSheet: PPOrderMissionSheet?
     @Published var notice: PPOrderMissionNotice?
-    @Published var showsCancelConfirmation = false
     @Published private(set) var isCommandRunning = false
     @Published private(set) var addresses: [PPOrderMissionAddress] = []
     @Published private(set) var addressesLoading = false
@@ -60,7 +59,6 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
                 if !nextState.isAuthorized && !nextState.isInitialLoading {
                     self.pendingPostDismissAction = nil
                     self.activeSheet = nil
-                    self.showsCancelConfirmation = false
                 }
                 self.state = nextState
             }
@@ -222,12 +220,39 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
         case "support":
             activeSheet = .support
         case "cancel":
-            showsCancelConfirmation = true
+            presentCancellationConfirmation()
         case "return", "refund", "replacement", "complaint":
             activeSheet = .composer(action)
         default:
             break
         }
+    }
+
+    private func presentCancellationConfirmation() {
+        guard let presenter else {
+            notice = PPOrderMissionNotice(
+                title: PPOrderMissionText("order_cancel_title"),
+                message: PPOrderMissionText("order_mission_action_unavailable"),
+                isError: false
+            )
+            return
+        }
+
+        PPAlertHelper.showConfirmation(
+            in: presenter,
+            title: PPOrderMissionText("order_cancel_title"),
+            subtitle: PPOrderMissionText("order_cancel_confirm"),
+            confirmButton: PPOrderMissionText("order_cancel_button"),
+            cancelButton: PPOrderMissionText("No"),
+            icon: UIImage(systemName: "xmark.circle"),
+            confirmBlock: { [weak self] _, didConfirm in
+                guard didConfirm else { return }
+                Task { @MainActor in
+                    self?.confirmCancellation()
+                }
+            },
+            cancelBlock: nil
+        )
     }
 
     func presentRequest(_ request: PPOrderMissionRequest) {
@@ -322,7 +347,6 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
     }
 
     func confirmCancellation() {
-        showsCancelConfirmation = false
         isCommandRunning = true
         bridge.cancel { [weak self] rawResult, error in
             guard let self else { return }

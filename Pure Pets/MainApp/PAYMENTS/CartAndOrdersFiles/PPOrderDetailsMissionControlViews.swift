@@ -16,19 +16,13 @@ struct PPOrderDetailsMissionControlScreen: View {
 
     var body: some View {
         ZStack {
-            PPOrderMissionBackdrop(accent: accent)
+            Color.ppBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 navigationHeader
                     .padding(.horizontal, contentInset)
                     .padding(.top, PPSpace.sm)
                     .padding(.bottom, PPSpace.md)
-                    .background(Color.ppBackground)
-                    .overlay(alignment: .bottom) {
-                        Rectangle()
-                            .fill(Color.ppSurfaceBorder)
-                            .frame(height: 1)
-                    }
                     .zIndex(1)
 
                 ScrollView {
@@ -75,20 +69,6 @@ struct PPOrderDetailsMissionControlScreen: View {
                 message: Text(notice.message),
                 dismissButton: .default(Text(PPOrderMissionText("OK")))
             )
-        }
-        .confirmationDialog(
-            PPOrderMissionText("order_cancel_title"),
-            isPresented: $store.showsCancelConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button(
-                PPOrderMissionText("order_cancel_button"),
-                role: .destructive,
-                action: store.confirmCancellation
-            )
-            Button(PPOrderMissionText("No"), role: .cancel) {}
-        } message: {
-            Text(PPOrderMissionText("order_cancel_confirm"))
         }
         .onReceive(
             NotificationCenter.default.publisher(
@@ -629,37 +609,11 @@ struct PPOrderDetailsMissionControlScreen: View {
     }
 
     private var commandDeck: some View {
-        PPOrderMissionSection(
-            eyebrow: PPOrderMissionText("order_mission_command_eyebrow"),
-            title: PPOrderMissionText("order_mission_command_deck"),
-            symbol: "command",
-            accent: accent
-        ) {
-            LazyVGrid(
-                columns: dynamicTypeSize.isAccessibilitySize
-                    ? [GridItem(.flexible())]
-                    : [GridItem(.flexible()), GridItem(.flexible())],
-                spacing: PPSpace.sm
-            ) {
-                ForEach(store.state.actions.filter(\.isVisible)) { action in
-                    Button {
-                        store.handle(action)
-                    } label: {
-                        PPOrderMissionActionTile(
-                            action: action,
-                            accent: accent
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityValue(
-                        action.isEligible
-                            ? PPOrderMissionText("order_mission_available")
-                            : PPOrderMissionText("order_mission_unavailable")
-                    )
-                    .accessibilityHint(action.message)
-                }
-            }
-        }
+        PPOrderMissionCommandOrbit(
+            actions: store.state.actions.filter(\.isVisible),
+            accent: accent,
+            handle: store.handle
+        )
     }
 
     private var connectivityBanner: some View {
@@ -670,27 +624,6 @@ struct PPOrderDetailsMissionControlScreen: View {
                 : store.state.errorMessage,
             color: store.state.isOffline ? Color.ppWarning : Color.ppError
         )
-    }
-}
-
-private struct PPOrderMissionBackdrop: View {
-    let accent: Color
-
-    var body: some View {
-        ZStack {
-            Color.ppBackground.ignoresSafeArea()
-            Circle()
-                .fill(accent.opacity(0.09))
-                .frame(width: 420, height: 420)
-                .blur(radius: 74)
-                .offset(x: -180, y: -320)
-            Circle()
-                .fill(Color.ppPremiumAccent.opacity(0.07))
-                .frame(width: 340, height: 340)
-                .blur(radius: 90)
-                .offset(x: 190, y: 340)
-        }
-        .accessibilityHidden(true)
     }
 }
 
@@ -1109,81 +1042,116 @@ private struct PPOrderMissionRequestPreview: View {
     }
 }
 
+private struct PPOrderMissionCommandOrbit: View {
+    let actions: [PPOrderMissionAction]
+    let accent: Color
+    let handle: (PPOrderMissionAction) -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        PPOrderMissionSection(
+            eyebrow: PPOrderMissionText("order_mission_command_eyebrow"),
+            title: PPOrderMissionText("order_mission_command_deck"),
+            symbol: "command",
+            accent: accent
+        ) {
+            LazyVGrid(
+                columns: dynamicTypeSize.isAccessibilitySize
+                    ? [GridItem(.flexible())]
+                    : [GridItem(.flexible()), GridItem(.flexible())],
+                spacing: PPSpace.md
+            ) {
+                ForEach(actions) { action in
+                    Button {
+                        handle(action)
+                    } label: {
+                        PPOrderMissionActionTile(
+                            action: action,
+                            accent: accent
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityValue(
+                        action.isEligible
+                            ? PPOrderMissionText("order_mission_available")
+                            : PPOrderMissionText("order_mission_unavailable")
+                    )
+                    .accessibilityHint(action.message)
+                }
+            }
+        }
+    }
+}
+
 private struct PPOrderMissionActionTile: View {
     let action: PPOrderMissionAction
     let accent: Color
 
     var body: some View {
         let color = action.isDestructive ? Color.ppError : accent
-        let isLegacyCancelAction = action.kind == "cancel"
-        HStack(spacing: PPSpace.md) {
-            Image(systemName: action.symbol)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(
-                    isLegacyCancelAction || action.isEligible
-                        ? color
-                        : Color.ppTextTertiary
-                )
-                .frame(width: 38, height: 38)
-                .background(
-                    !isLegacyCancelAction && action.isEligible
-                        ? color.opacity(0.18)
-                        : Color.clear,
-                    in: Circle()
-                )
-                .overlay(
-                    Circle().stroke(
-                        !isLegacyCancelAction && action.isEligible
-                            ? color.opacity(0.3)
-                            : Color.clear,
-                        lineWidth: 1
+        let shape = RoundedRectangle(
+            cornerRadius: PPCorner.card,
+            style: .continuous
+        )
+
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: action.symbol)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(
+                        action.isEligible ? color : Color.ppTextTertiary
                     )
-                )
-                .accessibilityHidden(true)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        action.isEligible ? color.opacity(0.13) : Color.ppSurfaceOverlay,
+                        in: Circle()
+                    )
+                    .overlay(
+                        Circle().stroke(
+                            action.isEligible ? color.opacity(0.20) : Color.ppSurfaceBorder,
+                            lineWidth: 1
+                        )
+                    )
+                    .accessibilityHidden(true)
+                Spacer(minLength: 0)
+                if !action.isEligible {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.ppTextTertiary)
+                        .accessibilityHidden(true)
+                }
+            }
+
             Text(action.title)
-                .font(PPOrderMissionTypography.callout())
+                .font(PPOrderMissionTypography.headline())
                 .foregroundStyle(
-                    isLegacyCancelAction
-                        ? color
-                        : action.isEligible ? Color.ppTextPrimary : Color.ppTextSecondary
+                    action.isEligible ? Color.ppTextPrimary : Color.ppTextSecondary
                 )
                 .multilineTextAlignment(.leading)
-            Spacer(minLength: 0)
-            if !action.isEligible {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Color.ppTextTertiary)
-                    .accessibilityHidden(true)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !action.isEligible, !action.message.isEmpty {
+                Text(action.message)
+                    .font(PPOrderMissionTypography.caption())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(PPSpace.md)
-        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
         .background(
-            isLegacyCancelAction
-                ? color.opacity(0.10)
-                : action.isEligible ? Color.ppSecondarySurface : Color.ppSurfaceOverlay,
-            in: RoundedRectangle(
-                cornerRadius: isLegacyCancelAction
-                    ? PPCorner.card
-                    : PPCorner.medium,
-                style: .continuous
-            )
+            action.isEligible ? Color.ppSecondarySurface : Color.ppSurfaceOverlay,
+            in: shape
         )
         .overlay(
-            RoundedRectangle(
-                cornerRadius: isLegacyCancelAction
-                    ? PPCorner.card
-                    : PPCorner.medium,
-                style: .continuous
+            shape.stroke(
+                action.isEligible ? color.opacity(0.20) : Color.ppSurfaceBorder,
+                lineWidth: 1
             )
-                .stroke(
-                    isLegacyCancelAction
-                        ? color.opacity(0.18)
-                        : action.isEligible ? color.opacity(0.28) : Color.ppSurfaceBorder,
-                    lineWidth: 1
-                )
         )
-        .opacity(action.isEligible ? 1 : isLegacyCancelAction ? 0.72 : 0.86)
+        .opacity(action.isEligible ? 1 : 0.78)
     }
 }
 

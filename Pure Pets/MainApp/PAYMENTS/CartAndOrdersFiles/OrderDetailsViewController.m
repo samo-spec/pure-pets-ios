@@ -376,10 +376,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 @interface OrderDetailsViewController () <UITableViewDataSource, UITableViewDelegate, MKMapViewDelegate>
 
 @property (nonatomic, strong) UITableView *tableView;
-@property (nonatomic, strong) UIView *backgroundTopGlowView;
-@property (nonatomic, strong) UIView *backgroundBottomGlowView;
-@property (nonatomic, strong) CAGradientLayer *backgroundTopGlowLayer;
-@property (nonatomic, strong) CAGradientLayer *backgroundBottomGlowLayer;
 @property (nonatomic, strong) UIView *headerContainer;
 @property (nonatomic, strong) UIView *headerCard;
 @property (nonatomic, strong) CAGradientLayer *headerHeroLiquidBorderLayer;
@@ -476,12 +472,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)pp_playCheckoutSuccessConfettiIfNeeded;
 - (void)pp_stopCheckoutSuccessConfetti;
 - (void)pp_removeCheckoutSuccessConfettiAnimated:(BOOL)animated;
-- (void)pp_installLiveBackgroundGlowLayersIfNeeded;
-- (void)pp_updateLiveBackgroundGlowFrames;
-- (void)pp_refreshLiveBackgroundGlowColors;
-- (void)pp_startLiveBackgroundGlowsIfNeeded;
-- (void)pp_stopLiveBackgroundGlows;
-- (void)pp_updateLiveBackgroundGlowsForScrollOffset:(CGFloat)contentOffsetY;
 - (void)pp_installHeaderHeroLiquidBorderIfNeeded;
 - (void)pp_refreshHeaderHeroLiquidBorderColors;
 - (void)pp_updateHeaderHeroLiquidBorder;
@@ -579,8 +569,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [self pp_runPremiumEntranceIfNeeded];
     [self showEntryPresentationIfNeeded];
     //[self.heroGlassBackground startAnimations];
-    [self pp_updateLiveBackgroundGlowsForScrollOffset:self.tableView.contentOffset.y];
-    [self pp_startLiveBackgroundGlowsIfNeeded];
     [self pp_startCurrentStatusSummaryMotionIfNeeded];
     [self.progressTimelineView refreshCurrentStatusMotion];
 }
@@ -590,7 +578,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [super viewWillDisappear:animated];
     self.isOrderDetailsScreenVisible = NO;
     //[self.heroGlassBackground stopAnimations];
-    [self pp_stopLiveBackgroundGlows];
     [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCurrentStatusSummaryMotion];
     [self.progressTimelineView refreshCurrentStatusMotion];
@@ -625,9 +612,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             [UIBezierPath bezierPathWithRoundedRect:self.deliveryMapCard.bounds
                                       cornerRadius:self.deliveryMapCard.layer.cornerRadius].CGPath;
     }
-    self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
-    self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
-    [self pp_updateLiveBackgroundGlowFrames];
 }
 
 - (void)pp_preparePremiumEntranceIfNeeded
@@ -641,10 +625,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.tableView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
     self.footerContainer.alpha = 0.0;
     self.footerContainer.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    self.backgroundTopGlowView.alpha = 0.0;
-    self.backgroundTopGlowView.transform = CGAffineTransformMakeScale(0.92, 0.92);
-    self.backgroundBottomGlowView.alpha = 0.0;
-    self.backgroundBottomGlowView.transform = CGAffineTransformMakeScale(0.94, 0.94);
 }
 
 - (void)pp_runPremiumEntranceIfNeeded
@@ -660,31 +640,8 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         self.tableView.transform = CGAffineTransformIdentity;
         self.footerContainer.alpha = 1.0;
         self.footerContainer.transform = CGAffineTransformIdentity;
-        self.backgroundTopGlowView.alpha = kOrderDetailsTopGlowRestingAlpha;
-        self.backgroundTopGlowView.transform = CGAffineTransformIdentity;
-        self.backgroundBottomGlowView.alpha = kOrderDetailsBottomGlowRestingAlpha;
-        self.backgroundBottomGlowView.transform = CGAffineTransformIdentity;
         return;
     }
-
-    [UIView animateWithDuration:0.58
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.backgroundTopGlowView.alpha = kOrderDetailsTopGlowRestingAlpha;
-        self.backgroundTopGlowView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [UIView animateWithDuration:0.68
-                          delay:0.06
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.backgroundBottomGlowView.alpha = kOrderDetailsBottomGlowRestingAlpha;
-        self.backgroundBottomGlowView.transform = CGAffineTransformIdentity;
-    } completion:^(BOOL finished) {
-        if (!finished || !self.isOrderDetailsScreenVisible) return;
-        [self pp_updateLiveBackgroundGlowsForScrollOffset:self.tableView.contentOffset.y];
-    }];
 
     [UIView animateWithDuration:0.38
                           delay:0.0
@@ -711,197 +668,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         self.footerContainer.alpha = 1.0;
         self.footerContainer.transform = CGAffineTransformIdentity;
     } completion:nil];
-}
-
-- (void)pp_installLiveBackgroundGlowLayersIfNeeded
-{
-    if (!self.backgroundTopGlowLayer && self.backgroundTopGlowView) {
-        self.backgroundTopGlowLayer = [CAGradientLayer layer];
-        self.backgroundTopGlowLayer.name = @"PPOrderLiveBackgroundTopGlow";
-        self.backgroundTopGlowLayer.startPoint = CGPointMake(0.18, 0.16);
-        self.backgroundTopGlowLayer.endPoint = CGPointMake(0.92, 0.92);
-        self.backgroundTopGlowLayer.locations = @[@0.0, @0.42, @1.0];
-        if (@available(iOS 12.0, *)) {
-            self.backgroundTopGlowLayer.type = kCAGradientLayerRadial;
-        }
-        [self.backgroundTopGlowView.layer addSublayer:self.backgroundTopGlowLayer];
-    }
-
-    if (!self.backgroundBottomGlowLayer && self.backgroundBottomGlowView) {
-        self.backgroundBottomGlowLayer = [CAGradientLayer layer];
-        self.backgroundBottomGlowLayer.name = @"PPOrderLiveBackgroundBottomGlow";
-        self.backgroundBottomGlowLayer.startPoint = CGPointMake(0.30, 0.20);
-        self.backgroundBottomGlowLayer.endPoint = CGPointMake(0.88, 0.88);
-        self.backgroundBottomGlowLayer.locations = @[@0.0, @0.48, @1.0];
-        if (@available(iOS 12.0, *)) {
-            self.backgroundBottomGlowLayer.type = kCAGradientLayerRadial;
-        }
-        [self.backgroundBottomGlowView.layer addSublayer:self.backgroundBottomGlowLayer];
-    }
-
-    self.backgroundTopGlowView.layer.masksToBounds = YES;
-    self.backgroundBottomGlowView.layer.masksToBounds = YES;
-}
-
-- (void)pp_updateLiveBackgroundGlowFrames
-{
-    [self pp_installLiveBackgroundGlowLayersIfNeeded];
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.backgroundTopGlowLayer.frame = self.backgroundTopGlowView.bounds;
-    self.backgroundBottomGlowLayer.frame = self.backgroundBottomGlowView.bounds;
-    [CATransaction commit];
-    if (self.isOrderDetailsScreenVisible) {
-        [self pp_startLiveBackgroundGlowsIfNeeded];
-    }
-}
-
-- (void)pp_refreshLiveBackgroundGlowColors
-{
-    [self pp_installLiveBackgroundGlowLayersIfNeeded];
-    NSString *statusKey = self.order ? [self customerDisplayStatusKeyForOrder:self.order] : @"pending";
-    UIColor *accent = PPOrderStatusResolvedColor([self statusAccentColorForStatusKey:statusKey], self.traitCollection);
-    UIColor *shine = PPOrderStatusResolvedColor(PPOrderStatusShineColorForKey(statusKey), self.traitCollection);
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    UIColor *ink = isDark ? [UIColor colorWithRed:0.01 green:0.02 blue:0.018 alpha:1.0] : [UIColor colorWithRed:0.04 green:0.055 blue:0.048 alpha:1.0];
-    UIColor *support = PPOrderStatusBlendColors(accent, shine, isDark ? 0.48 : 0.36, self.traitCollection);
-
-    self.backgroundTopGlowLayer.colors = @[
-        (__bridge id)[shine colorWithAlphaComponent:isDark ? 0.30 : 0.22].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.21 : 0.16].CGColor,
-        (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
-    ];
-    self.backgroundBottomGlowLayer.colors = @[
-        (__bridge id)[support colorWithAlphaComponent:isDark ? 0.27 : 0.20].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.18 : 0.14].CGColor,
-        (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
-    ];
-}
-
-- (void)pp_startLiveBackgroundGlowsIfNeeded
-{
-    [self pp_installLiveBackgroundGlowLayersIfNeeded];
-    if (!self.isOrderDetailsScreenVisible ||
-        !self.backgroundTopGlowView.window ||
-        CGRectIsEmpty(self.backgroundTopGlowView.bounds) ||
-        CGRectIsEmpty(self.backgroundBottomGlowView.bounds)) {
-        return;
-    }
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopLiveBackgroundGlows];
-        return;
-    }
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.backgroundTopGlowLayer.opacity = 0.78;
-    self.backgroundBottomGlowLayer.opacity = 0.68;
-    [CATransaction commit];
-
-    if (![self.backgroundTopGlowLayer animationForKey:@"pp_order_top_glow_breath"]) {
-        CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        opacity.fromValue = @0.60;
-        opacity.toValue = @0.94;
-
-        CABasicAnimation *origin = [CABasicAnimation animationWithKeyPath:@"startPoint"];
-        origin.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.10, 0.10)];
-        origin.toValue = [NSValue valueWithCGPoint:CGPointMake(0.34, 0.28)];
-
-        CABasicAnimation *edge = [CABasicAnimation animationWithKeyPath:@"endPoint"];
-        edge.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.82, 0.90)];
-        edge.toValue = [NSValue valueWithCGPoint:CGPointMake(1.02, 0.72)];
-
-        CAAnimationGroup *group = [CAAnimationGroup animation];
-        group.animations = @[opacity, origin, edge];
-        group.duration = 5.4;
-        group.autoreverses = YES;
-        group.repeatCount = HUGE_VALF;
-        group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        group.removedOnCompletion = YES;
-        [self.backgroundTopGlowLayer addAnimation:group forKey:@"pp_order_top_glow_breath"];
-    }
-
-    if (![self.backgroundBottomGlowLayer animationForKey:@"pp_order_bottom_glow_breath"]) {
-        CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        opacity.fromValue = @0.52;
-        opacity.toValue = @0.86;
-
-        CABasicAnimation *origin = [CABasicAnimation animationWithKeyPath:@"startPoint"];
-        origin.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.20, 0.14)];
-        origin.toValue = [NSValue valueWithCGPoint:CGPointMake(0.48, 0.34)];
-
-        CABasicAnimation *edge = [CABasicAnimation animationWithKeyPath:@"endPoint"];
-        edge.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.78, 0.94)];
-        edge.toValue = [NSValue valueWithCGPoint:CGPointMake(1.02, 0.74)];
-
-        CAAnimationGroup *group = [CAAnimationGroup animation];
-        group.animations = @[opacity, origin, edge];
-        group.duration = 6.0;
-        group.beginTime = CACurrentMediaTime() + 0.35;
-        group.autoreverses = YES;
-        group.repeatCount = HUGE_VALF;
-        group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        group.removedOnCompletion = YES;
-        [self.backgroundBottomGlowLayer addAnimation:group forKey:@"pp_order_bottom_glow_breath"];
-    }
-}
-
-- (void)pp_stopLiveBackgroundGlows
-{
-    [self.backgroundTopGlowView.layer removeAnimationForKey:@"pp_order_top_glow_drift"];
-    [self.backgroundBottomGlowView.layer removeAnimationForKey:@"pp_order_bottom_glow_drift"];
-    [self.backgroundTopGlowLayer removeAnimationForKey:@"pp_order_top_glow_breath"];
-    [self.backgroundBottomGlowLayer removeAnimationForKey:@"pp_order_bottom_glow_breath"];
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.backgroundTopGlowLayer.transform = CATransform3DIdentity;
-    self.backgroundBottomGlowLayer.transform = CATransform3DIdentity;
-    self.backgroundTopGlowLayer.opacity = 0.72;
-    self.backgroundBottomGlowLayer.opacity = 0.62;
-    [CATransaction commit];
-}
-
-- (void)pp_updateLiveBackgroundGlowsForScrollOffset:(CGFloat)contentOffsetY
-{
-    if (!self.backgroundTopGlowLayer || !self.backgroundBottomGlowLayer) return;
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        self.backgroundTopGlowLayer.transform = CATransform3DIdentity;
-        self.backgroundBottomGlowLayer.transform = CATransform3DIdentity;
-        [CATransaction commit];
-        return;
-    }
-
-    CGFloat adjustedTopInset = 0.0;
-    if (@available(iOS 11.0, *)) {
-        adjustedTopInset = self.tableView.adjustedContentInset.top;
-    } else {
-        adjustedTopInset = self.tableView.contentInset.top;
-    }
-    CGFloat travel = MAX(0.0, contentOffsetY + adjustedTopInset);
-    CGFloat pullDistance = MAX(0.0, -(contentOffsetY + adjustedTopInset));
-    CGFloat pullProgress = MIN(1.0, pullDistance / 120.0);
-    CGFloat wave = sin(travel * 0.008);
-
-    CGAffineTransform topTransform = CGAffineTransformMakeTranslation(wave * 5.0,
-                                                                      -MIN(24.0, travel * 0.055));
-    topTransform = CGAffineTransformScale(topTransform,
-                                          1.0 + (pullProgress * 0.055),
-                                          1.0 + (pullProgress * 0.055));
-
-    CGAffineTransform bottomTransform = CGAffineTransformMakeTranslation(-wave * 6.0,
-                                                                         MIN(20.0, travel * 0.040));
-    bottomTransform = CGAffineTransformScale(bottomTransform,
-                                             1.0 + (pullProgress * 0.035),
-                                             1.0 + (pullProgress * 0.035));
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.backgroundTopGlowLayer.transform = CATransform3DMakeAffineTransform(topTransform);
-    self.backgroundBottomGlowLayer.transform = CATransform3DMakeAffineTransform(bottomTransform);
-    [CATransaction commit];
 }
 
 #pragma mark - Setup
@@ -986,6 +752,26 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.prefersBackToMainScreen = [self pp_isPushedFromPaymentSelectionViewController];
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"order_details_title") showBack:NO];
 
+    if (@available(iOS 13.0, *)) {
+        UINavigationBarAppearance *transparentAppearance =
+            [self.navigationController.navigationBar.standardAppearance copy];
+        if (!transparentAppearance) {
+            transparentAppearance = [[UINavigationBarAppearance alloc] init];
+            [transparentAppearance configureWithTransparentBackground];
+        }
+        transparentAppearance.backgroundColor = UIColor.clearColor;
+        transparentAppearance.backgroundEffect = nil;
+        transparentAppearance.backgroundImage = [[UIImage alloc] init];
+        transparentAppearance.shadowColor = UIColor.clearColor;
+        transparentAppearance.shadowImage = [[UIImage alloc] init];
+        self.navigationItem.standardAppearance = transparentAppearance;
+        self.navigationItem.scrollEdgeAppearance = transparentAppearance;
+        self.navigationItem.compactAppearance = transparentAppearance;
+        if (@available(iOS 15.0, *)) {
+            self.navigationItem.compactScrollEdgeAppearance = transparentAppearance;
+        }
+    }
+
     BOOL isPresentedModally = self.presentingViewController != nil;
     NSString *leftButtonImageName;
     if (isPresentedModally) {
@@ -1014,19 +800,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)setupViews
 {
-    self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.backgroundTopGlowView.userInteractionEnabled = NO;
-    self.backgroundTopGlowView.backgroundColor = UIColor.clearColor;
-    self.backgroundTopGlowView.alpha = kOrderDetailsTopGlowRestingAlpha;
-    [self.view addSubview:self.backgroundTopGlowView];
-
-    self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.backgroundBottomGlowView.userInteractionEnabled = NO;
-    self.backgroundBottomGlowView.backgroundColor = UIColor.clearColor;
-    self.backgroundBottomGlowView.alpha = kOrderDetailsBottomGlowRestingAlpha;
-    [self.view addSubview:self.backgroundBottomGlowView];
-    [self pp_installLiveBackgroundGlowLayersIfNeeded];
-
     UITableViewStyle tableStyle = UITableViewStylePlain;
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:tableStyle];
     self.tableView.delegate = self;
@@ -1049,8 +822,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [self.tableView registerClass:[OrderItemCell class] forCellReuseIdentifier:kOrderDetailsItemCellID];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:kOrderDetailsPlaceholderCellID];
     [self.view addSubview:self.tableView];
-    [self.view sendSubviewToBack:self.backgroundBottomGlowView];
-    [self.view sendSubviewToBack:self.backgroundTopGlowView];
 
     [self setupHeaderView];
     [self setupFooterView];
@@ -1487,14 +1258,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.loadingIndicator.frame = CGRectMake((loadingWidth - 36.0) * 0.5, 24.0, 36.0, 36.0);
     self.loadingLabel.frame = CGRectMake(PPSpaceMD, CGRectGetMaxY(self.loadingIndicator.frame) + PPSpaceSM,
                                          loadingWidth - (PPSpaceMD * 2.0), 22.0);
-    self.backgroundTopGlowView.frame = CGRectMake(-72.0,
-                                                  self.view.safeAreaInsets.top - 48.0,
-                                                  MIN(240.0, width * 0.58),
-                                                  MIN(240.0, width * 0.58));
-    self.backgroundBottomGlowView.frame = CGRectMake(width - MIN(210.0, width * 0.52) + 36.0,
-                                                     MIN(height * 0.42, 320.0),
-                                                     MIN(210.0, width * 0.52),
-                                                     MIN(210.0, width * 0.52));
 
     [self layoutHeaderView];
     [self layoutFooterView];
@@ -2254,11 +2017,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [self pp_refreshCurrentStatusSummaryMotionColors];
     [self.progressTimelineView refreshCurrentStatusMotion];
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopLiveBackgroundGlows];
         [self pp_stopHeaderHeroLiquidBorder];
         [self pp_stopCurrentStatusSummaryMotion];
     } else if (self.isOrderDetailsScreenVisible) {
-        [self pp_startLiveBackgroundGlowsIfNeeded];
         [self pp_startHeaderHeroLiquidBorderIfNeeded];
         [self pp_startCurrentStatusSummaryMotionIfNeeded];
     }
@@ -2498,7 +2259,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.progressTimelineToggleButton.layer.borderWidth = 1.0;
     [self.progressTimelineToggleButton pp_setBorderColor:border];
     self.progressTimelineToggleIconView.tintColor = accent;
-    [self pp_refreshLiveBackgroundGlowColors];
     [self pp_refreshHeaderHeroLiquidBorderColors];
     self.openMapButton.backgroundColor = surface;
     self.openMapButton.tintColor = accent;
@@ -3363,12 +3123,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 }
 
 #pragma mark - UITableViewDelegate
-
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView
-{
-    if (scrollView != self.tableView || !self.isOrderDetailsScreenVisible) return;
-    [self pp_updateLiveBackgroundGlowsForScrollOffset:scrollView.contentOffset.y];
-}
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
@@ -4324,9 +4078,8 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
                                                     name:kCartPricingConfigurationDidChangeNotification
                                                   object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:UIAccessibilityReduceMotionStatusDidChangeNotification
-                                                  object:nil];
-    [self pp_stopLiveBackgroundGlows];
+                                                     name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                                   object:nil];
     [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCurrentStatusSummaryMotion];
     [self pp_stopCheckoutSuccessConfetti];
@@ -4893,10 +4646,6 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             [self updateStatusStyle];
             [self updateStatusStepperAnimated:NO];
             [self configureFulfillmentSection];
-            [self pp_refreshLiveBackgroundGlowColors];
-            if (self.isOrderDetailsScreenVisible) {
-                [self pp_startLiveBackgroundGlowsIfNeeded];
-            }
         }
     }
     //[self.heroGlassBackground stopAnimations];

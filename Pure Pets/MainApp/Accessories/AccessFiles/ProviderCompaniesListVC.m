@@ -17,6 +17,7 @@
 #import "PPProviderCompanyPremiumCardCell.h"
 #import "PPProviderCompanyCell.h"
 #import "PPMarketplaceHeroCardStyle.h"
+#import <Pure_Pets-Swift.h>
 #import "UIViewController+PPBottomSurface.h"
 #import <QuartzCore/QuartzCore.h>
 
@@ -142,7 +143,6 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
 @property (nonatomic, strong, nullable) NSError *lastLoadError;
 @property (nonatomic, assign) BOOL heroEntrancePrepared;
 @property (nonatomic, assign) BOOL heroEntranceCompleted;
-@property (nonatomic, strong) NSMutableSet<NSString *> *animatedCompanyCellKeys;
 @property (nonatomic, assign) BOOL searchChromeFocused;
 @property (nonatomic, assign) BOOL heroDiscoveryInitialOffsetApplied;
 @property (nonatomic, assign) BOOL heroPinnedScrollPositionApplied;
@@ -191,7 +191,6 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
         _allEntries = @[];
         _visibleEntries = @[];
         _searchQuery = @"";
-        _animatedCompanyCellKeys = [NSMutableSet set];
         _selectedDiscoveryMode = PPProviderCompaniesDiscoveryModeRecommended;
         _prefersCompactListLayout = NO;
         _backgroundGlowsFadedByHomeConfig = NO;
@@ -345,9 +344,8 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
     self.tableView.tableFooterView = [UIView new];
-    [self.tableView registerClass:PPProviderCompanyCell.class forCellReuseIdentifier:@"PPProviderCompanyCell"];
-    [self.tableView registerClass:PPProviderCompanyPremiumCardCell.class
-           forCellReuseIdentifier:PPProviderCompanyPremiumCardCell.reuseIdentifier];
+    [self.tableView registerClass:UITableViewCell.class
+           forCellReuseIdentifier:PPProviderCompanySwiftUICellBridge.reuseIdentifier];
     [self.view addSubview:self.tableView];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -813,8 +811,6 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
     [feedback prepare];
     [feedback impactOccurred];
-
-    self.animatedCompanyCellKeys = [NSMutableSet set];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [UIView performWithoutAnimation:^{
@@ -1964,17 +1960,15 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     PPProviderCompanyEntry *entry = self.visibleEntries[indexPath.row];
-    if (self.prefersCompactListLayout) {
-        PPProviderCompanyCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProviderCompanyCell"
-                                                                      forIndexPath:indexPath];
-        [cell configureWithEntry:entry categoryIdentifier:self.selectedProviderCategoryIdentifier];
-        return cell;
-    }
-
-    PPProviderCompanyPremiumCardCell *cell =
-        [tableView dequeueReusableCellWithIdentifier:PPProviderCompanyPremiumCardCell.reuseIdentifier
-                                        forIndexPath:indexPath];
-    [cell configureWithViewModel:[self pp_premiumCardViewModelForEntry:entry]];
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:PPProviderCompanySwiftUICellBridge.reuseIdentifier
+                                                              forIndexPath:indexPath];
+    NSTimeInterval entranceDelay = MIN(indexPath.row, 6) * 0.035;
+    PPProviderCompanyPremiumCardViewModel *viewModel = [self pp_premiumCardViewModelForEntry:entry];
+    PPProviderCompanySwiftUICellBridge *bridge = [PPProviderCompanySwiftUICellBridge new];
+    [bridge configureCell:cell
+           withViewModel:viewModel
+                 compact:self.prefersCompactListLayout
+           entranceDelay:entranceDelay];
     return cell;
 }
 
@@ -2060,18 +2054,14 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (self.prefersCompactListLayout) {
-        return [PPProviderCompanyCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
-    }
-    return [PPProviderCompanyPremiumCardCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
+    return [PPProviderCompanySwiftUICellBridge preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)
+                                                                    compact:self.prefersCompactListLayout];
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (self.prefersCompactListLayout) {
-        return [PPProviderCompanyCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
-    }
-    return [PPProviderCompanyPremiumCardCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
+    return [PPProviderCompanySwiftUICellBridge preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)
+                                                                    compact:self.prefersCompactListLayout];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
@@ -2094,35 +2084,6 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
                                           categoryIdentifier:self.selectedProviderCategoryIdentifier];
     storefrontVC.parentVC = self;
     [self.navigationController pushViewController:storefrontVC animated:YES];
-}
-
-- (void)tableView:(UITableView *)tableView
-  willDisplayCell:(UITableViewCell *)cell
-forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (indexPath.row >= self.visibleEntries.count) {
-        return;
-    }
-
-    PPProviderCompanyEntry *entry = self.visibleEntries[indexPath.row];
-    NSString *ownerKey = PPProviderCompaniesSafeString(entry.ownerID);
-    if (ownerKey.length == 0) {
-        ownerKey = [NSString stringWithFormat:@"%@-%ld",
-                    PPProviderCompaniesNormalizedIdentifier(self.selectedProviderCategoryIdentifier),
-                    (long)indexPath.row];
-    }
-
-    if ([self.animatedCompanyCellKeys containsObject:ownerKey]) {
-        return;
-    }
-
-    [self.animatedCompanyCellKeys addObject:ownerKey];
-    NSTimeInterval delay = MIN(indexPath.row, 6) * 0.035;
-    if ([cell isKindOfClass:PPProviderCompanyCell.class]) {
-        [(PPProviderCompanyCell *)cell pp_runEntranceAnimationWithDelay:delay];
-    } else if ([cell isKindOfClass:PPProviderCompanyPremiumCardCell.class]) {
-        [(PPProviderCompanyPremiumCardCell *)cell pp_runEntranceAnimationWithDelay:delay];
-    }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView

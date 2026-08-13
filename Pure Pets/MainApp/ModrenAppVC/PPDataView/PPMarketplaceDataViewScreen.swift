@@ -12,6 +12,8 @@ struct PPMarketplaceDataViewScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var hasPresentedEntrance = false
     @State private var dockIsPinned = false
+    @State private var headerCollapseProgress: CGFloat = 0
+    @State private var compactHeaderIsActive = false
     @GestureState private var scrollGestureIsActive = false
     @State private var bridgeScrollInteractionIsActive = false
     @State private var measuredScrollContentHeight: CGFloat = 0
@@ -26,15 +28,27 @@ struct PPMarketplaceDataViewScreen: View {
                         spacing: 0,
                         pinnedViews: [.sectionHeaders]
                     ) {
-                            PPMarketplaceHero(
+                            PPMarketplaceHeaderV2(
                                 store: store,
                                 availableWidth: proxy.size.width,
-                                showsBackControl: !dockIsPinned
+                                presentation: .expanded,
+                                collapseProgress: headerCollapseProgress,
+                                isActiveRepresentation: !compactHeaderIsActive
                             )
                             .padding(.bottom, PPSpace.md)
                             .ppMarketplaceEntrance(
                                 isPresented: hasPresentedEntrance
                             )
+                            .background {
+                                GeometryReader { headerProxy in
+                                    Color.clear.preference(
+                                        key: PPMarketplaceHeaderV2MinYPreferenceKey.self,
+                                        value: headerProxy.frame(
+                                            in: .named("pp.marketplace.scroll")
+                                        ).minY
+                                    )
+                                }
+                            }
                             .zIndex(contextForegroundZIndex)
 
                             Section {
@@ -75,14 +89,8 @@ struct PPMarketplaceDataViewScreen: View {
                                     )
                                     .accessibilityHidden(true)
                             } header: {
-                                PPMarketplaceCurrentDock(
-                                    store: store,
-                                    showsPinnedBackControl: dockIsPinned,
-                                    statusBarHeight: proxy.safeAreaInsets.top
-                                )
-                                .ppMarketplaceEntrance(
-                                    isPresented: hasPresentedEntrance
-                                )
+                                Color.clear
+                                .frame(height: 1)
                                 .background {
                                     PPMarketplaceScrollStabilityController(
                                         isReplacingContext: store.isReplacingContext,
@@ -124,6 +132,15 @@ struct PPMarketplaceDataViewScreen: View {
                         .padding(.bottom, PPSpace.sm)
                     }
                     .coordinateSpace(name: "pp.marketplace.scroll")
+                    .onPreferenceChange(
+                        PPMarketplaceHeaderV2MinYPreferenceKey.self
+                    ) { minY in
+                        updateHeaderCollapseProgress(
+                            PPMarketplaceHeaderV2ScrollMetrics.progress(
+                                for: minY
+                            )
+                        )
+                    }
                     .onPreferenceChange(
                         PPMarketplaceDockMinYPreferenceKey.self
                     ) { minY in
@@ -169,6 +186,17 @@ struct PPMarketplaceDataViewScreen: View {
                     .onChange(of: scrollGestureIsActive) { isActive in
                         updateBridgeScrollInteraction(isActive: isActive)
                     }
+
+                PPMarketplaceHeaderV2(
+                    store: store,
+                    availableWidth: proxy.size.width,
+                    presentation: .compact,
+                    collapseProgress: headerCollapseProgress,
+                    isActiveRepresentation: compactHeaderIsActive,
+                    topSafeAreaInset: proxy.safeAreaInsets.top
+                )
+                .ppMarketplaceEntrance(isPresented: hasPresentedEntrance)
+                .zIndex(8)
             }
         }
         .background {
@@ -215,6 +243,8 @@ struct PPMarketplaceDataViewScreen: View {
         .onDisappear {
             endScrollGestureIfNeeded()
             retainedScrollContentHeight = 0
+            headerCollapseProgress = 0
+            compactHeaderIsActive = false
         }
     }
 
@@ -240,6 +270,27 @@ struct PPMarketplaceDataViewScreen: View {
         } else {
             store.bridge.userDidEndScrolling()
         }
+    }
+
+    private func updateHeaderCollapseProgress(_ progress: CGFloat) {
+        let resolved = min(max(progress, 0), 1)
+        if abs(headerCollapseProgress - resolved) > 0.001 {
+            headerCollapseProgress = resolved
+        }
+
+        let nextCompactState = resolved >=
+            PPMarketplaceHeaderV2ScrollMetrics.compactActivationProgress
+        guard compactHeaderIsActive != nextCompactState else { return }
+        compactHeaderIsActive = nextCompactState
+
+        guard nextCompactState,
+              scrollGestureIsActive,
+              !contentMotionIsDisabled else {
+            return
+        }
+        let feedback = UISelectionFeedbackGenerator()
+        feedback.prepare()
+        feedback.selectionChanged()
     }
 
     private func resolvedBottomBreathingRoom(
