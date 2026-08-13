@@ -171,70 +171,66 @@ final class PPMarketplaceDataViewTests: XCTestCase {
         XCTAssertEqual(ltr, rtl)
     }
 
-    func testHeaderV2CollapseUsesOneClampedScrollProgress() {
+    func testCommandDockV3CollapseUsesOneClampedScrollProgress() {
         XCTAssertEqual(
-            PPMarketplaceHeaderV2ScrollMetrics.progress(for: 40),
-            0
+            PPMarketplaceCommandDockV3Metrics.progress(forDockMinY: 200),
+            0,
+            accuracy: 0.001
         )
         XCTAssertEqual(
-            PPMarketplaceHeaderV2ScrollMetrics.progress(
-                for: -PPMarketplaceHeaderV2ScrollMetrics.collapseDistance / 2
+            PPMarketplaceCommandDockV3Metrics.progress(
+                forDockMinY: PPMarketplaceCommandDockV3Metrics.collapseDistance / 2
             ),
             0.5,
             accuracy: 0.001
         )
         XCTAssertEqual(
-            PPMarketplaceHeaderV2ScrollMetrics.progress(for: -10_000),
+            PPMarketplaceCommandDockV3Metrics.progress(forDockMinY: 0),
             1
         )
     }
 
-    func testHeaderV2ReduceMotionKeepsOneActiveRepresentation() {
-        let threshold =
-            PPMarketplaceHeaderV2ScrollMetrics.compactActivationProgress
-
+    func testCommandDockV3InterpolationRetainsOneGeometryOwner() {
         XCTAssertEqual(
-            PPMarketplaceHeaderV2ScrollMetrics.expandedVisibility(
-                for: threshold - 0.01,
-                reduceMotion: true
+            PPMarketplaceCommandDockV3Metrics.interpolate(
+                expanded: 56,
+                compact: 48,
+                progress: -1
             ),
-            1
+            56
         )
         XCTAssertEqual(
-            PPMarketplaceHeaderV2ScrollMetrics.compactVisibility(
-                for: threshold - 0.01,
-                reduceMotion: true
+            PPMarketplaceCommandDockV3Metrics.interpolate(
+                expanded: 56,
+                compact: 48,
+                progress: 0.5
             ),
-            0
+            52
         )
         XCTAssertEqual(
-            PPMarketplaceHeaderV2ScrollMetrics.expandedVisibility(
-                for: threshold,
-                reduceMotion: true
+            PPMarketplaceCommandDockV3Metrics.interpolate(
+                expanded: 56,
+                compact: 48,
+                progress: 2
             ),
-            0
-        )
-        XCTAssertEqual(
-            PPMarketplaceHeaderV2ScrollMetrics.compactVisibility(
-                for: threshold,
-                reduceMotion: true
-            ),
-            1
+            48
         )
     }
 
-    func testHeaderV2ControlsMeetMinimumTargetAndKeepEverySection() {
+    func testCommandDockV3ControlsMeetMinimumTargetAndKeepEverySection() {
         XCTAssertGreaterThanOrEqual(
-            PPMarketplaceHeaderV2Geometry.expandedControlSize,
-            PPMarketplaceHeaderV2Geometry.minimumTouchTarget
+            PPMarketplaceCommandDockV3Metrics.minimumTouchTarget,
+            44
         )
-        XCTAssertGreaterThanOrEqual(
-            PPMarketplaceHeaderV2Geometry.compactControlSize,
-            PPMarketplaceHeaderV2Geometry.minimumTouchTarget
+        XCTAssertFalse(
+            PPMarketplaceCommandDockV3Metrics.showsCompactNavigation(
+                progress: 0.69
+            )
         )
-        XCTAssertGreaterThanOrEqual(
-            PPMarketplaceHeaderV2Geometry.expandedSearchHeight,
-            PPMarketplaceHeaderV2Geometry.minimumTouchTarget
+        XCTAssertTrue(
+            PPMarketplaceCommandDockV3Metrics.showsCompactNavigation(
+                progress: 0.70
+            )
         )
         XCTAssertEqual(
             PPMarketplaceSectionDescriptor.all.map(\.rawValue),

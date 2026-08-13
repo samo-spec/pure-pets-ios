@@ -768,6 +768,15 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     return button;
 }
 
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    if (self.window != nil && self.selectedIndex != NSNotFound) {
+        [self setNeedsLayout];
+        [self layoutIfNeeded];
+    }
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
@@ -780,6 +789,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     if (self.selectedIndex != NSNotFound) {
         [self pp_updateSelectionIndicatorForIndex:self.selectedIndex animated:NO];
+        [self pp_refreshButtonAppearance];
     }
 }
 
@@ -840,19 +850,37 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_updateSelectionIndicatorForIndex:(NSInteger)index animated:(BOOL)animated
 {
-    CGFloat containerWidth = CGRectGetWidth(self.contentClipView.bounds);
-    if (containerWidth <= 0.0 || self.tabButtons.count == 0) return;
+    if (index < 0 || index >= (NSInteger)self.tabButtons.count) {
+        self.selectionIndicator.hidden = YES;
+        return;
+    }
 
-    CGFloat tabWidth = floor(containerWidth / (CGFloat)self.tabButtons.count);
-    CGFloat width = MAX(68.0, tabWidth - PPSpaceSM);
-    CGFloat leading = (tabWidth * (CGFloat)index) + ((tabWidth - width) * 0.5);
+    [self.stackView layoutIfNeeded];
+    [self.contentClipView layoutIfNeeded];
+
+    UIButton *selectedButton = self.tabButtons[index];
+    CGRect buttonFrame = [self.contentClipView convertRect:selectedButton.frame fromView:self.stackView];
+
+    CGFloat leading = 0.0;
+    CGFloat width = 0.0;
+
+    if (CGRectGetWidth(buttonFrame) > 0.0) {
+        leading = CGRectGetMinX(buttonFrame);
+        width = CGRectGetWidth(buttonFrame);
+    } else {
+        CGFloat containerWidth = CGRectGetWidth(self.contentClipView.bounds);
+        if (containerWidth <= 0.0) return;
+        CGFloat tabWidth = floor(containerWidth / (CGFloat)self.tabButtons.count);
+        width = MAX(68.0, tabWidth - PPSpaceSM);
+        leading = (tabWidth * (CGFloat)index) + ((tabWidth - width) * 0.5);
+    }
 
     self.indicatorLeadingConstraint.constant = leading;
     self.indicatorWidthConstraint.constant = width;
     self.selectionIndicator.hidden = NO;
 
     void (^animations)(void) = ^{
-        [self.surfaceView layoutIfNeeded];
+        [self.contentClipView layoutIfNeeded];
     };
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
@@ -1671,6 +1699,9 @@ typedef NS_ENUM(NSInteger, PPNotificationsInboxState) {
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
+    if (self.selectedIndex != NSNotFound && self.tabsView) {
+        [self.tabsView selectIndex:self.selectedIndex animated:NO];
+    }
 }
 
 #pragma mark - Setup

@@ -26,6 +26,14 @@
 #import "ServicesManager.h"
 #import "UserManager.h"
 
+static NSError *PPHomeMissingSignalCategoryError(void) {
+    return [NSError errorWithDomain:@"PPHomeMarketplaceSignals"
+                               code:-1001
+                           userInfo:@{
+        NSLocalizedDescriptionKey: @"A selected main category is required for this count."
+    }];
+}
+
 @interface PPHomeHeroAnimationView ()
 
 @property (nonatomic, strong) LOTAnimationView *animationView;
@@ -1793,6 +1801,73 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
             }
         });
     }];
+}
+
+- (void)fetchMarketplaceItemCountForMainCategoryID:(NSInteger)mainCategoryID
+                                         completion:(PPHomeExactCountCompletion)completion
+{
+    if (mainCategoryID <= 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(0, PPHomeMissingSignalCategoryError());
+        });
+        return;
+    }
+    [[PetAccessoryManager sharedManager]
+        fetchPublicMarketplaceAccessoriesForMainCategoryID:mainCategoryID
+        completion:^(NSArray<PetAccessory *> *accessories, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(accessories.count, error);
+            });
+        }];
+}
+
+- (void)fetchServiceCountForMainCategoryID:(NSInteger)mainCategoryID
+                                 completion:(PPHomeExactCountCompletion)completion
+{
+    if (mainCategoryID <= 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(0, PPHomeMissingSignalCategoryError());
+        });
+        return;
+    }
+    [[ServicesManager sharedInstance]
+        fetchServicesForPetMainKindID:mainCategoryID
+        completion:^(NSArray<ServiceModel *> *services, NSError *error) {
+            if (error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (completion) completion(0, error);
+                });
+                return;
+            }
+
+            NSUInteger liveCount =
+                [(services ?: @[]) filteredArrayUsingPredicate:
+                    [NSPredicate predicateWithBlock:^BOOL(ServiceModel *service,
+                                                         __unused NSDictionary *bindings) {
+                        return [service isKindOfClass:ServiceModel.class] && service.isLive;
+                    }]].count;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion((NSInteger)liveCount, nil);
+            });
+        }];
+}
+
+- (void)fetchAdvertisementCountForMainCategoryID:(NSInteger)mainCategoryID
+                                       completion:(PPHomeExactCountCompletion)completion
+{
+    if (mainCategoryID <= 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(0, PPHomeMissingSignalCategoryError());
+        });
+        return;
+    }
+    [[PetAdManager sharedManager]
+        fetchPublicVisibleAdsForCategoryID:mainCategoryID
+        completion:^(NSArray<PetAd *> *ads, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(ads.count, error);
+            });
+        }];
 }
 
 + (BOOL)statusKey:(NSString *)statusKey matchesKeywords:(NSArray<NSString *> *)keywords

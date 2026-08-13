@@ -1,30 +1,80 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Presentation
+
 @available(iOS 15.0, *)
 enum PPMarketplaceHeaderV2Presentation {
     case expanded
     case compact
 }
 
+// MARK: - Geometry
+
+/// One geometry table shared by both dock states.
+///
+/// Every control that exists in both states keeps the same shape family (a
+/// continuous capsule) and the same order, so collapsing reads as a change in
+/// density rather than a change in layout.
 @available(iOS 15.0, *)
 enum PPMarketplaceHeaderV2Geometry {
     static let minimumTouchTarget: CGFloat = 44
+
     static let expandedControlSize: CGFloat = 54
-    static let expandedSearchHeight: CGFloat = 64
-    static let compactControlSize: CGFloat = 44
+    static let expandedCommandHeight: CGFloat = 60
     static let expandedCategoryHeight: CGFloat = 58
-    static let compactCategoryHeight: CGFloat = 48
+    static let expandedIndicatorHeight: CGFloat = 4
+    static let expandedRailItemInset: CGFloat = 14
+
+    static let compactControlSize: CGFloat = 44
+    static let compactCommandHeight: CGFloat = 46
+    static let compactCategoryHeight: CGFloat = 46
+    static let compactIndicatorHeight: CGFloat = 3
+    static let compactRailItemInset: CGFloat = 11
+
+    /// Height of the gradient veil under the pinned dock. Content dissolves
+    /// into the dock instead of colliding with its bottom edge.
+    static let scrollEdgeVeil: CGFloat = 20
+
+    static func commandHeight(isCompact: Bool) -> CGFloat {
+        isCompact ? compactCommandHeight : expandedCommandHeight
+    }
+
+    static func categoryHeight(isCompact: Bool) -> CGFloat {
+        isCompact ? compactCategoryHeight : expandedCategoryHeight
+    }
+
+    static func indicatorHeight(isCompact: Bool) -> CGFloat {
+        isCompact ? compactIndicatorHeight : expandedIndicatorHeight
+    }
+
+    static func railItemInset(isCompact: Bool) -> CGFloat {
+        isCompact ? compactRailItemInset : expandedRailItemInset
+    }
 }
+
+// MARK: - Scroll metrics
 
 @available(iOS 15.0, *)
 enum PPMarketplaceHeaderV2ScrollMetrics {
     static let collapseDistance: CGFloat = 148
     static let compactActivationProgress: CGFloat = 0.62
 
-    static func progress(for minY: CGFloat) -> CGFloat {
-        guard minY.isFinite else { return 0 }
-        return min(max(-minY / collapseDistance, 0), 1)
+    /// Collapse progress derived from the **pinned** dock probe.
+    ///
+    /// The previous driver measured the expanded header's own `minY`. That view
+    /// is a row inside a `LazyVStack`, so scrolling far enough destroyed it, the
+    /// preference fell back to its default, progress collapsed to `0`, and the
+    /// pinned dock vanished together with search, filters, the section rail and
+    /// the status-bar protection.
+    ///
+    /// The pinned section header is retained at every offset, so its `minY` is a
+    /// stable monotonic source: it starts at the resting dock offset, decreases
+    /// as the user scrolls, and latches at `0` once pinned. Progress therefore
+    /// reaches `1` at the pin point and *stays* there.
+    static func progress(forDockMinY minY: CGFloat) -> CGFloat {
+        guard minY.isFinite, collapseDistance > 0 else { return 0 }
+        return min(max(1 - (minY / collapseDistance), 0), 1)
     }
 
     static func expandedVisibility(
@@ -50,14 +100,29 @@ enum PPMarketplaceHeaderV2ScrollMetrics {
     }
 }
 
-@available(iOS 15.0, *)
-struct PPMarketplaceHeaderV2MinYPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+// MARK: - Section indicator anchors
 
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = min(value, nextValue())
+/// Publishes the resolved bounds of every section control so a *single*
+/// indicator can travel between them.
+///
+/// The previous rail drew one underline per item and cross-faded opacity, so the
+/// selection never moved: it disappeared in one place and reappeared in another,
+/// at a different width. One shared indexed anchor lets the indicator animate
+/// its position *and* its width continuously, and it resolves correctly in RTL
+/// because anchors carry already-resolved frames.
+@available(iOS 15.0, *)
+struct PPMarketplaceHeaderV2SectionAnchorKey: PreferenceKey {
+    static var defaultValue: [Int: Anchor<CGRect>] = [:]
+
+    static func reduce(
+        value: inout [Int: Anchor<CGRect>],
+        nextValue: () -> [Int: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue()) { _, next in next }
     }
 }
+
+// MARK: - Dock
 
 @available(iOS 15.0, *)
 struct PPMarketplaceHeaderV2: View {
@@ -79,13 +144,13 @@ struct PPMarketplaceHeaderV2: View {
     @ScaledMetric(relativeTo: .body)
     private var expandedControlSize = PPMarketplaceHeaderV2Geometry.expandedControlSize
     @ScaledMetric(relativeTo: .body)
-    private var expandedSearchHeight = PPMarketplaceHeaderV2Geometry.expandedSearchHeight
+    private var expandedCommandHeight = PPMarketplaceHeaderV2Geometry.expandedCommandHeight
 
     var body: some View {
         Group {
             switch presentation {
             case .expanded:
-                expandedHeader
+                expandedDock
                     .opacity(expandedVisibility)
                     .scaleEffect(
                         interactionMotionIsDisabled
@@ -95,7 +160,7 @@ struct PPMarketplaceHeaderV2: View {
                     )
 
             case .compact:
-                compactHeader
+                compactDock
                     .opacity(compactVisibility)
                     .offset(
                         y: interactionMotionIsDisabled
@@ -108,114 +173,80 @@ struct PPMarketplaceHeaderV2: View {
         .accessibilityHidden(!isActiveRepresentation)
     }
 
-    // MARK: - Expanded screenshot composition
+    // MARK: Expanded state
 
-    private var expandedHeader: some View {
-        VStack(spacing: dynamicTypeSize.isAccessibilitySize ? PPSpace.lg : PPSpace.base) {
-            expandedIdentityRow
-            expandedSearchSurface
+    private var expandedDock: some View {
+        VStack(spacing: dynamicTypeSize.isAccessibilitySize ? PPSpace.base : PPSpace.md) {
+            identityRow
+            commandCapsule(isCompact: false)
             sectionRail(isCompact: false)
         }
         .frame(maxWidth: resolvedMaximumWidth)
         .padding(.top, PPSpace.sm)
-        .padding(.horizontal, horizontalInset)
         .frame(maxWidth: .infinity)
-        .overlay(alignment: .bottom) {
-            sectionRailBaseline
-        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(store.contextAccessibilityLabel)
     }
 
-    private var expandedIdentityRow: some View {
+    /// Title and subtitle are centred against **equal-width side slots**.
+    ///
+    /// The previous row leaned the whole text block against the leading edge of
+    /// a three-item `HStack`, so the title sat visibly off-centre (measured ~38pt
+    /// in the shipped build). Reserving the same width on both sides centres the
+    /// title mathematically, whatever the control count.
+    private var identityRow: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: PPSpace.base) {
+            HStack(alignment: .center, spacing: PPSpace.sm) {
                 backControl(size: resolvedExpandedControlSize, compact: false)
-                contextControl(compact: false)
+                    .frame(width: identitySlotWidth, alignment: .leading)
+
+                contextControl(compact: false, alignment: .center)
+
                 cartControl(size: resolvedExpandedControlSize, compact: false)
+                    .frame(width: identitySlotWidth, alignment: .trailing)
             }
 
             VStack(alignment: .leading, spacing: PPSpace.md) {
-                HStack(spacing: PPSpace.base) {
+                HStack(spacing: PPSpace.sm) {
                     backControl(size: resolvedExpandedControlSize, compact: false)
-                    cartControl(size: resolvedExpandedControlSize, compact: false)
                     Spacer(minLength: 0)
+                    cartControl(size: resolvedExpandedControlSize, compact: false)
                 }
-                contextControl(compact: false)
+                contextControl(compact: false, alignment: .leading)
             }
         }
+        .padding(.horizontal, horizontalInset)
     }
 
-    private var expandedSearchSurface: some View {
-        HStack(spacing: 0) {
-            Button(action: store.openSearch) {
-                HStack(spacing: PPSpace.md) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(Color.ppPrimary)
-                        .accessibilityHidden(true)
+    // MARK: Compact state
 
-                    Text(contextualSearchTitle)
-                        .font(HomeFont.callout())
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.horizontal, PPSpace.lg)
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: resolvedSearchHeight,
-                    alignment: .leading
+    private var compactDock: some View {
+        VStack(spacing: PPSpace.sm) {
+            HStack(spacing: PPSpace.sm) {
+                backControl(
+                    size: PPMarketplaceHeaderV2Geometry.compactControlSize,
+                    compact: true
                 )
-                .contentShape(Rectangle())
+
+                commandCapsule(isCompact: true)
+
+                cartControl(
+                    size: PPMarketplaceHeaderV2Geometry.compactControlSize,
+                    compact: true
+                )
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(contextualSearchTitle)
-            .accessibilityHint(
-                PPMarketplaceText.localized("marketplace_search_hint")
-            )
-            .accessibilityIdentifier("pp.marketplace.header.v2.search.expanded")
+            .padding(.horizontal, horizontalInset)
 
-            Rectangle()
-                .fill(Color.ppSeparator.opacity(contrast == .increased ? 0.82 : 0.48))
-                .frame(width: contrast == .increased ? 2 : 1, height: 38)
-                .accessibilityHidden(true)
-
-            filterControl(
-                size: max(PPMarketplaceHeaderV2Geometry.minimumTouchTarget, resolvedSearchHeight),
-                compact: false
-            )
-        }
-        .frame(minHeight: resolvedSearchHeight)
-        .ppMarketplaceHeaderV2Glass(
-            in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous),
-            tint: Color.ppPrimary.opacity(colorScheme == .dark ? 0.055 : 0.025),
-            fallback: Color.ppSurface,
-            stroke: Color.ppSurfaceBorder.opacity(contrast == .increased ? 1 : 0.68),
-            lineWidth: contrast == .increased ? 2 : 1,
-            isInteractive: true
-        )
-        .shadow(
-            color: contrast == .increased ? .clear : Color.black.opacity(0.045),
-            radius: 18,
-            y: 8
-        )
-    }
-
-    // MARK: - Compact pinned composition
-
-    private var compactHeader: some View {
-        VStack(spacing: PPSpace.xs) {
-            compactCommandRow
             sectionRail(isCompact: true)
         }
         .frame(maxWidth: resolvedMaximumWidth)
         .padding(.top, max(0, topSafeAreaInset) + PPSpace.xs)
-        .padding(.horizontal, horizontalInset)
-        .padding(.bottom, PPSpace.sm)
+        .padding(.bottom, PPSpace.md)
         .frame(maxWidth: .infinity)
         .ppMarketplaceHeaderV2Glass(
-            in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous),
+            in: PPMarketplaceHeaderV2DockShape(
+                cornerRadius: PPCorner.hero
+            ),
             tint: Color.ppPrimary.opacity(colorScheme == .dark ? 0.08 : 0.035),
             fallback: Color.ppSurface,
             stroke: Color.ppSurfaceBorder.opacity(contrast == .increased ? 1 : 0.62),
@@ -227,96 +258,333 @@ struct PPMarketplaceHeaderV2: View {
             radius: 18,
             y: 8
         )
+        // Content dissolves into the dock instead of butting against it. The
+        // shipped build left ~0pt between the dock edge and the first product
+        // card, so the two layers read as one collided surface.
+        .overlay(alignment: .bottom) {
+            scrollEdgeVeil
+                .offset(y: PPMarketplaceHeaderV2Geometry.scrollEdgeVeil)
+        }
         .ignoresSafeArea(.container, edges: .top)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(store.contextAccessibilityLabel)
     }
 
-    private var compactCommandRow: some View {
-        HStack(spacing: PPSpace.sm) {
-            backControl(
-                size: PPMarketplaceHeaderV2Geometry.compactControlSize,
-                compact: true
-            )
-
-            compactSearchControl
-
-            filterControl(
-                size: PPMarketplaceHeaderV2Geometry.compactControlSize,
-                compact: true
-            )
-
-            refinementMenu
-
-            cartControl(
-                size: PPMarketplaceHeaderV2Geometry.compactControlSize,
-                compact: true
-            )
-        }
-        .frame(minHeight: PPMarketplaceHeaderV2Geometry.minimumTouchTarget)
+    private var scrollEdgeVeil: some View {
+        LinearGradient(
+            colors: [
+                Color.ppSurface.opacity(contrast == .increased ? 0 : 0.92),
+                Color.ppSurface.opacity(0)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: PPMarketplaceHeaderV2Geometry.scrollEdgeVeil)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
-    private var compactSearchControl: some View {
+    // MARK: Command capsule
+
+    /// The upgraded descendant of the old dock's species/breed container.
+    ///
+    /// The old dock stacked a species menu over a breed menu inside their own
+    /// bordered box, next to a separate search button and a separate filter
+    /// button — three containers competing for the same row. This is one
+    /// continuous capsule that owns search, species, breed and filters together,
+    /// and it is present in **both** dock states, so no capability appears or
+    /// disappears with scroll position.
+    private func commandCapsule(isCompact: Bool) -> some View {
+        let height = resolvedCommandHeight(isCompact: isCompact)
+
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 0) {
+                searchControl(isCompact: isCompact, showsPlaceholder: !isCompact)
+                capsuleDivider(height: height * 0.52)
+                taxonomyChip(kind: .species, isCompact: isCompact)
+                taxonomyChip(kind: .breed, isCompact: isCompact)
+                capsuleDivider(height: height * 0.52)
+                filterControl(isCompact: isCompact, height: height)
+            }
+
+            // Narrow / large-text fallback keeps the old dock's stacked
+            // reading order inside the same single capsule.
+            VStack(spacing: PPSpace.xs) {
+                HStack(spacing: 0) {
+                    searchControl(isCompact: isCompact, showsPlaceholder: true)
+                    capsuleDivider(height: height * 0.52)
+                    filterControl(isCompact: isCompact, height: height)
+                }
+                Divider()
+                    .overlay(Color.ppSeparator.opacity(0.4))
+                HStack(spacing: 0) {
+                    taxonomyChip(kind: .species, isCompact: isCompact)
+                    taxonomyChip(kind: .breed, isCompact: isCompact)
+                }
+            }
+            .padding(.vertical, PPSpace.xs)
+        }
+        .frame(minHeight: height)
+        .ppMarketplaceHeaderV2Glass(
+            in: Capsule(style: .continuous),
+            tint: Color.ppPrimary.opacity(colorScheme == .dark ? 0.055 : 0.025),
+            fallback: isCompact ? Color.ppSurfaceRaised : Color.ppSurface,
+            stroke: Color.ppSurfaceBorder.opacity(contrast == .increased ? 1 : 0.68),
+            lineWidth: contrast == .increased ? 2 : 1,
+            isInteractive: true
+        )
+        .shadow(
+            color: contrast == .increased || isCompact
+                ? .clear
+                : Color.black.opacity(0.045),
+            radius: 18,
+            y: 8
+        )
+        .accessibilityIdentifier(
+            isCompact
+                ? "pp.marketplace.header.v2.command.compact"
+                : "pp.marketplace.header.v2.command.expanded"
+        )
+    }
+
+    private func capsuleDivider(height: CGFloat) -> some View {
+        Rectangle()
+            .fill(Color.ppSeparator.opacity(contrast == .increased ? 0.82 : 0.42))
+            .frame(width: contrast == .increased ? 2 : 1, height: height)
+            .accessibilityHidden(true)
+    }
+
+    private func searchControl(
+        isCompact: Bool,
+        showsPlaceholder: Bool
+    ) -> some View {
         Button(action: store.openSearch) {
             HStack(spacing: PPSpace.sm) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(
+                        .system(
+                            size: isCompact ? 17 : 21,
+                            weight: .semibold
+                        )
+                    )
                     .foregroundStyle(Color.ppPrimary)
                     .accessibilityHidden(true)
 
-                Text(contextualSearchTitle)
-                    .font(HomeFont.subheadline())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                if showsPlaceholder {
+                    Text(contextualSearchTitle)
+                        .font(isCompact ? HomeFont.subheadline() : HomeFont.callout())
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            .padding(.horizontal, PPSpace.md)
+            .padding(.leading, isCompact ? PPSpace.md : PPSpace.base)
+            .padding(.trailing, showsPlaceholder ? PPSpace.sm : PPSpace.md)
             .frame(
-                maxWidth: .infinity,
-                minHeight: PPMarketplaceHeaderV2Geometry.compactControlSize
+                maxWidth: showsPlaceholder ? .infinity : nil,
+                minHeight: PPMarketplaceHeaderV2Geometry.minimumTouchTarget,
+                alignment: .leading
             )
-            .contentShape(Capsule(style: .continuous))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .ppMarketplaceHeaderV2Glass(
-            in: Capsule(style: .continuous),
-            tint: Color.ppPrimary.opacity(colorScheme == .dark ? 0.06 : 0.025),
-            fallback: Color.ppSurfaceRaised,
-            stroke: Color.ppSurfaceBorder.opacity(0.58),
-            lineWidth: contrast == .increased ? 2 : 0.8,
-            isInteractive: true
-        )
         .accessibilityLabel(contextualSearchTitle)
         .accessibilityHint(
             PPMarketplaceText.localized("marketplace_search_hint")
         )
-        .accessibilityIdentifier("pp.marketplace.header.v2.search.compact")
+        .accessibilityIdentifier(
+            isCompact
+                ? "pp.marketplace.header.v2.search.compact"
+                : "pp.marketplace.header.v2.search.expanded"
+        )
     }
 
-    // MARK: - Shared controls
+    // MARK: Species / breed
 
-    private func contextControl(compact: Bool) -> some View {
-        Button(action: store.beginCategoryEditing) {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
+    private enum PPMarketplaceHeaderV2TaxonomyKind {
+        case species
+        case breed
+    }
+
+    /// Species and breed as live inline chips.
+    ///
+    /// They were previously rendered as dead text inside the subtitle
+    /// ("Dogs market · All Breed · 25 results"), so the two most-used
+    /// refinements in the product looked like decoration. The information stays
+    /// on screen — it is now the control.
+    @ViewBuilder
+    private func taxonomyChip(
+        kind: PPMarketplaceHeaderV2TaxonomyKind,
+        isCompact: Bool
+    ) -> some View {
+        let isActive = kind == .species
+            ? store.currentMainKindID != 0
+            : store.currentSubKindID != 0
+        let value = kind == .species ? resolvedSpeciesTitle : resolvedBreedTitle
+        let glyph = kind == .species ? "pawprint.fill" : "tag.fill"
+        let hintKey = kind == .species
+            ? "marketplace_category_main_kind_hint"
+            : "marketplace_category_subkind_hint"
+        let identifier = kind == .species
+            ? "pp.marketplace.header.v2.species"
+            : "pp.marketplace.header.v2.breed"
+
+        Menu {
+            switch kind {
+            case .species:
+                ForEach(store.mainKindChoices) { choice in
+                    Button {
+                        selectTaxonomy { store.applyMainKindShortcut(choice) }
+                    } label: {
+                        if choice.id == store.currentMainKindID {
+                            Label(choice.title, systemImage: "checkmark")
+                        } else {
+                            Text(choice.title)
+                        }
+                    }
+                }
+            case .breed:
+                ForEach(store.subKindChoices) { choice in
+                    Button {
+                        selectTaxonomy { store.applySubKindShortcut(choice) }
+                    } label: {
+                        if choice.id == store.currentSubKindID {
+                            Label(choice.title, systemImage: "checkmark")
+                        } else {
+                            Text(choice.title)
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: PPSpace.xs) {
+                if !isCompact {
+                    Image(systemName: glyph)
+                        .font(.system(size: 11, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
+
+                Text(value)
+                    .font(HomeFont.bold(isCompact ? 12 : 13))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .black))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(isActive ? Color.ppPrimary : Color.ppTextSecondary)
+            .padding(.horizontal, isCompact ? PPSpace.sm : PPSpace.md)
+            .frame(
+                minHeight: PPMarketplaceHeaderV2Geometry.minimumTouchTarget - 12
+            )
+            .background {
+                Capsule(style: .continuous)
+                    .fill(
+                        Color.ppPrimary.opacity(
+                            isActive ? (colorScheme == .dark ? 0.20 : 0.10) : 0
+                        )
+                    )
+            }
+            .overlay {
+                if isActive && contrast == .increased {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.ppPrimary, lineWidth: 1.5)
+                }
+            }
+            .padding(.horizontal, PPSpace.xxs)
+            .frame(
+                minHeight: PPMarketplaceHeaderV2Geometry.minimumTouchTarget
+            )
+            .contentShape(Rectangle())
+        }
+        .menuOrder(.fixed)
+        .disabled(store.isReplacingContext)
+        .layoutPriority(-1)
+        .accessibilityLabel(taxonomyAccessibilityLabel(kind: kind, value: value))
+        .accessibilityHint(PPMarketplaceText.localized(hintKey))
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func taxonomyAccessibilityLabel(
+        kind: PPMarketplaceHeaderV2TaxonomyKind,
+        value: String
+    ) -> String {
+        switch kind {
+        case .species:
+            return PPMarketplaceText.formatted(
+                "marketplace_category_main_kind_format",
+                value
+            )
+        case .breed:
+            return PPMarketplaceText.formatted(
+                "marketplace_category_subkind_format",
+                value
+            )
+        }
+    }
+
+    private var resolvedSpeciesTitle: String {
+        let title = store.currentMainKindTitle.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        return title.isEmpty
+            ? PPMarketplaceText.localized("All")
+            : title
+    }
+
+    private var resolvedBreedTitle: String {
+        let title = store.currentSubKindTitle.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        return title.isEmpty
+            ? PPMarketplaceText.localized("data_nav_all_breed")
+            : title
+    }
+
+    private func selectTaxonomy(_ apply: @escaping () -> Void) {
+        if interactionMotionIsDisabled {
+            apply()
+        } else {
+            withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+                apply()
+            }
+        }
+    }
+
+    // MARK: Shared controls
+
+    private func contextControl(
+        compact: Bool,
+        alignment: HorizontalAlignment
+    ) -> some View {
+        let textAlignment: TextAlignment = alignment == .center ? .center : .leading
+        let frameAlignment: Alignment = alignment == .center ? .center : .leading
+
+        return Button(action: store.beginCategoryEditing) {
+            VStack(alignment: alignment, spacing: PPSpace.xxs) {
                 Text(store.navigationContext.title)
                     .font(compact ? HomeFont.headline() : HomeFont.title1())
                     .foregroundStyle(Color.ppTextPrimary)
                     .lineLimit(compact ? 1 : 2)
-                    .minimumScaleFactor(compact ? 0.82 : 0.92)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .minimumScaleFactor(compact ? 0.82 : 0.9)
+                    .multilineTextAlignment(textAlignment)
+                    .frame(maxWidth: .infinity, alignment: frameAlignment)
 
-                if !compact {
+                if !compact, !contextSubtitle.isEmpty {
                     Text(contextSubtitle)
                         .font(HomeFont.callout())
                         .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+                        .multilineTextAlignment(textAlignment)
+                        .frame(maxWidth: .infinity, alignment: frameAlignment)
                 }
             }
             .frame(
                 maxWidth: .infinity,
                 minHeight: PPMarketplaceHeaderV2Geometry.minimumTouchTarget,
-                alignment: .leading
+                alignment: frameAlignment
             )
             .contentShape(Rectangle())
         }
@@ -362,121 +630,157 @@ struct PPMarketplaceHeaderV2: View {
         )
     }
 
-    private func filterControl(size: CGFloat, compact: Bool) -> some View {
-        PPMarketplaceHeaderV2IconControl(
-            iconName: "slider.horizontal.3",
-            size: size,
-            accessibilityLabel: PPMarketplaceText.localized("filterPPAction"),
-            accessibilityHint: PPMarketplaceText.localized(
-                "marketplace_filters_open_hint"
-            ),
-            accessibilityIdentifier: compact
-                ? "pp.marketplace.header.v2.filter.compact"
-                : "pp.marketplace.header.v2.filter.expanded",
-            badge: store.activeFilterCount,
-            drawsSurface: compact,
-            action: store.beginFilterEditing
-        )
-    }
+    /// Tap opens the full filter sheet; long-press exposes quick refinements and
+    /// layout.
+    ///
+    /// The refinement menu previously lived in a separate `ellipsis` button that
+    /// existed **only** in the compact state, so scrolling up silently removed
+    /// browse capabilities. Folding it into the filter control's secondary
+    /// action makes the same capability reachable from either state through one
+    /// control.
+    @ViewBuilder
+    private func filterControl(isCompact: Bool, height: CGFloat) -> some View {
+        let size = max(PPMarketplaceHeaderV2Geometry.minimumTouchTarget, height)
 
-    private var refinementMenu: some View {
         Menu {
-            Button(action: store.beginFilterEditing) {
-                Label(
-                    PPMarketplaceText.localized("filterPPAction"),
-                    systemImage: "slider.horizontal.3"
-                )
-            }
-
-            ForEach(store.currentFilterState.groups, id: \.filterID) { group in
-                Menu {
-                    ForEach(group.options, id: \.value) { option in
-                        Button {
-                            store.applyQuickFilter(
-                                groupID: group.filterID,
-                                value: option.value
-                            )
-                        } label: {
-                            if option.value == group.selectedValue {
-                                Label(option.title, systemImage: "checkmark")
-                            } else {
-                                Text(option.title)
-                            }
-                        }
-                    }
-                } label: {
-                    Label(
-                        resolvedFilterTitle(group),
-                        systemImage: group.chipIconName ?? "slider.horizontal.3"
-                    )
-                }
-            }
-
-            if store.bridge.sectionSupportsProviderFilter(store.currentSection),
-               !store.providerOptions.isEmpty {
-                Button(action: store.presentProviderFilter) {
-                    Label(
-                        resolvedProviderTitle,
-                        systemImage: "storefront.fill"
-                    )
-                }
-            }
-
-            Divider()
-
-            ForEach(PPMarketplaceLayout.allCases) { layout in
-                Button {
-                    store.selectLayout(layout)
-                } label: {
-                    if layout == store.layout {
-                        Label(
-                            PPMarketplaceText.localized(layout.titleKey),
-                            systemImage: "checkmark"
-                        )
-                    } else {
-                        Label(
-                            PPMarketplaceText.localized(layout.titleKey),
-                            systemImage: layout.iconName
-                        )
-                    }
-                }
-            }
+            refinementMenuContent
         } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
-                .frame(
-                    width: PPMarketplaceHeaderV2Geometry.compactControlSize,
-                    height: PPMarketplaceHeaderV2Geometry.compactControlSize
-                )
-                .contentShape(Circle())
+            filterLabel(isCompact: isCompact, size: size)
+        } primaryAction: {
+            store.beginFilterEditing()
         }
         .buttonStyle(.plain)
-        .ppMarketplaceHeaderV2Glass(
-            in: Circle(),
-            tint: Color.ppPrimary.opacity(colorScheme == .dark ? 0.08 : 0.035),
-            fallback: Color.ppSurfaceRaised,
-            stroke: Color.ppPrimary.opacity(0.18),
-            lineWidth: contrast == .increased ? 2 : 0.8,
-            isInteractive: true
-        )
         .disabled(store.isReplacingContext)
         .accessibilityLabel(
-            PPMarketplaceText.localized("marketplace_browse_controls")
+            PPMarketplaceText.localized("filterPPAction")
         )
-        .accessibilityIdentifier("pp.marketplace.header.v2.more.compact")
+        .accessibilityValue(
+            store.activeFilterCount > 0 ? "\(store.activeFilterCount)" : ""
+        )
+        .accessibilityHint(
+            PPMarketplaceText.localized("marketplace_filters_open_hint")
+        )
+        .accessibilityIdentifier(
+            isCompact
+                ? "pp.marketplace.header.v2.filter.compact"
+                : "pp.marketplace.header.v2.filter.expanded"
+        )
     }
 
-    private func sectionRail(isCompact: Bool) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: isCompact ? PPSpace.sm : PPSpace.md) {
-                    ForEach(store.sections) { descriptor in
-                        sectionControl(descriptor, isCompact: isCompact)
-                            .id(descriptor.id)
+    private func filterLabel(isCompact: Bool, size: CGFloat) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: isCompact ? 17 : 20, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: size, height: size)
+
+            if store.activeFilterCount > 0 {
+                Text(String(min(store.activeFilterCount, 99)))
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        PPMarketplaceAccentPalette(accent: .ppPrimary).onAccent
+                    )
+                    .frame(minWidth: 17, minHeight: 17)
+                    .background(Color.ppPrimary, in: Capsule(style: .continuous))
+                    .offset(x: -2, y: 4)
+                    .accessibilityHidden(true)
+            }
+        }
+        .contentShape(Circle())
+    }
+
+    @ViewBuilder
+    private var refinementMenuContent: some View {
+        Button(action: store.beginFilterEditing) {
+            Label(
+                PPMarketplaceText.localized("filterPPAction"),
+                systemImage: "slider.horizontal.3"
+            )
+        }
+
+        ForEach(store.currentFilterState.groups, id: \.filterID) { group in
+            Menu {
+                ForEach(group.options, id: \.value) { option in
+                    Button {
+                        store.applyQuickFilter(
+                            groupID: group.filterID,
+                            value: option.value
+                        )
+                    } label: {
+                        if option.value == group.selectedValue {
+                            Label(option.title, systemImage: "checkmark")
+                        } else {
+                            Text(option.title)
+                        }
                     }
                 }
-                .padding(.horizontal, isCompact ? PPSpace.xs : 0)
+            } label: {
+                Label(
+                    resolvedFilterTitle(group),
+                    systemImage: group.chipIconName ?? "slider.horizontal.3"
+                )
+            }
+        }
+
+        if store.bridge.sectionSupportsProviderFilter(store.currentSection),
+           !store.providerOptions.isEmpty {
+            Button(action: store.presentProviderFilter) {
+                Label(resolvedProviderTitle, systemImage: "storefront.fill")
+            }
+        }
+
+        Divider()
+
+        ForEach(PPMarketplaceLayout.allCases) { layout in
+            Button {
+                store.selectLayout(layout)
+            } label: {
+                if layout == store.layout {
+                    Label(
+                        PPMarketplaceText.localized(layout.titleKey),
+                        systemImage: "checkmark"
+                    )
+                } else {
+                    Label(
+                        PPMarketplaceText.localized(layout.titleKey),
+                        systemImage: layout.iconName
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: Section rail
+
+    /// Edge-to-edge rail with its own content inset.
+    ///
+    /// The shipped rail inherited the dock's 20pt horizontal inset as its
+    /// *viewport*, so an overflowing item was sliced 20pt away from the screen
+    /// edge and read as a rendering bug — clearly visible on the trailing
+    /// `خدمات` item in Arabic. Letting the rail span the full width and carry
+    /// the margin as content inset makes overflow read as scrollable, which is
+    /// what it is.
+    private func sectionRail(isCompact: Bool) -> some View {
+        let indicatorHeight = PPMarketplaceHeaderV2Geometry
+            .indicatorHeight(isCompact: isCompact)
+
+        return ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: isCompact ? PPSpace.xxs : PPSpace.xs) {
+                    ForEach(store.sections) { descriptor in
+                        sectionControl(descriptor, isCompact: isCompact)
+                            .id(descriptor.rawValue)
+                    }
+                }
+                .padding(.horizontal, horizontalInset)
+                .overlayPreferenceValue(
+                    PPMarketplaceHeaderV2SectionAnchorKey.self
+                ) { anchors in
+                    sectionIndicator(
+                        anchors: anchors,
+                        indicatorHeight: indicatorHeight
+                    )
+                }
             }
             .onAppear {
                 revealCurrentSection(using: proxy, animated: false)
@@ -488,25 +792,49 @@ struct PPMarketplaceHeaderV2: View {
                 )
             }
         }
-        .frame(
-            minHeight: isCompact
-                ? PPMarketplaceHeaderV2Geometry.compactCategoryHeight
-                : PPMarketplaceHeaderV2Geometry.expandedCategoryHeight
-        )
-        .background(alignment: .bottom) {
-            if isCompact {
-                sectionRailBaseline
-            }
+        .frame(height: PPMarketplaceHeaderV2Geometry.categoryHeight(isCompact: isCompact))
+        .padding(.horizontal, -horizontalInset)
+        .overlay(alignment: .bottom) {
+            sectionRailBaseline
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// One indicator for the whole rail, positioned from the selected item's
+    /// resolved bounds so it travels and resizes in a single spring.
+    private func sectionIndicator(
+        anchors: [Int: Anchor<CGRect>],
+        indicatorHeight: CGFloat
+    ) -> some View {
+        GeometryReader { proxy in
+            if let anchor = anchors[store.currentSection.rawValue] {
+                let bounds = proxy[anchor]
+                Capsule(style: .continuous)
+                    .fill(Color.ppPrimary)
+                    .frame(
+                        width: max(bounds.width, 0),
+                        height: indicatorHeight
+                    )
+                    .position(
+                        x: bounds.midX,
+                        y: proxy.size.height - (indicatorHeight / 2)
+                    )
+                    .animation(
+                        interactionMotionIsDisabled
+                            ? nil
+                            : .spring(response: 0.34, dampingFraction: 0.82),
+                        value: store.currentSection.rawValue
+                    )
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var sectionRailBaseline: some View {
         Rectangle()
             .fill(
-                Color.ppSeparator.opacity(
-                    contrast == .increased ? 0.86 : 0.40
-                )
+                Color.ppSeparator.opacity(contrast == .increased ? 0.86 : 0.34)
             )
             .frame(height: contrast == .increased ? 2 : 1)
             .accessibilityHidden(true)
@@ -518,69 +846,66 @@ struct PPMarketplaceHeaderV2: View {
     ) -> some View {
         let selected = descriptor.rawValue == store.currentSection.rawValue
         let title = PPMarketplaceText.localized(descriptor.titleKey)
+        let indicatorHeight = PPMarketplaceHeaderV2Geometry
+            .indicatorHeight(isCompact: isCompact)
 
         return Button {
             selectSection(descriptor)
         } label: {
-            VStack(spacing: isCompact ? PPSpace.xs : PPSpace.sm) {
-                Label {
-                    Text(title)
-                        .font(isCompact ? HomeFont.bold(14) : HomeFont.headline())
-                        .lineLimit(1)
-                } icon: {
-                    Image(systemName: descriptor.iconName)
-                        .font(
-                            .system(
-                                size: isCompact ? 14 : 17,
-                                weight: selected ? .semibold : .regular
-                            )
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: descriptor.iconName)
+                    .font(
+                        .system(
+                            size: isCompact ? 14 : 16,
+                            weight: selected ? .semibold : .regular
                         )
-                        .accessibilityHidden(true)
-                }
-                .foregroundStyle(
-                    selected ? Color.ppPrimary : Color.ppTextSecondary
-                )
-                .frame(
-                    minWidth: isCompact ? 88 : 108,
-                    minHeight: PPMarketplaceHeaderV2Geometry.minimumTouchTarget
-                )
+                    )
+                    .accessibilityHidden(true)
 
-                ZStack {
-                    Color.clear.frame(height: isCompact ? 3 : 4)
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(Color.ppPrimary)
-                        .frame(height: isCompact ? 3 : 4)
-                        .scaleEffect(x: selected ? 1 : 0.72, y: 1)
-                        .opacity(selected ? 1 : 0)
-                }
+                Text(title)
+                    .font(isCompact ? HomeFont.bold(14) : HomeFont.headline())
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
+            .foregroundStyle(selected ? Color.ppPrimary : Color.ppTextSecondary)
+            .padding(
+                .horizontal,
+                PPMarketplaceHeaderV2Geometry.railItemInset(isCompact: isCompact)
+            )
+            .frame(
+                minHeight: PPMarketplaceHeaderV2Geometry.minimumTouchTarget,
+                alignment: .center
+            )
+            .padding(.bottom, indicatorHeight + PPSpace.xs)
             .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(title)
         }
         .buttonStyle(.plain)
         .disabled(store.isReplacingContext)
+        .anchorPreference(
+            key: PPMarketplaceHeaderV2SectionAnchorKey.self,
+            value: .bounds
+        ) { [descriptor.rawValue: $0] }
         .accessibilityLabel(title)
         .accessibilityHint(
             PPMarketplaceText.localized("marketplace_section_select_hint")
         )
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
         .accessibilityIdentifier(
             "pp.marketplace.header.v2.section.\(descriptor.rawValue)"
         )
     }
 
     private func selectSection(_ descriptor: PPMarketplaceSectionDescriptor) {
-        if reduceMotion || switchControlEnabled || voiceOverEnabled {
+        if interactionMotionIsDisabled {
             store.selectSection(descriptor)
         } else {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
                 store.selectSection(descriptor)
             }
         }
     }
 
-    // MARK: - Presentation values
+    // MARK: Presentation values
 
     private var contextualSearchTitle: String {
         PPMarketplaceText.formatted(
@@ -589,35 +914,26 @@ struct PPMarketplaceHeaderV2: View {
         )
     }
 
+    /// Species and breed are deliberately absent here: they are live chips in
+    /// the command capsule, so repeating them as text would duplicate the
+    /// control it sits above.
     private var contextSubtitle: String {
         var parts: [String] = []
+
         let mainKind = store.currentMainKindTitle.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        if !mainKind.isEmpty {
-            parts.append(
-                PPMarketplaceText.formatted(
-                    "marketplace_header_market_format",
-                    mainKind
-                )
-            )
-        } else if !store.navigationContext.subtitle.isEmpty {
+        if mainKind.isEmpty, !store.navigationContext.subtitle.isEmpty {
             parts.append(store.navigationContext.subtitle)
-        }
-
-        let subKind = store.currentSubKindTitle.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        if !subKind.isEmpty {
-            parts.append(subKind)
         }
 
         parts.append(contextResultCount)
 
         return parts.reduce(into: [String]()) { unique, value in
-            guard !unique.contains(where: {
-                $0.localizedCaseInsensitiveCompare(value) == .orderedSame
-            }) else { return }
+            guard !value.isEmpty,
+                  !unique.contains(where: {
+                      $0.localizedCaseInsensitiveCompare(value) == .orderedSame
+                  }) else { return }
             unique.append(value)
         }
         .joined(separator: " · ")
@@ -663,17 +979,24 @@ struct PPMarketplaceHeaderV2: View {
         horizontalSizeClass == .regular ? PPSpace.xxl : PPSpace.screenMargin
     }
 
+    private var identitySlotWidth: CGFloat {
+        resolvedExpandedControlSize
+    }
+
     private var resolvedExpandedControlSize: CGFloat {
         max(
             PPMarketplaceHeaderV2Geometry.minimumTouchTarget,
-            min(expandedControlSize, dynamicTypeSize.isAccessibilitySize ? 64 : 58)
+            min(expandedControlSize, dynamicTypeSize.isAccessibilitySize ? 64 : 56)
         )
     }
 
-    private var resolvedSearchHeight: CGFloat {
-        max(
+    private func resolvedCommandHeight(isCompact: Bool) -> CGFloat {
+        if isCompact {
+            return PPMarketplaceHeaderV2Geometry.compactCommandHeight
+        }
+        return max(
             PPMarketplaceHeaderV2Geometry.minimumTouchTarget,
-            min(expandedSearchHeight, dynamicTypeSize.isAccessibilitySize ? 82 : 68)
+            min(expandedCommandHeight, dynamicTypeSize.isAccessibilitySize ? 82 : 64)
         )
     }
 
@@ -707,11 +1030,8 @@ struct PPMarketplaceHeaderV2: View {
                 anchor: store.isRightToLeft ? .trailing : .leading
             )
         }
-        if animated &&
-            !reduceMotion &&
-            !switchControlEnabled &&
-            !voiceOverEnabled {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+        if animated && !interactionMotionIsDisabled {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
                 update()
             }
         } else {
@@ -719,6 +1039,30 @@ struct PPMarketplaceHeaderV2: View {
         }
     }
 }
+
+// MARK: - Dock shape
+
+/// Full-bleed dock surface: square at the top so it reaches under the status
+/// bar, rounded at the bottom where it meets the content.
+@available(iOS 15.0, *)
+private struct PPMarketplaceHeaderV2DockShape: Shape {
+    let cornerRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        Path(
+            UIBezierPath(
+                roundedRect: rect,
+                byRoundingCorners: [.bottomLeft, .bottomRight],
+                cornerRadii: CGSize(
+                    width: cornerRadius,
+                    height: cornerRadius
+                )
+            ).cgPath
+        )
+    }
+}
+
+// MARK: - Icon control
 
 @available(iOS 15.0, *)
 private struct PPMarketplaceHeaderV2IconControl: View {
@@ -797,6 +1141,8 @@ private struct PPMarketplaceHeaderV2OptionalSurfaceModifier: ViewModifier {
         }
     }
 }
+
+// MARK: - Material
 
 @available(iOS 15.0, *)
 private struct PPMarketplaceHeaderV2GlassModifier<Surface: Shape>: ViewModifier {

@@ -3407,6 +3407,15 @@
 "home_marketplace_hero_category_subtitle_format" = "Products, services, and listings for %@ from trusted providers.";
 "home_marketplace_hero_category_cta_format" = "Explore %@";
 "home_marketplace_hero_category_accessibility_label_format" = "%@. Products, services, and listings from trusted providers.";
+"home_marketplace_signal_marketplace_items_label" = "Marketplace items";
+"home_marketplace_signal_services_label" = "Services";
+"home_marketplace_signal_pet_ads_label" = "Pet listings";
+"home_marketplace_signal_live_count_hint" = "Shows how many are available now for the selected category.";
+"home_marketplace_signal_idle" = "Tap to show count";
+"home_marketplace_signal_loading" = "Loading count…";
+"home_marketplace_signal_available_count_format" = "%ld available now";
+"home_marketplace_signal_unavailable_retry" = "Count unavailable. Tap to try again.";
+"home_marketplace_signal_selected" = "Selected";
 "seller_profile_back_hint" = "Double-tap to go back";
 "provider_marketplace_subtitle" = "Food, accessories, and daily pet essentials.";
 "provider_marketplace_subtitle_premium" = "Premium food, supplies, and luxury accessories.";

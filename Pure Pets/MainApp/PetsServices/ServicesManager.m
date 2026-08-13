@@ -180,8 +180,13 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error || !snapshot) {
+            NSError *resolvedError = error ?: [NSError errorWithDomain:@"ServicesManager"
+                                                                   code:-52
+                                                               userInfo:@{
+                NSLocalizedDescriptionKey: @"Service offers query returned no snapshot."
+            }];
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(@[], error);
+                if (completion) completion(@[], resolvedError);
             });
             return;
         }

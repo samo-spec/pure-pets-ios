@@ -100,6 +100,12 @@ NS_ASSUME_NONNULL_BEGIN
                                                               NSError * _Nullable error))completion;
 + (void)fetchPublicMarketplaceAccessoriesWithCompletion:(void (^)(NSArray<PetAccessory *> *accessories,
                                                                  NSError * _Nullable error))completion;
+/// Exact, uncapped public accessory inventory for a Home marketplace signal.
+/// A positive category is required. Results retain the manager's existing
+/// market, moderation, expiry, and condition eligibility filters.
+- (void)fetchPublicMarketplaceAccessoriesForMainCategoryID:(NSInteger)mainCategoryID
+                                                completion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                                     NSError * _Nullable error))completion;
 + (void)fetchPublicPharmacyAccessoriesWithCompletion:(void (^)(NSArray<PetAccessory *> *accessories,
                                                               NSError * _Nullable error))completion;
 @property (nonatomic, strong) UIViewController *ParentVC;
@@ -133,6 +139,4 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 NS_ASSUME_NONNULL_END
-
-
 

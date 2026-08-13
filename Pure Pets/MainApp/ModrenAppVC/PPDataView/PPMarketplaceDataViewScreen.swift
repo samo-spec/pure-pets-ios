@@ -13,7 +13,7 @@ struct PPMarketplaceDataViewScreen: View {
     @State private var hasPresentedEntrance = false
     @State private var dockIsPinned = false
     @State private var headerCollapseProgress: CGFloat = 0
-    @State private var compactHeaderIsActive = false
+    @State private var dockIsCondensed = false
     @GestureState private var scrollGestureIsActive = false
     @State private var bridgeScrollInteractionIsActive = false
     @State private var measuredScrollContentHeight: CGFloat = 0
@@ -28,27 +28,13 @@ struct PPMarketplaceDataViewScreen: View {
                         spacing: 0,
                         pinnedViews: [.sectionHeaders]
                     ) {
-                            PPMarketplaceHeaderV2(
+                            PPMarketplaceIdentityHeaderV3(
                                 store: store,
-                                availableWidth: proxy.size.width,
-                                presentation: .expanded,
-                                collapseProgress: headerCollapseProgress,
-                                isActiveRepresentation: !compactHeaderIsActive
+                                availableWidth: proxy.size.width
                             )
-                            .padding(.bottom, PPSpace.md)
                             .ppMarketplaceEntrance(
                                 isPresented: hasPresentedEntrance
                             )
-                            .background {
-                                GeometryReader { headerProxy in
-                                    Color.clear.preference(
-                                        key: PPMarketplaceHeaderV2MinYPreferenceKey.self,
-                                        value: headerProxy.frame(
-                                            in: .named("pp.marketplace.scroll")
-                                        ).minY
-                                    )
-                                }
-                            }
                             .zIndex(contextForegroundZIndex)
 
                             Section {
@@ -89,8 +75,14 @@ struct PPMarketplaceDataViewScreen: View {
                                     )
                                     .accessibilityHidden(true)
                             } header: {
-                                Color.clear
-                                .frame(height: 1)
+                                PPMarketplaceCommandDockV3(
+                                    store: store,
+                                    availableWidth: proxy.size.width,
+                                    collapseProgress: headerCollapseProgress
+                                )
+                                .ppMarketplaceEntrance(
+                                    isPresented: hasPresentedEntrance
+                                )
                                 .background {
                                     PPMarketplaceScrollStabilityController(
                                         isReplacingContext: store.isReplacingContext,
@@ -115,6 +107,7 @@ struct PPMarketplaceDataViewScreen: View {
                                         )
                                     }
                                 }
+                                .zIndex(6)
                             }
                         }
                         .background {
@@ -133,17 +126,20 @@ struct PPMarketplaceDataViewScreen: View {
                     }
                     .coordinateSpace(name: "pp.marketplace.scroll")
                     .onPreferenceChange(
-                        PPMarketplaceHeaderV2MinYPreferenceKey.self
-                    ) { minY in
-                        updateHeaderCollapseProgress(
-                            PPMarketplaceHeaderV2ScrollMetrics.progress(
-                                for: minY
-                            )
-                        )
-                    }
-                    .onPreferenceChange(
                         PPMarketplaceDockMinYPreferenceKey.self
                     ) { minY in
+                        // The pinned section header is retained at every scroll
+                        // offset, so it is the only safe collapse driver. The
+                        // previous driver lived in the expanded header's
+                        // background, inside the LazyVStack, and was destroyed
+                        // on long scrolls — which reset progress to 0 and made
+                        // the entire pinned dock disappear.
+                        updateHeaderCollapseProgress(
+                            PPMarketplaceCommandDockV3Metrics.progress(
+                                forDockMinY: minY
+                            )
+                        )
+
                         let nextPinned = minY <= 1
                         guard dockIsPinned != nextPinned else { return }
                         dockIsPinned = nextPinned
@@ -186,17 +182,6 @@ struct PPMarketplaceDataViewScreen: View {
                     .onChange(of: scrollGestureIsActive) { isActive in
                         updateBridgeScrollInteraction(isActive: isActive)
                     }
-
-                PPMarketplaceHeaderV2(
-                    store: store,
-                    availableWidth: proxy.size.width,
-                    presentation: .compact,
-                    collapseProgress: headerCollapseProgress,
-                    isActiveRepresentation: compactHeaderIsActive,
-                    topSafeAreaInset: proxy.safeAreaInsets.top
-                )
-                .ppMarketplaceEntrance(isPresented: hasPresentedEntrance)
-                .zIndex(8)
             }
         }
         .background {
@@ -244,7 +229,7 @@ struct PPMarketplaceDataViewScreen: View {
             endScrollGestureIfNeeded()
             retainedScrollContentHeight = 0
             headerCollapseProgress = 0
-            compactHeaderIsActive = false
+            dockIsCondensed = false
         }
     }
 
@@ -279,9 +264,9 @@ struct PPMarketplaceDataViewScreen: View {
         }
 
         let nextCompactState = resolved >=
-            PPMarketplaceHeaderV2ScrollMetrics.compactActivationProgress
-        guard compactHeaderIsActive != nextCompactState else { return }
-        compactHeaderIsActive = nextCompactState
+            PPMarketplaceCommandDockV3Metrics.compactActivationProgress
+        guard dockIsCondensed != nextCompactState else { return }
+        dockIsCondensed = nextCompactState
 
         guard nextCompactState,
               scrollGestureIsActive,

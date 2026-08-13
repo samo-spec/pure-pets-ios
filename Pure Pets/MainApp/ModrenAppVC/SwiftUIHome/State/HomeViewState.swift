@@ -64,6 +64,68 @@ enum HomeHeroAction {
     case openPharmacy(NSObject?)
 }
 
+/// Live, category-scoped facts surfaced by the marketplace hero compass.
+/// These cases describe read-only public inventory; navigation remains owned
+/// by the hero's existing primary and secondary actions.
+enum HomeMarketplaceSignalKind: CaseIterable, Hashable {
+    case marketplace
+    case services
+    case advertisements
+}
+
+enum HomeMarketplaceSignalValue: Equatable {
+    case idle
+    case loading
+    case available(Int)
+    case failed
+}
+
+struct HomeMarketplaceSignals: Equatable {
+    var categoryID: Int?
+    var marketplace: HomeMarketplaceSignalValue
+    var services: HomeMarketplaceSignalValue
+    var advertisements: HomeMarketplaceSignalValue
+
+    init(
+        categoryID: Int? = nil,
+        marketplace: HomeMarketplaceSignalValue = .idle,
+        services: HomeMarketplaceSignalValue = .idle,
+        advertisements: HomeMarketplaceSignalValue = .idle
+    ) {
+        self.categoryID = categoryID
+        self.marketplace = marketplace
+        self.services = services
+        self.advertisements = advertisements
+    }
+
+    func value(
+        for kind: HomeMarketplaceSignalKind
+    ) -> HomeMarketplaceSignalValue {
+        switch kind {
+        case .marketplace:
+            return marketplace
+        case .services:
+            return services
+        case .advertisements:
+            return advertisements
+        }
+    }
+
+    mutating func set(
+        _ value: HomeMarketplaceSignalValue,
+        for kind: HomeMarketplaceSignalKind
+    ) {
+        switch kind {
+        case .marketplace:
+            marketplace = value
+        case .services:
+            services = value
+        case .advertisements:
+            advertisements = value
+        }
+    }
+}
+
 struct HomeHeroPage: Identifiable {
     let id: String
     let kind: HomeHeroKind
@@ -273,6 +335,7 @@ struct HomeViewState {
     var isRightToLeft: Bool
     var cartCount: Int
     var selectedMainKindID: Int?
+    var marketplaceSignals: HomeMarketplaceSignals
     var selectedPetID: String?
     var location: HomeLocationModel
     var config: HomeConfigModel
@@ -295,6 +358,7 @@ struct HomeViewState {
         isRightToLeft: true,
         cartCount: 0,
         selectedMainKindID: nil,
+        marketplaceSignals: HomeMarketplaceSignals(),
         selectedPetID: nil,
         location: HomeLocationModel(),
         config: .fallback,

@@ -890,7 +890,6 @@ struct PPPetProfileEditorScreen: View {
     let onDeleteVaccination: (Int) -> Void
 
     @FocusState private var focusedField: PPPetEditorField?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         PPPetProfileCanvas {
@@ -991,13 +990,7 @@ struct PPPetProfileEditorScreen: View {
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: focusedField) { field in
                         guard let field else { return }
-                        if reduceMotion {
-                            proxy.scrollTo(field, anchor: .center)
-                        } else {
-                            withAnimation(.easeOut(duration: 0.20)) {
-                                proxy.scrollTo(field, anchor: .center)
-                            }
-                        }
+                        proxy.scrollTo(field, anchor: .center)
                     }
                 }
             }
@@ -1068,7 +1061,6 @@ struct PPPetVaccinationEditorScreen: View {
     @State private var nextDueDate: Date
     @State private var showValidation = false
     @FocusState private var focusedField: PPPetEditorField?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         record: PPPetVaccinationRecord,
@@ -1268,13 +1260,7 @@ struct PPPetVaccinationEditorScreen: View {
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: focusedField) { field in
                         guard let field else { return }
-                        if reduceMotion {
-                            proxy.scrollTo(field, anchor: .center)
-                        } else {
-                            withAnimation(.easeOut(duration: 0.18)) {
-                                proxy.scrollTo(field, anchor: .center)
-                            }
-                        }
+                        proxy.scrollTo(field, anchor: .center)
                     }
                 }
             }

@@ -12,9 +12,22 @@ enum PPMarketplaceText {
     static func formatted(_ key: String, _ arguments: CVarArg...) -> String {
         String(
             format: localized(key),
-            locale: Locale.current,
+            locale: formattingLocale,
             arguments: arguments
         )
+    }
+
+    /// Numbers follow the **app** language, not the device region.
+    ///
+    /// `Locale.current` reports the device region, so an English UI running on an
+    /// Arabic-region device formatted counts with Arabic-Indic digits while the
+    /// surrounding copy stayed English — the marketplace subtitle rendered
+    /// "٤٠ products". Pinning the numbering system to `latn` also matches the
+    /// Latin digits the product already uses in Arabic ("25 نتيجة", "3,000 ر.ق").
+    private static var formattingLocale: Locale {
+        let code = Language.currentLanguageCode() ?? "en"
+        let resolved = code.isEmpty ? "en" : code
+        return Locale(identifier: "\(resolved)@numbers=latn")
     }
 }
 

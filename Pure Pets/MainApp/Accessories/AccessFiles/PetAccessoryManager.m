@@ -2187,6 +2187,73 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                     completion:completion];
     }
 
+    - (void)fetchPublicMarketplaceAccessoriesForMainCategoryID:(NSInteger)mainCategoryID
+                                                    completion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                                         NSError * _Nullable error))completion
+    {
+        if (mainCategoryID <= 0) {
+            NSError *error = [NSError errorWithDomain:@"PetAccessoryManager"
+                                                  code:-51
+                                              userInfo:@{
+                NSLocalizedDescriptionKey: @"A main category is required for public accessories."
+            }];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(@[], error);
+            });
+            return;
+        }
+        [PetAccessoryManager pp_loadExpiryThresholdIfNeeded];
+
+        FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
+        // Match the proven DataView query shape so this read does not require
+        // an additional composite index. `pp_filterItems` below remains the
+        // authority for accessKindType and all public eligibility rules.
+        FIRQuery *query = [[db collectionWithPath:@"petAccessories"]
+                           queryWhereField:@"petMainCategoryID"
+                           isEqualTo:@(mainCategoryID)];
+        query = PPAccessoryRequirePublicMarketVisibility(query);
+
+        [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+            if (error || !snapshot) {
+                NSError *resolvedError = error ?: [NSError errorWithDomain:@"PetAccessoryManager"
+                                                                       code:-52
+                                                                   userInfo:@{
+                    NSLocalizedDescriptionKey: @"Public accessories query returned no snapshot."
+                }];
+                if (resolvedError) {
+                    [PPFirestoreErrorNotifier postError:resolvedError
+                                                 context:PPFirestoreContextAccessoryKindFetch];
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (completion) completion(@[], resolvedError);
+                });
+                return;
+            }
+
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+                NSMutableArray<PetAccessory *> *items =
+                    [NSMutableArray arrayWithCapacity:snapshot.documents.count];
+                for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                    PetAccessory *item =
+                        [[PetAccessory alloc] initWithDictionary:doc.data
+                                                     documentID:doc.documentID];
+                    item.accessoryID = doc.documentID;
+                    if (item) {
+                        [items addObject:item];
+                    }
+                }
+
+                NSArray<PetAccessory *> *visible =
+                    [PetAccessoryManager pp_filterItems:items
+                                           matchingKind:AccessTypeAccessory
+                            requiresAppMarketVisibility:YES];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (completion) completion(visible ?: @[], nil);
+                });
+            });
+        }];
+    }
+
     + (void)fetchPublicPharmacyAccessoriesWithCompletion:(void (^)(NSArray<PetAccessory *> *accessories,
                                                                   NSError * _Nullable error))completion
     {
@@ -2738,10 +2805,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
      [self.collectionView reloadData];
  }];
  */
-
-
-
-
 
 
 

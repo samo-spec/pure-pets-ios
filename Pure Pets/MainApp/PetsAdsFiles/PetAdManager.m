@@ -155,6 +155,21 @@ static NSArray<PetAd *> *PPSortedAdsNewestFirst(NSArray<PetAd *> *ads) {
     }];
 }
 
+static NSArray<PetAd *> *PPPubliclyVisibleNonExpiredAds(NSArray<PetAd *> *ads) {
+    NSDate *now = [NSDate date];
+    NSArray<PetAd *> *eligible =
+        [ads filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(PetAd *ad, __unused NSDictionary *bindings) {
+                if (![ad isKindOfClass:PetAd.class]) return NO;
+                if (ad.status != PetAdStatusActive || !ad.isApproved) return NO;
+                if (ad.visibility != PetAdVisibilityPublic) return NO;
+                if (ad.isDeleted || ad.isBlocked || ad.isSold) return NO;
+                return !ad.expiresAt ||
+                    [ad.expiresAt compare:now] == NSOrderedDescending;
+            }]];
+    return PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(eligible));
+}
+
 static NSString *PPItemCollectionPathForFavoritesCollection(NSString *favoritesCollection) {
     NSString *canonical = PPCanonicalFavoritesCollection(favoritesCollection);
     if (canonical.length == 0) return nil;
@@ -320,6 +335,58 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
 @implementation PetAdManager
 
 #pragma mark - Singleton
+
+- (void)fetchPublicVisibleAdsForCategoryID:(NSInteger)categoryID
+                                completion:(PetAdListCompletion)completion
+{
+    if (categoryID <= 0) {
+        NSError *error = [NSError errorWithDomain:PPAdManagerErrorDomain
+                                              code:-51
+                                          userInfo:@{
+            NSLocalizedDescriptionKey: @"A main category is required for public advertisements."
+        }];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(nil, error);
+        });
+        return;
+    }
+    FIRQuery *query = PPPublicPetAdsQuery(
+        [self.db collectionWithPath:kPetAdsCollection]
+    );
+    query = [query queryWhereField:@"category" isEqualTo:@(categoryID)];
+
+    [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+        if (error || !snapshot) {
+            NSError *resolvedError = error ?: [NSError errorWithDomain:PPAdManagerErrorDomain
+                                                                   code:-52
+                                                               userInfo:@{
+                NSLocalizedDescriptionKey: @"Public advertisements query returned no snapshot."
+            }];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(nil, resolvedError);
+            });
+            return;
+        }
+
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            NSMutableArray<PetAd *> *ads =
+                [NSMutableArray arrayWithCapacity:snapshot.documents.count];
+            for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                PetAd *ad = [PetAd adFromFirestoreData:doc.data
+                                           documentID:doc.documentID];
+                if (ad) {
+                    [ads addObject:ad];
+                }
+            }
+
+            NSArray<PetAd *> *visible = PPPubliclyVisibleNonExpiredAds(ads);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(visible ?: @[], nil);
+            });
+        });
+    }];
+}
+
 // MainKind-only fetch, backward compatible. Now delegates to subKind-aware fetch.
 - (void)fetchAdsForMainKind:(MainKindsModel *)mainKind
                  completion:(void (^)(NSArray<PetAd *> *ads))completion

@@ -40,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)listenToServicesForPetMainKindID:(NSInteger)kindID
                               completion:(void (^)(NSArray<ServiceModel *> *services, NSError * _Nullable error))completion;
 
-// One-shot fetch by petMainKindID (no live listener retained)
+// One-shot fetch by petMainKindID (no live listener retained).
 - (void)fetchServicesForPetMainKindID:(NSInteger)kindID
                            completion:(void (^)(NSArray<ServiceModel *> *services, NSError * _Nullable error))completion;
 
@@ -57,4 +57,3 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
-

@@ -388,10 +388,12 @@ struct HomeView: View {
                     pages: [page],
                     selectedIndex: 0,
                     discloseCampaign: false,
+                    marketplaceSignals: store.state.marketplaceSignals,
                     onSelect: { _ in },
                     onPrimary: store.performHeroAction,
                     onSecondary: store.performHeroSecondaryAction,
-                    onInteractionChanged: { _ in }
+                    onInteractionChanged: { _ in },
+                    onMarketplaceSignal: store.loadMarketplaceSignal
                 )
             }
         }

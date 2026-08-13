@@ -2,6 +2,17 @@ import CoreLocation
 import Foundation
 import Network
 
+private enum HomeRepositoryError: LocalizedError {
+    case marketplaceCategoryRequired
+
+    var errorDescription: String? {
+        switch self {
+        case .marketplaceCategoryRequired:
+            return "A selected main category is required for this count."
+        }
+    }
+}
+
 enum HomeRepositoryEvent {
     case mainKinds([NSObject])
     case promotions([NSObject])
@@ -124,6 +135,42 @@ final class HomeRepository {
             mainCategoryID: mainCategoryID,
             completion: completion
         )
+    }
+
+    func loadMarketplaceSignal(
+        _ kind: HomeMarketplaceSignalKind,
+        mainCategoryID: Int?,
+        completion: @escaping (Result<Int, Error>) -> Void
+    ) {
+        guard let mainCategoryID, mainCategoryID > 0 else {
+            completion(.failure(HomeRepositoryError.marketplaceCategoryRequired))
+            return
+        }
+        let finish: (Int, Error?) -> Void = { count, error in
+            if let error {
+                completion(.failure(error))
+            } else {
+                completion(.success(max(0, count)))
+            }
+        }
+
+        switch kind {
+        case .marketplace:
+            bridge.fetchMarketplaceItemCount(
+                mainCategoryID: mainCategoryID,
+                completion: finish
+            )
+        case .services:
+            bridge.fetchServiceCount(
+                mainCategoryID: mainCategoryID,
+                completion: finish
+            )
+        case .advertisements:
+            bridge.fetchAdvertisementCount(
+                mainCategoryID: mainCategoryID,
+                completion: finish
+            )
+        }
     }
 
     private func bindBridge() {

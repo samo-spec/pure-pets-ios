@@ -3386,6 +3386,15 @@
 "home_marketplace_hero_category_subtitle_format" = "منتجات وخدمات وإعلانات مناسبة لـ %@ من مزودين موثوقين.";
 "home_marketplace_hero_category_cta_format" = "استكشف %@";
 "home_marketplace_hero_category_accessibility_label_format" = "%@. منتجات وخدمات وإعلانات مناسبة من مزودين موثوقين.";
+"home_marketplace_signal_marketplace_items_label" = "منتجات المتجر";
+"home_marketplace_signal_services_label" = "الخدمات";
+"home_marketplace_signal_pet_ads_label" = "إعلانات الحيوانات الأليفة";
+"home_marketplace_signal_live_count_hint" = "اضغط لعرض العدد المتاح الآن للفئة المختارة.";
+"home_marketplace_signal_idle" = "اضغط لعرض العدد";
+"home_marketplace_signal_loading" = "جارٍ تحميل العدد…";
+"home_marketplace_signal_available_count_format" = "المتاح الآن: %ld";
+"home_marketplace_signal_unavailable_retry" = "تعذّر تحميل العدد. اضغط للمحاولة مجدداً.";
+"home_marketplace_signal_selected" = "محدد";
 "seller_profile_back_hint" = "انقر مرتين للرجوع";
 "provider_marketplace_subtitle" = "أطعمة . إكسسوارات";
 "provider_marketplace_subtitle_premium" = "أغذية ومستلزمات فاخرة وإكسسوارات حصرية لحيوانك";

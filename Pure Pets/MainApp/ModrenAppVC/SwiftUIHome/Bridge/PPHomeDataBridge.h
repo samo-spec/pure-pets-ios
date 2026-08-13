@@ -35,6 +35,9 @@ typedef NS_ENUM(NSInteger, PPHomeBridgeLocationState) {
     PPHomeBridgeLocationStateFailed,
 };
 
+typedef void (^PPHomeExactCountCompletion)(NSInteger count,
+                                           NSError * _Nullable error);
+
 /// Narrow adapter between the production Objective-C services and Swift Home.
 ///
 /// This object owns only service/listener adaptation. It has no visible UI and
@@ -114,6 +117,18 @@ typedef NS_ENUM(NSInteger, PPHomeBridgeLocationState) {
 - (void)fetchAccessoriesForMainCategoryID:(NSInteger)mainCategoryID
                                 completion:(void (^)(NSArray<PetAccessory *> *accessories))completion
     NS_SWIFT_NAME(fetchAccessories(mainCategoryID:completion:));
+
+/// Uncapped, read-only public counts for the marketplace hero. A positive
+/// category ID is required; errors remain distinct from a valid zero.
+- (void)fetchMarketplaceItemCountForMainCategoryID:(NSInteger)mainCategoryID
+                                         completion:(PPHomeExactCountCompletion)completion
+    NS_SWIFT_NAME(fetchMarketplaceItemCount(mainCategoryID:completion:));
+- (void)fetchServiceCountForMainCategoryID:(NSInteger)mainCategoryID
+                                 completion:(PPHomeExactCountCompletion)completion
+    NS_SWIFT_NAME(fetchServiceCount(mainCategoryID:completion:));
+- (void)fetchAdvertisementCountForMainCategoryID:(NSInteger)mainCategoryID
+                                       completion:(PPHomeExactCountCompletion)completion
+    NS_SWIFT_NAME(fetchAdvertisementCount(mainCategoryID:completion:));
 
 /// Shared order normalization helpers keep legacy and current order documents
 /// aligned while Swift owns the resulting presentation state.

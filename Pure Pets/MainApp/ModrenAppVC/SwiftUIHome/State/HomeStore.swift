@@ -81,6 +81,8 @@ final class HomeStore: ObservableObject {
     private var categoryAccessories: [Int: [PetAccessory]] = [:]
     private var categoryAccessoryRequests = Set<Int>()
     private var staleCategoryAccessoryIDs = Set<Int>()
+    private var marketplaceSignalRequestGenerations:
+        [HomeMarketplaceSignalKind: Int] = [:]
     private var showingRecentNearbyFallback = false
 
     private var loadedSources = Set<Int>()
@@ -267,6 +269,46 @@ final class HomeStore: ObservableObject {
         }
         rebuildState()
         repository.refresh()
+    }
+
+    /// Fetches a fresh, uncapped public total for one hero badge. Each signal
+    /// owns its request generation so simultaneous badge reads do not cancel
+    /// one another, while late replies from an earlier category are ignored.
+    func loadMarketplaceSignal(_ kind: HomeMarketplaceSignalKind) {
+        guard let categoryID = state.selectedMainKindID, categoryID > 0 else {
+            synchronizeMarketplaceSignals(to: nil)
+            state.marketplaceSignals.set(.failed, for: kind)
+            return
+        }
+        synchronizeMarketplaceSignals(to: categoryID)
+
+        if case .loading = state.marketplaceSignals.value(for: kind) {
+            return
+        }
+
+        let generation = marketplaceSignalRequestGenerations[kind, default: 0] + 1
+        marketplaceSignalRequestGenerations[kind] = generation
+        state.marketplaceSignals.set(.loading, for: kind)
+
+        repository.loadMarketplaceSignal(
+            kind,
+            mainCategoryID: categoryID
+        ) { [weak self] result in
+            guard let self,
+                  self.marketplaceSignalRequestGenerations[kind] == generation,
+                  self.state.selectedMainKindID == categoryID,
+                  self.state.marketplaceSignals.categoryID == categoryID
+            else {
+                return
+            }
+
+            switch result {
+            case let .success(count):
+                self.state.marketplaceSignals.set(.available(count), for: kind)
+            case .failure:
+                self.state.marketplaceSignals.set(.failed, for: kind)
+            }
+        }
     }
 
     func handleReselection() {
@@ -1190,6 +1232,7 @@ final class HomeStore: ObservableObject {
         } else {
             state.selectedMainKindID = nil
         }
+        synchronizeMarketplaceSignals(to: state.selectedMainKindID)
         requestCategoryAccessoriesIfNeeded(for: state.selectedMainKindID)
 
         state.heroPages = buildContextHeroPages()
@@ -1221,6 +1264,14 @@ final class HomeStore: ObservableObject {
         }
         if previousPromotionIDs != state.promotionPages.map(\.id) {
             restartPromotionRotation()
+        }
+    }
+
+    private func synchronizeMarketplaceSignals(to categoryID: Int?) {
+        guard state.marketplaceSignals.categoryID != categoryID else { return }
+        state.marketplaceSignals = HomeMarketplaceSignals(categoryID: categoryID)
+        for kind in HomeMarketplaceSignalKind.allCases {
+            marketplaceSignalRequestGenerations[kind, default: 0] += 1
         }
     }
 

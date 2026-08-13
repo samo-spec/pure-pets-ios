@@ -82,6 +82,12 @@ typedef NS_ENUM(NSInteger, PPItemInteractionType) {
 - (void)fetchLatestAdsWithLimit:(NSInteger)limit
                      completion:(void (^)(NSArray<PetAd *> *ads))completion;
 
+/// Exact, uncapped active public advertisements for the supplied main-kind.
+/// A positive category is required. Query failures are surfaced and never
+/// represented as a successful empty result.
+- (void)fetchPublicVisibleAdsForCategoryID:(NSInteger)categoryID
+                                completion:(PetAdListCompletion)completion;
+
 ///////
 ///
 + (void)fetchAdsForUserID:(NSString *)userID completion:(void (^)(NSArray<PetAd *> *ads))completion;

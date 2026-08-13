@@ -61,7 +61,7 @@
 		B7DA10060000000000000006 /* PPMarketplaceDataViewComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00060000000000000006 /* PPMarketplaceDataViewComponents.swift */; };
 		B7DA10070000000000000007 /* PPMarketplaceFilterSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00070000000000000007 /* PPMarketplaceFilterSheets.swift */; };
 		B7DA10080000000000000008 /* PPMarketplaceCompatibilityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00080000000000000008 /* PPMarketplaceCompatibilityCard.swift */; };
-		B7DA10090000000000000009 /* PPMarketplaceHeaderV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00090000000000000009 /* PPMarketplaceHeaderV2.swift */; };
+		B7DA100A000000000000000A /* PPMarketplaceCommandDockV3.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA000A000000000000000A /* PPMarketplaceCommandDockV3.swift */; };
 		B8CA00020000000000000002 /* PPMarketplaceDataViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8CA00010000000000000001 /* PPMarketplaceDataViewTests.swift */; };
 		BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */; };
 		BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA170DFB35D11ED0D638DF8B /* AttachmentButton.swift */; };
@@ -999,7 +999,7 @@
 		B7DA00060000000000000006 /* PPMarketplaceDataViewComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceDataViewComponents.swift; sourceTree = "<group>"; };
 		B7DA00070000000000000007 /* PPMarketplaceFilterSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceFilterSheets.swift; sourceTree = "<group>"; };
 		B7DA00080000000000000008 /* PPMarketplaceCompatibilityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceCompatibilityCard.swift; sourceTree = "<group>"; };
-		B7DA00090000000000000009 /* PPMarketplaceHeaderV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceHeaderV2.swift; sourceTree = "<group>"; };
+		B7DA000A000000000000000A /* PPMarketplaceCommandDockV3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceCommandDockV3.swift; sourceTree = "<group>"; };
 		B8CA00010000000000000001 /* PPMarketplaceDataViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMarketplaceDataViewTests.swift; sourceTree = "<group>"; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
 		BF492649A384599998A4008D /* NovaVoiceModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceModels.swift; sourceTree = "<group>"; };
@@ -4149,7 +4149,7 @@
 				B7DA00060000000000000006 /* PPMarketplaceDataViewComponents.swift */,
 				B7DA00070000000000000007 /* PPMarketplaceFilterSheets.swift */,
 				B7DA00080000000000000008 /* PPMarketplaceCompatibilityCard.swift */,
-				B7DA00090000000000000009 /* PPMarketplaceHeaderV2.swift */,
+				B7DA000A000000000000000A /* PPMarketplaceCommandDockV3.swift */,
 				F23DDE642F8AC9AC0020D4F4 /* PPFilterModels.h */,
 				F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */,
 				F28DD5A42F04CC5D00FF2671 /* PPDataViewInput.h */,
@@ -5639,7 +5639,7 @@
 				B7DA10060000000000000006 /* PPMarketplaceDataViewComponents.swift in Sources */,
 				B7DA10070000000000000007 /* PPMarketplaceFilterSheets.swift in Sources */,
 				B7DA10080000000000000008 /* PPMarketplaceCompatibilityCard.swift in Sources */,
-				B7DA10090000000000000009 /* PPMarketplaceHeaderV2.swift in Sources */,
+				B7DA100A000000000000000A /* PPMarketplaceCommandDockV3.swift in Sources */,
 				F2E33F6A3006C4FF005E31C6 /* PPOrderTimelineViewController.m in Sources */,
 				F22389903017C8CA001E5DBB /* CartLineController.swift in Sources */,
 				F28A0A0E2EEA3C3F00EE5055 /* AppDataListenerManager.m in Sources */,

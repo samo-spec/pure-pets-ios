@@ -162,10 +162,34 @@ struct PPHomeMarketingStage: View {
     let pages: [HomeHeroPage]
     let selectedIndex: Int
     let discloseCampaign: Bool
+    let marketplaceSignals: HomeMarketplaceSignals
     let onSelect: (Int) -> Void
     let onPrimary: (HomeHeroPage) -> Void
     let onSecondary: (HomeHeroPage) -> Void
     let onInteractionChanged: (Bool) -> Void
+    let onMarketplaceSignal: (HomeMarketplaceSignalKind) -> Void
+
+    init(
+        pages: [HomeHeroPage],
+        selectedIndex: Int,
+        discloseCampaign: Bool,
+        marketplaceSignals: HomeMarketplaceSignals = HomeMarketplaceSignals(),
+        onSelect: @escaping (Int) -> Void,
+        onPrimary: @escaping (HomeHeroPage) -> Void,
+        onSecondary: @escaping (HomeHeroPage) -> Void,
+        onInteractionChanged: @escaping (Bool) -> Void,
+        onMarketplaceSignal: @escaping (HomeMarketplaceSignalKind) -> Void = { _ in }
+    ) {
+        self.pages = pages
+        self.selectedIndex = selectedIndex
+        self.discloseCampaign = discloseCampaign
+        self.marketplaceSignals = marketplaceSignals
+        self.onSelect = onSelect
+        self.onPrimary = onPrimary
+        self.onSecondary = onSecondary
+        self.onInteractionChanged = onInteractionChanged
+        self.onMarketplaceSignal = onMarketplaceSignal
+    }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -236,15 +260,15 @@ struct PPHomeMarketingStage: View {
                 onAdvance: advance
             )
         )
-        .accessibilityAction(named: Text(nextActionTitle)) { advance(1) }
-        .accessibilityAction(named: Text(previousActionTitle)) { advance(-1) }
-        .accessibilityScrollAction { edge in
-            switch edge {
-            case .leading: advance(layoutDirection == .rightToLeft ? 1 : -1)
-            case .trailing: advance(layoutDirection == .rightToLeft ? -1 : 1)
-            default: break
-            }
-        }
+        .modifier(
+            PPHomeStageAccessibilityPaging(
+                enabled: pages.count > 1,
+                isRightToLeft: layoutDirection == .rightToLeft,
+                nextTitle: nextActionTitle,
+                previousTitle: previousActionTitle,
+                onAdvance: advance
+            )
+        )
     }
 
     // MARK: Media
@@ -258,7 +282,12 @@ struct PPHomeMarketingStage: View {
             )
 
             if presentsSelectedCategoryArtwork(page) {
-                PPHomeStageArtwork(page: page, accent: accent)
+                PPHomeStageArtwork(
+                    page: page,
+                    accent: accent,
+                    marketplaceSignals: marketplaceSignals,
+                    onMarketplaceSignal: onMarketplaceSignal
+                )
             } else if let urlString = page.imageURL, !urlString.isEmpty {
                 HomeRemoteImage(
                     urlString: urlString,
@@ -275,7 +304,12 @@ struct PPHomeMarketingStage: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                PPHomeStageArtwork(page: page, accent: accent)
+                PPHomeStageArtwork(
+                    page: page,
+                    accent: accent,
+                    marketplaceSignals: marketplaceSignals,
+                    onMarketplaceSignal: onMarketplaceSignal
+                )
             }
         }
         .frame(height: mediaHeight)
@@ -301,13 +335,22 @@ struct PPHomeMarketingStage: View {
             .frame(height: PPSpace.xl)
             .allowsHitTesting(false)
         }
-        .accessibilityHidden(true)
+        .accessibilityHidden(!isMarketplace(page))
     }
 
     private var mediaHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize
-            ? PPHomeZoneMetrics.stageMediaAccessibilityHeight
-            : PPHomeZoneMetrics.stageMediaHeight
+        guard dynamicTypeSize.isAccessibilitySize else {
+            return PPHomeZoneMetrics.stageMediaHeight
+        }
+        guard let page, isMarketplace(page) else {
+            return PPHomeZoneMetrics.stageMediaAccessibilityHeight
+        }
+        return PPHomeZoneMetrics.stageMediaHeight
+    }
+
+    private func isMarketplace(_ page: HomeHeroPage) -> Bool {
+        if case .marketplace = page.kind { return true }
+        return false
     }
 
     /// Marketplace category art is an identity mark, not a background photo.
@@ -482,6 +525,8 @@ struct PPHomeMarketingStage: View {
 private struct PPHomeStageArtwork: View {
     let page: HomeHeroPage
     let accent: Color
+    let marketplaceSignals: HomeMarketplaceSignals
+    let onMarketplaceSignal: (HomeMarketplaceSignalKind) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -495,7 +540,9 @@ private struct PPHomeStageArtwork: View {
             PPHomeMarketplaceLivingCompass(
                 page: page,
                 accent: accent,
-                marketplaceSymbol: asset.primarySymbol
+                marketplaceSymbol: asset.primarySymbol,
+                signals: marketplaceSignals,
+                onSelectSignal: onMarketplaceSignal
             )
         } else {
             legacyPlate
@@ -695,18 +742,17 @@ private struct PPHomeStageArtwork: View {
     }
 }
 
-/// The marketplace's opening scene: a selected pet identity connected to the
-/// two destinations this Home stage actually owns — marketplace and services.
-///
-/// The scene is deliberately decorative. The copy plate remains the semantic
-/// heading, and its two existing controls remain the only action owners. This
-/// lets the first impression explain Pure Pets without duplicating navigation,
-/// state, analytics, or accessibility focus inside the artwork.
+/// The marketplace's opening scene: the selected category identity anchors
+/// three live, category-scoped facts — marketplace items, services, and ads.
+/// The satellites disclose data only; navigation remains owned by the stage's
+/// existing primary and secondary actions.
 @available(iOS 15.0, *)
 private struct PPHomeMarketplaceLivingCompass: View {
     let page: HomeHeroPage
     let accent: Color
     let marketplaceSymbol: String
+    let signals: HomeMarketplaceSignals
+    let onSelectSignal: (HomeMarketplaceSignalKind) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -720,55 +766,117 @@ private struct PPHomeMarketplaceLivingCompass: View {
 
     @State private var phase: Phase = .staged
     @State private var lastPresentedIdentity: String?
+    @State private var selectedSignal: HomeMarketplaceSignalKind?
+    @State private var ambientSignal: HomeMarketplaceSignalKind = .marketplace
+    @State private var ambientProgress: CGFloat = 0
+    @State private var flashSignal: HomeMarketplaceSignalKind?
+    @State private var flashProgress: CGFloat = 0
+    @State private var flashOpacity: Double = 0
+    @State private var flashSequence = 0
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityConstellation
+            } else {
+                standardConstellation
+            }
+        }
+        .task(id: motionKey) { await runEntrance() }
+        .task(id: ambientMotionKey) { await runAmbientWave() }
+        .task(id: flashMotionKey) { await runSignalFlash() }
+        .onChange(of: signals.categoryID) { _ in
+            resetSelectionWithoutAnimation()
+        }
+        .onDisappear(perform: settleWithoutAnimation)
+        .accessibilityElement(children: .contain)
+    }
+
+    // MARK: - Responsive constellation
+
+    private var standardConstellation: some View {
         GeometryReader { proxy in
             let geometry = Geometry(
                 size: proxy.size,
-                accessibilitySize: dynamicTypeSize.isAccessibilitySize,
                 isRightToLeft: isRightToLeft
             )
 
             ZStack {
-                compassRoutes
+                compassRoutes(accessibilityLayout: false)
 
                 identityLens(side: geometry.identitySide)
                     .scaleEffect(identityPresented ? 1 : 0.97)
                     .opacity(identityPresented ? 1 : 0.68)
                     .offset(x: identityPresented ? 0 : logicalOffset(-8))
-                    .position(
-                        x: geometry.identityCenter.x,
-                        y: geometry.identityCenter.y
+                    .position(geometry.identityCenter)
+                    .accessibilityHidden(true)
+
+                ForEach(HomeMarketplaceSignalKind.allCases, id: \.self) { kind in
+                    let side = geometry.side(for: kind)
+                    let width = selectedSignal == kind
+                        ? geometry.selectedWidth
+                        : side
+                    signalButton(
+                        kind: kind,
+                        side: side,
+                        selectedWidth: geometry.selectedWidth
                     )
-
-                landmark(
-                    symbol: marketplaceSymbol,
-                    side: geometry.marketplaceSide,
-                    tone: accent
-                )
-                .modifier(landmarkPhase)
-                .position(
-                    x: geometry.marketplaceCenter.x,
-                    y: geometry.marketplaceCenter.y
-                )
-
-                landmark(
-                    symbol: "hands.sparkles.fill",
-                    side: geometry.careSide,
-                    tone: Color.ppCareAccent
-                )
-                .modifier(landmarkPhase)
-                .position(
-                    x: geometry.careCenter.x,
-                    y: geometry.careCenter.y
-                )
+                    .modifier(landmarkPhase)
+                    .position(
+                        geometry.buttonCenter(
+                            for: kind,
+                            renderedWidth: width,
+                            baseSide: side,
+                            logicalOffset: logicalOffset
+                        )
+                    )
+                }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .task(id: motionKey) { await runEntrance() }
-        .onDisappear(perform: settleWithoutAnimation)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+    }
+
+    /// Accessibility categories get a taller, vertically reflowed satellite
+    /// rail. Targets stay full-sized and expansion consumes inward space while
+    /// the outer icon edge remains fixed in both layout directions.
+    private var accessibilityConstellation: some View {
+        GeometryReader { proxy in
+            let railWidth: CGFloat = 132
+            let buttonSide: CGFloat = PPHomeZoneMetrics.minimumTarget
+            let railCenterLogicalX = max(
+                0.50,
+                1 - ((railWidth / 2 + PPSpace.xs) / max(proxy.size.width, 1))
+            )
+            let railCenter = point(
+                logicalX: railCenterLogicalX,
+                y: 0.50,
+                in: proxy.size
+            )
+
+            ZStack {
+                compassRoutes(accessibilityLayout: true)
+
+                identityLens(side: min(82, proxy.size.height - 28))
+                    .scaleEffect(identityPresented ? 1 : 0.97)
+                    .opacity(identityPresented ? 1 : 0.68)
+                    .position(point(logicalX: 0.22, y: 0.50, in: proxy.size))
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .trailing, spacing: PPSpace.xs) {
+                    ForEach(HomeMarketplaceSignalKind.allCases, id: \.self) { kind in
+                        signalButton(
+                            kind: kind,
+                            side: buttonSide,
+                            selectedWidth: railWidth
+                        )
+                        .modifier(landmarkPhase)
+                    }
+                }
+                .frame(width: railWidth, alignment: .trailing)
+                .position(railCenter)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
     }
 
     // MARK: - Identity
@@ -886,78 +994,301 @@ private struct PPHomeMarketplaceLivingCompass: View {
 
     // MARK: - Pure Path
 
-    private var compassRoutes: some View {
+    private func compassRoutes(accessibilityLayout: Bool) -> some View {
         ZStack {
-            ForEach(PPHomeCompassRoute.Destination.allCases, id: \.self) { destination in
-                PPHomeCompassRoute(destination: destination)
-                    .stroke(
-                        Color.homeSeparator.opacity(
-                            contrast == .increased ? 0.92 : 0.58
-                        ),
-                        style: StrokeStyle(
-                            lineWidth: contrast == .increased ? 1.5 : 1,
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
+            ForEach(HomeMarketplaceSignalKind.allCases, id: \.self) { destination in
+                PPHomeCompassRoute(
+                    destination: destination,
+                    accessibilityLayout: accessibilityLayout
+                )
+                .stroke(
+                    Color.homeSeparator.opacity(
+                        contrast == .increased ? 0.92 : 0.58
+                    ),
+                    style: StrokeStyle(
+                        lineWidth: contrast == .increased ? 1.5 : 1,
+                        lineCap: .round,
+                        lineJoin: .round
                     )
+                )
 
-                PPHomeCompassRoute(destination: destination)
+                PPHomeCompassRoute(
+                    destination: destination,
+                    accessibilityLayout: accessibilityLayout
+                )
+                .trim(from: 0, to: routeProgress)
+                .stroke(
+                    routeGradient(for: destination),
+                    style: StrokeStyle(
+                        lineWidth: contrast == .increased ? 2.6 : 1.8,
+                        lineCap: .round,
+                        lineJoin: .round
+                    )
+                )
+
+                if selectedSignal == destination {
+                    PPHomeCompassRoute(
+                        destination: destination,
+                        accessibilityLayout: accessibilityLayout
+                    )
                     .trim(from: 0, to: routeProgress)
                     .stroke(
-                        routeGradient,
+                        routeTone(for: destination).opacity(
+                            contrast == .increased ? 1 : 0.62
+                        ),
                         style: StrokeStyle(
-                            lineWidth: contrast == .increased ? 2.6 : 1.8,
+                            lineWidth: contrast == .increased ? 3.2 : 2.4,
                             lineCap: .round,
                             lineJoin: .round
                         )
                     )
+                }
+
+                if ambientSignal == destination, !motionSuppressed {
+                    PPHomeCompassRoute(
+                        destination: destination,
+                        accessibilityLayout: accessibilityLayout
+                    )
+                    .trim(
+                        from: max(0, ambientProgress - 0.20),
+                        to: ambientProgress
+                    )
+                    .stroke(
+                        routeTone(for: destination).opacity(0.70),
+                        style: StrokeStyle(
+                            lineWidth: contrast == .increased ? 3.6 : 2.6,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
+                    )
+                }
+
+                if flashSignal == destination, flashOpacity > 0 {
+                    PPHomeCompassRoute(
+                        destination: destination,
+                        accessibilityLayout: accessibilityLayout
+                    )
+                    .trim(
+                        from: max(0, flashProgress - 0.26),
+                        to: flashProgress
+                    )
+                    .stroke(
+                        routeTone(for: destination).opacity(flashOpacity),
+                        style: StrokeStyle(
+                            lineWidth: contrast == .increased ? 4.2 : 3.4,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
+                    )
+                }
             }
         }
         .scaleEffect(x: isRightToLeft ? -1 : 1, y: 1)
-        .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, PPSpace.xs)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
-    private var routeGradient: LinearGradient {
+    private func routeGradient(
+        for destination: HomeMarketplaceSignalKind
+    ) -> LinearGradient {
         LinearGradient(
             colors: [
                 accent.opacity(contrast == .increased ? 1 : 0.84),
-                Color.ppCareAccent.opacity(contrast == .increased ? 1 : 0.82),
+                routeTone(for: destination).opacity(
+                    contrast == .increased ? 1 : 0.82
+                ),
             ],
             startPoint: .leading,
             endPoint: .trailing
         )
     }
 
+    private func routeTone(
+        for destination: HomeMarketplaceSignalKind
+    ) -> Color {
+        switch destination {
+        case .marketplace: return accent
+        case .services: return Color.ppCareAccent
+        case .advertisements: return Color.ppPrimary
+        }
+    }
+
     // MARK: - Landmarks
 
-    private func landmark(
-        symbol: String,
+    private func signalButton(
+        kind: HomeMarketplaceSignalKind,
+        side: CGFloat,
+        selectedWidth: CGFloat
+    ) -> some View {
+        let isSelected = selectedSignal == kind
+        let tone = routeTone(for: kind)
+        return Button {
+            select(kind)
+        } label: {
+            HStack(spacing: PPSpace.xs) {
+                signalIcon(for: kind, side: side, tone: tone)
+                    .frame(width: side - 8, height: side - 8)
+                    .accessibilityHidden(true)
+
+                if isSelected {
+                    signalValue(for: kind, tone: tone)
+                        .frame(maxWidth: .infinity)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+            }
+            .padding(.horizontal, isSelected ? PPSpace.xs : 4)
+            .frame(
+                width: isSelected ? selectedWidth : side,
+                height: max(side, PPHomeZoneMetrics.minimumTarget)
+            )
+            .background {
+                Capsule(style: .continuous)
+                    .fill(Color.homeRaisedSurface)
+                Capsule(style: .continuous)
+                    .fill(tone.opacity(reduceTransparency ? 0.11 : 0.08))
+            }
+            .overlay {
+                Capsule(style: .continuous).strokeBorder(
+                    contrast == .increased
+                        ? Color.ppTextPrimary.opacity(0.76)
+                        : tone.opacity(colorScheme == .dark ? 0.48 : 0.24),
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+            }
+            .shadow(
+                color: Color.black.opacity(contrast == .increased ? 0 : 0.07),
+                radius: 8,
+                y: 4
+            )
+            .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.20),
+            value: isSelected
+        )
+        .accessibilityLabel(signalLabel(for: kind))
+        .accessibilityValue(accessibilityValue(for: kind))
+        .accessibilityHint(PPHomeZoneCopy.marketplaceSignalLiveCountHint)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilitySortPriority(accessibilityPriority(for: kind))
+    }
+
+    @ViewBuilder
+    private func signalIcon(
+        for kind: HomeMarketplaceSignalKind,
         side: CGFloat,
         tone: Color
     ) -> some View {
-        ZStack {
-            Circle().fill(Color.homeRaisedSurface)
-            Circle().fill(tone.opacity(reduceTransparency ? 0.10 : 0.08))
+        if kind == .advertisements {
+            Image("PPLogo")
+                .renderingMode(.original)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .padding(max(5, side * 0.13))
+        } else {
+            Image(
+                systemName: kind == .marketplace
+                    ? marketplaceSymbol
+                    : "hands.sparkles.fill"
+            )
+            .font(.system(size: side * 0.34, weight: .bold))
+            .foregroundStyle(tone)
+        }
+    }
 
-            Image(systemName: symbol)
-                .font(.system(size: side * 0.36, weight: .bold))
+    @ViewBuilder
+    private func signalValue(
+        for kind: HomeMarketplaceSignalKind,
+        tone: Color
+    ) -> some View {
+        switch signals.value(for: kind) {
+        case .idle:
+            Image(systemName: "ellipsis")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(tone)
+        case .loading:
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(tone)
+                .scaleEffect(0.82)
+        case let .available(count):
+            Text(localizedNumber(max(0, count)))
+                .font(HomeFont.bold(14))
+                .monospacedDigit()
+                .foregroundStyle(Color.homeTextPrimary)
+                .lineLimit(1)
+        case .failed:
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(tone)
         }
-        .frame(width: side, height: side)
-        .overlay {
-            Circle().strokeBorder(
-                contrast == .increased
-                    ? Color.ppTextPrimary.opacity(0.72)
-                    : tone.opacity(colorScheme == .dark ? 0.42 : 0.20),
-                lineWidth: contrast == .increased ? 1.5 : 1
-            )
+    }
+
+    private func select(_ kind: HomeMarketplaceSignalKind) {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            ambientProgress = 0
         }
-        .shadow(
-            color: Color.black.opacity(contrast == .increased ? 0 : 0.07),
-            radius: 8,
-            y: 4
+        selectedSignal = kind
+        flashSignal = kind
+        flashSequence &+= 1
+        onSelectSignal(kind)
+    }
+
+    private func signalLabel(
+        for kind: HomeMarketplaceSignalKind
+    ) -> String {
+        switch kind {
+        case .marketplace: return PPHomeZoneCopy.marketplaceSignalItemsLabel
+        case .services: return PPHomeZoneCopy.marketplaceSignalServicesLabel
+        case .advertisements: return PPHomeZoneCopy.marketplaceSignalAdsLabel
+        }
+    }
+
+    private func accessibilityValue(
+        for kind: HomeMarketplaceSignalKind
+    ) -> String {
+        let value: String
+        switch signals.value(for: kind) {
+        case .idle:
+            value = PPHomeZoneCopy.marketplaceSignalIdle
+        case .loading:
+            value = PPHomeZoneCopy.marketplaceSignalLoading
+        case let .available(count):
+            value = String(
+                format: PPHomeZoneCopy.marketplaceSignalAvailableFormat,
+                locale: Locale(identifier: Language.currentLanguageCode() ?? "ar"),
+                Int64(max(0, count))
+            )
+        case .failed:
+            value = PPHomeZoneCopy.marketplaceSignalUnavailableRetry
+        }
+        guard selectedSignal == kind else { return value }
+        return [PPHomeZoneCopy.marketplaceSignalSelected, value]
+            .joined(separator: ", ")
+    }
+
+    private func localizedNumber(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(
+            identifier: Language.currentLanguageCode() ?? "ar"
         )
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    private func accessibilityPriority(
+        for kind: HomeMarketplaceSignalKind
+    ) -> Double {
+        switch kind {
+        case .marketplace: return 3
+        case .services: return 2
+        case .advertisements: return 1
+        }
     }
 
     private var landmarkPhase: PPHomeCompassLandmarkPhase {
@@ -977,6 +1308,29 @@ private struct PPHomeMarketplaceLivingCompass: View {
 
     private var motionKey: MotionKey {
         MotionKey(identity: artworkIdentity, suppressed: motionSuppressed)
+    }
+
+    private struct AmbientMotionKey: Equatable {
+        let identity: String
+        let ready: Bool
+        let suppressed: Bool
+    }
+
+    private var ambientMotionKey: AmbientMotionKey {
+        AmbientMotionKey(
+            identity: artworkIdentity,
+            ready: landmarksPresented,
+            suppressed: motionSuppressed
+        )
+    }
+
+    private struct FlashMotionKey: Equatable {
+        let sequence: Int
+        let suppressed: Bool
+    }
+
+    private var flashMotionKey: FlashMotionKey {
+        FlashMotionKey(sequence: flashSequence, suppressed: motionSuppressed)
     }
 
     @MainActor
@@ -1026,6 +1380,92 @@ private struct PPHomeMarketplaceLivingCompass: View {
         lastPresentedIdentity = artworkIdentity
     }
 
+    /// One soft highlight travels from the identity to each satellite in turn.
+    /// The lifecycle-bound task is cancelled when the view leaves the hierarchy
+    /// or its motion-suppression environment changes.
+    @MainActor
+    private func runAmbientWave() async {
+        guard !motionSuppressed, landmarksPresented else {
+            settleAmbientWithoutAnimation()
+            return
+        }
+
+        do {
+            try await Task<Never, Never>.sleep(nanoseconds: 620_000_000)
+        } catch {
+            return
+        }
+
+        while !Task.isCancelled {
+            for kind in HomeMarketplaceSignalKind.allCases {
+                guard !Task.isCancelled else { return }
+                var transaction = Transaction()
+                transaction.animation = nil
+                withTransaction(transaction) {
+                    ambientSignal = kind
+                    ambientProgress = 0
+                }
+                while flashOpacity > 0, !Task.isCancelled {
+                    do {
+                        try await Task<Never, Never>.sleep(
+                            nanoseconds: 80_000_000
+                        )
+                    } catch {
+                        return
+                    }
+                }
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+
+                withAnimation(.linear(duration: 1.65)) {
+                    ambientProgress = 1
+                }
+
+                do {
+                    try await Task<Never, Never>.sleep(
+                        nanoseconds: 1_780_000_000
+                    )
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    /// Tap feedback is causal and intentionally completes within 280 ms.
+    @MainActor
+    private func runSignalFlash() async {
+        guard flashSequence > 0, flashSignal != nil else { return }
+        guard !motionSuppressed else {
+            settleFlashWithoutAnimation()
+            return
+        }
+
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            flashProgress = 0
+            flashOpacity = 1
+        }
+        await Task.yield()
+        guard !Task.isCancelled else { return }
+
+        withAnimation(.easeOut(duration: 0.22)) {
+            flashProgress = 1
+        }
+
+        do {
+            try await Task<Never, Never>.sleep(nanoseconds: 220_000_000)
+        } catch {
+            return
+        }
+        guard !Task.isCancelled else { return }
+
+        withAnimation(.easeOut(duration: 0.06)) {
+            flashOpacity = 0
+        }
+    }
+
     private func stageWithoutAnimation() {
         var transaction = Transaction()
         transaction.animation = nil
@@ -1040,6 +1480,37 @@ private struct PPHomeMarketplaceLivingCompass: View {
         withTransaction(transaction) {
             phase = .settled
             lastPresentedIdentity = artworkIdentity
+            ambientProgress = 0
+            flashProgress = 0
+            flashOpacity = 0
+        }
+    }
+
+    private func settleAmbientWithoutAnimation() {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            ambientProgress = 0
+        }
+    }
+
+    private func settleFlashWithoutAnimation() {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            flashProgress = 0
+            flashOpacity = 0
+        }
+    }
+
+    private func resetSelectionWithoutAnimation() {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            selectedSignal = nil
+            flashSignal = nil
+            flashProgress = 0
+            flashOpacity = 0
         }
     }
 
@@ -1091,21 +1562,52 @@ private struct PPHomeMarketplaceLivingCompass: View {
         case settled
     }
 
+    private func point(
+        logicalX: CGFloat,
+        y: CGFloat,
+        in size: CGSize
+    ) -> CGPoint {
+        CGPoint(
+            x: size.width * (isRightToLeft ? 1 - logicalX : logicalX),
+            y: size.height * y
+        )
+    }
+
     private struct Geometry {
         let size: CGSize
-        let accessibilitySize: Bool
         let isRightToLeft: Bool
 
         var identitySide: CGFloat {
-            min(accessibilitySize ? 88 : 118, size.height - (accessibilitySize ? 18 : 24))
+            min(118, size.height - 24)
         }
 
-        var marketplaceSide: CGFloat { accessibilitySize ? 34 : 42 }
-        var careSide: CGFloat { accessibilitySize ? 38 : 46 }
+        var selectedWidth: CGFloat { 112 }
 
-        var identityCenter: CGPoint { point(logicalX: 0.27, y: 0.50) }
-        var marketplaceCenter: CGPoint { point(logicalX: 0.61, y: 0.30) }
-        var careCenter: CGPoint { point(logicalX: 0.80, y: 0.64) }
+        var identityCenter: CGPoint { point(logicalX: 0.25, y: 0.50) }
+
+        func side(for kind: HomeMarketplaceSignalKind) -> CGFloat {
+            kind == .services ? 46 : 44
+        }
+
+        func center(for kind: HomeMarketplaceSignalKind) -> CGPoint {
+            switch kind {
+            case .marketplace: return point(logicalX: 0.68, y: 0.20)
+            case .services: return point(logicalX: 0.81, y: 0.50)
+            case .advertisements: return point(logicalX: 0.68, y: 0.80)
+            }
+        }
+
+        func buttonCenter(
+            for kind: HomeMarketplaceSignalKind,
+            renderedWidth: CGFloat,
+            baseSide: CGFloat,
+            logicalOffset: (CGFloat) -> CGFloat
+        ) -> CGPoint {
+            var result = center(for: kind)
+            let expansion = max(0, renderedWidth - baseSide)
+            result.x -= logicalOffset(expansion / 2)
+            return result
+        }
 
         private func point(logicalX: CGFloat, y: CGFloat) -> CGPoint {
             CGPoint(
@@ -1130,21 +1632,17 @@ private struct PPHomeCompassLandmarkPhase: ViewModifier {
     }
 }
 
-/// Two source-bound paths leave the selected identity: one resolves at the
-/// marketplace landmark and one at the existing services destination.
+/// Three source-bound paths leave the selected category identity and resolve at
+/// the marketplace, service, and pet-ad live fact satellites.
 @available(iOS 15.0, *)
 private struct PPHomeCompassRoute: Shape {
-    enum Destination: CaseIterable, Hashable {
-        case marketplace
-        case care
-    }
-
-    let destination: Destination
+    let destination: HomeMarketplaceSignalKind
+    let accessibilityLayout: Bool
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let origin = CGPoint(
-            x: rect.minX + rect.width * 0.39,
+            x: rect.minX + rect.width * (accessibilityLayout ? 0.34 : 0.40),
             y: rect.minY + rect.height * 0.50
         )
         path.move(to: origin)
@@ -1153,35 +1651,81 @@ private struct PPHomeCompassRoute: Shape {
         case .marketplace:
             path.addCurve(
                 to: CGPoint(
-                    x: rect.minX + rect.width * 0.61,
-                    y: rect.minY + rect.height * 0.30
+                    x: rect.minX + rect.width * (accessibilityLayout ? 0.92 : 0.68),
+                    y: rect.minY + rect.height * 0.20
                 ),
                 control1: CGPoint(
-                    x: rect.minX + rect.width * 0.46,
-                    y: rect.minY + rect.height * 0.48
+                    x: rect.minX + rect.width * 0.48,
+                    y: rect.minY + rect.height * 0.45
                 ),
                 control2: CGPoint(
-                    x: rect.minX + rect.width * 0.53,
-                    y: rect.minY + rect.height * 0.28
+                    x: rect.minX + rect.width * (accessibilityLayout ? 0.72 : 0.57),
+                    y: rect.minY + rect.height * (accessibilityLayout ? 0.12 : 0.18)
                 )
             )
-        case .care:
+        case .services:
             path.addCurve(
                 to: CGPoint(
-                    x: rect.minX + rect.width * 0.80,
-                    y: rect.minY + rect.height * 0.64
+                    x: rect.minX + rect.width * (accessibilityLayout ? 0.92 : 0.81),
+                    y: rect.minY + rect.height * 0.50
                 ),
                 control1: CGPoint(
-                    x: rect.minX + rect.width * 0.52,
-                    y: rect.minY + rect.height * 0.54
+                    x: rect.minX + rect.width * 0.54,
+                    y: rect.minY + rect.height * 0.46
                 ),
                 control2: CGPoint(
-                    x: rect.minX + rect.width * 0.68,
-                    y: rect.minY + rect.height * 0.72
+                    x: rect.minX + rect.width * 0.70,
+                    y: rect.minY + rect.height * 0.54
+                )
+            )
+        case .advertisements:
+            path.addCurve(
+                to: CGPoint(
+                    x: rect.minX + rect.width * (accessibilityLayout ? 0.92 : 0.68),
+                    y: rect.minY + rect.height * 0.80
+                ),
+                control1: CGPoint(
+                    x: rect.minX + rect.width * 0.48,
+                    y: rect.minY + rect.height * 0.55
+                ),
+                control2: CGPoint(
+                    x: rect.minX + rect.width * (accessibilityLayout ? 0.72 : 0.57),
+                    y: rect.minY + rect.height * (accessibilityLayout ? 0.88 : 0.82)
                 )
             )
         }
         return path
+    }
+}
+
+/// Keeps carousel-only accessibility actions off the single-page marketplace
+/// hero so its three live-signal buttons are the media band's only controls.
+@available(iOS 15.0, *)
+private struct PPHomeStageAccessibilityPaging: ViewModifier {
+    let enabled: Bool
+    let isRightToLeft: Bool
+    let nextTitle: String
+    let previousTitle: String
+    let onAdvance: (Int) -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .accessibilityAction(named: Text(nextTitle)) { onAdvance(1) }
+                .accessibilityAction(named: Text(previousTitle)) { onAdvance(-1) }
+                .accessibilityScrollAction { edge in
+                    switch edge {
+                    case .leading:
+                        onAdvance(isRightToLeft ? 1 : -1)
+                    case .trailing:
+                        onAdvance(isRightToLeft ? -1 : 1)
+                    default:
+                        break
+                    }
+                }
+        } else {
+            content
+        }
     }
 }
 
@@ -2443,6 +2987,69 @@ enum PPHomeZoneCopy {
         HomeModelAdapter.localized(
             "home_marketing_stage_previous",
             fallback: "Previous story"
+        )
+    }
+
+    static var marketplaceSignalItemsLabel: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_marketplace_items_label",
+            fallback: "Marketplace items"
+        )
+    }
+
+    static var marketplaceSignalServicesLabel: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_services_label",
+            fallback: "Services"
+        )
+    }
+
+    static var marketplaceSignalAdsLabel: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_pet_ads_label",
+            fallback: "Pet listings"
+        )
+    }
+
+    static var marketplaceSignalLiveCountHint: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_live_count_hint",
+            fallback: "Shows how many are available now for the selected category."
+        )
+    }
+
+    static var marketplaceSignalIdle: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_idle",
+            fallback: "Tap to show count"
+        )
+    }
+
+    static var marketplaceSignalLoading: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_loading",
+            fallback: "Loading count…"
+        )
+    }
+
+    static var marketplaceSignalAvailableFormat: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_available_count_format",
+            fallback: "%ld available now"
+        )
+    }
+
+    static var marketplaceSignalUnavailableRetry: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_unavailable_retry",
+            fallback: "Count unavailable. Tap to try again."
+        )
+    }
+
+    static var marketplaceSignalSelected: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_selected",
+            fallback: "Selected"
         )
     }
 
