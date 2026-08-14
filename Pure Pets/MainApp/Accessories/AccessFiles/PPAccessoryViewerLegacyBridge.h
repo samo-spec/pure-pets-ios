@@ -159,6 +159,14 @@ typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
                                                 NSInteger remainingStock))completion
     NS_SWIFT_NAME(prepareForCheckout(_:quantity:from:completion:));
 
+/// Opens payment for an immutable, one-item accessory snapshot without
+/// reading, mutating, synchronizing, or clearing the shared cart.
++ (void)beginDirectCheckoutForAccessory:(PetAccessory *)accessory
+                               quantity:(NSInteger)quantity
+                     fromViewController:(UIViewController *)viewController
+                             completion:(void (^)(PPAccessoryCartResultCode result))completion
+    NS_SWIFT_NAME(beginDirectCheckout(_:quantity:from:completion:));
+
 + (NSString *)displayNameForUser:(UserModel *)user
     NS_SWIFT_NAME(displayName(for:));
 + (nullable NSString *)avatarURLForUser:(UserModel *)user

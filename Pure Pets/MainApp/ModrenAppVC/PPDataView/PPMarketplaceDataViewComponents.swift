@@ -195,24 +195,77 @@ struct PPMarketplaceHero: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
-            HStack(alignment: .center, spacing: PPSpace.sm) {
-                backControl
-
-                identity
-                    .layoutPriority(1)
-
-                sectionGlyph
-            }
-            .frame(maxWidth: .infinity)
+            topContextRail
 
             browseCommands
         }
+    }
+
+    private var topContextRail: some View {
+        HStack(alignment: .center, spacing: 0) {
+            backControl
+
+            topContextSeparator
+
+            identity
+                .layoutPriority(1)
+
+            topContextSeparator
+
+            sectionGlyph
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: topRailControlSize)
+        .background {
+            topContextShape
+                .fill(heroCommandSurface)
+
+            topContextShape
+                .fill(
+                    Color(uiColor: store.accentColor)
+                        .opacity(heroAuxiliarySurfaceOpacity)
+                )
+        }
+        .overlay {
+            topContextShape
+                .strokeBorder(heroBorder, lineWidth: heroBorderWidth)
+        }
+        .shadow(
+            color: contrast == .increased
+                ? .clear
+                : Color.black.opacity(colorScheme == .dark ? 0.10 : 0.045),
+            radius: 12,
+            y: 5
+        )
+    }
+
+    private var topContextSeparator: some View {
+        Rectangle()
+            .fill(
+                contrast == .increased
+                    ? Color.ppMarketplaceTextPrimary.opacity(0.48)
+                    : Color.ppSeparator.opacity(
+                        colorScheme == .dark ? 0.62 : 0.46
+                    )
+            )
+            .frame(
+                width: contrast == .increased
+                    ? 1.5
+                    : 1 / UIScreen.main.scale
+            )
+            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
+            .accessibilityHidden(true)
+    }
+
+    private var topContextShape: Capsule {
+        Capsule(style: .continuous)
     }
 
     private var backControl: some View {
         PPMarketplaceBackControl(
             accent: store.accentColor,
             isRightToLeft: store.isRightToLeft,
+            isEmbedded: true,
             action: store.goBack
         )
         .frame(width: topRailControlSize, height: topRailControlSize)
@@ -226,19 +279,17 @@ struct PPMarketplaceHero: View {
         return PPMarketplaceSmartContextPill(
             title: context.title,
             subtitle: context.subtitle,
-            systemImageName: context.systemImageName,
             accessibilityLabel: context.accessibilityLabel,
             accent: store.accentColor,
             isEnabled: !store.isReplacingContext,
             action: store.beginFilterEditing
         )
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
     private var sectionGlyph: some View {
         PPMarketplaceSectionGlyphPlate(
             store: store,
-            sectionGlyphSurfaceOpacity: sectionGlyphSurfaceOpacity,
             reduceMotion: reduceMotion,
             isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
         )
@@ -503,13 +554,6 @@ struct PPMarketplaceHero: View {
         return colorScheme == .dark ? 0.22 : 0.14
     }
 
-    private var sectionGlyphSurfaceOpacity: Double {
-        if store.usesBrandAccent {
-            return colorScheme == .dark ? 0.10 : 0.055
-        }
-        return colorScheme == .dark ? 0.15 : 0.09
-    }
-
     private var heroAuxiliarySurfaceOpacity: Double {
         if store.usesBrandAccent {
             return colorScheme == .dark ? 0.075 : 0.055
@@ -522,6 +566,7 @@ struct PPMarketplaceHero: View {
 struct PPMarketplaceBackControl: View {
     let accent: UIColor
     let isRightToLeft: Bool
+    var isEmbedded = false
     let action: () -> Void
 
     var body: some View {
@@ -530,18 +575,29 @@ struct PPMarketplaceBackControl: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color(uiColor: accent))
                 .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial, in: Circle())
+                .background {
+                    if !isEmbedded {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                    }
+                }
                 .overlay {
-                    Circle()
-                        .strokeBorder(
-                            Color(uiColor: accent).opacity(0.20),
-                            lineWidth: 1
-                        )
+                    if !isEmbedded {
+                        Circle()
+                            .strokeBorder(
+                                Color(uiColor: accent).opacity(0.20),
+                                lineWidth: 1
+                            )
+                    }
                 }
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .shadow(color: Color.black.opacity(0.08), radius: 10, y: 5)
+        .shadow(
+            color: isEmbedded ? .clear : Color.black.opacity(0.08),
+            radius: 10,
+            y: 5
+        )
         .accessibilityLabel(PPMarketplaceText.localized("Back"))
         .accessibilityIdentifier("pp.marketplace.back")
     }
@@ -605,7 +661,6 @@ private struct PPMarketplaceHeroWave: View {
 @available(iOS 15.0, *)
 private struct PPMarketplaceSectionGlyphPlate: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
-    let sectionGlyphSurfaceOpacity: Double
     let reduceMotion: Bool
     let isAccessibilitySize: Bool
 
@@ -623,20 +678,6 @@ private struct PPMarketplaceSectionGlyphPlate: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .fill(
-                    Color(uiColor: store.accentColor).opacity(
-                        sectionGlyphSurfaceOpacity
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                        .strokeBorder(
-                            Color(uiColor: store.accentColor).opacity(isGlowing ? 0.38 : 0.14),
-                            lineWidth: 0.9
-                        )
-                }
-
             Image(systemName: activeIconName)
                 .font(.system(
                     size: isAccessibilitySize ? 24 : 20,
@@ -689,41 +730,31 @@ private struct PPMarketplaceSectionGlyphPlate: View {
 private struct PPMarketplaceSmartContextPill: View {
     let title: String
     let subtitle: String
-    let systemImageName: String
     let accessibilityLabel: String
     let accent: UIColor
     let isEnabled: Bool
     let action: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         Button(action: handleTap) {
-            HStack(spacing: 6) {
-                Image(systemName: resolvedSystemImageName)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(accentColor)
-                    .frame(width: 18, height: 18)
-                    .accessibilityHidden(true)
-
+            HStack(spacing: PPSpace.xs) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title)
                         .font(HomeFont.bold(12.8))
                         .foregroundStyle(Color.ppMarketplaceTextPrimary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                         .truncationMode(.tail)
-                        .minimumScaleFactor(0.75)
-                        .allowsTightening(true)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     if !subtitle.isEmpty {
                         Text(subtitle)
                             .font(HomeFont.medium(10.4))
                             .foregroundStyle(Color.ppMarketplaceTextSecondary)
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                             .truncationMode(.tail)
-                            .minimumScaleFactor(0.8)
-                            .allowsTightening(true)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -737,34 +768,8 @@ private struct PPMarketplaceSmartContextPill: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.leading, 9)
-        .padding(.trailing, 6)
-        .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44, alignment: .leading)
-        .background {
-            pillShape
-                .fill(Color.white.opacity(baseSurfaceOpacity))
-
-            pillShape
-                .fill(accentColor.opacity(accentSurfaceOpacity))
-        }
-        .overlay {
-            pillShape
-                .strokeBorder(
-                    Color.white.opacity(
-                        contrast == .increased
-                            ? (colorScheme == .dark ? 0.28 : 0.92)
-                            : (colorScheme == .dark ? 0.16 : 0.72)
-                    ),
-                    lineWidth: contrast == .increased ? 1.5 : 1 / UIScreen.main.scale
-                )
-        }
-        .shadow(
-            color: contrast == .increased
-                ? .clear
-                : accentColor.opacity(colorScheme == .dark ? 0.10 : 0.055),
-            radius: 10,
-            y: 4
-        )
+        .padding(.horizontal, PPSpace.sm)
+        .frame(maxWidth: .infinity, minHeight: 44, maxHeight: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             accessibilityLabel.isEmpty ? title : accessibilityLabel
@@ -781,27 +786,12 @@ private struct PPMarketplaceSmartContextPill: View {
         Color(uiColor: accent)
     }
 
-    private var resolvedSystemImageName: String {
-        systemImageName.isEmpty ? "slider.horizontal.3" : systemImageName
-    }
-
-    private var baseSurfaceOpacity: Double {
-        colorScheme == .dark ? 0.105 : 0.72
-    }
-
-    private var accentSurfaceOpacity: Double {
-        colorScheme == .dark ? 0.22 : 0.075
-    }
-
     private func handleTap() {
         guard isEnabled else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         action()
     }
 
-    private var pillShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-    }
 }
 
 @available(iOS 15.0, *)

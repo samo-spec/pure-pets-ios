@@ -854,6 +854,101 @@ static UIViewController *PPAccessoryResolvedPresenter(
                 completion:completion];
 }
 
++ (void)beginDirectCheckoutForAccessory:(PetAccessory *)accessory
+                               quantity:(NSInteger)quantity
+                     fromViewController:(UIViewController *)viewController
+                             completion:(void (^)(PPAccessoryCartResultCode))completion
+{
+    [PPCommerceFeedbackManager.shared
+     playEvent:PPCommerceFeedbackEventPaymentAction];
+
+    void (^finish)(PPAccessoryCartResultCode) =
+        ^(PPAccessoryCartResultCode result) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(result);
+        });
+    };
+
+    NSString *accessoryID =
+        PPAccessoryBridgeTrimmedString(accessory.accessoryID);
+    if (![accessory isKindOfClass:PetAccessory.class] ||
+        accessoryID.length == 0 ||
+        [self isAccessoryUnavailable:accessory]) {
+        [PPCommerceFeedbackManager.shared
+         playEvent:PPCommerceFeedbackEventPaymentFailure];
+        finish(PPAccessoryCartResultCodeUnavailable);
+        return;
+    }
+
+    if (![self isNetworkAvailable]) {
+        UIViewController *presenter =
+            PPAccessoryResolvedPresenter(viewController);
+        [PPAlertHelper showWarningIn:presenter
+                              title:[self localizedTextForKey:
+                                     @"offline_action_title"
+                                                          fallback:@"You're offline"]
+                           subtitle:[self localizedTextForKey:
+                                     @"offline_action_message"
+                                                          fallback:@"Check your connection and try again."]
+                         completion:nil];
+        finish(PPAccessoryCartResultCodeOffline);
+        return;
+    }
+
+    if (![self isSignedIn]) {
+        [PPCommerceFeedbackManager.shared
+         playEvent:PPCommerceFeedbackEventPaymentFailure];
+        [UserManager showPromptOnTopController];
+        finish(PPAccessoryCartResultCodeAuthenticationRequired);
+        return;
+    }
+
+    NSInteger requestedQuantity = MAX(quantity, 0);
+    NSInteger availableStock = MAX(accessory.quantity, 0);
+    if (requestedQuantity <= 0 ||
+        availableStock <= 0 ||
+        requestedQuantity > availableStock) {
+        [PPCommerceFeedbackManager.shared
+         playEvent:PPCommerceFeedbackEventPaymentFailure];
+        UIViewController *presenter =
+            PPAccessoryResolvedPresenter(viewController);
+        UIAlertController *alert =
+            [UIAlertController
+             alertControllerWithTitle:
+                [self localizedTextForKey:@"Out of stock"
+                                 fallback:@"Out of stock"]
+             message:nil
+             preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:
+            [UIAlertAction
+             actionWithTitle:[self localizedTextForKey:@"OK" fallback:@"OK"]
+             style:UIAlertActionStyleDefault
+             handler:nil]];
+        [presenter presentViewController:alert animated:YES completion:nil];
+        finish(PPAccessoryCartResultCodeOutOfStock);
+        return;
+    }
+
+    CartItem *item =
+        [[CartItem alloc] initWithAccessory:accessory
+                                    quantity:requestedQuantity];
+    UIViewController *presenter =
+        PPAccessoryResolvedPresenter(viewController);
+    UIViewController *routeSource =
+        presenter.navigationController ? presenter : viewController;
+    BOOL didOpen =
+        [PPSelectPaymentVC pushFromViewController:routeSource
+                                     checkoutItems:@[item]];
+    if (!didOpen) {
+        [PPCommerceFeedbackManager.shared
+         playEvent:PPCommerceFeedbackEventPaymentFailure];
+        finish(PPAccessoryCartResultCodeFailed);
+        return;
+    }
+
+    finish(PPAccessoryCartResultCodeSuccess);
+}
+
 + (void)pp_addAccessory:(PetAccessory *)accessory
                 quantity:(NSInteger)quantity
       fromViewController:(UIViewController *)viewController

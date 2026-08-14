@@ -295,6 +295,100 @@ final class PPAccessoryViewerStore: ObservableObject {
         checkoutPhase = .openingPayment
     }
 
+    /// Opens payment for an immutable snapshot of the visible accessory and
+    /// selected quantity. The shared cart is not prepared, synchronized, or
+    /// used as the payment payload.
+    func openDirectCheckout(quantity requestedQuantity: Int) async throws {
+        guard let accessory,
+              let snapshot,
+              snapshot.showsCart,
+              !snapshot.isUnavailable,
+              isPurchaseDataCurrent,
+              !isCheckoutProcessing,
+              requestedQuantity > 0,
+              requestedQuantity <= max(snapshot.quantity, 0),
+              let presenter else {
+            throw PPAccessoryCartError.unavailable
+        }
+
+        guard PPAccessoryViewerLegacyBridge.isNetworkAvailable() else {
+            bannerMessage = PPAccessoryViewerL10n.text(
+                "accessory_view_cart_offline"
+            )
+            throw PPAccessoryCartError.offline
+        }
+
+        guard PPAccessoryViewerLegacyBridge.isSignedIn() else {
+            PPAccessoryViewerLegacyBridge.presentSignIn(
+                from: presenter
+            ) { _ in }
+            throw CancellationError()
+        }
+
+        checkoutPhase = .openingPayment
+        return try await withCheckedThrowingContinuation { continuation in
+            PPAccessoryViewerLegacyBridge.beginDirectCheckout(
+                accessory,
+                quantity: requestedQuantity,
+                from: presenter
+            ) { [weak self] result in
+                Task { @MainActor in
+                    guard let self else {
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                        return
+                    }
+
+                    switch result {
+                    case .success:
+                        continuation.resume()
+                    case .cancelled, .authenticationRequired:
+                        self.checkoutPhase = .ready
+                        continuation.resume(throwing: CancellationError())
+                    case .offline:
+                        self.checkoutPhase = .ready
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "accessory_view_cart_offline"
+                        )
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.offline
+                        )
+                    case .outOfStock:
+                        self.checkoutPhase = .ready
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "Out of stock"
+                        )
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.outOfStock
+                        )
+                    case .unavailable:
+                        self.checkoutPhase = .ready
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "accessory_view_item_unavailable"
+                        )
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.unavailable
+                        )
+                    case .failed:
+                        self.checkoutPhase = .routeFailed
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "accessory_view_direct_checkout_route_failed"
+                        )
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                    @unknown default:
+                        self.checkoutPhase = .routeFailed
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     func payNow() {
         guard !isCheckoutProcessing, cartPhase != .processing else { return }
 

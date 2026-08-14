@@ -11,6 +11,7 @@
 
 @class PPOrder;
 @class PPAddressModel;
+@class CartItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -38,6 +39,8 @@ typedef void (^PPCheckoutCompletion)(PPCheckoutResult result, PPOrder * _Nullabl
 @property (nonatomic, strong, readonly) PPOrder *currentOrder;
 
 - (instancetype)initWithPresentingViewController:(UIViewController *)viewController;
+- (instancetype)initWithPresentingViewController:(UIViewController *)viewController
+                                   checkoutItems:(nullable NSArray<CartItem *> *)checkoutItems;
 
 - (void)startCheckoutWithCompletion:(PPCheckoutCompletion)completion;
 - (void)startCheckoutWithAddress:(PPAddressModel * _Nullable)address

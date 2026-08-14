@@ -116,7 +116,7 @@ public struct PPCommerceCartActions: Sendable {
 public struct PPCommerceCartCopy: Equatable, Sendable {
     public var addToCart = "أضف إلى السلة"
     public var adding = "تتم الإضافة"
-    public var payNow = "ادفع الآن"
+    public var payNow = "اشترِ الآن"
     public var paying = "لحظة"
     public var paid = "تم"
     public var quantity = "الكمية"
@@ -180,18 +180,31 @@ public struct PPCommerceCartTheme: Sendable {
 
 private enum PPCommerceCartMetrics {
     // Fixed two-row geometry; accessibility reflows through `expandedLayout`.
-    static let holderHeight: CGFloat = 112
-    static let holderRadius: CGFloat = 26
-    static let controlHeight: CGFloat = 44
-    static let controlRadius: CGFloat = 18
-    static let cartWidth: CGFloat = 48
-    static let quantityWidth: CGFloat = 108
-    static let payWidth: CGFloat = 88
-    static let thumbnailSize: CGFloat = 44
+    static let controlHeight: CGFloat =
+        PPBottomDecisionBarGeometry.controlHeight - PPSpace.sm
+    static let controlRadius: CGFloat =
+        PPBottomDecisionBarGeometry.controlRadius
+    static let spacing: CGFloat = PPBottomDecisionBarGeometry.controlSpacing
+    static let verticalSpacing: CGFloat = PPSpace.sm
+    static let holderPadding: CGFloat = PPSpace.md
+    static let holderHeight: CGFloat =
+        (controlHeight * 2) + verticalSpacing + (holderPadding * 2)
+    static let holderRadius: CGFloat =
+        PPBottomDecisionBarGeometry.surfaceRadius
+    static let cartWidth: CGFloat =
+        PPBottomDecisionBarGeometry.utilityControlSize
+    static let quantityWidth: CGFloat =
+        (PPBottomDecisionBarGeometry.utilityControlSize * 2) + PPSpace.sm
+    static let quantityButtonWidth: CGFloat = 44
+    static let quantityValueWidth: CGFloat =
+        quantityWidth - (quantityButtonWidth * 2)
+    static let payWidth: CGFloat = PPSpace.xxxxl * 2
+    static let thumbnailSize: CGFloat = controlHeight - PPSpace.xs
     static let minimumStandardWidth: CGFloat = 356
-    static let spacing: CGFloat = 6
-    static let verticalSpacing: CGFloat = 6
-    static let holderPadding: CGFloat = 6
+    static let summaryHorizontalPadding: CGFloat = PPSpace.sm
+    /// The parent preserves its safe-area contract; this modest expansion uses
+    /// part of that existing inset to give the holder more visual authority.
+    static let widthExpansion: CGFloat = PPSpace.sm
 }
 
 @available(iOS 16.0, *)
@@ -316,6 +329,7 @@ public struct PPCommerceCartHolder<Thumbnail: View>: View {
         .onDisappear {
             cancelOperations(restoreConfirmedQuantity: true)
         }
+        .padding(.horizontal, -Metrics.widthExpansion)
         .accessibilityIdentifier("pp.commerce.holder")
     }
 }
@@ -340,7 +354,7 @@ private extension PPCommerceCartHolder {
     @ViewBuilder
     private var expandedLayout: some View {
         holderSurface {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: PPSpace.md) {
                 productSummary
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -358,7 +372,7 @@ private extension PPCommerceCartHolder {
                     }
                 }
             }
-            .padding(10)
+            .padding(Metrics.holderPadding)
         }
         .frame(maxWidth: .infinity)
     }
@@ -393,31 +407,29 @@ private extension PPCommerceCartHolder {
 
     @ViewBuilder
     private var productSummary: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Metrics.spacing) {
             thumbnail
                 .frame(width: Metrics.thumbnailSize, height: Metrics.thumbnailSize)
                 .background(Color(uiColor: .tertiarySystemFill))
                 .clipShape(Circle())
                 .overlay {
                     Circle()
-                        .stroke(
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.18 : 0.92
-                            ),
-                            lineWidth: 2
+                        .strokeBorder(
+                            theme.outline.opacity(subviewBorderOpacity),
+                            lineWidth: borderWidth
                         )
                 }
-                .shadow(color: Color.black.opacity(0.10), radius: 8, y: 4)
+                .shadow(color: Color.black.opacity(0.08), radius: 5, y: 2)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: PPSpace.xxs) {
                 Text(item.title)
                     .font(PPAccessoryTypography.captionBold)
                     .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-                HStack(spacing: 3) {
+                HStack(spacing: PPSpace.xs) {
                     Image(systemName: "checkmark.circle.fill")
                         .imageScale(.small)
                     Text(item.availabilityText)
@@ -439,6 +451,27 @@ private extension PPCommerceCartHolder {
                 .transition(numberTransition)
         }
         .frame(minWidth: 0, minHeight: Metrics.controlHeight)
+        .padding(.horizontal, Metrics.summaryHorizontalPadding)
+        .background(
+            Color(uiColor: .systemBackground)
+                .opacity(colorScheme == .dark ? 0.72 : 0.86)
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: Metrics.controlRadius,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: Metrics.controlRadius,
+                style: .continuous
+            )
+            .strokeBorder(
+                theme.outline.opacity(subviewBorderOpacity),
+                lineWidth: borderWidth
+            )
+        }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
@@ -466,7 +499,7 @@ private extension PPCommerceCartHolder {
                     .id(displayQuantity)
                     .transition(numberTransition)
             }
-            .frame(width: 20)
+            .frame(width: Metrics.quantityValueWidth)
             .accessibilityHidden(true)
 
             quantityButton(
@@ -494,7 +527,7 @@ private extension PPCommerceCartHolder {
                 Capsule()
                     .fill(theme.brand)
                     .frame(width: 18, height: 2)
-                    .padding(.bottom, 4)
+                    .padding(.bottom, PPSpace.xs)
                     .transition(.opacity)
             }
         }
@@ -520,7 +553,10 @@ private extension PPCommerceCartHolder {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 17, weight: .bold))
-                .frame(width: 44, height: 44)
+                .frame(
+                    width: Metrics.quantityButtonWidth,
+                    height: Metrics.controlHeight
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
@@ -542,7 +578,7 @@ private extension PPCommerceCartHolder {
                 requestQuantity(displayQuantity + 1)
             }
         } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: Metrics.spacing) {
                 if criticalPhase == .adding {
                     ProgressView()
                         .controlSize(.small)
@@ -556,7 +592,7 @@ private extension PPCommerceCartHolder {
                     .font(PPAccessoryTypography.bodyBold)
                     .lineLimit(needsExpandedLayout ? 2 : 1)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, PPSpace.md)
             .frame(maxWidth: .infinity)
             .frame(minHeight: Metrics.controlHeight)
             .contentShape(Rectangle())
@@ -567,7 +603,10 @@ private extension PPCommerceCartHolder {
         .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.24), lineWidth: 1)
+                .strokeBorder(
+                    Color.white.opacity(primaryControlBorderOpacity),
+                    lineWidth: borderWidth
+                )
         }
         .shadow(color: theme.brand.opacity(0.20), radius: 9, y: 5)
         .disabled(
@@ -585,7 +624,7 @@ private extension PPCommerceCartHolder {
     @ViewBuilder
     private func payButton(minimumWidth: CGFloat, maximumWidth: CGFloat) -> some View {
         Button(action: beginPayment) {
-            HStack(spacing: 5) {
+            HStack(spacing: PPSpace.xs) {
                 switch criticalPhase {
                 case .paying:
                     ProgressView()
@@ -602,7 +641,12 @@ private extension PPCommerceCartHolder {
             }
             .font(PPAccessoryTypography.calloutBold)
             .lineLimit(needsExpandedLayout ? 2 : 1)
-            .padding(.horizontal, maximumWidth == Metrics.payWidth ? 7 : 12)
+            .padding(
+                .horizontal,
+                maximumWidth == Metrics.payWidth
+                    ? Metrics.spacing
+                    : PPSpace.md
+            )
             .frame(minWidth: minimumWidth, maxWidth: maximumWidth)
             .frame(minHeight: Metrics.controlHeight)
             .contentShape(Rectangle())
@@ -613,7 +657,10 @@ private extension PPCommerceCartHolder {
         .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.24), lineWidth: 1)
+                .strokeBorder(
+                    Color.white.opacity(primaryControlBorderOpacity),
+                    lineWidth: borderWidth
+                )
         }
         .shadow(
             color: (criticalPhase == .paid ? theme.success : theme.brand).opacity(0.20),
@@ -669,7 +716,7 @@ private extension PPCommerceCartHolder {
     }
 
     private func feedbackBanner(_ feedback: Feedback) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Metrics.spacing) {
             Image(systemName: feedback.kind == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .foregroundStyle(feedback.kind == .success ? theme.success : Color.orange)
 
@@ -702,15 +749,15 @@ private extension PPCommerceCartHolder {
             .foregroundStyle(Color.white.opacity(0.86))
             .accessibilityLabel(Text(verbatim: copy.dismiss))
         }
-        .padding(.leading, 13)
-        .padding(.trailing, 2)
+        .padding(.leading, PPSpace.md)
+        .padding(.trailing, PPSpace.xs)
         .background(Color.black.opacity(reduceTransparency ? 1 : 0.92))
         .clipShape(Capsule())
         .overlay {
             Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
         }
         .shadow(color: Color.black.opacity(0.16), radius: 12, y: 6)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, PPSpace.sm)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("pp.commerce.feedback")
     }
@@ -1014,11 +1061,22 @@ private extension PPCommerceCartHolder {
     }
 
     var borderOpacity: Double {
-        accessibilityContrast == .increased ? 0.34 : 0.12
+        if accessibilityContrast == .increased { return 0.50 }
+        return colorScheme == .dark ? 0.30 : 0.20
+    }
+
+    var primaryControlBorderOpacity: Double {
+        accessibilityContrast == .increased ? 0.44 : 0.24
+    }
+
+    var subviewBorderOpacity: Double {
+        if accessibilityContrast == .increased { return 0.54 }
+        return colorScheme == .dark ? 0.34 : 0.22
     }
 
     var holderBorderOpacity: Double {
-        accessibilityContrast == .increased ? 0.48 : 0.22
+        if accessibilityContrast == .increased { return 0.64 }
+        return colorScheme == .dark ? 0.42 : 0.30
     }
 }
 

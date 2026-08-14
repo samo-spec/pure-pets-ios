@@ -9,6 +9,7 @@
 #import "PPCheckoutCoordinator.h"
 
 #import "CartManager.h"
+#import "CartItem.h"
 #import "PPCartCalculator.h"
 #import "PPOrderManager.h"
 #import "PPPaymentManager.h"
@@ -32,6 +33,8 @@
 @property (nonatomic, copy) PPCheckoutCompletion completion;
 
 @property (nonatomic, strong) PPOrder *currentOrder;
+@property (nonatomic, copy, nullable) NSArray<CartItem *> *explicitCheckoutItems;
+@property (nonatomic, assign) BOOL hasLockedSharedCart;
 @property (nonatomic, strong, nullable) PPAddressModel *selectedAddress;
 @property (nonatomic, copy) NSString *selectedPaymentMethodId;
 @property (nonatomic, strong) id<FIRListenerRegistration> orderListener;
@@ -67,6 +70,8 @@
 - (void)pp_prepareOrderForRetryAfterLaunchFailureForOrder:(PPOrder *)order
                                                generation:(NSInteger)generation
                                                completion:(dispatch_block_t)completion;
+- (NSArray<CartItem *> *)pp_checkoutItems;
+- (BOOL)pp_usesExplicitCheckoutItems;
 
 @end
 
@@ -296,11 +301,31 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 
 - (instancetype)initWithPresentingViewController:(UIViewController *)viewController
 {
+    return [self initWithPresentingViewController:viewController
+                                    checkoutItems:nil];
+}
+
+- (instancetype)initWithPresentingViewController:(UIViewController *)viewController
+                                   checkoutItems:(NSArray<CartItem *> * _Nullable)checkoutItems
+{
     self = [super init];
     if (self) {
         _presentingVC = viewController;
+        _explicitCheckoutItems = checkoutItems.count > 0
+            ? checkoutItems.copy
+            : nil;
     }
     return self;
+}
+
+- (NSArray<CartItem *> *)pp_checkoutItems
+{
+    return self.explicitCheckoutItems ?: CartManager.sharedManager.cartItems;
+}
+
+- (BOOL)pp_usesExplicitCheckoutItems
+{
+    return self.explicitCheckoutItems.count > 0;
 }
 
 - (BOOL)pp_isCheckoutGenerationCurrent:(NSInteger)generation
@@ -579,9 +604,11 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
           self.checkoutIdempotencyKey.length > 0);
 
     CartManager *cart = CartManager.sharedManager;
+    NSArray<CartItem *> *checkoutItems = [self pp_checkoutItems];
 
-    // 1️⃣ Validate cart
-    if (cart.isCartEmpty) {
+    // 1️⃣ Validate the checkout snapshot. Direct Buy Now keeps this array
+    // detached from CartManager so an unrelated cart remains untouched.
+    if (checkoutItems.count == 0) {
         PPORDERLog(@"Checkout blocked | reason=cart_empty");
         NSError *error = [NSError errorWithDomain:@"Checkout"
                                              code:1001
@@ -592,27 +619,34 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 
     self.isCheckoutInProgress = YES;
 
-    PPCartSummary *checkoutSummary = [PPCartCalculator currentSummary];
+    double shippingFee = MAX(0.0, cart.deliveryFee);
+    PPCartSummary *checkoutSummary =
+        [PPCartCalculator summaryForItems:checkoutItems shippingFee:shippingFee];
     double cartSubtotal = checkoutSummary.subtotal;
     double cartTotal = checkoutSummary.finalTotal;
 
-    [PPCartCalculator logDetailedSummary:checkoutSummary items:cart.cartItems];
+    [PPCartCalculator logDetailedSummary:checkoutSummary items:checkoutItems];
 
-    PPORDERLog(@"Cart validated | generation=%ld | items=%lu | subtotal=%.2f | total=%.2f | paymentMethod=%@ | addressId=%@",
+    PPORDERLog(@"Checkout validated | generation=%ld | items=%lu | subtotal=%.2f | total=%.2f | paymentMethod=%@ | addressId=%@",
                (long)generation,
-               (unsigned long)cart.cartItems.count,
+               (unsigned long)checkoutItems.count,
                cartSubtotal,
                cartTotal,
                self.selectedPaymentMethodId ?: @"",
                self.selectedAddress.documentID ?: self.selectedAddress.addressID ?: @"");
 
-    [PPAnalytics logBeginCheckoutWithCartItems:cart.cartItems grandTotal:cartTotal];
+    [PPAnalytics logBeginCheckoutWithCartItems:checkoutItems grandTotal:cartTotal];
 
-    // 2️⃣ Lock cart
-    [cart setValue:@(YES) forKey:@"_isLocked"];
-    PPORDERLog(@"Cart locked | generation=%ld", (long)generation);
+    // 2️⃣ The persistent cart is only locked for legacy cart checkout.
+    if ([self pp_usesExplicitCheckoutItems]) {
+        PPORDERLog(@"Scoped checkout retained shared cart | generation=%ld", (long)generation);
+    } else {
+        [cart setValue:@(YES) forKey:@"_isLocked"];
+        self.hasLockedSharedCart = YES;
+        PPORDERLog(@"Cart locked | generation=%ld", (long)generation);
+    }
 
-    NSArray<NSDictionary *> *items = [cart.cartItems valueForKey:@"firestoreDictionary"];
+    NSArray<NSDictionary *> *items = [checkoutItems valueForKey:@"firestoreDictionary"];
 
     // 3️⃣ Live stock validation before payment
     PPORDERLog(@"Validating live inventory | generation=%ld", (long)generation);
@@ -986,8 +1020,9 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 
     PPORDERLog(@"Checkout success | generation=%ld | orderId=%@", (long)generation, self.currentOrder.orderId ?: @"");
 
+    NSArray<CartItem *> *checkoutItems = [self pp_checkoutItems];
     [PPAnalytics logPurchaseWithTransactionID:(self.currentOrder.orderId ?: @"")
-                                    cartItems:CartManager.sharedManager.cartItems
+                                    cartItems:checkoutItems
                                    grandTotal:self.currentOrder.totalAmount];
 
     // Order placed — clear idempotency key so any future checkout gets a fresh key.
@@ -1000,7 +1035,9 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     }
 
     [self cleanup];
-    [CartManager.sharedManager clearCart];
+    if (![self pp_usesExplicitCheckoutItems]) {
+        [CartManager.sharedManager clearCart];
+    }
 
     if (self.completion) {
         self.completion(PPCheckoutResultSuccess, self.currentOrder, nil);
@@ -1156,8 +1193,11 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     
     // H-08: Stop listening for app-resume when checkout is no longer active.
     [self pp_unregisterForAppResumeNotification];
-    
-    [CartManager.sharedManager setValue:@(NO) forKey:@"_isLocked"];
+
+    if (self.hasLockedSharedCart) {
+        [CartManager.sharedManager setValue:@(NO) forKey:@"_isLocked"];
+        self.hasLockedSharedCart = NO;
+    }
     self.isCheckoutInProgress = NO;
     self.selectedPaymentMethodId = @"";
 }

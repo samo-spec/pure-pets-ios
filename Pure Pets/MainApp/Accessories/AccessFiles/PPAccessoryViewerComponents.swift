@@ -3178,8 +3178,8 @@ struct PPAccessoryPersistentDecisionBar: View {
             updateQuantity: { quantity in
                 try await store.updateCartQuantity(quantity)
             },
-            pay: { _ in
-                try await store.openCartCheckout()
+            pay: { quantity in
+                try await store.openDirectCheckout(quantity: quantity)
             },
             openCart: {
                 store.openCart()
@@ -3195,7 +3195,7 @@ struct PPAccessoryPersistentDecisionBar: View {
         copy.adding = PPAccessoryViewerL10n.text(
             "accessory_view_adding_to_cart"
         )
-        copy.payNow = PPAccessoryViewerL10n.text("payment_pay_now")
+        copy.payNow = PPAccessoryViewerL10n.text("accessory_view_buy_now")
         copy.paying = PPAccessoryViewerL10n.text(
             "accessory_view_opening_payment"
         )

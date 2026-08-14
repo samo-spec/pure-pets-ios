@@ -304,7 +304,7 @@
 "archiveEmptyDesc" = "عفوا لم إضافة بيانات للارشيف  ";
 "archiveEmptyTitle" = "الارشيف";
 "archiveName" = "اسم الارشيف";
-"ask" = "يمكنك سؤال Pure Pets عن أي شيء يخص الحيوانات الأليفة";
+"ask" = "يمكنك سؤال بيور بتس عن أي شيء يخص الحيوانات الأليفة";
 "attribute" = "الصفة";
 "attributeNote" = "الفئه اللونية الاخري";
 "attributeNotePlace" = "اكتب الفئه اللونية الاخري";
@@ -3390,13 +3390,16 @@
 "home_marketplace_hero_category_accessibility_label_format" = "%@. منتجات وخدمات وإعلانات مناسبة من مزودين موثوقين.";
 "home_marketplace_signal_marketplace_items_label" = "منتجات المتجر";
 "home_marketplace_signal_services_label" = "الخدمات";
-"home_marketplace_signal_pet_ads_label" = "إعلانات الحيوانات الأليفة";
+"home_marketplace_signal_pet_ads_label" = "إعلانات الحيوانات";
 "home_marketplace_signal_marketplace_items_compact_label" = "المنتجات";
 "home_marketplace_signal_services_compact_label" = "الخدمات";
 "home_marketplace_signal_pet_ads_compact_label" = "الإعلانات";
 "home_marketplace_signal_live_count_hint" = "يعرض العدد المتاح الآن للفئة المختارة. اضغط للتحديث.";
 "home_marketplace_signal_idle" = "جارٍ تجهيز العدد…";
 "home_marketplace_signal_category_required" = "اختر فئة الحيوان لعرض الأعداد المباشرة.";
+"home_marketplace_signal_all_scope" = "الكل";
+"home_marketplace_signal_all_scope_accessibility" = "كل الفئات";
+"home_marketplace_signal_all_scope_hint" = "اختر فئة لعرض عددها المباشر.";
 "home_marketplace_signal_loading" = "جارٍ تحميل العدد…";
 "home_marketplace_signal_available_count_format" = "المتاح الآن: %ld";
 "home_marketplace_signal_unavailable_retry" = "تعذّر تحميل العدد. اضغط للمحاولة مجدداً.";
@@ -3911,6 +3914,7 @@
 "accessory_view_add_failed" = "تعذّرت الإضافة";
 "accessory_view_add_accessibility_format" = "%@، %@";
 "accessory_view_add_to_cart" = "أضف إلى السلة";
+"accessory_view_buy_now" = "اشترِ الآن";
 "accessory_view_add_to_cart_hint" = "يضيف الكمية المحددة وفق قواعد المخزون والسلة الحالية.";
 "accessory_view_adding_to_cart" = "جارِ الإضافة…";
 "accessory_view_cart_count_format" = "عناصر السلة: %ld";
@@ -3991,8 +3995,9 @@
 "accessory_view_checkout_provider_switch_note" = "ستؤكد استبدال سلة البائع الحالية أولًا، ثم تراجع التوصيل والإجمالي النهائي.";
 "accessory_view_preparing_checkout" = "جارٍ مزامنة سلتك…";
 "accessory_view_opening_payment" = "جارٍ فتح خيارات الدفع…";
-"accessory_view_pay_now_hint" = "يضيف اختيارك وفق قواعد السلة الحالية، ثم يفتح خيارات الدفع.";
+"accessory_view_pay_now_hint" = "يفتح خيارات الدفع لهذا المنتج والكمية المحددة دون تعديل السلة.";
 "accessory_view_checkout_route_failed" = "تم حفظ اختيارك في السلة، لكن تعذر فتح خيارات الدفع. تابع دون إضافته مرة أخرى.";
+"accessory_view_direct_checkout_route_failed" = "تعذر فتح خيارات الدفع. لم تتغير سلتك.";
 "accessory_view_checkout_sync_failed" = "تعذرت مزامنة سلتك مع حسابك. لم تتم إضافة شيء جديد؛ تحقق من اتصالك وحاول مجددًا.";
 "accessory_view_checkout_ready_title" = "سلتك جاهزة";
 "accessory_view_checkout_ready_message" = "اختيارك محفوظ في السلة بالفعل. تابع إلى الدفع دون إضافته مرة أخرى.";

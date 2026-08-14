@@ -779,9 +779,14 @@ private enum PPHomeLivingLedgerMetrics {
     static let standardCategoryHeight: CGFloat =
         standardLedgerHeight * standardArtworkScale
     static let standardOuterInset: CGFloat = PPSpace.base
+    static let standardTrailingInset: CGFloat = PPSpace.xl
     static let accessibilityIdentityHeight: CGFloat = 64
     static let portraitMaximum: CGFloat = 94 * standardArtworkScale
     static let accessibilityPortraitMaximum: CGFloat = 58
+    /// These affect only the centered layers inside the existing aperture.
+    /// The plate's outer width and height remain unchanged.
+    static let identityArtworkScale: CGFloat = 1.06
+    static let identityWashScale: CGFloat = 1.10
     static let maximumReadableWidth: CGFloat = 480
     static let ledgerCorner: CGFloat = PPCorner.card
     static let rowHorizontalPadding: CGFloat = PPSpace.md
@@ -791,8 +796,9 @@ private enum PPHomeLivingLedgerMetrics {
 
 /// Pure Pets' pet-first live index. The category portrait establishes scope at
 /// a glance; one continuous ledger exposes products, services, and listings.
-/// Each row retains its existing refresh/retry action, while navigation remains
-/// owned by the hero's primary and secondary actions below.
+/// Selected-category rows retain their existing refresh/retry action. In the
+/// All scope they become honest informational rows rather than disabled
+/// controls, while navigation stays owned by the hero actions below.
 @available(iOS 15.0, *)
 private struct PPHomeMarketplaceLivingLedger: View {
     let page: HomeHeroPage
@@ -834,7 +840,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
         GeometryReader { proxy in
             let geometry = StandardGeometry(size: proxy.size)
 
-            HStack(alignment: .top, spacing: geometry.horizontalGap) {
+            HStack(alignment: .bottom, spacing: geometry.horizontalGap) {
                 categoryAperture(
                     width: geometry.identityWidth,
                     height: geometry.categoryHeight,
@@ -905,6 +911,12 @@ private struct PPHomeMarketplaceLivingLedger: View {
             portraitMaximum,
             max(44, min(width * 0.84, height * 0.82))
         )
+        let artworkSide = portraitSide *
+            PPHomeLivingLedgerMetrics.identityArtworkScale
+        let washWidth = portraitSide * 0.76 *
+            PPHomeLivingLedgerMetrics.identityWashScale
+        let washHeight = portraitSide * 0.92 *
+            PPHomeLivingLedgerMetrics.identityWashScale
         let apertureShape = RoundedRectangle(
             cornerRadius: min(PPCorner.large, height * 0.34),
             style: .continuous
@@ -937,13 +949,16 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 Ellipse()
                     .fill(accent.opacity(identityWashOpacity))
                     .frame(
-                        width: portraitSide * 0.76,
-                        height: portraitSide * 0.92
+                        width: washWidth,
+                        height: washHeight
                     )
 
-                identityArtwork(side: portraitSide)
+                identityArtwork(side: artworkSide)
             }
-            .frame(width: portraitSide, height: portraitSide)
+            .frame(
+                width: max(artworkSide, washWidth),
+                height: max(artworkSide, washHeight)
+            )
 
             Capsule()
                 .fill(accent.opacity(contrast == .increased ? 0.92 : 0.68))
@@ -981,7 +996,18 @@ private struct PPHomeMarketplaceLivingLedger: View {
 
     @ViewBuilder
     private func identityArtwork(side: CGFloat) -> some View {
-        if let imageURL = selectedCategoryURL {
+        if signals.categoryID == nil {
+            // Reuse the original Home hero's local marketplace animation and
+            // UIKit bridge. The bridge owns its loop and stops automatically
+            // off-window, in the background, and when Reduce Motion is active.
+            HomeHeroLottieRepresentable(
+                animationName: "Shop2.json",
+                loadsFromFirebase: false,
+                playbackEnabled: !motionSuppressed,
+                tintColor: UIColor(accent)
+            )
+            .frame(width: side, height: side)
+        } else if let imageURL = selectedCategoryURL {
             AppRemoteImage(
                 urlString: imageURL,
                 displaySize: CGSize(width: side, height: side),
@@ -1123,89 +1149,118 @@ private struct PPHomeMarketplaceLivingLedger: View {
             .accessibilityHidden(true)
     }
 
+    @ViewBuilder
     private func signalRow(
         kind: HomeMarketplaceSignalKind,
         compactRows: Bool
     ) -> some View {
         let tone = routeTone(for: kind)
 
-        return Button {
-            onSelectSignal(kind)
-        } label: {
-            HStack(spacing: rowSpacing(compactRows: compactRows)) {
-                signalNode(for: kind, tone: tone)
+        if signals.categoryID == nil {
+            signalRowContent(
+                kind: kind,
+                tone: tone,
+                compactRows: compactRows
+            )
+            .opacity(signalRowPresented(kind) ? 1 : 0.26)
+            .offset(
+                x: signalRowPresented(kind)
+                    ? 0
+                    : logicalOffset(-PPSpace.sm)
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(signalLabel(for: kind))
+            .accessibilityValue(accessibilityValue(for: kind))
+            .accessibilityHint(signalHint(for: kind))
+            .accessibilitySortPriority(accessibilityPriority(for: kind))
+        } else {
+            Button {
+                onSelectSignal(kind)
+            } label: {
+                signalRowContent(
+                    kind: kind,
+                    tone: tone,
+                    compactRows: compactRows
+                )
+            }
+            .buttonStyle(
+                PPHomeSurfacePressStyle(reduceMotion: motionSuppressed)
+            )
+            .opacity(signalRowPresented(kind) ? 1 : 0.26)
+            .offset(
+                x: signalRowPresented(kind)
+                    ? 0
+                    : logicalOffset(-PPSpace.sm)
+            )
+            .disabled(isSignalLoading(kind))
+            .accessibilityLabel(signalLabel(for: kind))
+            .accessibilityValue(accessibilityValue(for: kind))
+            .accessibilityHint(signalHint(for: kind))
+            .accessibilitySortPriority(accessibilityPriority(for: kind))
+        }
+    }
 
-                Text(
-                    signalDisplayLabel(
-                        for: kind,
-                        compactRows: compactRows
+    private func signalRowContent(
+        kind: HomeMarketplaceSignalKind,
+        tone: Color,
+        compactRows: Bool
+    ) -> some View {
+        let topSpacing = compactRows ? PPSpace.xs : PPSpace.sm
+
+        return HStack(spacing: rowSpacing(compactRows: compactRows)) {
+            signalNode(for: kind, tone: tone)
+
+            Text(
+                signalDisplayLabel(
+                    for: kind,
+                    compactRows: compactRows
+                )
+            )
+                .font(HomeFont.footnote())
+                .foregroundStyle(Color.homeTextSecondary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(
+                    dynamicTypeSize.isAccessibilitySize || compactRows
+                        ? 2
+                        : 1
+                )
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            signalValue(for: kind, tone: tone)
+                .frame(
+                    minWidth: dynamicTypeSize.isAccessibilitySize ? 44 : 36,
+                    alignment: .trailing
+                )
+                .id(signalValueIdentity(for: kind))
+                .transition(.opacity)
+                .animation(
+                    motionSuppressed
+                        ? nil
+                        : .easeOut(duration: 0.18),
+                    value: signalValueIdentity(for: kind)
+                )
+        }
+        .padding(.leading, rowHorizontalPadding(compactRows: compactRows))
+        .padding(.trailing, topSpacing)
+        .padding(.vertical, topSpacing)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: PPHomeZoneMetrics.minimumTarget,
+            maxHeight: .infinity,
+            alignment: .leading
+        )
+        .contentShape(Rectangle())
+        .background {
+            Rectangle()
+                .fill(
+                    tone.opacity(
+                        signalRowPresented(kind)
+                            ? rowTintOpacity(for: kind)
+                            : 0
                     )
                 )
-                    .font(HomeFont.subheadline())
-                    .foregroundStyle(Color.homeTextSecondary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(
-                        dynamicTypeSize.isAccessibilitySize || compactRows
-                            ? 2
-                            : 1
-                    )
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                signalValue(for: kind, tone: tone)
-                    .frame(
-                        minWidth: dynamicTypeSize.isAccessibilitySize ? 52 : 44,
-                        alignment: .trailing
-                    )
-                    .id(signalValueIdentity(for: kind))
-                    .transition(.opacity)
-                    .animation(
-                        motionSuppressed
-                            ? nil
-                            : .easeOut(duration: 0.18),
-                        value: signalValueIdentity(for: kind)
-                    )
-            }
-            .padding(
-                .horizontal,
-                rowHorizontalPadding(compactRows: compactRows)
-            )
-            .frame(
-                maxWidth: .infinity,
-                minHeight: PPHomeZoneMetrics.minimumTarget,
-                maxHeight: .infinity,
-                alignment: .leading
-            )
-            .contentShape(Rectangle())
-            .background {
-                Rectangle()
-                    .fill(
-                        tone.opacity(
-                            signalRowPresented(kind)
-                                ? rowTintOpacity(for: kind)
-                                : 0
-                        )
-                    )
-            }
         }
-        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: motionSuppressed))
-        .opacity(
-            signals.categoryID == nil
-                ? (contrast == .increased ? 0.82 : 0.62)
-                : (signalRowPresented(kind) ? 1 : 0.26)
-        )
-        .offset(
-            x: signalRowPresented(kind)
-                ? 0
-                : logicalOffset(-PPSpace.sm)
-        )
-        .disabled(
-            signals.categoryID == nil || isSignalLoading(kind)
-        )
-        .accessibilityLabel(signalLabel(for: kind))
-        .accessibilityValue(accessibilityValue(for: kind))
-        .accessibilityHint(signalHint(for: kind))
-        .accessibilitySortPriority(accessibilityPriority(for: kind))
     }
 
     private func rowHorizontalPadding(compactRows: Bool) -> CGFloat {
@@ -1319,38 +1374,40 @@ private struct PPHomeMarketplaceLivingLedger: View {
         for kind: HomeMarketplaceSignalKind,
         tone: Color
     ) -> some View {
-        switch signals.value(for: kind) {
-        case .idle:
-            if signals.categoryID == nil {
-                Image(systemName: "minus")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.homeTextSecondary)
-                    .accessibilityHidden(true)
-            } else {
+        if signals.categoryID == nil {
+            Text(PPHomeZoneCopy.marketplaceSignalAllScope)
+                .font(HomeFont.footnote())
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.homeTextPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+        } else {
+            switch signals.value(for: kind) {
+            case .idle:
                 ProgressView()
                     .progressViewStyle(.circular)
                     .tint(tone)
-                    .scaleEffect(0.78)
-                    .frame(height: 20)
+                    .scaleEffect(0.74)
+                    .frame(height: 18)
+            case .loading:
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(tone)
+                    .scaleEffect(0.74)
+                    .frame(height: 18)
+            case let .available(count):
+                Text(localizedNumber(max(0, count)))
+                    .font(HomeFont.bold(15))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.homeTextPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            case .failed:
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(tone)
+                    .accessibilityHidden(true)
             }
-        case .loading:
-            ProgressView()
-                .progressViewStyle(.circular)
-                .tint(tone)
-                .scaleEffect(0.78)
-                .frame(height: 20)
-        case let .available(count):
-            Text(localizedNumber(max(0, count)))
-                .font(HomeFont.title2())
-                .monospacedDigit()
-                .foregroundStyle(Color.homeTextPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        case .failed:
-            Image(systemName: "arrow.clockwise")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(tone)
-                .accessibilityHidden(true)
         }
     }
 
@@ -1396,9 +1453,11 @@ private struct PPHomeMarketplaceLivingLedger: View {
     private func signalValueIdentity(
         for kind: HomeMarketplaceSignalKind
     ) -> String {
+        guard signals.categoryID != nil else { return "all-categories" }
+
         switch signals.value(for: kind) {
         case .idle:
-            return signals.categoryID == nil ? "idle-no-category" : "idle"
+            return "idle"
         case .loading:
             return "loading"
         case let .available(count):
@@ -1411,12 +1470,14 @@ private struct PPHomeMarketplaceLivingLedger: View {
     private func accessibilityValue(
         for kind: HomeMarketplaceSignalKind
     ) -> String {
+        guard signals.categoryID != nil else {
+            return PPHomeZoneCopy.marketplaceSignalAllScopeAccessibility
+        }
+
         let value: String
         switch signals.value(for: kind) {
         case .idle:
-            value = signals.categoryID == nil
-                ? PPHomeZoneCopy.marketplaceSignalCategoryRequired
-                : PPHomeZoneCopy.marketplaceSignalIdle
+            value = PPHomeZoneCopy.marketplaceSignalIdle
         case .loading:
             value = PPHomeZoneCopy.marketplaceSignalLoading
         case let .available(count):
@@ -1439,7 +1500,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
         for kind: HomeMarketplaceSignalKind
     ) -> String {
         if signals.categoryID == nil {
-            return PPHomeZoneCopy.marketplaceSignalCategoryRequired
+            return PPHomeZoneCopy.marketplaceSignalAllScopeHint
         }
         if isSignalLoading(kind) {
             return PPHomeZoneCopy.marketplaceSignalLoading
@@ -1585,8 +1646,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
     private var motionSuppressed: Bool {
         reduceMotion ||
             voiceOverEnabled ||
-            switchControlEnabled ||
-            scenePhase != .active
+            switchControlEnabled
     }
 
     /// `HomeHeroPage.id` intentionally stays stable for marketplace paging.
@@ -1600,7 +1660,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
     }
 
     private var isRightToLeft: Bool {
-        layoutDirection == .rightToLeft
+        layoutDirection == .rightToLeft || Language.isRTL()
     }
 
     private func logicalOffset(_ value: CGFloat) -> CGFloat {
@@ -1631,21 +1691,22 @@ private struct PPHomeMarketplaceLivingLedger: View {
         }
 
         var contentWidth: CGFloat {
-            min(
+            let leadingInset = PPHomeLivingLedgerMetrics.standardOuterInset
+            let trailingInset = PPHomeLivingLedgerMetrics.standardTrailingInset
+            return min(
                 PPHomeLivingLedgerMetrics.maximumReadableWidth,
                 max(
                     0,
-                    size.width -
-                        (PPHomeLivingLedgerMetrics.standardOuterInset * 2)
+                    size.width - (leadingInset + trailingInset)
                 )
             )
         }
 
         func contentCenterX(isRightToLeft: Bool) -> CGFloat {
-            let outerInset = PPHomeLivingLedgerMetrics.standardOuterInset
+            let trailingInset = PPHomeLivingLedgerMetrics.standardTrailingInset
             return isRightToLeft
-                ? outerInset + (contentWidth / 2)
-                : size.width - outerInset - (contentWidth / 2)
+                ? trailingInset + (contentWidth / 2)
+                : size.width - trailingInset - (contentWidth / 2)
         }
 
         var categoryHeight: CGFloat {
@@ -3072,6 +3133,27 @@ enum PPHomeZoneCopy {
         HomeModelAdapter.localized(
             "home_marketplace_signal_category_required",
             fallback: "Choose a pet category to load live counts."
+        )
+    }
+
+    static var marketplaceSignalAllScope: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_all_scope",
+            fallback: "All"
+        )
+    }
+
+    static var marketplaceSignalAllScopeAccessibility: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_all_scope_accessibility",
+            fallback: "All categories"
+        )
+    }
+
+    static var marketplaceSignalAllScopeHint: String {
+        HomeModelAdapter.localized(
+            "home_marketplace_signal_all_scope_hint",
+            fallback: "Select a category to see its live count."
         )
     }
 

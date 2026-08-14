@@ -116,19 +116,18 @@ private struct PPProviderCompanyMetric: View {
     let border: Color
 
     var body: some View {
-        Label {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(tint)
             Text(text)
                 .font(PPProviderCompanyCellTypography.metric)
                 .foregroundStyle(Color.ppTextPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
-        } icon: {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(tint)
         }
         .padding(.horizontal, 10)
-        .frame(minHeight: 32)
+        .frame(minHeight: 30)
         .background(fill, in: Capsule(style: .continuous))
         .overlay { Capsule(style: .continuous).stroke(border, lineWidth: 0.8) }
         .accessibilityElement(children: .combine)
@@ -145,11 +144,11 @@ private struct PPProviderCompanyFavoriteButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: isFavorite ? "heart.fill" : "heart")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(isFavorite ? accent : Color.ppTextPrimary.opacity(0.86))
-                .frame(width: 44, height: 44)
-                .background(.thinMaterial, in: Circle())
-                .overlay { Circle().stroke(Color.white.opacity(0.20), lineWidth: 0.8) }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(isFavorite ? accent : Color.white.opacity(0.92))
+                .frame(width: 38, height: 38)
+                .background(.black.opacity(0.28), in: Circle())
+                .overlay { Circle().stroke(Color.white.opacity(0.24), lineWidth: 0.8) }
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -174,18 +173,18 @@ private struct PPProviderCompanyAvatar: View {
         .background(Color.ppSecondarySurface)
         .clipShape(Circle())
         .overlay {
-            Circle().stroke(Color.ppSurface.opacity(0.96), lineWidth: 3)
+            Circle().stroke(Color.white.opacity(0.92), lineWidth: 2.5)
         }
         .overlay(alignment: .bottomTrailing) {
             if snapshot.verified {
                 Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Color.ppSuccess)
-                    .background(Circle().fill(Color.ppSurface).padding(-2))
+                    .background(Circle().fill(Color.white).padding(-2))
                     .accessibilityHidden(true)
             }
         }
-        .shadow(color: .black.opacity(0.14), radius: 7, y: 3)
+        .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
     }
 }
 
@@ -210,37 +209,39 @@ private struct PPProviderCompanyShowcaseRow: View {
         let accent = snapshot.accent
 
         VStack(spacing: 0) {
-            ZStack(alignment: .topLeading) {
+            ZStack {
                 PPProviderCompanyRemoteImage(
                     url: snapshot.imageURL,
                     placeholder: snapshot.placeholderImage,
                     contentMode: .scaleAspectFill
                 )
-                .frame(height: 158)
+                .frame(height: 160)
                 .frame(maxWidth: .infinity)
                 .background(accent.opacity(0.10))
                 .clipped()
 
                 LinearGradient(
                     colors: [
-                        .black.opacity(0.04),
-                        .black.opacity(0.08),
-                        .black.opacity(0.76)
+                        .black.opacity(0.15),
+                        .black.opacity(0.05),
+                        .black.opacity(0.78)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .allowsHitTesting(false)
-
-                HStack(alignment: .top, spacing: 10) {
+            }
+            .frame(height: 160)
+            .overlay(alignment: .top) {
+                HStack(alignment: .center, spacing: 10) {
                     Text(snapshot.category)
                         .font(PPProviderCompanyCellTypography.category)
-                        .foregroundStyle(.white.opacity(0.94))
+                        .foregroundStyle(.white.opacity(0.96))
                         .lineLimit(1)
                         .padding(.horizontal, 11)
                         .frame(minHeight: 28)
-                        .background(.black.opacity(0.24), in: Capsule(style: .continuous))
-                        .overlay { Capsule(style: .continuous).stroke(.white.opacity(0.20), lineWidth: 0.7) }
+                        .background(.black.opacity(0.32), in: Capsule(style: .continuous))
+                        .overlay { Capsule(style: .continuous).stroke(.white.opacity(0.24), lineWidth: 0.8) }
 
                     Spacer(minLength: 8)
 
@@ -251,9 +252,10 @@ private struct PPProviderCompanyShowcaseRow: View {
                     )
                 }
                 .padding(12)
-
-                HStack(alignment: .bottom, spacing: 12) {
-                    PPProviderCompanyAvatar(snapshot: snapshot, size: 56)
+            }
+            .overlay(alignment: .bottom) {
+                HStack(alignment: .center, spacing: 12) {
+                    PPProviderCompanyAvatar(snapshot: snapshot, size: 54)
 
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
@@ -271,18 +273,19 @@ private struct PPProviderCompanyShowcaseRow: View {
                             }
                         }
 
-                        Text(snapshot.subtitle.isEmpty ? snapshot.category : snapshot.subtitle)
-                            .font(PPProviderCompanyCellTypography.body)
-                            .foregroundStyle(.white.opacity(0.80))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.78)
+                        if !snapshot.subtitle.isEmpty {
+                            Text(snapshot.subtitle)
+                                .font(PPProviderCompanyCellTypography.body)
+                                .foregroundStyle(.white.opacity(0.85))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.78)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 14)
+                .padding(.bottom, 12)
             }
-            .frame(height: 158)
 
             HStack(spacing: 8) {
                 PPProviderCompanyMetric(
@@ -292,6 +295,7 @@ private struct PPProviderCompanyShowcaseRow: View {
                     fill: accent.opacity(0.08),
                     border: accent.opacity(colorSchemeContrast == .increased ? 0.34 : 0.16)
                 )
+                .layoutPriority(1)
 
                 if !snapshot.city.isEmpty {
                     PPProviderCompanyMetric(
@@ -301,9 +305,11 @@ private struct PPProviderCompanyShowcaseRow: View {
                         fill: Color.ppSecondarySurface.opacity(reduceTransparency ? 1 : 0.72),
                         border: Color.ppSeparator.opacity(colorSchemeContrast == .increased ? 1 : 0.72)
                     )
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 }
 
-                Spacer(minLength: 0)
+                Spacer(minLength: 4)
 
                 PPProviderCompanyMetric(
                     symbol: "star.fill",
@@ -312,6 +318,7 @@ private struct PPProviderCompanyShowcaseRow: View {
                     fill: Color.ppPremiumAccent.opacity(0.12),
                     border: Color.ppPremiumAccent.opacity(colorSchemeContrast == .increased ? 0.52 : 0.24)
                 )
+                .layoutPriority(1)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -319,17 +326,17 @@ private struct PPProviderCompanyShowcaseRow: View {
         }
         .background(Color.ppSurface, in: shape)
         .clipShape(shape)
-        .overlay { shape.stroke(Color.ppSurfaceBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.72), lineWidth: colorSchemeContrast == .increased ? 1.2 : 0.8) }
+        .overlay { shape.stroke(Color.ppSurfaceBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.78), lineWidth: colorSchemeContrast == .increased ? 1.2 : 0.8) }
         .shadow(
-            color: .black.opacity(reduceTransparency ? 0.09 : 0.06),
-            radius: 18,
-            y: 8
+            color: .black.opacity(reduceTransparency ? 0.08 : 0.05),
+            radius: 14,
+            y: 5
         )
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(Text("a11y_cell_tap_hint"))
         .opacity(isVisible ? 1 : 0)
-        .offset(y: isVisible ? 0 : 10)
+        .offset(y: isVisible ? 0 : 8)
         .onAppear(perform: reveal)
     }
 
@@ -386,7 +393,7 @@ private struct PPProviderCompanyCompactRow: View {
         let accent = snapshot.accent
 
         HStack(spacing: 12) {
-            PPProviderCompanyAvatar(snapshot: snapshot, size: 58)
+            PPProviderCompanyAvatar(snapshot: snapshot, size: 54)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -412,10 +419,18 @@ private struct PPProviderCompanyCompactRow: View {
 
                 HStack(spacing: 8) {
                     if !snapshot.city.isEmpty {
-                        Label(snapshot.city, systemImage: "mappin.and.ellipse")
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 10, weight: .medium))
+                            Text(snapshot.city)
+                        }
                     }
-                    Label(snapshot.rating + snapshot.ratingCount, systemImage: "star.fill")
-                        .foregroundStyle(Color.ppPremiumAccent)
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Color.ppPremiumAccent)
+                        Text(snapshot.rating + snapshot.ratingCount)
+                    }
                 }
                 .font(PPProviderCompanyCellTypography.metric)
                 .foregroundStyle(Color.ppTextSecondary)
@@ -423,13 +438,13 @@ private struct PPProviderCompanyCompactRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .trailing, spacing: 7) {
+            VStack(alignment: .trailing, spacing: 6) {
                 PPProviderCompanyFavoriteButton(
                     isFavorite: isFavorite,
                     accent: accent,
                     action: toggleFavorite
                 )
-                .frame(width: 44, height: 44)
+                .frame(width: 38, height: 38)
 
                 Text(snapshot.countDisplay)
                     .font(PPProviderCompanyCellTypography.metric)
@@ -442,7 +457,7 @@ private struct PPProviderCompanyCompactRow: View {
         .padding(.vertical, 12)
         .background(Color.ppSurface, in: shape)
         .overlay { shape.stroke(Color.ppSurfaceBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.78), lineWidth: colorSchemeContrast == .increased ? 1.2 : 0.8) }
-        .shadow(color: .black.opacity(0.045), radius: 12, y: 5)
+        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(Text("a11y_cell_tap_hint"))
@@ -492,7 +507,7 @@ private struct PPProviderCompanyHostedCell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var horizontalInset: CGFloat {
-        horizontalSizeClass == .regular ? PPSpace.xxl : PPSpace.screenMargin
+        horizontalSizeClass == .regular ? PPSpace.xxl : PPSpace.base
     }
 
     var body: some View {
@@ -506,7 +521,7 @@ private struct PPProviderCompanyHostedCell: View {
         .environment(\.layoutDirection, layoutDirection)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, horizontalInset)
-        .padding(.vertical, 6)
+        .padding(.vertical, 7)
     }
 }
 
@@ -526,11 +541,7 @@ final class PPProviderCompanySwiftUICellBridge: NSObject {
         if compact {
             return 104
         }
-
-        let horizontalInset = tableWidth >= 600 ? PPSpace.xxl : PPSpace.screenMargin
-        let cardWidth = max(tableWidth - (horizontalInset * 2), 0)
-        let coverHeight = min(max(cardWidth * 0.48, 150), 188)
-        return coverHeight + 92
+        return 236
     }
 
     @objc(configureCell:withViewModel:compact:entranceDelay:)
@@ -543,6 +554,9 @@ final class PPProviderCompanySwiftUICellBridge: NSObject {
         let snapshot = PPProviderCompanySnapshot(viewModel: viewModel)
         let languageCode = Language.currentLanguageCode() ?? "en"
         let locale = Locale(identifier: languageCode)
+
+        cell.clipsToBounds = false
+        cell.contentView.clipsToBounds = false
 
         cell.contentConfiguration = UIHostingConfiguration {
             PPProviderCompanyHostedCell(
@@ -558,7 +572,6 @@ final class PPProviderCompanySwiftUICellBridge: NSObject {
             )
         }
         .margins(.all, 0)
-        .minSize(width: 0, height: Self.preferredHeight(forTableWidth: cell.bounds.width, compact: compact))
 
         cell.backgroundColor = .clear
         cell.selectionStyle = .none

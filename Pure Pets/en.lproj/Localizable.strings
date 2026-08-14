@@ -3418,6 +3418,9 @@
 "home_marketplace_signal_live_count_hint" = "Shows how many are available now for the selected category. Tap to refresh.";
 "home_marketplace_signal_idle" = "Preparing count…";
 "home_marketplace_signal_category_required" = "Choose a pet category to load live counts.";
+"home_marketplace_signal_all_scope" = "All";
+"home_marketplace_signal_all_scope_accessibility" = "All categories";
+"home_marketplace_signal_all_scope_hint" = "Select a category to see its live count.";
 "home_marketplace_signal_loading" = "Loading count…";
 "home_marketplace_signal_available_count_format" = "%ld available now";
 "home_marketplace_signal_unavailable_retry" = "Count unavailable. Tap to try again.";
@@ -3932,6 +3935,7 @@
 "accessory_view_add_failed" = "Couldn’t add";
 "accessory_view_add_accessibility_format" = "%@, %@";
 "accessory_view_add_to_cart" = "Add to Cart";
+"accessory_view_buy_now" = "Buy Now";
 "accessory_view_add_to_cart_hint" = "Adds the selected quantity using the current cart and stock rules.";
 "accessory_view_adding_to_cart" = "Adding…";
 "accessory_view_cart_count_format" = "Cart items: %ld";
@@ -4012,8 +4016,9 @@
 "accessory_view_checkout_provider_switch_note" = "Confirm replacing the current seller’s cart first; delivery and the final total are reviewed next.";
 "accessory_view_preparing_checkout" = "Syncing your cart…";
 "accessory_view_opening_payment" = "Opening payment options…";
-"accessory_view_pay_now_hint" = "Adds this selection through the current cart rules, then opens payment options.";
+"accessory_view_pay_now_hint" = "Opens payment options for this product and selected quantity without changing the cart.";
 "accessory_view_checkout_route_failed" = "Your selection is saved in the cart, but payment options could not open. Continue without adding it again.";
+"accessory_view_direct_checkout_route_failed" = "Payment options could not open. Your cart was not changed.";
 "accessory_view_checkout_sync_failed" = "Your cart couldn’t sync to your account. Nothing new was added; check your connection and try again.";
 "accessory_view_checkout_ready_title" = "Your cart is ready";
 "accessory_view_checkout_ready_message" = "Your selection is already saved in the cart. Continue to payment without adding it again.";

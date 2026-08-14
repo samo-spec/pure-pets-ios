@@ -233,8 +233,12 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
         return;
     }
 
+    NSString *storagePath = [self pp_usesExactStoragePathForAnimationName]
+        ? self.animationName
+        : [@"LottieAnimations" stringByAppendingPathComponent:[self.animationName stringByAppendingPathExtension:@"json"]];
+
     __weak typeof(self) weakSelf = self;
-    [AppClasses fetchLottieJSONFromFirebasePath:self.animationName
+    [AppClasses fetchLottieJSONFromFirebasePath:storagePath
                                      completion:^(NSDictionary *jsonDict, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -315,9 +319,7 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
 
 - (void)pp_applyCustomTintIfNeeded
 {
-    BOOL isMarketplaceAnimation =
-        [self.animationName.lastPathComponent.lowercaseString
-            isEqualToString:@"shop2.json"];
+    BOOL isMarketplaceAnimation = [self pp_isMarketplaceAnimationName];
     if (!isMarketplaceAnimation ||
         !self.animationLoaded ||
         !self.customTintColor) {

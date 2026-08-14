@@ -57,7 +57,7 @@ struct HomeHeroView: View {
                 accent: accent,
                 increasedContrast: contrast == .increased,
                 cornerGlowOpacityScale: 0.78,
-                isAnimated: scenePhase == .active
+                isAnimated: !reduceMotion
             )
 
             VStack(spacing: 0) {
@@ -343,7 +343,7 @@ struct HomeHeroView: View {
             secondarySymbol: asset.secondarySymbol,
             tertiarySymbol: asset.tertiarySymbol,
             compact: compact,
-            isActive: scenePhase == .active
+            isActive: !reduceMotion
         )
         .frame(
             width: compact ? 128 : 154,
@@ -942,7 +942,7 @@ private struct HomeHeroLivingGateway: View {
             HomeHeroLottieRepresentable(
                 animationName: animationName,
                 loadsFromFirebase: loadsFromFirebase,
-                playbackEnabled: isActive && !reduceMotion,
+                playbackEnabled: !reduceMotion,
                 tintColor: lottieTintColor(for: animationName)
             )
             .scaleEffect(lottieScale(for: animationName))

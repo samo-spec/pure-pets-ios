@@ -339,7 +339,7 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 260.0;
+    self.tableView.estimatedRowHeight = 236.0;
     self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
@@ -2054,14 +2054,12 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    return [PPProviderCompanySwiftUICellBridge preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)
-                                                                    compact:self.prefersCompactListLayout];
+    return UITableViewAutomaticDimension;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    return [PPProviderCompanySwiftUICellBridge preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)
-                                                                    compact:self.prefersCompactListLayout];
+    return self.prefersCompactListLayout ? 104.0 : 236.0;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath

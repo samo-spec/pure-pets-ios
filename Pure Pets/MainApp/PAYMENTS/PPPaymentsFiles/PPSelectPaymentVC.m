@@ -12,6 +12,7 @@
 #import "PPCheckoutCoordinator.h"
 #import "PPPaymentManager.h"
 #import "CartManager.h"
+#import "CartItem.h"
 #import "PPCartCalculator.h"
 #import "PPAddressesManager.h"
 #import "UserModel.h"
@@ -219,6 +220,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 @property (nonatomic, strong) NSArray<PPAddressModel *> *Addresses;
 @property (nonatomic, strong) PPAddressModel *selectedAddress;
 @property (nonatomic, strong) PPCheckoutCoordinator *checkoutCoordinator;
+@property (nonatomic, copy, nullable) NSArray<CartItem *> *explicitCheckoutItems;
 @property (nonatomic, assign) BOOL isCheckoutInProgress;
 @property (nonatomic, strong) id<FIRListenerRegistration> addressesListener;
 @property (nonatomic, strong) PPAddressPickerView *locView;
@@ -254,12 +256,33 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)pp_stopPaymentHeroAmbientMotion;
 - (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone;
 - (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address;
+- (NSArray<CartItem *> *)pp_checkoutItems;
+- (PPCartSummary *)pp_checkoutSummary;
++ (BOOL)pp_pushFromViewController:(UIViewController *)viewController
+                     checkoutItems:(nullable NSArray<CartItem *> *)checkoutItems;
 @end
 
 
 @implementation PPSelectPaymentVC
 
 + (BOOL)pushFromViewController:(UIViewController *)viewController
+{
+    return [self pp_pushFromViewController:viewController
+                             checkoutItems:nil];
+}
+
++ (BOOL)pushFromViewController:(UIViewController *)viewController
+                 checkoutItems:(NSArray<CartItem *> *)checkoutItems
+{
+    if (checkoutItems.count == 0) {
+        return NO;
+    }
+    return [self pp_pushFromViewController:viewController
+                             checkoutItems:checkoutItems];
+}
+
++ (BOOL)pp_pushFromViewController:(UIViewController *)viewController
+                     checkoutItems:(nullable NSArray<CartItem *> *)checkoutItems
 {
     UINavigationController *navigationController = nil;
     if ([viewController isKindOfClass:UINavigationController.class]) {
@@ -272,12 +295,29 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         return NO;
     }
     if ([navigationController.topViewController isKindOfClass:self]) {
-        return YES;
+        // A legacy caller may safely treat the existing cart payment screen
+        // as open; a scoped request must never inherit that screen's items.
+        return checkoutItems == nil;
     }
 
     PPSelectPaymentVC *paymentViewController = [[self alloc] init];
+    paymentViewController.explicitCheckoutItems = checkoutItems.copy;
     [navigationController pushViewController:paymentViewController animated:YES];
     return YES;
+}
+
+- (NSArray<CartItem *> *)pp_checkoutItems
+{
+    return self.explicitCheckoutItems ?: CartManager.sharedManager.cartItems;
+}
+
+- (PPCartSummary *)pp_checkoutSummary
+{
+    NSArray<CartItem *> *items = [self pp_checkoutItems];
+    double shippingFee = items.count > 0
+        ? MAX(0.0, CartManager.sharedManager.deliveryFee)
+        : 0.0;
+    return [PPCartCalculator summaryForItems:items shippingFee:shippingFee];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -649,20 +689,21 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     // Configure all data inside performWithoutAnimation so internal
     // setters (e.g. setShowsItemsPreview:) don't fire their own
     // UIView animations that conflict with the entrance reveal.
-    PPCartSummary *summary = [PPCartCalculator currentSummary];
-    BOOL showShowCollectionPreview = CartManager.sharedManager.cartItems.count > 3;
+    NSArray<CartItem *> *checkoutItems = [self pp_checkoutItems];
+    PPCartSummary *summary = [self pp_checkoutSummary];
+    BOOL showShowCollectionPreview = checkoutItems.count > 3;
 
     [UIView performWithoutAnimation:^{
         [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
         self.summaryView.showDetails = !showShowCollectionPreview;
-        [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
+        [self.summaryView updatePreviewItems:checkoutItems];
         self.summaryView.showsItemsPreview = showShowCollectionPreview;
         [self.summaryView setCheckoutBTNTitle:kLang(@"payment_pay_now") image:[UIImage pp_symbolNamed:@"creditcard.fill" pointSize:18
                                                                                         weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
         [self.summaryView layoutIfNeeded];
     }];
 
-    if ([CartManager sharedManager].cartItems.count > 0) {
+    if (checkoutItems.count > 0) {
         [_summaryView pp_startTrustBannerShimmer];
     }
 
@@ -1541,10 +1582,10 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
 - (void)pp_refreshCheckoutPricingPresentation
 {
-    PPCartSummary *summary = [PPCartCalculator currentSummary];
+    PPCartSummary *summary = [self pp_checkoutSummary];
 
     [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
-    [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
+    [self.summaryView updatePreviewItems:[self pp_checkoutItems]];
 
     [self pp_applyDefaultSelectionIfNeeded];
     [self.paymentCollection reloadData];
@@ -2395,7 +2436,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)finishPayments
 {
     PPORDERLog(@"Checkout tapped | items=%lu | inProgress=%d",
-               (unsigned long)CartManager.sharedManager.cartItems.count,
+               (unsigned long)[self pp_checkoutItems].count,
                self.isCheckoutInProgress);
     if (![self pp_hasAuthenticatedUser]) {
         [PPAlertHelper showWarningIn:self
@@ -2474,8 +2515,15 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
             [self.locView setAddressText:resolvedText.length > 0 ? resolvedText : kLang(@"PleaseSelectDeliveryLocation")];
 
             if (!self.checkoutCoordinator) {
-                self.checkoutCoordinator =
-                [[PPCheckoutCoordinator alloc] initWithPresentingViewController:self];
+                if (self.explicitCheckoutItems.count > 0) {
+                    self.checkoutCoordinator =
+                    [[PPCheckoutCoordinator alloc]
+                     initWithPresentingViewController:self
+                     checkoutItems:self.explicitCheckoutItems];
+                } else {
+                    self.checkoutCoordinator =
+                    [[PPCheckoutCoordinator alloc] initWithPresentingViewController:self];
+                }
             }
 
             [self pp_startCheckoutWithPaymentMethodId:selectedPaymentMethodID];
