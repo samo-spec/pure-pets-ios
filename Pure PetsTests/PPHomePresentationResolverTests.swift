@@ -497,10 +497,32 @@ final class PPHomePresentationResolverTests: XCTestCase {
         )
     }
 
-    func testLauncherExcludedDestinationsStayReachableElsewhere() {
-        let plan = PPHomePresentationResolver.plan(for: populatedState())
+    func testMyPetFeatureDoesNotDisplaceExistingLauncherBands() {
+        var value = populatedState()
+        value.priorityActions = [
+            "pet", "shop", "ads", "pharmacy", "vet", "services",
+        ].map(priorityAction)
+
+        let plan = PPHomePresentationResolver.plan(for: value)
+        let featured = PPHomePresentationResolver
+            .ecosystemLauncherFeaturedAction(for: value, plan: plan)
         let actions = PPHomePresentationResolver.ecosystemLauncherActions(
-            for: populatedState(),
+            for: value,
+            plan: plan
+        )
+
+        XCTAssertEqual(featured?.id, "pet")
+        XCTAssertEqual(
+            actions.map(\.id),
+            ["shop", "ads", "pharmacy", "vet", "services"]
+        )
+    }
+
+    func testLauncherExcludedDestinationsStayReachableElsewhere() {
+        let value = populatedState()
+        let plan = PPHomePresentationResolver.plan(for: value)
+        let actions = PPHomePresentationResolver.ecosystemLauncherActions(
+            for: value,
             plan: plan
         )
         for excluded in PPHomePresentationFlags.launcherExcludedActionIDs {
@@ -510,6 +532,11 @@ final class PPHomePresentationResolverTests: XCTestCase {
         XCTAssertEqual(
             plan.module(rawID: PPHomeSectionRegistry.petProfile)?.kind,
             .petContext
+        )
+        XCTAssertEqual(
+            PPHomePresentationResolver
+                .ecosystemLauncherFeaturedAction(for: value, plan: plan)?.id,
+            "pet"
         )
     }
 
@@ -528,6 +555,10 @@ final class PPHomePresentationResolverTests: XCTestCase {
                 plan: plan
             ),
             []
+        )
+        XCTAssertNil(
+            PPHomePresentationResolver
+                .ecosystemLauncherFeaturedAction(for: value, plan: plan)
         )
     }
 

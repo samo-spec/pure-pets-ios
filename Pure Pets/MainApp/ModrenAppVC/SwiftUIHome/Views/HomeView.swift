@@ -338,6 +338,12 @@ struct HomeView: View {
 
         case .ecosystemLauncher:
             PPHomeEcosystemLauncher(
+                featuredAction: PPHomePresentationResolver
+                    .ecosystemLauncherFeaturedAction(
+                        for: store.state,
+                        plan: resolvedPlan
+                    ),
+                featuredPet: store.selectedPriorityPet,
                 actions: PPHomePresentationResolver.ecosystemLauncherActions(
                     for: store.state,
                     plan: resolvedPlan
@@ -675,6 +681,8 @@ struct HomeView: View {
             .padding(.horizontal, PPSpace.screenMargin)
 
             PPHomeEcosystemLauncher(
+                featuredAction: placeholderFeaturedAction,
+                featuredPet: nil,
                 actions: placeholderActions,
                 onSelect: { _ in }
             )
@@ -806,18 +814,25 @@ struct HomeView: View {
         }
     }
 
+    private var placeholderFeaturedAction: HomePriorityAction {
+        placeholderAction(id: "pet")
+    }
+
     private var placeholderActions: [HomePriorityAction] {
-        let ids = ["pet", "shop", "ads", "pharmacy", "vet"]
-        return ids.map { id in
-            HomePriorityAction(
-                id: id,
-                title: "••••",
-                subtitle: "••••••••",
-                systemImage: "pawprint.fill",
-                accent: .ppPrimary,
-                destination: .petProfile
-            )
+        ["shop", "ads", "pharmacy", "vet", "services"].map {
+            placeholderAction(id: $0)
         }
+    }
+
+    private func placeholderAction(id: String) -> HomePriorityAction {
+        HomePriorityAction(
+            id: id,
+            title: "••••",
+            subtitle: "••••••••",
+            systemImage: "pawprint.fill",
+            accent: .ppPrimary,
+            destination: .petProfile
+        )
     }
 }
 

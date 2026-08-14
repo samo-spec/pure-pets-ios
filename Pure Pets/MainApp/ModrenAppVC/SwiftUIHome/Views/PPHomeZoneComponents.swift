@@ -801,24 +801,25 @@ private enum PPHomeLivingLedgerMetrics {
 /// logical trailing seam. Accessibility sizes use a separate local curve so a
 /// full-width header never becomes a decorative underline.
 private struct PPHomeCategoryRibbonShape: Shape {
-    let usesCompactHeaderPath: Bool
+    let usesWideHeaderPath: Bool
 
     func path(in rect: CGRect) -> Path {
-        let drawingRect: CGRect
-        if usesCompactHeaderPath {
-            let localWidth = min(rect.width, rect.height * 1.72)
-            drawingRect = CGRect(
-                x: rect.midX - (localWidth / 2),
-                y: rect.minY + (rect.height * 0.05),
-                width: localWidth,
-                height: rect.height * 0.90
-            )
-        } else {
-            drawingRect = rect.insetBy(
-                dx: max(1, rect.width * 0.015),
-                dy: max(1, rect.height * 0.025)
-            )
-        }
+        let safeRect = rect.insetBy(dx: 3, dy: 3)
+        return usesWideHeaderPath
+            ? wideHeaderPath(in: safeRect)
+            : portraitPath(in: safeRect)
+    }
+
+    /// Keeps the portrait gesture proportional when the standard layout narrows
+    /// to its 72-point compact aperture instead of stretching it vertically.
+    private func portraitPath(in rect: CGRect) -> Path {
+        let localHeight = min(rect.height, rect.width * 1.18)
+        let drawingRect = CGRect(
+            x: rect.minX,
+            y: rect.midY - (localHeight / 2),
+            width: rect.width,
+            height: localHeight
+        )
 
         func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
             CGPoint(
@@ -828,51 +829,68 @@ private struct PPHomeCategoryRibbonShape: Shape {
         }
 
         var path = Path()
-        if usesCompactHeaderPath {
-            path.move(to: point(0.16, 0.26))
-            path.addCurve(
-                to: point(0.08, 0.54),
-                control1: point(0.09, 0.33),
-                control2: point(0.06, 0.45)
-            )
-            path.addCurve(
-                to: point(0.34, 0.82),
-                control1: point(0.09, 0.70),
-                control2: point(0.20, 0.79)
-            )
-            path.addCurve(
-                to: point(0.78, 0.72),
-                control1: point(0.49, 0.88),
-                control2: point(0.66, 0.83)
-            )
-            path.addCurve(
-                to: point(1.00, 0.50),
-                control1: point(0.90, 0.66),
-                control2: point(0.96, 0.58)
-            )
-        } else {
-            path.move(to: point(0.22, 0.14))
-            path.addCurve(
-                to: point(0.07, 0.50),
-                control1: point(0.11, 0.22),
-                control2: point(0.045, 0.36)
-            )
-            path.addCurve(
-                to: point(0.26, 0.87),
-                control1: point(0.07, 0.69),
-                control2: point(0.14, 0.82)
-            )
-            path.addCurve(
-                to: point(0.72, 0.83),
-                control1: point(0.39, 0.94),
-                control2: point(0.60, 0.92)
-            )
-            path.addCurve(
-                to: point(1.00, 0.50),
-                control1: point(0.88, 0.78),
-                control2: point(0.95, 0.63)
+        path.move(to: point(0.22, 0.14))
+        path.addCurve(
+            to: point(0.07, 0.50),
+            control1: point(0.11, 0.22),
+            control2: point(0.045, 0.36)
+        )
+        path.addCurve(
+            to: point(0.26, 0.87),
+            control1: point(0.07, 0.69),
+            control2: point(0.14, 0.82)
+        )
+        path.addCurve(
+            to: point(0.72, 0.83),
+            control1: point(0.39, 0.94),
+            control2: point(0.60, 0.92)
+        )
+        path.addCurve(
+            to: point(1.00, 0.50),
+            control1: point(0.88, 0.78),
+            control2: point(0.95, 0.63)
+        )
+        return path
+    }
+
+    /// Accessibility headers keep the wrap local to the centered portrait, then
+    /// rise into one quiet terminal that reaches the real logical trailing seam.
+    /// This avoids both a floating seam and a full-width decorative underline.
+    private func wideHeaderPath(in rect: CGRect) -> Path {
+        let span = min(rect.height, rect.width * 0.24)
+
+        func localPoint(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(
+                x: rect.midX + (span * x),
+                y: rect.minY + (rect.height * y)
             )
         }
+
+        var path = Path()
+        path.move(to: localPoint(-0.18, 0.08))
+        path.addCurve(
+            to: localPoint(-0.50, 0.46),
+            control1: localPoint(-0.38, 0.13),
+            control2: localPoint(-0.52, 0.29)
+        )
+        path.addCurve(
+            to: localPoint(-0.20, 0.88),
+            control1: localPoint(-0.52, 0.69),
+            control2: localPoint(-0.39, 0.84)
+        )
+        path.addCurve(
+            to: localPoint(0.36, 0.74),
+            control1: localPoint(0.01, 0.95),
+            control2: localPoint(0.25, 0.88)
+        )
+        path.addCurve(
+            to: CGPoint(x: rect.maxX, y: rect.midY),
+            control1: localPoint(0.66, 0.65),
+            control2: CGPoint(
+                x: rect.maxX - min(28, rect.width * 0.09),
+                y: rect.midY + (rect.height * 0.08)
+            )
+        )
         return path
     }
 }
@@ -913,6 +931,10 @@ private struct PPHomeMarketplaceLivingLedger: View {
         }
         .task(id: motionKey) { await runEntrance() }
         .task(id: signals.categoryID) { requestIdleSignals() }
+        .onChange(of: scenePhase) { newPhase in
+            guard newPhase != .active else { return }
+            settleWithoutAnimation()
+        }
         .onDisappear(perform: settleWithoutAnimation)
         .accessibilityElement(children: .contain)
     }
@@ -1001,7 +1023,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
         let washHeight = portraitSide * 0.92 *
             PPHomeLivingLedgerMetrics.identityWashScale
         let ribbonShape = PPHomeCategoryRibbonShape(
-            usesCompactHeaderPath: dynamicTypeSize.isAccessibilitySize
+            usesWideHeaderPath: dynamicTypeSize.isAccessibilitySize
         )
         let ribbonLineWidth: CGFloat =
             contrast == .increased ? 2.25 : 1.5
@@ -1048,7 +1070,29 @@ private struct PPHomeMarketplaceLivingLedger: View {
             // animal without introducing independent alignment coordinates.
             ZStack {
                 Ellipse()
-                    .fill(accent.opacity(identityWashOpacity))
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(stops: [
+                                .init(
+                                    color: accent.opacity(identityWashOpacity),
+                                    location: 0
+                                ),
+                                .init(
+                                    color: accent.opacity(
+                                        identityWashOpacity * 0.52
+                                    ),
+                                    location: 0.42
+                                ),
+                                .init(
+                                    color: accent.opacity(0),
+                                    location: 0.72
+                                ),
+                            ]),
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: max(washWidth, washHeight) * 0.56
+                        )
+                    )
                     .frame(
                         width: washWidth,
                         height: washHeight
@@ -1671,10 +1715,15 @@ private struct PPHomeMarketplaceLivingLedger: View {
     private struct MotionKey: Equatable {
         let identity: String
         let suppressed: Bool
+        let sceneIsActive: Bool
     }
 
     private var motionKey: MotionKey {
-        MotionKey(identity: artworkIdentity, suppressed: motionSuppressed)
+        MotionKey(
+            identity: artworkIdentity,
+            suppressed: motionSuppressed,
+            sceneIsActive: scenePhase == .active
+        )
     }
 
     /// Installs final geometry immediately, then reveals the category scope,
@@ -1685,6 +1734,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
     private func runEntrance() async {
         guard !reduceMotion,
               !motionSuppressed,
+              scenePhase == .active,
               lastPresentedIdentity != artworkIdentity
         else {
             settleWithoutAnimation()

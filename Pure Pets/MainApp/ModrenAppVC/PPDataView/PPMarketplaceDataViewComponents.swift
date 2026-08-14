@@ -275,13 +275,8 @@ struct PPMarketplaceHero: View {
     }
 
     private var identity: some View {
-        let context = store.navigationContext
-        return PPMarketplaceSmartContextPill(
-            title: context.title,
-            subtitle: context.subtitle,
-            accessibilityLabel: context.accessibilityLabel,
-            accent: store.accentColor,
-            isEnabled: !store.isReplacingContext,
+        PPMarketplaceSmartContextPill(
+            store: store,
             action: store.beginFilterEditing
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -726,53 +721,62 @@ private struct PPMarketplaceSectionGlyphPlate: View {
     }
 }
 
+// MARK: - Smart Context Pill (Animated V6)
+//
+// Motion contract (NextGen V6):
+//   decision: feedback
+//   trigger: user-initiated category/filter/species change, occasional (2–9/session)
+//   intent: acknowledge navigation context change; preserve spatial continuity of the pill label
+//   phases: 2 — (1) old text exits upward with fade, (2) new text enters from below with fade
+//   mechanism: SwiftUI .transition + withAnimation spring
+//   reduce-motion: instant crossfade (opacity only), no spatial movement
+//   RTL: uses .leading alignment — no mirrored directional slide needed
+//   lifecycle: stops on disappearance (SwiftUI default); no infinite loop
+//   accessibility: VoiceOver announces new label via .accessibilityLabel update
+//   duration: ~0.28s spring (response 0.28, damping 0.82) — under 300ms feedback cap
+
 @available(iOS 15.0, *)
 private struct PPMarketplaceSmartContextPill: View {
-    let title: String
-    let subtitle: String
-    let accessibilityLabel: String
-    let accent: UIColor
-    let isEnabled: Bool
+    @ObservedObject var store: PPMarketplaceDataViewStore
     let action: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // Animation state
+    @State private var contextRevision: Int = 0
+    @State private var pillScale: CGFloat = 1.0
+    @State private var chevronRotation: Double = 0.0
+
+    // Track previous values to detect changes
+    @State private var lastTitle: String = ""
+    @State private var lastSubtitle: String = ""
+
+    private var context: PPMarketplaceNavigationContext {
+        store.navigationContext
+    }
+
+    private var isEnabled: Bool {
+        !store.isReplacingContext
+    }
 
     var body: some View {
         Button(action: handleTap) {
             HStack(spacing: PPSpace.xs) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(title)
-                        .font(HomeFont.bold(12.8))
-                        .foregroundStyle(Color.ppMarketplaceTextPrimary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                        .truncationMode(.tail)
-                        .fixedSize(horizontal: false, vertical: true)
+                contextLabels
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
 
-                    if !subtitle.isEmpty {
-                        Text(subtitle)
-                            .font(HomeFont.medium(10.4))
-                            .foregroundStyle(Color.ppMarketplaceTextSecondary)
-                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                            .truncationMode(.tail)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .layoutPriority(1)
-
-                Image(systemName: "chevron.down.circle.fill")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(accentColor)
-                    .frame(width: 44, height: 44)
-                    .accessibilityHidden(true)
+                chevronIcon
             }
         }
         .buttonStyle(.plain)
         .padding(.horizontal, PPSpace.sm)
         .frame(maxWidth: .infinity, minHeight: 44, maxHeight: .infinity, alignment: .leading)
+        .scaleEffect(pillScale)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            accessibilityLabel.isEmpty ? title : accessibilityLabel
+            context.accessibilityLabel.isEmpty ? context.title : context.accessibilityLabel
         )
         .accessibilityHint(
             PPMarketplaceText.localized("marketplace_filters_open_hint")
@@ -780,18 +784,115 @@ private struct PPMarketplaceSmartContextPill: View {
         .accessibilityIdentifier("pp.data.filters.smartDockedPill")
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.58)
+        .onChange(of: context.title) { newTitle in
+            guard newTitle != lastTitle else { return }
+            lastTitle = newTitle
+            triggerContextChangeMotion()
+        }
+        .onChange(of: context.subtitle) { newSubtitle in
+            guard newSubtitle != lastSubtitle else { return }
+            lastSubtitle = newSubtitle
+            triggerContextChangeMotion()
+        }
+        .onAppear {
+            lastTitle = context.title
+            lastSubtitle = context.subtitle
+        }
     }
 
-    private var accentColor: Color {
-        Color(uiColor: accent)
+    // MARK: - Context Labels (animated)
+
+    private var contextLabels: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Title — keyed by content for identity-based transition
+            Text(context.title)
+                .font(HomeFont.bold(12.8))
+                .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
+                .id("pill_title_\(contextRevision)")
+                .transition(contextTextTransition)
+
+            // Subtitle
+            if !context.subtitle.isEmpty {
+                Text(context.subtitle)
+                    .font(HomeFont.medium(10.4))
+                    .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .id("pill_subtitle_\(contextRevision)")
+                    .transition(contextTextTransition)
+            }
+        }
+        .animation(contextChangeAnimation, value: contextRevision)
     }
+
+    // MARK: - Chevron
+
+    private var chevronIcon: some View {
+        Image(systemName: "chevron.down.circle.fill")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Color(uiColor: store.accentColor))
+            .frame(width: 44, height: 44)
+            .rotationEffect(.degrees(chevronRotation))
+            .accessibilityHidden(true)
+    }
+
+    // MARK: - Motion
+
+    /// Vertical slide + fade for spatial continuity on context change.
+    /// Reduce Motion: opacity-only crossfade preserving equivalent meaning.
+    private var contextTextTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+        return .asymmetric(
+            insertion: .move(edge: .bottom).combined(with: .opacity),
+            removal: .move(edge: .top).combined(with: .opacity)
+        )
+    }
+
+    private var contextChangeAnimation: Animation? {
+        if reduceMotion {
+            return .easeOut(duration: 0.15)
+        }
+        return .spring(response: 0.28, dampingFraction: 0.82)
+    }
+
+    private func triggerContextChangeMotion() {
+        // Bump revision to swap text identity → triggers transition
+        withAnimation(contextChangeAnimation) {
+            contextRevision &+= 1
+        }
+
+        // Subtle pill breathe (matches SectionGlyphPlate pattern)
+        guard !reduceMotion else { return }
+
+        pillScale = 0.96
+        chevronRotation = -8
+
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.62)) {
+            pillScale = 1.02
+            chevronRotation = 4
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.76)) {
+                pillScale = 1.0
+                chevronRotation = 0
+            }
+        }
+    }
+
+    // MARK: - Interaction
 
     private func handleTap() {
         guard isEnabled else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         action()
     }
-
 }
 
 @available(iOS 15.0, *)
