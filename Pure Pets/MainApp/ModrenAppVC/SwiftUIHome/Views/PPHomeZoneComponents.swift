@@ -20,6 +20,8 @@ enum PPHomeZoneMetrics {
     static let launcherBandIconPlate: CGFloat = 38
     static let launcherBandCellHeight: CGFloat = 108
     static let launcherBandSeparator: CGFloat = 1
+    static let launcherFeaturedHeight: CGFloat = 264
+    static let launcherFeaturedArtwork: CGFloat = 108
     static let minimumTarget: CGFloat = 44
     static let gatewaySymbolPlate: CGFloat = 42
     static let statusSymbolPlate: CGFloat = 46
@@ -763,7 +765,7 @@ private struct PPHomeStageArtwork: View {
 /// in one composition. It intentionally has no category plate, orbital diagram,
 /// individual count cards, or horizontal accessibility rail.
 private enum PPHomeLivingLedgerMetrics {
-    /// The category artwork is one proportional unit: outline, wash, and pet.
+    /// The category artwork is one proportional unit: ribbon, wash, and pet.
     /// Scaling its width, height, and portrait together prevents layer drift.
     static let standardArtworkScale: CGFloat = 1.125
     static let standardIdentityMaximum: CGFloat =
@@ -792,6 +794,87 @@ private enum PPHomeLivingLedgerMetrics {
     static let rowHorizontalPadding: CGFloat = PPSpace.md
     static let nodeSide: CGFloat = 28
     static let indexLineWidth: CGFloat = 2
+}
+
+/// A single category-to-ledger gesture replaces the generic broken border.
+/// The standard curve gathers around the portrait before resolving into the
+/// logical trailing seam. Accessibility sizes use a separate local curve so a
+/// full-width header never becomes a decorative underline.
+private struct PPHomeCategoryRibbonShape: Shape {
+    let usesCompactHeaderPath: Bool
+
+    func path(in rect: CGRect) -> Path {
+        let drawingRect: CGRect
+        if usesCompactHeaderPath {
+            let localWidth = min(rect.width, rect.height * 1.72)
+            drawingRect = CGRect(
+                x: rect.midX - (localWidth / 2),
+                y: rect.minY + (rect.height * 0.05),
+                width: localWidth,
+                height: rect.height * 0.90
+            )
+        } else {
+            drawingRect = rect.insetBy(
+                dx: max(1, rect.width * 0.015),
+                dy: max(1, rect.height * 0.025)
+            )
+        }
+
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(
+                x: drawingRect.minX + (drawingRect.width * x),
+                y: drawingRect.minY + (drawingRect.height * y)
+            )
+        }
+
+        var path = Path()
+        if usesCompactHeaderPath {
+            path.move(to: point(0.16, 0.26))
+            path.addCurve(
+                to: point(0.08, 0.54),
+                control1: point(0.09, 0.33),
+                control2: point(0.06, 0.45)
+            )
+            path.addCurve(
+                to: point(0.34, 0.82),
+                control1: point(0.09, 0.70),
+                control2: point(0.20, 0.79)
+            )
+            path.addCurve(
+                to: point(0.78, 0.72),
+                control1: point(0.49, 0.88),
+                control2: point(0.66, 0.83)
+            )
+            path.addCurve(
+                to: point(1.00, 0.50),
+                control1: point(0.90, 0.66),
+                control2: point(0.96, 0.58)
+            )
+        } else {
+            path.move(to: point(0.22, 0.14))
+            path.addCurve(
+                to: point(0.07, 0.50),
+                control1: point(0.11, 0.22),
+                control2: point(0.045, 0.36)
+            )
+            path.addCurve(
+                to: point(0.26, 0.87),
+                control1: point(0.07, 0.69),
+                control2: point(0.14, 0.82)
+            )
+            path.addCurve(
+                to: point(0.72, 0.83),
+                control1: point(0.39, 0.94),
+                control2: point(0.60, 0.92)
+            )
+            path.addCurve(
+                to: point(1.00, 0.50),
+                control1: point(0.88, 0.78),
+                control2: point(0.95, 0.63)
+            )
+        }
+        return path
+    }
 }
 
 /// Pure Pets' pet-first live index. The category portrait establishes scope at
@@ -900,8 +983,8 @@ private struct PPHomeMarketplaceLivingLedger: View {
     // MARK: - Category aperture
 
     /// An open portrait aperture replaces the old closed category plate. The
-    /// accent is category identity only: a quiet wash and one shared seam that
-    /// visually scopes the adjacent live ledger.
+    /// accent is category identity only: one living ribbon gathers beneath the
+    /// portrait and resolves toward the shared seam of the adjacent ledger.
     private func categoryAperture(
         width: CGFloat,
         height: CGFloat,
@@ -917,33 +1000,51 @@ private struct PPHomeMarketplaceLivingLedger: View {
             PPHomeLivingLedgerMetrics.identityWashScale
         let washHeight = portraitSide * 0.92 *
             PPHomeLivingLedgerMetrics.identityWashScale
-        let apertureShape = RoundedRectangle(
-            cornerRadius: min(PPCorner.large, height * 0.34),
-            style: .continuous
+        let ribbonShape = PPHomeCategoryRibbonShape(
+            usesCompactHeaderPath: dynamicTypeSize.isAccessibilitySize
         )
-        let outlineLineWidth: CGFloat =
-            contrast == .increased ? 2 : 1.25
+        let ribbonLineWidth: CGFloat =
+            contrast == .increased ? 2.25 : 1.5
 
         return ZStack {
-            apertureShape
-                .inset(by: outlineLineWidth / 2)
-                .trim(from: 0.08, to: 0.72)
-                .stroke(
-                    accent.opacity(
-                        contrast == .increased
-                            ? 0.78
-                            : (colorScheme == .dark ? 0.48 : 0.34)
-                    ),
-                    style: StrokeStyle(
-                        lineWidth: outlineLineWidth,
-                        lineCap: .round,
-                        lineJoin: .round
+            ZStack {
+                if contrast != .increased {
+                    ribbonShape
+                        .trim(from: 0, to: categoryRibbonProgress)
+                        .stroke(
+                            accent.opacity(
+                                colorScheme == .dark ? 0.16 : 0.10
+                            ),
+                            style: StrokeStyle(
+                                lineWidth: 6,
+                                lineCap: .round,
+                                lineJoin: .round
+                            )
+                        )
+                }
+
+                ribbonShape
+                    .trim(from: 0, to: categoryRibbonProgress)
+                    .stroke(
+                        accent.opacity(
+                            contrast == .increased
+                                ? 0.92
+                                : (colorScheme == .dark ? 0.64 : 0.52)
+                        ),
+                        style: StrokeStyle(
+                            lineWidth: ribbonLineWidth,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
                     )
-                )
+            }
+                .opacity(categoryRibbonOpacity)
                 .scaleEffect(x: isRightToLeft ? -1 : 1, y: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
             // The wash and category art share one exact center inside the
-            // outline. Their Z-order keeps the soft wash directly beneath the
+            // ribbon. Their Z-order keeps the soft wash directly beneath the
             // animal without introducing independent alignment coordinates.
             ZStack {
                 Ellipse()
@@ -992,6 +1093,34 @@ private struct PPHomeMarketplaceLivingLedger: View {
             return colorScheme == .dark ? 0.24 : 0.15
         }
         return colorScheme == .dark ? 0.20 : 0.10
+    }
+
+    /// The existing category-identity task remains the only animation owner.
+    /// Its identity phase draws the portrait wrap; its seam phase completes the
+    /// short ledger-facing terminal. Suppressed or inactive environments receive
+    /// the same complete contour immediately, with no second timer or loop.
+    private var categoryRibbonProgress: CGFloat {
+        if frameMotionSuppressed { return 1 }
+
+        switch presentationPhase {
+        case .staged: return 0
+        case .identity: return 0.78
+        case .seam, .marketplace, .services, .settled: return 1
+        }
+    }
+
+    private var categoryRibbonOpacity: Double {
+        if frameMotionSuppressed { return 1 }
+
+        switch presentationPhase {
+        case .staged: return 0
+        case .identity: return 0.86
+        case .seam, .marketplace, .services, .settled: return 1
+        }
+    }
+
+    private var frameMotionSuppressed: Bool {
+        motionSuppressed || scenePhase != .active
     }
 
     @ViewBuilder
@@ -2094,17 +2223,18 @@ struct PPHomePartnerFeature: View {
 
 /// Zone 3. Bounded, immediate access to the highest-value destinations.
 ///
-/// The launcher is one connected ecosystem surface, not a wall of unrelated
-/// cards. The first two configured destinations form a discovery band; up to
-/// three remaining destinations form a care band. This preserves server-backed
-/// action order and every existing route while giving Arabic and English titles
-/// and subtitles enough room to remain visible at normal text sizes.
+/// My Pet reuses the legacy full-height feature treatment, real selected-pet
+/// artwork, and original action callback. The existing five destinations remain
+/// byte-for-byte ordered inside the connected surface below: the first two form
+/// a discovery band and the remaining three form a care band.
 ///
-/// One through five actions reflow without placeholders. Accessibility text
-/// sizes use the same full-width cells as before, keeping the complete copy and
-/// a minimum 44pt target without relying on compressed text.
+/// Phone widths keep the feature full-width so none of the three care actions is
+/// compressed. Accessibility text sizes retain the same source order and use
+/// full-width, content-driven controls with a minimum 44pt target.
 @available(iOS 15.0, *)
 struct PPHomeEcosystemLauncher: View {
+    let featuredAction: HomePriorityAction?
+    let featuredPet: HomePetModel?
     let actions: [HomePriorityAction]
     let onSelect: (HomePriorityAction) -> Void
 
@@ -2128,8 +2258,20 @@ struct PPHomeEcosystemLauncher: View {
                 subtitle: PPHomeZoneCopy.launcherSubtitle
             )
 
-            if stacked {
-                VStack(spacing: PPSpace.sm) {
+            VStack(spacing: PPSpace.sm) {
+                if let featuredAction {
+                    HomeFeaturedPetCard(
+                        action: featuredAction,
+                        pet: featuredPet,
+                        regularWidth: nil,
+                        compactHeight: PPHomeZoneMetrics.launcherFeaturedHeight,
+                        regularCircleSize: PPHomeZoneMetrics.launcherFeaturedArtwork,
+                        circleInset: PPSpace.md,
+                        onSelect: onSelect
+                    )
+                }
+
+                if stacked {
                     ForEach(boundedActions) { action in
                         Button { onSelect(action) } label: {
                             stackedCell(action)
@@ -2140,9 +2282,9 @@ struct PPHomeEcosystemLauncher: View {
                         .accessibilityLabel(action.title)
                         .accessibilityHint(action.subtitle)
                     }
+                } else {
+                    bandsSurface
                 }
-            } else {
-                bandsSurface
             }
         }
         .accessibilityElement(children: .contain)

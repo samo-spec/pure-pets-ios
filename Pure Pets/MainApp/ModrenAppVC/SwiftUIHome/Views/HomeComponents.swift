@@ -1978,10 +1978,12 @@ private struct HomeSectionHeaderSparkleMotion: View {
     }
 }
 
-private struct HomeFeaturedPetCard: View {
+struct HomeFeaturedPetCard: View {
     let action: HomePriorityAction
     let pet: HomePetModel?
-    let regularWidth: CGFloat
+    /// A fixed width preserves the legacy side-column geometry. `nil` lets the
+    /// same card fill a phone-safe featured lane without compressing siblings.
+    let regularWidth: CGFloat?
     let compactHeight: CGFloat
     let regularCircleSize: CGFloat
     let circleInset: CGFloat
@@ -2001,8 +2003,9 @@ private struct HomeFeaturedPetCard: View {
         dynamicTypeSize.isAccessibilitySize ? 204 : 168
     }
 
-    private var regularCTAWidth: CGFloat {
-        max(regularWidth - (PPSpace.sm * 2), 44)
+    private var regularCTAWidth: CGFloat? {
+        guard let regularWidth else { return nil }
+        return max(regularWidth - (PPSpace.sm * 2), 44)
     }
 
     private var subtitleColor: Color {
@@ -2049,7 +2052,7 @@ private struct HomeFeaturedPetCard: View {
                     Text(action.title)
                         .font(HomeFont.bold(20))
                         .foregroundStyle(Color.homeTextPrimary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                         .minimumScaleFactor(0.82)
 
                     Text(action.subtitle)
@@ -2073,7 +2076,7 @@ private struct HomeFeaturedPetCard: View {
                         )
                     )
                     .font(HomeFont.bold(14))
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.78)
 
                     Image(systemName: "chevron.forward")

@@ -105,13 +105,13 @@ enum PPHomePresentationFlags {
     /// Set to `false` to put Nova back in the command surface.
     static let hidesNovaInCommandSurface = true
 
-    /// Destinations the ecosystem launcher deliberately does not surface because
-    /// Home already gives them a dedicated module. Every excluded destination
-    /// must stay reachable elsewhere, which the resolver's suppression map and
-    /// the pet context module guarantee.
+    /// Destinations the ecosystem launcher's bounded bands deliberately omit.
+    /// Every excluded destination must stay reachable through a dedicated
+    /// presentation slot or another Home module.
     ///
-    /// `pet` is excluded: raw section `8` renders the pet context strip and the
-    /// suppression map routes to `.petProfiles`.
+    /// `pet` owns the launcher's separate featured slot rather than displacing
+    /// one of the five band destinations. Raw section `8` also retains the pet
+    /// context strip and its `.petProfiles` route.
     static let launcherExcludedActionIDs: Set<String> = ["pet"]
 }
 
@@ -575,9 +575,9 @@ enum PPHomePresentationResolver {
         )
     }
 
-    /// Launcher actions, bounded and in their existing order. Adoption is only
-    /// appended when the configured priority actions leave a free slot, so the
-    /// bound is never exceeded and no action is invented.
+    /// Launcher band actions, bounded and in their existing order. The featured
+    /// pet action is resolved separately so it cannot consume a band slot or
+    /// silently remove Services.
     static func ecosystemLauncherActions(
         for state: HomeViewState,
         plan: PPHomePresentationPlan
@@ -592,6 +592,18 @@ enum PPHomePresentationResolver {
                 }
                 .prefix(PPHomePresentationLimits.ecosystemLauncherActions)
         )
+    }
+
+    /// Existing My Pet action for the launcher's full-height featured slot.
+    /// This returns the original model instance so destination, copy, accent,
+    /// and callback behavior remain owned by `HomeStore`.
+    static func ecosystemLauncherFeaturedAction(
+        for state: HomeViewState,
+        plan: PPHomePresentationPlan
+    ) -> HomePriorityAction? {
+        guard plan.containsModule(rawID: PPHomeSectionRegistry.quickActions)
+        else { return nil }
+        return state.priorityActions.first { $0.id == "pet" }
     }
 
     // MARK: Eligibility

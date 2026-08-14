@@ -604,6 +604,13 @@ final class HomeStore: ObservableObject {
         return state.pets.first(where: \.isDefault) ?? state.pets.first
     }
 
+    /// Read-only presentation seam for surfaces that decorate the existing
+    /// My Pet action. Selection precedence remains centralized above so the UI
+    /// and `editSelectedPet()` can never disagree about which pet is active.
+    var selectedPriorityPet: HomePetModel? {
+        selectedPet
+    }
+
     private var selectedMainKind: NSObject? {
         guard let selectedID = state.selectedMainKindID else { return nil }
         return state.categories.first {
