@@ -59,7 +59,10 @@ enum PPHomeSectionRegistry {
 enum PPHomePresentationLimits {
     static let marketingStages = 1
     static let livePriorityItems = 1
+    /// Total launcher capacity used by adoption-gateway arbitration.
     static let ecosystemLauncherActions = 5
+    /// Four compact destinations sit beside the leading My Pet tile.
+    static let ecosystemLauncherSecondaryActions = 4
     static let commerceRails = 3
     static let partnerFeatures = 1
 }
@@ -575,9 +578,9 @@ enum PPHomePresentationResolver {
         )
     }
 
-    /// Launcher band actions, bounded and in their existing order. The featured
-    /// pet action is resolved separately so it cannot consume a band slot or
-    /// silently remove Services.
+    /// Bento secondary actions, bounded and in their existing priority order.
+    /// The featured pet action is resolved separately, while lower-priority
+    /// actions remain in the source model and keep their other entry points.
     static func ecosystemLauncherActions(
         for state: HomeViewState,
         plan: PPHomePresentationPlan
@@ -590,7 +593,10 @@ enum PPHomePresentationResolver {
                     !PPHomePresentationFlags.launcherExcludedActionIDs
                         .contains($0.id)
                 }
-                .prefix(PPHomePresentationLimits.ecosystemLauncherActions)
+                .prefix(
+                    PPHomePresentationLimits
+                        .ecosystemLauncherSecondaryActions
+                )
         )
     }
 

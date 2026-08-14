@@ -24,9 +24,9 @@
 #import "PetAccessory.h"
 #import "PetAccessoryManager.h"
 #import "PetAdManager.h"
-#import "SellerProfileVC.h"
 #import "UserManager.h"
 #import "UserModel.h"
+#import <Pure_Pets-Swift.h>
 
 @import FirebaseAuth;
 @import FirebaseFirestore;

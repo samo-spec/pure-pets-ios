@@ -3244,7 +3244,10 @@ struct PPAccessoryPersistentDecisionBar: View {
             surface: PPAccessorySubviewBackground.baseSurface,
             primaryText: PPAccessoryPalette.ink,
             secondaryText: PPAccessoryPalette.inkSecondary,
-            outline: PPAccessoryPalette.inkSecondary
+            outline: PPAccessoryPalette.inkSecondary,
+            addToCartBackground: Color.ppSecondarySurface,
+            addToCartForeground: PPAccessoryPalette.brand,
+            addToCartBorder: PPAccessoryPalette.brand.opacity(0.42)
         )
     }
 

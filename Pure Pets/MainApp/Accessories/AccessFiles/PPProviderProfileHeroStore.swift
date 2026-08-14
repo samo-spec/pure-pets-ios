@@ -40,15 +40,20 @@ final class PPProviderProfileHeroStore: ObservableObject {
         guard let provider = provider else { return }
         
         self.providerName = provider.bestDisplayName()
-        self.avatarURL = provider.userImageUrl.flatMap { URL(string: $0) }
+        self.avatarURL = provider.userImageUrl
         self.location = provider.hasPhone ? .phone : .video
         
         self.status = provider.isVerified ? "Verified" : nil
         
-        let skills = [provider.primarySkill, provider.secondarySkill].compactMap { $0 }.filter { !$0.isEmpty }
-        self.subtitle = skills.joined(separator: " • ")
+        let skills = [provider.selectedPartnerType, provider.subscriptionPlan].compactMap { $0 }.filter { !$0.isEmpty }
+        self.subtitle = skills.isEmpty ? nil : skills.joined(separator: " • ")
         
-        self.description = provider.bio?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let about = provider.userAbout {
+            let trimmed = about.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.description = trimmed.isEmpty ? nil : trimmed
+        } else {
+            self.description = nil
+        }
         self.isLive = provider.isOnline
     }
     
@@ -95,6 +100,7 @@ final class PPProviderProfileHeroStore: ObservableObject {
 
 fileprivate extension UserModel {
     var hasPhone: Bool {
-        !mobileNo?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true
+        guard let phone = mobileNo?.trimmingCharacters(in: .whitespacesAndNewlines) else { return false }
+        return !phone.isEmpty
     }
 }

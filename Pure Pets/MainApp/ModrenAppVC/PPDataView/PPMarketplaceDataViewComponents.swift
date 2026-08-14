@@ -221,6 +221,9 @@ struct PPMarketplaceHero: View {
                 .fill(heroCommandSurface)
 
             topContextShape
+                .fill(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22))
+
+            topContextShape
                 .fill(
                     Color(uiColor: store.accentColor)
                         .opacity(heroAuxiliarySurfaceOpacity)
@@ -243,9 +246,9 @@ struct PPMarketplaceHero: View {
         Rectangle()
             .fill(
                 contrast == .increased
-                    ? Color.ppMarketplaceTextPrimary.opacity(0.48)
+                    ? Color.ppMarketplaceTextPrimary.opacity(0.68)
                     : Color.ppSeparator.opacity(
-                        colorScheme == .dark ? 0.62 : 0.46
+                        colorScheme == .dark ? 0.82 : 0.68
                     )
             )
             .frame(

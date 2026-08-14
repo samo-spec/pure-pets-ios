@@ -187,7 +187,7 @@ struct PPProviderProfileHero: View {
             .opacity(store.isLive ? (reduceMotion ? 1 : 0.6) : 0)
             .animation(
                 store.isLive && !reduceMotion
-                    ? .easeOut(duration: 0.48).repeatForever(autoreversing: true)
+                    ? .easeOut(duration: 0.48).repeatForever(autoreverses: true)
                     : .none,
                 value: store.isLive
             )
@@ -241,7 +241,7 @@ struct PPProviderProfileHero: View {
                 .accessibilityHidden(true)
             
             Text(status)
-                .font(.caption.medium)
+                .font(.caption.weight(.medium))
                 .foregroundStyle(Color.ppSuccess)
                 .lineLimit(1)
         }

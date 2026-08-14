@@ -85,10 +85,11 @@ struct HomeCommandBar: View {
     var novaAction: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .body) private var searchControlHeight: CGFloat = 54
+    @ScaledMetric(relativeTo: .body) private var commandControlHeight: CGFloat = 48
 
     private var showsLocationLane: Bool {
         state.config.titleViewMode == "location"
@@ -100,51 +101,89 @@ struct HomeCommandBar: View {
             && novaAction != nil
     }
 
-    /// Search only earns its own stacked lane when the Console enabled the
-    /// premium search module *and* the location control also needs a lane.
+    /// Search earns its own lane when the Console enables spotlight search or
+    /// when accessibility text needs a calm vertical reflow.
     private var usesStackedSearchLane: Bool {
-        searchProminence == .spotlight && showsLocationLane
+        showsLocationLane
+            && (searchProminence == .spotlight || dynamicTypeSize.isAccessibilitySize)
     }
 
     var body: some View {
-        Group {
-            if usesStackedSearchLane {
-                VStack(spacing: PPSpace.sm) {
-                    HStack(spacing: PPSpace.sm) {
-                        locationButton
-                        cartButton
+        commandContainer
+            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.vertical, PPSpace.sm)
+            .background(alignment: .bottom) {
+                HomeTopFadeBackdrop(contrast: contrast)
+                    .frame(height: 168)
+                    .ignoresSafeArea(edges: .top)
+            }
+            .environment(
+                \.layoutDirection,
+                state.isRightToLeft ? .rightToLeft : .leftToRight
+            )
+    }
+
+    /// The command surface is one unified pill. Its child buttons retain
+    /// independent actions and semantics without drawing separate glass islands.
+    @ViewBuilder
+    private var commandContainer: some View {
+#if compiler(>=6.2)
+        if #available(iOS 26.0, *), !reduceTransparency {
+            GlassEffectContainer(spacing: PPSpace.md) {
+                commandContent
+                    .glassEffect(
+                        .regular.tint(commandTint),
+                        in: commandPillShape
+                    )
+                    .overlay {
+                        commandPillShape.stroke(
+                            commandBorder,
+                            lineWidth: contrast == .increased ? 1.5 : 1
+                        )
                     }
-                    HStack(spacing: PPSpace.sm) {
-                        searchField
-                        novaButton
-                    }
-                }
-            } else if showsLocationLane {
-                HStack(spacing: PPSpace.sm) {
+            }
+        } else {
+            fallbackCommandPill(commandContent)
+        }
+#else
+        fallbackCommandPill(commandContent)
+#endif
+    }
+
+    @ViewBuilder
+    private var commandContent: some View {
+        if usesStackedSearchLane {
+            VStack(spacing: PPSpace.md) {
+                HStack(spacing: PPSpace.md) {
                     locationButton
-                    compactSearchButton
-                    novaButton
-                    cartButton
+                    cartButtonWithTrailingRoom
                 }
-            } else {
-                HStack(spacing: PPSpace.sm) {
+                HStack(spacing: PPSpace.md) {
                     searchField
                     novaButton
-                    cartButton
                 }
             }
+        } else if showsLocationLane {
+            HStack(spacing: PPSpace.sm) {
+                locationButton
+                commandVerticalSeparator
+                compactSearchButton
+                if showsNova {
+                    novaButton
+                }
+                commandVerticalSeparator
+                cartButtonWithTrailingRoom
+            }
+        } else {
+            HStack(spacing: PPSpace.sm) {
+                searchField
+                if showsNova {
+                    novaButton
+                }
+                commandVerticalSeparator
+                cartButtonWithTrailingRoom
+            }
         }
-        .padding(.horizontal, PPSpace.screenMargin)
-        .padding(.vertical, PPSpace.sm)
-        .background(alignment: .bottom) {
-            HomeTopFadeBackdrop(contrast: contrast)
-                .frame(height: 168)
-                .ignoresSafeArea(edges: .top)
-        }
-        .environment(
-            \.layoutDirection,
-            state.isRightToLeft ? .rightToLeft : .leftToRight
-        )
     }
 
     /// Same lane pattern as search: an accent symbol, the live value, and a
@@ -180,21 +219,11 @@ struct HomeCommandBar: View {
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, PPSpace.base)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: resolvedSearchControlHeight,
-                alignment: .leading
-            )
-            .background(searchLaneSurface)
-            .overlay {
-                searchLaneShape.stroke(
-                    searchLaneBorder,
-                    lineWidth: contrast == .increased ? 1.5 : 1
-                )
-            }
-            .contentShape(searchLaneShape)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: resolvedControlHeight)
+            .contentShape(HomeCommandBar.controlShape)
         }
-        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
+        .buttonStyle(commandButtonStyle)
         .accessibilityLabel(HomeModelAdapter.localized(
             "home_pulse_location_context",
             fallback: "Your area"
@@ -208,19 +237,12 @@ struct HomeCommandBar: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color.ppAccentText)
                 .frame(
-                    width: HomeCommandBar.controlSide,
-                    height: HomeCommandBar.controlSide
+                    width: resolvedControlHeight,
+                    height: resolvedControlHeight
                 )
-                .background(controlSurface)
-                .overlay {
-                    HomeCommandBar.controlShape.stroke(
-                        searchLaneBorder,
-                        lineWidth: contrast == .increased ? 1.5 : 1
-                    )
-                }
                 .contentShape(HomeCommandBar.controlShape)
         }
-        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
+        .buttonStyle(commandButtonStyle)
         .accessibilityLabel(HomeModelAdapter.localized(
             "home_pulse_search_a11y",
             fallback: "Search Pure Pets"
@@ -294,21 +316,11 @@ struct HomeCommandBar: View {
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, PPSpace.base)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: resolvedSearchControlHeight,
-                alignment: .leading
-            )
-            .background(searchLaneSurface)
-            .overlay {
-                searchLaneShape.stroke(
-                    searchLaneBorder,
-                    lineWidth: contrast == .increased ? 1.5 : 1
-                )
-            }
-            .contentShape(searchLaneShape)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: resolvedControlHeight)
+            .contentShape(HomeCommandBar.controlShape)
         }
-        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
+        .buttonStyle(commandButtonStyle)
         .accessibilityLabel(
             HomeModelAdapter.localized(
                 "home_pulse_search_a11y",
@@ -323,26 +335,29 @@ struct HomeCommandBar: View {
         )
     }
 
-    /// One squircle vocabulary for every icon control in the command surface.
+    /// Legacy default used only by the optional Nova glyph owner. The visible
+    /// location, search, and cart controls use `resolvedControlHeight`.
     static let controlSide: CGFloat = 52
 
     static var controlShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
     }
 
-    private var controlSurface: some View {
-        HomeCommandBar.controlShape.fill(Color.homeSurface)
+    private var commandPillShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: max(
+                PPCorner.medium,
+                (resolvedControlHeight / 2) - (PPSpace.xs + PPSpace.xxs)
+            ),
+            style: .continuous
+        )
     }
 
-    private var searchLaneShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    private var commandTint: Color {
+        Color.homeBrand.opacity(colorScheme == .dark ? 0.08 : 0.035)
     }
 
-    private var searchLaneSurface: some View {
-        searchLaneShape.fill(Color.homeSurface)
-    }
-
-    private var searchLaneBorder: Color {
+    private var commandBorder: Color {
         Color.homeBrand.opacity(
             contrast == .increased
                 ? 0.5
@@ -350,21 +365,86 @@ struct HomeCommandBar: View {
         )
     }
 
-    private var resolvedSearchControlHeight: CGFloat {
-        let maximum: CGFloat = dynamicTypeSize.isAccessibilitySize ? 68 : 58
-        return min(max(searchControlHeight, 54), maximum)
+    private var resolvedControlHeight: CGFloat {
+        let maximum: CGFloat = dynamicTypeSize.isAccessibilitySize ? 64 : 54
+        return min(max(commandControlHeight, 48), maximum)
     }
 
-    private struct HomeSearchButtonStyle: ButtonStyle {
+    private var commandVerticalSeparator: some View {
+        Capsule()
+            .fill(
+                LinearGradient(
+                    stops: [
+                        .init(color: commandBorder.opacity(0), location: 0),
+                        .init(color: commandBorder, location: 0.28),
+                        .init(color: commandBorder, location: 0.72),
+                        .init(color: commandBorder.opacity(0), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(
+                width: contrast == .increased ? 1.5 : 1,
+                height: max(
+                    PPSpace.xl,
+                    resolvedControlHeight - PPSpace.md
+                )
+            )
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private var cartButtonWithTrailingRoom: some View {
+        cartButton
+            .padding(.trailing, PPSpace.xs + PPSpace.xxs)
+    }
+
+    private var commandButtonStyle: HomeCommandButtonStyle {
+        HomeCommandButtonStyle(reduceMotion: reduceMotion)
+    }
+
+    private func fallbackCommandPill<Content: View>(
+        _ content: Content
+    ) -> some View {
+        content
+            .background {
+                if reduceTransparency {
+                    commandPillShape.fill(Color.homeSurface)
+                } else {
+                    commandPillShape
+                        .fill(.ultraThinMaterial)
+                        .overlay {
+                            commandPillShape.fill(commandTint)
+                        }
+                }
+            }
+            .overlay {
+                commandPillShape.stroke(
+                    commandBorder,
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+            }
+    }
+
+    private struct HomeCommandButtonStyle: ButtonStyle {
         let reduceMotion: Bool
 
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
                 .scaleEffect(
-                    configuration.isPressed && !reduceMotion ? 0.986 : 1
+                    configuration.isPressed
+                        && !reduceMotion
+                        ? 0.986
+                        : 1
                 )
                 .opacity(configuration.isPressed ? 0.88 : 1)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .easeOut(duration: 0.16),
+                    value: configuration.isPressed
+                )
         }
     }
 
@@ -480,22 +560,15 @@ struct HomeAnimatedSearchSuggestionView: View {
     /// the state never depends on the badge alone.
     private var cartButton: some View {
         Button(action: cartAction) {
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: "cart.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .frame(
-                        width: HomeCommandBar.controlSide,
-                        height: HomeCommandBar.controlSide
-                    )
-                    .background(controlSurface)
-                    .overlay {
-                        HomeCommandBar.controlShape.stroke(
-                            searchLaneBorder,
-                            lineWidth: contrast == .increased ? 1.5 : 1
-                        )
-                    }
-
+            Image(systemName: "cart.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.ppTextPrimary)
+                .frame(
+                    width: resolvedControlHeight,
+                    height: resolvedControlHeight
+                )
+                .contentShape(HomeCommandBar.controlShape)
+                .overlay(alignment: .topTrailing) {
                 if state.cartCount > 0 {
                     Text(state.cartCount > 99 ? "99+" : "\(state.cartCount)")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
@@ -506,16 +579,18 @@ struct HomeAnimatedSearchSuggestionView: View {
                         .overlay {
                             Capsule().stroke(Color.homeSurface, lineWidth: 2)
                         }
-                        .offset(x: 6, y: -6)
+                        .padding(.top, PPSpace.xs)
+                        .padding(.trailing, PPSpace.xs)
+                        .accessibilityHidden(true)
                 }
             }
             .frame(
-                width: HomeCommandBar.controlSide,
-                height: HomeCommandBar.controlSide
+                width: resolvedControlHeight,
+                height: resolvedControlHeight
             )
             .contentShape(HomeCommandBar.controlShape)
         }
-        .buttonStyle(HomeSearchButtonStyle(reduceMotion: reduceMotion))
+        .buttonStyle(commandButtonStyle)
         .accessibilityLabel(
             HomeModelAdapter.localized(
                 "home_pulse_cart_a11y",
@@ -690,8 +765,11 @@ struct HomePetSwitcher: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            PPSectionHeaderSwiftUIRepresentable(
+        VStack(
+            alignment: .leading,
+            spacing: PPHomeSectionHeaderMetrics.contentSpacing
+        ) {
+            PPHomeSectionHeading(
                 title: HomeModelAdapter.localized(
                     "home_pulse_pet_context_title",
                     fallback: "Your pet context"
@@ -704,10 +782,9 @@ struct HomePetSwitcher: View {
                     "Edit",
                     fallback: "Edit"
                 ),
-                action: onEdit,
-                sectionRawValue: 8
+                action: onEdit
             )
-            .padding(.horizontal, PPSpace.screenMargin * 0.5)
+            .padding(.horizontal, PPSpace.screenMargin)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .center, spacing: PPSpace.sm) {
@@ -1813,9 +1890,14 @@ struct HomePriorityGrid: View {
     private enum Layout {
         static let columnSpacing = PPSpace.md
         static let cardSpacing = PPSpace.sm
-        static let featuredCircleSize: CGFloat = 108
-        static let featuredCircleTopInset = PPSpace.md
-        static let featuredCardWidth: CGFloat = 148
+        static let featuredCircleTopInset = PPSpace.sm
+        static let minimumFeaturedWidth: CGFloat = 104
+        static let maximumFeaturedWidth: CGFloat = 148
+        static let featuredWidthRatio: CGFloat = 0.38
+        static let minimumFeaturedCircle: CGFloat = 80
+        static let maximumFeaturedCircle: CGFloat = 100
+        static let featuredCircleWidthRatio: CGFloat = 0.68
+        static let maximumContentWidth: CGFloat = 488
     }
 
     private var compactSectionHeight: CGFloat {
@@ -1823,158 +1905,130 @@ struct HomePriorityGrid: View {
     }
 
     private var featuredAction: HomePriorityAction? {
-        actions.first(where: { $0.id == "pet" }) ?? actions.first
+        actions.first(where: { $0.id == "pet" })
     }
 
     private var secondaryActions: [HomePriorityAction] {
         let items = actions.filter { $0.id != "pet" }
-        if items.count >= 4 {
-            return Array(items.prefix(4))
+        let limit = PPHomePresentationLimits.ecosystemLauncherSecondaryActions
+        if items.count >= limit {
+            return Array(items.prefix(limit))
         }
         return items
     }
 
     var body: some View {
-        VStack(spacing: PPSpace.md) {
-            headerView
-
+        Group {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: PPSpace.sm) {
-                    if let featured = featuredAction {
-                        HomeFeaturedPetCard(
-                            action: featured,
-                            pet: featuredPet,
-                            regularWidth: Layout.featuredCardWidth,
-                            compactHeight: compactSectionHeight,
-                            regularCircleSize: Layout.featuredCircleSize,
-                            circleInset: Layout.featuredCircleTopInset,
-                            onSelect: onSelect
-                        )
-                    }
-                    ForEach(secondaryActions) { action in
-                        HomeSecondaryActionCard(
-                            action: action,
-                            compactHeight: compactCardHeight,
-                            onSelect: onSelect
-                        )
-                    }
-                }
+                accessibilityLayout
             } else {
-                HStack(
-                    alignment: .top,
-                    spacing: Layout.columnSpacing
-                ) {
-                    if let featured = featuredAction {
-                        HomeFeaturedPetCard(
-                            action: featured,
-                            pet: featuredPet,
-                            regularWidth: Layout.featuredCardWidth,
-                            compactHeight: compactSectionHeight,
-                            regularCircleSize: Layout.featuredCircleSize,
-                            circleInset: Layout.featuredCircleTopInset,
-                            onSelect: onSelect
-                        )
-                        .frame(width: Layout.featuredCardWidth)
-                    }
-
-                    secondaryGrid
-                        .frame(maxWidth: .infinity)
+                GeometryReader { proxy in
+                    bentoLayout(availableWidth: proxy.size.width)
                 }
-                .frame(maxWidth: .infinity)
                 .frame(height: compactSectionHeight)
             }
         }
     }
 
-    private var secondaryGrid: some View {
-        let rows: [[(index: Int, action: HomePriorityAction)]] = {
-            var result: [[(index: Int, action: HomePriorityAction)]] = []
-            var index = 0
-            let enumerated = Array(secondaryActions.enumerated())
-            while index < enumerated.count {
-                let end = index + 2
-                let sliceEnd = end <= enumerated.count ? end : enumerated.count
-                result.append(Array(enumerated[index..<sliceEnd].map { ($0.offset, $0.element) }))
-                index = end
+    private var accessibilityLayout: some View {
+        VStack(spacing: PPSpace.sm) {
+            if let featured = featuredAction {
+                HomeFeaturedPetCard(
+                    action: featured,
+                    pet: featuredPet,
+                    regularWidth: nil,
+                    compactHeight: compactSectionHeight,
+                    regularCircleSize: Layout.maximumFeaturedCircle,
+                    circleInset: Layout.featuredCircleTopInset,
+                    onSelect: onSelect
+                )
             }
-            return result
-        }()
+
+            ForEach(secondaryActions) { action in
+                HomeSecondaryActionCard(
+                    action: action,
+                    compactHeight: compactCardHeight,
+                    onSelect: onSelect
+                )
+            }
+        }
+    }
+
+    private func bentoLayout(availableWidth: CGFloat) -> some View {
+        let contentWidth = min(
+            availableWidth,
+            Layout.maximumContentWidth
+        )
+        let featuredWidth = min(
+            max(
+                contentWidth * Layout.featuredWidthRatio,
+                Layout.minimumFeaturedWidth
+            ),
+            Layout.maximumFeaturedWidth
+        )
+        let featuredCircle = min(
+            max(
+                featuredWidth * Layout.featuredCircleWidthRatio,
+                Layout.minimumFeaturedCircle
+            ),
+            Layout.maximumFeaturedCircle
+        )
+
+        return HStack(
+            alignment: .top,
+            spacing: Layout.columnSpacing
+        ) {
+            if let featured = featuredAction {
+                HomeFeaturedPetCard(
+                    action: featured,
+                    pet: featuredPet,
+                    regularWidth: featuredWidth,
+                    compactHeight: compactSectionHeight,
+                    regularCircleSize: featuredCircle,
+                    circleInset: Layout.featuredCircleTopInset,
+                    onSelect: onSelect
+                )
+                .frame(width: featuredWidth)
+            }
+
+            secondaryGrid
+                .frame(maxWidth: .infinity)
+        }
+        .frame(width: contentWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(height: compactSectionHeight)
+    }
+
+    private var secondaryGrid: some View {
+        let firstRow = Array(secondaryActions.prefix(2))
+        let secondRow = Array(secondaryActions.dropFirst(2).prefix(2))
 
         return VStack(spacing: Layout.cardSpacing) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                HStack(spacing: Layout.cardSpacing) {
-                    ForEach(row, id: \.action.id) { item in
-                        HomeSecondaryActionCard(
-                            action: item.action,
-                            compactHeight: compactCardHeight,
-                            onSelect: onSelect
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                    if row.count == 1 {
-                        Spacer(minLength: 0)
-                    }
-                }
+            secondaryRow(firstRow)
+
+            if !secondRow.isEmpty {
+                secondaryRow(secondRow)
             }
         }
     }
 
-    private var headerView: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            HStack(spacing: PPSpace.sm) {
-                Text(
-                    HomeModelAdapter.localized(
-                        "home_pulse_priority_title",
-                        fallback: "خطوتك التالية"
-                    )
+    private func secondaryRow(
+        _ actions: [HomePriorityAction]
+    ) -> some View {
+        HStack(spacing: Layout.cardSpacing) {
+            ForEach(actions) { action in
+                HomeSecondaryActionCard(
+                    action: action,
+                    compactHeight: compactCardHeight,
+                    onSelect: onSelect
                 )
-                .font(HomeFont.bold(24))
-                .foregroundStyle(Color.homeTextPrimary)
-                .multilineTextAlignment(.leading)
-
-                HomeSectionHeaderSparkleMotion()
+                .frame(maxWidth: .infinity)
             }
 
-            Text(
-                HomeModelAdapter.localized(
-                    "home_pulse_priority_subtitle",
-                    fallback: "كل ما يحتاجه حيوانك في مكان واحد"
-                )
-            )
-            .font(HomeFont.subheadline())
-            .foregroundStyle(Color.homeTextSecondary)
-            .multilineTextAlignment(.leading)
-            .fixedSize(horizontal: false, vertical: true)
+            if actions.count == 1 {
+                Spacer(minLength: 0)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
-}
-
-private struct HomeSectionHeaderSparkleMotion: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    @State private var isAnimating = false
-
-    var body: some View {
-        Image(systemName: "sparkle")
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(Color.homeBrand)
-            .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.16 : 0.90))
-            .rotationEffect(.degrees(reduceMotion ? 0 : (isAnimating ? 15 : -8)))
-            .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.78))
-            .shadow(color: Color.homeBrand.opacity(reduceMotion ? 0 : (isAnimating ? 0.35 : 0.0)), radius: 6)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(
-                    .easeInOut(duration: 2.2)
-                    .repeatForever(autoreverses: true)
-                ) {
-                    isAnimating = true
-                }
-            }
-            .accessibilityHidden(true)
     }
 }
 
@@ -2000,7 +2054,9 @@ struct HomeFeaturedPetCard: View {
     }
 
     private var animationViewSize: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 204 : 168
+        dynamicTypeSize.isAccessibilitySize
+            ? 204
+            : animationHaloSize * 1.55
     }
 
     private var regularCTAWidth: CGFloat? {
@@ -2052,14 +2108,14 @@ struct HomeFeaturedPetCard: View {
                     Text(action.title)
                         .font(HomeFont.bold(20))
                         .foregroundStyle(Color.homeTextPrimary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .minimumScaleFactor(0.82)
 
                     Text(action.subtitle)
                         .font(HomeFont.medium(14))
                         .foregroundStyle(subtitleColor)
                         .multilineTextAlignment(.center)
-                        .lineLimit(2)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
                         .minimumScaleFactor(0.93)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -2076,7 +2132,7 @@ struct HomeFeaturedPetCard: View {
                         )
                     )
                     .font(HomeFont.bold(14))
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .minimumScaleFactor(0.78)
 
                     Image(systemName: "chevron.forward")
@@ -2141,6 +2197,7 @@ struct HomeFeaturedPetCard: View {
                     )
                 }
             }
+            .clipShape(cardShape)
             .overlay {
                 cardShape.stroke(
                     actionAccent.opacity(
@@ -2360,13 +2417,6 @@ private struct HomeSecondaryActionCard: View {
                     lineWidth: contrast == .increased ? 1.5 : 0.8
                 )
             }
-            .shadow(
-                color: Color.black.opacity(
-                    colorScheme == .dark ? 0.16 : 0.045
-                ),
-                radius: 8,
-                y: 4
-            )
             .contentShape(cardShape)
         }
         .buttonStyle(HomeCardPressStyle())
@@ -2381,7 +2431,7 @@ private struct HomeSecondaryActionCard: View {
             HStack(spacing: PPSpace.md) {
                 actionIcon(size: 44)
 
-                actionCopy
+                expandedActionCopy
 
                 Spacer(minLength: PPSpace.xs)
 
@@ -2389,18 +2439,16 @@ private struct HomeSecondaryActionCard: View {
             }
             .padding(PPSpace.md)
         } else {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: PPSpace.xs) {
-                    actionIcon(size: 38)
+            ZStack(alignment: .topTrailing) {
+                VStack(alignment: .leading, spacing: 0) {
+                    actionIcon(size: 34)
 
-                    Spacer(minLength: 0)
+                    Spacer(minLength: PPSpace.xs)
 
-                    directionIndicator(size: 26)
+                    compactActionCopy
                 }
 
-                Spacer(minLength: PPSpace.xs)
-
-                actionCopy
+                directionIndicator(size: 22)
             }
             .padding(.horizontal, PPSpace.sm)
             .padding(.top, PPSpace.md)
@@ -2408,21 +2456,32 @@ private struct HomeSecondaryActionCard: View {
         }
     }
 
-    private var actionCopy: some View {
+    private var compactActionCopy: some View {
+        Text(action.title)
+            .font(HomeFont.bold(16))
+            .foregroundStyle(Color.homeTextPrimary)
+            .multilineTextAlignment(.leading)
+            .lineLimit(2)
+            .minimumScaleFactor(0.80)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var expandedActionCopy: some View {
         VStack(alignment: .leading, spacing: PPSpace.xxs) {
             Text(action.title)
                 .font(HomeFont.bold(18))
                 .foregroundStyle(Color.homeTextPrimary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .lineLimit(2)
                 .minimumScaleFactor(0.76)
 
-            Text(action.subtitle)
-                .font(HomeFont.medium(14))
-                .foregroundStyle(subtitleColor)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
-                .minimumScaleFactor(0.93)
-                .fixedSize(horizontal: false, vertical: true)
+            if !action.subtitle.isEmpty {
+                Text(action.subtitle)
+                    .font(HomeFont.medium(14))
+                    .foregroundStyle(subtitleColor)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -2624,11 +2683,15 @@ struct HomeCategoryRail: View {
         static let cellSpacing = PPSpace.md
         static let shadowTopInset = PPSpace.md
         static let shadowBottomInset = PPSpace.lg
+        static let screenGutter = PPSpace.screenMargin
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            PPSectionHeaderSwiftUIRepresentable(
+        VStack(
+            alignment: .leading,
+            spacing: PPHomeSectionHeaderMetrics.contentSpacing
+        ) {
+            PPHomeSectionHeading(
                 title: HomeModelAdapter.localized(
                     "home_pulse_categories_title",
                     fallback: "Explore by pet"
@@ -2637,14 +2700,18 @@ struct HomeCategoryRail: View {
                     "home_pulse_categories_subtitle",
                     fallback: "The selected species shapes relevant results"
                 ),
+                titleAccent: Color.ppPrimary,
                 actionTitle: layoutActionTitle,
                 action: toggleLayout,
-                sectionRawValue: 5,
-                headingAccentColor: selectedCategoryAccent,
-                isExpanded: isExpanded
+                actionIconName: isExpanded
+                    ? "chevron.up"
+                    : "chevron.forward",
+                actionAccessibilityIdentifier:
+                    "home.mainKinds.layoutToggle",
+                actionAccessibilityValue: layoutActionTitle,
+                actionGeneratesHaptic: true
             )
-            .padding(.top, PPSpace.md)
-            .padding(.horizontal, PPSpace.screenMargin * 0.5)
+            .padding(.horizontal, RailLayout.screenGutter)
 
             if isExpanded {
                 expandedGrid
@@ -2691,7 +2758,7 @@ struct HomeCategoryRail: View {
                             .id(scrollID(for: category))
                         }
                     }
-                    .padding(.horizontal, PPSpace.screenMargin)
+                    .padding(.horizontal, RailLayout.screenGutter)
                     .padding(.top, RailLayout.shadowTopInset)
                     .padding(.bottom, RailLayout.shadowBottomInset)
                 }
@@ -2735,7 +2802,7 @@ struct HomeCategoryRail: View {
                 .id(scrollID(for: category))
             }
         }
-        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.horizontal, RailLayout.screenGutter)
         .padding(.vertical, PPSpace.xs)
     }
 
@@ -2757,18 +2824,9 @@ struct HomeCategoryRail: View {
         )
     }
 
-    private var selectedCategoryAccent: UIColor {
-        guard let selectedID,
-              let category = categories.first(where: {
-                  HomeModelAdapter.mainKindID($0.raw) == selectedID
-              }) else {
-            return .ppPrimary
-        }
-        return category.accent
-    }
-
     private var layoutTransition: AnyTransition {
-        .opacity.combined(
+        guard !reduceMotion else { return .identity }
+        return .opacity.combined(
             with: .scale(
                 scale: 0.985,
                 anchor: .top
@@ -2879,20 +2937,20 @@ struct HomeCategoryRail: View {
         let width = viewportWidth > 1 ? viewportWidth : 390
         if dynamicTypeSize.isAccessibilitySize {
             return CGSize(
-                width: width < 375 ? 116 : 118,
+                width: width < 375 ? 120 : 132,
                 height: 148
             )
         }
         if width >= 700 {
-            return CGSize(width: 114, height: 184)
+            return CGSize(width: 140, height: 184)
         }
         if width >= 430 {
-            return CGSize(width: 112, height: 143)
+            return CGSize(width: 140, height: 143)
         }
         if width < 375 {
-            return CGSize(width: 104, height: 130)
+            return CGSize(width: 120, height: 130)
         }
-        return CGSize(width: 108, height: 132)
+        return CGSize(width: 132, height: 132)
     }
 
     private func updateViewportWidth(_ width: CGFloat) {
@@ -3023,18 +3081,17 @@ struct HomeOrderCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            PPSectionHeaderSwiftUIRepresentable(
+        VStack(
+            alignment: .leading,
+            spacing: PPHomeSectionHeaderMetrics.contentSpacing
+        ) {
+            PPHomeSectionHeading(
                 title: HomeModelAdapter.localized(
                     "home_pulse_current_order_title",
                     fallback: "Current order"
                 ),
-                subtitle: order.reference,
-                sectionRawValue: 2,
-                showsAction: false,
-                headingAccentColor: statusAccentUIColor
+                subtitle: order.reference
             )
-            .padding(.horizontal, PPSpace.screenMargin * 0.5)
 
             Button(action: onTap) {
                 Group {
@@ -3331,17 +3388,19 @@ struct HomeFeedSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            PPSectionHeaderSwiftUIRepresentable(
+        VStack(
+            alignment: .leading,
+            spacing: PPHomeSectionHeaderMetrics.contentSpacing
+        ) {
+            PPHomeSectionHeading(
                 title: section.title,
                 subtitle: section.subtitle,
                 actionTitle: section.seeAllTitle,
                 action: section.seeAllTitle == nil
                     ? nil
-                    : { store.seeAll(section.kind) },
-                sectionRawValue: section.rawConfigSectionID
+                    : { store.seeAll(section.kind) }
             )
-            .padding(.horizontal, PPSpace.screenMargin * 0.5)
+            .padding(.horizontal, PPSpace.screenMargin)
 
             switch section.state {
             case .loading:

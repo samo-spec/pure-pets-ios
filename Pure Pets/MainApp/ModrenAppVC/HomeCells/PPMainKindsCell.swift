@@ -1,15 +1,15 @@
 import UIKit
 
 private enum PPMainKindsCellMetrics {
-    static let cornerRadius: CGFloat = PPCorner.hero
+    static let cornerRadius: CGFloat = PPCorner.card
     static let contentInset: CGFloat = PPSpace.md
-    static let imagePlateSize: CGFloat = 92
-    static let compactImagePlateSize: CGFloat = 80
-    static let maximumImagePlateSize: CGFloat = 92
-    static let maximumCompactImagePlateSize: CGFloat = 80
-    static let artworkSize: CGFloat = 76
-    static let allArtworkSize: CGFloat = 36
-    static let imageToTitleSpacing: CGFloat = PPSpace.xs
+    static let imagePlateSize: CGFloat = 64
+    static let compactImagePlateSize: CGFloat = 60
+    static let maximumImagePlateSize: CGFloat = 64
+    static let maximumCompactImagePlateSize: CGFloat = 60
+    static let artworkSize: CGFloat = 52
+    static let allArtworkSize: CGFloat = 28
+    static let imageToTitleSpacing: CGFloat = PPSpace.sm
     // Temporary visual switch: selection semantics and motion stay active,
     // while the decorative bottom line remains hidden.
     static let showsBottomSelectionIndicator = false
@@ -17,23 +17,18 @@ private enum PPMainKindsCellMetrics {
     static let indicatorHeight: CGFloat = PPSpace.xs
     static let identitySpineWidth: CGFloat = PPSpace.xs
     static let identitySpineInset: CGFloat = PPSpace.sm
-    static let selectedBorderWidth: CGFloat = 1
-    static let regularBorderWidth: CGFloat = 0.65
+    static let selectedBorderWidth: CGFloat = 1.5
+    static let regularBorderWidth: CGFloat = 1
+    static let selectedRestingScale: CGFloat = 1.012
     static let pressDuration: TimeInterval = 0.10
     static let releaseDuration: TimeInterval = 0.22
-    static let selectionDuration: TimeInterval = 0.28
+    static let selectionDuration: TimeInterval = 0.18
     static let restoredEntranceDuration: TimeInterval = 0.38
-    static let selectionChangeDuration: TimeInterval = 0.28
+    static let selectionChangeDuration: TimeInterval = 0.20
     static let haloDuration: TimeInterval = 0.28
     static let identityRevealDuration: TimeInterval = 0.26
     static let identityTraceDuration: TimeInterval = 0.34
-    static let commitDuration: TimeInterval = 0.22
-}
-
-private enum PPMainKindsCellAnimationKey {
-    static let tapHalo = "pp.mainKinds.tapHalo"
-    static let identityReveal = "pp.mainKinds.identityReveal"
-    static let identityTrace = "pp.mainKinds.identityTrace"
+    static let commitDuration: TimeInterval = 0.18
 }
 
 private enum PPMainKindsCellPalette {
@@ -346,7 +341,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         tapButton.largeContentTitle = title
         tapButton.showsLargeContentViewer = true
 
-        updateArtworkMetrics()
+        updateTypographyAndMetrics()
         if shouldRefreshImage {
             configureImage(for: kind, isAll: isAll)
         } else if isAll {
@@ -426,8 +421,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
         updateMotionLayerPalette()
         let updates = {
             self.surfaceView.backgroundColor = .clear
-            self.materialView.backgroundColor = PPMainKindsCellPalette.card.withAlphaComponent(
-                reduceTransparency ? 1 : 0.94
+            self.materialView.backgroundColor = self.resolvedSurfaceColor(
+                accent: accent,
+                selected: selected,
+                reduceTransparency: reduceTransparency,
+                darkMode: darkMode,
+                increasedContrast: increasedContrast
             )
 
             let selectedBorderColor = accent.withAlphaComponent(
@@ -457,7 +456,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.imagePlateView.backgroundColor = .clear
             self.imagePlateView.layer.borderWidth = 0
             self.imagePlateView.layer.shadowOpacity = 0
-            self.titleLabel.textColor = PPMainKindsCellPalette.primaryText
+            self.titleLabel.font = self.resolvedTitleFont()
+            self.titleLabel.textColor = selected
+                ? accent.blended(
+                    with: PPMainKindsCellPalette.primaryText,
+                    ratio: 0.16,
+                    traitCollection: self.traitCollection
+                )
+                : PPMainKindsCellPalette.primaryText
             self.titleLabel.alpha = 1
             self.kindImageView.tintColor = self.resolvedImageViewTintColor(selected: selected)
             self.selectionIndicatorView.alpha = selected ? 1 : 0
@@ -476,23 +482,31 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 selected: glowSelected,
                 pressing: self.isPressing
             )
-            self.tapButton.transform = self.isPressing
-                ? self.pressedTapTransform
-                : self.restingTapTransform
         }
+
+        let tapTransform = self.isPressing
+            ? self.pressedTapTransform
+            : self.restingTapTransform
 
         guard animated, !reduceMotion else {
             UIView.performWithoutAnimation(updates)
+            self.tapButton.transform = tapTransform
             return
         }
 
+        UIView.transition(
+            with: surfaceView,
+            duration: PPMainKindsCellMetrics.selectionDuration,
+            options: [.transitionCrossDissolve, .allowUserInteraction, .beginFromCurrentState],
+            animations: updates
+        )
         UIView.animate(
             withDuration: PPMainKindsCellMetrics.selectionDuration,
             delay: 0,
-            usingSpringWithDamping: 0.88,
-            initialSpringVelocity: 0.18,
-            options: [.allowUserInteraction, .beginFromCurrentState],
-            animations: updates
+            options: [.allowUserInteraction, .beginFromCurrentState, .curveEaseOut],
+            animations: {
+                self.tapButton.transform = tapTransform
+            }
         )
     }
 
@@ -504,13 +518,46 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
 
     private func updateTypographyAndMetrics() {
-        let baseFont = UIFont(name: "Beiruti-Bold", size: 15)
-            ?? UIFont.systemFont(ofSize: 15, weight: .semibold)
-        titleLabel.font = UIFontMetrics(forTextStyle: .subheadline).scaledFont(
+        titleLabel.font = resolvedTitleFont()
+        updateArtworkMetrics()
+    }
+
+    private func resolvedTitleFont() -> UIFont {
+        let fontName = isKindSelected ? "Beiruti-Bold" : "Beiruti-Medium"
+        let baseFont = UIFont(name: fontName, size: 15)
+            ?? UIFont.systemFont(
+                ofSize: 15,
+                weight: isKindSelected ? .bold : .semibold
+            )
+        return UIFontMetrics(forTextStyle: .subheadline).scaledFont(
             for: baseFont,
             maximumPointSize: 21
         )
-        updateArtworkMetrics()
+    }
+
+    private func resolvedSurfaceColor(
+        accent: UIColor,
+        selected: Bool,
+        reduceTransparency: Bool,
+        darkMode: Bool,
+        increasedContrast: Bool
+    ) -> UIColor {
+        let card = PPMainKindsCellPalette.card
+        guard selected else {
+            return card.withAlphaComponent(reduceTransparency ? 1 : 0.94)
+        }
+
+        let tintRatio: CGFloat
+        if increasedContrast {
+            tintRatio = 0.20
+        } else if darkMode {
+            tintRatio = 0.16
+        } else {
+            tintRatio = 0.10
+        }
+        return accent
+            .blended(with: card, ratio: tintRatio, traitCollection: traitCollection)
+            .withAlphaComponent(reduceTransparency ? 1 : 0.97)
     }
 
     private func updateArtworkMetrics() {
@@ -616,7 +663,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
                     selected: glowSelected,
                     pressing: pressed
                 )
-                self.tapHaloLayer.opacity = pressed ? 0.10 : 0
+                self.tapHaloLayer.opacity = 0
             }
         )
     }
@@ -679,7 +726,6 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         updateMotionLayerPalette()
         layoutMotionLayers()
-        performIdentityRevealMotion()
         let finalBottomGlow = restingGlowOpacity(selected: true)
         let finalNameGlow = kindNameGlowOpacity(selected: true, pressing: false)
 
@@ -725,8 +771,6 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         updateMotionLayerPalette()
         layoutMotionLayers()
-        performHaloBurstMotion()
-        performIdentityRevealMotion()
         let finalBottomGlow = restingGlowOpacity(selected: true)
         let finalNameGlow = kindNameGlowOpacity(selected: true, pressing: false)
 
@@ -740,9 +784,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
             animations: {
                 UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.40) {
                     self.tapButton.transform = CGAffineTransform(scaleX: 1.018, y: 1.018)
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.07, y: 1.07)
-                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -2)
-                        .scaledBy(x: 1.045, y: 1.045)
+                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.03, y: 1.03)
+                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -1)
+                        .scaledBy(x: 1.025, y: 1.025)
                     self.selectionIndicatorView.transform = .identity
                     self.selectionIndicatorView.alpha = 1
                     self.bottomGlowLayer.opacity = min(1, finalBottomGlow + 0.06)
@@ -988,7 +1032,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
 
     private var restingTapTransform: CGAffineTransform {
-        .identity
+        isKindSelected
+            ? CGAffineTransform(
+                scaleX: PPMainKindsCellMetrics.selectedRestingScale,
+                y: PPMainKindsCellMetrics.selectedRestingScale
+            )
+            : .identity
     }
 
     private var pressedTapTransform: CGAffineTransform {
@@ -996,13 +1045,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
         return CGAffineTransform(scaleX: scale, y: scale)
     }
 
-    private func restingGlowOpacity(selected: Bool) -> Float {
-        guard selected else { return 0 }
-        return isAllOption ? 0.065 : 0.088
+    private func restingGlowOpacity(selected _: Bool) -> Float {
+        0
     }
 
-    private func pressedGlowOpacity(selected: Bool) -> Float {
-        min(1, restingGlowOpacity(selected: selected) + (selected ? 0.06 : 0.02))
+    private func pressedGlowOpacity(selected _: Bool) -> Float {
+        0
     }
 
     private func selectedHeroBorderOpacity(
@@ -1013,16 +1061,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
             return 1
         }
         if isAllOption {
-            return darkMode ? 0.15 : 0.09
+            return darkMode ? 0.46 : 0.34
         }
-        return darkMode ? 0.22 : 0.14
+        return darkMode ? 0.64 : 0.48
     }
 
-    private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
-        if selected {
-            return pressing ? 0.095 : 0.082
-        }
-        return pressing ? 0.025 : 0
+    private func kindNameGlowOpacity(selected _: Bool, pressing _: Bool) -> Float {
+        0
     }
 
     private func updateMotionLayerPalette() {
@@ -1053,13 +1098,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
             accent.withAlphaComponent(identityLowAlpha).cgColor,
             accent.withAlphaComponent(0).cgColor,
         ]
-        identityFieldLayer.opacity = selected ? 1 : 0
+        identityFieldLayer.opacity = 0
         identitySpineLayer.colors = [
             accent.withAlphaComponent(spineAlpha * 0.50).cgColor,
             accent.withAlphaComponent(spineAlpha).cgColor,
             accent.withAlphaComponent(spineAlpha * 0.72).cgColor,
         ]
-        identitySpineLayer.opacity = selected ? 1 : 0
+        identitySpineLayer.opacity = 0
         captionFieldLayer.colors = [
             surface.withAlphaComponent(0).cgColor,
             surface.withAlphaComponent(darkMode ? 0.84 : 0.90).cgColor,
@@ -1089,8 +1134,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
 
     private func performSignatureCommitMotion(completion: @escaping () -> Void) {
-        performHaloBurstMotion()
-        performIdentityRevealMotion()
+        guard !reduceMotion else {
+            completion()
+            return
+        }
 
         UIView.animateKeyframes(
             withDuration: PPMainKindsCellMetrics.commitDuration,
@@ -1098,10 +1145,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
             options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
             animations: {
                 UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.42) {
-                    self.tapButton.transform = CGAffineTransform(scaleX: 0.982, y: 0.982)
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.06, y: 1.06)
-                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -2)
-                        .scaledBy(x: 1.04, y: 1.04)
+                    self.tapButton.transform = CGAffineTransform(scaleX: 0.990, y: 0.990)
+                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.025, y: 1.025)
+                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -1)
+                        .scaledBy(x: 1.02, y: 1.02)
                     self.selectionIndicatorView.transform = .identity
                 }
                 UIView.addKeyframe(withRelativeStartTime: 0.42, relativeDuration: 0.58) {
@@ -1120,92 +1167,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         )
     }
 
-    private func performIdentityRevealMotion() {
-        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
-        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityTrace)
-        identityFieldLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
-
-        let spineScale = CABasicAnimation(keyPath: "transform.scale.y")
-        spineScale.fromValue = 0.14
-        spineScale.toValue = 1
-
-        let spineSlide = CABasicAnimation(keyPath: "position.y")
-        spineSlide.fromValue = identitySpineLayer.position.y - min(14, identitySpineLayer.bounds.height * 0.22)
-        spineSlide.toValue = identitySpineLayer.position.y
-
-        let spineOpacity = CABasicAnimation(keyPath: "opacity")
-        spineOpacity.fromValue = 0
-        spineOpacity.toValue = 1
-
-        let spineGroup = CAAnimationGroup()
-        spineGroup.animations = [spineScale, spineSlide, spineOpacity]
-        spineGroup.duration = PPMainKindsCellMetrics.identityRevealDuration
-        spineGroup.timingFunction = CAMediaTimingFunction(
-            controlPoints: 0.23,
-            1,
-            0.32,
-            1
-        )
-        spineGroup.isRemovedOnCompletion = true
-        identitySpineLayer.add(spineGroup, forKey: PPMainKindsCellAnimationKey.identityReveal)
-
-        let traceLocations: [[NSNumber]] = [
-            [0, 0.08, 0.24],
-            [0.12, 0.42, 0.72],
-            [0.54, 0.82, 1],
-            [0, 0.5, 1],
-        ]
-        let spineTrace = CAKeyframeAnimation(keyPath: "locations")
-        spineTrace.values = traceLocations
-        spineTrace.keyTimes = [0, 0.34, 0.72, 1]
-        spineTrace.duration = PPMainKindsCellMetrics.identityTraceDuration
-        spineTrace.timingFunction = CAMediaTimingFunction(
-            controlPoints: 0.23,
-            1,
-            0.32,
-            1
-        )
-        spineTrace.isRemovedOnCompletion = true
-        identitySpineLayer.add(spineTrace, forKey: PPMainKindsCellAnimationKey.identityTrace)
-
-        let fieldReveal = CABasicAnimation(keyPath: "opacity")
-        fieldReveal.fromValue = 0.32
-        fieldReveal.toValue = 1
-        fieldReveal.duration = PPMainKindsCellMetrics.haloDuration
-        fieldReveal.timingFunction = CAMediaTimingFunction(
-            controlPoints: 0.23,
-            1,
-            0.32,
-            1
-        )
-        identityFieldLayer.add(fieldReveal, forKey: PPMainKindsCellAnimationKey.identityReveal)
-    }
-
-    private func performHaloBurstMotion() {
-        tapHaloLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.tapHalo)
-        tapHaloLayer.opacity = 0
-
-        let opacity = CAKeyframeAnimation(keyPath: "opacity")
-        opacity.values = [0, 0.58, 0]
-        opacity.keyTimes = [0, 0.28, 1]
-
-        let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = 0.72
-        scale.toValue = 1.86
-
-        let group = CAAnimationGroup()
-        group.animations = [opacity, scale]
-        group.duration = PPMainKindsCellMetrics.haloDuration
-        group.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        group.isRemovedOnCompletion = true
-        tapHaloLayer.add(group, forKey: PPMainKindsCellAnimationKey.tapHalo)
-    }
-
     private func resetTransientMotion() {
-        tapHaloLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.tapHalo)
-        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
-        identitySpineLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityTrace)
-        identityFieldLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.identityReveal)
         isPressing = false
         tapButton.transform = restingTapTransform
         imagePlateView.transform = .identity

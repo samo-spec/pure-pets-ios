@@ -35,7 +35,6 @@
 #import "PetAccessoryManager.h"
 #import "PetAd.h"
 #import "PetAdManager.h"
-#import "ProviderCompaniesListVC.h"
 #import <Pure_Pets-Swift.h>
 #import <SafariServices/SafariServices.h>
 #import <float.h>

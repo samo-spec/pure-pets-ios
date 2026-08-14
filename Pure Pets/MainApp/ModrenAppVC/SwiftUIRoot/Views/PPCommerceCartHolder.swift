@@ -146,6 +146,9 @@ public struct PPCommerceCartTheme: Sendable {
     public var primaryText: Color
     public var secondaryText: Color
     public var outline: Color
+    public var addToCartBackground: Color?
+    public var addToCartForeground: Color?
+    public var addToCartBorder: Color?
 
     public init(
         brand: Color,
@@ -154,7 +157,10 @@ public struct PPCommerceCartTheme: Sendable {
         surface: Color,
         primaryText: Color,
         secondaryText: Color,
-        outline: Color
+        outline: Color,
+        addToCartBackground: Color? = nil,
+        addToCartForeground: Color? = nil,
+        addToCartBorder: Color? = nil
     ) {
         self.brand = brand
         self.brandPressed = brandPressed
@@ -163,6 +169,9 @@ public struct PPCommerceCartTheme: Sendable {
         self.primaryText = primaryText
         self.secondaryText = secondaryText
         self.outline = outline
+        self.addToCartBackground = addToCartBackground
+        self.addToCartForeground = addToCartForeground
+        self.addToCartBorder = addToCartBorder
     }
 
     public static let purePets = PPCommerceCartTheme(
@@ -195,13 +204,13 @@ private enum PPCommerceCartMetrics {
         PPBottomDecisionBarGeometry.utilityControlSize
     static let quantityWidth: CGFloat =
         (PPBottomDecisionBarGeometry.utilityControlSize * 2) + PPSpace.sm
-    static let quantityButtonWidth: CGFloat = 44
+    static let quantityButtonWidth: CGFloat = 40
     static let quantityValueWidth: CGFloat =
         quantityWidth - (quantityButtonWidth * 2)
     static let payWidth: CGFloat = PPSpace.xxxxl * 2
-    static let thumbnailSize: CGFloat = controlHeight - PPSpace.xs
+    static let thumbnailSize: CGFloat = controlHeight - PPSpace.sm
     static let minimumStandardWidth: CGFloat = 356
-    static let summaryHorizontalPadding: CGFloat = PPSpace.sm
+    static let summaryHorizontalPadding: CGFloat = PPSpace.xs
     /// The parent preserves its safe-area contract; this modest expansion uses
     /// part of that existing inset to give the holder more visual authority.
     static let widthExpansion: CGFloat = PPSpace.sm
@@ -571,6 +580,10 @@ private extension PPCommerceCartHolder {
 
     @ViewBuilder
     private var addButton: some View {
+        let fgColor = theme.addToCartForeground ?? theme.brand
+        let bgColor = theme.addToCartBackground ?? theme.brand.opacity(colorScheme == .dark ? 0.16 : 0.10)
+        let borderColor = theme.addToCartBorder ?? theme.brand.opacity(colorScheme == .dark ? 0.40 : 0.28)
+
         Button {
             if displayQuantity == 0 {
                 beginAdd()
@@ -582,7 +595,7 @@ private extension PPCommerceCartHolder {
                 if criticalPhase == .adding {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(.white)
+                        .tint(fgColor)
                 } else {
                     Image(systemName: "cart.badge.plus")
                         .font(.system(size: 18, weight: .bold))
@@ -598,17 +611,17 @@ private extension PPCommerceCartHolder {
             .contentShape(Rectangle())
         }
         .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
-        .foregroundStyle(Color.white)
-        .background(primaryGradient)
+        .foregroundStyle(fgColor)
+        .background(bgColor)
         .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
                 .strokeBorder(
-                    Color.white.opacity(primaryControlBorderOpacity),
+                    borderColor,
                     lineWidth: borderWidth
                 )
         }
-        .shadow(color: theme.brand.opacity(0.20), radius: 9, y: 5)
+        .shadow(color: theme.brand.opacity(0.06), radius: 6, y: 3)
         .disabled(
             criticalPhase != nil ||
                 isSyncingQuantity ||

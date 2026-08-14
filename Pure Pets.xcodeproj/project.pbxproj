@@ -515,7 +515,6 @@
 		F28DD5A22F049C2A00FF2671 /* PPDataViewVM.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A12F049C0E00FF2671 /* PPDataViewVM.m */; };
 		F28DD5A62F04CC6500FF2671 /* PPDataViewInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */; };
 		F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */ = {isa = PBXBuildFile; fileRef = F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */; };
-		F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F290F54E2FD9E943008EADEE /* SellerProfileVC.m */; };
 		F2916F0B2D54A3E400FF0394 /* Beiruti-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */; };
 		F2916F0C2D54A3E400FF0394 /* Beiruti-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */; };
 		F2916F0D2D54A3E400FF0394 /* Beiruti-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */; };
@@ -567,7 +566,6 @@
 		F294A7CD301232DD005EFBC7 /* PPPetAdDescriptionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */; };
 		F294A7CF301232DD005EFBC7 /* PPPetAdRelatedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */; };
 		F294A7D0301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */; };
-		F294D3CF2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */; };
 		F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2957C292EEF424F00006CB3 /* TrashManager.m */; };
 		F2977D572E4ABAC7003A7005 /* SearchResultItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D562E4ABAC7003A7005 /* SearchResultItem.m */; };
 		F2977D5A2E4ABB12003A7005 /* SearchManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D592E4ABAF2003A7005 /* SearchManager.m */; };
@@ -589,6 +587,11 @@
 		F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D02D0D08CB00FF2180 /* StepperCell.m */; };
 		F29F01D52D0D08FD00FF2180 /* PKYStepper.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D32D0D08FD00FF2180 /* PKYStepper.m */; };
 		F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */; };
+		F2A0B10120260814B0000001 /* PPNotificationsHubModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */; };
+		F2A0B10120260814B0000002 /* PPHubTopTabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */; };
+		F2A0B10120260814B0000003 /* PPNotificationsInboxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */; };
+		F2A0B10120260814B0000004 /* PPNotificationsInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */; };
+		F2A0B10120260814B0000005 /* PPNotificationsHubViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */; };
 		F2A0BBC42F1FD9BB003715F0 /* PPAudioPlaybackController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC32F1FD9AA003715F0 /* PPAudioPlaybackController.m */; };
 		F2A0BBCD2F203B1E003715F0 /* TypingIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */; };
 		F2A0F5F22CC842D300B38F14 /* KBSwipeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0F5F12CC842D300B38F14 /* KBSwipeCell.m */; };
@@ -710,7 +713,6 @@
 		F2BCA1123022000000000112 /* PPPromoRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BCA0163022000000000016 /* PPPromoRemoteImage.swift */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
 		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
-		F2C0BA4B2FF09FCB009D1C33 /* PPProviderCompanyCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */; };
 		F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */; };
 		F2C100112025000100000001 /* ChCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C100132025000100000001 /* ChCell.m */; };
 		F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C158342E2100D100EFDC91 /* EmptyStateView.m */; };
@@ -777,6 +779,11 @@
 		F2E33F6C3006C521005E31C6 /* PPOrderStatusStepperView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F573006C1C9005E31C6 /* PPOrderStatusStepperView.m */; };
 		F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */; };
 		F2E64412302EB320005B0699 /* PPCommerceCartHolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */; };
+		F2E64419302F76D1005B0699 /* PPProviderStorefrontDataBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E64417302F76D1005B0699 /* PPProviderStorefrontDataBridge.m */; };
+		F2E6441A302F76D1005B0699 /* PPProviderProfileHeroStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64415302F76D1005B0699 /* PPProviderProfileHeroStore.swift */; };
+		F2E6441B302F76D1005B0699 /* PPSellerProfileSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64418302F76D1005B0699 /* PPSellerProfileSwiftUI.swift */; };
+		F2E6441C302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64413302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift */; };
+		F2E6441D302F76D1005B0699 /* PPProviderProfileHero.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64414302F76D1005B0699 /* PPProviderProfileHero.swift */; };
 		F2E78D612F18134800C5AE68 /* PPPetsTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */; };
 		F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D682F187DA300C5AE68 /* PPAdSharingHelper.m */; };
 		F2E7C8112D7D5584002383C2 /* ArchivesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E7C8102D7D5584002383C2 /* ArchivesManager.m */; };
@@ -865,9 +872,6 @@
 		F2FCF8DA3023CBB40022F78B /* PPChatsFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCF8D93023CBB40022F78B /* PPChatsFunc.m */; };
 		F2FCF8DD3023CBC30022F78B /* PPChatFeedbackManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCF8DC3023CBC30022F78B /* PPChatFeedbackManager.m */; };
 		F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2FD336D2F97CB000089BBB1 /* Main.storyboard */; };
-		F2FF90032FFD000100C0D111 /* ProviderCompaniesListVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */; };
-		F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */; };
-		F2FF90232FFD100100C0D111 /* PPProviderCompanySwiftUICell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90222FFD100100C0D111 /* PPProviderCompanySwiftUICell.swift */; };
 		F2FFDA032FCDCFC00025B5A9 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA022FCDCFC00025B5A9 /* FirebaseAI */; };
 		F2FFDA052FCDCFC00025B5A9 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA042FCDCFC00025B5A9 /* FirebaseAILogic */; };
 		F2FFDA072FCDCFC00025B5A9 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA062FCDCFC00025B5A9 /* FirebaseAnalytics */; };
@@ -889,11 +893,6 @@
 		F33000000000000000000003 /* HomePromotionSpark.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000003 /* HomePromotionSpark.json */; };
 		F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
-		F2A0B10120260814B0000001 /* PPNotificationsHubModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */; };
-		F2A0B10120260814B0000002 /* PPHubTopTabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */; };
-		F2A0B10120260814B0000003 /* PPNotificationsInboxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */; };
-		F2A0B10120260814B0000004 /* PPNotificationsInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */; };
-		F2A0B10120260814B0000005 /* PPNotificationsHubViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1855,8 +1854,6 @@
 		F28E28A62DEB2B5C00D774D0 /* MyItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyItemsViewController.h; sourceTree = "<group>"; };
 		F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyItemsViewControllerr.m; sourceTree = "<group>"; };
 		F28F03922D95E384008F962A /* Pure Pets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pure Pets.entitlements"; sourceTree = "<group>"; };
-		F290F54D2FD9E943008EADEE /* SellerProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SellerProfileVC.h; sourceTree = "<group>"; };
-		F290F54E2FD9E943008EADEE /* SellerProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SellerProfileVC.m; sourceTree = "<group>"; };
 		F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Bold.ttf"; sourceTree = "<group>"; };
 		F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Medium.ttf"; sourceTree = "<group>"; };
 		F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Regular.ttf"; sourceTree = "<group>"; };
@@ -1911,8 +1908,6 @@
 		F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdDescriptionCard.swift; sourceTree = "<group>"; };
 		F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedSection.swift; sourceTree = "<group>"; };
 		F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerNavigationBar.swift; sourceTree = "<group>"; };
-		F294D3CD2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProviderCompanyPremiumCardCell.h; sourceTree = "<group>"; };
-		F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProviderCompanyPremiumCardCell.m; sourceTree = "<group>"; };
 		F2957C282EEF424600006CB3 /* TrashManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TrashManager.h; sourceTree = "<group>"; };
 		F2957C292EEF424F00006CB3 /* TrashManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TrashManager.m; sourceTree = "<group>"; };
 		F2977D552E4ABABD003A7005 /* SearchResultItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchResultItem.h; sourceTree = "<group>"; };
@@ -1949,6 +1944,11 @@
 		F2A0A6E9300D7D2D0062A529 /* PPOrderStatusAppearance.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrderStatusAppearance.h; sourceTree = "<group>"; };
 		F2A0A6F1300D7FA50062A529 /* PPSaveForLaterManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSaveForLaterManager.h; sourceTree = "<group>"; };
 		F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSaveForLaterManager.m; sourceTree = "<group>"; };
+		F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsHubModels.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHubTopTabsView.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsInboxStore.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsInboxView.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsHubViewController.swift; sourceTree = "<group>"; };
 		F2A0BBC22F1FD99A003715F0 /* PPAudioPlaybackController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAudioPlaybackController.h; sourceTree = "<group>"; };
 		F2A0BBC32F1FD9AA003715F0 /* PPAudioPlaybackController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAudioPlaybackController.m; sourceTree = "<group>"; };
 		F2A0BBCA2F203AD2003715F0 /* TypingIndicatorView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TypingIndicatorView.h; sourceTree = "<group>"; };
@@ -2153,8 +2153,6 @@
 		F2C085542F935AF8001C27DA /* PPAuditLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuditLogger.m; sourceTree = "<group>"; };
 		F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NovaConfirmationCell.h; sourceTree = "<group>"; };
 		F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NovaConfirmationCell.m; sourceTree = "<group>"; };
-		F2C0BA492FF09F6B009D1C33 /* PPProviderCompanyCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProviderCompanyCell.h; sourceTree = "<group>"; };
-		F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProviderCompanyCell.m; sourceTree = "<group>"; };
 		F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPremuimChekoutView.swift; sourceTree = "<group>"; };
 		F2C100122025000100000001 /* ChCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChCell.h; sourceTree = "<group>"; };
 		F2C100132025000100000001 /* ChCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChCell.m; sourceTree = "<group>"; };
@@ -2270,6 +2268,12 @@
 		F2E33F693006C4FF005E31C6 /* PPOrderTimelineViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderTimelineViewController.m; sourceTree = "<group>"; };
 		F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellSwiftUI.swift; sourceTree = "<group>"; };
 		F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCommerceCartHolder.swift; sourceTree = "<group>"; };
+		F2E64413302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPProviderCompaniesSwiftUI.swift; sourceTree = "<group>"; };
+		F2E64414302F76D1005B0699 /* PPProviderProfileHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPProviderProfileHero.swift; sourceTree = "<group>"; };
+		F2E64415302F76D1005B0699 /* PPProviderProfileHeroStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPProviderProfileHeroStore.swift; sourceTree = "<group>"; };
+		F2E64416302F76D1005B0699 /* PPProviderStorefrontDataBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProviderStorefrontDataBridge.h; sourceTree = "<group>"; };
+		F2E64417302F76D1005B0699 /* PPProviderStorefrontDataBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProviderStorefrontDataBridge.m; sourceTree = "<group>"; };
+		F2E64418302F76D1005B0699 /* PPSellerProfileSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSellerProfileSwiftUI.swift; sourceTree = "<group>"; };
 		F2E78D5F2F1812E100C5AE68 /* PPPetsTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetsTitleView.h; sourceTree = "<group>"; };
 		F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetsTitleView.m; sourceTree = "<group>"; };
 		F2E78D672F187DA300C5AE68 /* PPAdSharingHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAdSharingHelper.h; sourceTree = "<group>"; };
@@ -2402,11 +2406,6 @@
 		F2FCF8DC3023CBC30022F78B /* PPChatFeedbackManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatFeedbackManager.m; sourceTree = "<group>"; };
 		F2FD336A2F9772EB0089BBB1 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F2FD336D2F97CB000089BBB1 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
-		F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderCompaniesListVC.h; sourceTree = "<group>"; };
-		F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderCompaniesListVC.m; sourceTree = "<group>"; };
-		F2FF90112FFD100100C0D111 /* ProviderStorefrontProductsVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderStorefrontProductsVC.h; sourceTree = "<group>"; };
-		F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderStorefrontProductsVC.m; sourceTree = "<group>"; };
-		F2FF90222FFD100100C0D111 /* PPProviderCompanySwiftUICell.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPProviderCompanySwiftUICell.swift; sourceTree = "<group>"; };
 		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
 		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
@@ -2416,11 +2415,6 @@
 		F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeSwiftUIMigrationTests.swift; sourceTree = "<group>"; };
 		F56AEC9C060B7F98E8DD47E0 /* Speech.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoicePermissionManager.swift; sourceTree = "<group>"; };
-		F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsHubModels.swift; sourceTree = "<group>"; };
-		F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHubTopTabsView.swift; sourceTree = "<group>"; };
-		F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsInboxStore.swift; sourceTree = "<group>"; };
-		F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsInboxView.swift; sourceTree = "<group>"; };
-		F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsHubViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3405,18 +3399,6 @@
 			path = PPBackground;
 			sourceTree = "<group>";
 		};
-		F2A0B10120260814A0000000 /* NotificationsHub */ = {
-			isa = PBXGroup;
-			children = (
-				F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */,
-				F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */,
-				F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */,
-				F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */,
-				F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */,
-			);
-			path = NotificationsHub;
-			sourceTree = "<group>";
-		};
 		F25E7FF32EFF71FE0089F659 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
@@ -4047,17 +4029,12 @@
 		F283FAB12E53FA23001EF0BA /* AccessFiles */ = {
 			isa = PBXGroup;
 			children = (
-				F2C0BA492FF09F6B009D1C33 /* PPProviderCompanyCell.h */,
-				F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */,
-				F294D3CD2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.h */,
-				F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */,
-				F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */,
-				F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */,
-				F2FF90222FFD100100C0D111 /* PPProviderCompanySwiftUICell.swift */,
-				F2FF90112FFD100100C0D111 /* ProviderStorefrontProductsVC.h */,
-				F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */,
-				F290F54D2FD9E943008EADEE /* SellerProfileVC.h */,
-				F290F54E2FD9E943008EADEE /* SellerProfileVC.m */,
+				F2E64413302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift */,
+				F2E64414302F76D1005B0699 /* PPProviderProfileHero.swift */,
+				F2E64415302F76D1005B0699 /* PPProviderProfileHeroStore.swift */,
+				F2E64416302F76D1005B0699 /* PPProviderStorefrontDataBridge.h */,
+				F2E64417302F76D1005B0699 /* PPProviderStorefrontDataBridge.m */,
+				F2E64418302F76D1005B0699 /* PPSellerProfileSwiftUI.swift */,
 				F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */,
 				F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */,
 				F2AC10013020000100BEE001 /* PPAccessoryViewerLegacyBridge.h */,
@@ -4326,6 +4303,18 @@
 				F29F01D32D0D08FD00FF2180 /* PKYStepper.m */,
 			);
 			path = PKYStepper;
+			sourceTree = "<group>";
+		};
+		F2A0B10120260814A0000000 /* NotificationsHub */ = {
+			isa = PBXGroup;
+			children = (
+				F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */,
+				F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */,
+				F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */,
+				F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */,
+				F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */,
+			);
+			path = NotificationsHub;
 			sourceTree = "<group>";
 		};
 		F2A0BBB82F1F0695003715F0 /* ChCells */ = {
@@ -5694,7 +5683,6 @@
 				F2B1417B2DA3812900F6853E /* ReminderManager.m in Sources */,
 				6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */,
 				F27146732CCE6B5300F7F3BA /* XLFormSectionDescriptor.m in Sources */,
-				F2C0BA4B2FF09FCB009D1C33 /* PPProviderCompanyCell.m in Sources */,
 				F209567F2F856824007C4ABA /* PPPetProfileEditorViewController.m in Sources */,
 				A9F200010000000000000001 /* PPPetProfilesSwiftUI.swift in Sources */,
 				A9F200020000000000000002 /* PPPetProfileEditorSwiftUI.swift in Sources */,
@@ -5781,7 +5769,6 @@
 				F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */,
 				F2710B162C4DB8CA0051B86A /* viewDataVC.m in Sources */,
 				F2AB48962C72CF3C00D88603 /* JGProgressHUDShadow.m in Sources */,
-				F294D3CF2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m in Sources */,
 				F2AB48902C72CF3C00D88603 /* JGProgressHUDFadeZoomAnimation.m in Sources */,
 				F2F807C82E8BEBE90034FF2D /* MainBannerModel.m in Sources */,
 				F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */,
@@ -5924,10 +5911,6 @@
 				F2A2F1B42EB13CE500BD1261 /* AddressFormVC.m in Sources */,
 				F2AB48912C72CF3C00D88603 /* JGProgressHUDImageIndicatorView.m in Sources */,
 				F2CDBD252D11526000FE7FA2 /* ChildModel.m in Sources */,
-				F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */,
-				F2FF90032FFD000100C0D111 /* ProviderCompaniesListVC.m in Sources */,
-				F2FF90232FFD100100C0D111 /* PPProviderCompanySwiftUICell.swift in Sources */,
-				F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */,
 				F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */,
 				F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */,
 				F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */,
@@ -6226,6 +6209,11 @@
 				F2BCA10F302200000000010F /* PPPromoCardBackground.swift in Sources */,
 				F2BCA1103022000000000110 /* PPPromoCardView.swift in Sources */,
 				F2BCA1113022000000000111 /* PPPromoPageIndicator.swift in Sources */,
+				F2E64419302F76D1005B0699 /* PPProviderStorefrontDataBridge.m in Sources */,
+				F2E6441A302F76D1005B0699 /* PPProviderProfileHeroStore.swift in Sources */,
+				F2E6441B302F76D1005B0699 /* PPSellerProfileSwiftUI.swift in Sources */,
+				F2E6441C302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift in Sources */,
+				F2E6441D302F76D1005B0699 /* PPProviderProfileHero.swift in Sources */,
 				F2BCA1123022000000000112 /* PPPromoRemoteImage.swift in Sources */,
 				F276E5CA2DE3363E00926D56 /* FavoriteButton.m in Sources */,
 				F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */,

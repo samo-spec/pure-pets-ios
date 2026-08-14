@@ -236,9 +236,14 @@ struct HomeView: View {
 
         return LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                let previousRow = index > 0 ? rows[index - 1] : nil
                 renderRow(row, plan: resolvedPlan)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, verticalPadding(for: row))
+                    .padding(
+                        .top,
+                        topPadding(for: row, after: previousRow)
+                    )
+                    .padding(.bottom, verticalPadding(for: row))
                     .background(band(for: row))
                     .homeResolvedSectionEntrance(
                         isVisible: loadedEntranceVisible,
@@ -690,6 +695,10 @@ struct HomeView: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .padding(.horizontal, PPSpace.screenMargin)
+            .padding(
+                .top,
+                PPHomeSectionHeaderMetrics.sectionTopSpacing - PPSpace.xl
+            )
 
             HomeInlineState(
                 symbol: "hourglass",
@@ -778,6 +787,51 @@ struct HomeView: View {
         }
     }
 
+    /// Preserve every row's existing bottom breathing room while making the
+    /// visible break before each standalone heading exactly 40 points. The
+    /// adjustment is derived from the preceding row, so Console-driven section
+    /// ordering cannot change the header rhythm.
+    private func topPadding(
+        for row: HomeRenderRow,
+        after previousRow: HomeRenderRow?
+    ) -> CGFloat {
+        guard hasStandaloneSectionHeader(row) else {
+            return verticalPadding(for: row)
+        }
+
+        let precedingBottom = previousRow.map {
+            verticalPadding(for: $0)
+        } ?? 0
+        return max(
+            0,
+            PPHomeSectionHeaderMetrics.sectionTopSpacing - precedingBottom
+        )
+    }
+
+    private func hasStandaloneSectionHeader(_ row: HomeRenderRow) -> Bool {
+        switch row.content {
+        case .exploreMore:
+            return true
+        case let .module(module):
+            switch module.kind {
+            case .ecosystemLauncher,
+                 .livePriorityOrder,
+                 .discoveryRail,
+                 .commerceRail,
+                 .partnerFeature,
+                 .careGateway,
+                 .petContext:
+                return true
+            case .discoveryPrompt,
+                 .marketingStage,
+                 .livePriorityCare,
+                 .adoptionGateway,
+                 .pureLensFeature:
+                return false
+            }
+        }
+    }
+
     private var selectedMainKindAccent: Color {
         guard let selectedID = store.state.selectedMainKindID,
               let category = store.state.categories.first(where: {
@@ -819,7 +873,7 @@ struct HomeView: View {
     }
 
     private var placeholderActions: [HomePriorityAction] {
-        ["shop", "ads", "pharmacy", "vet", "services"].map {
+        ["shop", "ads", "pharmacy", "vet"].map {
             placeholderAction(id: $0)
         }
     }

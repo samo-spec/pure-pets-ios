@@ -481,7 +481,7 @@ final class PPHomePresentationResolverTests: XCTestCase {
         )
         XCTAssertLessThanOrEqual(
             actions.count,
-            PPHomePresentationLimits.ecosystemLauncherActions
+            PPHomePresentationLimits.ecosystemLauncherSecondaryActions
         )
         // Configured order is preserved; only deliberately excluded
         // destinations are dropped.
@@ -492,12 +492,15 @@ final class PPHomePresentationResolverTests: XCTestCase {
                     !PPHomePresentationFlags.launcherExcludedActionIDs
                         .contains($0)
                 }
-                .prefix(PPHomePresentationLimits.ecosystemLauncherActions)
+                .prefix(
+                    PPHomePresentationLimits
+                        .ecosystemLauncherSecondaryActions
+                )
                 .map { $0 }
         )
     }
 
-    func testMyPetFeatureDoesNotDisplaceExistingLauncherBands() {
+    func testMyPetFeatureLeadsFourHighestPrioritySecondaryActions() {
         var value = populatedState()
         value.priorityActions = [
             "pet", "shop", "ads", "pharmacy", "vet", "services",
@@ -514,7 +517,30 @@ final class PPHomePresentationResolverTests: XCTestCase {
         XCTAssertEqual(featured?.id, "pet")
         XCTAssertEqual(
             actions.map(\.id),
-            ["shop", "ads", "pharmacy", "vet", "services"]
+            ["shop", "ads", "pharmacy", "vet"]
+        )
+        XCTAssertTrue(value.priorityActions.contains { $0.id == "services" })
+        XCTAssertFalse(actions.contains { $0.id == "services" })
+    }
+
+    func testMissingPetDoesNotPromoteASecondaryActionToFeatured() {
+        var value = populatedState()
+        value.priorityActions = [
+            "shop", "ads", "pharmacy", "vet", "services",
+        ].map(priorityAction)
+
+        let plan = PPHomePresentationResolver.plan(for: value)
+        let featured = PPHomePresentationResolver
+            .ecosystemLauncherFeaturedAction(for: value, plan: plan)
+        let actions = PPHomePresentationResolver.ecosystemLauncherActions(
+            for: value,
+            plan: plan
+        )
+
+        XCTAssertNil(featured)
+        XCTAssertEqual(
+            actions.map(\.id),
+            ["shop", "ads", "pharmacy", "vet"]
         )
     }
 

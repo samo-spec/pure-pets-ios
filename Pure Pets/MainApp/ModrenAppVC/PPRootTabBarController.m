@@ -154,6 +154,8 @@ static CGFloat const PPRootCenterActionSize = PPButtonHeightMD;
 - (void)pp_handleReduceMotionStatusChange:(NSNotification *)notification;
 - (void)pp_handleReduceTransparencyStatusChange:(NSNotification *)notification;
 - (void)pp_handleRootTabContentSizeCategoryChange:(NSNotification *)notification;
+- (void)pp_handleRootTabLanguageChange:(NSNotification *)notification;
+- (void)pp_refreshBottomTabBarForLanguageChange;
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated;
 - (void)pp_animatePremiumBottomNavigationEntranceIfNeeded;
 - (void)pp_premiumControlTouchDown:(UIButton *)sender;
@@ -1626,6 +1628,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         addObserver:self
            selector:@selector(pp_handleRootTabContentSizeCategoryChange:)
                name:UIContentSizeCategoryDidChangeNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleRootTabLanguageChange:)
+               name:@"LanguageDidChangeNotification"
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleRootTabLanguageChange:)
+               name:PPLanguageDidChangeNotification
              object:nil];
     [[NSNotificationCenter defaultCenter]
         addObserver:self
@@ -3772,6 +3784,65 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self configureAppearance];
     [self pp_refreshRootTabBarTitleLayout];
     [self pp_scheduleRootTabBarTitleLayoutRefresh];
+}
+
+- (void)pp_handleRootTabLanguageChange:(__unused NSNotification *)notification
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // `Language.userSelectedLanguage:` normally replaces the root. This
+        // in-place refresh also covers any live notification path, without
+        // changing the selected tab, navigation stacks, or bottom-surface owner.
+        if (!self.isViewLoaded || self.view.window.rootViewController != self) {
+            return;
+        }
+        [self pp_refreshBottomTabBarForLanguageChange];
+    });
+}
+
+- (void)pp_refreshBottomTabBarForLanguageChange
+{
+    UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+    self.view.semanticContentAttribute = semantic;
+    self.tabBar.semanticContentAttribute = semantic;
+    self.premiumTabbarView.semanticContentAttribute = semantic;
+
+    NSString *ordersTitle = kLang(@"menu_action_orders");
+    if (![ordersTitle isKindOfClass:NSString.class] || ordersTitle.length == 0) {
+        ordersTitle = kLang(@"OrderHistory");
+    }
+    NSArray<NSString *> *titles = @[
+        kLang(@"MainPage") ?: @"",
+        ordersTitle ?: @"",
+        PPShowsRootCenterAddButton ? @"" : (kLang(@"Add") ?: @""),
+        kLang(@"chatsTitle") ?: @"",
+        kLang(@"user_menu_tab_title") ?: @"",
+    ];
+
+    NSUInteger count = MIN(self.viewControllers.count, titles.count);
+    for (NSUInteger index = 0; index < count; index++) {
+        NSString *title = titles[index];
+        if (title.length == 0) {
+            continue;
+        }
+
+        self.viewControllers[index].tabBarItem.title = title;
+        for (UITabBarItem *item in self.premiumTabItems) {
+            if (item.tag == (NSInteger)index) {
+                item.title = title;
+            }
+        }
+    }
+
+    self.premiumDockAppliedItemWidth = 0.0;
+    [self configureAppearance];
+    [self pp_applyPremiumTabSelectionAnimated:NO];
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
+    [self pp_refreshRootTabBarTitleLayout];
+    [self pp_scheduleRootTabBarTitleLayoutRefresh];
+    [self.tabBar setNeedsLayout];
+    [self.premiumTabbarView setNeedsLayout];
+    [self.view setNeedsLayout];
+    [self.view layoutIfNeeded];
 }
 
 - (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item
