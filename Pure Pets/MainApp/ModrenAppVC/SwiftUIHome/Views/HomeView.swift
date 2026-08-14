@@ -237,7 +237,11 @@ struct HomeView: View {
         return LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                 let previousRow = index > 0 ? rows[index - 1] : nil
-                renderRow(row, plan: resolvedPlan)
+                renderRow(
+                    row,
+                    plan: resolvedPlan,
+                    sectionIndex: index
+                )
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(
                         .top,
@@ -316,11 +320,16 @@ struct HomeView: View {
     @ViewBuilder
     private func renderRow(
         _ row: HomeRenderRow,
-        plan resolvedPlan: PPHomePresentationPlan
+        plan resolvedPlan: PPHomePresentationPlan,
+        sectionIndex: Int
     ) -> some View {
         switch row.content {
         case let .module(module):
-            moduleView(module, plan: resolvedPlan)
+            moduleView(
+                module,
+                plan: resolvedPlan,
+                sectionIndex: sectionIndex
+            )
         case .exploreMore:
             PPHomeExploreMoreRow(entries: exploreMoreEntries(for: resolvedPlan))
                 .padding(.horizontal, PPSpace.screenMargin)
@@ -330,7 +339,8 @@ struct HomeView: View {
     @ViewBuilder
     private func moduleView(
         _ module: PPHomeModule,
-        plan resolvedPlan: PPHomePresentationPlan
+        plan resolvedPlan: PPHomePresentationPlan,
+        sectionIndex: Int
     ) -> some View {
         switch module.kind {
         case .discoveryPrompt:
@@ -430,7 +440,7 @@ struct HomeView: View {
                 .padding(.horizontal, PPSpace.screenMargin)
                 .modifier(HomePureLensMotionGate(
                     homeEntranceAlreadyPresented: loadedEntranceVisible,
-                    sectionIndex: 0,
+                    sectionIndex: sectionIndex,
                     isReady: $pureLensContentMotionReady
                 ))
             }
@@ -1462,8 +1472,8 @@ private struct HomeVerticalSectionReveal: ViewModifier {
     }
 }
 
-/// Releases the Pure Lens content story only after Home's section reveal has
-/// reached its stable pose. The structured task cancels if the section leaves.
+/// Releases the Pure Lens readiness resolve only after this configured Home row
+/// reaches its stable pose. The structured task cancels if the section leaves.
 private struct HomePureLensMotionGate: ViewModifier {
     let homeEntranceAlreadyPresented: Bool
     let sectionIndex: Int

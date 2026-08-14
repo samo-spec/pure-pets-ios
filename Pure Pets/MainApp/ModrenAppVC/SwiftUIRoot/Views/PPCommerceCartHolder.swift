@@ -200,8 +200,6 @@ private enum PPCommerceCartMetrics {
         (controlHeight * 2) + verticalSpacing + (holderPadding * 2)
     static let holderRadius: CGFloat =
         PPBottomDecisionBarGeometry.surfaceRadius
-    static let cartWidth: CGFloat =
-        PPBottomDecisionBarGeometry.utilityControlSize
     static let quantityWidth: CGFloat =
         (PPBottomDecisionBarGeometry.utilityControlSize * 2) + PPSpace.sm
     static let quantityButtonWidth: CGFloat = 40
@@ -375,10 +373,7 @@ private extension PPCommerceCartHolder {
                 VStack(spacing: Metrics.spacing) {
                     addButton
 
-                    HStack(spacing: Metrics.spacing) {
-                        payButton(minimumWidth: 120, maximumWidth: .infinity)
-                        cartButton
-                    }
+                    payButton(minimumWidth: 120, maximumWidth: .infinity)
                 }
             }
             .padding(Metrics.holderPadding)
@@ -408,8 +403,6 @@ private extension PPCommerceCartHolder {
                 minimumWidth: Metrics.payWidth,
                 maximumWidth: Metrics.payWidth
             )
-
-            cartButton
         }
         .frame(height: Metrics.controlHeight)
     }
@@ -580,56 +573,18 @@ private extension PPCommerceCartHolder {
 
     @ViewBuilder
     private var addButton: some View {
-        let fgColor = theme.addToCartForeground ?? theme.brand
-        let bgColor = theme.addToCartBackground ?? theme.brand.opacity(colorScheme == .dark ? 0.16 : 0.10)
-        let borderColor = theme.addToCartBorder ?? theme.brand.opacity(colorScheme == .dark ? 0.40 : 0.28)
-
-        Button {
-            if displayQuantity == 0 {
-                beginAdd()
-            } else {
-                requestQuantity(displayQuantity + 1)
-            }
-        } label: {
-            HStack(spacing: Metrics.spacing) {
-                if criticalPhase == .adding {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(fgColor)
-                } else {
-                    Image(systemName: "cart.badge.plus")
-                        .font(.system(size: 18, weight: .bold))
-                }
-
-                Text(criticalPhase == .adding ? copy.adding : copy.addToCart)
-                    .font(PPAccessoryTypography.bodyBold)
-                    .lineLimit(needsExpandedLayout ? 2 : 1)
-            }
-            .padding(.horizontal, PPSpace.md)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: Metrics.controlHeight)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
-        .foregroundStyle(fgColor)
-        .background(bgColor)
-        .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                .strokeBorder(
-                    borderColor,
-                    lineWidth: borderWidth
-                )
-        }
-        .shadow(color: theme.brand.opacity(0.06), radius: 6, y: 3)
-        .disabled(
-            criticalPhase != nil ||
-                isSyncingQuantity ||
-                (displayQuantity > 0 && displayQuantity >= item.maximumQuantity)
-        )
-        .accessibilityLabel(Text(verbatim: copy.addToCart))
-        .accessibilityValue(
-            Text(verbatim: criticalPhase == .adding ? copy.adding : formattedPrice)
+        AnimatedAddToCartButton(
+            cartCount: $quantity,
+            title: copy.addToCart,
+            addingTitle: copy.adding,
+            addedTitle: copy.addSucceeded,
+            retryTitle: copy.retry,
+            tint: theme.brand,
+            itemSymbol: "cart.badge.plus",
+            isEnabled: addButtonIsEnabled,
+            cornerRadius: Metrics.controlRadius,
+            onCartTap: animatedCartTapAction,
+            onAdd: performAnimatedAdd
         )
         .accessibilityIdentifier("pp.commerce.add")
     }
@@ -684,48 +639,6 @@ private extension PPCommerceCartHolder {
         .accessibilityLabel(Text(verbatim: copy.payNow))
         .accessibilityValue(Text(verbatim: paymentAccessibilityValue))
         .accessibilityIdentifier("pp.commerce.pay")
-    }
-
-    @ViewBuilder
-    private var cartButton: some View {
-        Button {
-            actions.track(.cartTapped(quantity: displayQuantity))
-            actions.openCart()
-        } label: {
-            Image(systemName: "cart.fill")
-                .font(.system(size: 20, weight: .bold))
-                .frame(width: Metrics.cartWidth, height: Metrics.controlHeight)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
-        .foregroundStyle(displayQuantity > 0 ? theme.brand : theme.secondaryText)
-        .background(Color(uiColor: .systemBackground).opacity(0.96))
-        .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                .strokeBorder(theme.brand.opacity(borderOpacity), lineWidth: borderWidth)
-        }
-        .overlay(alignment: .topTrailing) {
-            if displayQuantity > 0 {
-                Text(formattedQuantity)
-                    .font(PPAccessoryTypography.captionBold)
-                    .monospacedDigit()
-                    .foregroundStyle(Color.white)
-                    .frame(minWidth: 24, minHeight: 24)
-                    .background(theme.brand)
-                    .clipShape(Circle())
-                    .overlay {
-                        Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 3)
-                    }
-                    .offset(x: 5, y: -7)
-                    .transition(badgeTransition)
-                    .accessibilityHidden(true)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.07), radius: 8, y: 4)
-        .disabled(criticalPhase == .adding || criticalPhase == .paying || isSyncingQuantity)
-        .accessibilityLabel(Text(verbatim: cartAccessibilityLabel))
-        .accessibilityIdentifier("pp.commerce.cart")
     }
 
     private func feedbackBanner(_ feedback: Feedback) -> some View {
@@ -820,11 +733,6 @@ private extension PPCommerceCartHolder {
         displayQuantity.formatted(.number.locale(locale))
     }
 
-    var cartAccessibilityLabel: String {
-        guard displayQuantity > 0 else { return copy.cartEmpty }
-        return copy.cartItemsFormat.replacingOccurrences(of: "%@", with: formattedQuantity)
-    }
-
     var paymentAccessibilityValue: String {
         switch criticalPhase {
         case .paying:
@@ -838,6 +746,21 @@ private extension PPCommerceCartHolder {
 
     var controlsAreLocked: Bool {
         criticalPhase != nil
+    }
+
+    var addButtonIsEnabled: Bool {
+        criticalPhase == nil &&
+            !isSyncingQuantity &&
+            displayQuantity < item.maximumQuantity
+    }
+
+    var animatedCartTapAction: (() -> Void)? {
+        guard criticalPhase == nil, !isSyncingQuantity else { return nil }
+
+        return {
+            actions.track(.cartTapped(quantity: displayQuantity))
+            actions.openCart()
+        }
     }
 
     func clamped(_ proposedQuantity: Int) -> Int {
@@ -876,6 +799,88 @@ private extension PPCommerceCartHolder {
             }
 
             criticalTask = nil
+        }
+    }
+
+    func performAnimatedAdd() async throws -> AnimatedAddToCartOutcome {
+        guard criticalPhase == nil, !isSyncingQuantity else {
+            throw CancellationError()
+        }
+
+        feedback = nil
+        let priorQuantity = displayQuantity
+
+        if priorQuantity == 0 {
+            criticalPhase = .adding
+            actions.track(.addTapped(productID: item.id))
+            PPCommerceHaptics.impact()
+
+            do {
+                let returnedQuantity = try await actions.add()
+                try Task.checkCancellation()
+
+                let confirmed = max(1, clamped(returnedQuantity))
+                confirmedQuantity = confirmed
+                quantity = confirmed
+                criticalPhase = nil
+                actions.track(
+                    .addSucceeded(productID: item.id, quantity: confirmed)
+                )
+
+                return AnimatedAddToCartOutcome(
+                    cartCount: confirmed,
+                    addedQuantity: confirmed
+                )
+            } catch {
+                criticalPhase = nil
+                if !(error is CancellationError) {
+                    actions.track(
+                        .operationFailed(productID: item.id, operation: .add)
+                    )
+                }
+                throw error
+            }
+        }
+
+        let requested = clamped(priorQuantity + 1)
+        guard requested > priorQuantity else {
+            throw CancellationError()
+        }
+
+        isSyncingQuantity = true
+        actions.track(.quantityChanged(productID: item.id, quantity: requested))
+        PPCommerceHaptics.selection()
+
+        do {
+            // The shared button locks repeat taps while preserving the holder's
+            // established brief coalescing window before the cart mutation.
+            try await Task.sleep(nanoseconds: 220_000_000)
+            let returnedQuantity = try await actions.updateQuantity(requested)
+            try Task.checkCancellation()
+
+            let confirmed = clamped(returnedQuantity)
+            confirmedQuantity = confirmed
+            quantity = confirmed
+            isSyncingQuantity = false
+            actions.track(
+                .quantitySynced(productID: item.id, quantity: confirmed)
+            )
+
+            return AnimatedAddToCartOutcome(
+                cartCount: confirmed,
+                addedQuantity: max(0, confirmed - priorQuantity)
+            )
+        } catch {
+            withAnimation(stateAnimation) {
+                quantity = confirmedQuantity
+                isSyncingQuantity = false
+            }
+            if !(error is CancellationError) {
+                actions.track(
+                    .operationFailed(productID: item.id, operation: .quantity)
+                )
+            }
+            throw error
         }
     }
 
@@ -1043,12 +1048,6 @@ private extension PPCommerceCartHolder {
                 insertion: .move(edge: .top).combined(with: .opacity),
                 removal: .move(edge: .bottom).combined(with: .opacity)
             )
-    }
-
-    var badgeTransition: AnyTransition {
-        reduceMotion
-            ? .opacity
-            : .scale(scale: 0.55).combined(with: .opacity)
     }
 
     var feedbackTransition: AnyTransition {
