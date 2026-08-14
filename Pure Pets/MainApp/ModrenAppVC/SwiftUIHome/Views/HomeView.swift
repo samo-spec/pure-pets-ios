@@ -20,6 +20,77 @@ private struct HomeRenderRow: Identifiable {
         if case let .module(module) = content { return module.rawID }
         return nil
     }
+
+    /// The marketplace Living Ledger owns its required category-bound reveal.
+    /// Exempt only that module from the generic row spring so motion never
+    /// stacks; promotions and pet-context stages retain existing behavior.
+    var usesIndependentContentMotion: Bool {
+        guard case let .module(module) = content,
+              case .marketingStage(.marketplace) = module.kind
+        else { return false }
+        return true
+    }
+}
+
+@available(iOS 15.0, *)
+private struct HomeLivingGatewayStage: View {
+    let pages: [HomeHeroPage]
+    let selectedIndex: Int
+    let onSelect: (Int) -> Void
+    let onPrimary: (HomeHeroPage) -> Void
+    let onSecondary: (HomeHeroPage) -> Void
+    let onInteractionChanged: (Bool) -> Void
+
+    init(
+        pages: [HomeHeroPage],
+        selectedIndex: Int,
+        discloseCampaign: Bool,
+        marketplaceSignals: HomeMarketplaceSignals = HomeMarketplaceSignals(),
+        onSelect: @escaping (Int) -> Void,
+        onPrimary: @escaping (HomeHeroPage) -> Void,
+        onSecondary: @escaping (HomeHeroPage) -> Void,
+        onInteractionChanged: @escaping (Bool) -> Void,
+        onMarketplaceSignal: @escaping (HomeMarketplaceSignalKind) -> Void = { _ in }
+    ) {
+        self.pages = pages
+        self.selectedIndex = selectedIndex
+        self.onSelect = onSelect
+        self.onPrimary = onPrimary
+        self.onSecondary = onSecondary
+        self.onInteractionChanged = onInteractionChanged
+    }
+
+    private var resolvedIndex: Int {
+        pages.indices.contains(selectedIndex) ? selectedIndex : 0
+    }
+
+    private var selectedPage: HomeHeroPage? {
+        guard pages.indices.contains(resolvedIndex) else {
+            return nil
+        }
+        return pages[resolvedIndex]
+    }
+
+    var body: some View {
+        HomeHeroView(
+            pages: pages,
+            selectedIndex: resolvedIndex,
+            onSelect: onSelect,
+            onPrimaryAction: performPrimaryAction,
+            onSecondaryAction: performSecondaryAction,
+            onInteractionChanged: onInteractionChanged
+        )
+    }
+
+    private func performPrimaryAction() {
+        guard let selectedPage else { return }
+        onPrimary(selectedPage)
+    }
+
+    private func performSecondaryAction() {
+        guard let selectedPage else { return }
+        onSecondary(selectedPage)
+    }
 }
 
 @available(iOS 15.0, *)
@@ -173,7 +244,9 @@ struct HomeView: View {
                         isVisible: loadedEntranceVisible,
                         sectionIndex: index,
                         reduceMotion: reduceMotion,
-                        usesEcosystemMotion: row.zone == .ecosystemLauncher
+                        usesEcosystemMotion: row.zone == .ecosystemLauncher,
+                        usesIndependentContentMotion:
+                            row.usesIndependentContentMotion
                     )
                     .homeSectionDataReload(
                         revision: row.rawID.map(store.sectionDataRevision) ?? 0,
@@ -1129,17 +1202,21 @@ private struct HomeSectionEntranceModifier: ViewModifier {
 }
 
 /// Selects exactly one section-entrance owner. The ecosystem launcher uses its
-/// quieter, product-specific settle; every other Home row keeps the established
+/// quieter product-specific settle, and the marketplace Living Ledger uses its
+/// category-bound internal reveal. Every other Home row keeps the established
 /// initial and viewport entrance behavior unchanged.
 private struct HomeResolvedSectionEntranceModifier: ViewModifier {
     let isVisible: Bool
     let sectionIndex: Int
     let reduceMotion: Bool
     let usesEcosystemMotion: Bool
+    let usesIndependentContentMotion: Bool
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if usesEcosystemMotion {
+        if usesIndependentContentMotion {
+            content
+        } else if usesEcosystemMotion {
             content.modifier(
                 HomeEcosystemEntranceModifier(
                     isVisible: isVisible,
@@ -1613,13 +1690,15 @@ private extension View {
         isVisible: Bool,
         sectionIndex: Int,
         reduceMotion: Bool,
-        usesEcosystemMotion: Bool
+        usesEcosystemMotion: Bool,
+        usesIndependentContentMotion: Bool = false
     ) -> some View {
         modifier(HomeResolvedSectionEntranceModifier(
             isVisible: isVisible,
             sectionIndex: sectionIndex,
             reduceMotion: reduceMotion,
-            usesEcosystemMotion: usesEcosystemMotion
+            usesEcosystemMotion: usesEcosystemMotion,
+            usesIndependentContentMotion: usesIndependentContentMotion
         ))
     }
 

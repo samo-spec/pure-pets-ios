@@ -64,7 +64,7 @@ enum HomeHeroAction {
     case openPharmacy(NSObject?)
 }
 
-/// Live, category-scoped facts surfaced by the marketplace hero compass.
+/// Live, category-scoped facts surfaced by the marketplace Living Ledger.
 /// These cases describe read-only public inventory; navigation remains owned
 /// by the hero's existing primary and secondary actions.
 enum HomeMarketplaceSignalKind: CaseIterable, Hashable {
@@ -138,6 +138,7 @@ struct HomeHeroPage: Identifiable {
     let localImage: UIImage?
     let accentHex: String
     let action: HomeHeroAction
+    let accessibilityLabel: String?
     let autoScrollInterval: TimeInterval
 
     init(
@@ -152,6 +153,7 @@ struct HomeHeroPage: Identifiable {
         localImage: UIImage?,
         accentHex: String,
         action: HomeHeroAction,
+        accessibilityLabel: String? = nil,
         autoScrollInterval: TimeInterval = 4.8
     ) {
         self.id = id
@@ -165,6 +167,7 @@ struct HomeHeroPage: Identifiable {
         self.localImage = localImage
         self.accentHex = accentHex
         self.action = action
+        self.accessibilityLabel = accessibilityLabel
         self.autoScrollInterval = autoScrollInterval
     }
 }

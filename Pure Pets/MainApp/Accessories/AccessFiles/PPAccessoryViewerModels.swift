@@ -102,6 +102,13 @@ enum PPAccessoryViewerCartPhase: Equatable {
     case failed
 }
 
+enum PPAccessoryViewerCheckoutPhase: Equatable {
+    case ready
+    case preparingCart
+    case openingPayment
+    case routeFailed
+}
+
 enum PPAccessoryViewerLivePhase: Equatable {
     case current
     case refreshing

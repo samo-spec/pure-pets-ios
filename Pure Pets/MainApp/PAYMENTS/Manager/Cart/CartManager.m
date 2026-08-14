@@ -27,10 +27,52 @@
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> cartListener;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> pricingListener;
 
+- (BOOL)pp_addItem:(CartItem *)item
+    syncCompletion:(void (^ _Nullable)(BOOL success))syncCompletion;
+- (void)pp_syncCartItemToFirestore:(CartItem *)item
+                        completion:(void (^ _Nullable)(BOOL success))completion;
 - (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion
                                  postNotification:(BOOL)postNotification;
 
 @end
+
+@interface PPCartAddProjection ()
+
+@property (nonatomic, assign, readwrite) NSInteger addedQuantity;
+@property (nonatomic, assign, readwrite) NSInteger totalUnits;
+@property (nonatomic, assign, readwrite) double selectionSubtotal;
+@property (nonatomic, assign, readwrite) double projectedSubtotal;
+@property (nonatomic, assign, readwrite) BOOL requiresProviderSwitch;
+
+- (instancetype)initWithAddedQuantity:(NSInteger)addedQuantity
+                           totalUnits:(NSInteger)totalUnits
+                  selectionSubtotal:(double)selectionSubtotal
+                  projectedSubtotal:(double)projectedSubtotal
+              requiresProviderSwitch:(BOOL)requiresProviderSwitch;
+
+@end
+
+@implementation PPCartAddProjection
+
+- (instancetype)initWithAddedQuantity:(NSInteger)addedQuantity
+                           totalUnits:(NSInteger)totalUnits
+                  selectionSubtotal:(double)selectionSubtotal
+                  projectedSubtotal:(double)projectedSubtotal
+              requiresProviderSwitch:(BOOL)requiresProviderSwitch
+{
+    self = [super init];
+    if (self) {
+        _addedQuantity = MAX(addedQuantity, 0);
+        _totalUnits = MAX(totalUnits, 0);
+        _selectionSubtotal = MAX(selectionSubtotal, 0.0);
+        _projectedSubtotal = MAX(projectedSubtotal, 0.0);
+        _requiresProviderSwitch = requiresProviderSwitch;
+    }
+    return self;
+}
+
+@end
+
 @implementation CartManager
 
 - (instancetype)init
@@ -99,6 +141,34 @@ static void PPCartCompleteAdd(PPCartAddItemCompletion completion, BOOL success, 
             completion(success, didCancel);
         });
     }
+}
+
+static void PPCartCompleteSync(void (^completion)(BOOL success), BOOL success)
+{
+    if (!completion) { return; }
+    if ([NSThread isMainThread]) {
+        completion(success);
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(success);
+        });
+    }
+}
+
+static CartItem *PPCartCopyItem(CartItem *source)
+{
+    if (![source isKindOfClass:CartItem.class]) { return nil; }
+    CartItem *copy = [CartItem new];
+    copy.itemID = source.itemID ?: @"";
+    copy.name = source.name ?: @"";
+    copy.quantity = source.quantity;
+    copy.stockQuantity = source.stockQuantity;
+    copy.price = source.price;
+    copy.originalPrice = source.originalPrice;
+    copy.imageURL = source.imageURL ?: @"";
+    copy.providerID = source.providerID ?: @"";
+    copy.type = source.type ?: @"";
+    return copy;
 }
 
 - (void)pp_handleAppDidBecomeActiveNotification:(NSNotification *)notification
@@ -233,12 +303,19 @@ static void PPCartCompleteAdd(PPCartAddItemCompletion completion, BOOL success, 
 }
 
 - (void)pp_syncCartItemToFirestore:(CartItem *)item
+                        completion:(void (^)(BOOL success))completion
 {
-    if (!UserManager.sharedManager.isUserLoggedIn) { return; }
+    if (!UserManager.sharedManager.isUserLoggedIn) {
+        PPCartCompleteSync(completion, NO);
+        return;
+    }
     // U8: Use FIRAuth UID as primary, UserManager as fallback
     NSString *userID = PPCurrentFIRAuthUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
-    if (userID.length == 0 || item.itemID.length == 0) { return; }
+    if (userID.length == 0 || item.itemID.length == 0) {
+        PPCartCompleteSync(completion, NO);
+        return;
+    }
 
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *itemRef = [[[[db collectionWithPath:@"UsersCol"]
@@ -256,11 +333,19 @@ static void PPCartCompleteAdd(PPCartAddItemCompletion completion, BOOL success, 
                   item.itemID, error.localizedDescription);
             [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartItemSync];
         }
+        PPCartCompleteSync(completion, error == nil);
     }];
 }
 
 
-- (BOOL)addItem:(CartItem *)item {
+- (BOOL)addItem:(CartItem *)item
+{
+    return [self pp_addItem:item syncCompletion:nil];
+}
+
+- (BOOL)pp_addItem:(CartItem *)item
+    syncCompletion:(void (^)(BOOL success))syncCompletion
+{
     if (!UserManager.sharedManager.isUserLoggedIn) { return NO; }
     if (![item isKindOfClass:CartItem.class] || item.itemID.length == 0) { return NO; }
     if (item.quantity <= 0) {
@@ -345,24 +430,150 @@ static void PPCartCompleteAdd(PPCartAddItemCompletion completion, BOOL success, 
     }
 
     [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
-    [self pp_syncCartItemToFirestore:itemToSync];
+    [self pp_syncCartItemToFirestore:itemToSync
+                          completion:syncCompletion];
     return YES;
+}
+
+- (void)addItemAndWaitForSync:(CartItem *)item
+                   completion:(void (^)(BOOL success))completion
+{
+    CartItem *existingBefore = [self pp_existingItemForID:item.itemID];
+    CartItem *existingSnapshot = PPCartCopyItem(existingBefore);
+
+    __weak typeof(self) weakSelf = self;
+    BOOL didAdd = [self pp_addItem:item
+                    syncCompletion:^(BOOL syncSucceeded) {
+        void (^finalizeOnMain)(void) = ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                PPCartCompleteSync(completion, NO);
+                return;
+            }
+
+            if (!syncSucceeded) {
+                CartItem *current = [self pp_existingItemForID:item.itemID];
+                if (existingSnapshot) {
+                    NSUInteger index = current
+                        ? [self.cartItems indexOfObjectIdenticalTo:current]
+                        : NSNotFound;
+                    if (index != NSNotFound) {
+                        self.cartItems[index] = existingSnapshot;
+                    } else {
+                        [self.cartItems addObject:existingSnapshot];
+                    }
+                } else if (current) {
+                    [self.cartItems removeObjectIdenticalTo:current];
+                }
+                [self saveCart];
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:kCartUpdatedNotification
+                                  object:nil];
+            }
+
+            PPCartCompleteSync(completion, syncSucceeded);
+        };
+
+        if ([NSThread isMainThread]) {
+            finalizeOnMain();
+        } else {
+            dispatch_async(dispatch_get_main_queue(), finalizeOnMain);
+        }
+    }];
+
+    if (!didAdd) {
+        PPCartCompleteSync(completion, NO);
+    }
 }
 
 - (BOOL)shouldConfirmProviderSwitchForItem:(CartItem *)item
 {
+    return [self shouldConfirmProviderSwitchForProviderID:item.providerID];
+}
+
+- (BOOL)shouldConfirmProviderSwitchForProviderID:(NSString *)providerID
+{
     if (self.allowMultiProviderCart) { return NO; }
-    NSString *incomingProviderID = item.providerID ?: @"";
+    NSString *incomingProviderID = PPCartPricingTrimmedString(providerID);
     if (incomingProviderID.length == 0) { return NO; }
 
     for (CartItem *existing in self.cartItems) {
-        NSString *existingProviderID = existing.providerID ?: @"";
+        NSString *existingProviderID =
+            PPCartPricingTrimmedString(existing.providerID);
         if (existingProviderID.length == 0) { continue; }
         if (![existingProviderID isEqualToString:incomingProviderID]) {
             return YES;
         }
     }
     return NO;
+}
+
+- (PPCartAddProjection *)projectionForAddingItem:(CartItem *)item
+{
+    if (![item isKindOfClass:CartItem.class] ||
+        item.itemID.length == 0 ||
+        item.quantity <= 0 ||
+        item.price < 0.01 ||
+        isnan(item.price)) {
+        return nil;
+    }
+
+    BOOL requiresProviderSwitch =
+        [self shouldConfirmProviderSwitchForItem:item];
+    NSMutableArray<CartItem *> *candidateItems = [NSMutableArray array];
+    if (!requiresProviderSwitch) {
+        for (CartItem *existingItem in self.cartItems) {
+            CartItem *copy = PPCartCopyItem(existingItem);
+            if (copy) { [candidateItems addObject:copy]; }
+        }
+    }
+
+    CartItem *candidateExisting = nil;
+    for (CartItem *candidate in candidateItems) {
+        if ([candidate.itemID isEqualToString:item.itemID]) {
+            candidateExisting = candidate;
+            break;
+        }
+    }
+
+    NSInteger existingQuantity =
+        candidateExisting ? MAX(candidateExisting.quantity, 0) : 0;
+    NSInteger stockLimit =
+        [self pp_stockLimitForItem:item existingItem:candidateExisting];
+    if (stockLimit == NSNotFound || stockLimit <= 0) {
+        return nil;
+    }
+
+    NSInteger availableToAdd = MAX(0, stockLimit - existingQuantity);
+    NSInteger increment = MIN(MAX(item.quantity, 0), availableToAdd);
+    if (increment <= 0) { return nil; }
+
+    double selectionUnitPrice = item.price;
+    if (candidateExisting) {
+        selectionUnitPrice = candidateExisting.price;
+        candidateExisting.quantity += increment;
+        if (item.stockQuantity != NSNotFound) {
+            candidateExisting.stockQuantity = MAX(0, item.stockQuantity);
+        } else {
+            candidateExisting.stockQuantity = stockLimit;
+        }
+    } else {
+        CartItem *candidate = PPCartCopyItem(item);
+        if (!candidate) { return nil; }
+        candidate.quantity = increment;
+        candidate.stockQuantity = stockLimit;
+        [candidateItems addObject:candidate];
+    }
+
+    PPCartSummary *summary =
+        [PPCartCalculator summaryForItems:candidateItems shippingFee:0.0];
+    return [[PPCartAddProjection alloc]
+        initWithAddedQuantity:increment
+                   totalUnits:summary.totalQuantity
+          selectionSubtotal:
+            MAX(0.0, selectionUnitPrice * (double)increment)
+          projectedSubtotal:summary.subtotal
+      requiresProviderSwitch:requiresProviderSwitch];
 }
 
 - (void)addItem:(CartItem *)item

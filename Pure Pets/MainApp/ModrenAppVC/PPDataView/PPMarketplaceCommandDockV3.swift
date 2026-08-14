@@ -13,7 +13,9 @@ enum PPMarketplaceCommandDockV3Metrics {
     // result count, and outer vertical insets). A taller Dynamic Type header
     // remains fully expanded until its final 80 points approach the pin edge.
     static let collapseDistance: CGFloat = 80
-    static let compactActivationProgress: CGFloat = 0.64
+    static let compactTransitionStartProgress: CGFloat = 0.20
+    static let compactActivationProgress: CGFloat = 0.50
+    static let compactRepresentationProgress: CGFloat = compactActivationProgress
 
     static func progress(forDockMinY minY: CGFloat) -> CGFloat {
         guard minY.isFinite, collapseDistance > 0 else { return 0 }
@@ -29,8 +31,77 @@ enum PPMarketplaceCommandDockV3Metrics {
     }
 
     static func showsCompactNavigation(progress: CGFloat) -> Bool {
-        progress >= 0.70
+        progress >= compactRepresentationProgress
     }
+
+    static func compactNavigationProgress(progress: CGFloat) -> CGFloat {
+        let transitionDistance = compactRepresentationProgress -
+            compactTransitionStartProgress
+        guard transitionDistance > 0 else {
+            return showsCompactNavigation(progress: progress) ? 1 : 0
+        }
+        return min(
+            max(
+                (progress - compactTransitionStartProgress) /
+                    transitionDistance,
+                0
+            ),
+            1
+        )
+    }
+
+    static func taxonomyRowHeight(
+        expandedHeight: CGFloat,
+        progress: CGFloat
+    ) -> CGFloat {
+        let clampedExpandedHeight = max(expandedHeight, minimumTouchTarget)
+        if progress < compactRepresentationProgress {
+            return interpolate(
+                expanded: clampedExpandedHeight,
+                compact: minimumTouchTarget,
+                progress: compactNavigationProgress(progress: progress)
+            )
+        }
+
+        let completionDistance = 1 - compactRepresentationProgress
+        guard completionDistance > 0 else { return 0 }
+        let completion = min(
+            max(
+                (progress - compactRepresentationProgress) /
+                    completionDistance,
+                0
+            ),
+            1
+        )
+        return interpolate(
+            expanded: minimumTouchTarget,
+            compact: 0,
+            progress: completion
+        )
+    }
+
+    static func activeCategoryTargetHeight(
+        expandedHeight: CGFloat,
+        compactHeight: CGFloat,
+        progress: CGFloat
+    ) -> CGFloat {
+        if showsCompactNavigation(progress: progress) {
+            return compactHeight
+        }
+        return taxonomyRowHeight(
+            expandedHeight: expandedHeight,
+            progress: progress
+        )
+    }
+}
+
+@available(iOS 15.0, *)
+enum PPMarketplaceCommandDockV3Accessibility {
+    static let taxonomyIdentifier = "pp.marketplace.header.v2.taxonomy"
+    static let compactTaxonomyIdentifier =
+        "pp.marketplace.header.v2.taxonomy.compact"
+    static let speciesIdentifier = "pp.marketplace.header.v2.species"
+    static let breedIdentifier = "pp.marketplace.header.v2.breed"
 }
 
 // MARK: - Context identity
@@ -39,6 +110,7 @@ enum PPMarketplaceCommandDockV3Metrics {
 struct PPMarketplaceIdentityHeaderV3: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
     let availableWidth: CGFloat
+    let isActiveRepresentation: Bool
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -60,6 +132,8 @@ struct PPMarketplaceIdentityHeaderV3: View {
         .padding(.bottom, PPSpace.md)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
+        .allowsHitTesting(isActiveRepresentation)
+        .accessibilityHidden(!isActiveRepresentation)
     }
 
     private var inlineIdentity: some View {
@@ -183,6 +257,7 @@ struct PPMarketplaceCommandDockV3: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -247,57 +322,151 @@ struct PPMarketplaceCommandDockV3: View {
     @ViewBuilder
     private var commandLine: some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: PPSpace.sm) {
-                searchAndNavigationRow
-
-                categoryLauncher
-                    .frame(maxWidth: .infinity, minHeight: controlHeight)
-            }
+            accessibilityCommandStack
         } else {
+            collapsibleCommandStack
+        }
+    }
+
+    private var accessibilityCommandStack: some View {
+        Group {
+            if compactNavigationIsVisible {
+                accessibilityCompactCommandStack
+            } else {
+                accessibilityExpandedCommandStack
+            }
+        }
+    }
+
+    private var accessibilityExpandedCommandStack: some View {
+        VStack(spacing: PPSpace.sm) {
             HStack(spacing: PPSpace.sm) {
-                if compactNavigationIsVisible {
-                    compactBackControl
-                        .frame(width: controlHeight)
-                }
-
-                categoryLauncher
-                    .frame(width: categoryControlWidth)
-                    .clipped()
-
                 searchControl
                     .frame(maxWidth: .infinity)
+                    .layoutPriority(1)
+
+                filterControl
+                    .frame(width: controlHeight)
+            }
+            .frame(minHeight: controlHeight)
+
+            categoryLauncher
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// Accessibility sizes keep generous controls without retaining the full
+    /// three-hundred-point pinned shelf. The handoff is atomic so no active
+    /// target is ever clipped below 44 points.
+    private var accessibilityCompactCommandStack: some View {
+        VStack(spacing: PPSpace.sm) {
+            searchControl
+                .frame(maxWidth: .infinity)
+
+            HStack(spacing: PPSpace.sm) {
+                compactBackControl
+                    .frame(width: controlHeight)
+
+                compactCategoryControl
+                    .frame(width: controlHeight)
+
+                Spacer(minLength: PPSpace.xs)
 
                 filterControl
                     .frame(width: controlHeight)
 
-                if compactNavigationIsVisible {
-                    compactCartControl
-                        .frame(width: controlHeight)
-                }
-            }
-            .frame(height: controlHeight)
-        }
-    }
-
-    private var searchAndNavigationRow: some View {
-        HStack(spacing: PPSpace.sm) {
-            if compactNavigationIsVisible {
-                compactBackControl
-                    .frame(width: controlHeight)
-            }
-
-            searchControl
-                .frame(maxWidth: .infinity)
-
-            filterControl
-                .frame(width: controlHeight)
-
-            if compactNavigationIsVisible {
                 compactCartControl
                     .frame(width: controlHeight)
             }
+            .frame(minHeight: controlHeight)
         }
-        .frame(height: controlHeight)
+    }
+
+    /// Search owns the expanded first line. Species and Breed receive a full
+    /// second line instead of competing for a few truncated points beside it.
+    /// As the real pinned-header geometry approaches the top, that taxonomy
+    /// line continuously folds into one compact category control while the
+    /// same search and filter controls remain on screen.
+    private var collapsibleCommandStack: some View {
+        VStack(spacing: taxonomyRowSpacing) {
+            HStack(spacing: 0) {
+                compactBackSlot
+                compactNavigationGap
+                compactCategorySlot
+                compactNavigationGap
+
+                searchControl
+                    .frame(maxWidth: .infinity)
+                    .layoutPriority(1)
+
+                adaptiveCommandGap
+
+                filterControl
+                    .frame(width: controlHeight)
+
+                compactNavigationGap
+                compactCartSlot
+            }
+            .frame(height: controlHeight)
+
+            categoryLauncher
+                .frame(height: taxonomyRowHeight, alignment: .top)
+                .clipped()
+                .opacity(compactNavigationIsVisible ? 0 : 1)
+                .allowsHitTesting(!compactNavigationIsVisible)
+                .accessibilityHidden(compactNavigationIsVisible)
+        }
+    }
+
+    private var compactBackSlot: some View {
+        compactBackControl
+            .frame(width: controlHeight)
+            .scaleEffect(0.88 + (0.12 * compactNavigationVisibility))
+            .opacity(compactNavigationVisibility)
+            .frame(width: compactNavigationSlotWidth)
+            .clipped()
+            .allowsHitTesting(compactNavigationIsVisible)
+            .accessibilityHidden(!compactNavigationIsVisible)
+    }
+
+    private var compactCartSlot: some View {
+        compactCartControl
+            .frame(width: controlHeight)
+            .scaleEffect(0.88 + (0.12 * compactNavigationVisibility))
+            .opacity(compactNavigationVisibility)
+            .frame(width: compactNavigationSlotWidth)
+            .clipped()
+            .allowsHitTesting(compactNavigationIsVisible)
+            .accessibilityHidden(!compactNavigationIsVisible)
+    }
+
+    private var compactCategorySlot: some View {
+        compactCategoryControl
+            .frame(width: controlHeight)
+            .scaleEffect(0.88 + (0.12 * compactNavigationVisibility))
+            .opacity(compactNavigationVisibility)
+            .frame(width: compactNavigationSlotWidth)
+            .clipped()
+            .allowsHitTesting(compactNavigationIsVisible)
+            .accessibilityHidden(!compactNavigationIsVisible)
+    }
+
+    private var compactNavigationGap: some View {
+        Color.clear
+            .frame(width: PPSpace.xs * compactNavigationVisibility)
+            .accessibilityHidden(true)
+    }
+
+    private var adaptiveCommandGap: some View {
+        Color.clear
+            .frame(
+                width: PPMarketplaceCommandDockV3Metrics.interpolate(
+                    expanded: PPSpace.sm,
+                    compact: PPSpace.xs,
+                    progress: compactNavigationVisibility
+                )
+            )
+            .accessibilityHidden(true)
     }
 
     private var compactBackControl: some View {
@@ -324,80 +493,81 @@ struct PPMarketplaceCommandDockV3: View {
         )
     }
 
-    private var categoryLauncher: some View {
+    private var compactCategoryControl: some View {
         Menu {
             Menu {
-                ForEach(store.mainKindChoices) { choice in
-                    Button {
-                        store.applyMainKindShortcut(choice)
-                    } label: {
-                        if choice.id == store.currentMainKindID {
-                            Label(choice.title, systemImage: "checkmark")
-                        } else {
-                            Text(choice.title)
-                        }
-                    }
-                }
+                mainKindMenuItems
             } label: {
                 Label(resolvedSpeciesTitle, systemImage: "pawprint.fill")
             }
 
             Menu {
-                ForEach(store.subKindChoices) { choice in
-                    Button {
-                        store.applySubKindShortcut(choice)
-                    } label: {
-                        if choice.id == store.currentSubKindID {
-                            Label(choice.title, systemImage: "checkmark")
-                        } else {
-                            Text(choice.title)
-                        }
-                    }
-                }
+                subKindMenuItems
             } label: {
                 Label(resolvedBreedTitle, systemImage: "tag.fill")
             }
         } label: {
-            HStack(spacing: PPSpace.xs) {
-                Image(systemName: "pawprint.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.ppPrimary)
-                    .frame(width: 24)
-                    .accessibilityHidden(true)
-
-                if categoryLabelVisibility > 0.01 {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(resolvedSpeciesTitle)
-                            .font(HomeFont.bold(13))
-                            .foregroundStyle(Color.ppTextPrimary)
-
-                        HStack(spacing: PPSpace.xxs) {
-                            Image(systemName: "tag.fill")
-                                .font(.system(size: 9, weight: .semibold))
-                                .accessibilityHidden(true)
-
-                            Text(resolvedBreedTitle)
-                                .font(HomeFont.caption1())
-                        }
-                        .foregroundStyle(Color.ppTextSecondary)
-                    }
-                    .lineLimit(1)
-                    .opacity(categoryLabelVisibility)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .padding(.horizontal, resolvedProgress > 0.86 ? 10 : 12)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: PPMarketplaceCommandDockV3Metrics.minimumTouchTarget,
-                alignment: .leading
+            Image(
+                systemName: store.currentMainKindID == 0 &&
+                    store.currentSubKindID == 0
+                    ? "pawprint"
+                    : "pawprint.fill"
             )
-            .contentShape(RoundedRectangle(cornerRadius: controlRadius, style: .continuous))
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(Color.ppPrimary)
+            .frame(width: controlHeight, height: controlHeight)
+            .contentShape(Circle())
+            .accessibilityIdentifier(
+                PPMarketplaceCommandDockV3Accessibility.compactTaxonomyIdentifier
+            )
         } primaryAction: {
             store.beginCategoryEditing()
         }
         .menuOrder(.fixed)
         .buttonStyle(.plain)
+        .disabled(store.isReplacingContext)
+        .ppMarketplaceCommandDockV3Surface(
+            shape: Circle(),
+            tint: Color.ppPrimary.opacity(colorScheme == .dark ? 0.14 : 0.07),
+            fallback: Color.ppSurfaceRaised,
+            stroke: Color.ppPrimary.opacity(contrast == .increased ? 0.72 : 0.22),
+            lineWidth: contrast == .increased ? 2 : 1,
+            interactive: true
+        )
+        .accessibilityLabel(categoryAccessibilityValue)
+        .accessibilityHint(
+            PPMarketplaceText.localized("marketplace_category_open_hint")
+        )
+        .accessibilityInputLabels([
+            PPMarketplaceText.localized("marketplace_category_title"),
+            resolvedSpeciesTitle,
+            resolvedBreedTitle
+        ])
+        .accessibilityIdentifier(
+            PPMarketplaceCommandDockV3Accessibility.taxonomyIdentifier
+        )
+    }
+
+    private var categoryLauncher: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 0) {
+                    mainKindLauncher
+                    taxonomyDivider(isVertical: false)
+                    subKindLauncher
+                }
+            } else {
+                HStack(spacing: 0) {
+                    mainKindLauncher
+                    taxonomyDivider(isVertical: true)
+                    subKindLauncher
+                }
+            }
+        }
+        .frame(
+            maxWidth: .infinity,
+            minHeight: taxonomyControlHeight
+        )
         .disabled(store.isReplacingContext)
         .ppMarketplaceCommandDockV3Surface(
             shape: RoundedRectangle(cornerRadius: controlRadius, style: .continuous),
@@ -407,15 +577,161 @@ struct PPMarketplaceCommandDockV3: View {
             lineWidth: contrast == .increased ? 2 : 1,
             interactive: true
         )
-        .accessibilityLabel(categoryAccessibilityLabel)
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func taxonomyDivider(isVertical: Bool) -> some View {
+        let lineWidth: CGFloat = contrast == .increased ? 2 : 1
+        Rectangle()
+            .fill(
+                Color.ppSeparator.opacity(
+                    contrast == .increased ? 0.88 : 0.52
+                )
+            )
+            .frame(
+                width: isVertical ? lineWidth : nil,
+                height: isVertical ? nil : lineWidth
+            )
+            .padding(
+                isVertical ? .vertical : .horizontal,
+                PPSpace.sm
+            )
+            .accessibilityHidden(true)
+    }
+
+    private var mainKindLauncher: some View {
+        Menu {
+            mainKindMenuItems
+        } label: {
+            taxonomySegment(
+                symbol: "pawprint.fill",
+                title: resolvedSpeciesTitle,
+                roleKey: "data_nav_species",
+                emphasized: true
+            )
+            .accessibilityIdentifier(
+                PPMarketplaceCommandDockV3Accessibility.speciesIdentifier
+            )
+        } primaryAction: {
+            store.beginCategoryEditing()
+        }
+        .menuOrder(.fixed)
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            PPMarketplaceText.formatted(
+                "marketplace_category_main_kind_format",
+                resolvedSpeciesTitle
+            )
+        )
         .accessibilityHint(
             PPMarketplaceText.localized("marketplace_category_open_hint")
         )
-        .accessibilityInputLabels([
-            resolvedSpeciesTitle,
-            resolvedBreedTitle
-        ])
-        .accessibilityIdentifier("pp.marketplace.header.v2.taxonomy")
+        .accessibilityInputLabels([resolvedSpeciesTitle])
+        .accessibilityIdentifier(
+            PPMarketplaceCommandDockV3Accessibility.taxonomyIdentifier
+        )
+    }
+
+    private var subKindLauncher: some View {
+        Menu {
+            subKindMenuItems
+        } label: {
+            taxonomySegment(
+                symbol: "tag.fill",
+                title: resolvedBreedTitle,
+                roleKey: "data_nav_breed",
+                emphasized: false
+            )
+        } primaryAction: {
+            store.beginCategoryEditing()
+        }
+        .menuOrder(.fixed)
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            PPMarketplaceText.formatted(
+                "marketplace_category_subkind_format",
+                resolvedBreedTitle
+            )
+        )
+        .accessibilityHint(
+            PPMarketplaceText.localized("marketplace_category_open_hint")
+        )
+        .accessibilityInputLabels([resolvedBreedTitle])
+        .accessibilityIdentifier(
+            PPMarketplaceCommandDockV3Accessibility.breedIdentifier
+        )
+    }
+
+    @ViewBuilder
+    private var mainKindMenuItems: some View {
+        ForEach(store.mainKindChoices) { choice in
+            Button {
+                store.applyMainKindShortcut(choice)
+            } label: {
+                if choice.id == store.currentMainKindID {
+                    Label(choice.title, systemImage: "checkmark")
+                } else {
+                    Text(choice.title)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var subKindMenuItems: some View {
+        ForEach(store.subKindChoices) { choice in
+            Button {
+                store.applySubKindShortcut(choice)
+            } label: {
+                if choice.id == store.currentSubKindID {
+                    Label(choice.title, systemImage: "checkmark")
+                } else {
+                    Text(choice.title)
+                }
+            }
+        }
+    }
+
+    private func taxonomySegment(
+        symbol: String,
+        title: String,
+        roleKey: String,
+        emphasized: Bool
+    ) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 28)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                Text(PPMarketplaceText.localized(roleKey))
+                    .font(HomeFont.caption2())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(1)
+
+                Text(title)
+                    .font(emphasized ? HomeFont.headline() : HomeFont.subheadline())
+                    .foregroundStyle(
+                        emphasized ? Color.ppTextPrimary : Color.ppTextSecondary
+                    )
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.ppTextSecondary)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, PPSpace.md)
+        .frame(maxWidth: .infinity, minHeight: taxonomyControlHeight)
+        .contentShape(Rectangle())
     }
 
     private var searchControl: some View {
@@ -426,17 +742,19 @@ struct PPMarketplaceCommandDockV3: View {
                     .foregroundStyle(Color.ppPrimary)
                     .accessibilityHidden(true)
 
-                Text(contextualSearchTitle)
-                    .font(dynamicTypeSize.isAccessibilitySize ? HomeFont.subheadline() : HomeFont.callout())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                ViewThatFits(in: .horizontal) {
+                    searchLabel(contextualSearchTitle)
+                    searchLabel(PPMarketplaceText.localized("search"))
+                    Color.clear
+                        .frame(width: 0, height: 1)
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? PPSpace.sm : PPSpace.base)
             .frame(
                 maxWidth: .infinity,
-                minHeight: PPMarketplaceCommandDockV3Metrics.minimumTouchTarget,
+                minHeight: controlHeight,
                 alignment: .leading
             )
             .contentShape(RoundedRectangle(cornerRadius: controlRadius, style: .continuous))
@@ -455,7 +773,7 @@ struct PPMarketplaceCommandDockV3: View {
             PPMarketplaceText.localized("marketplace_search_hint")
         )
         .accessibilityIdentifier(
-            resolvedProgress >= PPMarketplaceCommandDockV3Metrics.compactActivationProgress
+            compactNavigationIsVisible
                 ? "pp.marketplace.header.v2.search.compact"
                 : "pp.marketplace.header.v2.search.expanded"
         )
@@ -471,7 +789,7 @@ struct PPMarketplaceCommandDockV3: View {
                     .foregroundStyle(Color.ppPrimary)
                     .frame(
                         width: controlHeight,
-                        height: PPMarketplaceCommandDockV3Metrics.minimumTouchTarget
+                        height: controlHeight
                     )
 
                 if store.activeFilterCount > 0 {
@@ -511,7 +829,7 @@ struct PPMarketplaceCommandDockV3: View {
             PPMarketplaceText.localized("marketplace_filters_open_hint")
         )
         .accessibilityIdentifier(
-            resolvedProgress >= PPMarketplaceCommandDockV3Metrics.compactActivationProgress
+            compactNavigationIsVisible
                 ? "pp.marketplace.header.v2.filter.compact"
                 : "pp.marketplace.header.v2.filter.expanded"
         )
@@ -625,6 +943,12 @@ struct PPMarketplaceCommandDockV3: View {
                     .font(resolvedProgress > 0.72 ? HomeFont.bold(14) : HomeFont.headline())
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
+
+                if selected && differentiateWithoutColor {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .accessibilityHidden(true)
+                }
             }
             .foregroundStyle(selected ? Color.ppPrimary : Color.ppTextSecondary)
             .padding(.horizontal, sectionHorizontalInset)
@@ -688,20 +1012,6 @@ struct PPMarketplaceCommandDockV3: View {
             : value
     }
 
-    private var categoryAccessibilityLabel: String {
-        [
-            PPMarketplaceText.formatted(
-                "marketplace_category_main_kind_format",
-                resolvedSpeciesTitle
-            ),
-            PPMarketplaceText.formatted(
-                "marketplace_category_subkind_format",
-                resolvedBreedTitle
-            )
-        ]
-        .joined(separator: ", ")
-    }
-
     private func resolvedFilterTitle(_ group: PPFilterGroup) -> String {
         guard group.isActive(),
               let selected = group.options.first(where: {
@@ -720,6 +1030,27 @@ struct PPMarketplaceCommandDockV3: View {
             return PPMarketplaceText.localized("dataview_filter_by_provider")
         }
         return provider.title
+    }
+
+    private var categoryAccessibilityValue: String {
+        PPMarketplaceText.formatted(
+            "marketplace_category_accessibility_format",
+            resolvedSpeciesTitle,
+            resolvedBreedTitle
+        )
+    }
+
+    private func searchLabel(_ title: String) -> some View {
+        Text(title)
+            .font(
+                dynamicTypeSize.isAccessibilitySize
+                    ? HomeFont.subheadline()
+                    : HomeFont.callout()
+            )
+            .foregroundStyle(Color.ppTextSecondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     // MARK: Responsive geometry
@@ -742,24 +1073,43 @@ struct PPMarketplaceCommandDockV3: View {
         )
     }
 
-    private var categoryControlWidth: CGFloat {
-        return PPMarketplaceCommandDockV3Metrics.interpolate(
-            expanded: 126,
-            compact: controlHeight,
-            progress: resolvedProgress
-        )
-    }
-
-    private var categoryLabelVisibility: CGFloat {
-        dynamicTypeSize.isAccessibilitySize
-            ? 1
-            : 1 - min(max(resolvedProgress / 0.72, 0), 1)
-    }
-
     private var compactNavigationIsVisible: Bool {
         PPMarketplaceCommandDockV3Metrics.showsCompactNavigation(
             progress: resolvedProgress
         )
+    }
+
+    private var compactNavigationVisibility: CGFloat {
+        PPMarketplaceCommandDockV3Metrics.compactNavigationProgress(
+            progress: resolvedProgress
+        )
+    }
+
+    private var compactNavigationSlotWidth: CGFloat {
+        controlHeight * compactNavigationVisibility
+    }
+
+    private var expandedTaxonomyVisibility: CGFloat {
+        1 - compactNavigationVisibility
+    }
+
+    private var taxonomyControlHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 84 : 64
+    }
+
+    private var taxonomyRowHeight: CGFloat {
+        guard !dynamicTypeSize.isAccessibilitySize else {
+            return taxonomyControlHeight * 2
+        }
+        return PPMarketplaceCommandDockV3Metrics.taxonomyRowHeight(
+            expandedHeight: taxonomyControlHeight,
+            progress: resolvedProgress
+        )
+    }
+
+    private var taxonomyRowSpacing: CGFloat {
+        guard !dynamicTypeSize.isAccessibilitySize else { return PPSpace.sm }
+        return PPSpace.sm * expandedTaxonomyVisibility
     }
 
     private var controlRadius: CGFloat {
@@ -779,7 +1129,10 @@ struct PPMarketplaceCommandDockV3: View {
     }
 
     private var sectionRailHeight: CGFloat {
-        PPMarketplaceCommandDockV3Metrics.interpolate(
+        if dynamicTypeSize.isAccessibilitySize {
+            return 68
+        }
+        return PPMarketplaceCommandDockV3Metrics.interpolate(
             expanded: 50,
             compact: 46,
             progress: resolvedProgress

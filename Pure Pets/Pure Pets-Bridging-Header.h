@@ -57,3 +57,9 @@
 #import "PPHomePromoCarouselDataSource.h"
 #import "PPOrderStatusAppearance.h"
 #import "PPOrderDetailsMissionControlBridge.h"
+
+
+// Notifications Hub (SwiftUI) — chat/order routing and the reminders surface.
+#import "MainApp/UserFiles/PetsProfiles/PPPetRemindersViewController.h"
+#import "MainApp/NewChats/helpers/SubHelpers/ChNotificationRouter.h"
+#import "MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsRouter.h"

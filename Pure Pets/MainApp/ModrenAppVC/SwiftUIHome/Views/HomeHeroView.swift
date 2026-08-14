@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 import Combine
 
-private let homeHeroShowsSelectedMainKindArtwork = false
+private let homeHeroShowsSelectedMainKindArtwork = true
 
 struct HomeHeroView: View {
     let pages: [HomeHeroPage]
@@ -17,7 +17,8 @@ struct HomeHeroView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
-    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 212
+    @Environment(\.scenePhase) private var scenePhase
+    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 264
 
     private var selectedPage: HomeHeroPage? {
         guard pages.indices.contains(selectedIndex) else { return nil }
@@ -25,7 +26,7 @@ struct HomeHeroView: View {
     }
 
     private var resolvedHeroHeight: CGFloat {
-        min(heroHeight, dynamicTypeSize.isAccessibilitySize ? 388 : 254)
+        min(heroHeight, dynamicTypeSize.isAccessibilitySize ? 420 : 294)
     }
 
     private var isRightToLeft: Bool {
@@ -55,37 +56,65 @@ struct HomeHeroView: View {
             HomeHeroField(
                 accent: accent,
                 increasedContrast: contrast == .increased,
-                cornerGlowOpacityScale: 0.72
+                cornerGlowOpacityScale: 0.78,
+                isAnimated: scenePhase == .active
             )
 
             VStack(spacing: 0) {
-                Group {
-                    if dynamicTypeSize.isAccessibilitySize {
-                        heroCopy(page, accent: accent)
-                            .frame(
-                                maxWidth: .infinity,
-                                maxHeight: .infinity,
-                                alignment: .leading
-                            )
-                    } else {
-                        HStack(alignment: .center, spacing: 18) {
-                            heroArtwork(page, accent: accent)
-                                .frame(width: 124, height: 146)
-                                .layoutPriority(0)
+                GeometryReader { proxy in
+                    let compactWidth = proxy.size.width < 350
 
+                    Group {
+                        if dynamicTypeSize.isAccessibilitySize {
                             heroCopy(page, accent: accent)
                                 .frame(
                                     maxWidth: .infinity,
                                     maxHeight: .infinity,
                                     alignment: .leading
                                 )
-                                .layoutPriority(1)
+                        } else {
+                            HStack(
+                                alignment: .center,
+                                spacing: compactWidth ? 6 : 10
+                            ) {
+                                if isRightToLeft {
+                                    heroArtwork(
+                                        page,
+                                        accent: accent,
+                                        compact: compactWidth
+                                    )
+                                    .layoutPriority(0)
+
+                                    heroCopy(page, accent: accent)
+                                        .environment(
+                                            \.layoutDirection,
+                                            .rightToLeft
+                                        )
+                                        .layoutPriority(1)
+                                } else {
+                                    heroCopy(page, accent: accent)
+                                        .environment(
+                                            \.layoutDirection,
+                                            .leftToRight
+                                        )
+                                        .layoutPriority(1)
+
+                                    heroArtwork(
+                                        page,
+                                        accent: accent,
+                                        compact: compactWidth
+                                    )
+                                    .layoutPriority(0)
+                                }
+                            }
+                            .environment(\.layoutDirection, .leftToRight)
+                            .frame(maxHeight: .infinity)
                         }
-                        .frame(maxHeight: .infinity)
                     }
+                    .padding(.horizontal, compactWidth ? PPSpace.md : PPSpace.lg)
+                    .padding(.top, PPSpace.md)
+                    .padding(.bottom, allowsPaging ? PPSpace.xs : PPSpace.md)
                 }
-                .padding(.horizontal, PPSpace.lg)
-                .padding(.vertical, PPSpace.lg)
 
                 if allowsPaging {
                     pageControl(accent: accent)
@@ -93,17 +122,15 @@ struct HomeHeroView: View {
                 }
             }
             .id(page.id)
-            .transition(heroPageTransition)
+            .transition(
+                reduceMotion ? .identity : heroPageTransition
+            )
         }
-        .animation(
-            reduceMotion
-                ? .easeOut(duration: 0.18)
-                : .interactiveSpring(
-                    response: 0.52,
-                    dampingFraction: 0.82,
-                    blendDuration: 0.16
-                ),
-            value: page.id
+        .modifier(
+            HomeHeroPageMotionModifier(
+                pageID: AnyHashable(page.id),
+                reduceMotion: reduceMotion
+            )
         )
         .clipShape(
             RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
@@ -156,16 +183,16 @@ struct HomeHeroView: View {
         _ page: HomeHeroPage,
         accent: Color
     ) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            eyebrowPill(page, accent: accent)
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            eyebrowLabel(page, accent: accent)
 
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(compactHeroTitle(page.title))
                     .font(HomeFont.title1())
                     .foregroundStyle(Color.ppTextPrimary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.78)
                     .allowsTightening(true)
                     .frame(
                         maxWidth: .infinity,
@@ -178,26 +205,27 @@ struct HomeHeroView: View {
                     .font(HomeFont.subheadline())
                     .foregroundStyle(Color.ppTextSecondary)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 2)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                primaryButton(page, accent: accent)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, PPSpace.xs)
+            primaryButton(page, accent: accent)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func eyebrowPill(
+    private func eyebrowLabel(
         _ page: HomeHeroPage,
         accent: Color
     ) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: eyebrowSymbol(for: page.kind))
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(accent)
+            Circle()
+                .fill(accent)
+                .frame(width: 6, height: 6)
+                .overlay {
+                    Circle()
+                        .stroke(accent.opacity(0.24), lineWidth: 4)
+                }
                 .accessibilityHidden(true)
 
             Text(page.eyebrow)
@@ -206,36 +234,7 @@ struct HomeHeroView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(
-            accent.opacity(colorScheme == .dark ? 0.22 : 0.17),
-            in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(
-                    accent.opacity(colorScheme == .dark ? 0.30 : 0.24),
-                    lineWidth: 1
-                )
-        }
-    }
-
-    private func eyebrowSymbol(for kind: HomeHeroKind) -> String {
-        switch kind {
-        case .marketplace:
-            return "storefront.fill"
-        case .pet:
-            return "pawprint.fill"
-        case .reminder:
-            return "bell.fill"
-        case .promotion:
-            return "sparkles"
-        case .petOnboarding:
-            return "plus.circle.fill"
-        case .pharmacy:
-            return "pills.fill"
-        }
+        .accessibilityElement(children: .combine)
     }
 
     private func compactHeroTitle(_ title: String) -> String {
@@ -247,35 +246,51 @@ struct HomeHeroView: View {
         accent: Color
     ) -> some View {
         Button(action: onPrimaryAction) {
-            HStack(alignment: .center, spacing: PPSpace.md) {
+            HStack(alignment: .center, spacing: PPSpace.xs) {
                 Text(page.primaryTitle)
                     .font(HomeFont.bold(15))
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.84)
                     .fixedSize(horizontal: false, vertical: true)
                     .layoutPriority(1)
+                Spacer(minLength: PPSpace.xs)
+
                 Image(systemName: "arrow.forward")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Color.white.opacity(0.16),
+                        in: Circle()
+                    )
                     .flipsForRightToLeftLayoutDirection(true)
             }
             .foregroundStyle(Color.white)
             .frame(
-                minWidth: dynamicTypeSize.isAccessibilitySize ? nil : 104, maxWidth: dynamicTypeSize.isAccessibilitySize
-                ? .infinity
-                : nil,
-                minHeight: 44,
-                alignment: .center
+                maxWidth: .infinity,
+                minHeight: 48,
+                alignment: .leading
             )
-            .padding(.horizontal, PPSpace.base)
+            .padding(.leading, PPSpace.base)
+            .padding(.trailing, 10)
             .background(
-                accent,
+                LinearGradient(
+                    colors: [accent, accent.opacity(0.86)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
                 in: RoundedRectangle(
-                    cornerRadius: 17,
+                    cornerRadius: 18,
                     style: .continuous
                 )
             )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            HomeHeroPrimaryButtonStyle(reduceMotion: reduceMotion)
+        )
         .accessibilityHint(
             HomeModelAdapter.localized(
                 "home_pulse_opens_destination_a11y",
@@ -293,8 +308,7 @@ struct HomeHeroView: View {
                 active: HomeHeroPagePhase(
                     opacity: 0,
                     offsetX: incomingX,
-                    scale: 1,
-                    blurRadius: 5
+                    scale: 1
                 ),
                 identity: HomeHeroPagePhase.identity
             ),
@@ -302,8 +316,7 @@ struct HomeHeroView: View {
                 active: HomeHeroPagePhase(
                     opacity: 0,
                     offsetX: outgoingX,
-                    scale: 1,
-                    blurRadius: 2
+                    scale: 1
                 ),
                 identity: HomeHeroPagePhase.identity
             )
@@ -313,10 +326,11 @@ struct HomeHeroView: View {
     @ViewBuilder
     private func heroArtwork(
         _ page: HomeHeroPage,
-        accent: Color
+        accent: Color,
+        compact: Bool
     ) -> some View {
         let asset = heroArtworkAsset(for: page)
-        HomeHeroFloatingPlate(
+        HomeHeroLivingGateway(
             accent: accent,
             animationName: asset.animationName,
             imageName: asset.imageName,
@@ -326,7 +340,14 @@ struct HomeHeroView: View {
             loadsFromFirebase: asset.loadsFromFirebase,
             stabilizesCentralArtworkScale: page.kind == .pet,
             primarySymbol: asset.primarySymbol,
-            secondarySymbol: asset.secondarySymbol
+            secondarySymbol: asset.secondarySymbol,
+            tertiarySymbol: asset.tertiarySymbol,
+            compact: compact,
+            isActive: scenePhase == .active
+        )
+        .frame(
+            width: compact ? 128 : 154,
+            height: compact ? 164 : 190
         )
     }
 
@@ -349,7 +370,7 @@ struct HomeHeroView: View {
                             width: index == selectedIndex ? 22 : 7,
                             height: 7
                         )
-                        .frame(minWidth: 24, minHeight: 28)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(
@@ -382,7 +403,8 @@ struct HomeHeroView: View {
                     usesCategoryArtworkTreatment: false,
                     loadsFromFirebase: false,
                     primarySymbol: "heart.fill",
-                    secondarySymbol: "pawprint.fill"
+                    secondarySymbol: "pawprint.fill",
+                    tertiarySymbol: "checkmark.seal.fill"
                 )
             }
             return HomeHeroArtworkAsset(
@@ -393,7 +415,8 @@ struct HomeHeroView: View {
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: true,
                 primarySymbol: "heart.fill",
-                secondarySymbol: "pawprint.fill"
+                secondarySymbol: "pawprint.fill",
+                tertiarySymbol: "checkmark.seal.fill"
             )
         case .reminder:
             return HomeHeroArtworkAsset(
@@ -404,7 +427,8 @@ struct HomeHeroView: View {
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: true,
                 primarySymbol: "bell.fill",
-                secondarySymbol: "calendar"
+                secondarySymbol: "calendar",
+                tertiarySymbol: "checkmark.circle.fill"
             )
         case .promotion:
             let remoteURL = normalizedHeroImageURL(page.imageURL)
@@ -416,7 +440,8 @@ struct HomeHeroView: View {
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: false,
                 primarySymbol: "sparkles",
-                secondarySymbol: "tag.fill"
+                secondarySymbol: "tag.fill",
+                tertiarySymbol: "gift.fill"
             )
         case .marketplace:
             let hasSelectedCategory: Bool
@@ -425,7 +450,10 @@ struct HomeHeroView: View {
             } else {
                 hasSelectedCategory = false
             }
-            if homeHeroShowsSelectedMainKindArtwork && hasSelectedCategory {
+            let hasPageArtwork = page.localImage != nil
+                || normalizedHeroImageURL(page.imageURL) != nil
+            if homeHeroShowsSelectedMainKindArtwork
+                && (hasSelectedCategory || hasPageArtwork) {
                 let categoryImage = page.localImage
                 let fallbackImage = categoryImage ?? UIImage(named: "pawprint4")
                 return HomeHeroArtworkAsset(
@@ -441,7 +469,8 @@ struct HomeHeroView: View {
                     usesCategoryArtworkTreatment: true,
                     loadsFromFirebase: false,
                     primarySymbol: "bag.fill",
-                    secondarySymbol: "shippingbox.fill"
+                    secondarySymbol: "shippingbox.fill",
+                    tertiarySymbol: "checkmark.seal.fill"
                 )
             }
             return HomeHeroArtworkAsset(
@@ -452,7 +481,8 @@ struct HomeHeroView: View {
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: false,
                 primarySymbol: "bag.fill",
-                secondarySymbol: "shippingbox.fill"
+                secondarySymbol: "shippingbox.fill",
+                tertiarySymbol: "sparkles"
             )
         case .petOnboarding:
             return HomeHeroArtworkAsset(
@@ -463,7 +493,8 @@ struct HomeHeroView: View {
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: true,
                 primarySymbol: "plus",
-                secondarySymbol: "pawprint.fill"
+                secondarySymbol: "pawprint.fill",
+                tertiarySymbol: "heart.fill"
             )
         case .pharmacy:
             return HomeHeroArtworkAsset(
@@ -474,7 +505,8 @@ struct HomeHeroView: View {
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: false,
                 primarySymbol: "pills.fill",
-                secondarySymbol: "bandage.fill"
+                secondarySymbol: "bandage.fill",
+                tertiarySymbol: "cross.case.fill"
             )
         }
     }
@@ -488,17 +520,52 @@ struct HomeHeroView: View {
     }
 }
 
+private struct HomeHeroPageMotionModifier: ViewModifier {
+    let pageID: AnyHashable
+    let reduceMotion: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content.animation(nil, value: pageID)
+        } else {
+            content.animation(
+                .interactiveSpring(
+                    response: 0.52,
+                    dampingFraction: 0.84,
+                    blendDuration: 0.10
+                ),
+                value: pageID
+            )
+        }
+    }
+}
+
+private struct HomeHeroPrimaryButtonStyle: ButtonStyle {
+    let reduceMotion: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .brightness(configuration.isPressed ? -0.035 : 0)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .easeOut(duration: 0.14),
+                value: configuration.isPressed
+            )
+    }
+}
+
 private struct HomeHeroPagePhase: ViewModifier {
     let opacity: Double
     let offsetX: CGFloat
     let scale: CGFloat
-    let blurRadius: CGFloat
 
     static let identity = HomeHeroPagePhase(
         opacity: 1,
         offsetX: 0,
-        scale: 1,
-        blurRadius: 0
+        scale: 1
     )
 
     func body(content: Content) -> some View {
@@ -506,7 +573,6 @@ private struct HomeHeroPagePhase: ViewModifier {
             .opacity(opacity)
             .offset(x: offsetX)
             .scaleEffect(scale)
-            .blur(radius: blurRadius)
     }
 }
 
@@ -603,9 +669,10 @@ private struct HomeHeroArtworkAsset {
     let loadsFromFirebase: Bool
     let primarySymbol: String
     let secondarySymbol: String
+    let tertiarySymbol: String
 }
 
-private struct HomeHeroFloatingPlate: View {
+private struct HomeHeroLivingGateway: View {
     let accent: Color
     let animationName: String?
     let imageName: String?
@@ -616,104 +683,207 @@ private struct HomeHeroFloatingPlate: View {
     let stabilizesCentralArtworkScale: Bool
     let primarySymbol: String
     let secondarySymbol: String
+    let tertiarySymbol: String
+    let compact: Bool
+    let isActive: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @State private var floating = false
+    @State private var presented = false
 
     var body: some View {
         ZStack {
-            ZStack {
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.30),
-                                Color.ppSurfaceRaised.opacity(0.94),
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay {
-                        RoundedRectangle(
-                            cornerRadius: 32,
-                            style: .continuous
-                        )
-                        .stroke(
-                            contrast == .increased
-                                ? Color.ppTextPrimary.opacity(0.62)
-                                : (colorScheme == .dark ? Color.white.opacity(0.16) : Color.white.opacity(0.82)),
-                            lineWidth: contrast == .increased ? 1.5 : 1
-                        )
-                    }
-                    .scaleEffect(
-                        stabilizesCentralArtworkScale ? plateScale : 1
-                    )
+            portalCore
+            orbitalPath
 
-                centralArtwork
-            }
-            .frame(width: plateSize, height: plateSize)
-            .clipShape(
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-            )
-            .offset(y: floatingPhase ? -5 : -1)
-            .rotationEffect(
-                .degrees(floatingPhase ? 0.45 : -0.30)
-            )
-            .scaleEffect(
-                stabilizesCentralArtworkScale ? 1 : plateScale
-            )
-            .shadow(
-                color: Color.black.opacity(contrast == .increased ? 0 : 0.08),
-                radius: floatingPhase ? 14 : 11,
-                y: floatingPhase ? 9 : 6
-            )
-            .animation(plateMotion, value: floating)
-
-            floatingTile(
+            orbitNode(
                 symbol: primarySymbol,
-                side: 44
+                x: compact ? 42 : 52,
+                y: compact ? -48 : -58,
+                delay: 0.10
             )
-            .offset(
-                x: 40 + (floatingPhase ? 1 : -1),
-                y: -39 + (floatingPhase ? -3 : 2)
-            )
-            .rotationEffect(
-                .degrees(floatingPhase ? 0.9 : -0.6)
-            )
-            .scaleEffect(floatingPhase ? 1.015 : 0.99)
-            .animation(primaryTileMotion, value: floating)
 
-            floatingTile(
+            orbitNode(
                 symbol: secondarySymbol,
-                side: 38
+                x: compact ? -48 : -61,
+                y: compact ? 10 : 12,
+                delay: 0.16
             )
-            .offset(
-                x: -43 + (floatingPhase ? -1 : 1),
-                y: 40 + (floatingPhase ? 3 : -2)
+
+            orbitNode(
+                symbol: tertiarySymbol,
+                x: compact ? 35 : 43,
+                y: compact ? 53 : 64,
+                delay: 0.22
             )
-            .rotationEffect(
-                .degrees(floatingPhase ? -1.0 : 0.7)
-            )
-            .scaleEffect(floatingPhase ? 0.99 : 1.012)
-            .animation(secondaryTileMotion, value: floating)
+
+            centralArtworkStage
+                .scaleEffect(
+                    presented
+                        ? (stabilizesCentralArtworkScale ? 1 : 1.035)
+                        : 0.94
+                )
+                .offset(y: presented ? -5 : 7)
+                .opacity(presented ? 1 : 0)
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .interactiveSpring(
+                            response: 0.52,
+                            dampingFraction: 0.84,
+                            blendDuration: 0.10
+                        )
+                        .delay(0.04),
+                    value: presented
+                )
         }
-        .frame(width: 124, height: 146)
+        .modifier(
+            HomeHeroGatewayStageFrame(compact: compact)
+        )
         .onAppear {
-            updateFloatingMotion()
+            updatePresentation()
         }
         .onChange(of: reduceMotion) { _ in
-            updateFloatingMotion()
+            updatePresentation()
         }
-        .onChange(of: usesCategoryArtworkTreatment) { _ in
-            updateFloatingMotion()
+        .onChange(of: isActive) { _ in
+            updatePresentation()
         }
         .onDisappear {
-            floating = false
+            setPresented(false, animated: false)
         }
         .accessibilityHidden(true)
+    }
+
+    private var centralArtworkStage: some View {
+        ZStack {
+            centralArtwork
+        }
+        .modifier(
+            HomeHeroArtworkStageFrame(side: centralArtworkSize)
+        )
+    }
+
+    private var portalCore: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [
+                        Color.ppSurfaceRaised,
+                        accent.opacity(colorScheme == .dark ? 0.28 : 0.18),
+                        Color.homeBrand.opacity(
+                            colorScheme == .dark ? 0.18 : 0.10
+                        ),
+                    ],
+                    center: .topLeading,
+                    startRadius: 2,
+                    endRadius: portalDiameter * 0.72
+                )
+            )
+            .overlay {
+                Circle()
+                    .stroke(
+                        contrast == .increased
+                            ? Color.ppTextPrimary.opacity(0.76)
+                            : Color.white.opacity(
+                                colorScheme == .dark ? 0.18 : 0.88
+                            ),
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
+            }
+            .modifier(
+                HomeHeroSquareStageFrame(side: portalDiameter)
+            )
+            .scaleEffect(presented ? 1 : 0.92)
+            .opacity(presented ? 1 : 0.62)
+            .shadow(
+                color: accent.opacity(
+                    contrast == .increased
+                        ? 0
+                        : (colorScheme == .dark ? 0.22 : 0.14)
+                ),
+                radius: 18,
+                y: 8
+            )
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .easeOut(duration: 0.26),
+                value: presented
+            )
+    }
+
+    private var orbitalPath: some View {
+        ZStack {
+            Circle()
+                .stroke(
+                    accent.opacity(
+                        contrast == .increased ? 0.58 : 0.22
+                    ),
+                    style: StrokeStyle(
+                        lineWidth: contrast == .increased ? 1.4 : 1,
+                        lineCap: .round,
+                        dash: differentiateWithoutColor ? [5, 4] : []
+                    )
+                )
+
+            Circle()
+                .trim(from: 0.04, to: presented ? 0.82 : 0.16)
+                .stroke(
+                    AngularGradient(
+                        colors: [
+                            Color.clear,
+                            accent.opacity(0.36),
+                            accent,
+                            Color.homeBrand.opacity(0.72),
+                            Color.clear,
+                        ],
+                        center: .center
+                    ),
+                    style: StrokeStyle(
+                        lineWidth: contrast == .increased ? 2.6 : 2,
+                        lineCap: .round
+                    )
+                )
+                .rotationEffect(.degrees(presented ? 42 : -82))
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .easeOut(duration: 0.28).delay(0.08),
+                    value: presented
+                )
+        }
+        .modifier(
+            HomeHeroSquareStageFrame(side: orbitDiameter)
+        )
+        .scaleEffect(x: 1, y: 0.82)
+        .rotationEffect(.degrees(-8))
+        .opacity(presented ? 1 : 0.34)
+        .animation(
+            reduceMotion
+                ? nil
+                : .easeOut(duration: 0.24),
+            value: presented
+        )
+    }
+
+    private func orbitNode(
+        symbol: String,
+        x: CGFloat,
+        y: CGFloat,
+        delay: Double
+    ) -> some View {
+        HomeHeroOrbitNode(
+            symbol: symbol,
+            accent: accent,
+            side: compact ? 30 : 34,
+            isPresented: presented,
+            delay: delay
+        )
+        .offset(x: x, y: y)
     }
 
     @ViewBuilder
@@ -733,19 +903,16 @@ private struct HomeHeroFloatingPlate: View {
                 categoryArtworkPlaceholder
             }
             .frame(width: categoryArtworkSize, height: categoryArtworkSize)
-            .clipped()
         } else if let remoteImageURL {
             HomeRemoteImage(
                 urlString: remoteImageURL,
                 placeholder: localImage,
                 contentMode: .scaleToFill
             )
-            .frame(width: 76, height: 76)
-            .clipShape(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-            )
+            .frame(width: profileArtworkSize, height: profileArtworkSize)
+            .clipShape(Circle())
             .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                Circle()
                     .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
             }
         } else if let localImage, usesCategoryArtworkTreatment {
@@ -753,31 +920,29 @@ private struct HomeHeroFloatingPlate: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: categoryArtworkSize, height: categoryArtworkSize)
-                .clipped()
         } else if let localImage {
             Image(uiImage: localImage)
                 .resizable()
-                .scaledToFit()
-                .frame(width: 76, height: 76)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                )
+                .scaledToFill()
+                .frame(width: profileArtworkSize, height: profileArtworkSize)
+                .clipShape(Circle())
                 .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    Circle()
                         .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
                 }
         } else if let imageName {
             Image(imageName)
                 .resizable()
-                .renderingMode(.template)
                 .scaledToFit()
-                .foregroundStyle(Color.black)
-                .frame(width: 52, height: 52)
+                .frame(
+                    width: compact ? 78 : 94,
+                    height: compact ? 78 : 94
+                )
         } else if let animationName {
             HomeHeroLottieRepresentable(
                 animationName: animationName,
                 loadsFromFirebase: loadsFromFirebase,
-                playbackEnabled: !reduceMotion,
+                playbackEnabled: isActive && !reduceMotion,
                 tintColor: lottieTintColor(for: animationName)
             )
             .scaleEffect(lottieScale(for: animationName))
@@ -785,8 +950,8 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private func lottieScale(for animationName: String) -> CGFloat {
-        if animationName == "Shop2.json" { return 0.95 }
-        return animationName == "petstore" ? 0.78 : 1.30
+        if animationName == "Shop2.json" { return compact ? 1.02 : 1.12 }
+        return animationName == "petstore" ? 0.86 : 1.22
     }
 
     private func lottieTintColor(for animationName: String) -> UIColor? {
@@ -799,7 +964,23 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private var categoryArtworkSize: CGFloat {
-        70
+        compact ? 106 : 126
+    }
+
+    private var profileArtworkSize: CGFloat {
+        compact ? 82 : 98
+    }
+
+    private var centralArtworkSize: CGFloat {
+        compact ? 112 : 136
+    }
+
+    private var portalDiameter: CGFloat {
+        compact ? 104 : 126
+    }
+
+    private var orbitDiameter: CGFloat {
+        compact ? 122 : 148
     }
 
     @ViewBuilder
@@ -813,82 +994,70 @@ private struct HomeHeroFloatingPlate: View {
         }
     }
 
-    private var plateSize: CGFloat {
-        100
+    private func updatePresentation() {
+        setPresented(isActive, animated: !reduceMotion)
     }
 
-    private var allowsFloatingMotion: Bool {
-        !reduceMotion && !usesCategoryArtworkTreatment
+    private func setPresented(_ value: Bool, animated: Bool) {
+        guard presented != value else { return }
+        if animated {
+            presented = value
+        } else {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                presented = value
+            }
+        }
     }
+}
 
-    private var floatingPhase: Bool {
-        allowsFloatingMotion && floating
-    }
+private struct HomeHeroOrbitNode: View {
+    let symbol: String
+    let accent: Color
+    let side: CGFloat
+    let isPresented: Bool
+    let delay: Double
 
-    private var plateScale: CGFloat {
-        floatingPhase ? 1.008 : 0.996
-    }
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
 
-    private var plateMotion: Animation? {
-        guard allowsFloatingMotion else { return nil }
-        return .easeInOut(duration: 4.6).repeatForever(
-            autoreverses: true
-        )
-    }
-
-    private var primaryTileMotion: Animation? {
-        guard allowsFloatingMotion else { return nil }
-        return .easeInOut(duration: 3.8).repeatForever(
-            autoreverses: true
-        )
-    }
-
-    private var secondaryTileMotion: Animation? {
-        guard allowsFloatingMotion else { return nil }
-        return .easeInOut(duration: 4.4).repeatForever(
-            autoreverses: true
-        )
-        .delay(0.22)
-    }
-
-
-    private func floatingTile(
-        symbol: String,
-        side: CGFloat
-    ) -> some View {
+    var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 15, weight: .bold))
+            .font(.system(size: side * 0.37, weight: .bold))
             .foregroundStyle(accent)
-            .frame(width: side, height: side)
-            .background(Color.ppSurfaceRaised.opacity(0.92), in: RoundedRectangle(
-                cornerRadius: 14,
-                style: .continuous
-            ))
+            .modifier(HomeHeroSquareStageFrame(side: side))
+            .background(Color.ppSurfaceRaised, in: Circle())
             .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                Circle()
                     .stroke(
                         contrast == .increased
-                            ? Color.ppTextPrimary.opacity(0.62)
-                            : (colorScheme == .dark ? Color.white.opacity(0.14) : Color.white.opacity(0.78)),
-                        lineWidth: 1
+                            ? Color.ppTextPrimary.opacity(0.72)
+                            : Color.white.opacity(
+                                colorScheme == .dark ? 0.16 : 0.92
+                            ),
+                        lineWidth: contrast == .increased ? 1.5 : 1
                     )
             }
             .shadow(
-                color: Color.black.opacity(contrast == .increased ? 0 : 0.08),
-                radius: 8,
-                y: 4
+                color: accent.opacity(
+                    contrast == .increased
+                        ? 0
+                        : (colorScheme == .dark ? 0.18 : 0.12)
+                ),
+                radius: 7,
+                y: 3
             )
-    }
-
-    private func updateFloatingMotion() {
-        guard allowsFloatingMotion else {
-            floating = false
-            return
-        }
-        guard !floating else { return }
-        DispatchQueue.main.async {
-            floating = true
-        }
+            .scaleEffect(isPresented ? 1 : 0.84)
+            .opacity(isPresented ? 1 : 0)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .easeOut(duration: 0.22).delay(delay),
+                value: isPresented
+            )
+            .accessibilityHidden(true)
     }
 }
 
@@ -940,6 +1109,14 @@ struct HomeHeroField: View {
 
             if !increasedContrast {
                 cornerGlowField
+                    .scaleEffect(fieldAlive ? 1.035 : 0.97)
+                    .opacity(fieldAlive ? 0.92 : 0.70)
+                    .animation(
+                        reduceMotion
+                            ? nil
+                            : .easeOut(duration: 0.28),
+                        value: fieldAlive
+                    )
                 careCurrent
             }
         }
@@ -1089,10 +1266,7 @@ struct HomeHeroField: View {
         }
         guard !fieldAlive else { return }
 
-        withAnimation(
-            .easeInOut(duration: 8.6)
-                .repeatForever(autoreverses: true)
-        ) {
+        withAnimation(.easeOut(duration: 0.28)) {
             fieldAlive = true
         }
     }
@@ -1284,13 +1458,9 @@ private struct HomeHeroSkeleton: View {
                     increasedContrast: contrast == .increased
                 )
             }
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(
-                    .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
-                ) {
-                    faded = true
-                }
+            .onAppear(perform: updateAppearance)
+            .onChange(of: reduceMotion) { _ in
+                updateAppearance()
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
@@ -1299,6 +1469,21 @@ private struct HomeHeroSkeleton: View {
                     fallback: "Loading Home"
                 )
             )
+    }
+
+    private func updateAppearance() {
+        guard !faded else { return }
+        if reduceMotion {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                faded = true
+            }
+        } else {
+            withAnimation(.easeOut(duration: 0.24)) {
+                faded = true
+            }
+        }
     }
 }
 
@@ -1361,7 +1546,9 @@ public final class PPHomeHeroBackgroundHostingController: UIViewController {
         view.backgroundColor = .clear
 
         addChild(hostingController)
-        let hostedView = hostingController.view!
+        guard let hostedView = hostingController.view else {
+            return
+        }
         hostedView.translatesAutoresizingMaskIntoConstraints = false
         hostedView.backgroundColor = .clear
         hostedView.isUserInteractionEnabled = false
@@ -1373,5 +1560,32 @@ public final class PPHomeHeroBackgroundHostingController: UIViewController {
             hostedView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         hostingController.didMove(toParent: self)
+    }
+}
+
+private struct HomeHeroGatewayStageFrame: ViewModifier {
+    let compact: Bool
+
+    func body(content: Content) -> some View {
+        content.frame(
+            width: compact ? 128 : 154,
+            height: compact ? 164 : 190
+        )
+    }
+}
+
+private struct HomeHeroArtworkStageFrame: ViewModifier {
+    let side: CGFloat
+
+    func body(content: Content) -> some View {
+        content.frame(width: side, height: side)
+    }
+}
+
+private struct HomeHeroSquareStageFrame: ViewModifier {
+    let side: CGFloat
+
+    func body(content: Content) -> some View {
+        content.frame(width: side, height: side)
     }
 }

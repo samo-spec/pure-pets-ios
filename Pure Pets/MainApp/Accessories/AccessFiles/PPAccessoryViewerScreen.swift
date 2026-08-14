@@ -111,11 +111,12 @@ struct PPAccessoryViewerScreen: View {
         let titleRevealOffset: CGFloat = compact ? 14 : 22
         let usesRecoveryDock =
             !snapshot.isAvailableForPurchase ||
-            store.livePhase != .current
+            store.livePhase != .current ||
+            store.checkoutPhase == .routeFailed
         let decisionBarClearance: CGFloat = {
             if dynamicTypeSize.isAccessibilitySize {
                 if snapshot.showsCart {
-                    return usesRecoveryDock ? 322 : 222
+                    return usesRecoveryDock ? 322 : 390
                 }
                 return 158
             }
@@ -123,12 +124,12 @@ struct PPAccessoryViewerScreen: View {
                 if usesRecoveryDock {
                     return compact ? 238 : 150
                 }
-                return compact ? 158 : 104
+                return compact ? 280 : 205
             }
             return 98
         }()
         let resolvedDecisionBarClearance: CGFloat = {
-            guard decisionBarHeight > 0, decisionBarHeight < 420 else {
+            guard decisionBarHeight > 0, decisionBarHeight < 720 else {
                 return decisionBarClearance
             }
             let measuredContentHeight = max(
@@ -300,7 +301,7 @@ struct PPAccessoryViewerScreen: View {
             .onPreferenceChange(
                 PPAccessoryDecisionBarHeightPreferenceKey.self
             ) { measuredHeight in
-                guard measuredHeight > 0, measuredHeight < 420 else { return }
+                guard measuredHeight > 0, measuredHeight < 720 else { return }
                 guard abs(measuredHeight - decisionBarHeight) > 0.5 else {
                     return
                 }
@@ -364,9 +365,9 @@ struct PPAccessoryViewerScreen: View {
         bottomInset: CGFloat
     ) -> some View {
         let fallbackHeight = dynamicTypeSize.isAccessibilitySize
-            ? (snapshot.showsCart ? 224.0 : 168.0)
-            : (snapshot.showsCart ? 170.0 : 112.0)
-        let safeDecisionBarHeight = (decisionBarHeight > 0 && decisionBarHeight < 420)
+            ? (snapshot.showsCart ? 410.0 : 168.0)
+            : (snapshot.showsCart ? 292.0 : 112.0)
+        let safeDecisionBarHeight = (decisionBarHeight > 0 && decisionBarHeight < 720)
             ? decisionBarHeight
             : fallbackHeight
         let totalOverlayHeight = safeDecisionBarHeight

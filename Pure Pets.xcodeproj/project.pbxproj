@@ -98,7 +98,6 @@
 		F2085D4E2EBC7B640025F0F8 /* PPFunc+Haptics.m in Sources */ = {isa = PBXBuildFile; fileRef = F2085D4D2EBC7B640025F0F8 /* PPFunc+Haptics.m */; };
 		F20956732F85677D007C4ABA /* PPPetProfile.m in Sources */ = {isa = PBXBuildFile; fileRef = F20956722F85677D007C4ABA /* PPPetProfile.m */; };
 		F20956762F85679C007C4ABA /* PPPetReminder.m in Sources */ = {isa = PBXBuildFile; fileRef = F20956752F85679C007C4ABA /* PPPetReminder.m */; };
-		F20956792F8567D2007C4ABA /* PPNotificationsHubViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F20956782F8567C2007C4ABA /* PPNotificationsHubViewController.m */; };
 		F209567C2F8567FB007C4ABA /* PPPetProfilesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F209567B2F8567EA007C4ABA /* PPPetProfilesViewController.m */; };
 		F209567F2F856824007C4ABA /* PPPetProfileEditorViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F209567E2F856813007C4ABA /* PPPetProfileEditorViewController.m */; };
 		F20956822F856845007C4ABA /* PPPetRemindersViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F20956812F856838007C4ABA /* PPPetRemindersViewController.m */; };
@@ -777,6 +776,7 @@
 		F2E33F6B3006C51A005E31C6 /* PPOrderProgressTimelineRowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F593006C200005E31C6 /* PPOrderProgressTimelineRowView.m */; };
 		F2E33F6C3006C521005E31C6 /* PPOrderStatusStepperView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F573006C1C9005E31C6 /* PPOrderStatusStepperView.m */; };
 		F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */; };
+		F2E64412302EB320005B0699 /* PPCommerceCartHolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */; };
 		F2E78D612F18134800C5AE68 /* PPPetsTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */; };
 		F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D682F187DA300C5AE68 /* PPAdSharingHelper.m */; };
 		F2E7C8112D7D5584002383C2 /* ArchivesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E7C8102D7D5584002383C2 /* ArchivesManager.m */; };
@@ -889,6 +889,11 @@
 		F33000000000000000000003 /* HomePromotionSpark.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000003 /* HomePromotionSpark.json */; };
 		F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
+		F2A0B10120260814B0000001 /* PPNotificationsHubModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */; };
+		F2A0B10120260814B0000002 /* PPHubTopTabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */; };
+		F2A0B10120260814B0000003 /* PPNotificationsInboxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */; };
+		F2A0B10120260814B0000004 /* PPNotificationsInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */; };
+		F2A0B10120260814B0000005 /* PPNotificationsHubViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1052,8 +1057,6 @@
 		F20956722F85677D007C4ABA /* PPPetProfile.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetProfile.m; sourceTree = "<group>"; };
 		F20956742F856791007C4ABA /* PPPetReminder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetReminder.h; sourceTree = "<group>"; };
 		F20956752F85679C007C4ABA /* PPPetReminder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetReminder.m; sourceTree = "<group>"; };
-		F20956772F8567B6007C4ABA /* PPNotificationsHubViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNotificationsHubViewController.h; sourceTree = "<group>"; };
-		F20956782F8567C2007C4ABA /* PPNotificationsHubViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNotificationsHubViewController.m; sourceTree = "<group>"; };
 		F209567A2F8567E1007C4ABA /* PPPetProfilesViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfilesViewController.h; sourceTree = "<group>"; };
 		F209567B2F8567EA007C4ABA /* PPPetProfilesViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetProfilesViewController.m; sourceTree = "<group>"; };
 		F209567D2F85680A007C4ABA /* PPPetProfileEditorViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfileEditorViewController.h; sourceTree = "<group>"; };
@@ -2266,6 +2269,7 @@
 		F2E33F673006C4D6005E31C6 /* PPOrderSupportRequestListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderSupportRequestListViewController.m; sourceTree = "<group>"; };
 		F2E33F693006C4FF005E31C6 /* PPOrderTimelineViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderTimelineViewController.m; sourceTree = "<group>"; };
 		F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellSwiftUI.swift; sourceTree = "<group>"; };
+		F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCommerceCartHolder.swift; sourceTree = "<group>"; };
 		F2E78D5F2F1812E100C5AE68 /* PPPetsTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetsTitleView.h; sourceTree = "<group>"; };
 		F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetsTitleView.m; sourceTree = "<group>"; };
 		F2E78D672F187DA300C5AE68 /* PPAdSharingHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAdSharingHelper.h; sourceTree = "<group>"; };
@@ -2412,6 +2416,11 @@
 		F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeSwiftUIMigrationTests.swift; sourceTree = "<group>"; };
 		F56AEC9C060B7F98E8DD47E0 /* Speech.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoicePermissionManager.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsHubModels.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHubTopTabsView.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsInboxStore.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsInboxView.swift; sourceTree = "<group>"; };
+		F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNotificationsHubViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3396,11 +3405,22 @@
 			path = PPBackground;
 			sourceTree = "<group>";
 		};
+		F2A0B10120260814A0000000 /* NotificationsHub */ = {
+			isa = PBXGroup;
+			children = (
+				F2A0B10120260814A0000001 /* PPNotificationsHubModels.swift */,
+				F2A0B10120260814A0000002 /* PPHubTopTabsView.swift */,
+				F2A0B10120260814A0000003 /* PPNotificationsInboxStore.swift */,
+				F2A0B10120260814A0000004 /* PPNotificationsInboxView.swift */,
+				F2A0B10120260814A0000005 /* PPNotificationsHubViewController.swift */,
+			);
+			path = NotificationsHub;
+			sourceTree = "<group>";
+		};
 		F25E7FF32EFF71FE0089F659 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
-				F20956772F8567B6007C4ABA /* PPNotificationsHubViewController.h */,
-				F20956782F8567C2007C4ABA /* PPNotificationsHubViewController.m */,
+				F2A0B10120260814A0000000 /* NotificationsHub */,
 				F25D68CE2F829B2800700694 /* PPHomeCartNavButton.h */,
 				F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */,
 				F2F44A102FA7014000D19D01 /* PPHomeLocationTitleView.h */,
@@ -5100,6 +5120,7 @@
 		F2E9000000000000000000A5 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */,
 				F2015E62302D280C00E68392 /*  PPCommandDeckTabBar.swift */,
 				F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */,
 				F2E900000000000000000087 /* PPCartFloatingBarView.swift */,
@@ -5859,6 +5880,7 @@
 				F2B1A6432E70344B0019FC7C /* PPColorUtils.m in Sources */,
 				F20F31BB2D177602001D1D57 /* PGDatePicker+Year.m in Sources */,
 				F20F31BC2D177602001D1D57 /* PGDatePickManagerHeaderView.m in Sources */,
+				F2E64412302EB320005B0699 /* PPCommerceCartHolder.swift in Sources */,
 				F2B02B1A2EF6CF4C001A7B19 /* PPBirdCardView.m in Sources */,
 				F282C1122F0D7BF9001C110A /* PPSPinnerView.m in Sources */,
 				F20F31BD2D177602001D1D57 /* PGPickerView.m in Sources */,
@@ -6229,7 +6251,6 @@
 				F23AUTH04FC4000000000001 /* PPAuthScaffoldView.m in Sources */,
 				F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */,
 				F27365F82F858773000AB3DD /* PPModernAvatarRenderer.m in Sources */,
-				F20956792F8567D2007C4ABA /* PPNotificationsHubViewController.m in Sources */,
 				F2F25BCC2FC1398C0006BDF7 /* PPNovaGenkitService.m in Sources */,
 				F2CD9CA52CAB16AA00C0827B /* UISearchBar+FMAdd.m in Sources */,
 				F2F38FAE2EA68288004B148A /* PPUniversalCellHelper.m in Sources */,
@@ -6327,6 +6348,11 @@
 				12CEBEE12FFAA00100C0A901 /* PPStickerKit.swift in Sources */,
 				5674957214A3074F19934B30 /* PPNovaSwiftUIChatBarViewController.swift in Sources */,
 				8A0A552A9BF600F0C770F8FD /* PurePets-DesignSystem.swift in Sources */,
+				F2A0B10120260814B0000001 /* PPNotificationsHubModels.swift in Sources */,
+				F2A0B10120260814B0000002 /* PPHubTopTabsView.swift in Sources */,
+				F2A0B10120260814B0000003 /* PPNotificationsInboxStore.swift in Sources */,
+				F2A0B10120260814B0000004 /* PPNotificationsInboxView.swift in Sources */,
+				F2A0B10120260814B0000005 /* PPNotificationsHubViewController.swift in Sources */,
 				4FFF9AACF4E2D30784C0DFBD /* PPVoiceMessageHelper.swift in Sources */,
 				AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */,
 				020973329FED4C5E282FFD6C /* NovaSpeechSpeaker.swift in Sources */,

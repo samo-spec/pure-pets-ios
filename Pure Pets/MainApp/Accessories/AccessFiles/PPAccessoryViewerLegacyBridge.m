@@ -17,6 +17,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPNavigationController.h"
 #import "PPNetworkRetryHelper.h"
+#import "PPSelectPaymentVC.h"
 #import "PPUniversalCellHelper.h"
 #import "PPUniversalCellViewModel.h"
 #import "PPUserSigningManager.h"
@@ -220,6 +221,57 @@ static UIViewController *PPAccessoryResolvedPresenter(
     }
     return presenter;
 }
+
+@interface PPAccessoryViewerLegacyBridge ()
+
++ (void)pp_addAccessory:(PetAccessory *)accessory
+                quantity:(NSInteger)quantity
+      fromViewController:(UIViewController *)viewController
+       showsSuccessToast:(BOOL)showsSuccessToast
+   waitsForConfirmedSync:(BOOL)waitsForConfirmedSync
+               completion:(void (^)(PPAccessoryCartResultCode result,
+                                    NSInteger addedQuantity,
+                                    NSInteger cartQuantity,
+                                    NSInteger remainingStock))completion;
+
+@end
+
+@interface PPAccessoryCheckoutPreview ()
+
+@property (nonatomic, copy, readwrite) NSString *selectionTotalText;
+@property (nonatomic, copy, readwrite) NSString *cartSubtotalText;
+@property (nonatomic, assign, readwrite) NSInteger unitsCount;
+@property (nonatomic, assign, readwrite) BOOL requiresProviderSwitch;
+@property (nonatomic, assign, readwrite) BOOL canCommit;
+
+- (instancetype)initWithSelectionTotalText:(NSString *)selectionTotalText
+                           cartSubtotalText:(NSString *)cartSubtotalText
+                                 unitsCount:(NSInteger)unitsCount
+                     requiresProviderSwitch:(BOOL)requiresProviderSwitch
+                                  canCommit:(BOOL)canCommit;
+
+@end
+
+@implementation PPAccessoryCheckoutPreview
+
+- (instancetype)initWithSelectionTotalText:(NSString *)selectionTotalText
+                           cartSubtotalText:(NSString *)cartSubtotalText
+                                 unitsCount:(NSInteger)unitsCount
+                     requiresProviderSwitch:(BOOL)requiresProviderSwitch
+                                  canCommit:(BOOL)canCommit
+{
+    self = [super init];
+    if (self) {
+        _selectionTotalText = [selectionTotalText copy] ?: @"";
+        _cartSubtotalText = [cartSubtotalText copy] ?: @"";
+        _unitsCount = MAX(unitsCount, 0);
+        _requiresProviderSwitch = requiresProviderSwitch;
+        _canCommit = canCommit;
+    }
+    return self;
+}
+
+@end
 
 @implementation PPAccessoryViewerLegacyBridge
 
@@ -428,6 +480,81 @@ static UIViewController *PPAccessoryResolvedPresenter(
 + (NSInteger)cartItemsCount
 {
     return [CartManager.sharedManager totalItemsCount];
+}
+
++ (void)updateCartQuantity:(NSInteger)quantity
+              forAccessory:(PetAccessory *)accessory
+                completion:(void (^)(BOOL,
+                                     NSInteger,
+                                     NSInteger))completion
+{
+    void (^finish)(BOOL) = ^(BOOL succeeded) {
+        NSInteger cartQuantity =
+            [CartManager.sharedManager quantityForAccessory:accessory];
+        NSInteger remainingStock =
+            MAX(0, accessory.quantity - cartQuantity);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(succeeded, cartQuantity, remainingStock);
+        });
+    };
+
+    if (!accessory || ![self isSignedIn]) {
+        finish(NO);
+        return;
+    }
+
+    CartManager *cartManager = CartManager.sharedManager;
+    CartItem *item =
+        [cartManager getCartItemForItemID:accessory.accessoryID];
+    if (!item) {
+        finish(NO);
+        return;
+    }
+
+    NSInteger requestedQuantity = MAX(quantity, 0);
+    if (requestedQuantity == 0) {
+        [cartManager removeItemForAccessory:accessory];
+        finish(YES);
+        return;
+    }
+
+    [cartManager updateQuantity:requestedQuantity
+                         forItem:item
+                      completion:^(BOOL succeeded) {
+        finish(succeeded);
+    }];
+}
+
++ (PPAccessoryCheckoutPreview *)checkoutPreviewForAccessory:(PetAccessory *)accessory
+                                                    quantity:(NSInteger)quantity
+{
+    NSInteger safeQuantity = MAX(quantity, 1);
+    CartManager *cartManager = CartManager.sharedManager;
+    CartItem *item =
+        [[CartItem alloc] initWithAccessory:accessory quantity:safeQuantity];
+    PPCartAddProjection *projection =
+        [cartManager projectionForAddingItem:item];
+    BOOL requiresProviderSwitch = projection
+        ? projection.requiresProviderSwitch
+        : [cartManager shouldConfirmProviderSwitchForItem:item];
+    double selectionSubtotal = projection
+        ? projection.selectionSubtotal
+        : MAX(0.0, item.lineSubtotal);
+    double projectedSubtotal = projection
+        ? projection.projectedSubtotal
+        : cartManager.subtotalAmount;
+    NSInteger projectedUnits = projection
+        ? projection.totalUnits
+        : cartManager.totalItemsCount;
+
+    return [[PPAccessoryCheckoutPreview alloc]
+        initWithSelectionTotalText:
+            PPAccessoryBridgeFormattedCurrency(@(selectionSubtotal))
+                 cartSubtotalText:
+            PPAccessoryBridgeFormattedCurrency(@(projectedSubtotal))
+                       unitsCount:projectedUnits
+           requiresProviderSwitch:requiresProviderSwitch
+                        canCommit:projection != nil];
 }
 
 + (UserModel *)officialSupportOwner
@@ -703,6 +830,40 @@ static UIViewController *PPAccessoryResolvedPresenter(
                                  NSInteger,
                                  NSInteger))completion
 {
+    [self pp_addAccessory:accessory
+                 quantity:quantity
+       fromViewController:viewController
+        showsSuccessToast:YES
+    waitsForConfirmedSync:NO
+                completion:completion];
+}
+
++ (void)prepareAccessoryForCheckout:(PetAccessory *)accessory
+                            quantity:(NSInteger)quantity
+                  fromViewController:(UIViewController *)viewController
+                           completion:(void (^)(PPAccessoryCartResultCode,
+                                                NSInteger,
+                                                NSInteger,
+                                                NSInteger))completion
+{
+    [self pp_addAccessory:accessory
+                 quantity:quantity
+       fromViewController:viewController
+        showsSuccessToast:NO
+    waitsForConfirmedSync:YES
+                completion:completion];
+}
+
++ (void)pp_addAccessory:(PetAccessory *)accessory
+                quantity:(NSInteger)quantity
+      fromViewController:(UIViewController *)viewController
+       showsSuccessToast:(BOOL)showsSuccessToast
+   waitsForConfirmedSync:(BOOL)waitsForConfirmedSync
+               completion:(void (^)(PPAccessoryCartResultCode,
+                                    NSInteger,
+                                    NSInteger,
+                                    NSInteger))completion
+{
     [PPCommerceFeedbackManager.shared
      playEvent:PPCommerceFeedbackEventPaymentAction];
 
@@ -807,11 +968,13 @@ static UIViewController *PPAccessoryResolvedPresenter(
                                 fallback:@"left in stock"]]
             : [self localizedTextForKey:@"ItemAddedToYourCart"
                                fallback:@"Item added to your cart."];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [PPAddToCartSuccessToast showWithTitle:
-                [self localizedTextForKey:@"AddedToCart" fallback:@"Added"]
-                                        subtitle:message];
-        });
+        if (showsSuccessToast) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [PPAddToCartSuccessToast showWithTitle:
+                    [self localizedTextForKey:@"AddedToCart" fallback:@"Added"]
+                                            subtitle:message];
+            });
+        }
 
         if ([viewController isKindOfClass:AccessViewerVC.class]) {
             AccessViewerVC *viewerController =
@@ -821,6 +984,20 @@ static UIViewController *PPAccessoryResolvedPresenter(
         [PPCommerceFeedbackManager.shared
          playEvent:PPCommerceFeedbackEventCartQuantityChanged];
         finish(PPAccessoryCartResultCodeSuccess, safeQuantity);
+    };
+
+    void (^commitPreparedItem)(void) = ^{
+        if (waitsForConfirmedSync) {
+            [cartManager addItemAndWaitForSync:item
+                                    completion:^(BOOL succeeded) {
+                handleAddResult(succeeded, NO);
+            }];
+            return;
+        }
+
+        [cartManager addItem:item
+            presentingViewController:presenter
+                       completion:handleAddResult];
     };
 
     if ([cartManager shouldConfirmProviderSwitchForItem:item]) {
@@ -908,11 +1085,13 @@ static UIViewController *PPAccessoryResolvedPresenter(
              handler:^(__unused UIAlertAction *action) {
                 [cartManager
                  clearCartAndSyncToFirestoreWithCompletion:^(BOOL cleared) {
-                    if (!cleared) {
-                        handleAddResult(NO, NO);
-                        return;
-                    }
-                    handleAddResult([cartManager addItem:item], NO);
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (!cleared) {
+                            handleAddResult(NO, NO);
+                            return;
+                        }
+                        commitPreparedItem();
+                    });
                  }];
              }]];
         [alert addAction:
@@ -929,9 +1108,7 @@ static UIViewController *PPAccessoryResolvedPresenter(
         return;
     }
 
-    [cartManager addItem:item
-        presentingViewController:presenter
-                   completion:handleAddResult];
+    commitPreparedItem();
 }
 
 + (NSString *)displayNameForUser:(UserModel *)user
@@ -1068,6 +1245,21 @@ fromViewController:(UIViewController *)viewController
     if (navigation) {
         [navigation pushViewController:cart animated:YES];
     }
+}
+
++ (BOOL)openPaymentSelectionFromViewController:(UIViewController *)viewController
+{
+    UIViewController *presenter =
+        PPAccessoryResolvedPresenter(viewController);
+    UIViewController *routeSource =
+        presenter.navigationController ? presenter : viewController;
+    BOOL didOpen =
+        [PPSelectPaymentVC pushFromViewController:routeSource];
+    if (!didOpen) {
+        [PPCommerceFeedbackManager.shared
+         playEvent:PPCommerceFeedbackEventPaymentFailure];
+    }
+    return didOpen;
 }
 
 + (void)openSellerProfileForAccessory:(PetAccessory *)accessory

@@ -2768,6 +2768,8 @@
 // ── تذكيرات الحيوانات الأليفة ───────────────────────────────
 "pet_reminders_empty_title" = "لا توجد تذكيرات";
 "pet_reminders_empty_subtitle" = "أضف تذكيرات للتطعيمات والأكل والمواعيد.";
+"pet_reminders_error_title" = "تعذر تحميل التذكيرات";
+"pet_reminders_error_subtitle" = "تحقق من اتصالك ثم حاول مرة أخرى.";
 "pet_reminder_title_section" = "العنوان";
 "pet_reminder_type_section" = "النوع";
 "pet_reminder_pet_section" = "الحيوان الأليف";
@@ -3389,8 +3391,12 @@
 "home_marketplace_signal_marketplace_items_label" = "منتجات المتجر";
 "home_marketplace_signal_services_label" = "الخدمات";
 "home_marketplace_signal_pet_ads_label" = "إعلانات الحيوانات الأليفة";
-"home_marketplace_signal_live_count_hint" = "اضغط لعرض العدد المتاح الآن للفئة المختارة.";
-"home_marketplace_signal_idle" = "اضغط لعرض العدد";
+"home_marketplace_signal_marketplace_items_compact_label" = "المنتجات";
+"home_marketplace_signal_services_compact_label" = "الخدمات";
+"home_marketplace_signal_pet_ads_compact_label" = "الإعلانات";
+"home_marketplace_signal_live_count_hint" = "يعرض العدد المتاح الآن للفئة المختارة. اضغط للتحديث.";
+"home_marketplace_signal_idle" = "جارٍ تجهيز العدد…";
+"home_marketplace_signal_category_required" = "اختر فئة الحيوان لعرض الأعداد المباشرة.";
 "home_marketplace_signal_loading" = "جارٍ تحميل العدد…";
 "home_marketplace_signal_available_count_format" = "المتاح الآن: %ld";
 "home_marketplace_signal_unavailable_retry" = "تعذّر تحميل العدد. اضغط للمحاولة مجدداً.";
@@ -3908,8 +3914,11 @@
 "accessory_view_add_to_cart_hint" = "يضيف الكمية المحددة وفق قواعد المخزون والسلة الحالية.";
 "accessory_view_adding_to_cart" = "جارِ الإضافة…";
 "accessory_view_cart_count_format" = "عناصر السلة: %ld";
+"accessory_view_cart_empty" = "السلة فارغة";
+"accessory_view_cart_items_format" = "السلة، %@ منتج";
 "accessory_view_cart_offline" = "أنت غير متصل. أعد الاتصال ثم حاول مجددًا.";
 "accessory_view_cart_selection_format" = "الكمية %ld، المتاح %ld";
+"accessory_view_cart_quantity_update_failed" = "تعذر تحديث كمية السلة. حاول مرة أخرى.";
 "accessory_view_contact_unavailable" = "التواصل مع البائع غير متاح";
 "accessory_view_contact_for_used" = "تواصل مع البائع للمتابعة";
 "accessory_view_decrease_quantity" = "تقليل الكمية";
@@ -3937,6 +3946,7 @@
 "accessory_view_unavailable_message" = "يتعذّر عرض هذا المستلزم الآن. أعد المحاولة أو ارجع إلى الشاشة السابقة.";
 "accessory_view_unavailable_title" = "المستلزم غير متاح";
 "accessory_view_updating_favorite" = "جارِ تحديث المفضلة";
+"accessory_view_updating_cart_quantity" = "جارِ تحديث كمية السلة";
 "accessory_view_verified_seller" = "بائع موثّق";
 "accessory_view_weight" = "الوزن";
 "accessory_view_size_weight" = "الحجم / الوزن";
@@ -3971,9 +3981,22 @@
 "accessory_view_zoom_out" = "تصغير";
 "accessory_view_reset_zoom" = "إعادة ضبط التكبير";
 "accessory_view_total" = "الإجمالي";
+"accessory_view_selection_total" = "قيمة اختيارك";
 "accessory_view_quantity" = "الكمية";
 "accessory_view_cart_selection_text_format" = "المحدد %@، والمتاح %@";
 "accessory_view_remaining_text_format" = "يتبقى %@ بعد السلة";
+"accessory_view_checkout_cart_context_format" = "السلة بعد الإضافة · %@ · الكمية %@";
+"accessory_view_checkout_new_cart_context_format" = "سلة البائع الجديدة بعد التأكيد · %@ · الكمية %@";
+"accessory_view_checkout_total_review_note" = "ستراجع رسوم التوصيل والإجمالي النهائي في الخطوة التالية.";
+"accessory_view_checkout_provider_switch_note" = "ستؤكد استبدال سلة البائع الحالية أولًا، ثم تراجع التوصيل والإجمالي النهائي.";
+"accessory_view_preparing_checkout" = "جارٍ مزامنة سلتك…";
+"accessory_view_opening_payment" = "جارٍ فتح خيارات الدفع…";
+"accessory_view_pay_now_hint" = "يضيف اختيارك وفق قواعد السلة الحالية، ثم يفتح خيارات الدفع.";
+"accessory_view_checkout_route_failed" = "تم حفظ اختيارك في السلة، لكن تعذر فتح خيارات الدفع. تابع دون إضافته مرة أخرى.";
+"accessory_view_checkout_sync_failed" = "تعذرت مزامنة سلتك مع حسابك. لم تتم إضافة شيء جديد؛ تحقق من اتصالك وحاول مجددًا.";
+"accessory_view_checkout_ready_title" = "سلتك جاهزة";
+"accessory_view_checkout_ready_message" = "اختيارك محفوظ في السلة بالفعل. تابع إلى الدفع دون إضافته مرة أخرى.";
+"accessory_view_continue_to_payment" = "المتابعة إلى الدفع";
 "accessory_view_quantity_adjust_hint" = "اسحب لأعلى أو لأسفل لتغيير الكمية ضمن المخزون المتاح.";
 "accessory_view_add_retry_hint" = "يعيد محاولة إضافة الكمية المحددة إلى السلة.";
 "accessory_view_add_failure_announcement" = "تعذّرت إضافة الكمية المحددة. اضغط مرتين لإعادة المحاولة.";

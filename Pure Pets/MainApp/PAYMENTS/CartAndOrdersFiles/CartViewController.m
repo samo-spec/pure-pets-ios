@@ -2297,8 +2297,14 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
 
     // Order is created in PPCheckoutCoordinator from payment screen.
-    PPSelectPaymentVC *vc = [[PPSelectPaymentVC alloc] init];
-    [self.navigationController pushViewController:vc animated:YES];
+    if (![PPSelectPaymentVC pushFromViewController:self]) {
+        [self.summaryView setCheckoutLoading:NO];
+        [[PPCommerceFeedbackManager shared]
+         playEvent:PPCommerceFeedbackEventPaymentFailure];
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"checkout_failed_title")
+                            subtitle:kLang(@"checkout_generic_error")];
+    }
 }
 
 #pragma mark - Saved For Later Inline Rows

@@ -16,6 +16,8 @@ final class PPAccessoryViewerStore: ObservableObject {
         PPAccessoryViewerSectionPhase = .idle
     @Published private(set) var isFavorite = false
     @Published private(set) var cartPhase: PPAccessoryViewerCartPhase = .ready
+    @Published private(set) var checkoutPhase:
+        PPAccessoryViewerCheckoutPhase = .ready
     @Published private(set) var livePhase: PPAccessoryViewerLivePhase = .current
     @Published private(set) var stockNotificationPhase:
         PPAccessoryViewerStockNotificationPhase = .idle
@@ -23,6 +25,11 @@ final class PPAccessoryViewerStore: ObservableObject {
     @Published private(set) var cartQuantity = 0
     @Published private(set) var cartItemsCount = 0
     @Published private(set) var remainingStock = 0
+    @Published private(set) var checkoutSelectionTotalText = ""
+    @Published private(set) var checkoutCartSubtotalText = ""
+    @Published private(set) var checkoutUnitsCount = 0
+    @Published private(set) var checkoutRequiresProviderSwitch = false
+    @Published private(set) var checkoutPreviewCanCommit = false
     @Published private(set) var pricePulseToken = 0
     @Published private(set) var scrollToSuggestionsToken = 0
     @Published private(set) var bannerMessage: String?
@@ -31,15 +38,36 @@ final class PPAccessoryViewerStore: ObservableObject {
     private weak var presenter: UIViewController?
     private var didLoad = false
     private var successResetTask: Task<Void, Never>?
+    private var checkoutTask: Task<Void, Never>?
+    private var preparedCheckoutCartQuantity: Int?
     private var liveRegistration: Any?
+    private var cartObserver: NSObjectProtocol?
+
+    private enum CartMutationPresentation: Equatable {
+        case cart
+        case checkout
+    }
 
     init(accessory: PetAccessory?, presenter: UIViewController) {
         self.accessory = accessory
         self.presenter = presenter
+        cartObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name("CartUpdated"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshCartState()
+            }
+        }
     }
 
     deinit {
         successResetTask?.cancel()
+        checkoutTask?.cancel()
+        if let cartObserver {
+            NotificationCenter.default.removeObserver(cartObserver)
+        }
         if let registration = liveRegistration as? NSObject {
             registration.perform(Selector(("remove")))
         }
@@ -105,15 +133,18 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     var totalPriceText: String {
-        guard let accessory else { return snapshot?.price ?? "" }
-        return PPAccessoryViewerLegacyBridge.formattedPrice(
-            for: accessory,
-            quantity: quantity
-        )
+        checkoutSelectionTotalText.isEmpty
+            ? (snapshot?.price ?? "")
+            : checkoutSelectionTotalText
     }
 
     var isPurchaseDataCurrent: Bool {
         livePhase == .current
+    }
+
+    var isCheckoutProcessing: Bool {
+        checkoutPhase == .preparingCart ||
+            checkoutPhase == .openingPayment
     }
 
     var hasSimilarAlternatives: Bool {
@@ -137,20 +168,28 @@ final class PPAccessoryViewerStore: ObservableObject {
         cartItemsCount = PPAccessoryViewerLegacyBridge.cartItemsCount()
         remainingStock = max(accessory.quantity - cartQuantity, 0)
         quantity = min(max(quantity, 1), max(remainingStock, 1))
+        refreshCheckoutPreview()
+        reconcilePreparedCheckoutState()
     }
 
     func incrementQuantity() {
-        guard cartPhase != .processing, quantity < remainingStock else {
+        guard cartPhase != .processing,
+              !isCheckoutProcessing,
+              quantity < remainingStock else {
             return
         }
         quantity += 1
+        refreshCheckoutPreview()
         pricePulseToken += 1
         PPAccessoryViewerLegacyBridge.playSelectionFeedback()
     }
 
     func decrementQuantity() {
-        guard cartPhase != .processing, quantity > 1 else { return }
+        guard cartPhase != .processing,
+              !isCheckoutProcessing,
+              quantity > 1 else { return }
         quantity -= 1
+        refreshCheckoutPreview()
         pricePulseToken += 1
         PPAccessoryViewerLegacyBridge.playSelectionFeedback()
     }
@@ -160,11 +199,162 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// Returns the updated total cart items count on success.
     /// Throws on any failure so the animated button can show its retry state.
     func addToCartAsync() async throws -> AnimatedAddToCartOutcome {
+        guard !isCheckoutProcessing else {
+            throw PPAccessoryCartError.unavailable
+        }
+        return try await performCartMutation(presentation: .cart)
+    }
+
+    /// Updates the existing cart line through the legacy CartManager owner.
+    /// This keeps PPCommerceCartHolder's quantity binding synchronized with
+    /// the same local, Firestore-backed cart used by the UIKit checkout flow.
+    func updateCartQuantity(_ requestedQuantity: Int) async throws -> Int {
         guard let accessory,
               let snapshot,
               snapshot.showsCart,
               !snapshot.isUnavailable,
               isPurchaseDataCurrent,
+              !isCheckoutProcessing,
+              cartPhase != .processing,
+              cartQuantity > 0 else {
+            throw PPAccessoryCartError.unavailable
+        }
+
+        cartPhase = .processing
+        return try await withCheckedThrowingContinuation { continuation in
+            PPAccessoryViewerLegacyBridge.updateCartQuantity(
+                requestedQuantity,
+                for: accessory
+            ) { [weak self] succeeded, cartQuantity, remainingStock in
+                Task { @MainActor in
+                    guard let self else {
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                        return
+                    }
+
+                    self.cartQuantity = max(cartQuantity, 0)
+                    self.remainingStock = max(remainingStock, 0)
+                    self.quantity = min(
+                        max(self.quantity, 1),
+                        max(self.remainingStock, 1)
+                    )
+                    self.refreshCheckoutPreview()
+                    self.cartPhase = .ready
+
+                    if succeeded {
+                        continuation.resume(returning: self.cartQuantity)
+                    } else {
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /// Opens the established payment selector for the confirmed cart state.
+    /// The holder reports only that the handoff opened; payment confirmation
+    /// remains owned by the existing checkout flow.
+    func openCartCheckout() async throws {
+        guard let snapshot,
+              snapshot.showsCart,
+              !snapshot.isUnavailable,
+              isPurchaseDataCurrent,
+              cartQuantity > 0,
+              let presenter else {
+            throw PPAccessoryCartError.unavailable
+        }
+
+        guard PPAccessoryViewerLegacyBridge.isNetworkAvailable() else {
+            bannerMessage = PPAccessoryViewerL10n.text(
+                "accessory_view_cart_offline"
+            )
+            throw PPAccessoryCartError.offline
+        }
+
+        guard PPAccessoryViewerLegacyBridge.isSignedIn() else {
+            PPAccessoryViewerLegacyBridge.presentSignIn(
+                from: presenter
+            ) { _ in }
+            throw CancellationError()
+        }
+
+        guard PPAccessoryViewerLegacyBridge.openPaymentSelection(
+            from: presenter
+        ) else {
+            checkoutPhase = .routeFailed
+            bannerMessage = PPAccessoryViewerL10n.text(
+                "accessory_view_checkout_route_failed"
+            )
+            throw PPAccessoryCartError.failed
+        }
+
+        checkoutPhase = .openingPayment
+    }
+
+    func payNow() {
+        guard !isCheckoutProcessing, cartPhase != .processing else { return }
+
+        if checkoutPhase == .routeFailed {
+            openPreparedCheckout()
+            return
+        }
+
+        guard let snapshot,
+              snapshot.showsCart,
+              !snapshot.isUnavailable,
+              isPurchaseDataCurrent,
+              checkoutPreviewCanCommit,
+              remainingStock > 0 else {
+            bannerMessage = PPAccessoryViewerL10n.text(
+                "accessory_view_item_unavailable"
+            )
+            return
+        }
+
+        checkoutPhase = .preparingCart
+        checkoutTask?.cancel()
+        checkoutTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                _ = try await self.performCartMutation(
+                    presentation: .checkout
+                )
+                guard !Task.isCancelled else {
+                    self.checkoutPhase = .ready
+                    self.preparedCheckoutCartQuantity = nil
+                    self.checkoutTask = nil
+                    return
+                }
+                self.checkoutPhase = .openingPayment
+                self.openPreparedCheckout()
+            } catch is CancellationError {
+                self.checkoutPhase = .ready
+                self.preparedCheckoutCartQuantity = nil
+                self.checkoutTask = nil
+            } catch {
+                self.checkoutPhase = .ready
+                self.preparedCheckoutCartQuantity = nil
+                self.checkoutTask = nil
+            }
+        }
+    }
+
+    private func performCartMutation(
+        presentation: CartMutationPresentation
+    ) async throws -> AnimatedAddToCartOutcome {
+        let hasValidCheckoutPreview =
+            presentation == .cart || checkoutPreviewCanCommit
+        guard let accessory,
+              let snapshot,
+              snapshot.showsCart,
+              !snapshot.isUnavailable,
+              isPurchaseDataCurrent,
+              hasValidCheckoutPreview,
               remainingStock > 0,
               cartPhase != .processing,
               let presenter else {
@@ -176,11 +366,15 @@ final class PPAccessoryViewerStore: ObservableObject {
         successResetTask?.cancel()
 
         return try await withCheckedThrowingContinuation { continuation in
-            PPAccessoryViewerLegacyBridge.addToCart(
-                accessory,
-                quantity: requestedQuantity,
-                from: presenter
-            ) { [weak self] result, addedQuantity, cartQuantity, remainingStock in
+            let completion: (
+                PPAccessoryCartResultCode,
+                Int,
+                Int,
+                Int
+            ) -> Void = { [weak self] result,
+                                   addedQuantity,
+                                   cartQuantity,
+                                   remainingStock in
                 Task { @MainActor in
                     guard let self else {
                         continuation.resume(
@@ -197,6 +391,10 @@ final class PPAccessoryViewerStore: ObservableObject {
                     case .success:
                         self.cartPhase = .success
                         self.quantity = 1
+                        if presentation == .checkout {
+                            self.preparedCheckoutCartQuantity = cartQuantity
+                        }
+                        self.refreshCheckoutPreview()
                         self.scheduleSuccessReset()
                         continuation.resume(
                             returning: AnimatedAddToCartOutcome(
@@ -238,7 +436,9 @@ final class PPAccessoryViewerStore: ObservableObject {
                     case .failed:
                         self.cartPhase = .failed
                         self.bannerMessage = PPAccessoryViewerL10n.text(
-                            "accessory_view_add_failed"
+                            presentation == .checkout
+                                ? "accessory_view_checkout_sync_failed"
+                                : "accessory_view_add_failed"
                         )
                         self.scheduleFailureReset()
                         continuation.resume(
@@ -253,7 +453,42 @@ final class PPAccessoryViewerStore: ObservableObject {
                     }
                 }
             }
+
+            switch presentation {
+            case .cart:
+                PPAccessoryViewerLegacyBridge.addToCart(
+                    accessory,
+                    quantity: requestedQuantity,
+                    from: presenter,
+                    completion: completion
+                )
+            case .checkout:
+                PPAccessoryViewerLegacyBridge.prepareForCheckout(
+                    accessory,
+                    quantity: requestedQuantity,
+                    from: presenter,
+                    completion: completion
+                )
+            }
         }
+    }
+
+    private func openPreparedCheckout() {
+        guard let presenter,
+              PPAccessoryViewerLegacyBridge.openPaymentSelection(
+                from: presenter
+              ) else {
+            checkoutPhase = .routeFailed
+            cartPhase = .ready
+            checkoutTask = nil
+            bannerMessage = PPAccessoryViewerL10n.text(
+                "accessory_view_checkout_route_failed"
+            )
+            return
+        }
+
+        checkoutPhase = .openingPayment
+        checkoutTask = nil
     }
 
     func registerStockNotification() {
@@ -309,6 +544,13 @@ final class PPAccessoryViewerStore: ObservableObject {
 
     func resume() {
         guard didLoad else { return }
+        if checkoutPhase == .openingPayment {
+            checkoutPhase = .ready
+            preparedCheckoutCartQuantity = nil
+        }
+        if cartPhase == .success && checkoutPhase != .preparingCart {
+            cartPhase = .ready
+        }
         refreshCartState()
         loadFavorite()
         if liveRegistration == nil {
@@ -318,6 +560,9 @@ final class PPAccessoryViewerStore: ObservableObject {
 
     func pause() {
         successResetTask?.cancel()
+        if checkoutPhase == .preparingCart {
+            checkoutTask?.cancel()
+        }
         stopLiveListener()
     }
 
@@ -384,6 +629,37 @@ final class PPAccessoryViewerStore: ObservableObject {
         guard let presenter else { return }
         PPAccessoryViewerLegacyBridge.playSelectionFeedback()
         PPAccessoryViewerLegacyBridge.openCart(from: presenter)
+    }
+
+    private func refreshCheckoutPreview() {
+        guard let accessory else {
+            checkoutSelectionTotalText = ""
+            checkoutCartSubtotalText = ""
+            checkoutUnitsCount = 0
+            checkoutRequiresProviderSwitch = false
+            checkoutPreviewCanCommit = false
+            return
+        }
+
+        let preview = PPAccessoryViewerLegacyBridge.checkoutPreview(
+            for: accessory,
+            quantity: quantity
+        )
+        checkoutSelectionTotalText = preview.selectionTotalText
+        checkoutCartSubtotalText = preview.cartSubtotalText
+        checkoutUnitsCount = preview.unitsCount
+        checkoutRequiresProviderSwitch = preview.requiresProviderSwitch
+        checkoutPreviewCanCommit = preview.canCommit
+    }
+
+    private func reconcilePreparedCheckoutState() {
+        guard checkoutPhase == .routeFailed,
+              let preparedCheckoutCartQuantity,
+              cartQuantity < preparedCheckoutCartQuantity else {
+            return
+        }
+        checkoutPhase = .ready
+        self.preparedCheckoutCartQuantity = nil
     }
 
     func openSuggestion(_ suggestion: PPAccessoryViewerSuggestion) {

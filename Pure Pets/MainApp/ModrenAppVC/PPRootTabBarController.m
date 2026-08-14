@@ -29,7 +29,6 @@
 #endif
 
 #import "SettingVC.h"
-#import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
 #import "CartManager.h"
 #import "CartViewController.h"

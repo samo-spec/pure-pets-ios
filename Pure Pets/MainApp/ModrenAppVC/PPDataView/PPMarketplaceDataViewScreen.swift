@@ -12,8 +12,6 @@ struct PPMarketplaceDataViewScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var hasPresentedEntrance = false
     @State private var dockIsPinned = false
-    @State private var headerCollapseProgress: CGFloat = 0
-    @State private var dockIsCondensed = false
     @GestureState private var scrollGestureIsActive = false
     @State private var bridgeScrollInteractionIsActive = false
     @State private var measuredScrollContentHeight: CGFloat = 0
@@ -28,9 +26,10 @@ struct PPMarketplaceDataViewScreen: View {
                         spacing: 0,
                         pinnedViews: [.sectionHeaders]
                     ) {
-                            PPMarketplaceIdentityHeaderV3(
+                            PPMarketplaceHero(
                                 store: store,
-                                availableWidth: proxy.size.width
+                                availableWidth: proxy.size.width,
+                                showsBackControl: !dockIsPinned
                             )
                             .ppMarketplaceEntrance(
                                 isPresented: hasPresentedEntrance
@@ -75,10 +74,10 @@ struct PPMarketplaceDataViewScreen: View {
                                     )
                                     .accessibilityHidden(true)
                             } header: {
-                                PPMarketplaceCommandDockV3(
+                                PPMarketplaceCurrentDock(
                                     store: store,
-                                    availableWidth: proxy.size.width,
-                                    collapseProgress: headerCollapseProgress
+                                    showsPinnedBackControl: dockIsPinned,
+                                    statusBarHeight: proxy.safeAreaInsets.top
                                 )
                                 .ppMarketplaceEntrance(
                                     isPresented: hasPresentedEntrance
@@ -128,18 +127,6 @@ struct PPMarketplaceDataViewScreen: View {
                     .onPreferenceChange(
                         PPMarketplaceDockMinYPreferenceKey.self
                     ) { minY in
-                        // The pinned section header is retained at every scroll
-                        // offset, so it is the only safe collapse driver. The
-                        // previous driver lived in the expanded header's
-                        // background, inside the LazyVStack, and was destroyed
-                        // on long scrolls — which reset progress to 0 and made
-                        // the entire pinned dock disappear.
-                        updateHeaderCollapseProgress(
-                            PPMarketplaceCommandDockV3Metrics.progress(
-                                forDockMinY: minY
-                            )
-                        )
-
                         let nextPinned = minY <= 1
                         guard dockIsPinned != nextPinned else { return }
                         dockIsPinned = nextPinned
@@ -228,8 +215,6 @@ struct PPMarketplaceDataViewScreen: View {
         .onDisappear {
             endScrollGestureIfNeeded()
             retainedScrollContentHeight = 0
-            headerCollapseProgress = 0
-            dockIsCondensed = false
         }
     }
 
@@ -255,27 +240,6 @@ struct PPMarketplaceDataViewScreen: View {
         } else {
             store.bridge.userDidEndScrolling()
         }
-    }
-
-    private func updateHeaderCollapseProgress(_ progress: CGFloat) {
-        let resolved = min(max(progress, 0), 1)
-        if abs(headerCollapseProgress - resolved) > 0.001 {
-            headerCollapseProgress = resolved
-        }
-
-        let nextCompactState = resolved >=
-            PPMarketplaceCommandDockV3Metrics.compactActivationProgress
-        guard dockIsCondensed != nextCompactState else { return }
-        dockIsCondensed = nextCompactState
-
-        guard nextCompactState,
-              scrollGestureIsActive,
-              !contentMotionIsDisabled else {
-            return
-        }
-        let feedback = UISelectionFeedbackGenerator()
-        feedback.prepare()
-        feedback.selectionChanged()
     }
 
     private func resolvedBottomBreathingRoom(

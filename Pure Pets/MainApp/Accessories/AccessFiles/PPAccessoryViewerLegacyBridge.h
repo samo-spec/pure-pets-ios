@@ -22,6 +22,21 @@ typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
     PPAccessoryLiveUpdateStatusFailed,
 };
 
+/// Read-only projection of the cart that would result from adding the current
+/// selection. Delivery and the final payable total remain owned by checkout.
+@interface PPAccessoryCheckoutPreview : NSObject
+
+@property (nonatomic, copy, readonly) NSString *selectionTotalText;
+@property (nonatomic, copy, readonly) NSString *cartSubtotalText;
+@property (nonatomic, assign, readonly) NSInteger unitsCount;
+@property (nonatomic, assign, readonly) BOOL requiresProviderSwitch;
+@property (nonatomic, assign, readonly) BOOL canCommit;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@end
+
 /// Narrow interoperability boundary for the SwiftUI accessory viewer.
 ///
 /// All reads, writes, validation, analytics, navigation, and side effects are
@@ -80,6 +95,15 @@ typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
 + (NSInteger)cartQuantityForAccessory:(PetAccessory *)accessory
     NS_SWIFT_NAME(cartQuantity(for:));
 + (NSInteger)cartItemsCount NS_SWIFT_NAME(cartItemsCount());
++ (void)updateCartQuantity:(NSInteger)quantity
+              forAccessory:(PetAccessory *)accessory
+                completion:(void (^)(BOOL succeeded,
+                                     NSInteger cartQuantity,
+                                     NSInteger remainingStock))completion
+    NS_SWIFT_NAME(updateCartQuantity(_:for:completion:));
++ (PPAccessoryCheckoutPreview *)checkoutPreviewForAccessory:(PetAccessory *)accessory
+                                                    quantity:(NSInteger)quantity
+    NS_SWIFT_NAME(checkoutPreview(for:quantity:));
 
 + (nullable id)listenToAccessoryID:(NSString *)accessoryID
                            onChange:(void (^)(PetAccessory * _Nullable updatedAccessory))onChange
@@ -126,6 +150,15 @@ typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
                                  NSInteger remainingStock))completion
     NS_SWIFT_NAME(addToCart(_:quantity:from:completion:));
 
++ (void)prepareAccessoryForCheckout:(PetAccessory *)accessory
+                            quantity:(NSInteger)quantity
+                  fromViewController:(UIViewController *)viewController
+                           completion:(void (^)(PPAccessoryCartResultCode result,
+                                                NSInteger addedQuantity,
+                                                NSInteger cartQuantity,
+                                                NSInteger remainingStock))completion
+    NS_SWIFT_NAME(prepareForCheckout(_:quantity:from:completion:));
+
 + (NSString *)displayNameForUser:(UserModel *)user
     NS_SWIFT_NAME(displayName(for:));
 + (nullable NSString *)avatarURLForUser:(UserModel *)user
@@ -152,6 +185,8 @@ fromViewController:(UIViewController *)viewController
     NS_SWIFT_NAME(openSupport(from:));
 + (void)openCartFromViewController:(UIViewController *)viewController
     NS_SWIFT_NAME(openCart(from:));
++ (BOOL)openPaymentSelectionFromViewController:(UIViewController *)viewController
+    NS_SWIFT_NAME(openPaymentSelection(from:));
 + (void)openSellerProfileForAccessory:(PetAccessory *)accessory
                                 owner:(UserModel *)owner
                           suggestions:(NSArray<PetAccessory *> *)suggestions

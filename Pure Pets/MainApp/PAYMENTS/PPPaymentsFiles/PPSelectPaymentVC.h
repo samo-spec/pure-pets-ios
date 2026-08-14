@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface PPSelectPaymentVC : XLFormViewController
 
++ (BOOL)pushFromViewController:(UIViewController *)viewController;
 - (void)fetchUserPaymentInstruments;
 - (void)showPaymentSheetFull:(BOOL)showFull;
 

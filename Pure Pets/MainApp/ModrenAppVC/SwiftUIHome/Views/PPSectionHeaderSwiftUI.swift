@@ -16,9 +16,6 @@ private enum PPSectionHeaderMetrics {
     static let identityCoreWidth: CGFloat = 8
     static let identityExpandedWidth: CGFloat = 15
     static let identitySpacing: CGFloat = 8
-    static let titleUnderlineWidth: CGFloat = 34
-    static let titleUnderlineExpandedWidth: CGFloat = 52
-    static let titleUnderlineHeight: CGFloat = 3
     static let actionHeight: CGFloat = 44
     static let actionMinWidth: CGFloat = 44
     static let actionMaxWidth: CGFloat = 160
@@ -1053,14 +1050,6 @@ private struct PPSectionHeaderRootView: View {
         }
         .frame(maxWidth: .infinity, alignment: store.state.rightToLeft ? .trailing : .leading)
         .frame(minHeight: PPSectionHeaderMetrics.titleTouchHeight)
-        .overlay(alignment: .bottom) {
-            if store.state.surfaceDecorationActive {
-                titleUnderline
-                    .padding(store.state.rightToLeft ? .trailing : .leading,
-                             PPSectionHeaderMetrics.identityMarkWidth + PPSectionHeaderMetrics.identitySpacing)
-                    .transition(.opacity)
-            }
-        }
     }
 
     private var titleCluster: some View {
@@ -1096,22 +1085,6 @@ private struct PPSectionHeaderRootView: View {
         }
         .frame(width: PPSectionHeaderMetrics.identityMarkWidth,
                height: PPSectionHeaderMetrics.titleTouchHeight)
-        .accessibilityHidden(true)
-    }
-
-    private var titleUnderline: some View {
-        HStack {
-            Capsule(style: .continuous)
-                .fill(Color(uiColor: store.state.headingAccentColor)
-                    .opacity(store.state.surfaceDecorationActive ? 0.72 : 0.42))
-                .frame(width: store.state.expanded
-                        ? PPSectionHeaderMetrics.titleUnderlineExpandedWidth
-                        : PPSectionHeaderMetrics.titleUnderlineWidth,
-                       height: PPSectionHeaderMetrics.titleUnderlineHeight)
-
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity)
         .accessibilityHidden(true)
     }
 

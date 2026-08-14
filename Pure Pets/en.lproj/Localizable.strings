@@ -2777,6 +2777,8 @@
 // ── Pet Reminders ───────────────────────────────────────────
 "pet_reminders_empty_title" = "No Reminders";
 "pet_reminders_empty_subtitle" = "Add reminders for vaccinations, food, and appointments.";
+"pet_reminders_error_title" = "Couldn't Load Reminders";
+"pet_reminders_error_subtitle" = "Check your connection, then try again.";
 "pet_reminder_title_section" = "Title";
 "pet_reminder_type_section" = "Type";
 "pet_reminder_pet_section" = "Pet";
@@ -3410,8 +3412,12 @@
 "home_marketplace_signal_marketplace_items_label" = "Marketplace items";
 "home_marketplace_signal_services_label" = "Services";
 "home_marketplace_signal_pet_ads_label" = "Pet listings";
-"home_marketplace_signal_live_count_hint" = "Shows how many are available now for the selected category.";
-"home_marketplace_signal_idle" = "Tap to show count";
+"home_marketplace_signal_marketplace_items_compact_label" = "Items";
+"home_marketplace_signal_services_compact_label" = "Services";
+"home_marketplace_signal_pet_ads_compact_label" = "Listings";
+"home_marketplace_signal_live_count_hint" = "Shows how many are available now for the selected category. Tap to refresh.";
+"home_marketplace_signal_idle" = "Preparing count…";
+"home_marketplace_signal_category_required" = "Choose a pet category to load live counts.";
 "home_marketplace_signal_loading" = "Loading count…";
 "home_marketplace_signal_available_count_format" = "%ld available now";
 "home_marketplace_signal_unavailable_retry" = "Count unavailable. Tap to try again.";
@@ -3929,8 +3935,11 @@
 "accessory_view_add_to_cart_hint" = "Adds the selected quantity using the current cart and stock rules.";
 "accessory_view_adding_to_cart" = "Adding…";
 "accessory_view_cart_count_format" = "Cart items: %ld";
+"accessory_view_cart_empty" = "Cart is empty";
+"accessory_view_cart_items_format" = "Cart, %@ items";
 "accessory_view_cart_offline" = "You’re offline. Reconnect, then try again.";
 "accessory_view_cart_selection_format" = "Quantity %ld, %ld available";
+"accessory_view_cart_quantity_update_failed" = "Couldn’t update the cart quantity. Try again.";
 "accessory_view_contact_unavailable" = "Seller contact unavailable";
 "accessory_view_contact_for_used" = "Contact the seller to continue";
 "accessory_view_decrease_quantity" = "Decrease quantity";
@@ -3958,6 +3967,7 @@
 "accessory_view_unavailable_message" = "This accessory can’t be displayed right now. Try again or return to the previous screen.";
 "accessory_view_unavailable_title" = "Accessory unavailable";
 "accessory_view_updating_favorite" = "Updating favorite";
+"accessory_view_updating_cart_quantity" = "Updating cart quantity";
 "accessory_view_verified_seller" = "Verified seller";
 "accessory_view_weight" = "Weight";
 "accessory_view_size_weight" = "Size / Weight";
@@ -3992,9 +4002,22 @@
 "accessory_view_zoom_out" = "Zoom out";
 "accessory_view_reset_zoom" = "Reset zoom";
 "accessory_view_total" = "Total";
+"accessory_view_selection_total" = "This selection";
 "accessory_view_quantity" = "Quantity";
 "accessory_view_cart_selection_text_format" = "%@ selected, %@ available";
 "accessory_view_remaining_text_format" = "%@ left after cart";
+"accessory_view_checkout_cart_context_format" = "Cart after adding · %@ · Quantity %@";
+"accessory_view_checkout_new_cart_context_format" = "New seller cart after confirmation · %@ · Quantity %@";
+"accessory_view_checkout_total_review_note" = "Delivery and the final total are reviewed next.";
+"accessory_view_checkout_provider_switch_note" = "Confirm replacing the current seller’s cart first; delivery and the final total are reviewed next.";
+"accessory_view_preparing_checkout" = "Syncing your cart…";
+"accessory_view_opening_payment" = "Opening payment options…";
+"accessory_view_pay_now_hint" = "Adds this selection through the current cart rules, then opens payment options.";
+"accessory_view_checkout_route_failed" = "Your selection is saved in the cart, but payment options could not open. Continue without adding it again.";
+"accessory_view_checkout_sync_failed" = "Your cart couldn’t sync to your account. Nothing new was added; check your connection and try again.";
+"accessory_view_checkout_ready_title" = "Your cart is ready";
+"accessory_view_checkout_ready_message" = "Your selection is already saved in the cart. Continue to payment without adding it again.";
+"accessory_view_continue_to_payment" = "Continue to Payment";
 "accessory_view_quantity_adjust_hint" = "Swipe up or down to change the quantity within the available stock.";
 "accessory_view_add_retry_hint" = "Retries adding the selected quantity to the cart.";
 "accessory_view_add_failure_announcement" = "Couldn’t add the selected quantity. Double-tap to retry.";

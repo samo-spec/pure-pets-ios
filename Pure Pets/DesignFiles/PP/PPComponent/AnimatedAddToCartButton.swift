@@ -1308,6 +1308,30 @@ public struct AnimatedAddToCartButton: View {
             ]
         }
 
+        if presentationStyle == .accessoryDecisionRail {
+            switch phase {
+            case .failure:
+                return [
+                    Color.ppForeground,
+                    Color.ppError.opacity(
+                        colorScheme == .dark ? 0.20 : 0.10
+                    ),
+                ]
+            case .success:
+                return [
+                    Color.ppForeground,
+                    Color.ppSuccess.opacity(
+                        colorScheme == .dark ? 0.20 : 0.10
+                    ),
+                ]
+            case .idle, .processing, .flying:
+                return [
+                    Color.ppForeground,
+                    tint.opacity(colorScheme == .dark ? 0.18 : 0.08),
+                ]
+            }
+        }
+
         if phase == .failure {
             return [
                 Color.ppError.opacity(0.94),
@@ -1329,7 +1353,19 @@ public struct AnimatedAddToCartButton: View {
     }
 
     private var buttonForeground: Color {
-        isEnabled ? .white : Color.ppTextSecondary
+        guard isEnabled else { return Color.ppTextSecondary }
+        guard presentationStyle == .accessoryDecisionRail else {
+            return .white
+        }
+
+        switch phase {
+        case .failure:
+            return Color.ppError
+        case .success:
+            return Color.ppSuccess
+        case .idle, .processing, .flying:
+            return tint
+        }
     }
 
     private var causalFlightDuration: Double {

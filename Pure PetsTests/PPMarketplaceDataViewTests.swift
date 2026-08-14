@@ -224,13 +224,104 @@ final class PPMarketplaceDataViewTests: XCTestCase {
         )
         XCTAssertFalse(
             PPMarketplaceCommandDockV3Metrics.showsCompactNavigation(
-                progress: 0.69
+                progress: 0.49
             )
         )
         XCTAssertTrue(
             PPMarketplaceCommandDockV3Metrics.showsCompactNavigation(
-                progress: 0.70
+                progress: 0.50
             )
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.compactNavigationProgress(
+                progress: 0
+            ),
+            0,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.compactNavigationProgress(
+                progress: -1
+            ),
+            0,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.compactNavigationProgress(
+                progress: 0.20
+            ),
+            0,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.compactNavigationProgress(
+                progress: 0.35
+            ),
+            0.5,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.compactNavigationProgress(
+                progress: 0.50
+            ),
+            1,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.compactNavigationProgress(
+                progress: 2
+            ),
+            1,
+            accuracy: 0.001
+        )
+
+        let sampledProgress: [CGFloat] = [0, 0.20, 0.35, 0.49, 0.50, 0.69, 1]
+        for progress in sampledProgress {
+            let compactHeight = PPMarketplaceCommandDockV3Metrics.interpolate(
+                expanded: 56,
+                compact: 48,
+                progress: progress
+            )
+            let activeTargetHeight =
+                PPMarketplaceCommandDockV3Metrics.activeCategoryTargetHeight(
+                    expandedHeight: 64,
+                    compactHeight: compactHeight,
+                    progress: progress
+                )
+            XCTAssertGreaterThanOrEqual(
+                activeTargetHeight,
+                PPMarketplaceCommandDockV3Metrics.minimumTouchTarget,
+                "Active category target fell below 44pt at progress \(progress)"
+            )
+        }
+
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.taxonomyRowHeight(
+                expandedHeight: 64,
+                progress: 0.50
+            ),
+            44,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Metrics.taxonomyRowHeight(
+                expandedHeight: 64,
+                progress: 1
+            ),
+            0,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPMarketplaceCommandDockV3Accessibility.taxonomyIdentifier,
+            "pp.marketplace.header.v2.taxonomy"
+        )
+        XCTAssertEqual(
+            Set([
+                PPMarketplaceCommandDockV3Accessibility.compactTaxonomyIdentifier,
+                PPMarketplaceCommandDockV3Accessibility.speciesIdentifier,
+                PPMarketplaceCommandDockV3Accessibility.breedIdentifier
+            ]).count,
+            3
         )
         XCTAssertEqual(
             PPMarketplaceSectionDescriptor.all.map(\.rawValue),

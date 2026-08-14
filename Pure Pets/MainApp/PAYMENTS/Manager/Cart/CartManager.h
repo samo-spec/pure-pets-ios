@@ -14,6 +14,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^PPCartAddItemCompletion)(BOOL success, BOOL didCancel);
 
+@interface PPCartAddProjection : NSObject
+
+@property (nonatomic, assign, readonly) NSInteger addedQuantity;
+@property (nonatomic, assign, readonly) NSInteger totalUnits;
+@property (nonatomic, assign, readonly) double selectionSubtotal;
+@property (nonatomic, assign, readonly) double projectedSubtotal;
+@property (nonatomic, assign, readonly) BOOL requiresProviderSwitch;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@end
+
 @interface CartManager : NSObject
 
 @property (nonatomic, strong) NSMutableArray<CartItem *> *cartItems;
@@ -28,6 +41,8 @@ typedef void (^PPCartAddItemCompletion)(BOOL success, BOOL didCancel);
 
 + (instancetype)sharedManager;
 - (BOOL)addItem:(CartItem *)item;
+- (void)addItemAndWaitForSync:(CartItem *)item
+                   completion:(void (^ _Nullable)(BOOL success))completion;
 - (void)addItem:(CartItem *)item
 presentingViewController:(UIViewController * _Nullable)presentingViewController
      completion:(PPCartAddItemCompletion _Nullable)completion;
@@ -51,6 +66,9 @@ presentingViewController:(UIViewController * _Nullable)presentingViewController
 - (double)totalAmount;
 - (BOOL)isCartEmpty;
 - (BOOL)shouldConfirmProviderSwitchForItem:(CartItem *)item;
+/// Read-only provider compatibility check shared by previews and mutations.
+- (BOOL)shouldConfirmProviderSwitchForProviderID:(nullable NSString *)providerID;
+- (nullable PPCartAddProjection *)projectionForAddingItem:(CartItem *)item;
 - (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion;
 - (void)clearCartAndSyncToFirestore;
 - (void)refreshPricingConfiguration;

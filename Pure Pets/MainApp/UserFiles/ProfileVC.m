@@ -10,7 +10,6 @@
 #import "PPVerificationCodeViewController.h"
 #import "PPSelectOptionViewController.h"
 #import "SettingVC.h"
-#import "PPNotificationsHubViewController.h"
 #import "PPPetProfilesViewController.h"
 #import "PPModernAvatarRenderer.h"
 #import "PPRootTabBarController.h"

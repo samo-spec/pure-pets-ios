@@ -259,6 +259,27 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
 @implementation PPSelectPaymentVC
 
++ (BOOL)pushFromViewController:(UIViewController *)viewController
+{
+    UINavigationController *navigationController = nil;
+    if ([viewController isKindOfClass:UINavigationController.class]) {
+        navigationController = (UINavigationController *)viewController;
+    } else {
+        navigationController = viewController.navigationController;
+    }
+
+    if (!navigationController) {
+        return NO;
+    }
+    if ([navigationController.topViewController isKindOfClass:self]) {
+        return YES;
+    }
+
+    PPSelectPaymentVC *paymentViewController = [[self alloc] init];
+    [navigationController pushViewController:paymentViewController animated:YES];
+    return YES;
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
      [[CartManager sharedManager] refreshPricingConfiguration];

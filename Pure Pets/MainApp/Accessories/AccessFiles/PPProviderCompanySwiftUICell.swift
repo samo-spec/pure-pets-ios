@@ -489,6 +489,11 @@ private struct PPProviderCompanyHostedCell: View {
     let entranceDelay: Double
 
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var horizontalInset: CGFloat {
+        horizontalSizeClass == .regular ? PPSpace.xxl : PPSpace.screenMargin
+    }
 
     var body: some View {
         Group {
@@ -500,7 +505,7 @@ private struct PPProviderCompanyHostedCell: View {
         }
         .environment(\.layoutDirection, layoutDirection)
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, compact ? 16 : 6)
+        .padding(.horizontal, horizontalInset)
         .padding(.vertical, 6)
     }
 }
@@ -522,7 +527,8 @@ final class PPProviderCompanySwiftUICellBridge: NSObject {
             return 104
         }
 
-        let cardWidth = max(tableWidth - 32, 0)
+        let horizontalInset = tableWidth >= 600 ? PPSpace.xxl : PPSpace.screenMargin
+        let cardWidth = max(tableWidth - (horizontalInset * 2), 0)
         let coverHeight = min(max(cardWidth * 0.48, 150), 188)
         return coverHeight + 92
     }

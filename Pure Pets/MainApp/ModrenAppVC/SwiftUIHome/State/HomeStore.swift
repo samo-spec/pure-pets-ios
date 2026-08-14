@@ -271,8 +271,8 @@ final class HomeStore: ObservableObject {
         repository.refresh()
     }
 
-    /// Fetches a fresh, uncapped public total for one hero badge. Each signal
-    /// owns its request generation so simultaneous badge reads do not cancel
+    /// Fetches a fresh, uncapped public total for one ledger signal. Each signal
+    /// owns its request generation so simultaneous reads do not cancel
     /// one another, while late replies from an earlier category are ignored.
     func loadMarketplaceSignal(_ kind: HomeMarketplaceSignalKind) {
         guard let categoryID = state.selectedMainKindID, categoryID > 0 else {
@@ -1412,35 +1412,48 @@ final class HomeStore: ObservableObject {
         let marketplaceTitle: String
         let marketplaceSubtitle: String
         let marketplacePrimaryTitle: String
+        let marketplaceAccessibilityLabel: String
 
         if let categoryName, !categoryName.isEmpty {
+            // Unicode First Strong Isolate / Pop Directional Isolate keep a
+            // Latin category name stable inside Arabic formatted copy (and the
+            // inverse) without changing the localized source strings.
+            let isolatedCategoryName =
+                "\u{2068}\(categoryName)\u{2069}"
             marketplaceEyebrow = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_eyebrow_format",
                     fallback: "Marketplace | %@ picks"
                 ),
-                categoryName
+                isolatedCategoryName
             )
             marketplaceTitle = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_title_format",
                     fallback: "Curated for %@"
                 ),
-                categoryName
+                isolatedCategoryName
             )
             marketplaceSubtitle = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_subtitle_format",
                     fallback: "Products, services, and listings for %@ from trusted providers."
                 ),
-                categoryName
+                isolatedCategoryName
             )
             marketplacePrimaryTitle = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_cta_format",
                     fallback: "Explore %@"
                 ),
-                categoryName
+                isolatedCategoryName
+            )
+            marketplaceAccessibilityLabel = String(
+                format: HomeModelAdapter.localized(
+                    "home_marketplace_hero_category_accessibility_label_format",
+                    fallback: "%@. Products, services, and listings from trusted providers."
+                ),
+                isolatedCategoryName
             )
         } else {
             marketplaceEyebrow = HomeModelAdapter.localized(
@@ -1471,6 +1484,12 @@ final class HomeStore: ObservableObject {
                     fallback: "View providers"
                 )
             )
+            marketplaceAccessibilityLabel = [
+                marketplaceTitle,
+                marketplaceSubtitle,
+            ]
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
         }
 
         return HomeHeroPage(
@@ -1487,7 +1506,8 @@ final class HomeStore: ObservableObject {
             imageURL: selectedCategory?.imageURL,
             localImage: selectedCategory?.localImage,
             accentHex: normalizedHex(selectedCategoryHex, fallback: "CB2654"),
-            action: .openMarketplace(selectedMainKind)
+            action: .openMarketplace(selectedMainKind),
+            accessibilityLabel: marketplaceAccessibilityLabel
         )
     }
 

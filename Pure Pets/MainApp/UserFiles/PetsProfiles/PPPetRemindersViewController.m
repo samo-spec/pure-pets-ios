@@ -14,8 +14,6 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
-#import "PPMarketplaceHeroCardStyle.h"
- 
 #import "PPReminderNotificationManager.h"
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -29,9 +27,45 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
     return nil; // no repeat — return nil so caller can hide badge
 }
 
+static UIFont * PPRemScaledFont(UIFont *font, UIFontTextStyle textStyle) {
+    UIFont *baseFont = font ?: [UIFont preferredFontForTextStyle:textStyle];
+    return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:baseFont];
+}
+
+static BOOL PPRemUsesAccessibilityLayout(UITraitCollection *traits) {
+    return UIContentSizeCategoryIsAccessibilityCategory(traits.preferredContentSizeCategory);
+}
+
+static UIColor * PPRemTypeColor(PPPetReminderType type) {
+    switch (type) {
+        case PPPetReminderTypeFood: return AppWarningClr;
+        case PPPetReminderTypeAppointment: return AppPrimaryClr;
+        case PPPetReminderTypeVaccination:
+        default: return AppInfoClr;
+    }
+}
+
+static NSString * PPRemTypeSymbolName(PPPetReminderType type) {
+    switch (type) {
+        case PPPetReminderTypeFood: return @"fork.knife";
+        case PPPetReminderTypeAppointment: return @"calendar.badge.clock";
+        case PPPetReminderTypeVaccination:
+        default: return @"syringe.fill";
+    }
+}
+
+static NSLayoutConstraint * PPRemPreferredCardWidth(UIView *card, UIView *container, CGFloat margin) {
+    NSLayoutConstraint *constraint = [card.widthAnchor constraintEqualToAnchor:container.widthAnchor
+                                                                      constant:-(margin * 2.0)];
+    constraint.priority = 999;
+    return constraint;
+}
+
 // ─── Skeleton Cell ────────────────────────────────────────
 
 @interface PPReminderSkeletonCell : UITableViewCell
+@property (nonatomic, strong) UIView *cardContainer;
+- (void)configureAsAccessibilityStatus:(BOOL)isStatus;
 @end
 
 @implementation PPReminderSkeletonCell
@@ -42,37 +76,58 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
     self.selectionStyle  = UITableViewCellSelectionStyleNone;
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.accessibilityElementsHidden = YES;
 
     UIView *card = [UIView new];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     PPPetsApplySurfaceStyle(card, PPCornerCard);
-    card.layer.shadowOpacity = 0.04;
-    card.layer.shadowRadius = 16.0;
-    card.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     [self.contentView addSubview:card];
+    self.cardContainer = card;
 
-    UIView *icon = [self pp_sh:40 h:40 r:20];
-    UIView *l1   = [self pp_sh:140 h:14 r:7];
-    UIView *l2   = [self pp_sh:100 h:12 r:6];
+    UIView *icon = [self pp_sh:44 h:44 r:PPCorner16];
+    UIView *l1   = [self pp_sh:152 h:15 r:7.5];
+    UIView *l2   = [self pp_sh:112 h:12 r:6];
     [card addSubview:icon]; [card addSubview:l1]; [card addSubview:l2];
+
+    NSLayoutConstraint *preferredWidth = PPRemPreferredCardWidth(card, self.contentView, PPScreenMargin);
 
     [NSLayoutConstraint activateConstraints:@[
         [card.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor      constant:PPSpaceXS],
-        [card.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:PPScreenMargin],
-        [card.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
         [card.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor   constant:-PPSpaceXS],
+        [card.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [card.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [card.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [card.widthAnchor constraintLessThanOrEqualToConstant:680.0],
+        preferredWidth,
+        [card.heightAnchor constraintGreaterThanOrEqualToConstant:84.0],
 
         [icon.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:PPSpaceBase],
         [icon.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
-        [icon.widthAnchor   constraintEqualToConstant:40],
-        [icon.heightAnchor  constraintEqualToConstant:40],
+        [icon.widthAnchor   constraintEqualToConstant:44],
+        [icon.heightAnchor  constraintEqualToConstant:44],
 
         [l1.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:PPSpaceMD],
         [l1.topAnchor     constraintEqualToAnchor:icon.topAnchor constant:PPSpaceXXS],
+        [l1.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-PPSpaceBase],
         [l2.leadingAnchor constraintEqualToAnchor:l1.leadingAnchor],
         [l2.topAnchor     constraintEqualToAnchor:l1.bottomAnchor constant:PPSpaceSM],
+        [l2.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-PPSpaceBase],
     ]];
     return self;
+}
+
+- (void)configureAsAccessibilityStatus:(BOOL)isStatus {
+    self.accessibilityElementsHidden = !isStatus;
+    self.isAccessibilityElement = isStatus;
+    self.accessibilityLabel = isStatus ? (kLang(@"please_wait") ?: @"Loading") : nil;
+    self.accessibilityTraits = isStatus ? UIAccessibilityTraitUpdatesFrequently : UIAccessibilityTraitNone;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplySurfaceStyle(self.cardContainer, PPCornerCard);
+    }
 }
 
 - (UIView *)pp_sh:(CGFloat)w h:(CGFloat)h r:(CGFloat)r {
@@ -82,23 +137,6 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
     PPApplyContinuousCorners(v, r);
     [v.widthAnchor  constraintEqualToConstant:w].active = YES;
     [v.heightAnchor constraintEqualToConstant:h].active = YES;
-
-    CAGradientLayer *g = [CAGradientLayer layer];
-    g.colors     = @[(id)[UIColor.tertiarySystemFillColor colorWithAlphaComponent:0.4].CGColor,
-                      (id)[UIColor.tertiarySystemFillColor colorWithAlphaComponent:0.1].CGColor,
-                      (id)[UIColor.tertiarySystemFillColor colorWithAlphaComponent:0.4].CGColor];
-    g.startPoint = CGPointMake(0, 0.5);
-    g.endPoint   = CGPointMake(1, 0.5);
-    g.frame      = CGRectMake(0, 0, w * 3, h);
-    [v.layer addSublayer:g];
-
-    CABasicAnimation *a = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    a.fromValue      = @(-w * 2);
-    a.toValue        = @(w);
-    a.duration       = 1.5;
-    a.repeatCount    = HUGE_VALF;
-    a.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [g addAnimation:a forKey:@"shimmer"];
     return v;
 }
 
@@ -108,16 +146,26 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
 
 @interface PPReminderCardCell : UITableViewCell
 @property (nonatomic, strong) UIView      *cardContainer;
-@property (nonatomic, strong) UIView      *typeCircle;
+@property (nonatomic, strong) UIView      *typeMarker;
+@property (nonatomic, strong) UIView      *iconWell;
 @property (nonatomic, strong) UIImageView *typeIcon;
 @property (nonatomic, strong) UILabel     *titleLabel;
 @property (nonatomic, strong) UILabel     *detailLabel;
 @property (nonatomic, strong) UILabel     *dateLabel;
 @property (nonatomic, strong) UIView      *repeatBadge;
-@property (nonatomic, strong) UIImageView *repeatIcon;
 @property (nonatomic, strong) UILabel     *repeatLabel;
+@property (nonatomic, strong) UIStackView *metaStack;
 @property (nonatomic, strong) UISwitch    *enableSwitch;
+@property (nonatomic, strong) NSLayoutConstraint *titleToSwitchConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *titleToCardConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *detailToSwitchConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *detailToCardConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *switchCenterConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *metaBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *switchTopAccessibilityConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *switchBottomAccessibilityConstraint;
 @property (nonatomic, copy)   void (^onToggle)(BOOL on);
+@property (nonatomic, copy)   void (^onOpen)(void);
 @end
 
 @implementation PPReminderCardCell
@@ -134,111 +182,133 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
     PPPetsApplySurfaceStyle(_cardContainer, PPCornerCard);
     [self.contentView addSubview:_cardContainer];
 
-    _typeCircle = [UIView new];
-    _typeCircle.translatesAutoresizingMaskIntoConstraints = NO;
-    _typeCircle.layer.cornerRadius = 20;
-    [_cardContainer addSubview:_typeCircle];
+    _typeMarker = [UIView new];
+    _typeMarker.translatesAutoresizingMaskIntoConstraints = NO;
+    PPApplyContinuousCorners(_typeMarker, 1.5);
+    [_cardContainer addSubview:_typeMarker];
+
+    _iconWell = [UIView new];
+    _iconWell.translatesAutoresizingMaskIntoConstraints = NO;
+    PPApplyContinuousCorners(_iconWell, PPCorner16);
+    [_cardContainer addSubview:_iconWell];
 
     _typeIcon = [UIImageView new];
     _typeIcon.translatesAutoresizingMaskIntoConstraints = NO;
-    _typeIcon.tintColor = UIColor.whiteColor;
-    [_typeCircle addSubview:_typeIcon];
+    _typeIcon.contentMode = UIViewContentModeScaleAspectFit;
+    [_iconWell addSubview:_typeIcon];
 
     _titleLabel = [UILabel new];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font          = [GM boldFontWithSize:PPFontHeadline];
+    _titleLabel.font          = PPRemScaledFont([GM boldFontWithSize:PPFontHeadline], UIFontTextStyleHeadline);
     _titleLabel.textColor     = AppPrimaryTextClr;
-    _titleLabel.numberOfLines = 1;
+    _titleLabel.numberOfLines = 0;
+    _titleLabel.adjustsFontForContentSizeCategory = YES;
     [_cardContainer addSubview:_titleLabel];
 
     _detailLabel = [UILabel new];
     _detailLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _detailLabel.font      = [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightRegular];
+    _detailLabel.font      = PPRemScaledFont([GM MidFontWithSize:PPFontSubheadline], UIFontTextStyleSubheadline);
     _detailLabel.textColor = PPPetsUISecondaryTextColor();
+    _detailLabel.numberOfLines = 0;
+    _detailLabel.adjustsFontForContentSizeCategory = YES;
     [_cardContainer addSubview:_detailLabel];
 
     _dateLabel = [UILabel new];
     _dateLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _dateLabel.font      = [UIFont systemFontOfSize:PPFontFootnote weight:UIFontWeightMedium];
-    _dateLabel.textColor = PPPetsUIBrandColor();
-    [_cardContainer addSubview:_dateLabel];
+    _dateLabel.font      = PPRemScaledFont([GM MidFontWithSize:PPFontFootnote], UIFontTextStyleFootnote);
+    _dateLabel.textColor = AppPrimaryTextClr;
+    _dateLabel.numberOfLines = 0;
+    _dateLabel.adjustsFontForContentSizeCategory = YES;
 
-    // Repeat badge (pill with icon + label)
     _repeatBadge = [UIView new];
     _repeatBadge.translatesAutoresizingMaskIntoConstraints = NO;
     _repeatBadge.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10];
-    _repeatBadge.layer.cornerRadius = 10.0;
+    PPApplyContinuousCorners(_repeatBadge, PPCornerSmall);
     _repeatBadge.layer.masksToBounds = YES;
-    [_cardContainer addSubview:_repeatBadge];
-
-    _repeatIcon = [UIImageView new];
-    _repeatIcon.translatesAutoresizingMaskIntoConstraints = NO;
-    _repeatIcon.contentMode = UIViewContentModeScaleAspectFit;
-    _repeatIcon.tintColor = PPPetsUIBrandColor();
-    _repeatIcon.image = [[UIImage systemImageNamed:@"repeat"]
-                          imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    [_repeatBadge addSubview:_repeatIcon];
 
     _repeatLabel = [UILabel new];
     _repeatLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _repeatLabel.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
+    _repeatLabel.font = PPRemScaledFont([GM MidFontWithSize:PPFontCaption1], UIFontTextStyleCaption1);
     _repeatLabel.textColor = PPPetsUIBrandColor();
+    _repeatLabel.adjustsFontForContentSizeCategory = YES;
+    _repeatLabel.numberOfLines = 0;
     [_repeatBadge addSubview:_repeatLabel];
+
+    _metaStack = [[UIStackView alloc] initWithArrangedSubviews:@[_dateLabel, _repeatBadge]];
+    _metaStack.translatesAutoresizingMaskIntoConstraints = NO;
+    _metaStack.axis = UILayoutConstraintAxisHorizontal;
+    _metaStack.alignment = UIStackViewAlignmentCenter;
+    _metaStack.spacing = PPSpaceSM;
+    [_cardContainer addSubview:_metaStack];
 
     _enableSwitch = [UISwitch new];
     _enableSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     _enableSwitch.onTintColor = PPPetsUIBrandColor();
+    _enableSwitch.isAccessibilityElement = NO;
     [_enableSwitch addTarget:self action:@selector(pp_toggled) forControlEvents:UIControlEventValueChanged];
     [_cardContainer addSubview:_enableSwitch];
 
+    NSLayoutConstraint *preferredWidth = PPRemPreferredCardWidth(_cardContainer, self.contentView, PPScreenMargin);
+    self.titleToSwitchConstraint = [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_enableSwitch.leadingAnchor constant:-PPSpaceMD];
+    self.titleToCardConstraint = [_titleLabel.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceBase];
+    self.detailToSwitchConstraint = [_detailLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_enableSwitch.leadingAnchor constant:-PPSpaceMD];
+    self.detailToCardConstraint = [_detailLabel.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceBase];
+    self.switchCenterConstraint = [_enableSwitch.centerYAnchor constraintEqualToAnchor:_iconWell.centerYAnchor];
+    self.metaBottomConstraint = [_metaStack.bottomAnchor constraintEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceBase];
+    self.switchTopAccessibilityConstraint = [_enableSwitch.topAnchor constraintEqualToAnchor:_metaStack.bottomAnchor constant:PPSpaceMD];
+    self.switchBottomAccessibilityConstraint = [_enableSwitch.bottomAnchor constraintEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceBase];
+
     [NSLayoutConstraint activateConstraints:@[
         [_cardContainer.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor      constant:PPSpaceXS],
-        [_cardContainer.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:PPScreenMargin],
-        [_cardContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
         [_cardContainer.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor   constant:-PPSpaceXS],
+        [_cardContainer.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [_cardContainer.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [_cardContainer.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [_cardContainer.widthAnchor constraintLessThanOrEqualToConstant:680.0],
+        preferredWidth,
 
-        [_typeCircle.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceBase],
-        [_typeCircle.centerYAnchor constraintEqualToAnchor:_cardContainer.centerYAnchor],
-        [_typeCircle.widthAnchor   constraintEqualToConstant:40],
-        [_typeCircle.heightAnchor  constraintEqualToConstant:40],
-        [_typeCircle.topAnchor     constraintGreaterThanOrEqualToAnchor:_cardContainer.topAnchor    constant:PPSpaceMD],
-        [_typeCircle.bottomAnchor  constraintLessThanOrEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceMD],
+        [_typeMarker.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor],
+        [_typeMarker.topAnchor constraintEqualToAnchor:_cardContainer.topAnchor constant:PPSpaceBase],
+        [_typeMarker.bottomAnchor constraintEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceBase],
+        [_typeMarker.widthAnchor constraintEqualToConstant:3.0],
 
-        [_typeIcon.centerXAnchor constraintEqualToAnchor:_typeCircle.centerXAnchor],
-        [_typeIcon.centerYAnchor constraintEqualToAnchor:_typeCircle.centerYAnchor],
+        [_iconWell.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceBase],
+        [_iconWell.topAnchor constraintEqualToAnchor:_cardContainer.topAnchor constant:PPSpaceBase],
+        [_iconWell.widthAnchor constraintEqualToConstant:44.0],
+        [_iconWell.heightAnchor constraintEqualToConstant:44.0],
+        [_iconWell.bottomAnchor constraintLessThanOrEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceBase],
+
+        [_typeIcon.centerXAnchor constraintEqualToAnchor:_iconWell.centerXAnchor],
+        [_typeIcon.centerYAnchor constraintEqualToAnchor:_iconWell.centerYAnchor],
         [_typeIcon.widthAnchor   constraintEqualToConstant:20],
         [_typeIcon.heightAnchor  constraintEqualToConstant:20],
 
         [_enableSwitch.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceBase],
-        [_enableSwitch.centerYAnchor  constraintEqualToAnchor:_cardContainer.centerYAnchor],
 
-        [_titleLabel.topAnchor      constraintEqualToAnchor:_typeCircle.topAnchor],
-        [_titleLabel.leadingAnchor  constraintEqualToAnchor:_typeCircle.trailingAnchor constant:PPSpaceMD],
-        [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_enableSwitch.leadingAnchor constant:-PPSpaceSM],
+        [_titleLabel.topAnchor      constraintEqualToAnchor:_cardContainer.topAnchor constant:PPSpaceBase],
+        [_titleLabel.leadingAnchor  constraintEqualToAnchor:_iconWell.trailingAnchor constant:PPSpaceMD],
 
         [_detailLabel.topAnchor     constraintEqualToAnchor:_titleLabel.bottomAnchor constant:PPSpaceXXS],
         [_detailLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_detailLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
 
-        [_dateLabel.topAnchor     constraintEqualToAnchor:_detailLabel.bottomAnchor constant:PPSpaceXXS],
-        [_dateLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_dateLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
+        [_metaStack.topAnchor constraintEqualToAnchor:_detailLabel.bottomAnchor constant:PPSpaceSM],
+        [_metaStack.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_metaStack.trailingAnchor constraintLessThanOrEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceBase],
 
-        // Repeat badge (below dateLabel)
-        [_repeatBadge.topAnchor     constraintEqualToAnchor:_dateLabel.bottomAnchor constant:PPSpaceXXS],
-        [_repeatBadge.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_repeatBadge.heightAnchor  constraintEqualToConstant:20.0],
-        [_repeatBadge.bottomAnchor  constraintLessThanOrEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceMD],
+        [_repeatLabel.topAnchor constraintEqualToAnchor:_repeatBadge.topAnchor constant:PPSpaceXS],
+        [_repeatLabel.leadingAnchor constraintEqualToAnchor:_repeatBadge.leadingAnchor constant:PPSpaceSM],
+        [_repeatLabel.trailingAnchor constraintEqualToAnchor:_repeatBadge.trailingAnchor constant:-PPSpaceSM],
+        [_repeatLabel.bottomAnchor constraintEqualToAnchor:_repeatBadge.bottomAnchor constant:-PPSpaceXS],
 
-        [_repeatIcon.leadingAnchor constraintEqualToAnchor:_repeatBadge.leadingAnchor constant:6.0],
-        [_repeatIcon.centerYAnchor constraintEqualToAnchor:_repeatBadge.centerYAnchor],
-        [_repeatIcon.widthAnchor   constraintEqualToConstant:12.0],
-        [_repeatIcon.heightAnchor  constraintEqualToConstant:12.0],
-
-        [_repeatLabel.leadingAnchor  constraintEqualToAnchor:_repeatIcon.trailingAnchor constant:4.0],
-        [_repeatLabel.centerYAnchor  constraintEqualToAnchor:_repeatBadge.centerYAnchor],
-        [_repeatLabel.trailingAnchor constraintEqualToAnchor:_repeatBadge.trailingAnchor constant:-8.0],
+        self.titleToSwitchConstraint,
+        self.detailToSwitchConstraint,
+        self.switchCenterConstraint,
+        self.metaBottomConstraint,
     ]];
+
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+    [self pp_updateAdaptiveLayout];
     return self;
 }
 
@@ -253,7 +323,6 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
                                        : (kLang(@"pet_reminder_no_date") ?: @"No date set");
     self.enableSwitch.on = rem.enabled;
 
-    // Repeat badge
     NSString *repeatText = PPRemRepeatDisplayText(rem.repeatRule);
     if (repeatText.length > 0) {
         self.repeatBadge.hidden = NO;
@@ -262,48 +331,404 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
         self.repeatBadge.hidden = YES;
     }
 
-    UIColor *typeClr; NSString *iconName;
-    switch (rem.type) {
-        case PPPetReminderTypeVaccination:
-            typeClr  = UIColor.systemTealColor;
-            iconName = @"syringe.fill";
-            break;
-        case PPPetReminderTypeFood:
-            typeClr  = UIColor.systemOrangeColor;
-            iconName = @"fork.knife";
-            break;
-        case PPPetReminderTypeAppointment:
-            typeClr  = PPPetsUIBrandColor();
-            iconName = @"calendar.badge.clock";
-            break;
-    }
-    self.typeCircle.backgroundColor = typeClr;
-    self.typeIcon.image = [[UIImage systemImageNamed:iconName] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    self.cardContainer.alpha = rem.enabled ? 1.0 : 0.55;
+    UIColor *typeColor = PPRemTypeColor(rem.type);
+    self.typeMarker.backgroundColor = typeColor;
+    self.iconWell.backgroundColor = [typeColor colorWithAlphaComponent:0.12];
+    self.typeIcon.tintColor = typeColor;
+    self.typeIcon.image = [[UIImage systemImageNamed:PPRemTypeSymbolName(rem.type)] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    self.cardContainer.alpha = rem.enabled ? 1.0 : 0.62;
 
-    // RTL
     self.cardContainer.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
     self.titleLabel.textAlignment  = Language.alignmentForCurrentLanguage;
     self.detailLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.dateLabel.textAlignment   = Language.alignmentForCurrentLanguage;
+    self.repeatLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
-    // Accessibility
-    self.isAccessibilityElement = NO;
-    self.accessibilityElements = @[self.cardContainer];
-    self.cardContainer.isAccessibilityElement = YES;
-    self.cardContainer.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@",
+    NSMutableArray<NSString *> *accessibilityParts = [NSMutableArray arrayWithArray:@[
         self.titleLabel.text ?: @"",
         self.detailLabel.text ?: @"",
-        self.dateLabel.text ?: @""];
-    self.cardContainer.accessibilityTraits = UIAccessibilityTraitButton;
-    self.enableSwitch.accessibilityLabel = kLang(@"pet_reminder_toggle") ?: @"Enable reminder";
+        self.dateLabel.text ?: @""
+    ]];
+    if (repeatText.length) [accessibilityParts addObject:repeatText];
+    self.accessibilityLabel = [accessibilityParts componentsJoinedByString:@", "];
+    self.accessibilityValue = rem.enabled
+        ? (kLang(@"pet_reminder_enabled") ?: @"Enabled")
+        : (kLang(@"statusDisabled") ?: @"Disabled");
+    [self pp_updateAccessibilityToggleAction];
 }
 
-- (void)pp_toggled { if (self.onToggle) self.onToggle(self.enableSwitch.isOn); }
+- (void)pp_toggled {
+    self.accessibilityValue = self.enableSwitch.isOn
+        ? (kLang(@"pet_reminder_enabled") ?: @"Enabled")
+        : (kLang(@"statusDisabled") ?: @"Disabled");
+    [self pp_updateAccessibilityToggleAction];
+    if (self.onToggle) self.onToggle(self.enableSwitch.isOn);
+}
+
+- (void)pp_updateAccessibilityToggleAction {
+    NSString *toggleTitle = self.enableSwitch.isOn
+        ? (kLang(@"pet_reminder_disable") ?: @"Disable")
+        : (kLang(@"pet_reminder_enable") ?: @"Enable");
+    self.accessibilityCustomActions = @[
+        [[UIAccessibilityCustomAction alloc] initWithName:toggleTitle
+                                                  target:self
+                                                selector:@selector(pp_accessibilityToggle:)]
+    ];
+}
+
+- (BOOL)pp_accessibilityToggle:(__unused UIAccessibilityCustomAction *)action {
+    [self.enableSwitch setOn:!self.enableSwitch.isOn animated:NO];
+    [self pp_toggled];
+    return YES;
+}
+
+- (BOOL)accessibilityActivate {
+    if (self.onOpen) self.onOpen();
+    return self.onOpen != nil;
+}
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    self.onToggle = nil;
+    self.onOpen = nil;
+    self.accessibilityCustomActions = nil;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+        [self pp_updateAdaptiveLayout];
+    }
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplySurfaceStyle(self.cardContainer, PPCornerCard);
+    }
+}
+
+- (void)pp_updateAdaptiveLayout {
+    BOOL accessibilityLayout = PPRemUsesAccessibilityLayout(self.traitCollection);
+    self.metaStack.axis = accessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    self.metaStack.alignment = accessibilityLayout ? UIStackViewAlignmentLeading : UIStackViewAlignmentCenter;
+    self.titleToSwitchConstraint.active = !accessibilityLayout;
+    self.switchCenterConstraint.active = !accessibilityLayout;
+    self.metaBottomConstraint.active = !accessibilityLayout;
+    self.titleToCardConstraint.active = accessibilityLayout;
+    self.detailToSwitchConstraint.active = !accessibilityLayout;
+    self.detailToCardConstraint.active = accessibilityLayout;
+    self.switchTopAccessibilityConstraint.active = accessibilityLayout;
+    self.switchBottomAccessibilityConstraint.active = accessibilityLayout;
+}
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
     [super setHighlighted:highlighted animated:animated];
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
     highlighted ? PPTapFeedbackDown(self.cardContainer) : PPTapFeedbackUp(self.cardContainer);
+}
+
+@end
+
+// ─── Care Summary ──────────────────────────────────────────
+
+@interface PPReminderMetricView : UIView
+@property (nonatomic, strong) UIColor *accentColor;
+@property (nonatomic, strong) UIView *iconWell;
+@property (nonatomic, strong) UIImageView *iconView;
+@property (nonatomic, strong) UILabel *valueLabel;
+@property (nonatomic, strong) UILabel *captionLabel;
+@property (nonatomic, copy) void (^onAccessibilityActivate)(void);
+- (instancetype)initWithSymbolName:(NSString *)symbolName accentColor:(UIColor *)accentColor;
+- (void)configureWithValue:(NSString *)value caption:(NSString *)caption;
+@end
+
+@implementation PPReminderMetricView
+
+- (instancetype)initWithSymbolName:(NSString *)symbolName accentColor:(UIColor *)accentColor {
+    self = [super initWithFrame:CGRectZero];
+    if (!self) return nil;
+
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.accentColor = accentColor ?: AppPrimaryClr;
+    PPPetsApplySurfaceStyle(self, PPCornerMedium);
+
+    _iconWell = [UIView new];
+    _iconWell.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconWell.backgroundColor = [self.accentColor colorWithAlphaComponent:0.11];
+    PPApplyContinuousCorners(_iconWell, PPCornerSmall);
+    [self addSubview:_iconWell];
+
+    _iconView = [UIImageView new];
+    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconView.contentMode = UIViewContentModeScaleAspectFit;
+    _iconView.tintColor = self.accentColor;
+    _iconView.image = [UIImage systemImageNamed:symbolName];
+    _iconView.isAccessibilityElement = NO;
+    [_iconWell addSubview:_iconView];
+
+    _valueLabel = [UILabel new];
+    _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _valueLabel.font = PPRemScaledFont([GM boldFontWithSize:PPFontTitle3], UIFontTextStyleTitle3);
+    _valueLabel.textColor = AppPrimaryTextClr;
+    _valueLabel.adjustsFontForContentSizeCategory = YES;
+    _valueLabel.numberOfLines = 1;
+    [self addSubview:_valueLabel];
+
+    _captionLabel = [UILabel new];
+    _captionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _captionLabel.font = PPRemScaledFont([GM MidFontWithSize:PPFontFootnote], UIFontTextStyleFootnote);
+    _captionLabel.textColor = AppSecondaryTextClr;
+    _captionLabel.adjustsFontForContentSizeCategory = YES;
+    _captionLabel.numberOfLines = 0;
+    [self addSubview:_captionLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heightAnchor constraintGreaterThanOrEqualToConstant:72.0],
+
+        [_iconWell.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPSpaceMD],
+        [_iconWell.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+        [_iconWell.widthAnchor constraintEqualToConstant:38.0],
+        [_iconWell.heightAnchor constraintEqualToConstant:38.0],
+
+        [_iconView.centerXAnchor constraintEqualToAnchor:_iconWell.centerXAnchor],
+        [_iconView.centerYAnchor constraintEqualToAnchor:_iconWell.centerYAnchor],
+        [_iconView.widthAnchor constraintEqualToConstant:19.0],
+        [_iconView.heightAnchor constraintEqualToConstant:19.0],
+
+        [_valueLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:PPSpaceMD],
+        [_valueLabel.leadingAnchor constraintEqualToAnchor:_iconWell.trailingAnchor constant:PPSpaceMD],
+        [_valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPSpaceMD],
+
+        [_captionLabel.topAnchor constraintEqualToAnchor:_valueLabel.bottomAnchor constant:PPSpaceXXS],
+        [_captionLabel.leadingAnchor constraintEqualToAnchor:_valueLabel.leadingAnchor],
+        [_captionLabel.trailingAnchor constraintEqualToAnchor:_valueLabel.trailingAnchor],
+        [_captionLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPSpaceMD],
+    ]];
+
+    self.isAccessibilityElement = YES;
+    _valueLabel.isAccessibilityElement = NO;
+    _captionLabel.isAccessibilityElement = NO;
+    return self;
+}
+
+- (void)configureWithValue:(NSString *)value caption:(NSString *)caption {
+    self.valueLabel.text = value ?: @"0";
+    self.captionLabel.text = caption ?: @"";
+    self.valueLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.captionLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", self.valueLabel.text, self.captionLabel.text];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplySurfaceStyle(self, PPCornerMedium);
+        self.iconWell.backgroundColor = [self.accentColor colorWithAlphaComponent:0.11];
+    }
+}
+
+- (BOOL)accessibilityActivate {
+    if (!self.onAccessibilityActivate) return NO;
+    self.onAccessibilityActivate();
+    return YES;
+}
+
+@end
+
+// ─── Empty State ───────────────────────────────────────────
+
+static UIButton * PPRemBuildActionButton(NSString *title, NSString *symbolName, BOOL primary) {
+    UIButtonConfiguration *configuration = primary
+        ? [UIButtonConfiguration filledButtonConfiguration]
+        : [UIButtonConfiguration tintedButtonConfiguration];
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleLarge;
+    configuration.imagePlacement = NSDirectionalRectEdgeLeading;
+    configuration.imagePadding = PPSpaceSM;
+    configuration.titleLineBreakMode = NSLineBreakByWordWrapping;
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD, PPSpaceBase);
+    configuration.image = [UIImage systemImageNamed:symbolName
+                                  withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:16.0
+                                                                                                   weight:UIImageSymbolWeightSemibold]];
+    configuration.title = title ?: @"";
+    configuration.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> *(
+        NSDictionary<NSAttributedStringKey, id> *incomingAttributes) {
+        NSMutableDictionary<NSAttributedStringKey, id> *attributes = incomingAttributes.mutableCopy;
+        attributes[NSFontAttributeName] = PPRemScaledFont([GM boldFontWithSize:PPFontSubheadline], UIFontTextStyleHeadline);
+        return attributes.copy;
+    };
+    configuration.baseForegroundColor = primary ? UIColor.whiteColor : AppPrimaryClr;
+    configuration.baseBackgroundColor = primary
+        ? AppPrimaryClr
+        : [AppPrimaryClr colorWithAlphaComponent:0.10];
+
+    UIButton *button = [UIButton buttonWithConfiguration:configuration primaryAction:nil];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.titleLabel.numberOfLines = 0;
+    button.titleLabel.textAlignment = NSTextAlignmentCenter;
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:(primary ? PPButtonHeightLG : PPButtonHeightMD)].active = YES;
+    return button;
+}
+
+@interface PPReminderEmptyCell : UITableViewCell
+@property (nonatomic, strong) UIView *cardContainer;
+@property (nonatomic, strong) UIImageView *stateIconView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UIButton *primaryButton;
+@property (nonatomic, strong) UIButton *secondaryButton;
+@property (nonatomic, copy) void (^onAdd)(void);
+@property (nonatomic, copy) void (^onOpenPets)(void);
+- (void)configureWithAddAction:(void (^)(void))addAction openPetsAction:(void (^)(void))openPetsAction;
+- (void)configureForErrorWithRetryAction:(void (^)(void))retryAction;
+@end
+
+@implementation PPReminderEmptyCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (!self) return nil;
+
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+
+    _cardContainer = [UIView new];
+    _cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    PPPetsApplySurfaceStyle(_cardContainer, PPCornerHero - PPSpaceXS);
+    [self.contentView addSubview:_cardContainer];
+
+    UIView *iconWell = [UIView new];
+    iconWell.translatesAutoresizingMaskIntoConstraints = NO;
+    iconWell.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.11];
+    PPApplyContinuousCorners(iconWell, PPCornerCard);
+    [_cardContainer addSubview:iconWell];
+
+    UIImageView *iconView = [UIImageView new];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.tintColor = AppPrimaryClr;
+    iconView.image = [UIImage systemImageNamed:@"bell.badge.fill"];
+    iconView.isAccessibilityElement = NO;
+    [iconWell addSubview:iconView];
+    self.stateIconView = iconView;
+
+    _titleLabel = [UILabel new];
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _titleLabel.font = PPRemScaledFont([GM boldFontWithSize:PPFontTitle2], UIFontTextStyleTitle2);
+    _titleLabel.textColor = AppPrimaryTextClr;
+    _titleLabel.textAlignment = NSTextAlignmentCenter;
+    _titleLabel.numberOfLines = 0;
+    _titleLabel.adjustsFontForContentSizeCategory = YES;
+    _titleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
+    [_cardContainer addSubview:_titleLabel];
+
+    _subtitleLabel = [UILabel new];
+    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _subtitleLabel.font = PPRemScaledFont([GM MidFontWithSize:PPFontBody], UIFontTextStyleBody);
+    _subtitleLabel.textColor = AppSecondaryTextClr;
+    _subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    _subtitleLabel.numberOfLines = 0;
+    _subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    [_cardContainer addSubview:_subtitleLabel];
+
+    _primaryButton = PPRemBuildActionButton(kLang(@"pet_reminder_add"), @"plus.circle.fill", YES);
+    [_primaryButton addTarget:self action:@selector(pp_addTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    _secondaryButton = PPRemBuildActionButton(kLang(@"pet_profiles_title"), @"pawprint.fill", NO);
+    [_secondaryButton addTarget:self action:@selector(pp_petsTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    UIStackView *buttonStack = [[UIStackView alloc] initWithArrangedSubviews:@[_primaryButton, _secondaryButton]];
+    buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
+    buttonStack.axis = UILayoutConstraintAxisVertical;
+    buttonStack.spacing = PPSpaceSM;
+    [_cardContainer addSubview:buttonStack];
+
+    NSLayoutConstraint *preferredWidth = PPRemPreferredCardWidth(_cardContainer, self.contentView, PPScreenMargin);
+    [NSLayoutConstraint activateConstraints:@[
+        [_cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceMD],
+        [_cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceMD],
+        [_cardContainer.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [_cardContainer.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [_cardContainer.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [_cardContainer.widthAnchor constraintLessThanOrEqualToConstant:560.0],
+        preferredWidth,
+
+        [iconWell.topAnchor constraintEqualToAnchor:_cardContainer.topAnchor constant:PPSpaceXL],
+        [iconWell.centerXAnchor constraintEqualToAnchor:_cardContainer.centerXAnchor],
+        [iconWell.widthAnchor constraintEqualToConstant:68.0],
+        [iconWell.heightAnchor constraintEqualToConstant:68.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:iconWell.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconWell.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:30.0],
+        [iconView.heightAnchor constraintEqualToConstant:30.0],
+
+        [_titleLabel.topAnchor constraintEqualToAnchor:iconWell.bottomAnchor constant:PPSpaceBase],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceXL],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceXL],
+
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:PPSpaceSM],
+        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
+
+        [buttonStack.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:PPSpaceXL],
+        [buttonStack.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceXL],
+        [buttonStack.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceXL],
+        [buttonStack.bottomAnchor constraintEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceXL],
+    ]];
+    return self;
+}
+
+- (void)configureWithAddAction:(void (^)(void))addAction openPetsAction:(void (^)(void))openPetsAction {
+    self.onAdd = addAction;
+    self.onOpenPets = openPetsAction;
+    self.stateIconView.image = [UIImage systemImageNamed:@"bell.badge.fill"];
+    self.titleLabel.text = kLang(@"pet_reminders_empty_title") ?: @"No Reminders";
+    self.subtitleLabel.text = kLang(@"pet_reminders_empty_subtitle") ?: @"Add reminders for vaccinations, food, and appointments.";
+    self.cardContainer.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+    self.secondaryButton.hidden = NO;
+
+    UIButtonConfiguration *primaryConfiguration = self.primaryButton.configuration;
+    primaryConfiguration.title = kLang(@"pet_reminder_add") ?: @"Add Reminder";
+    primaryConfiguration.image = [UIImage systemImageNamed:@"plus.circle.fill"];
+    self.primaryButton.configuration = primaryConfiguration;
+    self.primaryButton.accessibilityLabel = primaryConfiguration.title;
+
+    UIButtonConfiguration *secondaryConfiguration = self.secondaryButton.configuration;
+    secondaryConfiguration.title = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
+    self.secondaryButton.configuration = secondaryConfiguration;
+    self.secondaryButton.accessibilityLabel = secondaryConfiguration.title;
+}
+
+- (void)configureForErrorWithRetryAction:(void (^)(void))retryAction {
+    self.onAdd = retryAction;
+    self.onOpenPets = nil;
+    self.stateIconView.image = [UIImage systemImageNamed:@"exclamationmark.arrow.triangle.2.circlepath"];
+    self.titleLabel.text = kLang(@"pet_reminders_error_title") ?: @"Couldn't Load Reminders";
+    self.subtitleLabel.text = kLang(@"pet_reminders_error_subtitle") ?: @"Check your connection, then try again.";
+    self.cardContainer.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+    self.secondaryButton.hidden = YES;
+
+    UIButtonConfiguration *configuration = self.primaryButton.configuration;
+    configuration.title = kLang(@"empty_retry_button") ?: @"Refresh";
+    configuration.image = [UIImage systemImageNamed:@"arrow.clockwise"];
+    self.primaryButton.configuration = configuration;
+    self.primaryButton.accessibilityLabel = configuration.title;
+}
+
+- (void)pp_addTapped { if (self.onAdd) self.onAdd(); }
+- (void)pp_petsTapped { if (self.onOpenPets) self.onOpenPets(); }
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    self.onAdd = nil;
+    self.onOpenPets = nil;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplySurfaceStyle(self.cardContainer, PPCornerHero - PPSpaceXS);
+    }
 }
 
 @end
@@ -314,25 +739,17 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSArray<PPPetReminder *> *reminders;
 @property (nonatomic, strong) NSDictionary<NSString *, PPPetProfile *> *petMap;
+@property (nonatomic, strong) NSError *loadError;
+@property (nonatomic, strong) NSError *profileLoadError;
 @property (nonatomic, assign) BOOL isLoading;
+@property (nonatomic, assign) BOOL profileRequestInFlight;
 @property (nonatomic, assign) BOOL hasAppearedOnce;
-@property (nonatomic, strong) UIView *backgroundGlowViewTop;
-@property (nonatomic, strong) UIView *backgroundGlowViewBottom;
-@property (nonatomic, strong) NSArray<UIView *> *floatingCircles;
-@property (nonatomic, strong) UIView *headerRoot;
-@property (nonatomic, strong) UIView *headerCardView;
-@property (nonatomic, strong) UIView *headerMaterialView;
-@property (nonatomic, strong) CAGradientLayer *headerMarketplaceGradientLayer;
-@property (nonatomic, strong) UIView *headerAmbientGlowView;
-@property (nonatomic, strong) UIView *headerSupportGlowView;
-@property (nonatomic, strong) UIView *headerAccentBarView;
-@property (nonatomic, strong) PPInsetLabel *headerEyebrowLabel;
-@property (nonatomic, strong) UILabel *headerTitleLabel;
-@property (nonatomic, strong) UILabel *headerSubtitleLabel;
-@property (nonatomic, strong) PPInsetLabel *headerMetaLabel;
-@property (nonatomic, strong) UIImageView *headerSymbolView;
-@property (nonatomic, strong) UIButton *headerPrimaryButton;
-@property (nonatomic, strong) UIButton *headerSecondaryButton;
+@property (nonatomic, assign) NSUInteger reloadGeneration;
+@property (nonatomic, strong) UIView *summaryRoot;
+@property (nonatomic, strong) UIStackView *summaryStack;
+@property (nonatomic, strong) PPReminderMetricView *activeMetricView;
+@property (nonatomic, strong) PPReminderMetricView *petMetricView;
+@property (nonatomic, strong) UITapGestureRecognizer *petMetricRetryRecognizer;
 @end
 
 static NSString *const kRemCardID  = @"PPReminderCardCell";
@@ -369,9 +786,12 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     self.tableView.delegate         = self;
     self.tableView.backgroundColor  = UIColor.clearColor;
     self.tableView.separatorStyle   = UITableViewCellSeparatorStyleNone;
-    self.tableView.contentInset     = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    self.tableView.rowHeight        = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 124.0;
+    self.tableView.contentInset     = UIEdgeInsetsMake(PPSpaceXS, 0.0, PPSpaceXL, 0.0);
     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     self.tableView.showsVerticalScrollIndicator = NO;
+    self.tableView.alwaysBounceVertical = YES;
     self.tableView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
@@ -379,13 +799,12 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     
     [self.tableView registerClass:PPReminderCardCell.class     forCellReuseIdentifier:kRemCardID];
     [self.tableView registerClass:PPReminderSkeletonCell.class forCellReuseIdentifier:kRemSkelID];
-    [self.tableView registerClass:UITableViewCell.class        forCellReuseIdentifier:kRemEmptyID];
+    [self.tableView registerClass:PPReminderEmptyCell.class    forCellReuseIdentifier:kRemEmptyID];
     [self.view addSubview:self.tableView];
 
-    [self pp_setupBackdrop];
-    [self pp_buildHeroHeader];
+    [self pp_buildSummaryHeader];
     [self pp_applyCanvasBackground];
-    [self pp_refreshHeroHeaderContent];
+    [self pp_refreshSummaryHeaderContent];
 
     UIRefreshControl *rc = [UIRefreshControl new];
     [rc addTarget:self action:@selector(pp_pullRefresh) forControlEvents:UIControlEventValueChanged];
@@ -398,437 +817,218 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     self.view.semanticContentAttribute      = PPPetsCurrentSemanticAttribute();
     self.tableView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
     [self pp_applyCanvasBackground];
-    [self pp_applyHeroMarketplaceMaterial];
-    [self pp_refreshHeroHeaderContent];
+    [self pp_refreshSummaryHeaderContent];
     [self pp_reload];
-}
-
-- (void)viewDidAppear:(BOOL)animated {
-    [super viewDidAppear:animated];
-    PPPetsBeginFloatingAnimations(self.backgroundGlowViewTop, self.backgroundGlowViewBottom, self.floatingCircles);
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self pp_applyCanvasBackground];
-    self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
-    self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
-    [self.view sendSubviewToBack:self.backgroundGlowViewBottom];
-    [self.view sendSubviewToBack:self.backgroundGlowViewTop];
-    [self pp_updateHeaderLayout];
-    [self pp_layoutHeroMarketplaceMaterial];
+    [self pp_updateSummaryHeaderLayout];
 }
 
 #pragma mark - Appearance
 
 - (void)pp_applyCanvasBackground {
-    PPPetsApplyCanvasBackground(self, nil);
-    self.tableView.backgroundColor = UIColor.clearColor;
+    PPPetsApplyCanvasBackground(self, self.tableView);
 }
 
-- (void)pp_applyHeroMarketplaceMaterial {
-    UIColor *accent = PPPetsUIBrandColor();
-    BOOL isDark = PPMarketplaceHeroCardIsDark(self.traitCollection);
-    PPMarketplaceHeroCardApplySurfaceChrome(self.headerCardView,
-                                            PPCornerHero - 6.0,
-                                            self.traitCollection);
-    PPMarketplaceHeroCardConfigureSurfaceGradient(self.headerMarketplaceGradientLayer,
-                                                  accent,
-                                                  self.traitCollection,
-                                                  Language.isRTL);
+- (void)pp_buildSummaryHeader {
+    UIView *root = [UIView new];
+    root.backgroundColor = UIColor.clearColor;
 
-    self.headerMaterialView.backgroundColor = UIColor.clearColor;
-    self.headerMaterialView.layer.cornerRadius = PPCornerHero - 6.0;
-    if (@available(iOS 13.0, *)) {
-        self.headerMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    PPReminderMetricView *activeMetric = [[PPReminderMetricView alloc] initWithSymbolName:@"bell.fill"
+                                                                              accentColor:AppPrimaryClr];
+    PPReminderMetricView *petMetric = [[PPReminderMetricView alloc] initWithSymbolName:@"pawprint.fill"
+                                                                           accentColor:AppSecondaryTextClr];
 
-    UIColor *backgroundAccent = PPMarketplaceHeroCardBackgroundAccentColor(accent, self.traitCollection);
-    UIColor *supportGlowColor = PPMarketplaceHeroCardSupportGlowColor(accent, self.traitCollection);
-    self.headerAmbientGlowView.backgroundColor = [backgroundAccent colorWithAlphaComponent:isDark ? 0.17 : 0.11];
-    self.headerAmbientGlowView.layer.shadowColor = UIColor.clearColor.CGColor;
-    self.headerAmbientGlowView.layer.shadowOpacity = 0.0f;
-    self.headerAmbientGlowView.layer.shadowRadius = 0.0f;
-    self.headerAmbientGlowView.layer.shadowOffset = CGSizeZero;
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[activeMetric, petMetric]];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.alignment = UIStackViewAlignmentFill;
+    stack.distribution = UIStackViewDistributionFillEqually;
+    stack.spacing = PPSpaceSM;
+    [root addSubview:stack];
 
-    self.headerSupportGlowView.backgroundColor = [supportGlowColor colorWithAlphaComponent:isDark ? 0.12 : 0.095];
-    self.headerSupportGlowView.layer.shadowColor = supportGlowColor.CGColor;
-    self.headerSupportGlowView.layer.shadowOpacity = isDark ? 0.11f : 0.075f;
-    self.headerSupportGlowView.layer.shadowRadius = 18.0f;
-    self.headerSupportGlowView.layer.shadowOffset = CGSizeZero;
+    NSLayoutConstraint *preferredWidth = PPRemPreferredCardWidth(stack, root, PPScreenMargin);
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor constraintEqualToAnchor:root.topAnchor constant:PPSpaceSM],
+        [stack.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-PPSpaceSM],
+        [stack.centerXAnchor constraintEqualToAnchor:root.centerXAnchor],
+        [stack.leadingAnchor constraintGreaterThanOrEqualToAnchor:root.leadingAnchor constant:PPScreenMargin],
+        [stack.trailingAnchor constraintLessThanOrEqualToAnchor:root.trailingAnchor constant:-PPScreenMargin],
+        [stack.widthAnchor constraintLessThanOrEqualToConstant:680.0],
+        preferredWidth,
+    ]];
 
-    self.headerAccentBarView.backgroundColor = [accent colorWithAlphaComponent:0.58];
+    self.summaryRoot = root;
+    self.summaryStack = stack;
+    self.activeMetricView = activeMetric;
+    self.petMetricView = petMetric;
+    UITapGestureRecognizer *retryRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
+                                                                                      action:@selector(pp_retryProfileLoad)];
+    retryRecognizer.enabled = NO;
+    [petMetric addGestureRecognizer:retryRecognizer];
+    self.petMetricRetryRecognizer = retryRecognizer;
+    [self pp_updateSummaryAxis];
+    self.tableView.tableHeaderView = root;
 }
 
-- (void)pp_layoutHeroMarketplaceMaterial {
-    CGRect materialBounds = self.headerMaterialView.bounds;
-    self.headerMarketplaceGradientLayer.frame = CGRectIsEmpty(materialBounds) ? CGRectZero : materialBounds;
-    self.headerMarketplaceGradientLayer.cornerRadius = self.headerMaterialView.layer.cornerRadius;
+- (void)pp_refreshSummaryHeaderContent {
+    if (!self.summaryRoot) return;
 
-    if (!CGRectIsEmpty(self.headerCardView.bounds)) {
-        self.headerCardView.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:self.headerCardView.bounds
-                                       cornerRadius:self.headerCardView.layer.cornerRadius].CGPath;
-    }
-}
-
-- (void)pp_setupBackdrop {
-    if (self.backgroundGlowViewTop || self.backgroundGlowViewBottom) {
+    BOOL hidesSummary = (self.isLoading && self.reminders.count == 0) || self.loadError != nil;
+    self.summaryRoot.hidden = hidesSummary;
+    if (hidesSummary) {
+        if (self.tableView.tableHeaderView == self.summaryRoot) self.tableView.tableHeaderView = nil;
         return;
     }
-
-    UIView *topGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.93, 0.80, 0.69, 0.12),
-                                          PPPetsGlowFill(0.98, 0.82, 0.60, 1.0),
-                                          0.10,
-                                          64.0);
-    UIView *bottomGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.72, 0.45, 0.42, 0.06),
-                                             PPPetsGlowFill(0.68, 0.27, 0.33, 1.0),
-                                             0.08,
-                                             72.0);
-
-    [self.view insertSubview:topGlow belowSubview:self.tableView];
-    [self.view insertSubview:bottomGlow belowSubview:self.tableView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:220.0],
-        [topGlow.heightAnchor constraintEqualToConstant:220.0],
-        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-72.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:84.0],
-
-        [bottomGlow.widthAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:48.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-64.0],
-    ]];
-
-    self.backgroundGlowViewTop = topGlow;
-    self.backgroundGlowViewBottom = bottomGlow;
-
-    self.floatingCircles = PPPetsBuildFloatingCircles(self.view);
-}
-
-- (void)pp_buildHeroHeader {
-    self.headerRoot = [[UIView alloc] init];
-    self.headerRoot.backgroundColor = UIColor.clearColor;
-
-    UIView *cardView = [[UIView alloc] init];
-    cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    PPMarketplaceHeroCardApplySurfaceChrome(cardView, PPCornerHero - 6.0, self.traitCollection);
-    [self.headerRoot addSubview:cardView];
-
-    UIView *tintView = [[UIView alloc] init];
-    tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = UIColor.clearColor;
-    tintView.layer.cornerRadius = PPCornerHero - 6.0;
-    if (@available(iOS 13.0, *)) {
-        tintView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    tintView.layer.masksToBounds = YES;
-    [cardView addSubview:tintView];
-
-    CAGradientLayer *materialGradientLayer = [CAGradientLayer layer];
-    materialGradientLayer.drawsAsynchronously = YES;
-    [tintView.layer insertSublayer:materialGradientLayer atIndex:0];
-
-    UIView *ambientGlow = [[UIView alloc] init];
-    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    ambientGlow.userInteractionEnabled = NO;
-    ambientGlow.layer.cornerRadius = 58.0;
-    [cardView addSubview:ambientGlow];
-
-    UIView *secondaryGlow = [[UIView alloc] init];
-    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.layer.cornerRadius = 66.0;
-    [cardView addSubview:secondaryGlow];
-
-    UIView *accentBar = [[UIView alloc] init];
-    accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.58];
-    accentBar.layer.cornerRadius = 2.0;
-    if (@available(iOS 13.0, *)) {
-        accentBar.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [cardView addSubview:accentBar];
-
-    UIView *eyebrowPill = [[UIView alloc] init];
-    eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
-    eyebrowPill.layer.cornerRadius = 13.0;
-    eyebrowPill.layer.borderWidth = 1.0;
-    [eyebrowPill pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
-    eyebrowPill.layer.masksToBounds = YES;
-    [cardView addSubview:eyebrowPill];
-
-    PPInsetLabel *eyebrowLabel = [[PPInsetLabel alloc] init];
-    eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    eyebrowLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
-    eyebrowLabel.textAlignment = NSTextAlignmentCenter;
-    eyebrowLabel.textInsets = UIEdgeInsetsMake(2.0, 2.0, 2.0, 2.0);
-    [eyebrowPill addSubview:eyebrowLabel];
-
-    UIView *iconHalo = [[UIView alloc] init];
-    iconHalo.translatesAutoresizingMaskIntoConstraints = NO;
-    iconHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
-    iconHalo.layer.cornerRadius = 28.0;
-    iconHalo.layer.borderWidth = 1.0;
-    [iconHalo pp_setBorderColor:PPPetsCardOverlay(0.48)];
-    [iconHalo pp_setShadowColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.30]];
-    iconHalo.layer.shadowOpacity = 0.12;
-    iconHalo.layer.shadowRadius = 12.0;
-    iconHalo.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    [cardView addSubview:iconHalo];
-
-    UIImageView *symbolView = [[UIImageView alloc] init];
-    symbolView.translatesAutoresizingMaskIntoConstraints = NO;
-    symbolView.contentMode = UIViewContentModeScaleAspectFit;
-    symbolView.tintColor = PPPetsUIBrandColor();
-    symbolView.backgroundColor = PPPetsCardOverlay(0.66);
-    symbolView.layer.cornerRadius = 22.0;
-    symbolView.layer.masksToBounds = YES;
-    [iconHalo addSubview:symbolView];
-
-    UILabel *titleLabel = [[UILabel alloc] init];
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:21.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
-    titleLabel.textColor = AppPrimaryTextClr;
-    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    titleLabel.numberOfLines = 2;
-    [cardView addSubview:titleLabel];
-
-    UILabel *subtitleLabel = [[UILabel alloc] init];
-    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
-    subtitleLabel.textColor = PPPetsUISecondaryTextColor();
-    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    subtitleLabel.numberOfLines = 2;
-    [cardView addSubview:subtitleLabel];
-
-    PPInsetLabel *metaLabel = [[PPInsetLabel alloc] init];
-    metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    metaLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
-    metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    metaLabel.numberOfLines = 2;
-    metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
-    metaLabel.layer.cornerRadius = 17.0;
-    metaLabel.layer.borderWidth = 1.0;
-    [metaLabel pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
-    metaLabel.layer.masksToBounds = YES;
-    metaLabel.textInsets = UIEdgeInsetsMake(6.0, 12.0, 6.0, 12.0);
-    [cardView addSubview:metaLabel];
-
-    UIButton *primaryButton = PPPetsBuildHeroButton(kLang(@"pet_reminder_add") ?: @"Add Reminder",
-                                                    @"plus.circle.fill",
-                                                    YES);
-    [primaryButton addTarget:self action:@selector(pp_addReminder) forControlEvents:UIControlEventTouchUpInside];
-    [cardView addSubview:primaryButton];
-
-    UIButton *secondaryButton = PPPetsBuildHeroButton(kLang(@"pet_profiles_title") ?: @"Pet Profiles",
-                                                      @"pawprint.circle.fill",
-                                                      NO);
-    [secondaryButton addTarget:self action:@selector(pp_openPets) forControlEvents:UIControlEventTouchUpInside];
-    [cardView addSubview:secondaryButton];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [cardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:10.0],
-        [cardView.leadingAnchor constraintEqualToAnchor:self.headerRoot.leadingAnchor constant:20.0],
-        [cardView.trailingAnchor constraintEqualToAnchor:self.headerRoot.trailingAnchor constant:-20.0],
-        [cardView.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-14.0],
-
-        [tintView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
-        [tintView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
-        [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
-        [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
-
-        [ambientGlow.widthAnchor constraintEqualToConstant:116.0],
-        [ambientGlow.heightAnchor constraintEqualToConstant:116.0],
-        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-34.0],
-        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:Language.isRTL ? 22.0 : -12.0],
-
-        [secondaryGlow.widthAnchor constraintEqualToConstant:132.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:132.0],
-        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:48.0],
-        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:Language.isRTL ? -26.0 : 28.0],
-
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor],
-        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:30.0],
-        [accentBar.widthAnchor constraintEqualToConstant:44.0],
-        [accentBar.heightAnchor constraintEqualToConstant:4.0],
-
-        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:8.0],
-        [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
-
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
-        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:12.0],
-        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-12.0],
-        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
-
-        [iconHalo.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [iconHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:12.0],
-        [iconHalo.widthAnchor constraintEqualToConstant:56.0],
-        [iconHalo.heightAnchor constraintEqualToConstant:56.0],
-
-        [symbolView.centerXAnchor constraintEqualToAnchor:iconHalo.centerXAnchor],
-        [symbolView.centerYAnchor constraintEqualToAnchor:iconHalo.centerYAnchor],
-        [symbolView.widthAnchor constraintEqualToConstant:44.0],
-        [symbolView.heightAnchor constraintEqualToConstant:44.0],
-
-        [titleLabel.topAnchor constraintEqualToAnchor:iconHalo.topAnchor constant:0.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:iconHalo.trailingAnchor constant:14.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0],
-        [metaLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
-
-        [primaryButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:12.0],
-        [primaryButton.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [primaryButton.trailingAnchor constraintEqualToAnchor:cardView.centerXAnchor constant:-6.0],
-        [primaryButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-16.0],
-
-        [secondaryButton.topAnchor constraintEqualToAnchor:primaryButton.topAnchor],
-        [secondaryButton.leadingAnchor constraintEqualToAnchor:cardView.centerXAnchor constant:6.0],
-        [secondaryButton.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-        [secondaryButton.bottomAnchor constraintEqualToAnchor:primaryButton.bottomAnchor],
-    ]];
-
-    self.headerCardView = cardView;
-    self.headerMaterialView = tintView;
-    self.headerMarketplaceGradientLayer = materialGradientLayer;
-    self.headerAmbientGlowView = ambientGlow;
-    self.headerSupportGlowView = secondaryGlow;
-    self.headerAccentBarView = accentBar;
-    self.headerEyebrowLabel = eyebrowLabel;
-    self.headerTitleLabel = titleLabel;
-    self.headerSubtitleLabel = subtitleLabel;
-    self.headerMetaLabel = metaLabel;
-    self.headerSymbolView = symbolView;
-    self.headerPrimaryButton = primaryButton;
-    self.headerSecondaryButton = secondaryButton;
-
-    [self pp_applyHeroMarketplaceMaterial];
-    self.tableView.tableHeaderView = self.headerRoot;
-}
-
-- (void)pp_refreshHeroHeaderContent {
-    self.headerEyebrowLabel.text = kLang(@"pet_reminders_tab") ?: @"Pet Reminders";
-    self.headerTitleLabel.text = kLang(@"pet_reminders_tab") ?: @"Pet Reminders";
 
     NSInteger activeCount = 0;
-    NSInteger petCount = self.petMap.count;
-    PPPetReminder *nextReminder = nil;
     for (PPPetReminder *reminder in self.reminders) {
-        if (reminder.enabled) {
-            activeCount += 1;
-        }
-        if (!nextReminder) {
-            nextReminder = reminder;
-            continue;
-        }
-        if (reminder.fireDate && (!nextReminder.fireDate || [reminder.fireDate compare:nextReminder.fireDate] == NSOrderedAscending)) {
-            nextReminder = reminder;
-        }
+        if (reminder.enabled) activeCount += 1;
     }
 
-    if (self.isLoading) {
-        self.headerSubtitleLabel.text = kLang(@"please_wait") ?: @"Loading your reminder schedule…";
-        self.headerMetaLabel.text = kLang(@"please_wait") ?: @"Loading…";
-    } else if (nextReminder) {
-        NSString *petName = self.petMap[nextReminder.petID].name ?: (kLang(@"pet_unknown") ?: @"Pet");
-        NSString *dateText = nextReminder.fireDate ? [GM formattedDate:nextReminder.fireDate] : (kLang(@"pet_reminder_no_date") ?: @"No date set");
-        self.headerSubtitleLabel.text = [NSString stringWithFormat:@"%@ · %@", petName, [nextReminder displayTypeText]];
-        self.headerMetaLabel.text = [NSString stringWithFormat:@"%ld %@ · %@",
-                                     (long)activeCount,
-                                     (activeCount == 1 ? (kLang(@"pet_reminder_active_single") ?: @"active") : (kLang(@"pet_reminder_active_plural") ?: @"active")),
-                                     dateText];
+    NSString *activeCaption = activeCount == 1
+        ? (kLang(@"pet_reminder_active_single") ?: @"active")
+        : (kLang(@"pet_reminder_active_plural") ?: @"active");
+    [self.activeMetricView configureWithValue:[NSString stringWithFormat:@"%ld", (long)activeCount]
+                                       caption:activeCaption];
+
+    if (self.profileRequestInFlight && self.petMap.count == 0) {
+        self.petMetricView.iconView.image = [UIImage systemImageNamed:@"arrow.clockwise"];
+        [self.petMetricView configureWithValue:@"-"
+                                        caption:(kLang(@"please_wait") ?: @"Loading")];
+        self.petMetricRetryRecognizer.enabled = NO;
+        self.petMetricView.onAccessibilityActivate = nil;
+        self.petMetricView.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
+        self.petMetricView.accessibilityHint = nil;
+    } else if (self.profileLoadError) {
+        NSString *errorCaption = [NSString stringWithFormat:@"%@ · %@",
+                                  (kLang(@"pet_profiles_error_title") ?: @"Pet Profiles Unavailable"),
+                                  (kLang(@"empty_retry_button") ?: @"Refresh")];
+        self.petMetricView.iconView.image = [UIImage systemImageNamed:@"arrow.clockwise"];
+        [self.petMetricView configureWithValue:@"-"
+                                        caption:errorCaption];
+        self.petMetricRetryRecognizer.enabled = YES;
+        __weak typeof(self) ws = self;
+        self.petMetricView.onAccessibilityActivate = ^{ [ws pp_retryProfileLoad]; };
+        self.petMetricView.accessibilityTraits = UIAccessibilityTraitButton;
+        self.petMetricView.accessibilityHint = kLang(@"empty_retry_button") ?: @"Refresh";
     } else {
-        self.headerSubtitleLabel.text = kLang(@"pet_reminders_empty_subtitle") ?: @"Add reminders for vaccinations, food, and appointments so every routine stays on time.";
-        self.headerMetaLabel.text = petCount > 0
-            ? [NSString stringWithFormat:@"%ld %@", (long)petCount, (petCount == 1 ? (kLang(@"pet_profile_single") ?: @"pet profile") : (kLang(@"pet_profiles_title") ?: @"pet profiles"))]
-            : (kLang(@"pet_profiles_empty_title") ?: @"No pet profiles yet");
+        self.petMetricView.iconView.image = [UIImage systemImageNamed:@"pawprint.fill"];
+        NSInteger petCount = self.petMap.count;
+        NSString *petCaption = petCount == 1
+            ? (kLang(@"pet_profile_single") ?: @"profile")
+            : (kLang(@"pet_profiles_title") ?: @"Pet Profiles");
+        [self.petMetricView configureWithValue:[NSString stringWithFormat:@"%ld", (long)petCount]
+                                        caption:petCaption];
+        self.petMetricRetryRecognizer.enabled = NO;
+        self.petMetricView.onAccessibilityActivate = nil;
+        self.petMetricView.accessibilityTraits = self.profileRequestInFlight
+            ? UIAccessibilityTraitUpdatesFrequently
+            : UIAccessibilityTraitNone;
+        self.petMetricView.accessibilityHint = self.profileRequestInFlight
+            ? (kLang(@"please_wait") ?: @"Loading")
+            : nil;
     }
-
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:24.0 weight:UIImageSymbolWeightMedium];
-    NSString *symbolName = nextReminder.enabled ? @"bell.badge.fill" : @"bell.fill";
-    self.headerSymbolView.image = [UIImage systemImageNamed:symbolName withConfiguration:config];
-    self.headerSymbolView.contentMode = UIViewContentModeCenter;
-
-    [self pp_updateHeaderLayout];
+    if (self.tableView.tableHeaderView != self.summaryRoot) self.tableView.tableHeaderView = self.summaryRoot;
+    [self pp_updateSummaryHeaderLayout];
 }
 
-- (void)pp_updateHeaderLayout {
-    if (!self.headerRoot) {
-        return;
-    }
+- (void)pp_retryProfileLoad {
+    if (self.profileLoadError) [self pp_reload];
+}
+
+- (void)pp_updateSummaryAxis {
+    BOOL accessibilityLayout = PPRemUsesAccessibilityLayout(self.traitCollection);
+    self.summaryStack.axis = accessibilityLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+}
+
+- (void)pp_updateSummaryHeaderLayout {
+    if (!self.summaryRoot || self.summaryRoot.hidden) return;
 
     CGFloat headerWidth = CGRectGetWidth(self.tableView.bounds);
-    if (headerWidth <= 0.0) {
-        headerWidth = CGRectGetWidth(self.view.bounds);
-    }
+    if (headerWidth <= 0.0) headerWidth = CGRectGetWidth(self.view.bounds);
 
-    CGRect bounds = self.headerRoot.bounds;
-    if (ABS(bounds.size.width - headerWidth) > 0.5) {
-        bounds.size.width = headerWidth;
-        self.headerRoot.bounds = bounds;
-    }
+    [self pp_updateSummaryAxis];
+    CGRect bounds = self.summaryRoot.bounds;
+    bounds.size.width = headerWidth;
+    self.summaryRoot.bounds = bounds;
+    CGFloat headerHeight = [self.summaryRoot systemLayoutSizeFittingSize:CGSizeMake(headerWidth, UILayoutFittingCompressedSize.height)
+                                   withHorizontalFittingPriority:UILayoutPriorityRequired
+                                         verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
 
-    [self.headerRoot setNeedsLayout];
-    [self.headerRoot layoutIfNeeded];
-    CGFloat headerHeight = [self.headerRoot systemLayoutSizeFittingSize:CGSizeMake(headerWidth, UILayoutFittingCompressedSize.height)
-                                         withHorizontalFittingPriority:UILayoutPriorityRequired
-                                               verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
-    CGRect frame = self.headerRoot.frame;
+    CGRect frame = self.summaryRoot.frame;
+    if (ABS(frame.size.width - headerWidth) <= 0.5 && ABS(frame.size.height - headerHeight) <= 0.5) {
+        if (self.tableView.tableHeaderView != self.summaryRoot) self.tableView.tableHeaderView = self.summaryRoot;
+        return;
+    }
     frame.size.width = headerWidth;
     frame.size.height = headerHeight;
-    self.headerRoot.frame = frame;
-    self.tableView.tableHeaderView = self.headerRoot;
+    self.summaryRoot.frame = frame;
+    self.tableView.tableHeaderView = self.summaryRoot;
 }
 
 #pragma mark - Data
 
 - (void)pp_reload {
+    NSUInteger generation = ++self.reloadGeneration;
+    self.loadError = nil;
+    self.profileLoadError = nil;
+    self.profileRequestInFlight = YES;
     if (!self.tableView.refreshControl.isRefreshing && self.reminders.count == 0) {
         self.isLoading = YES;
         [self.tableView reloadData];
     }
+    [self pp_refreshSummaryHeaderContent];
 
     dispatch_group_t grp = dispatch_group_create();
     __block NSArray<PPPetReminder *> *loaded     = @[];
     __block NSArray<PPPetProfile *>  *loadedPets = @[];
+    __block NSError *reminderError = nil;
+    __block NSError *petError = nil;
 
     dispatch_group_enter(grp);
     [[UserManager sharedManager] fetchPetRemindersForCurrentUserWithCompletion:^(NSArray<PPPetReminder *> *r, NSError *e) {
         loaded = r ?: @[];
+        reminderError = e;
         dispatch_group_leave(grp);
     }];
 
     dispatch_group_enter(grp);
     [[UserManager sharedManager] fetchPetProfilesForCurrentUserWithCompletion:^(NSArray<PPPetProfile *> *p, NSError *e) {
         loadedPets = p ?: @[];
+        petError = e;
         dispatch_group_leave(grp);
     }];
 
     __weak typeof(self) ws = self;
     dispatch_group_notify(grp, dispatch_get_main_queue(), ^{
+        if (!ws || ws.reloadGeneration != generation) return;
         [ws.tableView.refreshControl endRefreshing];
         ws.isLoading = NO;
+        ws.profileRequestInFlight = NO;
+        ws.profileLoadError = petError;
 
-        NSMutableDictionary *map = [NSMutableDictionary dictionary];
-        for (PPPetProfile *p in loadedPets) {
-            if (p.petID.length) map[p.petID] = p;
+        if (!petError) {
+            NSMutableDictionary *map = [NSMutableDictionary dictionary];
+            for (PPPetProfile *p in loadedPets) {
+                if (p.petID.length) map[p.petID] = p;
+            }
+            ws.petMap = map.copy;
         }
-        ws.petMap    = map.copy;
-        ws.reminders = loaded;
-        ws.hasAppearedOnce = NO;
-        [ws pp_refreshHeroHeaderContent];
+
+        if (reminderError) {
+            if (ws.reminders.count == 0) {
+                ws.loadError = reminderError;
+            } else {
+                [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:reminderError.localizedDescription];
+            }
+        } else {
+            ws.reminders = loaded;
+        }
+        [ws pp_refreshSummaryHeaderContent];
         [ws.tableView reloadData];
         [ws pp_updateEmptyState];
     });
@@ -837,7 +1037,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 - (void)pp_pullRefresh { [self pp_reload]; }
 
 - (void)pp_updateEmptyState {
-    // Empty state handled inline via table rows below hero
+    // Empty state is represented by the table's dedicated action cell.
 }
 
 #pragma mark - Actions
@@ -858,6 +1058,12 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 - (void)pp_openPets {
     PPPetProfilesViewController *vc = [PPPetProfilesViewController new];
     [self.navigationController pushViewController:vc animated:YES];
+}
+
+- (void)pp_openReminder:(PPPetReminder *)reminder {
+    if (!reminder) return;
+    PPReminderEditorViewController *editor = [[PPReminderEditorViewController alloc] initWithReminder:reminder];
+    [self.navigationController pushViewController:editor animated:YES];
 }
 
 - (void)pp_deleteReminderAtIndex:(NSInteger)idx {
@@ -902,6 +1108,11 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
             } else {
                 // Schedule or cancel notification based on toggle state
                 [[PPReminderNotificationManager sharedManager] scheduleNotificationForReminder:rem];
+                [ws pp_refreshSummaryHeaderContent];
+                if (idx < (NSInteger)ws.reminders.count) {
+                    [ws.tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:idx inSection:0]]
+                                        withRowAnimation:UITableViewRowAnimationNone];
+                }
             }
         });
     }];
@@ -911,40 +1122,25 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (self.isLoading) return 5;
-    return self.reminders.count > 0 ? (NSInteger)self.reminders.count : 1; // 1 = empty-message row
+    return self.reminders.count > 0 ? (NSInteger)self.reminders.count : 1;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     if (self.isLoading) {
-        return [tableView dequeueReusableCellWithIdentifier:kRemSkelID forIndexPath:indexPath];
+        PPReminderSkeletonCell *cell = [tableView dequeueReusableCellWithIdentifier:kRemSkelID forIndexPath:indexPath];
+        [cell configureAsAccessibilityStatus:indexPath.row == 0];
+        return cell;
     }
 
-    // Empty-message row
     if (self.reminders.count == 0) {
-        UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:kRemEmptyID forIndexPath:indexPath];
-        cell.selectionStyle  = UITableViewCellSelectionStyleNone;
-        cell.backgroundColor = UIColor.clearColor;
-        cell.contentView.backgroundColor = UIColor.clearColor;
-
-        static NSInteger const kEmptyTag = 9921;
-        UILabel *lbl = [cell.contentView viewWithTag:kEmptyTag];
-        if (!lbl) {
-            lbl = [[UILabel alloc] init];
-            lbl.tag = kEmptyTag;
-            lbl.translatesAutoresizingMaskIntoConstraints = NO;
-            lbl.numberOfLines = 0;
-            lbl.textAlignment = NSTextAlignmentCenter;
-            lbl.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
-            [cell.contentView addSubview:lbl];
-            [NSLayoutConstraint activateConstraints:@[
-                [lbl.topAnchor      constraintEqualToAnchor:cell.contentView.topAnchor      constant:32.0],
-                [lbl.leadingAnchor  constraintEqualToAnchor:cell.contentView.leadingAnchor  constant:32.0],
-                [lbl.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-32.0],
-                [lbl.bottomAnchor   constraintEqualToAnchor:cell.contentView.bottomAnchor   constant:-32.0],
-            ]];
+        PPReminderEmptyCell *cell = [tableView dequeueReusableCellWithIdentifier:kRemEmptyID forIndexPath:indexPath];
+        __weak typeof(self) ws = self;
+        if (self.loadError) {
+            [cell configureForErrorWithRetryAction:^{ [ws pp_reload]; }];
+        } else {
+            [cell configureWithAddAction:^{ [ws pp_addReminder]; }
+                        openPetsAction:^{ [ws pp_openPets]; }];
         }
-        lbl.textColor = PPPetsUISecondaryTextColor();
-        lbl.text = kLang(@"pet_reminders_empty_subtitle") ?: @"No reminders yet.\nTap + to set your first reminder 🔔";
         return cell;
     }
 
@@ -956,6 +1152,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
         __weak typeof(self) ws = self;
         NSInteger i = indexPath.row;
         cell.onToggle = ^(BOOL on) { [ws pp_toggleReminderAtIndex:i enabled:on]; };
+        cell.onOpen = ^{ [ws pp_openReminder:rem]; };
     }
     return cell;
 }
@@ -963,19 +1160,18 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 #pragma mark - UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (self.isLoading) return 93.0;
-    if (self.reminders.count == 0) return UITableViewAutomaticDimension;
-    return 96.0;
+    return UITableViewAutomaticDimension;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    return 96.0;
+    if (self.isLoading) return 92.0;
+    if (self.reminders.count == 0) return 340.0;
+    return 124.0;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     if (self.isLoading || indexPath.row >= (NSInteger)self.reminders.count) return;
-    PPReminderEditorViewController *ed = [[PPReminderEditorViewController alloc] initWithReminder:self.reminders[indexPath.row]];
-    [self.navigationController pushViewController:ed animated:YES];
+    [self pp_openReminder:self.reminders[indexPath.row]];
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
@@ -1006,8 +1202,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
         UIAction *editAct = [UIAction actionWithTitle:kLang(@"Edit") ?: @"Edit"
                                                 image:[UIImage systemImageNamed:@"pencil.circle"]
                                            identifier:nil handler:^(__unused UIAction *a) {
-            PPReminderEditorViewController *ed = [[PPReminderEditorViewController alloc] initWithReminder:rem];
-            [ws.navigationController pushViewController:ed animated:YES];
+            [ws pp_openReminder:rem];
         }];
         NSString *togTitle = rem.enabled ? (kLang(@"pet_reminder_disable") ?: @"Disable")
                                          : (kLang(@"pet_reminder_enable")  ?: @"Enable");
@@ -1030,23 +1225,28 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
     if (self.isLoading || self.hasAppearedOnce) return;
+    NSInteger lastRow = MAX((NSInteger)self.reminders.count - 1, 0);
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        if (indexPath.row >= lastRow) self.hasAppearedOnce = YES;
+        return;
+    }
     __weak typeof(self) ws = self;
 
     cell.alpha     = 0;
-    cell.transform = CGAffineTransformMakeTranslation(0, 30);
+    cell.transform = CGAffineTransformMakeTranslation(0, 8.0);
 
-    [UIView animateWithDuration:PPAnimDurationNormal
-                          delay:indexPath.row * 0.06
-         usingSpringWithDamping:PPAnimSpringDamping
-          initialSpringVelocity:PPAnimSpringVelocity
-                        options:UIViewAnimationOptionAllowUserInteraction
+    [UIView animateWithDuration:0.18
+                          delay:MIN(indexPath.row, 6) * 0.025
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         cell.alpha     = 1;
         cell.transform = CGAffineTransformIdentity;
     } completion:^(__unused BOOL finished) {
         __strong typeof(ws) ss = ws;
         if (!ss) return;
-        if (indexPath.row >= (NSInteger)ss.reminders.count - 1) {
+        if (indexPath.row >= lastRow) {
             ss.hasAppearedOnce = YES;
         }
     }];
@@ -1056,11 +1256,14 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+        [self pp_updateSummaryAxis];
+        [self pp_updateSummaryHeaderLayout];
+        [self.tableView beginUpdates];
+        [self.tableView endUpdates];
+    }
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         PPPetsApplyCanvasBackground(self, self.tableView);
-        PPPetsRefreshDynamicLayerColors(self.tableView);
-        [self pp_applyHeroMarketplaceMaterial];
-        [self pp_layoutHeroMarketplaceMaterial];
     }
 }
 
