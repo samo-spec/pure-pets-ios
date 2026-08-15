@@ -26,6 +26,10 @@ public final class PPRootStore: ObservableObject {
     @Published public private(set) var usesLegacyBar: Bool = true
     @Published public private(set) var bottomOverlayHeight: CGFloat = 0.0
     @Published public private(set) var activeSafeAreaBottom: CGFloat = 0.0
+    /// Published so the hosted SwiftUI command deck invalidates immediately
+    /// when the app's custom Language bundle changes at runtime.
+    @Published public private(set) var languageCode: String =
+        Language.currentLanguageCode() ?? "ar"
     
     public private(set) weak var actionHandler: PPRootActionHandling?
     
@@ -320,6 +324,21 @@ public final class PPRootStore: ObservableObject {
     
     private func installNotificationObservers() {
         let center = NotificationCenter.default
+
+        let languageTokens = [
+            "LanguageDidChangeNotification",
+            "PPLanguageDidChangeNotification"
+        ].map { name in
+            center.addObserver(
+                forName: NSNotification.Name(name),
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.languageCode = Language.currentLanguageCode() ?? "ar"
+                }
+            }
+        }
         
         let unreadToken = center.addObserver(
             forName: NSNotification.Name("UnreadCountsUpdated"),
@@ -407,6 +426,7 @@ public final class PPRootStore: ObservableObject {
             unreadToken, blockedToken, accessToken,
             novaVisibilityToken, showTabBarToken, hideTabBarToken
         ])
+        notificationTokens.append(contentsOf: languageTokens)
     }
     
     private func handleCartNotificationReceived() {

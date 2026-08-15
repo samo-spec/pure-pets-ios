@@ -129,6 +129,9 @@ typedef void (^PPHomeExactCountCompletion)(NSInteger count,
 - (void)fetchAdvertisementCountForMainCategoryID:(NSInteger)mainCategoryID
                                        completion:(PPHomeExactCountCompletion)completion
     NS_SWIFT_NAME(fetchAdvertisementCount(mainCategoryID:completion:));
+- (void)fetchVeterinarianCountForMainCategoryID:(NSInteger)mainCategoryID
+                                       completion:(PPHomeExactCountCompletion)completion
+    NS_SWIFT_NAME(fetchVeterinarianCount(mainCategoryID:completion:));
 
 /// Shared order normalization helpers keep legacy and current order documents
 /// aligned while Swift owns the resulting presentation state.

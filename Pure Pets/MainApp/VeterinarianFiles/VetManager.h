@@ -41,6 +41,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)getVetsForUser:(NSString *)userID completion:(void(^)(NSArray<VetModel *> *vets, NSError * _Nullable error))completion;
 - (void)uploadImage:(UIImage *)image vetID:(NSString *)vetID completion:(void(^)(NSString *imageURL))completion;
 - (void)getVetsForPetMainKindID:(NSInteger)kindID completion:(void (^)(NSArray<VetModel *> *vets, NSError * _Nullable error))completion;
+/// Returns the public, approved, enabled veterinarian total for one pet kind.
+/// Errors remain distinct from a valid zero so Home can present retry state.
+- (void)fetchPublicVeterinarianCountForPetMainKindID:(NSInteger)kindID
+                                          completion:(void (^)(NSInteger count, NSError * _Nullable error))completion;
 - (void)fetchAllVetsWithCompletion:(void (^)(NSArray<VetModel *> *vetsArray, NSError * _Nullable error))completion;
 - (void)fetchAllPetMedicinesWithCompletion:(void (^)(NSArray<VetMedicineModel *> *medicinesArray, NSError * _Nullable error))completion;
 @end

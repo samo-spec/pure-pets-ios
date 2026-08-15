@@ -2093,52 +2093,6 @@ private struct PPUniversalCardRenderer: View {
 
     private let mediaTopRadius: CGFloat = 21.5
 
-    /// Marketplace DataView is the only shared-card caller that needs the
-    /// grounded product-dossier treatment.  Keep the discriminator tied to
-    /// the existing presentation contract rather than a generic commerce
-    /// context so Home, search, saved items, and viewer cards retain their
-    /// established information architecture.
-    private var isMarketplaceDataViewCard: Bool {
-        guard store.borderMode == .pordersDataView else { return false }
-        switch store.layout {
-        case .vertical, .pinterest, .focus:
-            return true
-        case .market, .fullWidth, .horizontalRow:
-            return false
-        }
-    }
-
-    private var cardTitleFontSize: CGFloat {
-        if isMarketplaceDataViewCard {
-            return store.layout == .focus ? 20 : 17
-        }
-        if store.layout == .focus {
-            return 18
-        }
-        return store.layout.isHorizontal ? 17 : 15.5
-    }
-
-    private var cardTitleLineLimit: Int {
-        if dynamicTypeSize.isAccessibilitySize {
-            return (isMarketplaceDataViewCard || store.layout == .focus)
-                ? 4
-                : 3
-        }
-        return (isMarketplaceDataViewCard || store.layout == .focus)
-            ? 2
-            : 1
-    }
-
-    private var cardSubtitleLineLimit: Int {
-        if dynamicTypeSize.isAccessibilitySize {
-            return 3
-        }
-        if isMarketplaceDataViewCard || store.layout == .focus {
-            return 2
-        }
-        return store.layout.isHorizontal ? 2 : 1
-    }
-
     var body: some View {
         Group {
             if store.model.isSkeleton {
@@ -2593,71 +2547,56 @@ private struct PPUniversalCardRenderer: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    @ViewBuilder
     private var bottomAnchoredInformation: some View {
-        if isMarketplaceDataViewCard {
-            marketplaceDossierInformation(
-                retainsFocusedDetailsAction: false
-            )
-        } else {
-            VStack(alignment: .leading, spacing: 0) {
-                titleContent
-                subtitleContent
+        VStack(alignment: .leading, spacing: 0) {
+            titleContent
+            subtitleContent
 
-                if hasPrice {
-                    priceRow
-                        .padding(.top, store.model.subtitle == nil ? 5 : 3)
-                }
-
-                if showsBottomCTA && !store.isContextFocused {
-                    bottomCTA
-                        .padding(.top, hasPrice ? 8 : 10)
-                }
-
-                if hasBottomBadges {
-                    bottomBadgesRow
-                        .padding(.top, showsBottomCTA && !store.isContextFocused ? 8 : 10)
-                }
+            if hasPrice {
+                priceRow
+                    .padding(.top, store.model.subtitle == nil ? 5 : 3)
             }
-            .frame(maxWidth: .infinity, alignment: .bottomLeading)
+
+            if showsBottomCTA && !store.isContextFocused {
+                bottomCTA
+                    .padding(.top, hasPrice ? 8 : 10)
+            }
+
+            if hasBottomBadges {
+                bottomBadgesRow
+                    .padding(.top, showsBottomCTA && !store.isContextFocused ? 8 : 10)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .bottomLeading)
     }
 
     /// Focus is an editorial spotlight, not a stretched list row. Media owns
     /// the upper field while the complete action stack stays dense below it.
     private var focusInformation: some View {
-        Group {
-            if isMarketplaceDataViewCard {
-                marketplaceDossierInformation(
-                    retainsFocusedDetailsAction: true
-                )
-            } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    titleContent
-                    subtitleContent
+        VStack(alignment: .leading, spacing: 0) {
+            titleContent
+            subtitleContent
 
-                    if hasPrice {
-                        priceRow
-                            .padding(.top, store.model.subtitle == nil ? 7 : 5)
-                    }
+            if hasPrice {
+                priceRow
+                    .padding(.top, store.model.subtitle == nil ? 7 : 5)
+            }
 
-                    Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 12 : 8)
+            Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 12 : 8)
 
-                    if store.model.usesQuantityControl ||
-                        store.context.isAdvertisement ||
-                        store.context.isServiceLike {
-                        if !store.isNearbyAdsSection && !store.isContextFocused {
-                            bottomCTA
-                        }
-
-                        if hasBottomBadges {
-                            bottomBadgesRow
-                                .padding(.top, 10)
-                        }
-                    } else {
-                        detailsFooter
-                    }
+            if store.model.usesQuantityControl ||
+                store.context.isAdvertisement ||
+                store.context.isServiceLike {
+                if !store.isNearbyAdsSection && !store.isContextFocused {
+                    bottomCTA
                 }
+
+                if hasBottomBadges {
+                    bottomBadgesRow
+                        .padding(.top, 10)
+                }
+            } else {
+                detailsFooter
             }
         }
         .frame(
@@ -2665,118 +2604,6 @@ private struct PPUniversalCardRenderer: View {
             maxHeight: .infinity,
             alignment: .topLeading
         )
-    }
-
-    /// Rebuild the DataView information field as an attached product dossier:
-    /// a quiet category marker, a readable product hierarchy, then a single
-    /// metadata rail.  All model values and action controls remain the same
-    /// existing renderer children, so the bridge keeps ownership of routes,
-    /// cart quantity, stock/auth handling, and recovery.
-    private func marketplaceDossierInformation(
-        retainsFocusedDetailsAction: Bool
-    ) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(semanticAccent)
-                .frame(
-                    width: 3,
-                    height: dynamicTypeSize.isAccessibilitySize ? 72 : 52
-                )
-                .padding(.top, 3)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 0) {
-                titleContent
-                subtitleContent
-
-                if hasPrice {
-                    priceRow
-                        .padding(.top, store.model.subtitle == nil ? 7 : 5)
-                }
-
-                if hasBottomBadges {
-                    marketplaceMetadataRail
-                        .padding(.top, hasPrice ? 10 : 12)
-                }
-
-                if marketplaceDossierShowsAction(
-                    retainsFocusedDetailsAction: retainsFocusedDetailsAction
-                ) {
-                    marketplaceDossierAction(
-                        retainsFocusedDetailsAction: retainsFocusedDetailsAction
-                    )
-                    .padding(
-                        .top,
-                        hasBottomBadges ? 12 : (hasPrice ? 12 : 14)
-                    )
-                    .frame(
-                        maxWidth: .infinity,
-                        alignment: .leading
-                    )
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 16 : 14)
-        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 16 : 14)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            LinearGradient(
-                colors: [
-                    cardSurface,
-                    Color.ppSecondarySurface.opacity(
-                        colorScheme == .dark ? 0.42 : 0.52
-                    )
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(
-                    Color.ppBorder.opacity(
-                        colorScheme == .dark ? 0.56 : 0.66
-                    )
-                )
-                .frame(height: colorSchemeContrast == .increased ? 1.5 : 0.75)
-                .accessibilityHidden(true)
-        }
-    }
-
-    private func marketplaceDossierShowsAction(
-        retainsFocusedDetailsAction: Bool
-    ) -> Bool {
-        if retainsFocusedDetailsAction {
-            if !usesFocusPrimaryStack {
-                return showsBottomCTA
-            }
-            return !store.isNearbyAdsSection && !store.isContextFocused
-        }
-        return showsBottomCTA && !store.isContextFocused
-    }
-
-    @ViewBuilder
-    private func marketplaceDossierAction(
-        retainsFocusedDetailsAction: Bool
-    ) -> some View {
-        if retainsFocusedDetailsAction {
-            if !usesFocusPrimaryStack {
-                if showsBottomCTA {
-                    detailsAction
-                }
-            } else if !store.isNearbyAdsSection && !store.isContextFocused {
-                bottomCTA
-            }
-        } else if showsBottomCTA && !store.isContextFocused {
-            bottomCTA
-        }
-    }
-
-    private var usesFocusPrimaryStack: Bool {
-        store.model.usesQuantityControl ||
-            store.context.isAdvertisement ||
-            store.context.isServiceLike
     }
 
     @ViewBuilder
@@ -2920,12 +2747,18 @@ private struct PPUniversalCardRenderer: View {
             .font(
                 .custom(
                     "Beiruti-Bold",
-                    size: cardTitleFontSize,
+                    size: store.layout == .focus
+                        ? 18
+                        : (store.layout.isHorizontal ? 17 : 15.5),
                     relativeTo: .headline
                 )
             )
             .foregroundStyle(store.palette.ink)
-            .lineLimit(cardTitleLineLimit)
+            .lineLimit(
+                dynamicTypeSize.isAccessibilitySize
+                    ? (store.layout == .focus ? 4 : 3)
+                    : (store.layout == .focus ? 2 : 1)
+            )
             .multilineTextAlignment(.leading)
             .minimumScaleFactor(0.86)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -2954,7 +2787,13 @@ private struct PPUniversalCardRenderer: View {
                             )
                         )
                         .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : store.palette.secondaryInk)
-                        .lineLimit(cardSubtitleLineLimit)
+                        .lineLimit(
+                            dynamicTypeSize.isAccessibilitySize
+                                ? 3
+                                : (store.layout == .focus
+                                    ? 2
+                                    : (store.layout.isHorizontal ? 2 : 1))
+                        )
                         .multilineTextAlignment(.leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -2969,7 +2808,13 @@ private struct PPUniversalCardRenderer: View {
                         )
                     )
                     .foregroundStyle(store.palette.secondaryInk)
-                    .lineLimit(cardSubtitleLineLimit)
+                    .lineLimit(
+                        dynamicTypeSize.isAccessibilitySize
+                            ? 3
+                            : (store.layout == .focus
+                                ? 2
+                                : (store.layout.isHorizontal ? 2 : 1))
+                    )
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 5)
@@ -3524,104 +3369,6 @@ private struct PPUniversalCardRenderer: View {
                 Spacer(minLength: 0)
             }
         }
-        .accessibilityElement(children: .combine)
-    }
-
-    /// Marketplace's metadata belongs to the product dossier instead of a
-    /// width-filling floating capsule.  This keeps every projected value but
-    /// gives the lower information field one calm, RTL-aware reading rail.
-    private var marketplaceMetadataRail: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                marketplaceMetadataRailItems
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                marketplaceMetadataRailItems
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 9 : 8)
-        .background(
-            Color.ppSecondarySurface.opacity(
-                colorScheme == .dark ? 0.78 : 0.88
-            ),
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(
-                    Color.ppBorder.opacity(
-                        colorScheme == .dark ? 0.62 : 0.74
-                    ),
-                    lineWidth: colorSchemeContrast == .increased ? 1.25 : 0.75
-                )
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder
-    private var marketplaceMetadataRailItems: some View {
-        if let badgeText = store.model.badgeText, !badgeText.isEmpty {
-            marketplaceMetadataToken(
-                text: badgeText,
-                foreground: semanticAccent
-            )
-        }
-
-        if let availability = store.model.availability,
-           !usesCompressedAccessibilityLayout,
-           let meta = availability.metaText,
-           !meta.isEmpty {
-            marketplaceMetadataToken(
-                text: meta,
-                systemImage: availability.metaSystemImage,
-                foreground: metaForeground(availability)
-            )
-        }
-
-        if let availability = store.model.availability,
-           !usesCompressedAccessibilityLayout,
-           !availability.text.isEmpty {
-            marketplaceMetadataToken(
-                text: availability.text,
-                foreground: availabilityForeground(availability.tone)
-            )
-        }
-
-        if let gender = store.model.gender {
-            marketplaceMetadataToken(
-                text: genderTitle(gender),
-                foreground: genderForeground(gender)
-            )
-        }
-    }
-
-    private func marketplaceMetadataToken(
-        text: String,
-        systemImage: String? = nil,
-        foreground: Color
-    ) -> some View {
-        HStack(spacing: 4) {
-            if let systemImage, !systemImage.isEmpty {
-                Image(systemName: systemImage)
-                    .font(.system(size: 10.5, weight: .bold))
-                    .accessibilityHidden(true)
-            }
-
-            Text(text)
-                .font(
-                    .custom(
-                        "Beiruti-Bold",
-                        size: 12,
-                        relativeTo: .caption
-                    )
-                )
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-        }
-        .foregroundStyle(foreground)
         .accessibilityElement(children: .combine)
     }
 

@@ -202,6 +202,15 @@ enum HomeModelAdapter {
         return (presentation["numericID"] as? NSNumber)?.intValue ?? 0
     }
 
+    static func mainKindTitle(_ model: NSObject) -> String {
+        let presentation = PPHomeDataBridge.categoryPresentation(for: model)
+        let title = (presentation["title"] as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty
+            ? localized("home_pulse_category_fallback", fallback: "Pets")
+            : title
+    }
+
     private static func objectValue(_ object: NSObject, key: String) -> Any? {
         guard object.responds(to: NSSelectorFromString(key)) else { return nil }
         return object.value(forKey: key)

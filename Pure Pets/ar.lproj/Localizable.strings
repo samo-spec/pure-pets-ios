@@ -3391,9 +3391,13 @@
 "home_marketplace_signal_marketplace_items_label" = "منتجات المتجر";
 "home_marketplace_signal_services_label" = "الخدمات";
 "home_marketplace_signal_pet_ads_label" = "إعلانات الحيوانات";
+"home_marketplace_signal_veterinarians_label" = "الأطباء البيطريون";
 "home_marketplace_signal_marketplace_items_compact_label" = "المنتجات";
 "home_marketplace_signal_services_compact_label" = "الخدمات";
 "home_marketplace_signal_pet_ads_compact_label" = "الإعلانات";
+"home_marketplace_signal_veterinarians_compact_label" = "الأطباء";
+"home_marketplace_signal_category_summary_format" = "المتاح لفئة %@";
+"home_marketplace_signal_all_category_summary" = "في جميع الفئات";
 "home_marketplace_signal_live_count_hint" = "يعرض العدد المتاح الآن للفئة المختارة. اضغط للتحديث.";
 "home_marketplace_signal_idle" = "جارٍ تجهيز العدد…";
 "home_marketplace_signal_category_required" = "اختر فئة الحيوان لعرض الأعداد المباشرة.";

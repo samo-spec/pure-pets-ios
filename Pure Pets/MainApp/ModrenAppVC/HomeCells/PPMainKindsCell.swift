@@ -7,8 +7,9 @@ private enum PPMainKindsCellMetrics {
     static let compactImagePlateSize: CGFloat = 60
     static let maximumImagePlateSize: CGFloat = 64
     static let maximumCompactImagePlateSize: CGFloat = 60
-    static let artworkSize: CGFloat = 52
+    static let artworkSize: CGFloat = 56
     static let allArtworkSize: CGFloat = 28
+    static let artworkPlatePadding: CGFloat = PPSpace.sm
     static let imageToTitleSpacing: CGFloat = PPSpace.sm
     // Temporary visual switch: selection semantics and motion stay active,
     // while the decorative bottom line remains hidden.
@@ -566,7 +567,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let baseArtworkSize = isAllOption
             ? PPMainKindsCellMetrics.allArtworkSize
             : PPMainKindsCellMetrics.artworkSize
-        let artworkSize = min(baseArtworkSize, plateSize - (accessibilityText ? 12 : 10))
+        let artworkSize = min(
+            baseArtworkSize,
+            plateSize - PPMainKindsCellMetrics.artworkPlatePadding
+        )
 
         appliedPlateSize = plateSize
         imagePlateWidthConstraint.constant = plateSize

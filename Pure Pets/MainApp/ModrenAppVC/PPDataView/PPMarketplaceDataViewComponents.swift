@@ -218,16 +218,7 @@ struct PPMarketplaceHero: View {
         .frame(minHeight: topRailControlSize)
         .background {
             topContextShape
-                .fill(heroCommandSurface)
-
-            topContextShape
-                .fill(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22))
-
-            topContextShape
-                .fill(
-                    Color(uiColor: store.accentColor)
-                        .opacity(heroAuxiliarySurfaceOpacity)
-                )
+                .fill(Color.white)
         }
         .overlay {
             topContextShape
@@ -313,23 +304,8 @@ struct PPMarketplaceHero: View {
                 subKindMenu
             }
 
-            Divider()
-                .padding(.vertical, PPSpace.xs)
-
-            Button(action: store.beginCategoryEditing) {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color(uiColor: store.accentColor))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(PPMarketplacePressStyle(reduceMotion: reduceMotion))
-            .accessibilityLabel(
-                PPMarketplaceText.localized("marketplace_category_title")
-            )
-            .accessibilityHint(
-                PPMarketplaceText.localized("marketplace_category_open_hint")
-            )
+            // The hero keeps category selection compact; the filter affordance
+            // remains available through the marketplace's full filter surface.
         }
         .padding(.horizontal, PPSpace.xs)
         .padding(.vertical, PPSpace.xxs)

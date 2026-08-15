@@ -2688,6 +2688,7 @@ struct HomeCategoryRail: View {
         static let shadowTopInset = PPSpace.md
         static let shadowBottomInset = PPSpace.lg
         static let screenGutter = PPSpace.screenMargin
+        static let horizontalCellWidthScale: CGFloat = 0.85
     }
 
     var body: some View {
@@ -2939,22 +2940,25 @@ struct HomeCategoryRail: View {
 
     private var itemSize: CGSize {
         let width = viewportWidth > 1 ? viewportWidth : 390
+        let baseSize: CGSize
         if dynamicTypeSize.isAccessibilitySize {
-            return CGSize(
+            baseSize = CGSize(
                 width: width < 375 ? 120 : 132,
                 height: 148
             )
+        } else if width >= 700 {
+            baseSize = CGSize(width: 140, height: 184)
+        } else if width >= 430 {
+            baseSize = CGSize(width: 140, height: 143)
+        } else if width < 375 {
+            baseSize = CGSize(width: 120, height: 130)
+        } else {
+            baseSize = CGSize(width: 132, height: 132)
         }
-        if width >= 700 {
-            return CGSize(width: 140, height: 184)
-        }
-        if width >= 430 {
-            return CGSize(width: 140, height: 143)
-        }
-        if width < 375 {
-            return CGSize(width: 120, height: 130)
-        }
-        return CGSize(width: 132, height: 132)
+        return CGSize(
+            width: baseSize.width * RailLayout.horizontalCellWidthScale,
+            height: baseSize.height
+        )
     }
 
     private func updateViewportWidth(_ width: CGFloat) {

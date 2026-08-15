@@ -3412,9 +3412,13 @@
 "home_marketplace_signal_marketplace_items_label" = "Marketplace items";
 "home_marketplace_signal_services_label" = "Services";
 "home_marketplace_signal_pet_ads_label" = "Pet listings";
+"home_marketplace_signal_veterinarians_label" = "Veterinarians";
 "home_marketplace_signal_marketplace_items_compact_label" = "Items";
 "home_marketplace_signal_services_compact_label" = "Services";
 "home_marketplace_signal_pet_ads_compact_label" = "Listings";
+"home_marketplace_signal_veterinarians_compact_label" = "Vets";
+"home_marketplace_signal_category_summary_format" = "Available for %@";
+"home_marketplace_signal_all_category_summary" = "Across all categories";
 "home_marketplace_signal_live_count_hint" = "Shows how many are available now for the selected category. Tap to refresh.";
 "home_marketplace_signal_idle" = "Preparing count…";
 "home_marketplace_signal_category_required" = "Choose a pet category to load live counts.";

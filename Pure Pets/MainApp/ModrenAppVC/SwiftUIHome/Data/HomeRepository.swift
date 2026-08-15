@@ -170,6 +170,11 @@ final class HomeRepository {
                 mainCategoryID: mainCategoryID,
                 completion: finish
             )
+        case .veterinarians:
+            bridge.fetchVeterinarianCount(
+                mainCategoryID: mainCategoryID,
+                completion: finish
+            )
         }
     }
 

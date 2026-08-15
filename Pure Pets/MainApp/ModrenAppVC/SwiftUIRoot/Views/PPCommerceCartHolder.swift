@@ -200,11 +200,7 @@ private enum PPCommerceCartMetrics {
         (controlHeight * 2) + verticalSpacing + (holderPadding * 2)
     static let holderRadius: CGFloat =
         PPBottomDecisionBarGeometry.surfaceRadius
-    static let quantityWidth: CGFloat =
-        (PPBottomDecisionBarGeometry.utilityControlSize * 2) + PPSpace.sm
     static let quantityButtonWidth: CGFloat = 40
-    static let quantityValueWidth: CGFloat =
-        quantityWidth - (quantityButtonWidth * 2)
     static let payWidth: CGFloat = PPSpace.xxxxl * 2
     static let thumbnailSize: CGFloat = controlHeight - PPSpace.sm
     static let minimumStandardWidth: CGFloat = 356
@@ -361,20 +357,15 @@ private extension PPCommerceCartHolder {
     @ViewBuilder
     private var expandedLayout: some View {
         holderSurface {
-            VStack(alignment: .leading, spacing: PPSpace.md) {
-                productSummary
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
+            VStack(spacing: PPSpace.md) {
                 HStack(spacing: Metrics.spacing) {
-                    Spacer(minLength: 0)
-                    quantityControl
+                    productSummary
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    cartButton
                 }
 
-                VStack(spacing: Metrics.spacing) {
-                    addButton
-
-                    payButton(minimumWidth: 120, maximumWidth: .infinity)
-                }
+                quantityAndPayRow(minimumPayWidth: 120)
             }
             .padding(Metrics.holderPadding)
         }
@@ -387,22 +378,27 @@ private extension PPCommerceCartHolder {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
 
-            quantityControl
+            cartButton
                 .layoutPriority(2)
         }
         .frame(height: Metrics.controlHeight)
     }
 
     private var standardActionRow: some View {
-        HStack(spacing: Metrics.spacing) {
-            addButton
-                .frame(minWidth: 160, maxWidth: .infinity)
-                .layoutPriority(1)
+        quantityAndPayRow(minimumPayWidth: Metrics.payWidth)
+    }
 
-            payButton(
-                minimumWidth: Metrics.payWidth,
-                maximumWidth: Metrics.payWidth
-            )
+    private func quantityAndPayRow(minimumPayWidth: CGFloat) -> some View {
+        GeometryReader { proxy in
+            HStack(spacing: Metrics.spacing) {
+                quantityControl
+                    .frame(width: max(0, proxy.size.width * 0.65))
+
+                payButton(
+                    minimumWidth: minimumPayWidth,
+                    maximumWidth: .infinity
+                )
+            }
         }
         .frame(height: Metrics.controlHeight)
     }
@@ -501,7 +497,7 @@ private extension PPCommerceCartHolder {
                     .id(displayQuantity)
                     .transition(numberTransition)
             }
-            .frame(width: Metrics.quantityValueWidth)
+            .frame(maxWidth: .infinity)
             .accessibilityHidden(true)
 
             quantityButton(
@@ -517,7 +513,7 @@ private extension PPCommerceCartHolder {
                 }
             }
         }
-        .frame(width: Metrics.quantityWidth, height: Metrics.controlHeight)
+        .frame(maxWidth: .infinity, minHeight: Metrics.controlHeight)
         .background(theme.brand.opacity(colorScheme == .dark ? 0.14 : 0.055))
         .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
         .overlay {
@@ -572,22 +568,47 @@ private extension PPCommerceCartHolder {
     }
 
     @ViewBuilder
-    private var addButton: some View {
-        AnimatedAddToCartButton(
-            cartCount: $quantity,
-            title: copy.addToCart,
-            addingTitle: copy.adding,
-            addedTitle: copy.addSucceeded,
-            retryTitle: copy.retry,
-            tint: theme.brand,
-            itemSymbol: "cart.badge.plus",
-            isEnabled: addButtonIsEnabled,
-            cornerRadius: Metrics.controlRadius,
-            presentationStyle: .commerceHolder,
-            onCartTap: animatedCartTapAction,
-            onAdd: performAnimatedAdd
-        )
-        .accessibilityIdentifier("pp.commerce.add")
+    private var cartButton: some View {
+        Button {
+            guard criticalPhase == nil, !isSyncingQuantity else { return }
+            actions.track(.cartTapped(quantity: displayQuantity))
+            actions.openCart()
+        } label: {
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: "cart.fill")
+                    .font(.system(size: 17, weight: .semibold))
+
+                if displayQuantity > 0 {
+                    Text(formattedQuantity)
+                        .font(PPAccessoryTypography.calloutBold)
+                        .monospacedDigit()
+                        .padding(.horizontal, PPSpace.xs)
+                        .frame(minWidth: 24, minHeight: 24)
+                        .background(
+                            Color(uiColor: .systemBackground).opacity(0.92),
+                            in: Capsule()
+                        )
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: Metrics.controlHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
+        .foregroundStyle(theme.brand)
+        .background(theme.brand.opacity(colorScheme == .dark ? 0.18 : 0.08))
+        .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
+                .strokeBorder(
+                    theme.brand.opacity(borderOpacity),
+                    lineWidth: borderWidth
+                )
+        }
+        .frame(width: Metrics.controlHeight, height: Metrics.controlHeight)
+        .disabled(criticalPhase != nil || isSyncingQuantity)
+        .accessibilityLabel(Text(verbatim: cartAccessibilityLabel))
+        .accessibilityValue(Text(verbatim: formattedQuantity))
+        .accessibilityIdentifier("pp.commerce.cart")
     }
 
     @ViewBuilder
@@ -734,6 +755,12 @@ private extension PPCommerceCartHolder {
         displayQuantity.formatted(.number.locale(locale))
     }
 
+    var cartAccessibilityLabel: String {
+        displayQuantity > 0
+            ? String(format: copy.cartItemsFormat, formattedQuantity)
+            : copy.cartEmpty
+    }
+
     var paymentAccessibilityValue: String {
         switch criticalPhase {
         case .paying:
@@ -747,21 +774,6 @@ private extension PPCommerceCartHolder {
 
     var controlsAreLocked: Bool {
         criticalPhase != nil
-    }
-
-    var addButtonIsEnabled: Bool {
-        criticalPhase == nil &&
-            !isSyncingQuantity &&
-            displayQuantity < item.maximumQuantity
-    }
-
-    var animatedCartTapAction: (() -> Void)? {
-        guard criticalPhase == nil, !isSyncingQuantity else { return nil }
-
-        return {
-            actions.track(.cartTapped(quantity: displayQuantity))
-            actions.openCart()
-        }
     }
 
     func clamped(_ proposedQuantity: Int) -> Int {
@@ -800,88 +812,6 @@ private extension PPCommerceCartHolder {
             }
 
             criticalTask = nil
-        }
-    }
-
-    func performAnimatedAdd() async throws -> AnimatedAddToCartOutcome {
-        guard criticalPhase == nil, !isSyncingQuantity else {
-            throw CancellationError()
-        }
-
-        feedback = nil
-        let priorQuantity = displayQuantity
-
-        if priorQuantity == 0 {
-            criticalPhase = .adding
-            actions.track(.addTapped(productID: item.id))
-            PPCommerceHaptics.impact()
-
-            do {
-                let returnedQuantity = try await actions.add()
-                try Task.checkCancellation()
-
-                let confirmed = max(1, clamped(returnedQuantity))
-                confirmedQuantity = confirmed
-                quantity = confirmed
-                criticalPhase = nil
-                actions.track(
-                    .addSucceeded(productID: item.id, quantity: confirmed)
-                )
-
-                return AnimatedAddToCartOutcome(
-                    cartCount: confirmed,
-                    addedQuantity: confirmed
-                )
-            } catch {
-                criticalPhase = nil
-                if !(error is CancellationError) {
-                    actions.track(
-                        .operationFailed(productID: item.id, operation: .add)
-                    )
-                }
-                throw error
-            }
-        }
-
-        let requested = clamped(priorQuantity + 1)
-        guard requested > priorQuantity else {
-            throw CancellationError()
-        }
-
-        isSyncingQuantity = true
-        actions.track(.quantityChanged(productID: item.id, quantity: requested))
-        PPCommerceHaptics.selection()
-
-        do {
-            // The shared button locks repeat taps while preserving the holder's
-            // established brief coalescing window before the cart mutation.
-            try await Task.sleep(nanoseconds: 220_000_000)
-            let returnedQuantity = try await actions.updateQuantity(requested)
-            try Task.checkCancellation()
-
-            let confirmed = clamped(returnedQuantity)
-            confirmedQuantity = confirmed
-            quantity = confirmed
-            isSyncingQuantity = false
-            actions.track(
-                .quantitySynced(productID: item.id, quantity: confirmed)
-            )
-
-            return AnimatedAddToCartOutcome(
-                cartCount: confirmed,
-                addedQuantity: max(0, confirmed - priorQuantity)
-            )
-        } catch {
-            withAnimation(stateAnimation) {
-                quantity = confirmedQuantity
-                isSyncingQuantity = false
-            }
-            if !(error is CancellationError) {
-                actions.track(
-                    .operationFailed(productID: item.id, operation: .quantity)
-                )
-            }
-            throw error
         }
     }
 

@@ -71,6 +71,7 @@ enum HomeMarketplaceSignalKind: CaseIterable, Hashable {
     case marketplace
     case services
     case advertisements
+    case veterinarians
 }
 
 enum HomeMarketplaceSignalValue: Equatable {
@@ -85,17 +86,20 @@ struct HomeMarketplaceSignals: Equatable {
     var marketplace: HomeMarketplaceSignalValue
     var services: HomeMarketplaceSignalValue
     var advertisements: HomeMarketplaceSignalValue
+    var veterinarians: HomeMarketplaceSignalValue
 
     init(
         categoryID: Int? = nil,
         marketplace: HomeMarketplaceSignalValue = .idle,
         services: HomeMarketplaceSignalValue = .idle,
-        advertisements: HomeMarketplaceSignalValue = .idle
+        advertisements: HomeMarketplaceSignalValue = .idle,
+        veterinarians: HomeMarketplaceSignalValue = .idle
     ) {
         self.categoryID = categoryID
         self.marketplace = marketplace
         self.services = services
         self.advertisements = advertisements
+        self.veterinarians = veterinarians
     }
 
     func value(
@@ -108,6 +112,8 @@ struct HomeMarketplaceSignals: Equatable {
             return services
         case .advertisements:
             return advertisements
+        case .veterinarians:
+            return veterinarians
         }
     }
 
@@ -122,6 +128,8 @@ struct HomeMarketplaceSignals: Equatable {
             services = value
         case .advertisements:
             advertisements = value
+        case .veterinarians:
+            veterinarians = value
         }
     }
 }

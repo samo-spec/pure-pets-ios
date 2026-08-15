@@ -35,16 +35,16 @@ public enum PPCommandDeckTab: String, CaseIterable, Identifiable, Hashable, Send
 
     /// Reuses the existing root-route copy rather than introducing a second
     /// vocabulary for the same UIKit destinations.
-    public var title: LocalizedStringKey {
+    public var title: String {
         switch self {
         case .home:
-            "MainPage"
+            Language.get("MainPage", alter: "MainPage") ?? "MainPage"
         case .myAds:
-            "menu_action_orders"
+            Language.get("menu_action_orders", alter: "menu_action_orders") ?? "menu_action_orders"
         case .chats:
-            "chatsTitle"
+            Language.get("chatsTitle", alter: "chatsTitle") ?? "chatsTitle"
         case .menu:
-            "user_menu_tab_title"
+            Language.get("user_menu_tab_title", alter: "user_menu_tab_title") ?? "user_menu_tab_title"
         }
     }
 

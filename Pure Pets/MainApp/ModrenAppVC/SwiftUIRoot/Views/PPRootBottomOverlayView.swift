@@ -144,14 +144,22 @@ private struct PPRootCommandDeck: View {
             ),
             unreadChats: store.unreadChatsCount,
             copy: PPCommandDeckCopy(
-                navigationLabel: "a11y_command_deck_navigation",
-                createLabel: "a11y_tab_add",
-                createHint: "a11y_btn_add_new_hint"
+                navigationLabel: LocalizedStringKey(
+                    localized("a11y_command_deck_navigation")
+                ),
+                createLabel: LocalizedStringKey(localized("a11y_tab_add")),
+                createHint: LocalizedStringKey(
+                    localized("a11y_btn_add_new_hint")
+                )
             )
         ) {
             // Create is intentionally an action, not a selected destination.
             store.selectTab(.create)
         }
+    }
+
+    private func localized(_ key: String) -> String {
+        Language.get(key, alter: key) ?? key
     }
 }
 

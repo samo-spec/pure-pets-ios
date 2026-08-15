@@ -59,6 +59,39 @@ static BOOL PPVetManagerBoolFromValue(id value) {
     return NO;
 }
 
+static NSError *PPVetManagerMissingPetMainKindError(void) {
+    return [NSError errorWithDomain:@"VetManager"
+                               code:-1003
+                           userInfo:@{
+        NSLocalizedDescriptionKey: @"A positive pet main kind is required."
+    }];
+}
+
+/// Mirrors the public eligibility contract used by the consumer Pet Care
+/// surface. A profile with no legacy verification field remains listable;
+/// explicitly pending, rejected, or disabled profiles never surface in a
+/// public count.
+static BOOL PPVetManagerVetIsPubliclyListable(VetModel *vet) {
+    if (![vet isKindOfClass:VetModel.class] || vet.isDisabled) {
+        return NO;
+    }
+
+    NSString *verificationStatus =
+        [PPVetManagerSafeString(vet.verificationStatus) lowercaseString];
+    if (verificationStatus.length == 0) {
+        return YES;
+    }
+
+    static NSSet<NSString *> *approvedStatuses = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        approvedStatuses = [NSSet setWithArray:@[
+            @"approved", @"active", @"verified"
+        ]];
+    });
+    return [approvedStatuses containsObject:verificationStatus];
+}
+
 static NSString *PPVetManagerFirstImageURL(id value) {
     if ([value isKindOfClass:NSString.class]) {
         return PPVetManagerSafeString(value);
@@ -448,6 +481,37 @@ static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
             [vets addObject:vet];
         }
         completion(vets, error);
+    }];
+}
+
+- (void)fetchPublicVeterinarianCountForPetMainKindID:(NSInteger)kindID
+                                          completion:(void (^)(NSInteger count, NSError * _Nullable error))completion
+{
+    if (kindID <= 0) {
+        if (completion) {
+            completion(0, PPVetManagerMissingPetMainKindError());
+        }
+        return;
+    }
+
+    [self getVetsForPetMainKindID:kindID
+                       completion:^(NSArray<VetModel *> *vets, NSError * _Nullable error) {
+        if (error) {
+            if (completion) {
+                completion(0, error);
+            }
+            return;
+        }
+
+        NSUInteger publicCount =
+            [(vets ?: @[]) filteredArrayUsingPredicate:
+                [NSPredicate predicateWithBlock:^BOOL(VetModel *vet,
+                                                     __unused NSDictionary *bindings) {
+                    return PPVetManagerVetIsPubliclyListable(vet);
+                }]].count;
+        if (completion) {
+            completion((NSInteger)publicCount, nil);
+        }
     }];
 }
 

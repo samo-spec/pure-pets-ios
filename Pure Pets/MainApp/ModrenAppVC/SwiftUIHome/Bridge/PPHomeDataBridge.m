@@ -25,6 +25,7 @@
 #import "ServiceModel.h"
 #import "ServicesManager.h"
 #import "UserManager.h"
+#import "VetManager.h"
 
 static NSError *PPHomeMissingSignalCategoryError(void) {
     return [NSError errorWithDomain:@"PPHomeMarketplaceSignals"
@@ -1868,6 +1869,24 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
         completion:^(NSArray<PetAd *> *ads, NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(ads.count, error);
+            });
+        }];
+}
+
+- (void)fetchVeterinarianCountForMainCategoryID:(NSInteger)mainCategoryID
+                                       completion:(PPHomeExactCountCompletion)completion
+{
+    if (mainCategoryID <= 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(0, PPHomeMissingSignalCategoryError());
+        });
+        return;
+    }
+    [[VetManager sharedManager]
+        fetchPublicVeterinarianCountForPetMainKindID:mainCategoryID
+        completion:^(NSInteger count, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(count, error);
             });
         }];
 }
