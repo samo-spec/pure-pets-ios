@@ -583,6 +583,7 @@ private extension PPCommerceCartHolder {
             itemSymbol: "cart.badge.plus",
             isEnabled: addButtonIsEnabled,
             cornerRadius: Metrics.controlRadius,
+            presentationStyle: .commerceHolder,
             onCartTap: animatedCartTapAction,
             onAdd: performAnimatedAdd
         )

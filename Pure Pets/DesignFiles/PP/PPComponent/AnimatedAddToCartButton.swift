@@ -47,6 +47,9 @@ public struct AnimatedAddToCartButton: View {
     public enum PresentationStyle: Equatable {
         case standard
         case accessoryDecisionRail
+        /// Matches the compact 50pt commerce-holder rail while retaining the
+        /// shared cart destination required for the add-to-cart flight.
+        case commerceHolder
     }
 
     /// Optional externally-owned quantity state for the signature one-control flow.
@@ -266,6 +269,8 @@ public struct AnimatedAddToCartButton: View {
             .padding(.trailing, 2)
         case .accessoryDecisionRail:
             accessoryDecisionRailControl
+        case .commerceHolder:
+            commerceHolderControl
         }
     }
 
@@ -290,6 +295,15 @@ public struct AnimatedAddToCartButton: View {
                 tint.opacity(colorScheme == .dark ? 0.24 : 0.12),
                 lineWidth: 1
             )
+        }
+    }
+
+    private var commerceHolderControl: some View {
+        HStack(spacing: PPSpace.sm) {
+            primaryAddButton(signature: false)
+                .frame(maxWidth: .infinity)
+
+            cartButton
         }
     }
 
@@ -351,7 +365,7 @@ public struct AnimatedAddToCartButton: View {
                         ? (usesCompactSignatureControl
                             ? PPSpace.sm
                             : PPSpace.lg)
-                        : (presentationStyle == .accessoryDecisionRail
+                        : (usesDecisionRailAppearance
                             ? PPSpace.base
                             : 14)
                 )
@@ -393,7 +407,7 @@ public struct AnimatedAddToCartButton: View {
                 .font(PPAccessoryTypography.bodyBold)
                 .multilineTextAlignment(.leading)
                 .lineLimit(
-                    presentationStyle == .accessoryDecisionRail &&
+                    usesDecisionRailAppearance &&
                         dynamicTypeSize.isAccessibilitySize
                         ? 2
                         : 1
@@ -482,10 +496,33 @@ public struct AnimatedAddToCartButton: View {
     }
 
     private var legacyControlHeight: CGFloat {
-        guard presentationStyle == .accessoryDecisionRail else { return 52 }
-        return dynamicTypeSize.isAccessibilitySize
-            ? 72
-            : PPBottomDecisionBarGeometry.controlHeight
+        switch presentationStyle {
+        case .standard:
+            return 52
+        case .accessoryDecisionRail:
+            return dynamicTypeSize.isAccessibilitySize
+                ? 72
+                : PPBottomDecisionBarGeometry.controlHeight
+        case .commerceHolder:
+            return dynamicTypeSize.isAccessibilitySize
+                ? 64
+                : PPBottomDecisionBarGeometry.controlHeight - PPSpace.sm
+        }
+    }
+
+    private var usesDecisionRailAppearance: Bool {
+        presentationStyle == .accessoryDecisionRail ||
+            presentationStyle == .commerceHolder
+    }
+
+    private var decisionRailUtilityControlSize: CGFloat {
+        presentationStyle == .commerceHolder
+            ? PPBottomDecisionBarGeometry.controlHeight - PPSpace.sm
+            : PPBottomDecisionBarGeometry.utilityControlSize
+    }
+
+    private var decisionRailUtilityOuterPadding: CGFloat {
+        presentationStyle == .commerceHolder ? 0 : PPSpace.xs
     }
 
     @ViewBuilder
@@ -843,7 +880,7 @@ public struct AnimatedAddToCartButton: View {
 
     @ViewBuilder
     private var cartButton: some View {
-        if presentationStyle == .accessoryDecisionRail {
+        if usesDecisionRailAppearance {
             Button(action: {
                 onCartTap?()
             }) {
@@ -923,8 +960,8 @@ public struct AnimatedAddToCartButton: View {
                     .font(.system(size: 18, weight: .bold))
             }
             .frame(
-                width: PPBottomDecisionBarGeometry.utilityControlSize,
-                height: PPBottomDecisionBarGeometry.utilityControlSize
+                width: decisionRailUtilityControlSize,
+                height: decisionRailUtilityControlSize
             )
             .overlay {
                 RoundedRectangle(
@@ -979,8 +1016,8 @@ public struct AnimatedAddToCartButton: View {
             }
         }
         .frame(
-            width: PPBottomDecisionBarGeometry.utilityControlSize + PPSpace.xs,
-            height: PPBottomDecisionBarGeometry.utilityControlSize + PPSpace.xs
+            width: decisionRailUtilityControlSize + decisionRailUtilityOuterPadding,
+            height: decisionRailUtilityControlSize + decisionRailUtilityOuterPadding
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
@@ -1308,7 +1345,7 @@ public struct AnimatedAddToCartButton: View {
             ]
         }
 
-        if presentationStyle == .accessoryDecisionRail {
+        if usesDecisionRailAppearance {
             switch phase {
             case .failure:
                 return [
@@ -1354,7 +1391,7 @@ public struct AnimatedAddToCartButton: View {
 
     private var buttonForeground: Color {
         guard isEnabled else { return Color.ppTextSecondary }
-        guard presentationStyle == .accessoryDecisionRail else {
+        guard usesDecisionRailAppearance else {
             return .white
         }
 
@@ -1369,19 +1406,19 @@ public struct AnimatedAddToCartButton: View {
     }
 
     private var causalFlightDuration: Double {
-        presentationStyle == .accessoryDecisionRail ? 0.52 : 0.78
+        usesDecisionRailAppearance ? 0.52 : 0.78
     }
 
     private var causalFlightLandingDelay: UInt64 {
-        presentationStyle == .accessoryDecisionRail ? 410 : 620
+        usesDecisionRailAppearance ? 410 : 620
     }
 
     private var causalSuccessHoldDuration: UInt64 {
-        presentationStyle == .accessoryDecisionRail ? 720 : 1_100
+        usesDecisionRailAppearance ? 720 : 1_100
     }
 
     private var causalFlightArcHeight: CGFloat {
-        presentationStyle == .accessoryDecisionRail ? 18 : 22
+        usesDecisionRailAppearance ? 18 : 22
     }
 
     private var quantityControlTransitionAnimation: Animation {

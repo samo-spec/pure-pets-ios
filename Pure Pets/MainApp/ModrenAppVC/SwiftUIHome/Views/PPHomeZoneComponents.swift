@@ -1088,17 +1088,19 @@ private struct PPHomeStageArtwork: View {
 }
 
 /// The Living Ledger keeps one selected-category identity and three live facts
-/// in one composition. It intentionally has no category plate, orbital diagram,
-/// individual count cards, or horizontal accessibility rail.
+/// in one composition. Its category portrait sits in one quiet circular plate;
+/// the live counts retain their compact horizontal availability stack.
 private enum PPHomeLivingLedgerMetrics {
     /// The standard hero is a centered diptych: a dominant category field and
     /// a deliberately quieter, width-bounded live-statistics sidecar.
     static let standardIdentityMaximum: CGFloat = 164
     static let standardIdentityMinimum: CGFloat = 132
     static let compactIdentityMinimum: CGFloat = 88
-    static let standardLedgerWidth: CGFloat = 188
+    static let standardLedgerWidth: CGFloat = 152
+    static let compactLedgerWidth: CGFloat = 188
     static let compactWidthBreakpoint: CGFloat = 332
-    /// Three full controls plus two Increased Contrast separators.
+    /// Keeps the horizontal live-statistics stack aligned with the category
+    /// aperture without changing the surrounding hero's vertical rhythm.
     static let standardLedgerHeight: CGFloat =
         (PPHomeZoneMetrics.minimumTarget * 3) + 3
     static let standardCategoryHeight: CGFloat = 160
@@ -1106,23 +1108,43 @@ private enum PPHomeLivingLedgerMetrics {
     static let accessibilityIdentityHeight: CGFloat = 72
     static let standardCompositionMaximum: CGFloat = 136
     static let identityCompositionWidthRatio: CGFloat = 0.90
-    static let standardTrailingFocusShift: CGFloat = PPSpace.sm
+    static let standardTrailingFocusShift: CGFloat = PPSpace.lg
+    static let minimumClippedEdgeInset: CGFloat = PPSpace.sm
     static let accessibilityCompositionMaximum: CGFloat = 64
     static let identityWashWidthRatio: CGFloat = 0.88
     static let identityWashHeightRatio: CGFloat = 1.08
     static let maximumReadableWidth: CGFloat = 480
     static let ledgerCorner: CGFloat = PPCorner.medium
-    static let rowHorizontalPadding: CGFloat = PPSpace.sm
-    /// The ledger remains a 44-point control per row; only the decorative
-    /// badge cluster contracts slightly so the category identity can lead.
+    /// The stat icons remain deliberately compact so all three controls retain
+    /// clear, equal-width positions in the horizontal stack.
     static let nodeSide: CGFloat = 26
-    static let indexLineWidth: CGFloat = 2
 }
 
-/// A single category-to-ledger gesture replaces the generic broken border.
-/// The standard curve gathers around the portrait before resolving into the
-/// logical trailing seam. Accessibility sizes use a separate local curve so a
-/// full-width header never becomes a decorative underline.
+/// Reference-bound ratios for the Marketplace category plate. They keep the
+/// circular field, open contour, and two terminals proportional without tying
+/// the artwork to a particular phone width.
+private enum PPHomeCategoryPlateMetrics {
+    static let contourScale: CGFloat = 1.16
+    static let plateScale: CGFloat = 0.90
+    static let leadingTerminalXRatio: CGFloat = -0.44
+    static let terminalHeightRatio: CGFloat = 0.36
+}
+
+/// A presentation-only frame signal gives the recurring hero heartbeat an
+/// explicit viewport owner. Geometry never feeds layout back into itself; it
+/// only starts or cancels the existing task when enough of the hero is visible.
+private struct PPHomeMarketplaceViewportFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .null
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
+/// A single open contour wraps the quiet circular category plate from logical
+/// leading through its lower arc to the logical trailing terminal. Accessibility
+/// headers keep that geometry local to the plate rather than stretching it into
+/// a decorative underline.
 private struct PPHomeCategoryRibbonShape: Shape {
     let usesWideHeaderPath: Bool
 
@@ -1133,86 +1155,61 @@ private struct PPHomeCategoryRibbonShape: Shape {
             : portraitPath(in: safeRect)
     }
 
-    /// Keeps the portrait gesture proportional as the standard layout narrows,
-    /// rather than stretching the sweep vertically.
+    /// Keeps the open contour proportional as the standard layout narrows.
     private func portraitPath(in rect: CGRect) -> Path {
-        let localHeight = min(rect.height, rect.width * 1.18)
+        let side = min(rect.width, rect.height)
         let drawingRect = CGRect(
-            x: rect.minX,
-            y: rect.midY - (localHeight / 2),
-            width: rect.width,
-            height: localHeight
+            x: rect.midX - (side / 2),
+            y: rect.midY - (side / 2),
+            width: side,
+            height: side
         )
-
-        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(
-                x: drawingRect.minX + (drawingRect.width * x),
-                y: drawingRect.minY + (drawingRect.height * y)
-            )
-        }
-
-        var path = Path()
-        path.move(to: point(0.22, 0.14))
-        path.addCurve(
-            to: point(0.07, 0.50),
-            control1: point(0.11, 0.22),
-            control2: point(0.045, 0.36)
-        )
-        path.addCurve(
-            to: point(0.26, 0.87),
-            control1: point(0.07, 0.69),
-            control2: point(0.14, 0.82)
-        )
-        path.addCurve(
-            to: point(0.72, 0.83),
-            control1: point(0.39, 0.94),
-            control2: point(0.60, 0.92)
-        )
-        path.addCurve(
-            to: point(1.00, 0.50),
-            control1: point(0.88, 0.78),
-            control2: point(0.95, 0.63)
-        )
-        return path
+        return contourPath(in: drawingRect)
     }
 
-    /// Accessibility headers keep the wrap local to the centered portrait, then
-    /// rise into one quiet terminal that reaches the real logical trailing seam.
-    /// This avoids both a floating seam and a full-width decorative underline.
+    /// Accessibility headers deliberately preserve the same local geometry as
+    /// the standard plate. The statistics stack is below it, so a long connector
+    /// would become both visually noisy and spatially misleading.
     private func wideHeaderPath(in rect: CGRect) -> Path {
-        let span = min(rect.height, rect.width * 0.24)
+        let side = min(rect.width, rect.height)
+        let drawingRect = CGRect(
+            x: rect.midX - (side / 2),
+            y: rect.midY - (side / 2),
+            width: side,
+            height: side
+        )
+        return contourPath(in: drawingRect)
+    }
 
-        func localPoint(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+    private func contourPath(in rect: CGRect) -> Path {
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
             CGPoint(
-                x: rect.midX + (span * x),
+                x: rect.minX + (rect.width * x),
                 y: rect.minY + (rect.height * y)
             )
         }
 
         var path = Path()
-        path.move(to: localPoint(-0.18, 0.08))
+        path.move(to: point(0.34, 0.10))
         path.addCurve(
-            to: localPoint(-0.50, 0.46),
-            control1: localPoint(-0.38, 0.13),
-            control2: localPoint(-0.52, 0.29)
+            to: point(0.08, 0.50),
+            control1: point(0.18, 0.19),
+            control2: point(0.07, 0.34)
         )
         path.addCurve(
-            to: localPoint(-0.20, 0.88),
-            control1: localPoint(-0.52, 0.69),
-            control2: localPoint(-0.39, 0.84)
+            to: point(0.31, 0.88),
+            control1: point(0.08, 0.70),
+            control2: point(0.17, 0.84)
         )
         path.addCurve(
-            to: localPoint(0.36, 0.74),
-            control1: localPoint(0.01, 0.95),
-            control2: localPoint(0.25, 0.88)
+            to: point(0.71, 0.90),
+            control1: point(0.43, 0.99),
+            control2: point(0.62, 0.98)
         )
         path.addCurve(
-            to: CGPoint(x: rect.maxX, y: rect.midY),
-            control1: localPoint(0.66, 0.65),
-            control2: CGPoint(
-                x: rect.maxX - min(28, rect.width * 0.09),
-                y: rect.midY + (rect.height * 0.08)
-            )
+            to: point(0.94, 0.50),
+            control1: point(0.88, 0.84),
+            control2: point(0.96, 0.67)
         )
         return path
     }
@@ -1242,7 +1239,9 @@ private struct PPHomeMarketplaceLivingLedger: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var phase: Phase = .staged
+    @State private var ambientPhase: AmbientPhase = .rest
     @State private var lastPresentedIdentity: String?
+    @State private var isInViewport = false
 
     var body: some View {
         Group {
@@ -1252,7 +1251,18 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 standardConstellation
             }
         }
-        .task(id: motionKey) { await runEntrance() }
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: PPHomeMarketplaceViewportFrameKey.self,
+                    value: proxy.frame(in: .global)
+                )
+            }
+        }
+        .onPreferenceChange(PPHomeMarketplaceViewportFrameKey.self) {
+            updateViewportVisibility(frame: $0)
+        }
+        .task(id: motionKey) { await runPresentationMotion() }
         .task(id: signals.categoryID) { requestIdleSignals() }
         .onChange(of: scenePhase) { newPhase in
             guard newPhase != .active else { return }
@@ -1277,8 +1287,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 )
 
                 signalLedger(
-                    height: geometry.ledgerHeight,
-                    compactRows: geometry.usesCompactRows
+                    height: geometry.ledgerHeight
                 )
                 .frame(width: geometry.ledgerWidth)
             }
@@ -1289,7 +1298,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
             )
             .position(
                 x: (proxy.size.width / 2) + logicalOffset(
-                    PPHomeLivingLedgerMetrics.standardTrailingFocusShift
+                    geometry.trailingFocusShift
                 ),
                 y: proxy.size.height / 2
             )
@@ -1313,8 +1322,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 )
 
                 signalLedger(
-                    height: geometry.ledgerHeight,
-                    compactRows: false
+                    height: geometry.ledgerHeight
                 )
             }
             .frame(
@@ -1330,9 +1338,9 @@ private struct PPHomeMarketplaceLivingLedger: View {
 
     // MARK: - Category aperture
 
-    /// An open portrait aperture replaces the old closed category plate. The
-    /// accent is category identity only: one living ribbon gathers beneath the
-    /// portrait and resolves toward the shared seam of the adjacent ledger.
+    /// The category artwork sits on a quiet circular plate. Its open contour,
+    /// leading capsule, and trailing terminal are decorative only; the existing
+    /// identity and availability hierarchy remains unchanged.
     private func categoryAperture(
         width: CGFloat,
         height: CGFloat,
@@ -1353,13 +1361,74 @@ private struct PPHomeMarketplaceLivingLedger: View {
             PPHomeLivingLedgerMetrics.identityWashWidthRatio
         let washHeight = compositionSide *
             PPHomeLivingLedgerMetrics.identityWashHeightRatio
+        let availablePlateSide = max(
+            0,
+            min(width, height) - (PPSpace.xxs * 2)
+        )
+        let contourSide = min(
+            compositionSide * PPHomeCategoryPlateMetrics.contourScale,
+            availablePlateSide
+        )
+        let plateSide = min(
+            compositionSide * 0.98,
+            contourSide * PPHomeCategoryPlateMetrics.plateScale
+        )
+        let artworkSide = plateSide * 0.68
+        let terminalHeight = max(
+            PPSpace.xl,
+            contourSide * PPHomeCategoryPlateMetrics.terminalHeightRatio
+        )
+        let terminalCoreWidth: CGFloat =
+            contrast == .increased
+                ? 4
+                : max(3, min(4, contourSide * 0.026))
+        let terminalHaloWidth = terminalCoreWidth +
+            (contrast == .increased ? 0 : 6)
         let ribbonShape = PPHomeCategoryRibbonShape(
             usesWideHeaderPath: dynamicTypeSize.isAccessibilitySize
         )
         let ribbonLineWidth: CGFloat =
-            contrast == .increased ? 2.25 : 1.5
+            contrast == .increased ? 2.5 : 2
 
         let identityComposition = ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.homeRaisedSurface,
+                            reduceTransparency
+                                ? Color.homeRaisedSurface
+                                : accent.opacity(
+                                    colorScheme == .dark ? 0.18 : 0.065
+                                ),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: plateSide, height: plateSide)
+                .overlay {
+                    Circle().strokeBorder(
+                        contrast == .increased
+                            ? Color.ppTextPrimary.opacity(0.62)
+                            : accent.opacity(
+                                colorScheme == .dark ? 0.32 : 0.15
+                            ),
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
+                }
+                .shadow(
+                    color: accent.opacity(
+                        contrast == .increased
+                            ? 0
+                            : (colorScheme == .dark ? 0.14 : 0.09)
+                    ),
+                    radius: contrast == .increased ? 0 : 12,
+                    y: contrast == .increased ? 0 : 5
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
             ZStack {
                 if contrast != .increased {
                     ribbonShape
@@ -1374,6 +1443,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                                 lineJoin: .round
                             )
                         )
+                        .frame(width: contourSide, height: contourSide)
                 }
 
                 ribbonShape
@@ -1390,15 +1460,96 @@ private struct PPHomeMarketplaceLivingLedger: View {
                             lineJoin: .round
                         )
                     )
+                    .frame(width: contourSide, height: contourSide)
+
+                ZStack {
+                    if contrast != .increased {
+                        Capsule()
+                            .fill(
+                                accent.opacity(
+                                    colorScheme == .dark ? 0.20 : 0.14
+                                )
+                            )
+                            .frame(
+                                width: terminalHaloWidth,
+                                height: terminalHeight + 12
+                            )
+                    }
+
+                    Capsule()
+                        .fill(
+                            accent.opacity(
+                                contrast == .increased
+                                    ? 0.92
+                                    : (colorScheme == .dark ? 0.82 : 0.74)
+                            )
+                        )
+                        .frame(
+                            width: terminalCoreWidth,
+                            height: terminalHeight
+                        )
+                }
+                .frame(
+                    width: terminalHaloWidth,
+                    height: terminalHeight + 12
+                )
+                .offset(
+                    x: contourSide *
+                        PPHomeCategoryPlateMetrics.leadingTerminalXRatio
+                )
+                .scaleEffect(
+                    y: max(categoryRibbonProgress, 0.08),
+                    anchor: .center
+                )
+
+                ZStack {
+                    if contrast != .increased {
+                        Capsule()
+                            .fill(
+                                accent.opacity(
+                                    colorScheme == .dark ? 0.20 : 0.14
+                                )
+                            )
+                            .frame(
+                                width: terminalHaloWidth,
+                                height: terminalHeight + 12
+                            )
+                    }
+
+                    Capsule()
+                        .fill(
+                            accent.opacity(
+                                contrast == .increased
+                                    ? 0.92
+                                    : (colorScheme == .dark ? 0.82 : 0.74)
+                            )
+                        )
+                        .frame(
+                            width: terminalCoreWidth,
+                            height: terminalHeight
+                        )
+                }
+                .frame(
+                    width: terminalHaloWidth,
+                    height: terminalHeight + 12
+                )
+                .offset(x: contourSide * 0.45)
+                .scaleEffect(
+                    x: ambientSeamHorizontalScale,
+                    y: (seamPresented ? 1 : 0.08) *
+                        ambientSeamVerticalScale,
+                    anchor: .center
+                )
+                .opacity(seamPresented ? 1 : 0.18)
             }
+                .frame(width: contourSide, height: contourSide)
                 .opacity(categoryRibbonOpacity)
                 .scaleEffect(x: isRightToLeft ? -1 : 1, y: 1)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
 
-            // The ribbon, fade, and category art now share one explicit frame
-            // and one center. Enlargement therefore changes real layout bounds
-            // instead of applying a post-layout scale or an offset guess.
+            // The artwork remains inside the plate's inner aperture so opaque
+            // category media never covers the reference contour or terminals.
             ZStack {
                 Ellipse()
                     .fill(
@@ -1429,7 +1580,30 @@ private struct PPHomeMarketplaceLivingLedger: View {
                         height: washHeight
                     )
 
-                identityArtwork(side: compositionSide)
+                Ellipse()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(
+                                    colorScheme == .dark ? 0.06 : 0.04
+                                ),
+                                accent.opacity(0),
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: max(washWidth, washHeight) * 0.54
+                        )
+                    )
+                    .frame(width: washWidth, height: washHeight)
+                    .opacity(ambientWashHighlightOpacity)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+
+                identityArtwork(side: artworkSide)
+                    .scaleEffect(ambientArtworkScale)
+                    .offset(y: ambientArtworkVerticalOffset)
+                    .frame(width: artworkSide, height: artworkSide)
+                    .clipShape(Circle())
             }
             .frame(
                 width: max(compositionSide, washWidth),
@@ -1437,19 +1611,6 @@ private struct PPHomeMarketplaceLivingLedger: View {
             )
         }
         .frame(width: width, height: height, alignment: .center)
-        .overlay(alignment: .trailing) {
-            Capsule()
-                .fill(accent.opacity(contrast == .increased ? 0.92 : 0.68))
-                .frame(
-                    width: contrast == .increased ? 3 : 2,
-                    height: max(PPSpace.xl, height * 0.34)
-                )
-                .scaleEffect(
-                    y: seamPresented ? 1 : 0.08,
-                    anchor: .center
-                )
-                .opacity(seamPresented ? 1 : 0.18)
-        }
 
         return identityComposition
             .opacity(identityPresented ? 1 : 0.58)
@@ -1468,10 +1629,46 @@ private struct PPHomeMarketplaceLivingLedger: View {
         return colorScheme == .dark ? 0.20 : 0.10
     }
 
-    /// The existing category-identity task remains the only animation owner.
-    /// Its identity phase draws the portrait wrap; its seam phase completes the
-    /// short ledger-facing terminal. Suppressed or inactive environments receive
-    /// the same complete contour immediately, with no second timer or loop.
+    private var ambientWashHighlightOpacity: Double {
+        switch ambientPresentationPhase {
+        case .identity: return 1
+        case .seam: return 0.34
+        case .rest, .ledger: return 0
+        }
+    }
+
+    private var ambientArtworkScale: CGFloat {
+        guard signals.categoryID != nil else { return 1 }
+
+        switch ambientPresentationPhase {
+        case .identity: return 1.016
+        case .seam: return 1.004
+        case .rest, .ledger: return 1
+        }
+    }
+
+    private var ambientArtworkVerticalOffset: CGFloat {
+        guard signals.categoryID != nil else { return 0 }
+
+        switch ambientPresentationPhase {
+        case .identity: return -1.25
+        case .seam: return -0.35
+        case .rest, .ledger: return 0
+        }
+    }
+
+    private var ambientSeamHorizontalScale: CGFloat {
+        ambientPresentationPhase == .seam ? 1.15 : 1
+    }
+
+    private var ambientSeamVerticalScale: CGFloat {
+        ambientPresentationPhase == .seam ? 1.04 : 1
+    }
+
+    /// One view-owned task drives both presentation state machines: the entrance
+    /// draws the category-to-ledger contour once, then the ambient relay reuses
+    /// that identity and seam. It never owns data, navigation, or interaction.
+    /// Suppressed and inactive environments receive the complete static contour.
     private var categoryRibbonProgress: CGFloat {
         if frameMotionSuppressed { return 1 }
 
@@ -1493,7 +1690,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
     }
 
     private var frameMotionSuppressed: Bool {
-        motionSuppressed || scenePhase != .active
+        presentationMotionSuppressed
     }
 
     @ViewBuilder
@@ -1505,7 +1702,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
             HomeHeroLottieRepresentable(
                 animationName: "Shop2.json",
                 loadsFromFirebase: false,
-                playbackEnabled: !motionSuppressed,
+                playbackEnabled: !presentationMotionSuppressed,
                 tintColor: UIColor(accent)
             )
             .frame(width: side, height: side)
@@ -1557,29 +1754,37 @@ private struct PPHomeMarketplaceLivingLedger: View {
         page.accessibilityLabel ?? page.title
     }
 
-    // MARK: - Continuous availability ledger
+    // MARK: - Horizontal availability statistics
 
-    private func signalLedger(
-        height: CGFloat,
-        compactRows: Bool
-    ) -> some View {
+    private func signalLedger(height: CGFloat) -> some View {
         let shape = RoundedRectangle(
             cornerRadius: PPHomeLivingLedgerMetrics.ledgerCorner,
             style: .continuous
         )
 
-        return ZStack(alignment: .leading) {
-            shape.fill(Color.clear)
+        return ZStack {
+            shape
+                .fill(
+                    accent.opacity(
+                        colorScheme == .dark ? 0.14 : 0.075
+                    )
+                )
+                .opacity(ambientLedgerBackdropOpacity)
+                .scaleEffect(
+                    x: ambientLedgerBackdropScale,
+                    y: 1,
+                    anchor: UnitPoint(
+                        x: isRightToLeft ? 1 : 0,
+                        y: 0.5
+                    )
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
-            ledgerIndexLine(compactRows: compactRows)
-
-            VStack(spacing: 0) {
+            HStack(spacing: PPSpace.xs) {
                 ForEach(HomeMarketplaceSignalKind.allCases, id: \.self) { kind in
-                    signalRow(kind: kind, compactRows: compactRows)
-
-                    if kind != .advertisements {
-                        ledgerDivider(for: kind, compactRows: compactRows)
-                    }
+                    signalStat(kind: kind)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
@@ -1594,91 +1799,14 @@ private struct PPHomeMarketplaceLivingLedger: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func ledgerIndexLine(compactRows: Bool) -> some View {
-        Capsule()
-            .fill(
-                accent.opacity(
-                    contrast == .increased
-                        ? 0.82
-                        : (colorScheme == .dark ? 0.46 : 0.34)
-                )
-            )
-            .frame(width: PPHomeLivingLedgerMetrics.indexLineWidth)
-            .frame(maxHeight: .infinity)
-            .padding(.vertical, PPHomeLivingLedgerMetrics.nodeSide / 2)
-            .padding(
-                .leading,
-                rowHorizontalPadding(compactRows: compactRows)
-                    + (PPHomeLivingLedgerMetrics.nodeSide / 2)
-                    - (PPHomeLivingLedgerMetrics.indexLineWidth / 2)
-            )
-            .scaleEffect(
-                y: seamPresented ? 1 : 0.04,
-                anchor: .top
-            )
-            .opacity(seamPresented ? 1 : 0.16)
-            .accessibilityHidden(true)
-    }
-
-    /// Measures from the same localized copy and font as the visible title, so
-    /// every separator reads as that title's underline in Arabic and English.
-    private func ledgerDivider(
-        for kind: HomeMarketplaceSignalKind,
-        compactRows: Bool
-    ) -> some View {
-        let lineHeight = contrast == .increased ? 1.5 : 1
-        let usesCondensedLabel = compactRows ||
-            (!dynamicTypeSize.isAccessibilitySize &&
-                dynamicTypeSize >= .xLarge)
-
-        return HStack(spacing: 0) {
-            Text(
-                signalDisplayLabel(
-                    for: kind,
-                    usesCompactCopy: usesCondensedLabel
-                )
-            )
-            .font(HomeFont.caption2())
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: true)
-            .hidden()
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(
-                        contrast == .increased
-                            ? Color.ppTextPrimary.opacity(0.28)
-                            : Color.ppSurfaceBorder.opacity(
-                                colorScheme == .dark ? 0.56 : 0.74
-                            )
-                    )
-                    .frame(height: lineHeight)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .frame(height: lineHeight, alignment: .bottom)
-        .clipped()
-        .padding(
-            .leading,
-            rowHorizontalPadding(compactRows: compactRows)
-                + PPHomeLivingLedgerMetrics.nodeSide
-                + rowSpacing(compactRows: compactRows)
-        )
-        .accessibilityHidden(true)
-    }
-
     @ViewBuilder
-    private func signalRow(
-        kind: HomeMarketplaceSignalKind,
-        compactRows: Bool
-    ) -> some View {
+    private func signalStat(kind: HomeMarketplaceSignalKind) -> some View {
         let tone = routeTone(for: kind)
 
         if signals.categoryID == nil {
-            signalRowContent(
+            signalStatContent(
                 kind: kind,
-                tone: tone,
-                compactRows: compactRows
+                tone: tone
             )
             .opacity(signalRowPresented(kind) ? 1 : 0.26)
             .offset(
@@ -1695,14 +1823,15 @@ private struct PPHomeMarketplaceLivingLedger: View {
             Button {
                 onSelectSignal(kind)
             } label: {
-                signalRowContent(
+                signalStatContent(
                     kind: kind,
-                    tone: tone,
-                    compactRows: compactRows
+                    tone: tone
                 )
             }
             .buttonStyle(
-                PPHomeSurfacePressStyle(reduceMotion: motionSuppressed)
+                PPHomeSurfacePressStyle(
+                    reduceMotion: presentationMotionSuppressed
+                )
             )
             .opacity(signalRowPresented(kind) ? 1 : 0.26)
             .offset(
@@ -1718,71 +1847,48 @@ private struct PPHomeMarketplaceLivingLedger: View {
         }
     }
 
-    private func signalRowContent(
+    private func signalStatContent(
         kind: HomeMarketplaceSignalKind,
-        tone: Color,
-        compactRows: Bool
+        tone: Color
     ) -> some View {
-        let verticalInset = compactRows ? PPSpace.xxs : PPSpace.xs
-        let usesCondensedLabel = compactRows ||
-            (!dynamicTypeSize.isAccessibilitySize &&
-                dynamicTypeSize >= .xLarge)
-
-        return HStack(spacing: rowSpacing(compactRows: compactRows)) {
+        VStack(spacing: PPSpace.xxs) {
             signalNode(for: kind, tone: tone)
 
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                signalValue(for: kind, tone: tone)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .id(signalValueIdentity(for: kind))
-                    .transition(.opacity)
-                    .animation(
-                        motionSuppressed
-                            ? nil
-                            : .easeOut(duration: 0.18),
-                        value: signalValueIdentity(for: kind)
-                    )
-
-                Text(
-                    signalDisplayLabel(
-                        for: kind,
-                        usesCompactCopy: usesCondensedLabel
-                    )
+            signalValue(for: kind, tone: tone)
+                .frame(maxWidth: .infinity)
+                .id(signalValueIdentity(for: kind))
+                .transition(.opacity)
+                .animation(
+                    presentationMotionSuppressed
+                        ? nil
+                        : .easeOut(duration: 0.18),
+                    value: signalValueIdentity(for: kind)
                 )
-                    .font(HomeFont.caption2())
-                    .foregroundStyle(Color.homeTextSecondary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(
-                        dynamicTypeSize.isAccessibilitySize || compactRows
-                            ? 2
-                            : 1
-                    )
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(
+                signalDisplayLabel(
+                    for: kind,
+                    usesCompactCopy: true
+                )
+            )
+                .font(HomeFont.caption2())
+                .foregroundStyle(Color.homeTextSecondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.64)
+                .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, rowHorizontalPadding(compactRows: compactRows))
-        .padding(.vertical, verticalInset)
         .frame(
             maxWidth: .infinity,
             minHeight: PPHomeZoneMetrics.minimumTarget,
             maxHeight: .infinity,
-            alignment: .leading
+            alignment: .center
         )
         .contentShape(Rectangle())
         .background {
             Rectangle()
                 .fill(Color.clear)
         }
-    }
-
-    private func rowHorizontalPadding(compactRows: Bool) -> CGFloat {
-        PPHomeLivingLedgerMetrics.rowHorizontalPadding
-    }
-
-    private func rowSpacing(compactRows: Bool) -> CGFloat {
-        compactRows ? PPSpace.xs : PPSpace.sm
     }
 
     private func signalNode(
@@ -1815,6 +1921,14 @@ private struct PPHomeMarketplaceLivingLedger: View {
             height: PPHomeLivingLedgerMetrics.nodeSide
         )
         .accessibilityHidden(true)
+    }
+
+    private var ambientLedgerBackdropOpacity: Double {
+        ambientPresentationPhase == .ledger ? 1 : 0
+    }
+
+    private var ambientLedgerBackdropScale: CGFloat {
+        ambientPresentationPhase == .ledger ? 1 : 0.94
     }
 
     private func rowTintOpacity(
@@ -2051,20 +2165,89 @@ private struct PPHomeMarketplaceLivingLedger: View {
         }
     }
 
-    // MARK: - Required finite causal motion
+    // MARK: - Finite entrance and lifecycle-bound ambient relay
 
     private struct MotionKey: Equatable {
         let identity: String
         let suppressed: Bool
         let sceneIsActive: Bool
+        let viewportVisible: Bool
     }
 
     private var motionKey: MotionKey {
         MotionKey(
             identity: artworkIdentity,
-            suppressed: motionSuppressed,
-            sceneIsActive: scenePhase == .active
+            suppressed: presentationMotionSuppressed,
+            sceneIsActive: scenePhase == .active,
+            viewportVisible: isInViewport
         )
+    }
+
+    @MainActor
+    private func updateViewportVisibility(frame: CGRect) {
+        let visible = isMeaningfullyVisible(frame: frame)
+        guard visible != isInViewport else { return }
+
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            isInViewport = visible
+            if !visible {
+                phase = .settled
+                ambientPhase = .rest
+                lastPresentedIdentity = artworkIdentity
+            }
+        }
+    }
+
+    @MainActor
+    private func isMeaningfullyVisible(frame: CGRect) -> Bool {
+        guard !frame.isNull,
+              !frame.isInfinite,
+              frame.width > 0,
+              frame.height > 0,
+              let viewport = activeWindowBounds
+        else { return false }
+
+        let intersection = frame.intersection(viewport)
+        guard !intersection.isNull else { return false }
+
+        let minimumVisibleHeight = min(
+            frame.height,
+            max(PPHomeZoneMetrics.minimumTarget, frame.height * 0.20)
+        )
+        let minimumVisibleWidth = min(
+            frame.width,
+            PPHomeZoneMetrics.minimumTarget
+        )
+
+        return intersection.height >= minimumVisibleHeight &&
+            intersection.width >= minimumVisibleWidth
+    }
+
+    @MainActor
+    private var activeWindowBounds: CGRect? {
+        for case let windowScene as UIWindowScene in
+            UIApplication.shared.connectedScenes
+        where windowScene.activationState == .foregroundActive {
+            if let window = windowScene.windows.first(where: { $0.isKeyWindow })
+                ?? windowScene.windows.first(where: { !$0.isHidden }) {
+                return window.bounds
+            }
+        }
+        return nil
+    }
+
+    /// One task owns the complete presentation story for the current category:
+    /// the finite entrance first, followed by the selected-scope heartbeat.
+    @MainActor
+    private func runPresentationMotion() async {
+        await runEntrance()
+        guard !Task.isCancelled, ambientMotionEnabled else {
+            settleAmbientWithoutAnimation()
+            return
+        }
+        await runAmbientMotion()
     }
 
     /// Installs final geometry immediately, then reveals the category scope,
@@ -2073,9 +2256,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
     /// retargets the sequence without owning data or navigation state.
     @MainActor
     private func runEntrance() async {
-        guard !reduceMotion,
-              !motionSuppressed,
-              scenePhase == .active,
+        guard !presentationMotionSuppressed,
               lastPresentedIdentity != artworkIdentity
         else {
             settleWithoutAnimation()
@@ -2112,6 +2293,52 @@ private struct PPHomeMarketplaceLivingLedger: View {
         lastPresentedIdentity = artworkIdentity
     }
 
+    /// A long-rest heartbeat keeps a selected category perceptually alive
+    /// without presenting snapshot counts as polling, refresh, or auto-retry.
+    /// Fixed-paint decorative layers move only through opacity and transform.
+    @MainActor
+    private func runAmbientMotion() async {
+        settleAmbientWithoutAnimation()
+        guard ambientMotionEnabled else { return }
+
+        defer { settleAmbientWithoutAnimation() }
+
+        while !Task.isCancelled {
+            guard await pauseForNextPhase(2_600_000_000),
+                  ambientMotionEnabled
+            else { break }
+
+            presentAmbient(.identity)
+            guard await pauseForNextPhase(400_000_000),
+                  ambientMotionEnabled
+            else { break }
+
+            presentAmbient(.seam)
+            guard await pauseForNextPhase(360_000_000),
+                  ambientMotionEnabled
+            else { break }
+
+            presentAmbient(.ledger)
+            guard await pauseForNextPhase(440_000_000),
+                  ambientMotionEnabled
+            else { break }
+
+            presentAmbient(.rest)
+        }
+    }
+
+    @MainActor
+    private func presentAmbient(_ nextPhase: AmbientPhase) {
+        guard ambientMotionEnabled else {
+            settleAmbientWithoutAnimation()
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.20)) {
+            ambientPhase = nextPhase
+        }
+    }
+
     private func pauseForNextPhase(_ nanoseconds: UInt64) async -> Bool {
         do {
             try await Task<Never, Never>.sleep(nanoseconds: nanoseconds)
@@ -2126,6 +2353,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
         transaction.animation = nil
         withTransaction(transaction) {
             phase = .staged
+            ambientPhase = .rest
         }
     }
 
@@ -2134,12 +2362,43 @@ private struct PPHomeMarketplaceLivingLedger: View {
         transaction.animation = nil
         withTransaction(transaction) {
             phase = .settled
+            ambientPhase = .rest
             lastPresentedIdentity = artworkIdentity
         }
     }
 
+    private func settleAmbientWithoutAnimation() {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            ambientPhase = .rest
+        }
+    }
+
     private var presentationPhase: Phase {
-        motionSuppressed ? .settled : phase
+        presentationMotionSuppressed ? .settled : phase
+    }
+
+    private var ambientPresentationPhase: AmbientPhase {
+        presentationMotionSuppressed || signals.categoryID == nil
+            ? .rest
+            : ambientPhase
+    }
+
+    private var ambientMotionEnabled: Bool {
+        signals.categoryID != nil &&
+            !presentationMotionSuppressed &&
+            lastPresentedIdentity == artworkIdentity &&
+            presentationPhase == .settled
+    }
+
+    private var presentationMotionSuppressed: Bool {
+        motionSuppressed ||
+            reduceTransparency ||
+            contrast == .increased ||
+            dynamicTypeSize.isAccessibilitySize ||
+            !isInViewport ||
+            scenePhase != .active
     }
 
     private var identityPresented: Bool {
@@ -2196,6 +2455,13 @@ private struct PPHomeMarketplaceLivingLedger: View {
         case settled
     }
 
+    private enum AmbientPhase: Equatable {
+        case rest
+        case identity
+        case seam
+        case ledger
+    }
+
     private struct StandardGeometry {
         let size: CGSize
 
@@ -2241,7 +2507,9 @@ private struct PPHomeMarketplaceLivingLedger: View {
         }
 
         private var preferredLedgerWidth: CGFloat {
-            PPHomeLivingLedgerMetrics.standardLedgerWidth
+            usesCompactRows
+                ? PPHomeLivingLedgerMetrics.compactLedgerWidth
+                : PPHomeLivingLedgerMetrics.standardLedgerWidth
         }
 
         var ledgerWidth: CGFloat {
@@ -2263,6 +2531,21 @@ private struct PPHomeMarketplaceLivingLedger: View {
 
         var clusterWidth: CGFloat {
             identityWidth + horizontalGap + ledgerWidth
+        }
+
+        /// Keeps the optical correction inside the clipped media band while
+        /// allowing the category identity to breathe at its outer edge.
+        var trailingFocusShift: CGFloat {
+            let availableShift = max(
+                0,
+                ((size.width - clusterWidth) / 2) -
+                    PPHomeLivingLedgerMetrics.minimumClippedEdgeInset
+            )
+
+            return min(
+                PPHomeLivingLedgerMetrics.standardTrailingFocusShift,
+                availableShift
+            )
         }
 
         var usesCompactRows: Bool {
