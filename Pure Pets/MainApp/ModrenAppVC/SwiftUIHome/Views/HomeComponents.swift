@@ -4372,6 +4372,21 @@ private enum HomePureLensMetrics {
     static let maximumCardWidth: CGFloat = 820
     static let readinessDuration: Double = 0.18
     static let readinessDurationNanoseconds: UInt64 = 180_000_000
+
+    // MARK: Autofocus cycle
+
+    /// A single autofocus pass begins soon after the card is genuinely
+    /// visible. It communicates the Pure Lens capability without becoming a
+    /// spinner, a progress indicator, or a permanent decorative loop.
+    static let focusRestHold: UInt64 = 340_000_000
+    static let focusHuntHold: UInt64 = 240_000_000
+    static let focusConvergeHold: UInt64 = 200_000_000
+    static let focusLockHold: UInt64 = 450_000_000
+    static let focusReleaseHold: UInt64 = 240_000_000
+    static let focusHuntDuration: Double = 0.24
+    static let focusConvergeDuration: Double = 0.24
+    static let focusLockDuration: Double = 0.22
+    static let focusReleaseDuration: Double = 0.24
 }
 
 private struct HomePureLensPalette {
@@ -4571,18 +4586,54 @@ private struct HomePureLensActionRail: View {
     }
 }
 
+/// The chamber dramatizes one autofocus cycle so the entry point reads as a
+/// live instrument instead of a static illustration. No camera session is
+/// started here: every layer is fixed paint moved only through opacity and
+/// transform, and the cycle resolves fully to rest whenever motion is
+/// suppressed, the scene leaves the foreground, or the card scrolls away.
 private struct HomePureLensOpticalChamber: View {
     let readinessResolved: Bool
     let minimumHeight: CGFloat
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var focusPhase: HomePureLensFocusPhase = .rest
+    @State private var isInViewport = false
+    @State private var viewportResolved = false
+    @State private var latestViewportFrame: CGRect = .null
+    @State private var focusCycleCompleted = false
 
     var body: some View {
         ZStack {
             Rectangle()
                 .fill(palette.chamberBackground)
+
+            // Depth-of-field bloom. It blooms only as focus resolves, so the
+            // lock beat reads as light gathering rather than a colour wash.
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            palette.signal.opacity(
+                                reduceTransparency ? 0.34 : 0.24
+                            ),
+                            palette.signal.opacity(0),
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 64
+                    )
+                )
+                .frame(width: 128, height: 128)
+                .scaleEffect(focusWashScale)
+                .opacity(focusWashOpacity)
+                .allowsHitTesting(false)
 
             Circle()
                 .strokeBorder(
@@ -4592,25 +4643,52 @@ private struct HomePureLensOpticalChamber: View {
                     lineWidth: 1
                 )
                 .frame(width: 120, height: 120)
+                .scaleEffect(focusFieldScale)
 
             Circle()
                 .strokeBorder(
-                    palette.signal.opacity(
-                        reduceTransparency ? 0.72 : 0.48
-                    ),
-                    lineWidth: contrast == .increased ? 3 : 2
+                    palette.signal.opacity(apertureRingOpacity),
+                    lineWidth: apertureLineWidth
                 )
                 .frame(width: 78, height: 78)
+                .scaleEffect(apertureScale)
 
             Circle()
                 .fill(palette.chamberContent.opacity(
                     reduceTransparency ? 0.14 : 0.09
                 ))
                 .frame(width: 58, height: 58)
+                .scaleEffect(apertureScale)
 
+            // The subject resolves from soft to sharp: the one cue that reads
+            // unmistakably as focusing rather than generic pulsing.
             Image(systemName: "pawprint.fill")
                 .font(.system(size: 27, weight: .bold))
                 .foregroundStyle(palette.chamberContent)
+                .blur(radius: subjectBlurRadius)
+                .scaleEffect(subjectScale)
+
+            // A single scan pass travels the focus box while the lens hunts,
+            // then fades out at lock. It never loops on its own.
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            palette.signal.opacity(0),
+                            palette.signal.opacity(
+                                reduceTransparency ? 0.85 : 0.65
+                            ),
+                            palette.signal.opacity(0),
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 2)
+                .padding(.horizontal, PPSpace.lg)
+                .offset(y: scanSweepOffset)
+                .opacity(scanSweepOpacity)
+                .allowsHitTesting(false)
 
             HomePureLensFocusCorners()
                 .stroke(
@@ -4622,9 +4700,15 @@ private struct HomePureLensOpticalChamber: View {
                     )
                 )
                 .padding(PPSpace.lg)
-                .opacity(readinessResolved ? 1 : 0.58)
-                .scaleEffect(readinessResolved ? 1 : 1.015)
+                .opacity(
+                    readinessResolved ? focusCornerOpacity : 0.58
+                )
+                .scaleEffect(
+                    readinessResolved ? focusCornerScale : 1.015
+                )
 
+            // Autofocus confirmation. The indicator dims while the lens hunts
+            // and swells once, briefly, on lock.
             Circle()
                 .fill(palette.signal)
                 .frame(width: contrast == .increased ? 10 : 8)
@@ -4635,6 +4719,8 @@ private struct HomePureLensOpticalChamber: View {
                             lineWidth: contrast == .increased ? 2 : 1
                         )
                 }
+                .scaleEffect(indicatorScale)
+                .opacity(indicatorOpacity)
                 .offset(y: -48)
         }
         .frame(
@@ -4643,7 +4729,309 @@ private struct HomePureLensOpticalChamber: View {
             maxHeight: .infinity
         )
         .clipped()
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: HomePureLensChamberFrameKey.self,
+                    value: proxy.frame(in: .global)
+                )
+            }
+        }
+        .onPreferenceChange(HomePureLensChamberFrameKey.self) {
+            updateViewportVisibility(frame: $0)
+        }
+        .task(id: focusMotionTaskID) { await runFocusCycle() }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                updateViewportVisibility(frame: latestViewportFrame)
+            } else {
+                settleFocusWithoutAnimation()
+            }
+        }
+        .onDisappear(perform: settleFocusWithoutAnimation)
         .accessibilityHidden(true)
+    }
+
+    // MARK: - Autofocus cycle
+
+    /// One finite autofocus pass gives the card a clear camera-specific cue.
+    /// It is cancellable, runs only while meaningfully visible, and lands on
+    /// rest rather than restarting as a decorative loop.
+    @MainActor
+    private func runFocusCycle() async {
+        settleFocusWithoutAnimation()
+        guard !focusCycleCompleted, focusMotionEnabled else { return }
+
+        defer { settleFocusWithoutAnimation() }
+
+        guard await holdFocusBeat(HomePureLensMetrics.focusRestHold) else {
+            return
+        }
+
+        guard presentFocus(
+            .hunting,
+            duration: HomePureLensMetrics.focusHuntDuration
+        ) else { return }
+        guard await holdFocusBeat(
+            HomePureLensMetrics.focusHuntHold
+        ) else { return }
+
+        guard presentFocus(
+            .converging,
+            duration: HomePureLensMetrics.focusConvergeDuration
+        ) else { return }
+        guard await holdFocusBeat(
+            HomePureLensMetrics.focusConvergeHold
+        ) else { return }
+
+        guard presentFocus(
+            .locked,
+            duration: HomePureLensMetrics.focusLockDuration
+        ) else { return }
+        guard await holdFocusBeat(
+            HomePureLensMetrics.focusLockHold
+        ) else { return }
+
+        guard presentFocus(
+            .rest,
+            duration: HomePureLensMetrics.focusReleaseDuration
+        ) else { return }
+        guard await holdFocusBeat(
+            HomePureLensMetrics.focusReleaseHold
+        ) else { return }
+
+        guard !Task.isCancelled, focusMotionEnabled else { return }
+        focusCycleCompleted = true
+    }
+
+    @MainActor
+    @discardableResult
+    private func presentFocus(
+        _ nextPhase: HomePureLensFocusPhase,
+        duration: Double
+    ) -> Bool {
+        guard focusMotionEnabled else {
+            settleFocusWithoutAnimation()
+            return false
+        }
+
+        withAnimation(.easeInOut(duration: duration)) {
+            focusPhase = nextPhase
+        }
+        return true
+    }
+
+    private func holdFocusBeat(_ nanoseconds: UInt64) async -> Bool {
+        do {
+            try await Task<Never, Never>.sleep(nanoseconds: nanoseconds)
+        } catch {
+            return false
+        }
+        return !Task.isCancelled && focusMotionEnabled
+    }
+
+    @MainActor
+    private func settleFocusWithoutAnimation() {
+        guard focusPhase != .rest else { return }
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            focusPhase = .rest
+        }
+    }
+
+    /// Thermal and power state are read per beat instead of observed, so the
+    /// cycle yields to a constrained device without adding a subscription.
+    private var focusMotionEnabled: Bool {
+        readinessResolved &&
+            viewportResolved &&
+            isInViewport &&
+            scenePhase == .active &&
+            !reduceMotion &&
+            !voiceOverEnabled &&
+            !switchControlEnabled &&
+            !ProcessInfo.processInfo.isLowPowerModeEnabled &&
+            ProcessInfo.processInfo.thermalState != .serious &&
+            ProcessInfo.processInfo.thermalState != .critical
+    }
+
+    private var focusMotionTaskID: HomePureLensFocusTaskID {
+        HomePureLensFocusTaskID(
+            readinessResolved: readinessResolved,
+            isInViewport: viewportResolved && isInViewport,
+            sceneIsActive: scenePhase == .active,
+            reduceMotion: reduceMotion,
+            voiceOverEnabled: voiceOverEnabled,
+            switchControlEnabled: switchControlEnabled,
+            cycleCompleted: focusCycleCompleted
+        )
+    }
+
+    // MARK: - Viewport gating
+
+    private func updateViewportVisibility(frame: CGRect) {
+        latestViewportFrame = frame
+        guard let visible = isMeaningfullyVisible(frame: frame) else { return }
+        guard !viewportResolved || visible != isInViewport else { return }
+
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            viewportResolved = true
+            isInViewport = visible
+        }
+    }
+
+    private func isMeaningfullyVisible(frame: CGRect) -> Bool? {
+        guard !frame.isNull,
+              !frame.isInfinite,
+              frame.width > 0,
+              frame.height > 0,
+              let viewport = activeWindowBounds
+        else { return nil }
+
+        let intersection = frame.intersection(viewport)
+        guard !intersection.isNull else { return false }
+
+        return intersection.height >= min(frame.height, frame.height * 0.5) &&
+            intersection.width >= min(frame.width, frame.width * 0.5)
+    }
+
+    private var activeWindowBounds: CGRect? {
+        for case let windowScene as UIWindowScene in
+        UIApplication.shared.connectedScenes
+        where windowScene.activationState == .foregroundActive {
+            if let window = windowScene.windows.first(where: { $0.isKeyWindow })
+                ?? windowScene.windows.first(where: { !$0.isHidden }) {
+                return window.convert(window.bounds, to: nil)
+            }
+            return windowScene.screen.bounds
+        }
+        return nil
+    }
+
+    // MARK: - Phase-derived motion values
+
+    private var focusCornerScale: CGFloat {
+        switch focusPhase {
+        case .rest: return 1
+        case .hunting: return 1.055
+        case .converging: return 0.972
+        case .locked: return 0.992
+        }
+    }
+
+    private var focusCornerOpacity: Double {
+        switch focusPhase {
+        case .rest: return 1
+        case .hunting: return 0.62
+        case .converging: return 0.9
+        case .locked: return 1
+        }
+    }
+
+    private var apertureScale: CGFloat {
+        switch focusPhase {
+        case .rest: return 1
+        case .hunting: return 1.045
+        case .converging: return 0.958
+        case .locked: return 1
+        }
+    }
+
+    private var apertureRingOpacity: Double {
+        let base = reduceTransparency ? 0.72 : 0.48
+        switch focusPhase {
+        case .rest: return base
+        case .hunting: return base * 0.72
+        case .converging: return min(1, base * 1.14)
+        case .locked: return min(1, base * 1.34)
+        }
+    }
+
+    private var apertureLineWidth: CGFloat {
+        let base: CGFloat = contrast == .increased ? 3 : 2
+        return focusPhase == .locked ? base + 0.6 : base
+    }
+
+    private var subjectBlurRadius: CGFloat {
+        switch focusPhase {
+        case .rest: return 0
+        case .hunting: return 1.9
+        case .converging: return 0.7
+        case .locked: return 0
+        }
+    }
+
+    private var subjectScale: CGFloat {
+        switch focusPhase {
+        case .rest: return 1
+        case .hunting: return 0.968
+        case .converging: return 1.022
+        case .locked: return 1
+        }
+    }
+
+    private var focusFieldScale: CGFloat {
+        switch focusPhase {
+        case .rest: return 1
+        case .hunting: return 1.018
+        case .converging: return 1.006
+        case .locked: return 1.012
+        }
+    }
+
+    private var focusWashOpacity: Double {
+        switch focusPhase {
+        case .rest: return 0
+        case .hunting: return 0.2
+        case .converging: return 0.46
+        case .locked: return 0.8
+        }
+    }
+
+    private var focusWashScale: CGFloat {
+        switch focusPhase {
+        case .rest: return 0.92
+        case .hunting: return 1.02
+        case .converging: return 0.96
+        case .locked: return 1.06
+        }
+    }
+
+    private var scanSweepOffset: CGFloat {
+        switch focusPhase {
+        case .rest: return -54
+        case .hunting: return -12
+        case .converging: return 32
+        case .locked: return 54
+        }
+    }
+
+    private var scanSweepOpacity: Double {
+        switch focusPhase {
+        case .rest, .locked: return 0
+        case .hunting: return 0.5
+        case .converging: return 0.28
+        }
+    }
+
+    private var indicatorScale: CGFloat {
+        switch focusPhase {
+        case .rest: return 1
+        case .hunting: return 0.92
+        case .converging: return 1
+        case .locked: return 1.22
+        }
+    }
+
+    private var indicatorOpacity: Double {
+        switch focusPhase {
+        case .rest: return 1
+        case .hunting: return 0.55
+        case .converging: return 0.8
+        case .locked: return 1
+        }
     }
 
     private var palette: HomePureLensPalette {
@@ -4651,6 +5039,33 @@ private struct HomePureLensOpticalChamber: View {
             colorScheme: colorScheme,
             reduceTransparency: reduceTransparency
         )
+    }
+}
+
+/// Discrete autofocus beats. Naming the beats keeps every layer's motion
+/// derived from one shared state instead of independent timers.
+private enum HomePureLensFocusPhase: Equatable {
+    case rest
+    case hunting
+    case converging
+    case locked
+}
+
+private struct HomePureLensFocusTaskID: Hashable {
+    let readinessResolved: Bool
+    let isInViewport: Bool
+    let sceneIsActive: Bool
+    let reduceMotion: Bool
+    let voiceOverEnabled: Bool
+    let switchControlEnabled: Bool
+    let cycleCompleted: Bool
+}
+
+private struct HomePureLensChamberFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .null
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
     }
 }
 

@@ -2,7 +2,7 @@
 //  PPWaveCardBG.swift
 //  Pure Pets
 //
-//  Reusable background-only living material shared by premium UIKit surfaces.
+//  Reusable background-only Care Bloom material shared by premium UIKit surfaces.
 //
 
 import SwiftUI
@@ -164,18 +164,17 @@ public struct PPWaveCardBG: View {
     @ViewBuilder
     private func renderedSurface<S: InsettableShape>(in cardShape: S) -> some View {
         ZStack {
-            cardShape.fill(baseMaterial)
+            cardShape.fill(surfaceFoundation)
 
-            cardShape.fill(
-                Color.ppSurfaceRaised.opacity(
-                    reduceTransparency
-                        ? 1.0
-                        : (colorScheme == .dark ? 0.72 : 0.58)
-                )
-            )
+            if !reduceTransparency {
+                cardShape.fill(.thinMaterial)
+            }
 
-            PPWaveCardLivingField(
+            cardShape.fill(surfaceLight)
+
+            PPWaveCardHabitatField(
                 accent: resolvedAccent,
+                shape: shape,
                 interaction: interaction,
                 allowsAmbientMotion: allowsAmbientMotion,
                 allowsInteractiveResponse: allowsInteractiveResponse,
@@ -197,11 +196,52 @@ public struct PPWaveCardBG: View {
         .accessibilityHidden(true)
     }
 
-    private var baseMaterial: AnyShapeStyle {
-        if reduceTransparency {
-            return AnyShapeStyle(Color.ppSurfaceRaised)
-        }
-        return AnyShapeStyle(.thinMaterial)
+    private var surfaceFoundation: LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    .ppSurface,
+                    .ppSurfaceRaised,
+                    .ppSecondarySurface,
+                ]
+                : [
+                    .ppElevatedSurface,
+                    .ppSurface,
+                    .ppWarmPorcelain,
+                ],
+            startPoint: layoutDirection == .rightToLeft
+                ? .topTrailing
+                : .topLeading,
+            endPoint: layoutDirection == .rightToLeft
+                ? .bottomLeading
+                : .bottomTrailing
+        )
+    }
+
+    private var surfaceLight: LinearGradient {
+        LinearGradient(
+            stops: [
+                .init(
+                    color: Color.white.opacity(
+                        reduceTransparency ? 0.0 : (colorScheme == .dark ? 0.025 : 0.24)
+                    ),
+                    location: 0.0
+                ),
+                .init(color: .clear, location: 0.44),
+                .init(
+                    color: resolvedAccent.opacity(
+                        colorScheme == .dark ? 0.020 : 0.012
+                    ),
+                    location: 1.0
+                ),
+            ],
+            startPoint: layoutDirection == .rightToLeft
+                ? .topTrailing
+                : .topLeading,
+            endPoint: layoutDirection == .rightToLeft
+                ? .bottomLeading
+                : .bottomTrailing
+        )
     }
 
     private var allowsAmbientMotion: Bool {
@@ -212,7 +252,10 @@ public struct PPWaveCardBG: View {
     }
 
     private var allowsInteractiveResponse: Bool {
-        animationEnabled && scenePhase == .active
+        animationEnabled
+            && !reduceMotion
+            && contrast != .increased
+            && scenePhase == .active
     }
 
     private var resolvedAccent: Color {
@@ -252,8 +295,9 @@ public struct PPWaveCardBG: View {
 }
 
 @available(iOS 15.0, *)
-private struct PPWaveCardLivingField: View {
+private struct PPWaveCardHabitatField: View {
     let accent: Color
+    let shape: PPWaveCardBGShape
     let interaction: PPWaveCardInteractionSnapshot
     let allowsAmbientMotion: Bool
     let allowsInteractiveResponse: Bool
@@ -264,38 +308,52 @@ private struct PPWaveCardLivingField: View {
     let reduceTransparency: Bool
 
     @State private var interactionStrength: CGFloat = 0.0
-    @State private var wakeAmount: CGFloat = 0.0
-
     var body: some View {
         GeometryReader { proxy in
-            Canvas(rendersAsynchronously: true) { context, size in
-                renderField(in: &context, size: size)
+            if reduceMotion || increasedContrast || !allowsAmbientMotion {
+                habitatCanvas(size: proxy.size, phase: 0.0)
+            } else {
+                TimelineView(
+                    AnimationTimelineSchedule(
+                        minimumInterval: 1.0 / 24.0,
+                        paused: !allowsAmbientMotion
+                    )
+                ) { timeline in
+                    habitatCanvas(
+                        size: proxy.size,
+                        phase: phase(for: timeline.date)
+                    )
+                }
             }
-            .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .opacity(increasedContrast ? 0.48 : 1.0)
-        .onAppear {
-            updateInteractionStrength(animated: false)
+        .opacity(increasedContrast ? 0.40 : 1.0)
+        .task(id: targetInteractionStrength) {
+            await updateInteractionStrength(animated: allowsInteractiveResponse)
         }
-        .onChange(of: interaction.isActive) { _ in
-            updateInteractionStrength(animated: true)
+    }
+
+    private var targetInteractionStrength: CGFloat {
+        allowsInteractiveResponse && interaction.isActive ? 1.0 : 0.0
+    }
+
+    private func habitatCanvas(size: CGSize, phase: CGFloat) -> some View {
+        Canvas(
+            opaque: false,
+            colorMode: .linear,
+            rendersAsynchronously: true
+        ) { context, canvasSize in
+            renderHabitat(
+                in: &context,
+                size: canvasSize,
+                phase: phase
+            )
         }
-        .onChange(of: allowsInteractiveResponse) { _ in
-            updateInteractionStrength(animated: false)
-        }
-        .onChange(of: reduceMotion) { _ in
-            updateInteractionStrength(animated: false)
-        }
-        .task(id: allowsAmbientMotion) {
-            await runBoundedWakeMotion()
-        }
+        .frame(width: size.width, height: size.height)
     }
 
     @MainActor
     private func updateInteractionStrength(animated: Bool) {
-        let target: CGFloat = allowsInteractiveResponse && interaction.isActive
-            ? (reduceMotion ? 0.46 : 1.0)
-            : 0.0
+        let target = targetInteractionStrength
 
         guard animated && !reduceMotion else {
             var transaction = Transaction()
@@ -311,308 +369,414 @@ private struct PPWaveCardLivingField: View {
                 interactionStrength = target
             }
         } else {
-            withAnimation(.interactiveSpring(response: 0.54, dampingFraction: 0.90)) {
+            withAnimation(.interactiveSpring(response: 0.48, dampingFraction: 0.92)) {
                 interactionStrength = target
             }
         }
     }
 
-    @MainActor
-    private func runBoundedWakeMotion() async {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            wakeAmount = 0.0
-        }
-
-        guard allowsAmbientMotion else { return }
-        guard await pause(seconds: 0.14) else { return }
-
-        withAnimation(.easeOut(duration: 0.72)) {
-            wakeAmount = 1.0
-        }
-        guard await pause(seconds: 0.72) else { return }
-
-        withAnimation(.easeInOut(duration: 1.30)) {
-            wakeAmount = 0.0
-        }
+    private func phase(for date: Date) -> CGFloat {
+        let cycle = date.timeIntervalSinceReferenceDate
+            .truncatingRemainder(dividingBy: 9.6)
+        return CGFloat(cycle / 9.6)
     }
 
-    private func pause(seconds: TimeInterval) async -> Bool {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + max(0.0, seconds)
-            ) {
-                continuation.resume()
-            }
-        }
-        return !Task.isCancelled
-    }
-
-    private func renderField(
+    private func renderHabitat(
         in context: inout GraphicsContext,
-        size: CGSize
+        size: CGSize,
+        phase: CGFloat
     ) {
         guard size.width > 1.0, size.height > 1.0 else { return }
 
-        let focus = CGPoint(
+        let touchPoint = CGPoint(
             x: interaction.point.x * size.width,
             y: interaction.point.y * size.height
         )
-        let fieldStrength = min(max(interactionStrength, 0.0), 1.0)
+        let response = min(max(interactionStrength, 0.0), 1.0)
+        let theta = phase * .pi * 2.0
+        let anchor = habitatAnchor(
+            size: size,
+            touchPoint: touchPoint,
+            response: response
+        )
 
-        drawSurfaceVeils(
+        drawHabitatAura(
             in: &context,
             size: size,
-            focus: focus,
-            strength: fieldStrength
+            anchor: anchor,
+            theta: theta,
+            response: response
         )
-        drawCompanionFilaments(
+        drawCareBloom(
             in: &context,
             size: size,
-            focus: focus,
-            strength: fieldStrength
+            anchor: anchor,
+            touchPoint: touchPoint,
+            theta: theta,
+            response: response
         )
-        drawCareLens(
+        drawCompanionSeeds(
             in: &context,
             size: size,
-            focus: focus,
-            strength: fieldStrength
+            anchor: anchor,
+            theta: theta,
+            response: response
         )
     }
 
-    private func drawSurfaceVeils(
-        in context: inout GraphicsContext,
+    private func habitatAnchor(
         size: CGSize,
-        focus: CGPoint,
-        strength: CGFloat
-    ) {
-        let direction: CGFloat = isRightToLeft ? -1.0 : 1.0
-        let transparencyScale = reduceTransparency ? 0.56 : 1.0
-        let horizontalResponse = (focus.x / size.width - 0.5) * 10.0 * strength
-        let verticalResponse = (focus.y / size.height - 0.5) * 6.0 * strength
-        let brightOriginX = isRightToLeft ? size.width * 0.68 : size.width * 0.32
-
-        var upperVeil = Path()
-        upperVeil.move(to: CGPoint(x: -size.width * 0.08, y: size.height * 0.04))
-        upperVeil.addCurve(
-            to: CGPoint(x: size.width * 1.08, y: size.height * 0.18),
-            control1: CGPoint(
-                x: brightOriginX + horizontalResponse,
-                y: size.height * (0.24 + (0.05 * wakeAmount)) + verticalResponse
-            ),
-            control2: CGPoint(
-                x: size.width * 0.70 + (direction * horizontalResponse),
-                y: -size.height * 0.04
-            )
+        touchPoint: CGPoint,
+        response: CGFloat
+    ) -> CGPoint {
+        let restingAnchor = CGPoint(
+            x: size.width * anchorFraction,
+            y: size.height * 0.50
         )
-        upperVeil.addLine(to: CGPoint(x: size.width * 1.08, y: -size.height * 0.10))
-        upperVeil.addLine(to: CGPoint(x: -size.width * 0.08, y: -size.height * 0.10))
-        upperVeil.closeSubpath()
-        context.fill(
-            upperVeil,
-            with: .color(
-                Color.white.opacity(
-                    (isDark ? 0.028 : 0.20 + (0.025 * Double(wakeAmount)))
-                        * Double(transparencyScale)
-                )
-            )
+        let delta = CGVector(
+            dx: touchPoint.x - restingAnchor.x,
+            dy: touchPoint.y - restingAnchor.y
         )
-
-        var lowerVeil = Path()
-        lowerVeil.move(to: CGPoint(x: -size.width * 0.08, y: size.height * 0.82))
-        lowerVeil.addCurve(
-            to: CGPoint(x: size.width * 1.08, y: size.height * 0.62),
-            control1: CGPoint(
-                x: size.width * 0.30 - (direction * horizontalResponse),
-                y: size.height * 0.98
-            ),
-            control2: CGPoint(
-                x: size.width * 0.72 + horizontalResponse,
-                y: size.height * (0.50 - (0.04 * wakeAmount))
-            )
-        )
-        lowerVeil.addLine(to: CGPoint(x: size.width * 1.08, y: size.height * 1.10))
-        lowerVeil.addLine(to: CGPoint(x: -size.width * 0.08, y: size.height * 1.10))
-        lowerVeil.closeSubpath()
-        context.fill(
-            lowerVeil,
-            with: .color(
-                accent.opacity(
-                    ((isDark ? 0.026 : 0.018) + (0.022 * Double(strength)))
-                        * Double(transparencyScale)
-                )
-            )
+        let distance = max(1.0, hypot(delta.dx, delta.dy))
+        let travel = min(
+            bloomBasis(in: size) * 0.18,
+            distance * 0.075
+        ) * response
+        return CGPoint(
+            x: restingAnchor.x + ((delta.dx / distance) * travel),
+            y: restingAnchor.y + ((delta.dy / distance) * travel)
         )
     }
 
-    private func drawCompanionFilaments(
+    private func drawHabitatAura(
         in context: inout GraphicsContext,
         size: CGSize,
-        focus: CGPoint,
-        strength: CGFloat
+        anchor: CGPoint,
+        theta: CGFloat,
+        response: CGFloat
     ) {
-        let columns = min(12, max(7, Int(size.width / 38.0)))
-        let rows = min(7, max(4, Int(size.height / 34.0)))
-        let cellWidth = size.width / CGFloat(columns)
-        let cellHeight = size.height / CGFloat(rows)
-        let influenceRadius = max(72.0, min(size.width, size.height) * 0.78)
-        let baseDirection: CGFloat = isRightToLeft ? .pi : 0.0
-
-        for index in 0..<(columns * rows) {
-            let column = index % columns
-            let row = index / columns
-            let jitterX = (noise(index, salt: 0.17) - 0.5) * cellWidth * 0.56
-            let jitterY = (noise(index, salt: 0.63) - 0.5) * cellHeight * 0.54
-            let origin = CGPoint(
-                x: (CGFloat(column) + 0.5) * cellWidth + jitterX,
-                y: (CGFloat(row) + 0.5) * cellHeight + jitterY
-            )
-            let delta = CGVector(dx: focus.x - origin.x, dy: focus.y - origin.y)
-            let distance = hypot(delta.dx, delta.dy)
-            let proximity = max(0.0, 1.0 - (distance / influenceRadius))
-            let localResponse = proximity * proximity * strength
-            let restingAngle = baseDirection
-                + ((noise(index, salt: 0.91) - 0.5) * 0.72)
-                + ((wakeAmount - 0.5) * 0.10)
-            let focusAngle = atan2(delta.dy, delta.dx)
-            let angle = interpolatedAngle(
-                from: restingAngle,
-                to: focusAngle,
-                amount: localResponse * 0.88
-            )
-            let baseLength = 8.0 + (noise(index, salt: 0.39) * 10.0)
-            let length = baseLength + (localResponse * 13.0) + (wakeAmount * 1.6)
-            let normal = CGVector(dx: -sin(angle), dy: cos(angle))
-            let end = CGPoint(
-                x: origin.x + (cos(angle) * length),
-                y: origin.y + (sin(angle) * length)
-            )
-            let control = CGPoint(
-                x: origin.x + (cos(angle) * length * 0.45) + (normal.dx * 2.2 * localResponse),
-                y: origin.y + (sin(angle) * length * 0.45) + (normal.dy * 2.2 * localResponse)
-            )
-
-            var filament = Path()
-            filament.move(to: origin)
-            filament.addQuadCurve(to: end, control: control)
-            let opacity = (isDark ? 0.040 : 0.028)
-                + (0.092 * Double(localResponse))
-                + (0.010 * Double(wakeAmount))
-            context.stroke(
-                filament,
-                with: .color(accent.opacity(opacity)),
-                style: StrokeStyle(
-                    lineWidth: 0.55 + (localResponse * 0.72),
-                    lineCap: .round
-                )
-            )
-        }
-    }
-
-    private func drawCareLens(
-        in context: inout GraphicsContext,
-        size: CGSize,
-        focus: CGPoint,
-        strength: CGFloat
-    ) {
-        guard strength > 0.001 else { return }
-
-        let pressure = max(0.62, interaction.pressure)
-        let transparencyScale = reduceTransparency ? 0.50 : 1.0
-        let baseRadius = min(92.0, max(54.0, min(size.width, size.height) * 0.48))
-        let radius = baseRadius * (0.90 + (pressure * 0.10))
-        let lensRect = CGRect(
-            x: focus.x - radius,
-            y: focus.y - radius,
-            width: radius * 2.0,
-            height: radius * 2.0
+        let breath = (sin(theta) + 1.0) * 0.5
+        let basis = bloomBasis(in: size)
+        let radii = auraRadii(in: size, basis: basis)
+        let radiusX = radii.width
+        let radiusY = radii.height
+        let scale = 1.0 + (0.035 * breath) + (0.05 * response)
+        let rect = CGRect(
+            x: anchor.x - (radiusX * scale),
+            y: anchor.y - (radiusY * scale),
+            width: radiusX * scale * 2.0,
+            height: radiusY * scale * 2.0
         )
-        var lens = Path()
-        lens.addEllipse(in: lensRect)
+        var aura = Path()
+        aura.addEllipse(in: rect)
+        let transparencyScale = reduceTransparency ? 0.42 : 1.0
         context.fill(
-            lens,
+            aura,
             with: .radialGradient(
                 Gradient(colors: [
-                    Color.white.opacity(
-                        (isDark ? 0.055 : 0.16)
-                            * Double(strength)
-                            * Double(transparencyScale)
-                    ),
                     accent.opacity(
-                        0.060 * Double(strength) * Double(transparencyScale)
+                        (isDark ? 0.090 : 0.055) * Double(transparencyScale)
+                    ),
+                    Color.ppSoftRose.opacity(
+                        (isDark ? 0.035 : 0.075) * Double(transparencyScale)
                     ),
                     .clear,
                 ]),
-                center: focus,
+                center: anchor,
                 startRadius: 0.0,
-                endRadius: radius
+                endRadius: max(radiusX, radiusY) * scale
             )
         )
+    }
 
-        let velocityMagnitude = hypot(interaction.velocity.dx, interaction.velocity.dy)
-        let velocityScale = min(1.0, velocityMagnitude / 3.2)
-        let direction: CGFloat = velocityMagnitude > 0.04
-            ? atan2(interaction.velocity.dy, interaction.velocity.dx)
-            : (isRightToLeft ? .pi : 0.0)
-        let trailLength = 15.0 + (velocityScale * 31.0)
+    private func drawCareBloom(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        anchor: CGPoint,
+        touchPoint: CGPoint,
+        theta: CGFloat,
+        response: CGFloat
+    ) {
+        let baseDirection: CGFloat = isRightToLeft ? 0.0 : .pi
+        let touchDirection = atan2(
+            touchPoint.y - anchor.y,
+            touchPoint.x - anchor.x
+        )
+        let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
+        let velocityLean = min(
+            0.12,
+            max(-0.12, interaction.velocity.dy * 0.018)
+        ) * response * directionSign
+        let basis = bloomBasis(in: size)
+        let spreads: [CGFloat] = [-0.92, -0.46, 0.0, 0.46, 0.92]
+        let lengths: [CGFloat] = [0.70, 0.88, 1.0, 0.88, 0.70]
 
-        for index in 0..<3 {
-            let spread = CGFloat(index - 1) * 8.0
-            let normal = CGVector(dx: -sin(direction), dy: cos(direction))
-            let start = CGPoint(
-                x: focus.x + (normal.dx * spread),
-                y: focus.y + (normal.dy * spread)
+        for index in spreads.indices {
+            let independentPhase = theta + (CGFloat(index) * 1.17)
+            let respiration = sin(independentPhase) * 0.025 * directionSign
+            let restingAngle = baseDirection
+                + (spreads[index] * directionSign)
+                + respiration
+            let angle = interpolatedAngle(
+                from: restingAngle,
+                to: touchDirection,
+                amount: response * (index == 2 ? 0.34 : 0.20)
+            ) + velocityLean
+            let pressure = max(0.35, interaction.pressure)
+            let length = basis * lengths[index]
+                * (1.0 + (sin(independentPhase + 0.44) * 0.035))
+                * (1.0 + (response * pressure * 0.08))
+            let width = length * (0.27 + (CGFloat(index % 2) * 0.025))
+            let rootOffset = CGFloat(index - 2) * basis * 0.016
+            let root = CGPoint(
+                x: anchor.x,
+                y: anchor.y - rootOffset
             )
-            let end = CGPoint(
-                x: start.x - (cos(direction) * (trailLength + CGFloat(index) * 4.0)),
-                y: start.y - (sin(direction) * (trailLength + CGFloat(index) * 4.0))
+            let petal = bloomPetalPath(
+                root: root,
+                angle: angle,
+                length: length,
+                width: width,
+                curl: sin(
+                    (theta * 2.0) + (CGFloat(index) * 1.17) + 0.20
+                ) * width * 0.10 * directionSign
             )
-            let control = CGPoint(
-                x: (start.x + end.x) * 0.5 + (normal.dx * spread * 0.25),
-                y: (start.y + end.y) * 0.5 + (normal.dy * spread * 0.25)
+            let tip = CGPoint(
+                x: root.x + (cos(angle) * length),
+                y: root.y + (sin(angle) * length)
             )
-            var trace = Path()
-            trace.move(to: start)
-            trace.addQuadCurve(to: end, control: control)
-            context.stroke(
-                trace,
-                with: .color(
-                    accent.opacity(
-                        (0.070 - (Double(index) * 0.014)) * Double(strength)
-                    )
-                ),
-                style: StrokeStyle(
-                    lineWidth: index == 1 ? 1.05 : 0.66,
-                    lineCap: .round
+            let opacityScale = reduceTransparency ? 0.54 : 1.0
+            context.fill(
+                petal,
+                with: .linearGradient(
+                    Gradient(colors: [
+                        accent.opacity(
+                            (isDark ? 0.135 : 0.095) * Double(opacityScale)
+                        ),
+                        Color.ppSoftRose.opacity(
+                            (isDark ? 0.055 : 0.16) * Double(opacityScale)
+                        ),
+                        Color.ppWarmPorcelain.opacity(
+                            (isDark ? 0.025 : 0.12) * Double(opacityScale)
+                        ),
+                    ]),
+                    startPoint: root,
+                    endPoint: tip
                 )
             )
         }
 
-        let coreRadius = 10.0 + (pressure * 4.0)
-        var core = Path()
-        core.addEllipse(
-            in: CGRect(
-                x: focus.x - coreRadius,
-                y: focus.y - coreRadius,
-                width: coreRadius * 2.0,
-                height: coreRadius * 2.0
-            )
-        )
-        context.stroke(
-            core,
-            with: .color(
-                Color.white.opacity(
-                    (isDark ? 0.10 : 0.30) * Double(strength)
-                )
-            ),
-            lineWidth: 0.72
+        drawBloomHeart(
+            in: &context,
+            anchor: anchor,
+            basis: basis,
+            theta: theta,
+            response: response
         )
     }
 
-    private func noise(_ index: Int, salt: CGFloat) -> CGFloat {
-        let raw = sin((Double(index) + Double(salt)) * 12.9898) * 43_758.5453
-        return CGFloat(raw - floor(raw))
+    private func drawBloomHeart(
+        in context: inout GraphicsContext,
+        anchor: CGPoint,
+        basis: CGFloat,
+        theta: CGFloat,
+        response: CGFloat
+    ) {
+        let breath = 1.0 + (sin(theta + 0.7) * 0.025) + (response * 0.055)
+        let width = basis * 0.42 * breath
+        let height = basis * 0.34 * breath
+        let rect = CGRect(
+            x: anchor.x - (width * 0.5),
+            y: anchor.y - (height * 0.5),
+            width: width,
+            height: height
+        )
+        var heart = Path()
+        heart.addEllipse(in: rect)
+        let opacityScale = reduceTransparency ? 0.58 : 1.0
+        context.fill(
+            heart,
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(
+                        (isDark ? 0.12 : 0.54) * Double(opacityScale)
+                    ),
+                    accent.opacity(
+                        (isDark ? 0.12 : 0.075) * Double(opacityScale)
+                    ),
+                    Color.ppSurfaceRaised.opacity(0.02),
+                ]),
+                center: CGPoint(
+                    x: rect.midX + (width * (isRightToLeft ? 0.16 : -0.16)),
+                    y: rect.midY - (height * 0.18)
+                ),
+                startRadius: 0.0,
+                endRadius: max(width, height) * 0.70
+            )
+        )
+    }
+
+    private func drawCompanionSeeds(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        anchor: CGPoint,
+        theta: CGFloat,
+        response: CGFloat
+    ) {
+        let basis = bloomBasis(in: size)
+        let orbitRadius = companionOrbitRadius(in: size, basis: basis)
+        let opacityScale = reduceTransparency ? 0.48 : 1.0
+
+        for index in 0..<3 {
+            let baseAngle = CGFloat(index) * (.pi * 0.72) - 0.74
+            let drift = sin(theta + CGFloat(index) * 1.43) * 0.10
+            let angle = isRightToLeft
+                ? .pi - baseAngle - drift
+                : baseAngle + drift
+            let radius = orbitRadius * (0.80 + (CGFloat(index) * 0.13))
+            let center = CGPoint(
+                x: anchor.x + (cos(angle) * radius),
+                y: anchor.y + (sin(angle) * radius * 0.72)
+            )
+            let baseSeedWidth = max(1.8, basis * 0.070)
+            let seedWidth = baseSeedWidth
+                * (1.0 + (CGFloat(index) * 0.18))
+                + (response * basis * 0.020)
+            let seedHeight = seedWidth * 0.62
+            var seed = Path()
+            seed.addEllipse(
+                in: CGRect(
+                    x: center.x - (seedWidth * 0.5),
+                    y: center.y - (seedHeight * 0.5),
+                    width: seedWidth,
+                    height: seedHeight
+                )
+            )
+            context.fill(
+                seed,
+                with: .color(
+                    accent.opacity(
+                        (isDark ? 0.15 : 0.10) * Double(opacityScale)
+                    )
+                )
+            )
+        }
+    }
+
+    private var anchorFraction: CGFloat {
+        let trailingFraction: CGFloat
+        switch shape {
+        case .rounded:
+            trailingFraction = 0.83
+        case .capsule:
+            trailingFraction = 0.73
+        case .circle:
+            trailingFraction = 0.62
+        }
+        return isRightToLeft ? 1.0 - trailingFraction : trailingFraction
+    }
+
+    private func bloomBasis(in size: CGSize) -> CGFloat {
+        let minimumDimension = min(size.width, size.height)
+        switch shape {
+        case .rounded:
+            return max(8.0, min(size.height * 0.42, size.width * 0.22))
+        case .capsule:
+            return max(7.0, minimumDimension * 0.34)
+        case .circle:
+            return max(7.0, minimumDimension * 0.25)
+        }
+    }
+
+    private func auraRadii(
+        in size: CGSize,
+        basis: CGFloat
+    ) -> CGSize {
+        switch shape {
+        case .rounded:
+            return CGSize(
+                width: min(size.width * 0.46, basis * 1.95),
+                height: min(size.height * 0.70, basis * 1.35)
+            )
+        case .capsule:
+            return CGSize(
+                width: min(size.width * 0.30, basis * 2.05),
+                height: min(size.height * 0.46, basis * 1.20)
+            )
+        case .circle:
+            let radius = min(min(size.width, size.height) * 0.42, basis * 1.62)
+            return CGSize(width: radius, height: radius)
+        }
+    }
+
+    private func companionOrbitRadius(
+        in size: CGSize,
+        basis: CGFloat
+    ) -> CGFloat {
+        switch shape {
+        case .rounded:
+            return min(size.height * 0.32, basis * 0.92)
+        case .capsule:
+            return min(size.height * 0.30, basis * 0.86)
+        case .circle:
+            return min(min(size.width, size.height) * 0.29, basis * 1.10)
+        }
+    }
+
+    private func bloomPetalPath(
+        root: CGPoint,
+        angle: CGFloat,
+        length: CGFloat,
+        width: CGFloat,
+        curl: CGFloat
+    ) -> Path {
+        let forward = CGVector(dx: cos(angle), dy: sin(angle))
+        let normal = CGVector(dx: -forward.dy, dy: forward.dx)
+        let leftShoulderProgress: CGFloat = isRightToLeft ? 0.36 : 0.38
+        let rightShoulderProgress: CGFloat = isRightToLeft ? 0.38 : 0.36
+        let tip = CGPoint(
+            x: root.x + (forward.dx * length) + (normal.dx * curl),
+            y: root.y + (forward.dy * length) + (normal.dy * curl)
+        )
+        let leftShoulder = CGPoint(
+            x: root.x
+                + (forward.dx * length * leftShoulderProgress)
+                + (normal.dx * width),
+            y: root.y
+                + (forward.dy * length * leftShoulderProgress)
+                + (normal.dy * width)
+        )
+        let rightShoulder = CGPoint(
+            x: root.x
+                + (forward.dx * length * rightShoulderProgress)
+                - (normal.dx * width),
+            y: root.y
+                + (forward.dy * length * rightShoulderProgress)
+                - (normal.dy * width)
+        )
+        let leftTipControl = CGPoint(
+            x: tip.x - (forward.dx * length * 0.18) + (normal.dx * width * 0.34),
+            y: tip.y - (forward.dy * length * 0.18) + (normal.dy * width * 0.34)
+        )
+        let rightTipControl = CGPoint(
+            x: tip.x - (forward.dx * length * 0.18) - (normal.dx * width * 0.34),
+            y: tip.y - (forward.dy * length * 0.18) - (normal.dy * width * 0.34)
+        )
+
+        var path = Path()
+        path.move(to: root)
+        path.addCurve(
+            to: tip,
+            control1: leftShoulder,
+            control2: leftTipControl
+        )
+        path.addCurve(
+            to: root,
+            control1: rightTipControl,
+            control2: rightShoulder
+        )
+        path.closeSubpath()
+        return path
     }
 
     private func interpolatedAngle(
@@ -834,6 +998,18 @@ public final class PPWaveCardBGHostingController: UIViewController,
             name: UIAccessibility.switchControlStatusDidChangeNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(accessibilityInteractionModeDidChange),
+            name: UIAccessibility.reduceMotionStatusDidChangeNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(accessibilityInteractionModeDidChange),
+            name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification,
+            object: nil
+        )
 
         addChild(hostingController)
         let hostedView = hostingController.view!
@@ -909,6 +1085,8 @@ public final class PPWaveCardBGHostingController: UIViewController,
     private func updatePassiveTracking() {
         guard animationEnabled,
               isVisible,
+              !UIAccessibility.isReduceMotionEnabled,
+              !UIAccessibility.isDarkerSystemColorsEnabled,
               !UIAccessibility.isVoiceOverRunning,
               !UIAccessibility.isSwitchControlRunning,
               let ownerView = viewIfLoaded?.superview
@@ -937,7 +1115,9 @@ public final class PPWaveCardBGHostingController: UIViewController,
                 active: active
             )
         }
-        guard !UIAccessibility.isVoiceOverRunning,
+        guard !UIAccessibility.isReduceMotionEnabled,
+              !UIAccessibility.isDarkerSystemColorsEnabled,
+              !UIAccessibility.isVoiceOverRunning,
               !UIAccessibility.isSwitchControlRunning
         else { return }
         ownerView.addGestureRecognizer(recognizer)

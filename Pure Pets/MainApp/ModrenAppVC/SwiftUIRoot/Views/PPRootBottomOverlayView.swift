@@ -156,6 +156,14 @@ private struct PPRootCommandDeck: View {
             // Create is intentionally an action, not a selected destination.
             store.selectTab(.create)
         }
+        // Language owns both reading direction and localized label geometry.
+        // Rebuild only the deck presentation so its selection namespace and
+        // measurements reset while the store keeps the active route intact.
+        .environment(
+            \.layoutDirection,
+            store.languageCode == "ar" ? .rightToLeft : .leftToRight
+        )
+        .id(store.languageCode)
     }
 
     private func localized(_ key: String) -> String {

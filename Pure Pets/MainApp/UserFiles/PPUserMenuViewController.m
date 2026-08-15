@@ -915,6 +915,13 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
     [self pp_stopHeroBackgroundMotion];
     [self pp_applyHeaderMaterialPalette];
     [self pp_startHeroBackgroundMotionIfNeeded];
+    if (previousTraitCollection &&
+        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        // Quick Access describes the next appearance action. Rebuild its
+        // model after UIKit resolves a Light/Dark/System trait transition so
+        // the title and icon match the effective appearance.
+        [self pp_rebuildSections];
+    }
     [self.tableView reloadData];
 }
 

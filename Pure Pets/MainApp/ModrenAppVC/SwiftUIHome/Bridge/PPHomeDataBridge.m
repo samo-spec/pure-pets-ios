@@ -101,10 +101,10 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
 
 - (void)setPlaybackEnabled:(BOOL)playbackEnabled
 {
-    if (_playbackEnabled == playbackEnabled) {
-        return;
-    }
     _playbackEnabled = playbackEnabled;
+    // SwiftUI can recreate or foreground the representable while this value
+    // remains YES. Always reconcile with UIKit's actual window/application
+    // state instead of treating an equal value as proof that playback is live.
     [self pp_updateMarketplacePlayback];
 }
 

@@ -16,56 +16,6 @@ enum PPProviderStorefrontL10n {
     }
 }
 
-struct PPProviderStorefrontRemoteImage: UIViewRepresentable {
-    let url: String
-    let placeholder: UIImage?
-    let contentMode: UIView.ContentMode
-
-    final class Coordinator {
-        var loadedURL = ""
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> UIImageView {
-        let imageView = UIImageView()
-        imageView.clipsToBounds = true
-        imageView.contentMode = contentMode
-        imageView.backgroundColor = .clear
-        update(imageView, coordinator: context.coordinator)
-        return imageView
-    }
-
-    func updateUIView(_ imageView: UIImageView, context: Context) {
-        imageView.contentMode = contentMode
-        update(imageView, coordinator: context.coordinator)
-    }
-
-    static func dismantleUIView(_ imageView: UIImageView, coordinator: Coordinator) {
-        PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
-    }
-
-    private func update(_ imageView: UIImageView, coordinator: Coordinator) {
-        let safeURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard coordinator.loadedURL != safeURL else { return }
-
-        coordinator.loadedURL = safeURL
-        PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
-        imageView.image = placeholder
-        guard !safeURL.isEmpty else { return }
-
-        PPImageLoaderManager.shared().setImage(
-            on: imageView,
-            url: safeURL,
-            placeholder: placeholder,
-            transitionStyle: .crossDissolve,
-            completion: nil
-        )
-    }
-}
-
 @MainActor
 final class PPProviderCompaniesStore: ObservableObject {
     enum DiscoveryMode: String, CaseIterable, Identifiable {
@@ -268,6 +218,7 @@ struct PPProviderCompaniesScreen: View {
                 }
                 .padding(.horizontal, PPSpace.base)
                 .padding(.vertical, PPSpace.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(Color.ppBackground.ignoresSafeArea())
@@ -491,7 +442,6 @@ struct PPProviderCompaniesScreen: View {
                             onFavorite: { store.toggleFavorite(for: record.ownerID) },
                             onOpen: { onOpenStorefront(record) }
                         )
-                        .id(record.ownerID + (store.prefersCompactLayout ? "-compact" : "-showcase"))
                     }
                 }
             }
@@ -563,13 +513,17 @@ private struct PPProviderCompanySwiftUICard: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
         .onTapGesture(perform: onOpen)
-        .accessibilityElement(children: .contain)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint(PPProviderStorefrontL10n.text("a11y_cell_tap_hint"))
+        .accessibilityElement(children: .ignore)
         .accessibilityAction {
             onOpen()
         }
+        .accessibilityAction(named: Text(accessibilityFavoriteActionTitle)) {
+            onFavorite()
+        }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityFavoriteState)
+        .accessibilityHint(PPProviderStorefrontL10n.text("a11y_cell_tap_hint"))
         .accessibilityIdentifier("providerCompanyCard_\(record.ownerID)")
     }
 
@@ -579,7 +533,7 @@ private struct PPProviderCompanySwiftUICard: View {
             style: .continuous
         )
 
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             showcaseCover
 
             showcaseIdentity
@@ -596,6 +550,7 @@ private struct PPProviderCompanySwiftUICard: View {
                 .padding(.vertical, PPSpace.md)
                 .background(Color.ppWarmPorcelain.opacity(reduceTransparency ? 1 : 0.74))
         }
+        .frame(maxWidth: .infinity)
         .background(Color.ppSurface, in: shape)
         .clipShape(shape)
         .overlay {
@@ -610,7 +565,7 @@ private struct PPProviderCompanySwiftUICard: View {
             style: .continuous
         )
 
-        Group {
+        return Group {
             if usesAccessibilityLayout {
                 compactAccessibilityContent
             } else {
@@ -618,6 +573,7 @@ private struct PPProviderCompanySwiftUICard: View {
             }
         }
         .padding(PPSpace.base)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.ppSurface, in: shape)
         .overlay {
             shape.stroke(cardBorderColor, lineWidth: cardBorderWidth)
@@ -630,12 +586,7 @@ private struct PPProviderCompanySwiftUICard: View {
             mediaFallback
 
             if hasCoverImage {
-                PPProviderStorefrontRemoteImage(
-                    url: record.coverURLString,
-                    placeholder: nil,
-                    contentMode: .scaleAspectFill
-                )
-                .accessibilityHidden(true)
+                providerRemoteImage(urlString: record.coverURLString)
             }
         }
         .frame(height: usesAccessibilityLayout ? 154 : 180)
@@ -917,12 +868,10 @@ private struct PPProviderCompanySwiftUICard: View {
             mediaFallback
 
             if hasCompactArtwork {
-                PPProviderStorefrontRemoteImage(
-                    url: compactArtworkURL,
-                    placeholder: nil,
-                    contentMode: .scaleAspectFill
+                providerRemoteImage(
+                    urlString: compactArtworkURL,
+                    displaySize: CGSize(width: width, height: height)
                 )
-                .accessibilityHidden(true)
             }
         }
         .frame(width: width, height: height)
@@ -956,10 +905,9 @@ private struct PPProviderCompanySwiftUICard: View {
             }
 
             if hasAvatarImage {
-                PPProviderStorefrontRemoteImage(
-                    url: record.avatarURLString,
-                    placeholder: nil,
-                    contentMode: .scaleAspectFill
+                providerRemoteImage(
+                    urlString: record.avatarURLString,
+                    displaySize: CGSize(width: size, height: size)
                 )
             }
         }
@@ -974,6 +922,27 @@ private struct PPProviderCompanySwiftUICard: View {
                     lineWidth: contrast == .increased ? 2 : 3
                 )
         }
+        .accessibilityHidden(true)
+    }
+
+    private func providerRemoteImage(
+        urlString: String,
+        displaySize: CGSize? = nil
+    ) -> some View {
+        AppRemoteImage(
+            urlString: urlString,
+            displaySize: displaySize,
+            contentMode: .fill,
+            showsRetryAction: false,
+            placeholder: {
+                Color.clear
+            },
+            failurePlaceholder: {
+                Color.clear
+            }
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
         .accessibilityHidden(true)
     }
 
@@ -994,12 +963,14 @@ private struct PPProviderCompanySwiftUICard: View {
         }()
         let background: Color = {
             if isOverlayed {
-                return Color.black.opacity(reduceTransparency ? 0.58 : 0.34)
+                return Color.black.opacity(
+                    reduceTransparency || contrast == .increased ? 0.84 : 0.70
+                )
             }
             return isFavorite ? Color.ppPrimary.opacity(0.12) : Color.ppSecondarySurface
         }()
 
-        Button(action: onFavorite) {
+        return Button(action: onFavorite) {
             Image(systemName: isFavorite ? "heart.fill" : "heart")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(foreground)
@@ -1100,7 +1071,25 @@ private struct PPProviderCompanySwiftUICard: View {
         guard record.reviewCount > 0, record.ratingValue > 0 else {
             return PPProviderStorefrontL10n.text("provider_rating_new")
         }
-        return String(format: "%.1f", record.ratingValue)
+        return String(
+            format: "%.1f",
+            locale: Locale(identifier: Language.currentLanguageCode() ?? "ar"),
+            arguments: [record.ratingValue]
+        )
+    }
+
+    private var accessibilityFavoriteActionTitle: String {
+        PPProviderStorefrontL10n.text(
+            isFavorite ? "a11y_btn_unfavorite" : "a11y_btn_favorite"
+        )
+    }
+
+    private var accessibilityFavoriteState: String {
+        PPProviderStorefrontL10n.text(
+            isFavorite
+                ? "adopt_detail_favorite_saved"
+                : "adopt_detail_favorite_unsaved"
+        )
     }
 
     private var accessibilityLabel: String {

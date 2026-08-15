@@ -692,6 +692,7 @@ private struct HomeHeroLivingGateway: View {
     private var differentiateWithoutColor
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.scenePhase) private var scenePhase
     @State private var presented = false
 
     var body: some View {
@@ -942,11 +943,18 @@ private struct HomeHeroLivingGateway: View {
             HomeHeroLottieRepresentable(
                 animationName: animationName,
                 loadsFromFirebase: loadsFromFirebase,
-                playbackEnabled: !reduceMotion,
+                playbackEnabled: lottiePlaybackEnabled,
                 tintColor: lottieTintColor(for: animationName)
             )
             .scaleEffect(lottieScale(for: animationName))
         }
+    }
+
+    /// Feed the UIKit Lottie bridge the same scene lifecycle SwiftUI uses for
+    /// the hero. This makes a foreground transition re-evaluate playback even
+    /// when the view was created while the application was inactive.
+    private var lottiePlaybackEnabled: Bool {
+        isActive && !reduceMotion && scenePhase == .active
     }
 
     private func lottieScale(for animationName: String) -> CGFloat {

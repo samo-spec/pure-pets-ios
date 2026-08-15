@@ -8,6 +8,8 @@ import UIKit
 /// of each inventing its own numbers.
 enum PPHomeZoneMetrics {
     static let stageMediaHeight: CGFloat = 176
+    /// The marketplace ledger is denser than photographic marketing media.
+    static let marketplaceStageMediaHeight: CGFloat = 160
     static let stageMediaAccessibilityHeight: CGFloat = 132
     static let marketplaceMediaAccessibilityHeight: CGFloat = 248
     static let marketplaceMediaAccessibilityMediumHeight: CGFloat = 296
@@ -536,7 +538,10 @@ struct PPHomeMarketingStage: View {
 
     private var mediaHeight: CGFloat {
         guard dynamicTypeSize.isAccessibilitySize else {
-            return PPHomeZoneMetrics.stageMediaHeight
+            guard let page, isMarketplace(page) else {
+                return PPHomeZoneMetrics.stageMediaHeight
+            }
+            return PPHomeZoneMetrics.marketplaceStageMediaHeight
         }
         guard let page, isMarketplace(page) else {
             return PPHomeZoneMetrics.stageMediaAccessibilityHeight
@@ -1099,13 +1104,19 @@ private enum PPHomeLivingLedgerMetrics {
     static let standardPortalMinimum: CGFloat = 80
     static let standardPortalMaximum: CGFloat = 156
     static let standardPortalGap: CGFloat = PPSpace.md
-    static let standardCategoryHeight: CGFloat = 160
-    static let standardCompositionMaximum: CGFloat = 136
+    static let standardCategoryHeight: CGFloat = 144
+    static let standardCompositionMaximum: CGFloat = 144
     static let standardLedgerTitleHeight: CGFloat = 18
     static let standardLedgerTitleGap: CGFloat = PPSpace.xs
+    /// Two 48pt rows keep every statistic comfortably above the 44pt target.
+    static let standardLedgerGridHeight: CGFloat =
+        (PPHomeZoneMetrics.minimumTarget * 2) + PPSpace.base
     static let accessibilityIdentityHeight: CGFloat = 80
     static let accessibilityCompositionMaximum: CGFloat = 72
-    static let categoryArtworkScale: CGFloat = 0.82
+    /// The plate (`padSide` / `padHeight`) keeps its full composition size;
+    /// only the artwork inside it is inset slightly so the species never
+    /// touches the portal edge.
+    static let categoryArtworkScale: CGFloat = 0.78
     static let categoryWashWidthRatio: CGFloat = 1.46
     static let categoryWashHeightRatio: CGFloat = 0.94
     static let maximumReadableWidth: CGFloat = 480
@@ -1271,8 +1282,11 @@ private struct PPHomeMarketplaceLivingLedger: View {
         height: CGFloat,
         gridHeight: CGFloat
     ) -> some View {
+        // `.leading` is already direction-aware: SwiftUI resolves it to the
+        // physical right in Arabic. Flipping it manually double-mirrors the
+        // ledger title and pushes it to the physical end edge.
         VStack(
-            alignment: isRightToLeft ? .trailing : .leading,
+            alignment: .leading,
             spacing: PPHomeLivingLedgerMetrics.standardLedgerTitleGap
         ) {
             HStack(spacing: PPSpace.xs) {
@@ -1295,7 +1309,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                     PPHomeLivingLedgerMetrics.standardLedgerTitleHeight,
                 maxHeight:
                     PPHomeLivingLedgerMetrics.standardLedgerTitleHeight,
-                alignment: isRightToLeft ? .trailing : .leading
+                alignment: .leading
             )
             .accessibilityHidden(true)
 
@@ -1392,7 +1406,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 )
                 .frame(width: washWidth, height: washHeight)
                 .offset(y: padSide * 0.05)
-                .scaleEffect(ambientFieldScale)
+                .scaleEffect(ambientFieldScale * portalEntranceFieldScale)
                 .opacity(identityPresented ? 1 : 0.18)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
@@ -1413,7 +1427,26 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 )
                 .frame(width: washWidth, height: washHeight)
                 .offset(y: padSide * 0.05)
-                .opacity(ambientWashHighlightOpacity)
+                .opacity(
+                    max(
+                        ambientWashHighlightOpacity,
+                        portalEntranceWashHighlightOpacity
+                    )
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            // One finite echo follows a selected-category entrance or retarget.
+            // It never joins the inherited heartbeat: the category event owns
+            // this scale/opacity transition and resolves it fully to rest.
+            padShape
+                .stroke(
+                    accent.opacity(colorScheme == .dark ? 0.30 : 0.22),
+                    lineWidth: 1.25
+                )
+                .frame(width: padSide, height: padHeight)
+                .scaleEffect(portalEntranceEchoScale)
+                .opacity(portalEntranceEchoOpacity)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
 
@@ -1444,14 +1477,24 @@ private struct PPHomeMarketplaceLivingLedger: View {
                     )
                 }
                 .scaleEffect(
-                    (identityPresented ? 1 : 0.98) * ambientPadScale
+                    (identityPresented ? 1 : 0.98) *
+                        ambientPadScale *
+                        portalEntrancePadScale
                 )
+                .offset(x: portalEntranceHorizontalOffset)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
 
             identityArtwork(side: artworkSide)
-                .scaleEffect(ambientArtworkScale)
-                .offset(y: ambientArtworkVerticalOffset)
+                .scaleEffect(
+                    ambientArtworkScale * portalEntranceArtworkScale
+                )
+                .rotationEffect(.degrees(portalEntranceArtworkRotation))
+                .offset(x: portalEntranceHorizontalOffset)
+                .offset(
+                    y: ambientArtworkVerticalOffset +
+                        portalEntranceArtworkVerticalOffset
+                )
                 .frame(width: artworkSide, height: artworkSide)
                 .clipShape(padShape)
         }
@@ -1512,6 +1555,91 @@ private struct PPHomeMarketplaceLivingLedger: View {
 
     private var ambientFieldScale: CGFloat {
         ambientPresentationPhase == .field ? 1.025 : 1
+    }
+
+    /// The All-scope `Shop2.json` asset keeps its established Lottie motion.
+    /// Only a concrete selected category receives the finite portal relay.
+    private var portalEntrancePhase: Phase {
+        signals.categoryID == nil ? .settled : presentationPhase
+    }
+
+    private var portalEntranceHorizontalOffset: CGFloat {
+        let towardLedger: CGFloat = layoutDirection == .rightToLeft ? -1 : 1
+
+        switch portalEntrancePhase {
+        case .leadingSignals: return 1.5 * towardLedger
+        case .trailingSignals: return 0.5 * towardLedger
+        case .staged, .identity, .settled: return 0
+        }
+    }
+
+    private var portalEntranceEchoScale: CGFloat {
+        switch portalEntrancePhase {
+        case .staged: return 0.985
+        case .identity: return 1.012
+        case .leadingSignals: return 1.035
+        case .trailingSignals: return 1.055
+        case .settled: return 1.065
+        }
+    }
+
+    private var portalEntranceEchoOpacity: Double {
+        switch portalEntrancePhase {
+        case .staged, .settled: return 0
+        case .identity: return colorScheme == .dark ? 0.34 : 0.26
+        case .leadingSignals: return colorScheme == .dark ? 0.22 : 0.16
+        case .trailingSignals: return colorScheme == .dark ? 0.10 : 0.07
+        }
+    }
+
+    private var portalEntrancePadScale: CGFloat {
+        switch portalEntrancePhase {
+        case .identity: return 1.018
+        case .leadingSignals: return 1.010
+        case .trailingSignals: return 0.998
+        case .staged, .settled: return 1
+        }
+    }
+
+    private var portalEntranceArtworkScale: CGFloat {
+        switch portalEntrancePhase {
+        case .identity: return 1.028
+        case .leadingSignals: return 1.014
+        case .trailingSignals: return 0.998
+        case .staged, .settled: return 1
+        }
+    }
+
+    private var portalEntranceArtworkVerticalOffset: CGFloat {
+        switch portalEntrancePhase {
+        case .identity: return -2.25
+        case .leadingSignals: return -0.75
+        case .trailingSignals: return 0.40
+        case .staged, .settled: return 0
+        }
+    }
+
+    private var portalEntranceArtworkRotation: Double {
+        let towardLedger = layoutDirection == .rightToLeft ? -1.0 : 1.0
+
+        switch portalEntrancePhase {
+        case .identity: return 0.85 * towardLedger
+        case .leadingSignals: return -0.30 * towardLedger
+        case .staged, .trailingSignals, .settled: return 0
+        }
+    }
+
+    private var portalEntranceWashHighlightOpacity: Double {
+        switch portalEntrancePhase {
+        case .identity: return 1
+        case .leadingSignals: return 0.62
+        case .trailingSignals: return 0.26
+        case .staged, .settled: return 0
+        }
+    }
+
+    private var portalEntranceFieldScale: CGFloat {
+        portalEntrancePhase == .trailingSignals ? 1.045 : 1
     }
 
     @ViewBuilder
@@ -1718,14 +1846,17 @@ private struct PPHomeMarketplaceLivingLedger: View {
         return HStack(spacing: PPSpace.xs) {
             signalNode(for: kind, tone: tone)
 
+            // Value and label hug the glyph on both sides of the mirror:
+            // `.leading` resolves to the physical right in Arabic, so no
+            // manual flip is applied here.
             VStack(
-                alignment: isRightToLeft ? .trailing : .leading,
+                alignment: .leading,
                 spacing: 0
             ) {
                 signalValue(for: kind, tone: tone)
                     .frame(
                         maxWidth: .infinity,
-                        alignment: isRightToLeft ? .trailing : .leading
+                        alignment: .leading
                     )
                     .id(signalValueIdentity(for: kind))
                     .transition(.opacity)
@@ -1744,9 +1875,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 )
                 .font(HomeFont.caption2())
                 .foregroundStyle(Color.homeTextSecondary)
-                .multilineTextAlignment(
-                    isRightToLeft ? .trailing : .leading
-                )
+                .multilineTextAlignment(.leading)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(
                     dynamicTypeSize.isAccessibilitySize ? 1 : 0.72
@@ -1757,7 +1886,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 )
                 .frame(
                     maxWidth: .infinity,
-                    alignment: isRightToLeft ? .trailing : .leading
+                    alignment: .leading
                 )
             }
         }
@@ -2168,7 +2297,11 @@ private struct PPHomeMarketplaceLivingLedger: View {
             return
         }
 
-        guard !presentationMotionSuppressed else {
+        guard !reduceMotion,
+              !voiceOverEnabled,
+              !switchControlEnabled,
+              !presentationMotionSuppressed
+        else {
             settleWithoutAnimation()
             return
         }
@@ -2239,7 +2372,11 @@ private struct PPHomeMarketplaceLivingLedger: View {
 
     @MainActor
     private func presentAmbient(_ nextPhase: AmbientPhase) {
-        guard ambientMotionEnabled else {
+        guard !reduceMotion,
+              !voiceOverEnabled,
+              !switchControlEnabled,
+              ambientMotionEnabled
+        else {
             settleAmbientWithoutAnimation()
             return
         }
@@ -2449,11 +2586,14 @@ private struct PPHomeMarketplaceLivingLedger: View {
         }
 
         var ledgerGridHeight: CGFloat {
-            max(
-                0,
-                contentHeight -
-                    PPHomeLivingLedgerMetrics.standardLedgerTitleHeight -
-                    PPHomeLivingLedgerMetrics.standardLedgerTitleGap
+            min(
+                PPHomeLivingLedgerMetrics.standardLedgerGridHeight,
+                max(
+                    0,
+                    contentHeight -
+                        PPHomeLivingLedgerMetrics.standardLedgerTitleHeight -
+                        PPHomeLivingLedgerMetrics.standardLedgerTitleGap
+                )
             )
         }
     }

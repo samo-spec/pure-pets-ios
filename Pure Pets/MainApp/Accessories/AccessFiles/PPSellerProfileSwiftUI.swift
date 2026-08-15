@@ -600,12 +600,20 @@ private struct PPSellerProfileScreen: View {
             }
 
             HStack(alignment: .top, spacing: PPSpace.base) {
-                PPProviderStorefrontRemoteImage(
-                    url: store.sellerAvatarURL,
-                    placeholder: nil,
-                    contentMode: .scaleAspectFill
+                AppRemoteImage(
+                    urlString: store.sellerAvatarURL,
+                    displaySize: CGSize(width: 76, height: 76),
+                    contentMode: .fill,
+                    showsRetryAction: false,
+                    placeholder: {
+                        Color.clear
+                    },
+                    failurePlaceholder: {
+                        Color.clear
+                    }
                 )
                 .frame(width: 76, height: 76)
+                .clipped()
                 .background(Color.ppSecondarySurface)
                 .clipShape(Circle())
                 .overlay {
@@ -879,13 +887,20 @@ private struct PPSellerProfileCompatibilityProductCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
-            PPProviderStorefrontRemoteImage(
-                url: accessory.imageURLsArray.first ?? "",
-                placeholder: nil,
-                contentMode: .scaleAspectFill
+            AppRemoteImage(
+                urlString: accessory.imageURLsArray.first,
+                contentMode: .fill,
+                showsRetryAction: false,
+                placeholder: {
+                    Color.clear
+                },
+                failurePlaceholder: {
+                    Color.clear
+                }
             )
             .frame(height: 122)
             .frame(maxWidth: .infinity)
+            .clipped()
             .background(Color.ppSecondarySurface)
             .clipShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
             Text(accessory.name)
