@@ -226,6 +226,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 @property (nonatomic, strong) PPAddressPickerView *locView;
 @property (nonatomic, strong) UIView *heroCardView;
 @property (nonatomic, strong) UIView *heroFillView;
+@property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
 @property (nonatomic, strong) UIView *heroLargeOrbView;
 @property (nonatomic, strong) UIView *heroSmallOrbView;
@@ -254,6 +255,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)pp_buildPaymentBackgroundAtmosphereIfNeeded;
 - (void)pp_beginPaymentHeroAmbientMotionIfNeeded;
 - (void)pp_stopPaymentHeroAmbientMotion;
+- (void)pp_updatePaymentLayoutMetrics;
 - (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone;
 - (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address;
 - (NSArray<CartItem *> *)pp_checkoutItems;
@@ -468,6 +470,26 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     }
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+
+    BOOL appearanceChanged = !previousTraitCollection ||
+        previousTraitCollection.userInterfaceStyle != self.traitCollection.userInterfaceStyle ||
+        previousTraitCollection.accessibilityContrast != self.traitCollection.accessibilityContrast;
+    if (appearanceChanged) {
+        [self pp_applyPaymentHeroTheme];
+    }
+
+    BOOL contentSizeChanged = !previousTraitCollection ||
+        ![previousTraitCollection.preferredContentSizeCategory
+            isEqualToString:self.traitCollection.preferredContentSizeCategory];
+    if (contentSizeChanged) {
+        [self pp_updatePaymentLayoutMetrics];
+        [self.paymentCollection.collectionViewLayout invalidateLayout];
+    }
+}
+
 - (void)pp_buildPaymentBackgroundAtmosphereIfNeeded
 {
     if (self.paymentBackgroundGlowTopView) return;
@@ -574,67 +596,13 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 {
     if (!self.bottomGlowView && !self.bottomSecondaryGlowView && !self.bottomTrailGlowView) return;
 
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self.bottomGlowView.layer removeAnimationForKey:@"pp_payment_bottom_glow_breath"];
-        [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_payment_bottom_secondary_glow_breath"];
-        [self.bottomTrailGlowView.layer removeAnimationForKey:@"pp_payment_bottom_trail_glow_breath"];
-        self.bottomGlowView.transform = CGAffineTransformIdentity;
-        self.bottomSecondaryGlowView.transform = CGAffineTransformIdentity;
-        self.bottomTrailGlowView.transform = CGAffineTransformIdentity;
-        self.bottomGlowView.alpha = 0.52;
-        self.bottomSecondaryGlowView.alpha = 0.36;
-        self.bottomTrailGlowView.alpha = 0.46;
-        return;
-    }
-
-    [self pp_addBreathingGlowToView:self.bottomGlowView
-                                 key:@"pp_payment_bottom_glow_breath"
-                           fromAlpha:0.42
-                             toAlpha:0.62
-                           fromScale:0.95
-                             toScale:1.08
-                            duration:6.4];
-    [self pp_addBreathingGlowToView:self.bottomSecondaryGlowView
-                                 key:@"pp_payment_bottom_secondary_glow_breath"
-                           fromAlpha:0.28
-                             toAlpha:0.43
-                           fromScale:1.04
-                             toScale:0.96
-                            duration:7.4];
-    [self pp_addBreathingGlowToView:self.bottomTrailGlowView
-                                 key:@"pp_payment_bottom_trail_glow_breath"
-                           fromAlpha:0.34
-                             toAlpha:0.52
-                           fromScale:0.96
-                             toScale:1.10
-                            duration:8.2];
-}
-
-- (void)pp_addBreathingGlowToView:(UIView *)view
-                               key:(NSString *)key
-                         fromAlpha:(CGFloat)fromAlpha
-                           toAlpha:(CGFloat)toAlpha
-                         fromScale:(CGFloat)fromScale
-                           toScale:(CGFloat)toScale
-                          duration:(CFTimeInterval)duration
-{
-    if (!view || [view.layer animationForKey:key]) return;
-
-    CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    opacity.fromValue = @(fromAlpha);
-    opacity.toValue = @(toAlpha);
-
-    CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scale.fromValue = @(fromScale);
-    scale.toValue = @(toScale);
-
-    CAAnimationGroup *group = [CAAnimationGroup animation];
-    group.animations = @[opacity, scale];
-    group.duration = duration;
-    group.autoreverses = YES;
-    group.repeatCount = HUGE_VALF;
-    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [view.layer addAnimation:group forKey:key];
+    [self pp_stopSummaryBottomGlowMotion];
+    self.bottomGlowView.transform = CGAffineTransformIdentity;
+    self.bottomSecondaryGlowView.transform = CGAffineTransformIdentity;
+    self.bottomTrailGlowView.transform = CGAffineTransformIdentity;
+    self.bottomGlowView.alpha = 0.40;
+    self.bottomSecondaryGlowView.alpha = 0.24;
+    self.bottomTrailGlowView.alpha = 0.30;
 }
 
 - (void)pp_stopSummaryBottomGlowMotion
@@ -655,11 +623,16 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     // Reveal the summary view after the push transition and Auto Layout
     // have fully settled, so there is no layout-driven jump.
     if (self.summaryView && self.summaryView.alpha < 1.0) {
-        [UIView animateWithDuration:0.45
+        if (UIAccessibilityIsReduceMotionEnabled()) {
+            self.summaryView.alpha = 1.0;
+            self.summaryView.transform = CGAffineTransformIdentity;
+            return;
+        }
+        [UIView animateWithDuration:PPAnimDurationNormal
                               delay:0.0
-             usingSpringWithDamping:0.88
-              initialSpringVelocity:0.0
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                            options:UIViewAnimationOptionCurveEaseOut |
+                                    UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             self.summaryView.alpha = 1.0;
             self.summaryView.transform = CGAffineTransformIdentity;
@@ -710,12 +683,15 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     // Start fully hidden. viewDidAppear: will reveal with a spring
     // animation after the push transition and Auto Layout have settled.
     self.summaryView.alpha = 0.0;
-    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
+    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceMD);
 }
 
 - (void)setlocViewViewAtTop
 {
-    CGFloat initialPickerWidth = MAX(CGRectGetWidth(self.view.bounds) - 36.0, 58.0);
+    CGFloat initialPickerWidth = MAX(
+        CGRectGetWidth(self.view.bounds) - (PPScreenMargin * 2.0),
+        PPTouchTargetMin
+    );
     self.locView = [PPAddressPickerView showInViewController:self width:initialPickerWidth];
     [self.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
     __weak typeof(self) weakSelf = self;
@@ -759,7 +735,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     // Re-anchor the address picker below the hero card instead of safe-area top.
     self.locView.topConstraint.active = NO;
-    self.locView.topConstraint = [self.locView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:16.0];
+    self.locView.topConstraint = [self.locView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:PPSpaceMD];
     self.locView.topConstraint.active = YES;
 
     [self pp_setupInitialAddressState];
@@ -786,6 +762,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.accessibilityLabel = kLang(@"Back");
+    button.accessibilityIdentifier = @"paymentSelection.back";
 
     UIImage *backImage = [UIImage pp_symbolNamed:PPChevronName
                                        pointSize:17.0
@@ -793,32 +770,29 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
                                            scale:UIImageSymbolScaleMedium
                                          palette:@[UIColor.labelColor, UIColor.labelColor]
                                     makeTemplate:YES];
-    UIColor *buttonFill = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
-            ? [UIColor colorWithWhite:1.0 alpha:0.08]
-            : [UIColor colorWithWhite:1.0 alpha:0.72];
-    }];
-    UIColor *buttonStroke = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
-            ? [UIColor colorWithWhite:1.0 alpha:0.10]
-            : [UIColor colorWithWhite:0.0 alpha:0.05];
-    }];
+    UIColor *buttonFill = [UIColor ppSurfaceElevated];
+    UIColor *buttonStroke = [UIColor ppSurfaceBorder];
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
         config.image = backImage;
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 10.0, 10.0, 10.0);
-        config.baseForegroundColor = UIColor.labelColor;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(
+            PPSpaceMD,
+            PPSpaceMD,
+            PPSpaceMD,
+            PPSpaceMD
+        );
+        config.baseForegroundColor = AppPrimaryTextClr;
         config.background.backgroundColor = buttonFill;
         config.background.strokeColor = buttonStroke;
         config.background.strokeWidth = 1.0;
         button.configuration = config;
     } else {
         [button setImage:backImage forState:UIControlStateNormal];
-        button.tintColor = UIColor.labelColor;
+        button.tintColor = AppPrimaryTextClr;
         button.backgroundColor = buttonFill;
-        button.layer.cornerRadius = 20.0;
+        button.layer.cornerRadius = PPTouchTargetMin * 0.5;
         button.layer.borderWidth = 1.0;
         [button pp_setBorderColor:[buttonStroke resolvedColorWithTraitCollection:self.traitCollection]];
     }
@@ -838,7 +812,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         CGFloat alpha = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.16 : 0.10;
         return [brandColor colorWithAlphaComponent:alpha];
     }];
-    badge.layer.cornerRadius = 14.0;
+    badge.layer.cornerRadius = PPCornerPill;
     badge.layer.cornerCurve = kCACornerCurveContinuous;
     badge.layer.borderWidth = 0.8;
     [badge pp_setBorderColor:[brandColor colorWithAlphaComponent:0.14]];
@@ -847,14 +821,23 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     self.heroEyebrowLabel = [[PPInsetLabel alloc] init];
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroEyebrowLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    UIFont *eyebrowBaseFont = [GM boldFontWithSize:PPFontCaption1]
+        ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightSemibold];
+    self.heroEyebrowLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+        scaledFontForFont:eyebrowBaseFont
+        maximumPointSize:17.0];
+    self.heroEyebrowLabel.adjustsFontForContentSizeCategory = YES;
     self.heroEyebrowLabel.textColor = [brandColor colorWithAlphaComponent:0.94];
     self.heroEyebrowLabel.textAlignment = NSTextAlignmentCenter;
     self.heroEyebrowLabel.numberOfLines = 1;
     self.heroEyebrowLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.heroEyebrowLabel.adjustsFontSizeToFitWidth = YES;
-    self.heroEyebrowLabel.minimumScaleFactor = 0.82;
-    self.heroEyebrowLabel.textInsets = UIEdgeInsetsMake(6.0, 12.0, 6.0, 12.0);
+    self.heroEyebrowLabel.adjustsFontSizeToFitWidth = NO;
+    self.heroEyebrowLabel.textInsets = UIEdgeInsetsMake(
+        PPSpaceMDHalf,
+        PPSpaceMD,
+        PPSpaceMDHalf,
+        PPSpaceMD
+    );
     self.heroEyebrowLabel.text = kLang(@"payment_screen_eyebrow");
     [badge addSubview:self.heroEyebrowLabel];
 

@@ -18,13 +18,19 @@ private enum PPMainKindsCellMetrics {
 
     static let pressScale: CGFloat = 0.976
     static let pressArtworkScale: CGFloat = 1.012
-    static let commitArtworkPeakScale: CGFloat = 1.018
+    static let commitArtworkPeakScale: CGFloat = 1.05
     static let pressDuration: TimeInterval = 0.09
     static let releaseDuration: TimeInterval = 0.16
-    static let selectionDuration: TimeInterval = 0.20
+    static let selectionDuration: TimeInterval = 0.22
     static let restoredSelectionDuration: TimeInterval = 0.18
-    static let commitDuration: TimeInterval = 0.18
+    static let commitDuration: TimeInterval = 0.22
+    static let haloDuration: TimeInterval = 0.28
     static let previewRecoveryDelay: TimeInterval = 0.38
+}
+
+private enum PPMainKindsCellAnimationKey {
+    static let tapHalo = "pp.mainkinds.tapHalo"
+    static let burstRipple = "pp.mainkinds.burstRipple"
 }
 
 private enum PPMainKindsCellPalette {
@@ -53,6 +59,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private let kindImageView = UIImageView()
     private let titleLabel = UILabel()
     private let habitatLayer = CAGradientLayer()
+    private let tapHaloLayer = CAGradientLayer()
+    private let burstRingLayer = CAShapeLayer()
 
     private var habitatTopConstraint: NSLayoutConstraint!
     private var habitatWidthConstraint: NSLayoutConstraint!
@@ -157,6 +165,19 @@ public final class PPMainKindsCell: UICollectionViewCell {
         habitatLayer.endPoint = CGPoint(x: 1, y: 1)
         habitatLayer.locations = [0, 0.58, 1]
         habitatFieldView.layer.addSublayer(habitatLayer)
+
+        tapHaloLayer.name = "PPMainKindsTapHalo"
+        tapHaloLayer.type = .radial
+        tapHaloLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        tapHaloLayer.endPoint = CGPoint(x: 1, y: 1)
+        tapHaloLayer.opacity = 0
+        habitatFieldView.layer.insertSublayer(tapHaloLayer, below: habitatLayer)
+
+        burstRingLayer.name = "PPMainKindsBurstRing"
+        burstRingLayer.fillColor = UIColor.clear.cgColor
+        burstRingLayer.lineWidth = 2.5
+        burstRingLayer.opacity = 0
+        habitatFieldView.layer.addSublayer(burstRingLayer)
 
         kindImageView.translatesAutoresizingMaskIntoConstraints = false
         kindImageView.contentMode = .scaleAspectFit
@@ -515,6 +536,15 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 accent.withAlphaComponent(0).cgColor
             ]
         }
+        let haloAlpha: CGFloat = increasedContrast ? 0.72 : (darkMode ? 0.60 : 0.46)
+        tapHaloLayer.colors = [
+            accent.withAlphaComponent(haloAlpha).cgColor,
+            accent.withAlphaComponent(haloAlpha * 0.45).cgColor,
+            accent.withAlphaComponent(0).cgColor
+        ]
+        burstRingLayer.strokeColor = accent.withAlphaComponent(
+            increasedContrast ? 0.95 : (darkMode ? 0.85 : 0.72)
+        ).cgColor
         CATransaction.commit()
     }
 
@@ -792,28 +822,81 @@ public final class PPMainKindsCell: UICollectionViewCell {
             return
         }
         stopViewAnimations(settle: false)
+        performHaloBurstMotion()
+
         let habitatStartAlpha: CGFloat = isKindSelected ? 0.68 : 0
         habitatFieldView.alpha = habitatStartAlpha
-        kindImageView.transform = CGAffineTransform(scaleX: 0.986, y: 0.986)
+        kindImageView.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+        tapButton.transform = CGAffineTransform(
+            scaleX: PPMainKindsCellMetrics.pressScale,
+            y: PPMainKindsCellMetrics.pressScale
+        )
 
         UIView.animateKeyframes(
             withDuration: PPMainKindsCellMetrics.commitDuration,
             delay: 0,
             options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
             animations: {
-                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.58) {
-                    self.tapButton.transform = .identity
+                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.45) {
+                    self.tapButton.transform = CGAffineTransform(scaleX: 1.02, y: 1.02)
                     self.habitatFieldView.alpha = 1
                     self.kindImageView.transform = CGAffineTransform(
                         scaleX: PPMainKindsCellMetrics.commitArtworkPeakScale,
                         y: PPMainKindsCellMetrics.commitArtworkPeakScale
                     )
                 }
-                UIView.addKeyframe(withRelativeStartTime: 0.58, relativeDuration: 0.42) {
+                UIView.addKeyframe(withRelativeStartTime: 0.45, relativeDuration: 0.55) {
+                    self.tapButton.transform = .identity
                     self.kindImageView.transform = .identity
                 }
             }
         )
+    }
+
+    private func performHaloBurstMotion() {
+        guard !reduceMotion else { return }
+
+        tapHaloLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.tapHalo)
+        burstRingLayer.removeAnimation(forKey: PPMainKindsCellAnimationKey.burstRipple)
+
+        tapHaloLayer.opacity = 0
+        burstRingLayer.opacity = 0
+
+        // Expanding radial glow explosion
+        let opacity = CAKeyframeAnimation(keyPath: "opacity")
+        opacity.values = [0, 0.85, 0]
+        opacity.keyTimes = [0, 0.28, 1]
+
+        let scale = CABasicAnimation(keyPath: "transform.scale")
+        scale.fromValue = 0.60
+        scale.toValue = 2.20
+
+        let haloGroup = CAAnimationGroup()
+        haloGroup.animations = [opacity, scale]
+        haloGroup.duration = PPMainKindsCellMetrics.haloDuration
+        haloGroup.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        haloGroup.isRemovedOnCompletion = true
+        tapHaloLayer.add(haloGroup, forKey: PPMainKindsCellAnimationKey.tapHalo)
+
+        // Expanding shockwave explosion ring
+        let ringOpacity = CAKeyframeAnimation(keyPath: "opacity")
+        ringOpacity.values = [0, 0.92, 0]
+        ringOpacity.keyTimes = [0, 0.22, 1]
+
+        let ringScale = CABasicAnimation(keyPath: "transform.scale")
+        ringScale.fromValue = 0.68
+        ringScale.toValue = 2.35
+
+        let ringLineWidth = CABasicAnimation(keyPath: "lineWidth")
+        ringLineWidth.fromValue = 3.0
+        ringLineWidth.toValue = 0.5
+
+        let ringGroup = CAAnimationGroup()
+        ringGroup.animations = [ringOpacity, ringScale, ringLineWidth]
+        ringGroup.duration = PPMainKindsCellMetrics.haloDuration
+        ringGroup.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        ringGroup.isRemovedOnCompletion = true
+        burstRingLayer.add(ringGroup, forKey: PPMainKindsCellAnimationKey.burstRipple)
     }
 
     @objc public func playRestoredSelectionAnimation() {
@@ -877,9 +960,16 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        habitatFieldView.layer.cornerRadius = habitatFieldView.bounds.height / 2
+        let habitatBounds = habitatFieldView.bounds
+        habitatFieldView.layer.cornerRadius = habitatBounds.height / 2
         habitatFieldView.layer.cornerCurve = .continuous
-        habitatLayer.frame = habitatFieldView.bounds
+        habitatLayer.frame = habitatBounds
+        tapHaloLayer.frame = habitatBounds
+        burstRingLayer.frame = habitatBounds
+        let ringInset: CGFloat = max(2, min(habitatBounds.width, habitatBounds.height) * 0.06)
+        burstRingLayer.path = UIBezierPath(
+            ovalIn: habitatBounds.insetBy(dx: ringInset, dy: ringInset)
+        ).cgPath
         surfaceView.layer.shadowPath = UIBezierPath(
             roundedRect: surfaceView.bounds,
             cornerRadius: PPMainKindsCellMetrics.cornerRadius
@@ -972,11 +1062,15 @@ public final class PPMainKindsCell: UICollectionViewCell {
         canvasView.layer.removeAllAnimations()
         habitatFieldView.layer.removeAllAnimations()
         habitatLayer.removeAllAnimations()
+        tapHaloLayer.removeAllAnimations()
+        burstRingLayer.removeAllAnimations()
         kindImageView.layer.removeAllAnimations()
         titleLabel.layer.removeAllAnimations()
 
         guard settle else { return }
         isPressing = false
+        tapHaloLayer.opacity = 0
+        burstRingLayer.opacity = 0
         tapButton.transform = .identity
         surfaceView.transform = .identity
         canvasView.transform = .identity

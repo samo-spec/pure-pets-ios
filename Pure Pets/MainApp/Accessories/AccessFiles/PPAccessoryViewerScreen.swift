@@ -116,27 +116,23 @@ struct PPAccessoryViewerScreen: View {
         let decisionBarClearance: CGFloat = {
             if dynamicTypeSize.isAccessibilitySize {
                 if snapshot.showsCart {
-                    return usesRecoveryDock ? 322 : 390
+                    return usesRecoveryDock ? 360 : 440
                 }
-                return 158
+                return 200
             }
             if snapshot.showsCart {
                 if usesRecoveryDock {
-                    return compact ? 238 : 150
+                    return compact ? 270 : 180
                 }
-                return compact ? 280 : 205
+                return compact ? 320 : 250
             }
-            return 98
+            return 160
         }()
         let resolvedDecisionBarClearance: CGFloat = {
             guard decisionBarHeight > 0, decisionBarHeight < 720 else {
                 return decisionBarClearance
             }
-            let measuredContentHeight = max(
-                decisionBarHeight - bottomInset,
-                decisionBarClearance
-            )
-            return measuredContentHeight + PPSpace.sm
+            return max(decisionBarHeight + PPSpace.xl, decisionBarClearance)
         }()
 
         return ZStack(alignment: .top) {
