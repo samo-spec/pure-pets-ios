@@ -120,9 +120,12 @@ public struct PPCommerceCartCopy: Equatable, Sendable {
     public var paying = "لحظة"
     public var paid = "تم"
     public var quantity = "الكمية"
+    public var inCart = "في السلة"
+    public var quantityInCartFormat = "%ld في السلة"
     public var updatingQuantity = "جارٍ تحديث الكمية"
     public var increaseQuantity = "زيادة الكمية"
     public var decreaseQuantity = "تقليل الكمية"
+    public var removeItem = "حذف المنتج"
     public var cartEmpty = "السلة فارغة"
     public var cartItemsFormat = "السلة، %@ منتج"
     public var retry = "إعادة المحاولة"
@@ -175,13 +178,13 @@ public struct PPCommerceCartTheme: Sendable {
     }
 
     public static let purePets = PPCommerceCartTheme(
-        brand: Color(red: 203 / 255, green: 38 / 255, blue: 84 / 255),
-        brandPressed: Color(red: 171 / 255, green: 23 / 255, blue: 63 / 255),
-        success: Color(red: 50 / 255, green: 184 / 255, blue: 107 / 255),
-        surface: Color(uiColor: .secondarySystemBackground),
-        primaryText: Color(uiColor: .label),
-        secondaryText: Color(uiColor: .secondaryLabel),
-        outline: Color(uiColor: .separator)
+        brand: .ppPrimary,
+        brandPressed: .ppPressedAction,
+        success: .ppSuccess,
+        surface: .ppSurface,
+        primaryText: .ppTextPrimary,
+        secondaryText: .ppTextSecondary,
+        outline: .ppSurfaceBorder
     )
 }
 
@@ -200,7 +203,7 @@ private enum PPCommerceCartMetrics {
         (controlHeight * 2) + verticalSpacing + (holderPadding * 2)
     static let holderRadius: CGFloat =
         PPBottomDecisionBarGeometry.surfaceRadius
-    static let quantityButtonWidth: CGFloat = 40
+    static let quantityControlRadius: CGFloat = PPCorner.small
     static let payWidth: CGFloat = PPSpace.xxxxl * 2
     static let thumbnailSize: CGFloat = controlHeight - PPSpace.sm
     static let minimumStandardWidth: CGFloat = 356
@@ -220,7 +223,6 @@ public struct PPCommerceCartHolder<Thumbnail: View>: View {
     }
 
     private enum RetryIntent: Equatable {
-        case add
         case quantity(Int)
         case payment
     }
@@ -242,21 +244,23 @@ public struct PPCommerceCartHolder<Thumbnail: View>: View {
     private let item: PPCommerceCartItem
     @Binding private var quantity: Int
     private let actions: PPCommerceCartActions
+    private let showsTopCartShortcut: Bool
     private let copy: PPCommerceCartCopy
     private let theme: PPCommerceCartTheme
     private let thumbnail: Thumbnail
 
-    @Environment(\.locale) private var locale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var accessibilityContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.layoutDirection) private var layoutDirection
 
     @State private var criticalPhase: CriticalPhase?
     @State private var feedback: Feedback?
     @State private var confirmedQuantity: Int
     @State private var isSyncingQuantity = false
+    @State private var pendingQuantity: Int?
     @State private var quantityRevision = 0
     @State private var criticalTask: Task<Void, Never>?
     @State private var quantityTask: Task<Void, Never>?
@@ -265,6 +269,7 @@ public struct PPCommerceCartHolder<Thumbnail: View>: View {
         item: PPCommerceCartItem,
         quantity: Binding<Int>,
         actions: PPCommerceCartActions,
+        showsTopCartShortcut: Bool = true,
         copy: PPCommerceCartCopy = .arabic,
         theme: PPCommerceCartTheme = .purePets,
         @ViewBuilder thumbnail: () -> Thumbnail
@@ -272,6 +277,7 @@ public struct PPCommerceCartHolder<Thumbnail: View>: View {
         self.item = item
         self._quantity = quantity
         self.actions = actions
+        self.showsTopCartShortcut = showsTopCartShortcut
         self.copy = copy
         self.theme = theme
         self.thumbnail = thumbnail()
@@ -326,6 +332,7 @@ public struct PPCommerceCartHolder<Thumbnail: View>: View {
         }
         .onChange(of: item.id) { _ in
             cancelOperations(restoreConfirmedQuantity: false)
+            pendingQuantity = nil
             confirmedQuantity = clamped(quantity)
             feedback = nil
         }
@@ -349,7 +356,7 @@ private extension PPCommerceCartHolder {
                 standardActionRow
             }
             .padding(Metrics.holderPadding)
-            .frame(height: Metrics.holderHeight)
+            .frame(minHeight: Metrics.holderHeight)
         }
         .frame(minWidth: Metrics.minimumStandardWidth, maxWidth: .infinity)
     }
@@ -362,7 +369,9 @@ private extension PPCommerceCartHolder {
                     productSummary
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    cartButton
+                    if showsTopCartShortcut {
+                        cartButton
+                    }
                 }
 
                 quantityAndPayRow(minimumPayWidth: 120)
@@ -378,82 +387,69 @@ private extension PPCommerceCartHolder {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
 
-            cartButton
-                .layoutPriority(2)
+            if showsTopCartShortcut {
+                cartButton
+                    .layoutPriority(2)
+            }
         }
-        .frame(height: Metrics.controlHeight)
+        .frame(minHeight: Metrics.controlHeight)
     }
 
     private var standardActionRow: some View {
         quantityAndPayRow(minimumPayWidth: Metrics.payWidth)
     }
 
+    @ViewBuilder
     private func quantityAndPayRow(minimumPayWidth: CGFloat) -> some View {
-        GeometryReader { proxy in
-            HStack(spacing: Metrics.spacing) {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: Metrics.spacing) {
                 quantityControl
-                    .frame(width: max(0, proxy.size.width * 0.65))
+                    .frame(maxWidth: .infinity)
 
                 payButton(
                     minimumWidth: minimumPayWidth,
                     maximumWidth: .infinity
                 )
             }
+        } else {
+            GeometryReader { proxy in
+                HStack(spacing: Metrics.spacing) {
+                    quantityControl
+                        .frame(width: max(0, proxy.size.width * 0.44))
+
+                    payButton(
+                        minimumWidth: minimumPayWidth,
+                        maximumWidth: .infinity
+                    )
+                }
+            }
+            .frame(height: actionControlHeight)
         }
-        .frame(height: Metrics.controlHeight)
     }
 
     @ViewBuilder
     private var productSummary: some View {
-        HStack(spacing: Metrics.spacing) {
-            thumbnail
-                .frame(width: Metrics.thumbnailSize, height: Metrics.thumbnailSize)
-                .background(Color(uiColor: .tertiarySystemFill))
-                .clipShape(Circle())
-                .overlay {
-                    Circle()
-                        .strokeBorder(
-                            theme.outline.opacity(subviewBorderOpacity),
-                            lineWidth: borderWidth
-                        )
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
+                    HStack(alignment: .top, spacing: Metrics.spacing) {
+                        productThumbnail
+                        productCopy
+                    }
+                    productPrice
                 }
-                .shadow(color: Color.black.opacity(0.08), radius: 5, y: 2)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                Text(item.title)
-                    .font(PPAccessoryTypography.captionBold)
-                    .foregroundStyle(theme.primaryText)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                HStack(spacing: PPSpace.xs) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .imageScale(.small)
-                    Text(item.availabilityText)
-                        .lineLimit(1)
+            } else {
+                HStack(spacing: Metrics.spacing) {
+                    productThumbnail
+                    productCopy
+                    productPrice
                 }
-                .font(PPAccessoryTypography.captionBold)
-                .foregroundStyle(theme.success)
             }
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-
-            Text(formattedPrice)
-                .font(PPAccessoryTypography.title)
-                .foregroundStyle(theme.primaryText)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.70)
-                .layoutPriority(1)
-                .id(formattedPrice)
-                .transition(numberTransition)
         }
         .frame(minWidth: 0, minHeight: Metrics.controlHeight)
-        .padding(.horizontal, Metrics.summaryHorizontalPadding)
-        .background(
-            Color(uiColor: .systemBackground)
-                .opacity(colorScheme == .dark ? 0.72 : 0.86)
-        )
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.xs)
+        .background(Color.ppSecondarySurface.opacity(colorScheme == .dark ? 0.70 : 0.58))
         .clipShape(
             RoundedRectangle(
                 cornerRadius: Metrics.controlRadius,
@@ -472,99 +468,114 @@ private extension PPCommerceCartHolder {
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            Text(verbatim: "\(item.title)، \(formattedPrice)، \(item.availabilityText)")
+        .accessibilityLabel(Text(verbatim: item.title))
+        .accessibilityValue(
+            Text(verbatim: "\(formattedPrice), \(item.availabilityText)")
         )
+    }
+
+    private var productThumbnail: some View {
+        thumbnail
+            .frame(width: Metrics.thumbnailSize, height: Metrics.thumbnailSize)
+            .background(Color.ppSurfaceRaised)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+            )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+                .strokeBorder(
+                    theme.outline.opacity(subviewBorderOpacity),
+                    lineWidth: borderWidth
+                )
+            }
+            .accessibilityHidden(true)
+    }
+
+    private var productCopy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            Text(item.title)
+                .font(PPAccessoryTypography.captionBold)
+                .foregroundStyle(theme.primaryText)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : (needsExpandedLayout ? 2 : 1))
+                .truncationMode(.tail)
+
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: "checkmark.circle.fill")
+                    .imageScale(.small)
+                    .foregroundStyle(theme.success)
+                    .accessibilityHidden(true)
+
+                Text(item.availabilityText)
+                    .foregroundStyle(theme.secondaryText)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            }
+            .font(PPAccessoryTypography.captionBold)
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var productPrice: some View {
+        Text(formattedPrice)
+            .font(PPAccessoryTypography.title)
+            .foregroundStyle(theme.brand)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.82)
+            .layoutPriority(1)
+            .id(formattedPrice)
+            .transition(numberTransition)
     }
 
     @ViewBuilder
     private var quantityControl: some View {
-        HStack(spacing: 0) {
-            quantityButton(
-                systemName: "minus",
-                label: copy.decreaseQuantity,
-                identifier: "pp.commerce.quantity.decrease",
-                isDisabled: controlsAreLocked || displayQuantity <= 0
-            ) {
-                requestQuantity(displayQuantity - 1)
-            }
-
-            ZStack {
-                Text(formattedQuantity)
-                    .font(PPAccessoryTypography.headline)
-                    .foregroundStyle(theme.primaryText)
-                    .monospacedDigit()
-                    .id(displayQuantity)
-                    .transition(numberTransition)
-            }
-            .frame(maxWidth: .infinity)
-            .accessibilityHidden(true)
-
-            quantityButton(
-                systemName: "plus",
-                label: copy.increaseQuantity,
-                identifier: "pp.commerce.quantity.increase",
-                isDisabled: controlsAreLocked || displayQuantity >= item.maximumQuantity
-            ) {
-                if displayQuantity == 0 {
-                    beginAdd()
-                } else {
+        AnimatedAddToCartButton(
+            cartCount: readOnlyQuantityBinding,
+            title: copy.addToCart,
+            addingTitle: copy.adding,
+            addedTitle: copy.addSucceeded,
+            retryTitle: copy.retry,
+            tint: theme.brand,
+            itemSymbol: "shippingbox.fill",
+            isEnabled: animatedCartControlIsEnabled,
+            cornerRadius: Metrics.quantityControlRadius,
+            presentationStyle: .commerceHolder,
+            quantityMode: .init(
+                quantity: readOnlyQuantityBinding,
+                minimumQuantity: 1,
+                maximumQuantity: item.maximumQuantity,
+                inCartTitle: copy.inCart,
+                quantityAccessibilityValue: quantityAccessibilityValue,
+                increaseAccessibilityLabel: copy.increaseQuantity,
+                decreaseAccessibilityLabel: copy.decreaseQuantity,
+                removeAccessibilityLabel: copy.removeItem,
+                increaseAccessibilityIdentifier:
+                    "pp.commerce.quantity.increase",
+                decreaseAccessibilityIdentifier:
+                    "pp.commerce.quantity.decrease",
+                removeAccessibilityIdentifier:
+                    "pp.commerce.quantity.remove",
+                isEnabled: animatedCartControlIsEnabled,
+                canRemove: true,
+                controlHeight: actionControlHeight,
+                onIncrement: {
                     requestQuantity(displayQuantity + 1)
+                },
+                onDecrement: {
+                    requestQuantity(displayQuantity - 1)
+                },
+                onRemove: {
+                    requestQuantity(0)
                 }
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: Metrics.controlHeight)
-        .background(theme.brand.opacity(colorScheme == .dark ? 0.14 : 0.055))
-        .clipShape(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                .strokeBorder(theme.brand.opacity(borderOpacity), lineWidth: borderWidth)
-        }
-        .overlay(alignment: .bottom) {
-            if isSyncingQuantity {
-                Capsule()
-                    .fill(theme.brand)
-                    .frame(width: 18, height: 2)
-                    .padding(.bottom, PPSpace.xs)
-                    .transition(.opacity)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(verbatim: copy.quantity))
-        .accessibilityValue(
-            Text(
-                verbatim: isSyncingQuantity
-                    ? "\(formattedQuantity)، \(copy.updatingQuantity)"
-                    : formattedQuantity
-            )
+            ),
+            onAdd: addFromAnimatedControl
         )
-    }
-
-    @ViewBuilder
-    private func quantityButton(
-        systemName: String,
-        label: String,
-        identifier: String,
-        isDisabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 17, weight: .bold))
-                .frame(
-                    width: Metrics.quantityButtonWidth,
-                    height: Metrics.controlHeight
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
-        .foregroundStyle(isDisabled ? theme.secondaryText.opacity(0.45) : theme.brand)
-        .background(Color(uiColor: .systemBackground).opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .disabled(isDisabled)
-        .accessibilityLabel(Text(verbatim: label))
-        .accessibilityHint(Text(verbatim: "\(copy.quantity): \(formattedQuantity)"))
-        .accessibilityIdentifier(identifier)
+        .id(item.id)
     }
 
     @ViewBuilder
@@ -626,6 +637,9 @@ private extension PPCommerceCartHolder {
                         .font(.system(size: 17, weight: .black))
                     Text(copy.paid)
                 default:
+                    Image(systemName: "creditcard.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .accessibilityHidden(true)
                     Text(copy.payNow)
                 }
             }
@@ -638,7 +652,7 @@ private extension PPCommerceCartHolder {
                     : PPSpace.md
             )
             .frame(minWidth: minimumWidth, maxWidth: maximumWidth)
-            .frame(minHeight: Metrics.controlHeight)
+            .frame(minHeight: actionControlHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
@@ -653,35 +667,89 @@ private extension PPCommerceCartHolder {
                 )
         }
         .shadow(
-            color: (criticalPhase == .paid ? theme.success : theme.brand).opacity(0.20),
-            radius: 9,
-            y: 5
+            color: (criticalPhase == .paid ? theme.success : theme.brand).opacity(0.16),
+            radius: 8,
+            y: 4
         )
-        .disabled(criticalPhase != nil || isSyncingQuantity || displayQuantity == 0)
+        .disabled(criticalPhase != nil || isSyncingQuantity)
         .accessibilityLabel(Text(verbatim: copy.payNow))
         .accessibilityValue(Text(verbatim: paymentAccessibilityValue))
         .accessibilityIdentifier("pp.commerce.pay")
     }
 
+    @ViewBuilder
     private func feedbackBanner(_ feedback: Feedback) -> some View {
-        HStack(spacing: Metrics.spacing) {
-            Image(systemName: feedback.kind == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(feedback.kind == .success ? theme.success : Color.orange)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
+                    feedbackMessage(feedback)
+                    feedbackActions(feedback)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            } else {
+                HStack(spacing: Metrics.spacing) {
+                    feedbackMessage(feedback)
+                    feedbackActions(feedback)
+                }
+            }
+        }
+        .padding(.leading, PPSpace.md)
+        .padding(.trailing, PPSpace.xs)
+        .padding(.vertical, PPSpace.xxs)
+        .background(
+            Color.ppSurfaceElevated.opacity(reduceTransparency ? 1 : 0.96)
+        )
+        .clipShape(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .strokeBorder(Color.ppSurfaceBorder, lineWidth: borderWidth)
+        }
+        .shadow(
+            color: PPShadow.subtle.color,
+            radius: PPShadow.subtle.radius,
+            x: PPShadow.subtle.x,
+            y: PPShadow.subtle.y
+        )
+        .padding(.horizontal, PPSpace.sm)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("pp.commerce.feedback")
+    }
+
+    private func feedbackMessage(_ feedback: Feedback) -> some View {
+        HStack(alignment: .top, spacing: Metrics.spacing) {
+            Image(
+                systemName: feedback.kind == .success
+                    ? "checkmark.circle.fill"
+                    : "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(
+                feedback.kind == .success ? theme.success : Color.ppError
+            )
+            .accessibilityHidden(true)
 
             Text(feedback.message)
                 .font(PPAccessoryTypography.caption)
-                .foregroundStyle(Color.white)
+                .foregroundStyle(theme.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
+    private func feedbackActions(_ feedback: Feedback) -> some View {
+        HStack(spacing: PPSpace.xs) {
             if let retryIntent = feedback.retryIntent {
                 Button {
                     retry(retryIntent)
                 } label: {
                     Text(verbatim: copy.retry)
                         .font(PPAccessoryTypography.captionBold)
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(theme.brand)
                         .frame(minHeight: 44)
+                        .padding(.horizontal, PPSpace.xs)
                 }
+                .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
                 .accessibilityHint(Text(verbatim: feedback.message))
             }
 
@@ -694,20 +762,10 @@ private extension PPCommerceCartHolder {
                     .font(.caption.weight(.bold))
                     .frame(width: 44, height: 44)
             }
-            .foregroundStyle(Color.white.opacity(0.86))
+            .buttonStyle(PPCommercePressButtonStyle(reduceMotion: reduceMotion))
+            .foregroundStyle(theme.secondaryText)
             .accessibilityLabel(Text(verbatim: copy.dismiss))
         }
-        .padding(.leading, PPSpace.md)
-        .padding(.trailing, PPSpace.xs)
-        .background(Color.black.opacity(reduceTransparency ? 1 : 0.92))
-        .clipShape(Capsule())
-        .overlay {
-            Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
-        }
-        .shadow(color: Color.black.opacity(0.16), radius: 12, y: 6)
-        .padding(.horizontal, PPSpace.sm)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("pp.commerce.feedback")
     }
 
     private func holderSurface<Content: View>(
@@ -723,11 +781,11 @@ private extension PPCommerceCartHolder {
                     .strokeBorder(theme.outline.opacity(holderBorderOpacity), lineWidth: borderWidth)
             }
             .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.24 : 0.11),
-                radius: 20,
-                y: 10
+                color: colorScheme == .dark ? .clear : PPShadow.card.color,
+                radius: colorScheme == .dark ? 0 : PPShadow.card.radius,
+                x: PPShadow.card.x,
+                y: colorScheme == .dark ? 0 : PPShadow.card.y
             )
-            .compositingGroup()
     }
 }
 
@@ -736,7 +794,7 @@ private extension PPCommerceCartHolder {
 @available(iOS 16.0, *)
 private extension PPCommerceCartHolder {
     var displayQuantity: Int {
-        clamped(quantity)
+        clamped(pendingQuantity ?? quantity)
     }
 
     var totalPrice: Decimal {
@@ -747,12 +805,57 @@ private extension PPCommerceCartHolder {
         totalPrice.formatted(
             .currency(code: item.currencyCode)
                 .precision(.fractionLength(0))
-                .locale(locale)
+                .locale(formattingLocale)
         )
     }
 
     var formattedQuantity: String {
-        displayQuantity.formatted(.number.locale(locale))
+        displayQuantity.formatted(.number.locale(formattingLocale))
+    }
+
+    var formattingLocale: Locale {
+        Locale(identifier: layoutDirection == .rightToLeft ? "ar_QA" : "en_QA")
+    }
+
+    var readOnlyQuantityBinding: Binding<Int> {
+        Binding(
+            get: { displayQuantity },
+            set: { _ in }
+        )
+    }
+
+    var animatedCartControlIsEnabled: Bool {
+        if isSyncingQuantity && displayQuantity == 0 {
+            return false
+        }
+
+        switch criticalPhase {
+        case .paying, .paid:
+            return false
+        case .adding, .none:
+            return true
+        }
+    }
+
+    func quantityAccessibilityValue(_ value: Int) -> String {
+        let baseValue = String(
+            format: copy.quantityInCartFormat,
+            locale: quantityAccessibilityLocale,
+            value
+        )
+        return isSyncingQuantity
+            ? "\(baseValue)، \(copy.updatingQuantity)"
+            : baseValue
+    }
+
+    var quantityAccessibilityLocale: Locale {
+        formattingLocale
+    }
+
+    var actionControlHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize
+            ? max(Metrics.controlHeight, 52)
+            : Metrics.controlHeight
     }
 
     var cartAccessibilityLabel: String {
@@ -772,46 +875,51 @@ private extension PPCommerceCartHolder {
         }
     }
 
-    var controlsAreLocked: Bool {
-        criticalPhase != nil
-    }
-
     func clamped(_ proposedQuantity: Int) -> Int {
         min(item.maximumQuantity, max(0, proposedQuantity))
     }
 
-    func beginAdd() {
-        guard displayQuantity == 0, criticalPhase == nil, !isSyncingQuantity else { return }
+    func addFromAnimatedControl() async throws -> AnimatedAddToCartOutcome {
+        guard displayQuantity == 0,
+              criticalPhase == nil,
+              !isSyncingQuantity
+        else {
+            throw CancellationError()
+        }
 
         feedback = nil
+        pendingQuantity = nil
         criticalPhase = .adding
         actions.track(.addTapped(productID: item.id))
-        PPCommerceHaptics.impact()
+        PPCommerceHaptics.medium()
 
-        criticalTask?.cancel()
-        criticalTask = Task { @MainActor in
-            do {
-                let returnedQuantity = try await actions.add()
-                try Task.checkCancellation()
+        do {
+            let returnedQuantity = try await actions.add()
+            try Task.checkCancellation()
 
-                let confirmed = max(1, clamped(returnedQuantity))
-                confirmedQuantity = confirmed
-                withAnimation(stateAnimation) {
-                    quantity = confirmed
-                    criticalPhase = nil
-                }
-
-                actions.track(.addSucceeded(productID: item.id, quantity: confirmed))
-                presentSuccess(copy.addSucceeded)
-            } catch is CancellationError {
+            let confirmed = max(1, clamped(returnedQuantity))
+            confirmedQuantity = confirmed
+            withAnimation(stateAnimation) {
+                quantity = confirmed
                 criticalPhase = nil
-            } catch {
-                criticalPhase = nil
-                actions.track(.operationFailed(productID: item.id, operation: .add))
-                presentFailure(copy.addFailed, retry: .add)
             }
 
-            criticalTask = nil
+            actions.track(
+                .addSucceeded(productID: item.id, quantity: confirmed)
+            )
+            return AnimatedAddToCartOutcome(
+                cartCount: confirmed,
+                addedQuantity: 1
+            )
+        } catch is CancellationError {
+            criticalPhase = nil
+            throw CancellationError()
+        } catch {
+            criticalPhase = nil
+            actions.track(
+                .operationFailed(productID: item.id, operation: .add)
+            )
+            throw error
         }
     }
 
@@ -822,7 +930,7 @@ private extension PPCommerceCartHolder {
         guard requested != displayQuantity else { return }
 
         quantityRevision += 1
-        let revision = quantityRevision
+        pendingQuantity = requested
 
         withAnimation(stateAnimation) {
             quantity = requested
@@ -831,49 +939,82 @@ private extension PPCommerceCartHolder {
 
         isSyncingQuantity = true
         actions.track(.quantityChanged(productID: item.id, quantity: requested))
-        PPCommerceHaptics.selection()
+        PPCommerceHaptics.light()
 
-        quantityTask?.cancel()
+        startQuantitySyncIfNeeded()
+    }
+
+    func startQuantitySyncIfNeeded() {
+        guard quantityTask == nil else { return }
+
         quantityTask = Task { @MainActor in
-            do {
-                // Coalesce rapid +/- taps before touching the cart service.
-                try await Task.sleep(nanoseconds: 220_000_000)
-                let returnedQuantity = try await actions.updateQuantity(requested)
-                try Task.checkCancellation()
-                guard revision == quantityRevision else { return }
+            defer { quantityTask = nil }
 
-                let confirmed = clamped(returnedQuantity)
-                confirmedQuantity = confirmed
-                withAnimation(stateAnimation) {
-                    quantity = confirmed
-                    isSyncingQuantity = false
-                }
-                actions.track(.quantitySynced(productID: item.id, quantity: confirmed))
-            } catch is CancellationError {
-                if revision == quantityRevision {
-                    isSyncingQuantity = false
-                }
-            } catch {
-                guard revision == quantityRevision else { return }
+            while !Task.isCancelled {
+                let revision = quantityRevision
 
-                withAnimation(stateAnimation) {
-                    quantity = confirmedQuantity
-                    isSyncingQuantity = false
-                }
-                actions.track(.operationFailed(productID: item.id, operation: .quantity))
-                presentFailure(copy.quantityFailed, retry: .quantity(requested))
-            }
+                do {
+                    // Coalesce taps that arrive before a write starts. If a
+                    // newer intent arrives in flight, serialize it next.
+                    try await Task.sleep(nanoseconds: 220_000_000)
+                    try Task.checkCancellation()
+                    guard revision == quantityRevision else { continue }
 
-            if revision == quantityRevision {
-                quantityTask = nil
+                    let requested = clamped(pendingQuantity ?? quantity)
+                    let returnedQuantity = try await actions.updateQuantity(
+                        requested
+                    )
+                    try Task.checkCancellation()
+
+                    let confirmed = clamped(returnedQuantity)
+                    confirmedQuantity = confirmed
+                    guard revision == quantityRevision else { continue }
+
+                    withAnimation(stateAnimation) {
+                        quantity = confirmed
+                        pendingQuantity = nil
+                        isSyncingQuantity = false
+                    }
+                    actions.track(
+                        .quantitySynced(
+                            productID: item.id,
+                            quantity: confirmed
+                        )
+                    )
+                    return
+                } catch is CancellationError {
+                    return
+                } catch {
+                    guard revision == quantityRevision else { continue }
+                    let failedQuantity = clamped(
+                        pendingQuantity ?? quantity
+                    )
+
+                    withAnimation(stateAnimation) {
+                        pendingQuantity = nil
+                        quantity = confirmedQuantity
+                        isSyncingQuantity = false
+                    }
+                    actions.track(
+                        .operationFailed(
+                            productID: item.id,
+                            operation: .quantity
+                        )
+                    )
+                    presentFailure(
+                        copy.quantityFailed,
+                        retry: .quantity(failedQuantity)
+                    )
+                    return
+                }
             }
         }
     }
 
     func beginPayment() {
-        guard displayQuantity > 0, criticalPhase == nil, !isSyncingQuantity else { return }
+        guard criticalPhase == nil, !isSyncingQuantity else { return }
 
-        let payingQuantity = displayQuantity
+        let payingQuantity = max(1, displayQuantity)
         feedback = nil
         criticalPhase = .paying
         actions.track(.payTapped(productID: item.id, quantity: payingQuantity))
@@ -914,8 +1055,6 @@ private extension PPCommerceCartHolder {
         }
 
         switch intent {
-        case .add:
-            beginAdd()
         case .quantity(let requested):
             requestQuantity(requested)
         case .payment:
@@ -950,6 +1089,7 @@ private extension PPCommerceCartHolder {
         if restoreConfirmedQuantity, isSyncingQuantity {
             quantity = confirmedQuantity
         }
+        pendingQuantity = nil
         isSyncingQuantity = false
     }
 }
@@ -959,40 +1099,21 @@ private extension PPCommerceCartHolder {
 @available(iOS 16.0, *)
 private extension PPCommerceCartHolder {
     var needsExpandedLayout: Bool {
-        dynamicTypeSize == .xxxLarge || dynamicTypeSize.isAccessibilitySize
+        dynamicTypeSize >= .xxLarge
     }
 
     var stateAnimation: Animation? {
-        reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.84)
-    }
-
-    var actionTransition: AnyTransition {
-        reduceMotion
-            ? .opacity
-            : .scale(scale: 0.92).combined(with: .opacity)
+        reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.88)
     }
 
     var numberTransition: AnyTransition {
-        reduceMotion
-            ? .opacity
-            : .asymmetric(
-                insertion: .move(edge: .top).combined(with: .opacity),
-                removal: .move(edge: .bottom).combined(with: .opacity)
-            )
+        .opacity
     }
 
     var feedbackTransition: AnyTransition {
         reduceMotion
             ? .opacity
-            : .move(edge: .bottom).combined(with: .opacity)
-    }
-
-    var primaryGradient: LinearGradient {
-        LinearGradient(
-            colors: [theme.brand, theme.brandPressed],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+            : .scale(scale: 0.98).combined(with: .opacity)
     }
 
     var surfaceColor: Color {
@@ -1028,16 +1149,30 @@ private struct PPCommercePressButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.965 : 1)
-            .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.78), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .opacity(configuration.isPressed ? 0.90 : 1)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(response: 0.22, dampingFraction: 0.86),
+                value: configuration.isPressed
+            )
     }
 }
 
 private enum PPCommerceHaptics {
     @MainActor
-    static func selection() {
-        UISelectionFeedbackGenerator().selectionChanged()
+    static func light() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.68)
+    }
+
+    @MainActor
+    static func medium() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.78)
     }
 
     @MainActor

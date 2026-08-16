@@ -3128,7 +3128,7 @@ struct PPAccessoryPersistentDecisionBar: View {
         Group {
             if store.checkoutPhase == .routeFailed {
                 checkoutRouteRecoveryBar
-            } else if hasPurchasableStock || store.cartQuantity > 0 {
+            } else if showsCommerceCartHolder {
                 commerceCartHolder
             } else {
                 unavailableRecoveryBar
@@ -3141,6 +3141,7 @@ struct PPAccessoryPersistentDecisionBar: View {
             item: commerceCartItem,
             quantity: $commerceCartQuantity,
             actions: commerceCartActions,
+            showsTopCartShortcut: false,
             copy: commerceCartCopy,
             theme: commerceCartTheme
         ) {
@@ -3203,6 +3204,10 @@ struct PPAccessoryPersistentDecisionBar: View {
             "accessory_view_opening_payment"
         )
         copy.quantity = PPAccessoryViewerL10n.text("accessory_view_quantity")
+        copy.inCart = PPAccessoryViewerL10n.text("InCart")
+        copy.quantityInCartFormat = PPAccessoryViewerL10n.text(
+            "a11y_cell_qty_in_cart_format"
+        )
         copy.updatingQuantity = PPAccessoryViewerL10n.text(
             "accessory_view_updating_cart_quantity"
         )
@@ -3211,6 +3216,9 @@ struct PPAccessoryPersistentDecisionBar: View {
         )
         copy.decreaseQuantity = PPAccessoryViewerL10n.text(
             "accessory_view_decrease_quantity"
+        )
+        copy.removeItem = PPAccessoryViewerL10n.text(
+            "a11y_btn_remove_cart_item"
         )
         copy.cartEmpty = PPAccessoryViewerL10n.text(
             "accessory_view_cart_empty"
@@ -3244,7 +3252,7 @@ struct PPAccessoryPersistentDecisionBar: View {
             surface: PPAccessorySubviewBackground.baseSurface,
             primaryText: PPAccessoryPalette.ink,
             secondaryText: PPAccessoryPalette.inkSecondary,
-            outline: PPAccessoryPalette.inkSecondary,
+            outline: Color.ppSurfaceBorder,
             addToCartBackground: Color.ppSecondarySurface,
             addToCartForeground: PPAccessoryPalette.brand,
             addToCartBorder: PPAccessoryPalette.brand.opacity(0.42)
@@ -3959,6 +3967,10 @@ struct PPAccessoryPersistentDecisionBar: View {
             store.checkoutPreviewCanCommit
     }
 
+    private var showsCommerceCartHolder: Bool {
+        hasPurchasableStock || store.cartQuantity > 0
+    }
+
     private var remainingText: String {
         PPAccessoryViewerL10n.formatted(
             "accessory_view_remaining_text_format",
@@ -3971,7 +3983,10 @@ struct PPAccessoryPersistentDecisionBar: View {
             if store.checkoutPhase == .routeFailed {
                 return "cart-checkout-route-failed"
             }
-            return "cart-\(hasPurchasableStock)-\(String(describing: store.livePhase))"
+            if showsCommerceCartHolder {
+                return "cart-commerce-holder"
+            }
+            return "cart-unavailable-\(String(describing: store.livePhase))"
         }
         return "contact-\(String(describing: store.ownerPhase))"
     }
@@ -3981,42 +3996,36 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
     let compact: Bool
     let bottomInset: CGFloat
 
-    var body: some View {
-        Group {
-            if compact {
-                VStack(spacing: PPSpace.sm) {
-                    HStack {
-                        summarySkeleton
-                        Spacer()
-                        quantitySkeleton
-                    }
-                    checkoutSkeleton
-                    reviewNoteSkeleton
-                    actionTrackSkeleton
-                }
-            } else {
-                HStack(
-                    alignment: .top,
-                    spacing: PPSpace.lg
-                ) {
-                    HStack {
-                        summarySkeleton
-                        Spacer()
-                        quantitySkeleton
-                    }
-                    .frame(maxWidth: .infinity)
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-                    VStack(spacing: PPSpace.sm) {
-                        checkoutSkeleton
-                        reviewNoteSkeleton
-                        actionTrackSkeleton
-                    }
-                    .frame(maxWidth: 440)
-                }
-            }
+    var body: some View {
+        VStack(spacing: PPSpace.sm) {
+            summarySkeleton
+            actionRowSkeleton
         }
-        .padding(PPBottomDecisionBarGeometry.contentPadding)
+        .padding(PPSpace.md)
+        .background(
+            Color.ppSurface,
+            in: RoundedRectangle(
+                cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius,
+                style: .continuous
+            )
+            .strokeBorder(Color.ppSurfaceBorder, lineWidth: 1)
+        }
+        .shadow(
+            color: PPShadow.card.color,
+            radius: PPShadow.card.radius,
+            x: PPShadow.card.x,
+            y: PPShadow.card.y
+        )
         .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, -PPSpace.sm)
         .padding(
             .horizontal,
             compact
@@ -4039,78 +4048,89 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
     }
 
     private var summarySkeleton: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
+        HStack(spacing: PPSpace.sm) {
+            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                .fill(Color.ppSurfaceBorder.opacity(0.78))
+                .frame(width: 42, height: 42)
+
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                RoundedRectangle(cornerRadius: PPSpace.xs)
+                    .fill(PPAccessoryPalette.ink.opacity(0.12))
+                    .frame(maxWidth: 150)
+                    .frame(height: 14)
+
+                RoundedRectangle(cornerRadius: PPSpace.xs)
+                    .fill(PPAccessoryPalette.ink.opacity(0.08))
+                    .frame(maxWidth: 112)
+                    .frame(height: 10)
+            }
+
+            Spacer(minLength: PPSpace.sm)
+
             RoundedRectangle(cornerRadius: PPSpace.xs)
-                .fill(PPAccessoryPalette.ink.opacity(0.12))
-                .frame(width: 94, height: 18)
-            RoundedRectangle(cornerRadius: PPSpace.xs)
-                .fill(PPAccessoryPalette.ink.opacity(0.08))
-                .frame(width: 112, height: 10)
+                .fill(PPAccessoryPalette.brand.opacity(0.18))
+                .frame(width: 64, height: 18)
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.xs)
+        .frame(maxWidth: .infinity, minHeight: 50)
+        .background(
+            Color.ppSecondarySurface.opacity(0.58),
+            in: RoundedRectangle(
+                cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                style: .continuous
+            )
+            .strokeBorder(Color.ppSurfaceBorder.opacity(0.72), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var actionRowSkeleton: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: PPSpace.sm) {
+                quantitySkeleton
+                paymentSkeleton
+            }
+        } else {
+            GeometryReader { proxy in
+                HStack(spacing: PPSpace.sm) {
+                    quantitySkeleton
+                        .frame(width: proxy.size.width * 0.44)
+                    paymentSkeleton
+                }
+            }
+            .frame(height: 50)
         }
     }
 
     private var quantitySkeleton: some View {
         RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+            cornerRadius: PPCorner.small,
             style: .continuous
         )
-        .fill(PPAccessoryPalette.ink.opacity(0.08))
-        .frame(width: 126, height: 48)
-    }
-
-    private var actionSkeleton: some View {
-        RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
-            style: .continuous
-        )
-        .fill(PPAccessoryPalette.ink.opacity(0.11))
-        .frame(maxWidth: .infinity)
-        .frame(height: PPBottomDecisionBarGeometry.controlHeight)
-    }
-
-    private var checkoutSkeleton: some View {
-        RoundedRectangle(
-            cornerRadius: PPCorner.card,
-            style: .continuous
-        )
-        .fill(PPAccessoryPalette.brand.opacity(0.16))
-        .frame(maxWidth: .infinity)
-        .frame(height: 66)
-    }
-
-    private var reviewNoteSkeleton: some View {
-        Capsule(style: .continuous)
-            .fill(PPAccessoryPalette.ink.opacity(0.07))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 12)
-            .padding(.trailing, 54)
-    }
-
-    private var utilitySkeleton: some View {
-        RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
-            style: .continuous
-        )
-        .fill(PPAccessoryPalette.ink.opacity(0.09))
-        .frame(
-            width: PPBottomDecisionBarGeometry.utilityControlSize,
-            height: PPBottomDecisionBarGeometry.utilityControlSize
-        )
-    }
-
-    private var actionTrackSkeleton: some View {
-        HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
-            actionSkeleton
-            utilitySkeleton
+        .fill(Color.ppSecondarySurface)
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                .strokeBorder(Color.ppSurfaceBorder.opacity(0.72), lineWidth: 1)
         }
-        .padding(PPSpace.xs)
-        .background(
-            PPAccessoryPalette.ink.opacity(0.045),
-            in: RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            )
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
+    }
+
+    private var paymentSkeleton: some View {
+        RoundedRectangle(
+            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+            style: .continuous
         )
+        .fill(PPAccessoryPalette.brand.opacity(0.20))
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
     }
 }
 

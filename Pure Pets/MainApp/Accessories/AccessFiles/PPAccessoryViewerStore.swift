@@ -371,7 +371,10 @@ final class PPAccessoryViewerStore: ObservableObject {
                             throwing: PPAccessoryCartError.unavailable
                         )
                     case .failed:
-                        self.checkoutPhase = .routeFailed
+                        // Direct checkout does not prepare the shared cart.
+                        // Keep this surface retryable so its holder can invoke
+                        // the same explicit-item route again.
+                        self.checkoutPhase = .ready
                         self.bannerMessage = PPAccessoryViewerL10n.text(
                             "accessory_view_direct_checkout_route_failed"
                         )
@@ -379,7 +382,7 @@ final class PPAccessoryViewerStore: ObservableObject {
                             throwing: PPAccessoryCartError.failed
                         )
                     @unknown default:
-                        self.checkoutPhase = .routeFailed
+                        self.checkoutPhase = .ready
                         continuation.resume(
                             throwing: PPAccessoryCartError.failed
                         )

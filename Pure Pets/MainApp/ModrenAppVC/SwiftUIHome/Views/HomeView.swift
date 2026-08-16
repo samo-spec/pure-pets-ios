@@ -141,6 +141,9 @@ struct HomeView: View {
                 }
             }
             .background(background)
+            .overlay(alignment: .bottom) {
+                bottomNavigationFade
+            }
             .scrollDismissesKeyboardCompat()
             .refreshable {
                 await store.refresh()
@@ -760,6 +763,30 @@ struct HomeView: View {
         WorldGlassBackground(
             isFaded: store.state.config.backgroundGlowsFaded
         )
+    }
+
+    private var bottomNavigationFade: some View {
+        GeometryReader { proxy in
+            let fadeHeight = max(
+                store.state.bottomContentClearance,
+                proxy.safeAreaInsets.bottom
+            ) + PPSpace.xxxl
+
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color.homeCanvas.opacity(0.58),
+                    Color.homeCanvas,
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: fadeHeight)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea(edges: .bottom)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     /// One rhythm break for the whole page. The care gateway is the only banded

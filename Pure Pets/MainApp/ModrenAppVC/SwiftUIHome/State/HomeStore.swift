@@ -1422,11 +1422,10 @@ final class HomeStore: ObservableObject {
         let marketplaceAccessibilityLabel: String
 
         if let categoryName, !categoryName.isEmpty {
-            // Unicode First Strong Isolate / Pop Directional Isolate keep a
-            // Latin category name stable inside Arabic formatted copy (and the
-            // inverse) without changing the localized source strings.
-            let isolatedCategoryName =
-                "\u{2068}\(categoryName)\u{2069}"
+            let containsLatin = categoryName.range(of: "[a-zA-Z]", options: .regularExpression) != nil
+            let isolatedCategoryName = containsLatin
+                ? "\u{2068}\(categoryName)\u{2069}"
+                : categoryName.trimmingCharacters(in: .whitespacesAndNewlines)
             marketplaceEyebrow = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_eyebrow_format",
@@ -1606,38 +1605,19 @@ final class HomeStore: ObservableObject {
                 destination: .advertisements
             ),
             HomePriorityAction(
-                id: "pharmacy",
-                title: HomeModelAdapter.localized(
-                    "home_pulse_priority_pharmacy",
-                    fallback: "Pharmacy"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "home_pulse_priority_pharmacy_subtitle",
-                    fallback: "Pet medicines"
-                ),
-                systemImage: "pills.fill",
-                accent: UIColor(red: 0.22, green: 0.58, blue: 0.62, alpha: 1.0),
-                destination: .pharmacy
-            ),
-            HomePriorityAction(
                 id: "vet",
                 title: HomeModelAdapter.localized(
                     "home_pulse_priority_vet",
-                    fallback: "Veterinary"
+                    fallback: "Vet & Pharmacy"
                 ),
                 subtitle: HomeModelAdapter.localized(
                     "home_pulse_priority_vet_subtitle",
-                    fallback: "Care destination"
+                    fallback: "Clinics & medicines"
                 ),
                 systemImage: "cross.case.fill",
                 accent: UIColor(red: 0.31, green: 0.53, blue: 0.70, alpha: 1.0),
                 destination: .veterinary
             ),
-            // Services (grooming / training). Its destination was already
-            // routed (`HomePriorityDestination.services` →
-            // `HomeRouter.openServices`) and both string tables already carried
-            // the copy; only the action itself was missing, so Home never
-            // surfaced the destination.
             HomePriorityAction(
                 id: "services",
                 title: HomeModelAdapter.localized(
@@ -2365,8 +2345,6 @@ final class HomeStore: ObservableObject {
         guard visible,
               sceneActive,
               !heroInteractionActive,
-              !voiceOverRunning,
-              !reduceMotion,
               state.heroPages.count > 1
         else {
             return

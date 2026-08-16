@@ -69,6 +69,7 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
     _animationName = [animationName copy] ?: @"";
     _loadsFromFirebase = loadsFromFirebase;
     [self pp_buildMarketplaceAnimation];
+    [self pp_loadMarketplaceAnimationIfNeeded];
     return self;
 }
 
@@ -280,7 +281,9 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
 
 - (BOOL)pp_isMarketplaceAnimationName
 {
-    return [self.animationName.lastPathComponent.lowercaseString isEqualToString:@"shop2.json"];
+    NSString *assetName = self.animationName.lastPathComponent.lowercaseString;
+    return [assetName isEqualToString:@"shop2.json"] ||
+        [assetName isEqualToString:@"bag2.json"];
 }
 
 - (BOOL)pp_isBagAnimationName
@@ -298,7 +301,12 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
             [self.animationName isEqualToString:@"Profile.lottie"];
         BOOL marketplaceAnimation = [self pp_isMarketplaceAnimationName];
         BOOL bagAnimation = [self pp_isBagAnimationName];
-        if (marketplaceAnimation) {
+        BOOL marketplaceBagAnimation =
+            [self.animationName.lastPathComponent.lowercaseString
+                isEqualToString:@"bag2.json"];
+        if (marketplaceBagAnimation) {
+            self.animationView.animationSpeed = 0.52;
+        } else if (marketplaceAnimation) {
             self.animationView.animationSpeed = 0.60;
         } else if (profileAnimation || bagAnimation) {
             self.animationView.animationSpeed = 0.85;
@@ -335,11 +343,13 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
 
     LOTColorValueCallback *callback =
         [LOTColorValueCallback withCGColor:resolvedTint.CGColor];
-    LOTKeypath *strokeColorKeypath =
-        [LOTKeypath keypathWithString:@"**.Stroke 1.Color"];
     self.colorValueCallback = callback;
     [self.animationView setValueDelegate:callback
-                              forKeypath:strokeColorKeypath];
+                               forKeypath:[LOTKeypath keypathWithString:@"**.Stroke 1.Color"]];
+    [self.animationView setValueDelegate:callback
+                               forKeypath:[LOTKeypath keypathWithString:@"**.Fill 1.Color"]];
+    [self.animationView setValueDelegate:callback
+                               forKeypath:[LOTKeypath keypathWithString:@"**.Color"]];
 }
 
 - (void)pp_marketplaceEnvironmentDidChange:(NSNotification *)notification
@@ -351,27 +361,13 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
 - (void)pp_updateMarketplacePlayback
 {
     if (!self.animationLoaded) {
+        [self pp_loadMarketplaceAnimationIfNeeded];
         return;
     }
 
-    BOOL applicationActive =
-        UIApplication.sharedApplication.applicationState ==
-        UIApplicationStateActive;
-    BOOL shouldPlay =
-        self.playbackEnabled &&
-        self.window != nil &&
-        applicationActive &&
-        !UIAccessibilityIsReduceMotionEnabled();
-
-    if (shouldPlay) {
-        if (!self.animationView.isAnimationPlaying) {
-            [self.animationView play];
-        }
-    } else {
-        [self.animationView stop];
-        if (UIAccessibilityIsReduceMotionEnabled()) {
-            self.animationView.animationProgress = 0.32;
-        }
+    self.animationView.loopAnimation = YES;
+    if (!self.animationView.isAnimationPlaying) {
+        [self.animationView playWithCompletion:nil];
     }
 }
 

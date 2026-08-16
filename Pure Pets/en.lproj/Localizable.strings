@@ -4132,8 +4132,8 @@
 "home_pulse_priority_shop_subtitle" = "Food & essentials";
 "home_pulse_priority_title" = "Your next step";
 "home_pulse_priority_subtitle" = "Everything your pet needs in one place";
-"home_pulse_priority_vet" = "Veterinary";
-"home_pulse_priority_vet_subtitle" = "Care destination";
+"home_pulse_priority_vet" = "Vet & Pharmacy";
+"home_pulse_priority_vet_subtitle" = "Clinics & medicines";
 "home_pulse_quantity_a11y" = "Quantity %d";
 "home_pulse_refresh_complete_a11y" = "Home refreshed";
 "home_pulse_refreshing" = "Refreshing Home";

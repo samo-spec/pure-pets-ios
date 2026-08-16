@@ -67,6 +67,9 @@ public struct AnimatedAddToCartButton: View {
         fileprivate let increaseAccessibilityLabel: String
         fileprivate let decreaseAccessibilityLabel: String
         fileprivate let removeAccessibilityLabel: String
+        fileprivate let increaseAccessibilityIdentifier: String?
+        fileprivate let decreaseAccessibilityIdentifier: String?
+        fileprivate let removeAccessibilityIdentifier: String?
         fileprivate let isEnabled: Bool
         fileprivate let canRemove: Bool
         fileprivate let controlHeight: CGFloat
@@ -83,6 +86,9 @@ public struct AnimatedAddToCartButton: View {
             increaseAccessibilityLabel: String,
             decreaseAccessibilityLabel: String,
             removeAccessibilityLabel: String,
+            increaseAccessibilityIdentifier: String? = nil,
+            decreaseAccessibilityIdentifier: String? = nil,
+            removeAccessibilityIdentifier: String? = nil,
             isEnabled: Bool = true,
             canRemove: Bool = true,
             controlHeight: CGFloat = 44,
@@ -100,6 +106,12 @@ public struct AnimatedAddToCartButton: View {
             self.increaseAccessibilityLabel = increaseAccessibilityLabel
             self.decreaseAccessibilityLabel = decreaseAccessibilityLabel
             self.removeAccessibilityLabel = removeAccessibilityLabel
+            self.increaseAccessibilityIdentifier =
+                increaseAccessibilityIdentifier
+            self.decreaseAccessibilityIdentifier =
+                decreaseAccessibilityIdentifier
+            self.removeAccessibilityIdentifier =
+                removeAccessibilityIdentifier
             self.isEnabled = isEnabled
             self.canRemove = canRemove
             self.controlHeight = max(36, controlHeight)
@@ -534,72 +546,109 @@ public struct AnimatedAddToCartButton: View {
             )
 
             HStack(spacing: 2) {
-                quantityActionButton(
-                    isIncrease: true,
-                    mode: quantityMode
-                )
+                if presentationStyle == .commerceHolder {
+                    quantityActionButton(
+                        isIncrease: false,
+                        mode: quantityMode
+                    )
 
-                quantityRailDivider
+                    quantityRailDivider
 
-                quantityStatus(mode: quantityMode)
+                    quantityStatus(mode: quantityMode)
 
-                quantityRailDivider
+                    quantityRailDivider
 
-                quantityActionButton(
-                    isIncrease: false,
-                    mode: quantityMode
-                )
+                    quantityActionButton(
+                        isIncrease: true,
+                        mode: quantityMode
+                    )
+                } else {
+                    quantityActionButton(
+                        isIncrease: true,
+                        mode: quantityMode
+                    )
+
+                    quantityRailDivider
+
+                    quantityStatus(mode: quantityMode)
+
+                    quantityRailDivider
+
+                    quantityActionButton(
+                        isIncrease: false,
+                        mode: quantityMode
+                    )
+                }
             }
             .padding(.horizontal, 3)
             .frame(maxWidth: .infinity, minHeight: signatureControlHeight)
             .background {
-                ZStack {
-                    shape.fill(Color.ppForeground)
-                    shape.fill(
-                        LinearGradient(
-                            colors: [
-                                tint.opacity(
-                                    colorScheme == .dark ? 0.18 : 0.10
-                                ),
-                                tint.opacity(
-                                    colorScheme == .dark ? 0.08 : 0.035
-                                ),
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                if presentationStyle == .commerceHolder {
+                    shape.fill(Color.ppSecondarySurface)
+                } else {
+                    ZStack {
+                        shape.fill(Color.ppForeground)
+                        shape.fill(
+                            LinearGradient(
+                                colors: [
+                                    tint.opacity(
+                                        colorScheme == .dark ? 0.18 : 0.10
+                                    ),
+                                    tint.opacity(
+                                        colorScheme == .dark ? 0.08 : 0.035
+                                    ),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
+                    }
                 }
             }
             .overlay {
-                ZStack {
+                if presentationStyle == .commerceHolder {
                     shape.strokeBorder(
-                        tint.opacity(
-                            colorScheme == .dark ? 0.38 : 0.24
+                        Color.ppSurfaceBorder.opacity(
+                            colorScheme == .dark ? 0.90 : 0.78
                         ),
-                        lineWidth: 1.25
+                        lineWidth: 1
                     )
-
-                    shape
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(
-                                        colorScheme == .dark ? 0.10 : 0.72
-                                    ),
-                                    Color.clear,
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
+                } else {
+                    ZStack {
+                        shape.strokeBorder(
+                            tint.opacity(
+                                colorScheme == .dark ? 0.38 : 0.24
                             ),
-                            lineWidth: 0.75
+                            lineWidth: 1.25
                         )
+
+                        shape
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(
+                                            colorScheme == .dark ? 0.10 : 0.72
+                                        ),
+                                        Color.clear,
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 0.75
+                            )
+                    }
                 }
             }
             .shadow(
-                color: tint.opacity(colorScheme == .dark ? 0.14 : 0.11),
-                radius: usesCompactSignatureControl ? 8 : 14,
-                y: usesCompactSignatureControl ? 4 : 7
+                color: presentationStyle == .commerceHolder
+                    ? .clear
+                    : tint.opacity(colorScheme == .dark ? 0.14 : 0.11),
+                radius: presentationStyle == .commerceHolder
+                    ? 0
+                    : (usesCompactSignatureControl ? 8 : 14),
+                y: presentationStyle == .commerceHolder
+                    ? 0
+                    : (usesCompactSignatureControl ? 4 : 7)
             )
             .contentShape(shape)
             .opacity(quantityMode.isEnabled ? 1 : 0.62)
@@ -635,6 +684,13 @@ public struct AnimatedAddToCartButton: View {
                 isRemove
                     ? mode.removeAccessibilityLabel
                     : mode.decreaseAccessibilityLabel
+            )
+        let accessibilityIdentifier = isIncrease
+            ? mode.increaseAccessibilityIdentifier
+            : (
+                isRemove
+                    ? mode.removeAccessibilityIdentifier
+                    : mode.decreaseAccessibilityIdentifier
             )
         let actionTint = isRemove ? Color.ppError : tint
         let visualSize = max(
@@ -712,6 +768,11 @@ public struct AnimatedAddToCartButton: View {
             [anchorKey: anchor]
         }
         .accessibilityLabel(accessibilityLabel)
+        .modifier(
+            CartAccessibilityIdentifierModifier(
+                identifier: accessibilityIdentifier
+            )
+        )
         .accessibilitySortPriority(
             isIncrease ? 3 : 1
         )
@@ -779,7 +840,9 @@ public struct AnimatedAddToCartButton: View {
                     )
                 )
                 .scaleEffect(
-                    reduceMotion ? 1 : 1 + (0.08 * quantityImpact)
+                    reduceMotion || presentationStyle == .commerceHolder
+                        ? 1
+                        : 1 + (0.08 * quantityImpact)
                 )
                 .accessibilityHidden(true)
 
@@ -820,48 +883,64 @@ public struct AnimatedAddToCartButton: View {
             minHeight: max(30, signatureControlHeight - 10)
         )
         .background {
-            RoundedRectangle(
-                cornerRadius: PPCorner.small,
-                style: .continuous
-            )
-            .fill(Color.ppForeground.opacity(colorScheme == .dark ? 0.88 : 0.96))
-            .overlay {
+            if presentationStyle == .commerceHolder {
+                Color.clear
+            } else {
                 RoundedRectangle(
                     cornerRadius: PPCorner.small,
                     style: .continuous
                 )
                 .fill(
-                    tint.opacity(
-                        colorScheme == .dark ? 0.09 : 0.045
+                    Color.ppForeground.opacity(
+                        colorScheme == .dark ? 0.88 : 0.96
                     )
                 )
+                .overlay {
+                    RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
+                    .fill(
+                        tint.opacity(
+                            colorScheme == .dark ? 0.09 : 0.045
+                        )
+                    )
+                }
             }
         }
         .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.small,
-                style: .continuous
-            )
-            .strokeBorder(
-                tint.opacity(
-                    0.18 + (0.16 * quantityImpact)
-                ),
-                lineWidth: 1
-            )
+            if presentationStyle != .commerceHolder {
+                RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+                .strokeBorder(
+                    tint.opacity(
+                        0.18 + (0.16 * quantityImpact)
+                    ),
+                    lineWidth: 1
+                )
+            }
         }
         .clipped()
         .foregroundStyle(tint)
         .frame(maxWidth: .infinity, alignment: .center)
         .scaleEffect(
-            x: reduceMotion ? 1 : 1 + (0.045 * quantityImpact),
-            y: reduceMotion ? 1 : 1 - (0.055 * quantityImpact)
+            x: reduceMotion || presentationStyle == .commerceHolder
+                ? 1
+                : 1 + (0.045 * quantityImpact),
+            y: reduceMotion || presentationStyle == .commerceHolder
+                ? 1
+                : 1 - (0.055 * quantityImpact)
         )
         .offset(
-            y: reduceMotion ? 0 : -1.5 * quantityImpact
+            y: reduceMotion || presentationStyle == .commerceHolder
+                ? 0
+                : -1.5 * quantityImpact
         )
         .rotationEffect(
             .degrees(
-                reduceMotion
+                reduceMotion || presentationStyle == .commerceHolder
                     ? 0
                     : Double(
                         quantityDirection == .increase ? -0.8 : 0.8
@@ -869,9 +948,15 @@ public struct AnimatedAddToCartButton: View {
             )
         )
         .shadow(
-            color: tint.opacity(0.12 * quantityImpact),
-            radius: 6 * quantityImpact,
-            y: 3 * quantityImpact
+            color: presentationStyle == .commerceHolder
+                ? .clear
+                : tint.opacity(0.12 * quantityImpact),
+            radius: presentationStyle == .commerceHolder
+                ? 0
+                : 6 * quantityImpact,
+            y: presentationStyle == .commerceHolder
+                ? 0
+                : 3 * quantityImpact
         )
         .animation(quantityNumberAnimation, value: displayedQuantity)
         .animation(quantityImpactAnimation, value: quantityImpact)
@@ -1473,7 +1558,7 @@ public struct AnimatedAddToCartButton: View {
     }
 
     private var quantityNumberTransition: AnyTransition {
-        guard !reduceMotion else {
+        guard !reduceMotion, presentationStyle != .commerceHolder else {
             return .opacity
         }
 
@@ -1555,6 +1640,14 @@ public struct AnimatedAddToCartButton: View {
         quantityMotionTask?.cancel()
         quantityDirection = direction
         quantityImpulseID += 1
+
+        if presentationStyle == .commerceHolder {
+            showsQuantityFlight = false
+            quantityFlightProgress = 0
+            quantityImpact = 0
+            action()
+            return
+        }
 
         guard !reduceMotion else {
             quantityImpact = 0.55
@@ -1883,6 +1976,19 @@ private struct CartControlMorphModifier: ViewModifier {
                 anchor: .center,
                 isSource: isSource
             )
+        } else {
+            content
+        }
+    }
+}
+
+private struct CartAccessibilityIdentifierModifier: ViewModifier {
+    let identifier: String?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let identifier, !identifier.isEmpty {
+            content.accessibilityIdentifier(identifier)
         } else {
             content
         }

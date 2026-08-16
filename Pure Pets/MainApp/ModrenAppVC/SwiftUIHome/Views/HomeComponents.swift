@@ -110,7 +110,7 @@ struct HomeCommandBar: View {
 
     var body: some View {
         commandContainer
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, PPSpace.screenMargin + 1)
             .padding(.vertical, PPSpace.sm)
             .background(alignment: .bottom) {
                 HomeTopFadeBackdrop(contrast: contrast)
@@ -339,18 +339,12 @@ struct HomeCommandBar: View {
     /// location, search, and cart controls use `resolvedControlHeight`.
     static let controlSide: CGFloat = 52
 
-    static var controlShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+    static var controlShape: Capsule {
+        Capsule(style: .continuous)
     }
 
-    private var commandPillShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: max(
-                PPCorner.medium,
-                (resolvedControlHeight / 2) - (PPSpace.xs + PPSpace.xxs)
-            ),
-            style: .continuous
-        )
+    private var commandPillShape: Capsule {
+        Capsule(style: .continuous)
     }
 
     private var commandTint: Color {
@@ -1889,7 +1883,7 @@ struct HomePriorityGrid: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline)
-    private var compactCardHeight: CGFloat = 128
+    private var compactCardHeight: CGFloat = 120
 
     private enum Layout {
         static let columnSpacing = PPSpace.md
@@ -2082,7 +2076,7 @@ struct HomeFeaturedPetCard: View {
 
     private var cardShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: PPCorner.hero,
+            cornerRadius: PPCorner.medium,
             style: .continuous
         )
     }
@@ -2161,7 +2155,10 @@ struct HomeFeaturedPetCard: View {
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    in: Capsule()
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
                 )
                 .shadow(
                     color: actionAccent.opacity(
@@ -2399,24 +2396,13 @@ private struct HomeSecondaryActionCard: View {
                     ? nil
                     : compactHeight
             )
-            .background {
-                ZStack {
-                    cardShape.fill(Color.homeRaisedSurface)
-                    cardShape.fill(
-                        accentColor.opacity(
-                            colorScheme == .dark
-                                ? HomeQuickActionTone.darkSurfaceOpacity
-                                : HomeQuickActionTone.lightSurfaceOpacity
-                        )
-                    )
-                }
-            }
+            .background(Color.homeSurface, in: cardShape)
             .overlay {
                 cardShape.stroke(
                     accentColor.opacity(
                         contrast == .increased
                             ? 0.62
-                            : (colorScheme == .dark ? 0.32 : 0.17)
+                            : (colorScheme == .dark ? 0.28 : 0.14)
                     ),
                     lineWidth: contrast == .increased ? 1.5 : 0.8
                 )
@@ -2531,7 +2517,7 @@ private struct HomeSecondaryActionCard: View {
             .flipsForRightToLeftLayoutDirection(true)
             .frame(width: size, height: size)
             .background(
-                Color.homeRaisedSurface.opacity(
+                Color.homeSurface.opacity(
                     colorScheme == .dark ? 0.72 : 0.90
                 ),
                 in: Circle()
@@ -4135,6 +4121,8 @@ struct HomePureLensSection: View {
             opticalChamber
                 .frame(width: preferredChamberWidth)
                 .frame(maxHeight: .infinity)
+                .padding(.vertical, PPSpace.sm)
+                .padding(.trailing, PPSpace.sm)
         }
     }
 
@@ -4148,6 +4136,8 @@ struct HomePureLensSection: View {
 
             opticalChamber
                 .frame(maxWidth: .infinity)
+                .padding(.horizontal, PPSpace.sm)
+                .padding(.bottom, PPSpace.sm)
         }
     }
 
@@ -4184,6 +4174,17 @@ struct HomePureLensSection: View {
             readinessResolved: presentationReady,
             minimumHeight: resolvedChamberHeight
         )
+        .clipShape(chamberShape)
+        .overlay {
+            chamberShape
+                .stroke(
+                    palette.chamberContent.opacity(
+                        contrast == .increased ? 0.30 : 0.12
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.7
+                )
+                .accessibilityHidden(true)
+        }
     }
 
     private var actionRail: some View {
@@ -4214,6 +4215,13 @@ struct HomePureLensSection: View {
     private var cardShape: RoundedRectangle {
         RoundedRectangle(
             cornerRadius: PPCorner.card,
+            style: .continuous
+        )
+    }
+
+    private var chamberShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPCorner.medium,
             style: .continuous
         )
     }
@@ -4360,15 +4368,15 @@ private struct HomePureLensMotionTaskID: Hashable {
 }
 
 private enum HomePureLensMetrics {
-    static let chamberHeight: CGFloat = 132
-    static let maximumChamberHeight: CGFloat = 150
-    static let accessibilityMaximumChamberHeight: CGFloat = 166
+    static let chamberHeight: CGFloat = 124
+    static let maximumChamberHeight: CGFloat = 142
+    static let accessibilityMaximumChamberHeight: CGFloat = 158
     static let compactChamberWidth: CGFloat = 132
     static let regularChamberWidth: CGFloat = 280
     static let compactMinimumCopyWidth: CGFloat = 174
     static let regularMinimumCopyWidth: CGFloat = 300
-    static let minimumTwoZoneHeight: CGFloat = 168
-    static let actionMinimumHeight: CGFloat = 54
+    static let minimumTwoZoneHeight: CGFloat = 160
+    static let actionMinimumHeight: CGFloat = 46
     static let maximumCardWidth: CGFloat = 820
     static let readinessDuration: Double = 0.18
     static let readinessDurationNanoseconds: UInt64 = 180_000_000
@@ -4528,31 +4536,48 @@ private struct HomePureLensActionRail: View {
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        HStack(spacing: PPSpace.sm) {
+        HStack(spacing: PPSpace.md) {
             ZStack {
                 Circle()
                     .fill(isPressed ? palette.signalPressed : palette.signal)
+
+                Circle()
+                    .stroke(
+                        palette.chamberContent.opacity(
+                            contrast == .increased ? 0.46 : 0.24
+                        ),
+                        lineWidth: contrast == .increased ? 1.5 : 0.7
+                    )
 
                 Image(systemName: "camera.fill")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(palette.chamberContent)
             }
-            .frame(width: 36, height: 36)
+            .frame(width: 40, height: 40)
             .accessibilityHidden(true)
 
             Text(title)
                 .font(HomeFont.bold(16))
                 .foregroundStyle(palette.primaryText)
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .layoutPriority(1)
 
             Spacer(minLength: PPSpace.sm)
 
-            Image(systemName: "chevron.forward")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(palette.signal)
-                .offset(x: forwardOffset)
-                .accessibilityHidden(true)
+            ZStack {
+                Circle()
+                    .fill(
+                        palette.signal.opacity(isPressed ? 0.16 : 0.10)
+                    )
+
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(palette.signal)
+                    .offset(x: forwardOffset)
+            }
+            .frame(width: 32, height: 32)
+            .accessibilityHidden(true)
         }
         .padding(.horizontal, PPSpace.base)
         .padding(.vertical, PPSpace.sm)

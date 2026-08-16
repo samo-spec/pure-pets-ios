@@ -2,54 +2,43 @@ import UIKit
 
 private enum PPMainKindsCellMetrics {
     static let cornerRadius: CGFloat = PPCorner.card
-    static let contentInset: CGFloat = PPSpace.md
-    static let imagePlateSize: CGFloat = 64
-    static let compactImagePlateSize: CGFloat = 60
-    static let maximumImagePlateSize: CGFloat = 64
-    static let maximumCompactImagePlateSize: CGFloat = 60
-    static let artworkSize: CGFloat = 56
-    static let allArtworkSize: CGFloat = 28
-    static let artworkPlatePadding: CGFloat = PPSpace.sm
-    static let imageToTitleSpacing: CGFloat = PPSpace.sm
-    // Temporary visual switch: selection semantics and motion stay active,
-    // while the decorative bottom line remains hidden.
-    static let showsBottomSelectionIndicator = false
-    static let indicatorWidth: CGFloat = 30
-    static let indicatorHeight: CGFloat = PPSpace.xs
-    static let identitySpineWidth: CGFloat = PPSpace.xs
-    static let identitySpineInset: CGFloat = PPSpace.sm
+    static let titleInset: CGFloat = PPSpace.sm
+    static let compactOuterInset: CGFloat = 6
+    static let regularOuterInset: CGFloat = PPSpace.sm
+    static let compactTopInset: CGFloat = PPSpace.sm
+    static let regularTopInset: CGFloat = 10
+    static let tallTopInset: CGFloat = PPSpace.xxl
+    static let titleBottomInset: CGFloat = 10
+    static let accessibilityTitleBottomInset: CGFloat = PPSpace.sm
+    static let artworkToTitleMinimumSpacing: CGFloat = PPSpace.xs
+
+    static let passiveBorderWidth: CGFloat = 1
     static let selectedBorderWidth: CGFloat = 1.5
-    static let regularBorderWidth: CGFloat = 1
-    static let selectedRestingScale: CGFloat = 1.012
-    static let pressDuration: TimeInterval = 0.10
-    static let releaseDuration: TimeInterval = 0.22
-    static let selectionDuration: TimeInterval = 0.18
-    static let restoredEntranceDuration: TimeInterval = 0.38
-    static let selectionChangeDuration: TimeInterval = 0.20
-    static let haloDuration: TimeInterval = 0.28
-    static let identityRevealDuration: TimeInterval = 0.26
-    static let identityTraceDuration: TimeInterval = 0.34
+    static let increasedContrastBorderWidth: CGFloat = 2
+
+    static let pressScale: CGFloat = 0.976
+    static let pressArtworkScale: CGFloat = 1.012
+    static let commitArtworkPeakScale: CGFloat = 1.018
+    static let pressDuration: TimeInterval = 0.09
+    static let releaseDuration: TimeInterval = 0.16
+    static let selectionDuration: TimeInterval = 0.20
+    static let restoredSelectionDuration: TimeInterval = 0.18
     static let commitDuration: TimeInterval = 0.18
+    static let previewRecoveryDelay: TimeInterval = 0.38
 }
 
 private enum PPMainKindsCellPalette {
-    static var brand: UIColor {
-        UIColor(named: "AppPrimaryColor") ?? .systemPink
-    }
-
-    static var primaryText: UIColor {
-        UIColor(named: "PrimaryTextColor") ?? .label
-    }
-
-    static var card: UIColor {
-        UIColor(named: "AppCardColor") ?? .secondarySystemBackground
-    }
-
-    static var appSurface: UIColor {
-        UIColor(named: "AppSurfColor") ?? UIColor(named: "AppCardColor") ?? .secondarySystemBackground
-    }
+    static var brand: UIColor { .ppPrimary }
+    static var surface: UIColor { .ppSurfaceRaised }
+    static var border: UIColor { .ppSurfaceBorder }
+    static var primaryText: UIColor { .ppTextPrimary }
+    static var secondaryText: UIColor { .ppTextSecondary }
 }
 
+/// The production MainKinds card used by HomeCategoryRail.
+///
+/// The card deliberately owns only presentation and its bounded tap feedback.
+/// Home remains the owner of ordering, selection state, persistence, and routing.
 @objc(PPMainKindsCell)
 public final class PPMainKindsCell: UICollectionViewCell {
     @objc public class var reuseIdentifier: String { "PPMainKindsCell" }
@@ -59,23 +48,21 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private let tapButton = UIButton(type: .custom)
     private let surfaceView = UIView()
-    private let materialView = UIView()
-    private let imagePlateView = UIView()
+    private let canvasView = UIView()
+    private let habitatFieldView = UIView()
     private let kindImageView = UIImageView()
     private let titleLabel = UILabel()
-    private let selectionIndicatorView = UIView()
-    private let identityFieldLayer = CAGradientLayer()
-    private let identitySpineLayer = CAGradientLayer()
-    private let captionFieldLayer = CAGradientLayer()
-    private let bottomGlowLayer = CAGradientLayer()
-    private let kindNameGlowLayer = CAGradientLayer()
-    private let tapHaloLayer = CAGradientLayer()
-    private let selectionIndicatorLayer = CAGradientLayer()
+    private let habitatLayer = CAGradientLayer()
 
-    private var imagePlateWidthConstraint: NSLayoutConstraint!
-    private var imagePlateHeightConstraint: NSLayoutConstraint!
+    private var habitatTopConstraint: NSLayoutConstraint!
+    private var habitatWidthConstraint: NSLayoutConstraint!
+    private var habitatHeightConstraint: NSLayoutConstraint!
     private var artworkWidthConstraint: NSLayoutConstraint!
     private var artworkHeightConstraint: NSLayoutConstraint!
+    private var titleMinimumTopConstraint: NSLayoutConstraint!
+    private var titleAdjacentTopConstraint: NSLayoutConstraint!
+    private var titleBottomConstraint: NSLayoutConstraint!
+    private var titleBottomLimitConstraint: NSLayoutConstraint!
 
     private var currentKind: NSObject?
     private var currentImageURL: String?
@@ -84,27 +71,39 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private var isKindSelected = false
     private var usesRestoredSelectionAppearance = false
     private var isPressing = false
-    private var isPreviewingSelectedGlow = false
-    private var appliedPlateSize: CGFloat = 0
+    private var isPreviewingSelection = false
+    private var appliedLayoutSize = CGSize.zero
+    private var appliedAccessibilityCategory = false
     private var interactionGeneration = 0
     private var isCommitInFlight = false
+    private var pendingCommitWorkItem: DispatchWorkItem?
+    private var pendingPreviewRecoveryWorkItem: DispatchWorkItem?
+    private var observers: [NSObjectProtocol] = []
 
     private var reduceMotion: Bool {
         UIAccessibility.isReduceMotionEnabled
     }
 
-    private var rendersSelectedGlow: Bool {
-        isKindSelected || isPreviewingSelectedGlow
+    private var rendersSelectedAppearance: Bool {
+        isKindSelected || isPreviewingSelection
     }
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
         buildUI()
+        registerForEnvironmentChanges()
     }
 
     @available(*, unavailable)
     public required init?(coder: NSCoder) {
         fatalError("PPMainKindsCell supports code-only UIKit.")
+    }
+
+    deinit {
+        pendingCommitWorkItem?.cancel()
+        pendingPreviewRecoveryWorkItem?.cancel()
+        observers.forEach { NotificationCenter.default.removeObserver($0) }
+        PPImageLoaderManager.shared().cancelImageLoad(for: kindImageView)
     }
 
     private func buildUI() {
@@ -117,10 +116,19 @@ public final class PPMainKindsCell: UICollectionViewCell {
         tapButton.translatesAutoresizingMaskIntoConstraints = false
         tapButton.backgroundColor = .clear
         tapButton.isExclusiveTouch = true
+        tapButton.adjustsImageWhenHighlighted = false
         tapButton.accessibilityTraits = .button
+        tapButton.addTarget(
+            self,
+            action: #selector(handleTouchDown),
+            for: [.touchDown, .touchDragEnter]
+        )
+        tapButton.addTarget(
+            self,
+            action: #selector(handleTouchUp),
+            for: [.touchUpOutside, .touchCancel, .touchDragExit]
+        )
         tapButton.addTarget(self, action: #selector(handleTap), for: .touchUpInside)
-        tapButton.addTarget(self, action: #selector(handleTouchDown), for: [.touchDown, .touchDragEnter])
-        tapButton.addTarget(self, action: #selector(handleTouchUp), for: [.touchUpOutside, .touchCancel, .touchDragExit])
         contentView.addSubview(tapButton)
 
         surfaceView.translatesAutoresizingMaskIntoConstraints = false
@@ -130,99 +138,66 @@ public final class PPMainKindsCell: UICollectionViewCell {
         surfaceView.layer.masksToBounds = false
         tapButton.addSubview(surfaceView)
 
-        materialView.translatesAutoresizingMaskIntoConstraints = false
-        materialView.isUserInteractionEnabled = false
-        materialView.clipsToBounds = true
-        materialView.layer.cornerRadius = PPMainKindsCellMetrics.cornerRadius
-        materialView.layer.cornerCurve = .continuous
-        surfaceView.addSubview(materialView)
+        canvasView.translatesAutoresizingMaskIntoConstraints = false
+        canvasView.isUserInteractionEnabled = false
+        canvasView.clipsToBounds = true
+        canvasView.layer.cornerRadius = PPMainKindsCellMetrics.cornerRadius
+        canvasView.layer.cornerCurve = .continuous
+        surfaceView.addSubview(canvasView)
 
-        identityFieldLayer.name = "PPMainKindsIdentityFieldLayer"
-        identityFieldLayer.locations = [0, 0.44, 0.78, 1]
-        materialView.layer.addSublayer(identityFieldLayer)
+        habitatFieldView.translatesAutoresizingMaskIntoConstraints = false
+        habitatFieldView.isUserInteractionEnabled = false
+        habitatFieldView.clipsToBounds = true
+        habitatFieldView.isAccessibilityElement = false
+        canvasView.addSubview(habitatFieldView)
 
-        identitySpineLayer.name = "PPMainKindsIdentitySpineLayer"
-        identitySpineLayer.locations = [0, 0.5, 1]
-        identitySpineLayer.startPoint = CGPoint(x: 0.5, y: 0)
-        identitySpineLayer.endPoint = CGPoint(x: 0.5, y: 1)
-        identitySpineLayer.masksToBounds = true
-        materialView.layer.addSublayer(identitySpineLayer)
-
-        captionFieldLayer.name = "PPMainKindsCaptionFieldLayer"
-        captionFieldLayer.locations = [0, 0.48, 1]
-        captionFieldLayer.startPoint = CGPoint(x: 0.5, y: 0)
-        captionFieldLayer.endPoint = CGPoint(x: 0.5, y: 1)
-        materialView.layer.addSublayer(captionFieldLayer)
-
-        bottomGlowLayer.name = "PPMainKindsBottomGlowCircleLayer"
-        bottomGlowLayer.type = .radial
-        bottomGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        bottomGlowLayer.endPoint = CGPoint(x: 1, y: 1)
-        bottomGlowLayer.locations = [0, 0.56, 1]
-        bottomGlowLayer.opacity = 0
-        materialView.layer.addSublayer(bottomGlowLayer)
-
-        kindNameGlowLayer.name = "PPMainKindsKindNameGlowLayer"
-        kindNameGlowLayer.type = .radial
-        kindNameGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        kindNameGlowLayer.endPoint = CGPoint(x: 1, y: 1)
-        kindNameGlowLayer.locations = [0, 0.52, 1]
-        kindNameGlowLayer.opacity = 0
-        materialView.layer.addSublayer(kindNameGlowLayer)
-
-        tapHaloLayer.name = "PPMainKindsTapHaloLayer"
-        tapHaloLayer.type = .radial
-        tapHaloLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        tapHaloLayer.endPoint = CGPoint(x: 1, y: 1)
-        tapHaloLayer.locations = [0, 0.48, 1]
-        tapHaloLayer.opacity = 0
-        materialView.layer.addSublayer(tapHaloLayer)
-
-        imagePlateView.translatesAutoresizingMaskIntoConstraints = false
-        imagePlateView.isUserInteractionEnabled = false
-        imagePlateView.backgroundColor = .clear
-        imagePlateView.layer.masksToBounds = false
-        surfaceView.addSubview(imagePlateView)
+        habitatLayer.name = "PPMainKindsHabitatField"
+        habitatLayer.type = .radial
+        habitatLayer.startPoint = CGPoint(x: 0.5, y: 0.46)
+        habitatLayer.endPoint = CGPoint(x: 1, y: 1)
+        habitatLayer.locations = [0, 0.58, 1]
+        habitatFieldView.layer.addSublayer(habitatLayer)
 
         kindImageView.translatesAutoresizingMaskIntoConstraints = false
         kindImageView.contentMode = .scaleAspectFit
         kindImageView.clipsToBounds = false
         kindImageView.isAccessibilityElement = false
-        imagePlateView.addSubview(kindImageView)
+        canvasView.addSubview(kindImageView)
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.textAlignment = .center
         titleLabel.numberOfLines = 2
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.adjustsFontForContentSizeCategory = true
+        titleLabel.allowsDefaultTighteningForTruncation = true
         titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+        titleLabel.setContentHuggingPriority(.required, for: .vertical)
         titleLabel.isAccessibilityElement = false
-        surfaceView.addSubview(titleLabel)
+        canvasView.addSubview(titleLabel)
 
-        selectionIndicatorView.translatesAutoresizingMaskIntoConstraints = false
-        selectionIndicatorView.isUserInteractionEnabled = false
-        selectionIndicatorView.isHidden = !PPMainKindsCellMetrics.showsBottomSelectionIndicator
-        selectionIndicatorView.layer.cornerRadius = PPMainKindsCellMetrics.indicatorHeight / 2
-        selectionIndicatorView.layer.masksToBounds = true
-        surfaceView.addSubview(selectionIndicatorView)
-
-        selectionIndicatorLayer.name = "PPMainKindsSelectionHorizonLayer"
-        selectionIndicatorLayer.locations = [0, 0.5, 1]
-        selectionIndicatorLayer.startPoint = CGPoint(x: 0, y: 0.5)
-        selectionIndicatorLayer.endPoint = CGPoint(x: 1, y: 0.5)
-        selectionIndicatorView.layer.addSublayer(selectionIndicatorLayer)
-
-        imagePlateWidthConstraint = imagePlateView.widthAnchor.constraint(
-            equalToConstant: PPMainKindsCellMetrics.imagePlateSize
+        habitatTopConstraint = habitatFieldView.topAnchor.constraint(
+            equalTo: canvasView.topAnchor,
+            constant: PPMainKindsCellMetrics.regularTopInset
         )
-        imagePlateHeightConstraint = imagePlateView.heightAnchor.constraint(
-            equalToConstant: PPMainKindsCellMetrics.imagePlateSize
+        habitatWidthConstraint = habitatFieldView.widthAnchor.constraint(equalToConstant: 86)
+        habitatHeightConstraint = habitatFieldView.heightAnchor.constraint(equalToConstant: 62)
+        artworkWidthConstraint = kindImageView.widthAnchor.constraint(equalToConstant: 56)
+        artworkHeightConstraint = kindImageView.heightAnchor.constraint(equalToConstant: 56)
+        titleMinimumTopConstraint = titleLabel.topAnchor.constraint(
+            greaterThanOrEqualTo: habitatFieldView.bottomAnchor,
+            constant: PPMainKindsCellMetrics.artworkToTitleMinimumSpacing
         )
-        artworkWidthConstraint = kindImageView.widthAnchor.constraint(
-            equalToConstant: PPMainKindsCellMetrics.artworkSize
+        titleAdjacentTopConstraint = titleLabel.topAnchor.constraint(
+            equalTo: habitatFieldView.bottomAnchor,
+            constant: PPSpace.sm
         )
-        artworkHeightConstraint = kindImageView.heightAnchor.constraint(
-            equalToConstant: PPMainKindsCellMetrics.artworkSize
+        titleBottomConstraint = titleLabel.bottomAnchor.constraint(
+            equalTo: canvasView.bottomAnchor,
+            constant: -PPMainKindsCellMetrics.titleBottomInset
+        )
+        titleBottomLimitConstraint = titleLabel.bottomAnchor.constraint(
+            lessThanOrEqualTo: canvasView.bottomAnchor,
+            constant: -PPMainKindsCellMetrics.titleBottomInset
         )
 
         NSLayoutConstraint.activate([
@@ -236,55 +211,81 @@ public final class PPMainKindsCell: UICollectionViewCell {
             surfaceView.trailingAnchor.constraint(equalTo: tapButton.trailingAnchor),
             surfaceView.bottomAnchor.constraint(equalTo: tapButton.bottomAnchor),
 
-            materialView.topAnchor.constraint(equalTo: surfaceView.topAnchor),
-            materialView.leadingAnchor.constraint(equalTo: surfaceView.leadingAnchor),
-            materialView.trailingAnchor.constraint(equalTo: surfaceView.trailingAnchor),
-            materialView.bottomAnchor.constraint(equalTo: surfaceView.bottomAnchor),
+            canvasView.topAnchor.constraint(equalTo: surfaceView.topAnchor),
+            canvasView.leadingAnchor.constraint(equalTo: surfaceView.leadingAnchor),
+            canvasView.trailingAnchor.constraint(equalTo: surfaceView.trailingAnchor),
+            canvasView.bottomAnchor.constraint(equalTo: surfaceView.bottomAnchor),
 
-            imagePlateView.topAnchor.constraint(
-                equalTo: surfaceView.topAnchor,
-                constant: PPMainKindsCellMetrics.contentInset
-            ),
-            imagePlateView.centerXAnchor.constraint(equalTo: surfaceView.centerXAnchor),
-            imagePlateWidthConstraint,
-            imagePlateHeightConstraint,
+            habitatTopConstraint,
+            habitatFieldView.centerXAnchor.constraint(equalTo: canvasView.centerXAnchor),
+            habitatWidthConstraint,
+            habitatHeightConstraint,
 
-            kindImageView.centerXAnchor.constraint(equalTo: imagePlateView.centerXAnchor),
-            kindImageView.centerYAnchor.constraint(equalTo: imagePlateView.centerYAnchor),
+            kindImageView.centerXAnchor.constraint(equalTo: habitatFieldView.centerXAnchor),
+            kindImageView.centerYAnchor.constraint(equalTo: habitatFieldView.centerYAnchor),
             artworkWidthConstraint,
             artworkHeightConstraint,
 
-            titleLabel.topAnchor.constraint(
-                greaterThanOrEqualTo: imagePlateView.bottomAnchor,
-                constant: PPMainKindsCellMetrics.imageToTitleSpacing
-            ),
+            titleMinimumTopConstraint,
             titleLabel.leadingAnchor.constraint(
-                equalTo: surfaceView.leadingAnchor,
-                constant: PPMainKindsCellMetrics.contentInset
+                equalTo: canvasView.leadingAnchor,
+                constant: PPMainKindsCellMetrics.titleInset
             ),
             titleLabel.trailingAnchor.constraint(
-                equalTo: surfaceView.trailingAnchor,
-                constant: -PPMainKindsCellMetrics.contentInset
+                equalTo: canvasView.trailingAnchor,
+                constant: -PPMainKindsCellMetrics.titleInset
             ),
-            titleLabel.bottomAnchor.constraint(
-                equalTo: surfaceView.bottomAnchor,
-                constant: -PPMainKindsCellMetrics.contentInset
-            ),
-
-            selectionIndicatorView.centerXAnchor.constraint(equalTo: surfaceView.centerXAnchor),
-            selectionIndicatorView.bottomAnchor.constraint(equalTo: surfaceView.bottomAnchor, constant: -4),
-            selectionIndicatorView.widthAnchor.constraint(equalToConstant: PPMainKindsCellMetrics.indicatorWidth),
-            selectionIndicatorView.heightAnchor.constraint(equalToConstant: PPMainKindsCellMetrics.indicatorHeight)
+            titleBottomConstraint
         ])
 
-        updateTypographyAndMetrics()
+        updateTypographyAndMetrics(force: true)
         applyAppearance(animated: false)
     }
 
+    private func registerForEnvironmentChanges() {
+        let center = NotificationCenter.default
+        let accessibilityNames: [Notification.Name] = [
+            UIAccessibility.reduceMotionStatusDidChangeNotification,
+            UIAccessibility.reduceTransparencyStatusDidChangeNotification,
+            UIAccessibility.darkerSystemColorsStatusDidChangeNotification,
+            UIContentSizeCategory.didChangeNotification
+        ]
+
+        accessibilityNames.forEach { name in
+            observers.append(
+                center.addObserver(
+                    forName: name,
+                    object: nil,
+                    queue: .main
+                ) { [weak self] _ in
+                    guard let self else { return }
+                    if self.reduceMotion {
+                        self.stopVisualMotionAndSettle()
+                    }
+                    self.updateTypographyAndMetrics(force: true)
+                    self.applyAppearance(animated: false)
+                    self.setNeedsLayout()
+                }
+            )
+        }
+
+        observers.append(
+            center.addObserver(
+                forName: UIApplication.didEnterBackgroundNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.cancelPendingInteraction(clearPreview: true)
+            }
+        )
+    }
+
     @objc(configureWithMainKind:isAll:selected:)
-    public func configure(withMainKind kind: NSObject?,
-                          isAll: Bool,
-                          selected: Bool) {
+    public func configure(
+        withMainKind kind: NSObject?,
+        isAll: Bool,
+        selected: Bool
+    ) {
         configure(
             withMainKind: kind,
             isAll: isAll,
@@ -294,30 +295,38 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
 
     @objc(configureWithMainKind:isAll:selected:restoredSelectionAppearance:)
-    public func configure(withMainKind kind: NSObject?,
-                          isAll: Bool,
-                          selected: Bool,
-                          restoredSelectionAppearance: Bool) {
+    public func configure(
+        withMainKind kind: NSObject?,
+        isAll: Bool,
+        selected: Bool,
+        restoredSelectionAppearance: Bool
+    ) {
         let nextCellID = cellID(for: kind, isAll: isAll)
         let sameBinding = boundCellID == nextCellID
         let wasSelected = isKindSelected
-        let wasPreviewingSelectedGlow = isPreviewingSelectedGlow
+        let wasPreviewingSelection = isPreviewingSelection
         let didSelectionChange = window != nil && wasSelected != selected
-        let shouldAnimateSelection = didSelectionChange && !restoredSelectionAppearance
-        let shouldPlayChangeMotion = didSelectionChange &&
-            selected &&
-            !wasPreviewingSelectedGlow &&
-            !restoredSelectionAppearance
-        let shouldPlayDeselectionMotion = didSelectionChange &&
-            wasSelected &&
-            !selected &&
-            !restoredSelectionAppearance
+        let shouldPlaySelectionMotion = didSelectionChange
+            && selected
+            && !wasPreviewingSelection
+            && !restoredSelectionAppearance
+        let shouldAnimateDeselection = didSelectionChange
+            && wasSelected
+            && !selected
+            && !restoredSelectionAppearance
         let nextURL = stringValue(forKey: "KindImageUrl", in: kind)
-        let shouldRefreshImage = !sameBinding || kindImageView.image == nil || currentImageURL != nextURL
+        let shouldRefreshImage = !sameBinding
+            || kindImageView.image == nil
+            || currentImageURL != nextURL
 
         if !sameBinding {
             interactionGeneration &+= 1
+            pendingCommitWorkItem?.cancel()
+            pendingCommitWorkItem = nil
+            pendingPreviewRecoveryWorkItem?.cancel()
+            pendingPreviewRecoveryWorkItem = nil
             isCommitInFlight = false
+            stopVisualMotionAndSettle()
         }
 
         boundCellID = nextCellID
@@ -327,8 +336,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         isKindSelected = selected
         usesRestoredSelectionAppearance = selected && restoredSelectionAppearance
         currentAccentColor = accentColor(for: kind, isAll: isAll)
+        isPreviewingSelection = false
         applyLayoutDirection()
-        isPreviewingSelectedGlow = false
 
         let title = isAll
             ? localized("all", fallback: "all")
@@ -342,20 +351,20 @@ public final class PPMainKindsCell: UICollectionViewCell {
         tapButton.largeContentTitle = title
         tapButton.showsLargeContentViewer = true
 
-        updateTypographyAndMetrics()
+        updateTypographyAndMetrics(force: true)
         if shouldRefreshImage {
             configureImage(for: kind, isAll: isAll)
         } else if isAll {
-            kindImageView.tintColor = resolvedImageViewTintColor(selected: isKindSelected)
+            kindImageView.tintColor = resolvedImageTintColor(selected: selected)
         }
 
-        applyAppearance(animated: shouldAnimateSelection)
-        setNeedsLayout()
-        if shouldPlayChangeMotion {
+        if shouldPlaySelectionMotion {
+            applyAppearance(animated: false)
             playSelectionChangeAnimation()
-        } else if shouldPlayDeselectionMotion {
-            playDeselectionChangeAnimation()
+        } else {
+            applyAppearance(animated: shouldAnimateDeselection)
         }
+        setNeedsLayout()
     }
 
     private func configureImage(for kind: NSObject?, isAll: Bool) {
@@ -372,143 +381,164 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 withConfiguration: configuration
             ) ?? UIImage(named: "square-layout")
             kindImageView.image = image?.withRenderingMode(.alwaysTemplate)
-            kindImageView.tintColor = resolvedImageViewTintColor(selected: isKindSelected)
+            kindImageView.tintColor = resolvedImageTintColor(selected: isKindSelected)
+            tapButton.largeContentImage = kindImageView.image
             return
         }
 
-        var placeholder = imageValue(forKey: "KindImageFile", in: kind)
-        let imageName = stringValue(forKey: "KindImageNamed", in: kind)
-        if placeholder == nil, !imageName.isEmpty {
-            placeholder = UIImage(named: imageName)
-        }
-
-        let iconName = stringValue(forKey: "KindIconName", in: kind)
-        if placeholder == nil, !iconName.isEmpty {
-            placeholder = UIImage(named: iconName)
-        }
-
-        var templatePlaceholder = false
-        if placeholder == nil, !iconName.isEmpty {
-            placeholder = UIImage(systemName: iconName)
-            templatePlaceholder = placeholder != nil
-        }
-        if placeholder == nil {
-            placeholder = UIImage(systemName: "pawprint.fill")
-            templatePlaceholder = true
-        }
-
-        kindImageView.tintColor = resolvedImageViewTintColor(selected: isKindSelected)
-        kindImageView.image = templatePlaceholder
-            ? placeholder?.withRenderingMode(.alwaysTemplate)
-            : placeholder?.withRenderingMode(.alwaysOriginal)
+        let placeholder = resolvedPlaceholderImage(for: kind)
+        kindImageView.tintColor = resolvedImageTintColor(selected: isKindSelected)
+        kindImageView.image = placeholder.image?.withRenderingMode(
+            placeholder.isTemplate ? .alwaysTemplate : .alwaysOriginal
+        )
+        tapButton.largeContentImage = kindImageView.image
 
         guard let currentImageURL, !currentImageURL.isEmpty else { return }
+        let expectedCellID = boundCellID
+        let expectedURL = currentImageURL
         PPImageLoaderManager.shared().setImage(
             on: kindImageView,
             url: currentImageURL,
             placeholder: kindImageView.image,
-            transitionStyle: .none,
-            completion: nil
-        )
+            transitionStyle: .none
+        ) { [weak self] image, _ in
+            guard let self,
+                  self.boundCellID == expectedCellID,
+                  self.currentImageURL == expectedURL,
+                  let image else {
+                return
+            }
+            self.kindImageView.image = image.withRenderingMode(.alwaysOriginal)
+            self.tapButton.largeContentImage = image
+        }
+    }
+
+    private func resolvedPlaceholderImage(
+        for kind: NSObject?
+    ) -> (image: UIImage?, isTemplate: Bool) {
+        if let image = imageValue(forKey: "KindImageFile", in: kind) {
+            return (image, false)
+        }
+
+        let imageName = stringValue(forKey: "KindImageNamed", in: kind)
+        if !imageName.isEmpty, let image = UIImage(named: imageName) {
+            return (image, false)
+        }
+
+        let iconName = stringValue(forKey: "KindIconName", in: kind)
+        if !iconName.isEmpty, let image = UIImage(named: iconName) {
+            return (image, false)
+        }
+        if !iconName.isEmpty, let image = UIImage(systemName: iconName) {
+            return (image, true)
+        }
+        return (UIImage(systemName: "pawprint.fill"), true)
     }
 
     private func applyAppearance(animated: Bool) {
-        let accent = currentAccentColor
-        let selected = isKindSelected
-        let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
+        updateHabitatPalette()
+        let selectedAppearance = rendersSelectedAppearance
         let increasedContrast = traitCollection.accessibilityContrast == .high
         let darkMode = traitCollection.userInterfaceStyle == .dark
+        let borderWidth = selectedAppearance
+            ? (increasedContrast
+                ? PPMainKindsCellMetrics.increasedContrastBorderWidth
+                : PPMainKindsCellMetrics.selectedBorderWidth)
+            : PPMainKindsCellMetrics.passiveBorderWidth
+        let accent = presentationAccentColor
+        let borderColor = selectedAppearance
+            ? accent.withAlphaComponent(increasedContrast ? 1 : (darkMode ? 0.86 : 0.72))
+            : PPMainKindsCellPalette.border.withAlphaComponent(increasedContrast ? 1 : 0.82)
+        let surfaceColor = resolvedSurfaceColor(
+            accent: accent,
+            selected: selectedAppearance,
+            increasedContrast: increasedContrast
+        )
 
-        updateMotionLayerPalette()
         let updates = {
-            self.surfaceView.backgroundColor = .clear
-            self.materialView.backgroundColor = self.resolvedSurfaceColor(
-                accent: accent,
-                selected: selected,
-                reduceTransparency: reduceTransparency,
-                darkMode: darkMode,
-                increasedContrast: increasedContrast
-            )
-
-            let selectedBorderColor = accent.withAlphaComponent(
-                self.selectedHeroBorderOpacity(
-                    increasedContrast: increasedContrast,
-                    darkMode: darkMode
-                )
-            )
-
-            self.surfaceView.layer.borderColor = (
-                self.usesRestoredSelectionAppearance && selected
-                    ? UIColor.clear
-                    : (selected
-                        ? selectedBorderColor
-                        : UIColor.ppBorder.withAlphaComponent(increasedContrast ? 1 : 0.76))
-            ).resolvedColor(with: self.traitCollection).cgColor
-            self.surfaceView.layer.borderWidth = self.usesRestoredSelectionAppearance && selected
-                ? 0
-                : (selected
-                    ? (increasedContrast ? 2.0 : PPMainKindsCellMetrics.selectedBorderWidth)
-                    : (increasedContrast ? 1.0 : PPMainKindsCellMetrics.regularBorderWidth))
-            self.surfaceView.layer.shadowColor = UIColor.black.cgColor
-            self.surfaceView.layer.shadowOpacity = darkMode ? 0.08 : 0.035
-            self.surfaceView.layer.shadowRadius = 7
-            self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: 3)
-
-            self.imagePlateView.backgroundColor = .clear
-            self.imagePlateView.layer.borderWidth = 0
-            self.imagePlateView.layer.shadowOpacity = 0
-            self.titleLabel.font = self.resolvedTitleFont()
-            self.titleLabel.textColor = selected
-                ? accent.blended(
-                    with: PPMainKindsCellPalette.primaryText,
-                    ratio: 0.16,
-                    traitCollection: self.traitCollection
-                )
-                : PPMainKindsCellPalette.primaryText
-            self.titleLabel.alpha = 1
-            self.kindImageView.tintColor = self.resolvedImageViewTintColor(selected: selected)
-            self.selectionIndicatorView.alpha = selected ? 1 : 0
-            self.selectionIndicatorView.transform = selected ? .identity : CGAffineTransform(scaleX: 0.70, y: 1)
-            self.selectionIndicatorView.layer.shadowColor = accent
+            self.canvasView.backgroundColor = surfaceColor
+            self.surfaceView.layer.borderColor = borderColor
                 .resolvedColor(with: self.traitCollection)
                 .cgColor
-            self.selectionIndicatorView.layer.shadowOpacity = selected && !increasedContrast ? 0.32 : 0
-            self.selectionIndicatorView.layer.shadowRadius = 4
-            self.selectionIndicatorView.layer.shadowOffset = .zero
-            let glowSelected = self.rendersSelectedGlow
-            self.bottomGlowLayer.opacity = self.isPressing
-                ? self.pressedGlowOpacity(selected: glowSelected)
-                : self.restingGlowOpacity(selected: glowSelected)
-            self.kindNameGlowLayer.opacity = self.kindNameGlowOpacity(
-                selected: glowSelected,
-                pressing: self.isPressing
+            self.surfaceView.layer.borderWidth = borderWidth
+            self.habitatFieldView.alpha = selectedAppearance ? 1 : 0
+            self.titleLabel.textColor = PPMainKindsCellPalette.primaryText
+            self.kindImageView.tintColor = self.resolvedImageTintColor(
+                selected: selectedAppearance
             )
         }
 
-        let tapTransform = self.isPressing
-            ? self.pressedTapTransform
-            : self.restingTapTransform
-
-        guard animated, !reduceMotion else {
-            UIView.performWithoutAnimation(updates)
-            self.tapButton.transform = tapTransform
+        updateShadow(darkMode: darkMode, increasedContrast: increasedContrast)
+        guard animated, !reduceMotion, window != nil else {
+            updates()
+            tapButton.transform = isPressing
+                ? CGAffineTransform(
+                    scaleX: PPMainKindsCellMetrics.pressScale,
+                    y: PPMainKindsCellMetrics.pressScale
+                )
+                : .identity
             return
         }
 
-        UIView.transition(
-            with: surfaceView,
-            duration: PPMainKindsCellMetrics.selectionDuration,
-            options: [.transitionCrossDissolve, .allowUserInteraction, .beginFromCurrentState],
-            animations: updates
-        )
         UIView.animate(
             withDuration: PPMainKindsCellMetrics.selectionDuration,
             delay: 0,
             options: [.allowUserInteraction, .beginFromCurrentState, .curveEaseOut],
-            animations: {
-                self.tapButton.transform = tapTransform
-            }
+            animations: updates
         )
+    }
+
+    private func updateHabitatPalette() {
+        let accent = presentationAccentColor.resolvedColor(with: traitCollection)
+        let surface = PPMainKindsCellPalette.surface.resolvedColor(with: traitCollection)
+        let darkMode = traitCollection.userInterfaceStyle == .dark
+        let increasedContrast = traitCollection.accessibilityContrast == .high
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if UIAccessibility.isReduceTransparencyEnabled {
+            habitatLayer.isHidden = true
+            habitatFieldView.backgroundColor = accent.blended(
+                with: surface,
+                ratio: increasedContrast ? 0.30 : (darkMode ? 0.24 : 0.18),
+                traitCollection: traitCollection
+            )
+        } else {
+            habitatLayer.isHidden = false
+            habitatFieldView.backgroundColor = .clear
+            let centerAlpha: CGFloat = increasedContrast
+                ? 0.54
+                : (darkMode ? 0.42 : 0.32)
+            habitatLayer.colors = [
+                accent.withAlphaComponent(centerAlpha).cgColor,
+                accent.withAlphaComponent(centerAlpha * 0.46).cgColor,
+                accent.withAlphaComponent(0).cgColor
+            ]
+        }
+        CATransaction.commit()
+    }
+
+    private func resolvedSurfaceColor(
+        accent: UIColor,
+        selected: Bool,
+        increasedContrast: Bool
+    ) -> UIColor {
+        let surface = PPMainKindsCellPalette.surface
+        guard selected else { return surface }
+        return accent.blended(
+            with: surface,
+            ratio: increasedContrast ? 0.075 : 0.045,
+            traitCollection: traitCollection
+        )
+    }
+
+    private func updateShadow(darkMode: Bool, increasedContrast: Bool) {
+        surfaceView.layer.shadowColor = UIColor.black.cgColor
+        surfaceView.layer.shadowOpacity = increasedContrast
+            ? 0
+            : (darkMode ? 0.12 : 0.055)
+        surfaceView.layer.shadowRadius = darkMode ? 8 : 10
+        surfaceView.layer.shadowOffset = CGSize(width: 0, height: darkMode ? 3 : 5)
     }
 
     private func applyLayoutDirection() {
@@ -516,104 +546,126 @@ public final class PPMainKindsCell: UICollectionViewCell {
         semanticContentAttribute = semantic
         contentView.semanticContentAttribute = semantic
         tapButton.semanticContentAttribute = semantic
+        surfaceView.semanticContentAttribute = semantic
+        canvasView.semanticContentAttribute = semantic
+        titleLabel.semanticContentAttribute = semantic
     }
 
-    private func updateTypographyAndMetrics() {
+    private func updateTypographyAndMetrics(force: Bool) {
         titleLabel.font = resolvedTitleFont()
-        updateArtworkMetrics()
+
+        let availableSize = CGSize(
+            width: contentView.bounds.width > 1 ? contentView.bounds.width : bounds.width,
+            height: contentView.bounds.height > 1 ? contentView.bounds.height : bounds.height
+        )
+        let accessibilityCategory = usesExpandedTextLayout
+        guard force
+                || availableSize != appliedLayoutSize
+                || accessibilityCategory != appliedAccessibilityCategory else {
+            return
+        }
+
+        appliedLayoutSize = availableSize
+        appliedAccessibilityCategory = accessibilityCategory
+
+        let width = max(availableSize.width, 1)
+        let height = max(availableSize.height, 1)
+        let veryCompact = width < 96
+        let tallCard = height >= 164
+        let outerInset = veryCompact
+            ? PPMainKindsCellMetrics.compactOuterInset
+            : PPMainKindsCellMetrics.regularOuterInset
+        let maximumFieldWidth: CGFloat = tallCard ? 96 : 86
+        let fieldWidth = min(
+            maximumFieldWidth,
+            max(56, width - (outerInset * 2))
+        )
+
+        let desiredFieldHeight: CGFloat
+        if accessibilityCategory {
+            desiredFieldHeight = 48
+        } else if tallCard {
+            desiredFieldHeight = 76
+        } else {
+            desiredFieldHeight = 62
+        }
+        let fieldHeight = min(desiredFieldHeight, fieldWidth * 0.76)
+
+        let artworkSize: CGFloat
+        if isAllOption {
+            artworkSize = min(
+                accessibilityCategory ? 26 : (tallCard ? 34 : 29),
+                fieldWidth - PPSpace.base
+            )
+        } else if accessibilityCategory {
+            artworkSize = min(42, fieldWidth - PPSpace.md)
+        } else if tallCard {
+            artworkSize = min(70, fieldWidth - PPSpace.md)
+        } else {
+            artworkSize = min(56, fieldWidth - PPSpace.md)
+        }
+
+        habitatTopConstraint.constant = accessibilityCategory
+            ? PPMainKindsCellMetrics.compactTopInset
+            : (tallCard
+                ? PPMainKindsCellMetrics.tallTopInset
+                : PPMainKindsCellMetrics.regularTopInset)
+        habitatWidthConstraint.constant = fieldWidth
+        habitatHeightConstraint.constant = fieldHeight
+        artworkWidthConstraint.constant = artworkSize
+        artworkHeightConstraint.constant = artworkSize
+        titleBottomConstraint.constant = -(accessibilityCategory
+            ? PPMainKindsCellMetrics.accessibilityTitleBottomInset
+            : PPMainKindsCellMetrics.titleBottomInset)
+        titleLabel.numberOfLines = accessibilityCategory ? 3 : 2
+
+        if tallCard {
+            if titleMinimumTopConstraint.isActive {
+                NSLayoutConstraint.deactivate([
+                    titleMinimumTopConstraint,
+                    titleBottomConstraint
+                ])
+                NSLayoutConstraint.activate([
+                    titleAdjacentTopConstraint,
+                    titleBottomLimitConstraint
+                ])
+            }
+        } else if titleAdjacentTopConstraint.isActive {
+            NSLayoutConstraint.deactivate([
+                titleAdjacentTopConstraint,
+                titleBottomLimitConstraint
+            ])
+            NSLayoutConstraint.activate([
+                titleMinimumTopConstraint,
+                titleBottomConstraint
+            ])
+        }
     }
 
     private func resolvedTitleFont() -> UIFont {
-        let fontName = isKindSelected ? "Beiruti-Bold" : "Beiruti-Medium"
+        let selectedAppearance = rendersSelectedAppearance
+        let fontName = selectedAppearance ? "Beiruti-Bold" : "Beiruti-Medium"
         let baseFont = UIFont(name: fontName, size: 15)
             ?? UIFont.systemFont(
                 ofSize: 15,
-                weight: isKindSelected ? .bold : .semibold
+                weight: selectedAppearance ? .bold : .semibold
             )
         return UIFontMetrics(forTextStyle: .subheadline).scaledFont(
             for: baseFont,
-            maximumPointSize: 21
+            maximumPointSize: 24
         )
     }
 
-    private func resolvedSurfaceColor(
-        accent: UIColor,
-        selected: Bool,
-        reduceTransparency: Bool,
-        darkMode: Bool,
-        increasedContrast: Bool
-    ) -> UIColor {
-        let card = PPMainKindsCellPalette.card
-        guard selected else {
-            return card.withAlphaComponent(reduceTransparency ? 1 : 0.94)
-        }
-
-        let tintRatio: CGFloat
-        if increasedContrast {
-            tintRatio = 0.20
-        } else if darkMode {
-            tintRatio = 0.16
-        } else {
-            tintRatio = 0.10
-        }
-        return accent
-            .blended(with: card, ratio: tintRatio, traitCollection: traitCollection)
-            .withAlphaComponent(reduceTransparency ? 1 : 0.97)
+    private var usesExpandedTextLayout: Bool {
+        let category = traitCollection.preferredContentSizeCategory
+        return category.isAccessibilityCategory || category == .extraExtraExtraLarge
     }
 
-    private func updateArtworkMetrics() {
-        let accessibilityText = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-        let plateSize = resolvedImagePlateSize(accessibilityText: accessibilityText)
-        let baseArtworkSize = isAllOption
-            ? PPMainKindsCellMetrics.allArtworkSize
-            : PPMainKindsCellMetrics.artworkSize
-        let artworkSize = min(
-            baseArtworkSize,
-            plateSize - PPMainKindsCellMetrics.artworkPlatePadding
-        )
-
-        appliedPlateSize = plateSize
-        imagePlateWidthConstraint.constant = plateSize
-        imagePlateHeightConstraint.constant = plateSize
-        artworkWidthConstraint.constant = artworkSize
-        artworkHeightConstraint.constant = artworkSize
-        imagePlateView.layer.cornerRadius = 0
-        imagePlateView.layer.shadowPath = nil
-    }
-
-    private func resolvedImageViewTintColor(selected: Bool) -> UIColor {
+    private func resolvedImageTintColor(selected: Bool) -> UIColor {
         if isAllOption, !selected {
-            return .secondaryLabel
+            return PPMainKindsCellPalette.secondaryText
         }
-        return currentAccentColor
-    }
-
-    private func resolvedImagePlateSize(accessibilityText: Bool) -> CGFloat {
-        let preferredSize = accessibilityText
-            ? PPMainKindsCellMetrics.compactImagePlateSize
-            : PPMainKindsCellMetrics.imagePlateSize
-        let maximumSize = accessibilityText
-            ? PPMainKindsCellMetrics.maximumCompactImagePlateSize
-            : PPMainKindsCellMetrics.maximumImagePlateSize
-        let inset = PPMainKindsCellMetrics.contentInset
-        let availableWidth = contentView.bounds.width > 1
-            ? contentView.bounds.width
-            : bounds.width
-        let availableHeight = contentView.bounds.height > 1
-            ? contentView.bounds.height
-            : bounds.height
-        let widthMatchedSize = availableWidth > 1
-            ? max(PPMainKindsCellMetrics.compactImagePlateSize, availableWidth - (inset * 2))
-            : preferredSize
-        let reservedTitleHeight: CGFloat = accessibilityText ? 44 : 36
-        let heightMatchedSize = availableHeight > 1
-            ? max(
-                PPMainKindsCellMetrics.compactImagePlateSize,
-                availableHeight - (inset * 2) -
-                    PPMainKindsCellMetrics.imageToTitleSpacing - reservedTitleHeight
-            )
-            : preferredSize
-        return min(maximumSize, min(widthMatchedSize, heightMatchedSize))
+        return presentationAccentColor
     }
 
     @objc private func handleTouchDown() {
@@ -627,9 +679,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private func applyPressed(_ pressed: Bool) {
         isPressing = pressed
         guard !reduceMotion else {
-            if !pressed {
-                resetTransientMotion()
-            }
+            canvasView.alpha = pressed ? 0.86 : 1
             return
         }
 
@@ -638,43 +688,26 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 ? PPMainKindsCellMetrics.pressDuration
                 : PPMainKindsCellMetrics.releaseDuration,
             delay: 0,
-            usingSpringWithDamping: pressed ? 1 : 0.82,
-            initialSpringVelocity: pressed ? 0 : 0.28,
-            options: [.allowUserInteraction, .beginFromCurrentState],
+            options: [.allowUserInteraction, .beginFromCurrentState, .curveEaseOut],
             animations: {
                 self.tapButton.transform = pressed
-                    ? self.pressedTapTransform
-                    : self.restingTapTransform
-                self.imagePlateView.transform = pressed
-                    ? CGAffineTransform(translationX: 0, y: -1.5)
-                        .scaledBy(x: 1.035, y: 1.035)
+                    ? CGAffineTransform(
+                        scaleX: PPMainKindsCellMetrics.pressScale,
+                        y: PPMainKindsCellMetrics.pressScale
+                    )
                     : .identity
                 self.kindImageView.transform = pressed
-                    ? CGAffineTransform(translationX: 0, y: -2)
-                        .scaledBy(x: 1.025, y: 1.025)
+                    ? CGAffineTransform(
+                        scaleX: PPMainKindsCellMetrics.pressArtworkScale,
+                        y: PPMainKindsCellMetrics.pressArtworkScale
+                    )
                     : .identity
-                self.titleLabel.transform = pressed
-                    ? CGAffineTransform(translationX: 0, y: 0.5)
-                    : .identity
-                self.selectionIndicatorView.transform = pressed
-                    ? (self.isKindSelected ? CGAffineTransform(scaleX: 0.92, y: 1) : CGAffineTransform(scaleX: 0.65, y: 1))
-                    : (self.isKindSelected ? .identity : CGAffineTransform(scaleX: 0.70, y: 1))
-                let glowSelected = self.rendersSelectedGlow
-                self.bottomGlowLayer.opacity = pressed
-                    ? self.pressedGlowOpacity(selected: glowSelected)
-                    : self.restingGlowOpacity(selected: glowSelected)
-                self.kindNameGlowLayer.opacity = self.kindNameGlowOpacity(
-                    selected: glowSelected,
-                    pressing: pressed
-                )
-                self.tapHaloLayer.opacity = 0
             }
         )
     }
 
     @objc private func handleTap() {
         applyPressed(false)
-
         guard !isCommitInFlight else { return }
 
         let feedback = UIImpactFeedbackGenerator(style: .medium)
@@ -694,11 +727,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
         }
 
         isCommitInFlight = true
-        isPreviewingSelectedGlow = true
-        updateMotionLayerPalette()
-        layoutMotionLayers()
-        performSignatureCommitMotion { [weak self] in
+        isPreviewingSelection = true
+        updateTypographyAndMetrics(force: true)
+        applyAppearance(animated: false)
+        performSignatureCommitMotion()
+
+        let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
+            self.pendingCommitWorkItem = nil
             self.isCommitInFlight = false
             guard self.interactionGeneration == generation,
                   self.boundCellID == expectedCellID,
@@ -706,251 +742,144 @@ public final class PPMainKindsCell: UICollectionViewCell {
                   self.onSelect != nil else {
                 return
             }
+
             selection(kind, isAll)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) { [weak self] in
-                guard let self,
-                      self.interactionGeneration == generation,
-                      self.isPreviewingSelectedGlow,
-                      !self.isKindSelected else {
-                    return
-                }
-                self.isPreviewingSelectedGlow = false
-                self.applyAppearance(animated: true)
-                self.setNeedsLayout()
+            guard self.interactionGeneration == generation,
+                  self.window != nil else {
+                return
             }
+            self.schedulePreviewRecovery(
+                expectedCellID: expectedCellID,
+                generation: generation
+            )
         }
+        pendingCommitWorkItem?.cancel()
+        pendingCommitWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + PPMainKindsCellMetrics.commitDuration,
+            execute: workItem
+        )
+    }
+
+    private func schedulePreviewRecovery(
+        expectedCellID: String?,
+        generation: Int
+    ) {
+        let recovery = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingPreviewRecoveryWorkItem = nil
+            guard self.interactionGeneration == generation,
+                  self.boundCellID == expectedCellID,
+                  self.isPreviewingSelection,
+                  !self.isKindSelected else {
+                return
+            }
+            self.isPreviewingSelection = false
+            self.updateTypographyAndMetrics(force: true)
+            self.applyAppearance(animated: true)
+        }
+        pendingPreviewRecoveryWorkItem?.cancel()
+        pendingPreviewRecoveryWorkItem = recovery
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + PPMainKindsCellMetrics.previewRecoveryDelay,
+            execute: recovery
+        )
+    }
+
+    private func performSignatureCommitMotion() {
+        guard !reduceMotion else {
+            stopVisualMotionAndSettle()
+            return
+        }
+        stopViewAnimations(settle: false)
+        let habitatStartAlpha: CGFloat = isKindSelected ? 0.68 : 0
+        habitatFieldView.alpha = habitatStartAlpha
+        kindImageView.transform = CGAffineTransform(scaleX: 0.986, y: 0.986)
+
+        UIView.animateKeyframes(
+            withDuration: PPMainKindsCellMetrics.commitDuration,
+            delay: 0,
+            options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
+            animations: {
+                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.58) {
+                    self.tapButton.transform = .identity
+                    self.habitatFieldView.alpha = 1
+                    self.kindImageView.transform = CGAffineTransform(
+                        scaleX: PPMainKindsCellMetrics.commitArtworkPeakScale,
+                        y: PPMainKindsCellMetrics.commitArtworkPeakScale
+                    )
+                }
+                UIView.addKeyframe(withRelativeStartTime: 0.58, relativeDuration: 0.42) {
+                    self.kindImageView.transform = .identity
+                }
+            }
+        )
     }
 
     @objc public func playRestoredSelectionAnimation() {
-        guard window != nil, isKindSelected, usesRestoredSelectionAppearance else { return }
+        guard window != nil,
+              isKindSelected,
+              usesRestoredSelectionAppearance else {
+            return
+        }
         guard !reduceMotion else {
             applyAppearance(animated: false)
             return
         }
 
-        updateMotionLayerPalette()
-        layoutMotionLayers()
-        let finalBottomGlow = restingGlowOpacity(selected: true)
-        let finalNameGlow = kindNameGlowOpacity(selected: true, pressing: false)
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        surfaceView.transform = CGAffineTransform(scaleX: 0.986, y: 0.986)
-        imagePlateView.transform = CGAffineTransform(scaleX: 0.982, y: 0.982)
-        kindImageView.transform = CGAffineTransform(scaleX: 0.976, y: 0.976)
-        titleLabel.transform = CGAffineTransform(translationX: 0, y: 0.5)
-        selectionIndicatorView.alpha = 0
-        selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
-        bottomGlowLayer.opacity = max(0, finalBottomGlow - 0.14)
-        kindNameGlowLayer.opacity = max(0, finalNameGlow - 0.12)
-        tapHaloLayer.opacity = 0
-        CATransaction.commit()
-
+        stopViewAnimations(settle: false)
+        habitatFieldView.alpha = 0.36
+        kindImageView.transform = CGAffineTransform(scaleX: 0.99, y: 0.99)
         UIView.animate(
-            withDuration: PPMainKindsCellMetrics.restoredEntranceDuration,
+            withDuration: PPMainKindsCellMetrics.restoredSelectionDuration,
             delay: 0,
-            usingSpringWithDamping: 0.84,
-            initialSpringVelocity: 0.18,
-            options: [.allowUserInteraction, .beginFromCurrentState],
+            options: [.allowUserInteraction, .beginFromCurrentState, .curveEaseOut],
             animations: {
-                self.tapButton.transform = self.restingTapTransform
-                self.selectionIndicatorView.transform = .identity
-                self.selectionIndicatorView.alpha = 1
-                self.surfaceView.transform = .identity
-                self.imagePlateView.transform = .identity
+                self.habitatFieldView.alpha = 1
                 self.kindImageView.transform = .identity
-                self.titleLabel.transform = .identity
-                self.bottomGlowLayer.opacity = finalBottomGlow
-                self.kindNameGlowLayer.opacity = finalNameGlow
             }
         )
     }
 
     @objc public func playSelectionChangeAnimation() {
-        guard window != nil, isKindSelected, !usesRestoredSelectionAppearance else { return }
+        guard window != nil,
+              isKindSelected,
+              !usesRestoredSelectionAppearance else {
+            return
+        }
         guard !reduceMotion else {
             applyAppearance(animated: false)
             return
         }
 
-        updateMotionLayerPalette()
-        layoutMotionLayers()
-        let finalBottomGlow = restingGlowOpacity(selected: true)
-        let finalNameGlow = kindNameGlowOpacity(selected: true, pressing: false)
-
-        selectionIndicatorView.alpha = 0
-        selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
-
+        stopViewAnimations(settle: false)
+        habitatFieldView.alpha = 0
+        kindImageView.transform = CGAffineTransform(scaleX: 0.985, y: 0.985)
         UIView.animateKeyframes(
-            withDuration: PPMainKindsCellMetrics.selectionChangeDuration,
+            withDuration: PPMainKindsCellMetrics.selectionDuration,
             delay: 0,
             options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
             animations: {
-                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.40) {
-                    self.tapButton.transform = CGAffineTransform(scaleX: 1.018, y: 1.018)
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.03, y: 1.03)
-                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -1)
-                        .scaledBy(x: 1.025, y: 1.025)
-                    self.selectionIndicatorView.transform = .identity
-                    self.selectionIndicatorView.alpha = 1
-                    self.bottomGlowLayer.opacity = min(1, finalBottomGlow + 0.06)
-                    self.kindNameGlowLayer.opacity = min(1, finalNameGlow + 0.05)
+                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.62) {
+                    self.habitatFieldView.alpha = 1
+                    self.kindImageView.transform = CGAffineTransform(scaleX: 1.014, y: 1.014)
                 }
-                UIView.addKeyframe(withRelativeStartTime: 0.40, relativeDuration: 0.60) {
-                    self.tapButton.transform = self.restingTapTransform
-                    self.imagePlateView.transform = .identity
+                UIView.addKeyframe(withRelativeStartTime: 0.62, relativeDuration: 0.38) {
                     self.kindImageView.transform = .identity
-                    self.titleLabel.transform = .identity
-                    self.selectionIndicatorView.transform = .identity
-                    self.selectionIndicatorView.alpha = 1
-                    self.bottomGlowLayer.opacity = finalBottomGlow
-                    self.kindNameGlowLayer.opacity = finalNameGlow
-                    self.tapHaloLayer.opacity = 0
                 }
-            }
-        )
-    }
-
-    private func playDeselectionChangeAnimation() {
-        guard window != nil, !isKindSelected else { return }
-        guard !reduceMotion else {
-            resetTransientMotion()
-            applyAppearance(animated: false)
-            return
-        }
-
-        isPreviewingSelectedGlow = false
-        updateMotionLayerPalette()
-        layoutMotionLayers()
-        let finalBottomGlow = restingGlowOpacity(selected: false)
-        let finalNameGlow = kindNameGlowOpacity(selected: false, pressing: false)
-
-        UIView.animate(
-            withDuration: PPMainKindsCellMetrics.selectionChangeDuration,
-            delay: 0,
-            usingSpringWithDamping: 0.90,
-            initialSpringVelocity: 0.14,
-            options: [.allowUserInteraction, .beginFromCurrentState],
-            animations: {
-                self.tapButton.transform = self.restingTapTransform
-                self.imagePlateView.transform = .identity
-                self.kindImageView.transform = .identity
-                self.titleLabel.transform = .identity
-                self.selectionIndicatorView.alpha = 0
-                self.selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
-                self.bottomGlowLayer.opacity = finalBottomGlow
-                self.kindNameGlowLayer.opacity = finalNameGlow
-                self.tapHaloLayer.opacity = 0
-            },
-            completion: { _ in
-                self.selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
-                self.applyAppearance(animated: false)
             }
         )
     }
 
     public override func layoutSubviews() {
         super.layoutSubviews()
-        layoutMotionLayers()
-    }
+        updateTypographyAndMetrics(force: false)
 
-    private func layoutMotionLayers() {
-        guard !materialView.bounds.isEmpty else { return }
-
-        let accessibilityText = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-        let plateSize = resolvedImagePlateSize(accessibilityText: accessibilityText)
-        if abs(plateSize - appliedPlateSize) > 0.5 {
-            updateArtworkMetrics()
-        }
-
-        updateMotionLayerPalette()
-        let materialBounds = materialView.bounds
-        let selectedGlow = rendersSelectedGlow
-        let glowSelected = selectedGlow
-        let isRightToLeft =
-            UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
-        bottomGlowLayer.opacity = isPressing
-            ? pressedGlowOpacity(selected: glowSelected)
-            : restingGlowOpacity(selected: glowSelected)
-        kindNameGlowLayer.opacity = kindNameGlowOpacity(
-            selected: glowSelected,
-            pressing: isPressing
-        )
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-
-        identityFieldLayer.frame = materialBounds
-        identityFieldLayer.startPoint = CGPoint(x: isRightToLeft ? 0.92 : 0.08, y: 0)
-        identityFieldLayer.endPoint = CGPoint(x: isRightToLeft ? 0.08 : 0.92, y: 1)
-
-        let spineHeight = min(58, max(46, materialBounds.height * 0.43))
-        let spineX = isRightToLeft
-            ? materialBounds.width - PPMainKindsCellMetrics.identitySpineInset -
-                PPMainKindsCellMetrics.identitySpineWidth
-            : PPMainKindsCellMetrics.identitySpineInset
-        identitySpineLayer.frame = CGRect(
-            x: spineX,
-            y: (materialBounds.height - spineHeight) / 2,
-            width: PPMainKindsCellMetrics.identitySpineWidth,
-            height: spineHeight
-        ).integral
-        identitySpineLayer.cornerRadius = PPMainKindsCellMetrics.identitySpineWidth / 2
-
-        let captionY = max(0, materialBounds.height * 0.58)
-        captionFieldLayer.frame = CGRect(
-            x: 0,
-            y: captionY,
-            width: materialBounds.width,
-            height: materialBounds.height - captionY
-        )
-
-        let glowDiameter = selectedGlow
-            ? min(174, max(136, max(materialBounds.width, materialBounds.height) * 1.34))
-            : min(116, max(86, materialBounds.height * 0.90))
-        let glowX = selectedGlow
-            ? (isRightToLeft
-                ? materialBounds.width - (glowDiameter * 0.66)
-                : -glowDiameter * 0.34)
-            : (isRightToLeft
-                ? materialBounds.width - glowDiameter + 24
-                : -24)
-        let glowY = selectedGlow
-            ? -glowDiameter * 0.34
-            : materialBounds.height - glowDiameter + 40
-        bottomGlowLayer.frame = CGRect(
-            x: glowX,
-            y: glowY,
-            width: glowDiameter,
-            height: glowDiameter
-        ).integral
-        bottomGlowLayer.cornerRadius = glowDiameter / 2
-
-        let titleGlowWidth = min(materialBounds.width - 12, max(92, titleLabel.bounds.width + 48))
-        let titleGlowHeight = min(78, max(58, titleLabel.bounds.height + 34))
-        kindNameGlowLayer.frame = CGRect(
-            x: (materialBounds.width - titleGlowWidth) / 2,
-            y: min(
-                materialBounds.height - titleGlowHeight + 8,
-                titleLabel.frame.midY - (titleGlowHeight / 2)
-            ),
-            width: titleGlowWidth,
-            height: titleGlowHeight
-        ).integral
-        kindNameGlowLayer.cornerRadius = titleGlowHeight / 2
-
-        selectionIndicatorLayer.frame = selectionIndicatorView.bounds
-        selectionIndicatorLayer.cornerRadius = PPMainKindsCellMetrics.indicatorHeight / 2
-        let plateFrame = imagePlateView.frame
-        let plateCenterY = plateFrame.midY > 0 ? plateFrame.midY : (materialBounds.height * 0.38)
-        let plateCenterX = plateFrame.midX > 0 ? plateFrame.midX : (materialBounds.width * 0.5)
-        let haloDiameter = max(materialBounds.width, materialBounds.height) * 2.6
-        tapHaloLayer.frame = CGRect(
-            x: plateCenterX - (haloDiameter / 2),
-            y: plateCenterY - (haloDiameter / 2),
-            width: haloDiameter,
-            height: haloDiameter
-        ).integral
-        tapHaloLayer.cornerRadius = haloDiameter / 2
+        habitatFieldView.layer.cornerRadius = habitatFieldView.bounds.height / 2
+        habitatFieldView.layer.cornerCurve = .continuous
+        habitatLayer.frame = habitatFieldView.bounds
         surfaceView.layer.shadowPath = UIBezierPath(
             roundedRect: surfaceView.bounds,
             cornerRadius: PPMainKindsCellMetrics.cornerRadius
@@ -958,10 +887,21 @@ public final class PPMainKindsCell: UICollectionViewCell {
         CATransaction.commit()
     }
 
+    public override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            cancelPendingInteraction(clearPreview: true)
+        }
+    }
+
     public override func prepareForReuse() {
         super.prepareForReuse()
         PPImageLoaderManager.shared().cancelImageLoad(for: kindImageView)
 
+        pendingCommitWorkItem?.cancel()
+        pendingCommitWorkItem = nil
+        pendingPreviewRecoveryWorkItem?.cancel()
+        pendingPreviewRecoveryWorkItem = nil
         interactionGeneration &+= 1
         isCommitInFlight = false
         onSelect = nil
@@ -973,30 +913,77 @@ public final class PPMainKindsCell: UICollectionViewCell {
         isKindSelected = false
         usesRestoredSelectionAppearance = false
         isPressing = false
-        isPreviewingSelectedGlow = false
+        isPreviewingSelection = false
         titleLabel.text = nil
         kindImageView.image = nil
+        tapButton.largeContentTitle = nil
+        tapButton.largeContentImage = nil
         tapButton.accessibilityLabel = nil
         tapButton.accessibilityIdentifier = nil
         tapButton.accessibilityTraits = .button
-        resetTransientMotion()
-        surfaceView.transform = .identity
+        stopVisualMotionAndSettle()
+        updateTypographyAndMetrics(force: true)
         applyAppearance(animated: false)
     }
 
-    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    public override func traitCollectionDidChange(
+        _ previousTraitCollection: UITraitCollection?
+    ) {
         super.traitCollectionDidChange(previousTraitCollection)
 
-        if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
-            updateTypographyAndMetrics()
-            setNeedsLayout()
+        if previousTraitCollection?.preferredContentSizeCategory
+            != traitCollection.preferredContentSizeCategory {
+            updateTypographyAndMetrics(force: true)
         }
-        if previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true ||
-            previousTraitCollection?.accessibilityContrast != traitCollection.accessibilityContrast {
+        if previousTraitCollection?.hasDifferentColorAppearance(
+            comparedTo: traitCollection
+        ) == true || previousTraitCollection?.accessibilityContrast
+            != traitCollection.accessibilityContrast {
             applyAppearance(animated: false)
-            setNeedsLayout()
         }
         applyLayoutDirection()
+        setNeedsLayout()
+    }
+
+    private func stopVisualMotionAndSettle() {
+        stopViewAnimations(settle: true)
+    }
+
+    private func cancelPendingInteraction(clearPreview: Bool) {
+        pendingCommitWorkItem?.cancel()
+        pendingCommitWorkItem = nil
+        pendingPreviewRecoveryWorkItem?.cancel()
+        pendingPreviewRecoveryWorkItem = nil
+        isCommitInFlight = false
+        interactionGeneration &+= 1
+        if clearPreview {
+            isPreviewingSelection = false
+            updateTypographyAndMetrics(force: true)
+        }
+        stopVisualMotionAndSettle()
+        if clearPreview {
+            applyAppearance(animated: false)
+        }
+    }
+
+    private func stopViewAnimations(settle: Bool) {
+        tapButton.layer.removeAllAnimations()
+        surfaceView.layer.removeAllAnimations()
+        canvasView.layer.removeAllAnimations()
+        habitatFieldView.layer.removeAllAnimations()
+        habitatLayer.removeAllAnimations()
+        kindImageView.layer.removeAllAnimations()
+        titleLabel.layer.removeAllAnimations()
+
+        guard settle else { return }
+        isPressing = false
+        tapButton.transform = .identity
+        surfaceView.transform = .identity
+        canvasView.transform = .identity
+        canvasView.alpha = 1
+        kindImageView.transform = .identity
+        titleLabel.transform = .identity
+        habitatFieldView.alpha = rendersSelectedAppearance ? 1 : 0
     }
 
     private func cellID(for kind: NSObject?, isAll: Bool) -> String {
@@ -1018,6 +1005,42 @@ public final class PPMainKindsCell: UICollectionViewCell {
         return PPMainKindsCellPalette.brand
     }
 
+    private var presentationAccentColor: UIColor {
+        let candidate = currentAccentColor.resolvedColor(with: traitCollection)
+        let surface = PPMainKindsCellPalette.surface.resolvedColor(with: traitCollection)
+        let text = PPMainKindsCellPalette.primaryText.resolvedColor(with: traitCollection)
+        let requiredContrast: CGFloat = traitCollection.accessibilityContrast == .high ? 4.5 : 3
+
+        guard let opaqueCandidate = candidate.ppOpaqueColor else {
+            return PPMainKindsCellPalette.brand
+        }
+        if opaqueCandidate.ppContrastRatio(against: surface) >= requiredContrast {
+            return opaqueCandidate
+        }
+
+        let strengthened = opaqueCandidate.blended(
+            with: text,
+            ratio: 0.62,
+            traitCollection: traitCollection
+        )
+        if strengthened.ppContrastRatio(against: surface) >= requiredContrast {
+            return strengthened
+        }
+
+        let brand = PPMainKindsCellPalette.brand.resolvedColor(with: traitCollection)
+        if brand.ppContrastRatio(against: surface) >= requiredContrast {
+            return brand
+        }
+        let strengthenedBrand = brand.blended(
+            with: text,
+            ratio: 0.58,
+            traitCollection: traitCollection
+        )
+        return strengthenedBrand.ppContrastRatio(against: surface) >= requiredContrast
+            ? strengthenedBrand
+            : text
+    }
+
     private func localized(_ key: String, fallback: String) -> String {
         let value = Language.get(key, alter: fallback)
         return value?.isEmpty == false ? value! : fallback
@@ -1034,179 +1057,81 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private func imageValue(forKey key: String, in kind: NSObject?) -> UIImage? {
         kind?.value(forKey: key) as? UIImage
     }
-
-    private var restingTapTransform: CGAffineTransform {
-        isKindSelected
-            ? CGAffineTransform(
-                scaleX: PPMainKindsCellMetrics.selectedRestingScale,
-                y: PPMainKindsCellMetrics.selectedRestingScale
-            )
-            : .identity
-    }
-
-    private var pressedTapTransform: CGAffineTransform {
-        let scale: CGFloat = isKindSelected ? 0.976 : 0.962
-        return CGAffineTransform(scaleX: scale, y: scale)
-    }
-
-    private func restingGlowOpacity(selected _: Bool) -> Float {
-        0
-    }
-
-    private func pressedGlowOpacity(selected _: Bool) -> Float {
-        0
-    }
-
-    private func selectedHeroBorderOpacity(
-        increasedContrast: Bool,
-        darkMode: Bool
-    ) -> CGFloat {
-        if increasedContrast {
-            return 1
-        }
-        if isAllOption {
-            return darkMode ? 0.46 : 0.34
-        }
-        return darkMode ? 0.64 : 0.48
-    }
-
-    private func kindNameGlowOpacity(selected _: Bool, pressing _: Bool) -> Float {
-        0
-    }
-
-    private func updateMotionLayerPalette() {
-        let accent = currentAccentColor.resolvedColor(with: traitCollection)
-        let surface = PPMainKindsCellPalette.card.resolvedColor(with: traitCollection)
-        let isAll = isAllOption
-        let selected = rendersSelectedGlow
-        let darkMode = traitCollection.userInterfaceStyle == .dark
-        let increasedContrast = traitCollection.accessibilityContrast == .high
-        let identityTopAlpha: CGFloat = increasedContrast
-            ? 0.36
-            : (isAll ? (darkMode ? 0.20 : 0.14) : (darkMode ? 0.22 : 0.16))
-        let identityMiddleAlpha = identityTopAlpha * 0.48
-        let identityLowAlpha = identityTopAlpha * 0.10
-        let spineAlpha: CGFloat = increasedContrast ? 1 : 0.78
-        let leadingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.20 : 0.245)
-            : 0
-        let trailingGlowAlpha: CGFloat = selected
-            ? (isAll ? 0.09 : 0.125)
-            : 0
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        identityFieldLayer.colors = [
-            accent.withAlphaComponent(identityTopAlpha).cgColor,
-            accent.withAlphaComponent(identityMiddleAlpha).cgColor,
-            accent.withAlphaComponent(identityLowAlpha).cgColor,
-            accent.withAlphaComponent(0).cgColor,
-        ]
-        identityFieldLayer.opacity = 0
-        identitySpineLayer.colors = [
-            accent.withAlphaComponent(spineAlpha * 0.50).cgColor,
-            accent.withAlphaComponent(spineAlpha).cgColor,
-            accent.withAlphaComponent(spineAlpha * 0.72).cgColor,
-        ]
-        identitySpineLayer.opacity = 0
-        captionFieldLayer.colors = [
-            surface.withAlphaComponent(0).cgColor,
-            surface.withAlphaComponent(darkMode ? 0.84 : 0.90).cgColor,
-            surface.withAlphaComponent(1).cgColor,
-        ]
-        bottomGlowLayer.colors = [
-            accent.withAlphaComponent(leadingGlowAlpha).cgColor,
-            accent.withAlphaComponent(trailingGlowAlpha).cgColor,
-            accent.withAlphaComponent(0).cgColor,
-        ]
-        kindNameGlowLayer.colors = [
-            accent.withAlphaComponent(isAll ? 0.16 : 0.18).cgColor,
-            accent.withAlphaComponent(isAll ? 0.10 : 0.11).cgColor,
-            accent.withAlphaComponent(0).cgColor,
-        ]
-        tapHaloLayer.colors = [
-            accent.withAlphaComponent(0.28).cgColor,
-            accent.withAlphaComponent(0.12).cgColor,
-            accent.withAlphaComponent(0).cgColor,
-        ]
-        selectionIndicatorLayer.colors = [
-            accent.withAlphaComponent(0.12).cgColor,
-            accent.withAlphaComponent(increasedContrast ? 1 : 0.96).cgColor,
-            accent.withAlphaComponent(0.12).cgColor,
-        ]
-        CATransaction.commit()
-    }
-
-    private func performSignatureCommitMotion(completion: @escaping () -> Void) {
-        guard !reduceMotion else {
-            completion()
-            return
-        }
-
-        UIView.animateKeyframes(
-            withDuration: PPMainKindsCellMetrics.commitDuration,
-            delay: 0,
-            options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
-            animations: {
-                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.42) {
-                    self.tapButton.transform = CGAffineTransform(scaleX: 0.990, y: 0.990)
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.025, y: 1.025)
-                    self.kindImageView.transform = CGAffineTransform(translationX: 0, y: -1)
-                        .scaledBy(x: 1.02, y: 1.02)
-                    self.selectionIndicatorView.transform = .identity
-                }
-                UIView.addKeyframe(withRelativeStartTime: 0.42, relativeDuration: 0.58) {
-                    self.tapButton.transform = self.restingTapTransform
-                    self.imagePlateView.transform = .identity
-                    self.kindImageView.transform = .identity
-                    self.titleLabel.transform = .identity
-                    self.selectionIndicatorView.transform = .identity
-                }
-            }
-        )
-
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + PPMainKindsCellMetrics.commitDuration,
-            execute: completion
-        )
-    }
-
-    private func resetTransientMotion() {
-        isPressing = false
-        tapButton.transform = restingTapTransform
-        imagePlateView.transform = .identity
-        kindImageView.transform = .identity
-        titleLabel.transform = .identity
-        selectionIndicatorView.transform = rendersSelectedGlow ? .identity : CGAffineTransform(scaleX: 0.70, y: 1)
-        selectionIndicatorView.alpha = rendersSelectedGlow ? 1 : 0
-        tapHaloLayer.opacity = 0
-        bottomGlowLayer.opacity = restingGlowOpacity(selected: rendersSelectedGlow)
-        kindNameGlowLayer.opacity = kindNameGlowOpacity(
-            selected: rendersSelectedGlow,
-            pressing: false
-        )
-    }
 }
 
 private extension UIColor {
-    func blended(with color: UIColor, ratio: CGFloat, traitCollection: UITraitCollection) -> UIColor {
-        let c1 = self.resolvedColor(with: traitCollection)
-        let c2 = color.resolvedColor(with: traitCollection)
-
-        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
-        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
-
-        guard c1.getRed(&r1, green: &g1, blue: &b1, alpha: &a1),
-              c2.getRed(&r2, green: &g2, blue: &b2, alpha: &a2) else {
-            return c1
+    var ppOpaqueColor: UIColor? {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        if getRed(&red, green: &green, blue: &blue, alpha: &alpha) {
+            guard alpha >= 0.12 else { return nil }
+            return UIColor(red: red, green: green, blue: blue, alpha: 1)
         }
 
-        let clampedRatio = max(0, min(1, ratio))
-        let r = r1 * clampedRatio + r2 * (1 - clampedRatio)
-        let g = g1 * clampedRatio + g2 * (1 - clampedRatio)
-        let b = b1 * clampedRatio + b2 * (1 - clampedRatio)
-        let a = a1 * clampedRatio + a2 * (1 - clampedRatio)
+        var white: CGFloat = 0
+        if getWhite(&white, alpha: &alpha) {
+            guard alpha >= 0.12 else { return nil }
+            return UIColor(white: white, alpha: 1)
+        }
+        return nil
+    }
 
-        return UIColor(red: r, green: g, blue: b, alpha: a)
+    func ppContrastRatio(against other: UIColor) -> CGFloat {
+        let lighter = max(ppRelativeLuminance, other.ppRelativeLuminance)
+        let darker = min(ppRelativeLuminance, other.ppRelativeLuminance)
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    private var ppRelativeLuminance: CGFloat {
+        guard let opaque = ppOpaqueColor else { return 0 }
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard opaque.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return 0
+        }
+
+        func linear(_ component: CGFloat) -> CGFloat {
+            component <= 0.03928
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+        return (0.2126 * linear(red))
+            + (0.7152 * linear(green))
+            + (0.0722 * linear(blue))
+    }
+
+    func blended(
+        with color: UIColor,
+        ratio: CGFloat,
+        traitCollection: UITraitCollection
+    ) -> UIColor {
+        let first = resolvedColor(with: traitCollection)
+        let second = color.resolvedColor(with: traitCollection)
+
+        var r1: CGFloat = 0
+        var g1: CGFloat = 0
+        var b1: CGFloat = 0
+        var a1: CGFloat = 0
+        var r2: CGFloat = 0
+        var g2: CGFloat = 0
+        var b2: CGFloat = 0
+        var a2: CGFloat = 0
+
+        guard first.getRed(&r1, green: &g1, blue: &b1, alpha: &a1),
+              second.getRed(&r2, green: &g2, blue: &b2, alpha: &a2) else {
+            return first
+        }
+
+        let amount = max(0, min(1, ratio))
+        return UIColor(
+            red: (r1 * amount) + (r2 * (1 - amount)),
+            green: (g1 * amount) + (g2 * (1 - amount)),
+            blue: (b1 * amount) + (b2 * (1 - amount)),
+            alpha: (a1 * amount) + (a2 * (1 - amount))
+        )
     }
 }

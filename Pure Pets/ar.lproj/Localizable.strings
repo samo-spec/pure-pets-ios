@@ -4111,8 +4111,8 @@
 "home_pulse_priority_shop_subtitle" = "طعام ومستلزمات";
 "home_pulse_priority_title" = "خطوتك التالية";
 "home_pulse_priority_subtitle" = "كل ما يحتاجه حيوانك في مكان واحد";
-"home_pulse_priority_vet" = "البيطرة";
-"home_pulse_priority_vet_subtitle" = "حجز ورعاية";
+"home_pulse_priority_vet" = "البيطرة والصيدلية";
+"home_pulse_priority_vet_subtitle" = "عيادات وأدوية";
 "home_pulse_quantity_a11y" = "الكمية %d";
 "home_pulse_refresh_complete_a11y" = "تم تحديث الصفحة الرئيسية";
 "home_pulse_refreshing" = "جارٍ تحديث الصفحة";

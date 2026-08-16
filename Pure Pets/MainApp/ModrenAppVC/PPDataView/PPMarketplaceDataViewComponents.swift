@@ -218,7 +218,11 @@ struct PPMarketplaceHero: View {
         .frame(minHeight: topRailControlSize)
         .background {
             topContextShape
-                .fill(Color.white)
+                .fill(
+                    colorScheme == .dark
+                        ? Color.ppSurfaceRaised
+                        : Color.white
+                )
         }
         .overlay {
             topContextShape

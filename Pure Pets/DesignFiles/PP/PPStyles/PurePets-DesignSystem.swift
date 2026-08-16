@@ -36,7 +36,7 @@ enum PPCorner {
     static let medium: CGFloat  = 18
     static let card: CGFloat    = 22
     static let section: CGFloat = card
-    static let hero: CGFloat    = 28
+    static let hero: CGFloat    = 34
     static let large: CGFloat   = 42
     static let pill: CGFloat    = 9999
 
