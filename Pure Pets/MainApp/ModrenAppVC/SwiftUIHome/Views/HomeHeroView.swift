@@ -678,17 +678,43 @@ private struct HomeHeroPagingAccessibilityModifier: ViewModifier {
 }
 
 private struct HomeHeroArtworkAsset {
-    let animationName: String?
-    let imageName: String?
-    let localImage: UIImage?
-    let remoteImageURL: String?
-    let usesCategoryArtworkTreatment: Bool
-    let loadsFromFirebase: Bool
-    let primarySymbol: String
-    let primaryImageName: String?
-    let secondarySymbol: String
-    let tertiarySymbol: String
-    let tertiaryImageName: String?
+    var animationName: String? = nil
+    var imageName: String? = nil
+    var localImage: UIImage? = nil
+    var remoteImageURL: String? = nil
+    var usesCategoryArtworkTreatment: Bool = false
+    var loadsFromFirebase: Bool = false
+    var primarySymbol: String = "heart.fill"
+    var primaryImageName: String? = nil
+    var secondarySymbol: String = "pawprint.fill"
+    var tertiarySymbol: String = "checkmark.seal.fill"
+    var tertiaryImageName: String? = nil
+
+    init(
+        animationName: String? = nil,
+        imageName: String? = nil,
+        localImage: UIImage? = nil,
+        remoteImageURL: String? = nil,
+        usesCategoryArtworkTreatment: Bool = false,
+        loadsFromFirebase: Bool = false,
+        primarySymbol: String = "heart.fill",
+        primaryImageName: String? = nil,
+        secondarySymbol: String = "pawprint.fill",
+        tertiarySymbol: String = "checkmark.seal.fill",
+        tertiaryImageName: String? = nil
+    ) {
+        self.animationName = animationName
+        self.imageName = imageName
+        self.localImage = localImage
+        self.remoteImageURL = remoteImageURL
+        self.usesCategoryArtworkTreatment = usesCategoryArtworkTreatment
+        self.loadsFromFirebase = loadsFromFirebase
+        self.primarySymbol = primarySymbol
+        self.primaryImageName = primaryImageName
+        self.secondarySymbol = secondarySymbol
+        self.tertiarySymbol = tertiarySymbol
+        self.tertiaryImageName = tertiaryImageName
+    }
 }
 
 private struct HomeHeroLivingGateway: View {
