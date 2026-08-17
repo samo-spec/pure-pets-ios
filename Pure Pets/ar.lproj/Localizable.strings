@@ -2069,10 +2069,12 @@
 "payment_applepay_desc" = "دفع آمن باستخدام Apple Pay.";
 "payment_ooredoo_desc" = "ادفع باستخدام محفظة Ooredoo Money.";
 "payment_naps_desc" = "ادفع باستخدام بطاقة الخصم NAPS.";
+"Apple Pay" = "Apple Pay";
+"NAPS Debit" = "بطاقة خصم NAPS";
 "payment_header_pay_through" = "الدفع من خلال";
 "payment_screen_eyebrow" = "دفع آمن";
 "payment_screen_title" = "اختر طريقة الدفع المناسبة";
-"payment_screen_subtitle" = "راجع عنوان التوصيل، واختر وسيلة الدفع الأنسب لك، وأكمل الطلب بثقة.";
+"payment_screen_subtitle" = "اختر وسيلة الدفع المناسبة وأكمل طلبك بأمان";
 "payment_section_delivery" = "عنوان التوصيل";
 "payment_section_delivery_subtitle" = "سيتم استخدام هذا العنوان للشحن والتحقق من بيانات الطلب.";
 "payment_section_methods_title" = "خيارات الدفع";
@@ -4169,6 +4171,7 @@
 "home_carousel_empty_title" = "جارٍ تجهيز العروض";
 "home_provider_navigation_subtitle" = "اختر وجهة الرعاية التي تحتاجها";
 "home_provider_navigation_title" = "رعاية موثوقة";
+"home_care_bridge_explore" = "استكشف مستلزمات وإعلانات أليفك";
 "home_pulse_location_context" = "نطاق الموقع";
 "home_refresh_interrupted" = "توقف التحديث. حاول مرة أخرى.";
 

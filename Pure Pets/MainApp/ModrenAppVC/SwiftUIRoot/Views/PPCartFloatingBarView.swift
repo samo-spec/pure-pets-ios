@@ -3,40 +3,46 @@
 //  PurePetsSwiftUIRefactor
 //
 //  Created for PurePets Platform SwiftUI Root Architecture.
-//  Redesigned (SwiftyMax Studio): single morphing capsule anchored on a
-//  persistent cart well, a count-driven badge numeral moment, and a
-//  brand-washed elevated surface in place of decorative glass.
 //
 
 import SwiftUI
-import UIKit
 
 /// Presentation-only floating cart control. `PPRootStore` remains responsible
 /// for cart state, collapse timing (6s), haptics, and the cart route.
 public struct PPCartFloatingBarView: View {
+    private enum Metrics {
+        static let collapsedSize = PPBottomDecisionBarGeometry.utilityControlSize
+        static let expandedMinHeight = PPSpace.xxxxl + PPSpace.lg
+        static let emblemSize = PPBottomDecisionBarGeometry.controlHeight - PPSpace.md
+        static let actionMinHeight = PPBottomDecisionBarGeometry.controlHeight - PPSpace.base
+        static let badgeDiameter = PPSpace.lg
+        static let collapsedRadius = PPCorner.medium
+        static let surfaceRadius = PPCorner.card
+        static let tileRadius = PPCorner.small
+        static let actionRadius = PPBottomDecisionBarGeometry.controlRadius
+    }
+
     public let state: PPCartFloatingBarState
     public let onTap: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
 
-    private var primaryColor: Color {
-        Color(
-            uiColor: UIColor(named: "AppPrimaryColor") ?? UIColor(
-                red: 227 / 255,
-                green: 6 / 255,
-                blue: 83 / 255,
-                alpha: 1
-            )
-        )
+    private var isRightToLeft: Bool { layoutDirection == .rightToLeft }
+
+    private var usesAccessibilityLayout: Bool {
+        dynamicTypeSize.isAccessibilitySize
     }
 
     private var surfaceShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: state.isCollapsed ? 14 : 22,
+            cornerRadius: state.isCollapsed
+                ? Metrics.collapsedRadius
+                : Metrics.surfaceRadius,
             style: .continuous
         )
     }
@@ -44,13 +50,19 @@ public struct PPCartFloatingBarView: View {
     private var stateAnimation: Animation {
         reduceMotion
             ? .easeOut(duration: 0.16)
-            : .spring(response: 0.4, dampingFraction: 0.82)
+            : .spring(response: 0.34, dampingFraction: 0.86)
     }
 
-    private var isRightToLeft: Bool { layoutDirection == .rightToLeft }
+    private var countAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.16)
+            : .spring(response: 0.26, dampingFraction: 0.84)
+    }
 
     private var expandedMinHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 128 : 68
+        usesAccessibilityLayout
+            ? (PPSpace.xxxxl * 2) + PPSpace.xxl
+            : Metrics.expandedMinHeight
     }
 
     public init(
@@ -64,10 +76,12 @@ public struct PPCartFloatingBarView: View {
     public var body: some View {
         Button(action: onTap) {
             Group {
-                if dynamicTypeSize.isAccessibilitySize && !state.isCollapsed {
+                if state.isCollapsed {
+                    collapsedContent
+                } else if usesAccessibilityLayout {
                     expandedAccessibilityContent
                 } else {
-                    adaptiveContent
+                    expandedContent
                 }
             }
             .background { surface }
@@ -75,10 +89,7 @@ public struct PPCartFloatingBarView: View {
         }
         .buttonStyle(PPCartFloatingBarPressStyle())
         .animation(stateAnimation, value: state.isCollapsed)
-        .animation(
-            reduceMotion ? .easeOut(duration: 0.16) : .easeOut(duration: 0.24),
-            value: state.itemCount
-        )
+        .animation(countAnimation, value: state.itemCount)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             NSLocalizedString(
@@ -105,111 +116,105 @@ public struct PPCartFloatingBarView: View {
 
     // MARK: - Layout
 
-    /// Single adaptive layout: the cart well persists across collapse/expand so
-    /// the summary and CTA morph around a stable anchor (signature moment #1).
-    private var adaptiveContent: some View {
-        HStack(spacing: state.isCollapsed ? 0 : 12) {
-            cartWell
+    /// The rail keeps the cart emblem stable while the summary and action
+    /// appear around it, preserving spatial continuity on collapse and expand.
+    private var collapsedContent: some View {
+        cartEmblem
+            .frame(width: Metrics.collapsedSize, height: Metrics.collapsedSize)
+    }
 
-            if !state.isCollapsed {
-                cartSummary
-                    .transition(summaryTransition)
-            }
+    private var expandedContent: some View {
+        HStack(spacing: PPSpace.md) {
+            cartEmblem
 
-            if !state.isCollapsed {
-                Spacer(minLength: 8)
-            }
+            cartSummary
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+                .transition(summaryTransition)
 
-            if !state.isCollapsed {
-                checkoutAffordance
-                    .transition(ctaTransition)
-            }
+            reviewAction
+                .layoutPriority(2)
+                .transition(actionTransition)
         }
-        .padding(.horizontal, state.isCollapsed ? 0 : 10)
-        .frame(
-            minWidth: state.isCollapsed ? 44 : nil,
-            maxWidth: state.isCollapsed ? 44 : .infinity,
-            minHeight: state.isCollapsed ? 44 : expandedMinHeight
-        )
+        .padding(PPSpace.sm)
+        .frame(maxWidth: .infinity, minHeight: Metrics.expandedMinHeight)
     }
 
     private var expandedAccessibilityContent: some View {
-        VStack(
-            alignment: isRightToLeft ? .trailing : .leading,
-            spacing: 10
-        ) {
-            HStack(spacing: 12) {
-                cartWell
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            HStack(spacing: PPSpace.md) {
+                cartEmblem
                 cartSummary
-                Spacer(minLength: 0)
             }
 
-            checkoutAffordance
-                .frame(maxWidth: .infinity, alignment: .center)
+            reviewAction
+                .frame(maxWidth: .infinity)
         }
-        .padding(12)
+        .padding(PPSpace.sm)
         .frame(maxWidth: .infinity, minHeight: expandedMinHeight)
     }
 
-    private var cartGlyph: some View {
-        Image(systemName: "cart.fill")
-            .font(.system(size: 18, weight: .bold))
-            .foregroundStyle(primaryColor)
-    }
-
-    /// Brand-tinted cart well — the structural anchor that persists between the
-    /// collapsed pill and the expanded bar. Carries the count badge. The well
-    /// border is shown only when expanded, so the collapsed container's hairline
-    /// frames the icon alone — matching the cart icon's size and corners.
-    private var cartWell: some View {
+    /// The emblem is a true cart anchor rather than a detached decorative
+    /// badge. The parent button owns all interaction and accessibility.
+    private var cartEmblem: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(primaryColor.opacity(colorScheme == .dark ? 0.20 : 0.10))
             if !state.isCollapsed {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(
-                        primaryColor.opacity(colorSchemeContrast == .increased ? 0.60 : 0.18),
-                        lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
-                    )
+                RoundedRectangle(cornerRadius: Metrics.tileRadius, style: .continuous)
+                    .fill(Color.ppPrimary)
             }
-            cartGlyph
+
+            Image(systemName: "cart.fill")
+                .font(
+                    .system(
+                        size: state.isCollapsed ? 21 : 19,
+                        weight: .bold
+                    )
+                )
+                .foregroundStyle(.white)
         }
-        .frame(width: 44, height: 44)
+        .frame(width: Metrics.emblemSize, height: Metrics.emblemSize)
         .overlay(alignment: isRightToLeft ? .topLeading : .topTrailing) {
             if !state.badgeText.isEmpty {
-                countBadge
+                cartCountBadge
             }
         }
         .accessibilityHidden(true)
     }
 
-    /// Count badge — signature moment #2: the numeral swaps on itemCount change.
-    private var countBadge: some View {
+    private var cartCountBadge: some View {
         Text(state.badgeText)
             .id(state.itemCount)
-            .font(.custom("Beiruti-Bold", size: 11, relativeTo: .caption2))
+            .font(.ppBeirutiBold(size: 11, relativeTo: .caption2))
             .monospacedDigit()
-            .foregroundStyle(.white)
-            .padding(.horizontal, 5)
-            .frame(minWidth: 20, minHeight: 20)
-            .background(primaryColor, in: Capsule())
+            .foregroundStyle(Color.ppPrimary)
+            .padding(.horizontal, PPSpace.xs)
+            .frame(
+                minWidth: Metrics.badgeDiameter,
+                minHeight: Metrics.badgeDiameter
+            )
+            .background(Color.ppSurfaceElevated, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(
-                        colorScheme == .dark ? Color(white: 0.12) : Color.white,
-                        lineWidth: 2
+                        Color.ppPrimary.opacity(
+                            colorSchemeContrast == .increased ? 0.64 : 0.28
+                        ),
+                        lineWidth: borderWidth
                     )
             }
-            .offset(x: isRightToLeft ? -6 : 6, y: -6)
+            .offset(
+                x: isRightToLeft ? -(PPSpace.md / 2) : PPSpace.md / 2,
+                y: -(PPSpace.md / 2)
+            )
             .transition(
                 reduceMotion
                     ? .opacity
-                    : .scale(scale: 0.6, anchor: .center).combined(with: .opacity)
+                    : .scale(scale: 0.72, anchor: .center).combined(with: .opacity)
             )
     }
 
     private var cartSummary: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
             Text(
                 NSLocalizedString(
                     "Cart",
@@ -217,24 +222,23 @@ public struct PPCartFloatingBarView: View {
                     comment: "Floating cart title"
                 )
             )
-            .font(.custom("Beiruti-Bold", size: 16, relativeTo: .headline))
-            .foregroundStyle(primaryTextColor)
+            .font(.ppBeirutiBold(size: 16, relativeTo: .headline))
+            .foregroundStyle(Color.ppTextPrimary)
             .lineLimit(1)
 
             Text(state.subtitleText)
-                .font(.custom("Beiruti-Medium", size: 13, relativeTo: .subheadline))
-                .foregroundStyle(secondaryTextColor)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .font(.ppBeirutiMedium(size: 13, relativeTo: .subheadline))
+                .foregroundStyle(Color.ppTextSecondary)
+                .monospacedDigit()
+                .lineLimit(usesAccessibilityLayout ? 2 : 1)
                 .minimumScaleFactor(0.84)
         }
         .multilineTextAlignment(.leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .layoutPriority(1)
         .accessibilityHidden(true)
     }
 
-    private var checkoutAffordance: some View {
-        HStack(spacing: 7) {
+    private var reviewAction: some View {
+        HStack(spacing: PPSpace.xs) {
             Text(
                 NSLocalizedString(
                     "checkout_review_cart_action",
@@ -242,87 +246,86 @@ public struct PPCartFloatingBarView: View {
                     comment: "Floating cart action"
                 )
             )
-            .font(.custom("Beiruti-Bold", size: 14, relativeTo: .callout))
+            .font(.ppBeirutiBold(size: 14, relativeTo: .callout))
             .lineLimit(1)
             .minimumScaleFactor(0.82)
 
-            Image(
-                systemName: isRightToLeft ? "chevron.forward" : "chevron.backward"
-            )
-            .font(.system(size: 11, weight: .bold))
+            Image(systemName: isRightToLeft ? "arrow.left" : "arrow.right")
+                .font(.system(size: 13, weight: .bold))
+                .accessibilityHidden(true)
         }
         .foregroundStyle(.white)
-        .padding(.horizontal, 13)
-        .frame(minHeight: 42)
-        .background(primaryColor, in: Capsule())
+        .padding(.horizontal, PPSpace.md)
+        .frame(minHeight: Metrics.actionMinHeight)
+        .background(
+            Color.ppPrimary,
+            in: RoundedRectangle(
+                cornerRadius: Metrics.actionRadius,
+                style: .continuous
+            )
+        )
         .overlay {
-            Capsule()
-                .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+            RoundedRectangle(
+                cornerRadius: Metrics.actionRadius,
+                style: .continuous
+            )
+            .strokeBorder(
+                Color.white.opacity(
+                    colorSchemeContrast == .increased ? 0.46 : 0.22
+                ),
+                lineWidth: borderWidth
+            )
         }
         .accessibilityHidden(true)
     }
 
     // MARK: - Surface
 
-    /// Controlled elevated surface — a brand-washed, near-opaque card with a
-    /// hairline edge and elevated shadow. Replaces decorative glass for
-    /// stronger RTL Arabic legibility and AX contrast.
     private var surface: some View {
         surfaceShape
-            .fill(surfaceBaseGradient)
-            .overlay {
-                surfaceShape.fill(
-                    primaryColor.opacity(
-                        colorScheme == .dark
-                            ? (state.isCollapsed ? 0.10 : 0.14)
-                            : (state.isCollapsed ? 0.04 : 0.06)
-                    )
-                )
-            }
+            .fill(state.isCollapsed ? Color.ppPrimary : surfaceColor)
             .overlay {
                 surfaceShape.strokeBorder(
-                    Color.white.opacity(
-                        colorScheme == .dark
-                            ? (state.isCollapsed ? 0.20 : 0.24)
-                            : (state.isCollapsed ? 0.60 : 0.72)
-                    ),
-                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                    surfaceBorderColor,
+                    lineWidth: borderWidth
                 )
             }
             .shadow(
-                color: Color.black.opacity(
-                    colorScheme == .dark
-                        ? (state.isCollapsed ? 0.24 : 0.32)
-                        : (state.isCollapsed ? 0.10 : 0.13)
-                ),
-                radius: state.isCollapsed ? 9 : 18,
+                color: surfaceShadowColor,
+                radius: state.isCollapsed ? PPShadow.button.radius : PPShadow.card.radius,
                 x: 0,
-                y: state.isCollapsed ? 4 : 9
+                y: state.isCollapsed ? PPShadow.button.y : PPShadow.card.y
             )
     }
 
-    private var surfaceBaseGradient: LinearGradient {
-        let isDark = colorScheme == .dark
-        return LinearGradient(
-            colors: [
-                isDark
-                    ? Color(red: 28 / 255, green: 28 / 255, blue: 30 / 255).opacity(0.94)
-                    : Color.white.opacity(0.94),
-                isDark
-                    ? Color(red: 42 / 255, green: 20 / 255, blue: 23 / 255).opacity(0.94)
-                    : Color(red: 1, green: 245 / 255, blue: 247 / 255).opacity(0.94)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
+    private var surfaceColor: Color {
+        reduceTransparency
+            ? Color.ppSurfaceElevated
+            : Color.ppSurfaceElevated.opacity(0.98)
+    }
+
+    private var surfaceBorderColor: Color {
+        if state.isCollapsed {
+            return Color.white.opacity(
+                colorSchemeContrast == .increased ? 0.54 : 0.28
+            )
+        }
+        return Color.ppSurfaceBorder.opacity(
+            colorSchemeContrast == .increased ? 1 : 0.86
         )
     }
 
-    private var primaryTextColor: Color {
-        colorScheme == .dark ? .white : Color(white: 0.06)
+    private var surfaceShadowColor: Color {
+        if state.isCollapsed {
+            return colorScheme == .dark
+                ? Color.black.opacity(0.34)
+                : Color.ppPrimary.opacity(0.24)
+        }
+        return colorScheme == .dark ? Color.black.opacity(0.30) : PPShadow.card.color
     }
 
-    private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color(white: 0.80) : Color(white: 0.36)
+    private var borderWidth: CGFloat {
+        colorSchemeContrast == .increased ? 1.5 : 1
     }
 
     // MARK: - Transitions
@@ -333,10 +336,10 @@ public struct PPCartFloatingBarView: View {
             : .opacity.combined(with: .move(edge: isRightToLeft ? .trailing : .leading))
     }
 
-    private var ctaTransition: AnyTransition {
+    private var actionTransition: AnyTransition {
         reduceMotion
             ? .opacity
-            : .scale(scale: 0.85, anchor: isRightToLeft ? .leading : .trailing)
+            : .scale(scale: 0.88, anchor: isRightToLeft ? .leading : .trailing)
                 .combined(with: .opacity)
     }
 }
@@ -348,9 +351,9 @@ private struct PPCartFloatingBarPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(
-                reduceMotion || !configuration.isPressed || !isEnabled ? 1 : 0.975
+                reduceMotion || !configuration.isPressed || !isEnabled ? 1 : 0.98
             )
-            .opacity(isEnabled ? (configuration.isPressed ? 0.88 : 1) : 0.46)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.90 : 1) : 0.46)
             .animation(
                 reduceMotion ? nil : .easeOut(duration: 0.12),
                 value: configuration.isPressed

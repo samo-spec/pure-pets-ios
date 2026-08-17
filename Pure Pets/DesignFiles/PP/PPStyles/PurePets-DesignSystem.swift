@@ -285,7 +285,7 @@ private enum PPPaletteHex {
     }
 
     @objc static var ppAdoptionAccent: UIColor {
-        ppQuickActionAnimals
+        ppQuickActionAdoption
     }
 
     @objc static var ppQuickActionCommunity: UIColor {

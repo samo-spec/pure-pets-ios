@@ -4071,6 +4071,8 @@ struct PPHomeServiceGateway: View {
             )
 
             gatewaySurface
+
+            PPHomeCareDiscoveryBridge()
         }
         .accessibilityElement(children: .contain)
     }
@@ -4239,13 +4241,14 @@ struct PPHomeServiceGateway: View {
             GeometryReader { proxy in
                 let firstFrame = proxy[firstAnchor]
                 let lastFrame = proxy[lastAnchor]
+                let midX = (firstFrame.midX + lastFrame.midX) * 0.5
 
                 Path { path in
                     path.move(
-                        to: CGPoint(x: firstFrame.midX, y: firstFrame.maxY)
+                        to: CGPoint(x: midX, y: firstFrame.maxY)
                     )
                     path.addLine(
-                        to: CGPoint(x: lastFrame.midX, y: lastFrame.minY)
+                        to: CGPoint(x: midX, y: lastFrame.minY)
                     )
                 }
                 .stroke(
@@ -4253,6 +4256,7 @@ struct PPHomeServiceGateway: View {
                     style: StrokeStyle(lineWidth: 2, lineCap: .round)
                 )
             }
+            .environment(\.layoutDirection, .leftToRight)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
@@ -4261,6 +4265,104 @@ struct PPHomeServiceGateway: View {
     private var borderOpacity: Double {
         if contrast == .increased { return 0.56 }
         return colorScheme == .dark ? 0.26 : 0.16
+    }
+}
+
+/// An elegant NextGen V6 continuity node between the Care section and New Pet Listings.
+struct PPHomeCareDiscoveryBridge: View {
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var isAmbientActive = false
+
+    var body: some View {
+        HStack(spacing: PPSpace.sm) {
+            // Leading gentle horizontal glow trace
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            Color.ppCareAccent.opacity(colorScheme == .dark ? 0.35 : 0.20)
+                        ],
+                        startPoint: layoutDirection == .rightToLeft ? .trailing : .leading,
+                        endPoint: layoutDirection == .rightToLeft ? .leading : .trailing
+                    )
+                )
+                .frame(height: 1.5)
+
+            // Centered ambient care-to-listings pill node
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color.homeBrand)
+                    .scaleEffect(isAmbientActive ? 1.10 : 0.94)
+
+                Text(HomeModelAdapter.localized(
+                    "home_care_bridge_explore",
+                    fallback: "Explore pet listings & essentials"
+                ))
+                .font(HomeFont.bold(13))
+                .foregroundStyle(Color.homeTextPrimary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.homeBrand)
+                    .offset(y: isAmbientActive ? 1.5 : -1.5)
+            }
+            .padding(.horizontal, PPSpace.md)
+            .padding(.vertical, 6)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.homeSurface)
+                    .shadow(
+                        color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.04),
+                        radius: 6,
+                        x: 0,
+                        y: 2
+                    )
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        Color.ppCareAccent.opacity(colorScheme == .dark ? 0.28 : 0.16),
+                        lineWidth: 1
+                    )
+            )
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
+
+            // Trailing gentle horizontal glow trace
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.ppCareAccent.opacity(colorScheme == .dark ? 0.35 : 0.20),
+                            Color.clear
+                        ],
+                        startPoint: layoutDirection == .rightToLeft ? .trailing : .leading,
+                        endPoint: layoutDirection == .rightToLeft ? .leading : .trailing
+                    )
+                )
+                .frame(height: 1.5)
+        }
+        .padding(.top, PPSpace.xs)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(
+                .easeInOut(duration: 2.4).repeatForever(autoreverses: true)
+            ) {
+                isAmbientActive = true
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(HomeModelAdapter.localized(
+            "home_care_bridge_explore",
+            fallback: "Explore pet listings & essentials"
+        ))
     }
 }
 

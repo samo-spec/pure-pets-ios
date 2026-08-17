@@ -2030,6 +2030,53 @@ struct HomePriorityGrid: View {
     }
 }
 
+struct HomeFeaturedCardShape: Shape {
+    var cornerRadius: CGFloat = PPCorner.medium
+    var topTrailingDelta: CGFloat = 12
+    var isRightToLeft: Bool = false
+
+    func path(in rect: CGRect) -> Path {
+        let base = cornerRadius
+        let topTrailingRadius = cornerRadius + topTrailingDelta
+
+        let tl = isRightToLeft ? topTrailingRadius : base
+        let tr = isRightToLeft ? base : topTrailingRadius
+        let bl = base
+        let br = base
+
+        if #available(iOS 16.0, *) {
+            return UnevenRoundedRectangle(
+                cornerRadii: RectangleCornerRadii(
+                    topLeading: base,
+                    bottomLeading: base,
+                    bottomTrailing: base,
+                    topTrailing: topTrailingRadius
+                ),
+                style: .continuous
+            )
+            .path(in: rect)
+        } else {
+            let path = UIBezierPath()
+            let minX = rect.minX
+            let minY = rect.minY
+            let maxX = rect.maxX
+            let maxY = rect.maxY
+
+            path.move(to: CGPoint(x: minX + tl, y: minY))
+            path.addLine(to: CGPoint(x: maxX - tr, y: minY))
+            path.addQuadCurve(to: CGPoint(x: maxX, y: minY + tr), controlPoint: CGPoint(x: maxX, y: minY))
+            path.addLine(to: CGPoint(x: maxX, y: maxY - br))
+            path.addQuadCurve(to: CGPoint(x: maxX - br, y: maxY), controlPoint: CGPoint(x: maxX, y: maxY))
+            path.addLine(to: CGPoint(x: minX + bl, y: maxY))
+            path.addQuadCurve(to: CGPoint(x: minX, y: maxY - bl), controlPoint: CGPoint(x: minX, y: maxY))
+            path.addLine(to: CGPoint(x: minX, y: minY + tl))
+            path.addQuadCurve(to: CGPoint(x: minX + tl, y: minY), controlPoint: CGPoint(x: minX, y: minY))
+            path.close()
+            return Path(path.cgPath)
+        }
+    }
+}
+
 struct HomeFeaturedPetCard: View {
     let action: HomePriorityAction
     let pet: HomePetModel?
@@ -2045,6 +2092,7 @@ struct HomeFeaturedPetCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.layoutDirection) private var layoutDirection
     @State private var loadedPetImageIdentity: String?
 
     private var animationHaloSize: CGFloat {
@@ -2074,10 +2122,11 @@ struct HomeFeaturedPetCard: View {
         HomeQuickActionTone.accent(for: action)
     }
 
-    private var cardShape: RoundedRectangle {
-        RoundedRectangle(
+    private var cardShape: HomeFeaturedCardShape {
+        HomeFeaturedCardShape(
             cornerRadius: PPCorner.medium,
-            style: .continuous
+            topTrailingDelta: 12,
+            isRightToLeft: layoutDirection == .rightToLeft
         )
     }
 
@@ -2156,7 +2205,7 @@ struct HomeFeaturedPetCard: View {
                         endPoint: .bottomTrailing
                     ),
                     in: RoundedRectangle(
-                        cornerRadius: PPCorner.small + 3,
+                        cornerRadius: PPCorner.small + 6,
                         style: .continuous
                     )
                 )
@@ -2186,40 +2235,22 @@ struct HomeFeaturedPetCard: View {
                     ? nil
                     : compactHeight
             )
-            .background {
-                ZStack {
-                    cardShape.fill(Color.homeRaisedSurface)
-                    cardShape.fill(
-                        actionAccent.opacity(
-                            colorScheme == .dark
-                                ? HomeQuickActionTone.darkSurfaceOpacity
-                                : HomeQuickActionTone.lightSurfaceOpacity
-                        )
-                    )
-                }
-            }
+            .background(Color.homeSurface, in: cardShape)
             .clipShape(cardShape)
             .overlay {
                 cardShape.stroke(
                     actionAccent.opacity(
                         contrast == .increased
-                            ? 0.58
-                            : (colorScheme == .dark ? 0.34 : 0.22)
+                            ? 0.62
+                            : (colorScheme == .dark ? 0.28 : 0.14)
                     ),
-                    lineWidth: contrast == .increased ? 1.5 : 1
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
                 )
             }
             .overlay(alignment: .topLeading) {
                 pawBadge
                     .padding(PPSpace.md)
             }
-            .shadow(
-                color: actionAccent.opacity(
-                    colorScheme == .dark ? 0.10 : 0.12
-                ),
-                radius: 14,
-                y: 7
-            )
             .contentShape(cardShape)
         }
         .buttonStyle(HomeCardPressStyle())
@@ -2989,79 +3020,150 @@ private struct HomeMainKindCellRepresentable: UIViewRepresentable {
     }
 }
 
-/// Smooth animated linear progress bar indicator for HomeOrderCard.
-/// Animates progress fill with spring dynamics and respects native layout direction and Reduce Motion.
-private struct HomeAnimatedOrderProgress: View {
+/// Continuous order journey driven only by the bridge-owned scalar progress.
+/// Initial presentation is settled; real state changes retarget one private
+/// rendered value and retain a static Reduce Motion equivalent.
+private struct HomeOrderJourneyProgress: View {
     let progress: Double
     let accentColor: Color
-    let borderColor: Color
+    let trackColor: Color
+    let beaconFillColor: Color
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var animatedProgress: Double = 0
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.layoutDirection) private var layoutDirection
+    @State private var displayedProgress: Double
+    @State private var renderRevision = false
 
-    private let barHeight: CGFloat = 6
+    private let routeHeight = PPSpace.xl + PPSpace.xs
+    private let beaconDiameter = PPSpace.lg
+    private let stateChangeDuration = 0.25
+
+    init(
+        progress: Double,
+        accentColor: Color,
+        trackColor: Color,
+        beaconFillColor: Color
+    ) {
+        self.progress = progress
+        self.accentColor = accentColor
+        self.trackColor = trackColor
+        self.beaconFillColor = beaconFillColor
+        _displayedProgress = State(
+            initialValue: min(max(progress, 0), 1)
+        )
+    }
 
     var body: some View {
         GeometryReader { geometry in
-            let totalWidth = geometry.size.width
-            let fillWidth = max(0, min(totalWidth * animatedProgress, totalWidth))
+            let totalWidth = max(geometry.size.width, 0)
+            let routeWidth = max(totalWidth - beaconDiameter, 0)
+            let progress = bounded(displayedProgress)
+            let travelDistance = routeWidth * progress
+            let fillWidth = min(max((beaconDiameter / 2) + travelDistance, 0), totalWidth)
 
             ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(borderColor.opacity(0.38))
-                    .frame(height: barHeight)
+                routeLayer(color: trackColor)
 
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accentColor.opacity(0.75),
-                                accentColor,
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: fillWidth, height: barHeight)
+                routeLayer(color: accentColor)
+                    .mask(alignment: .leading) {
+                        Rectangle()
+                            .frame(width: fillWidth, height: routeHeight)
+                    }
+
+                beaconView
+                    .offset(x: (layoutDirection == .rightToLeft ? -1 : 1) * travelDistance)
             }
+            .frame(width: totalWidth, height: routeHeight)
         }
-        .frame(height: barHeight)
+        .id(renderRevision)
+        .frame(height: routeHeight)
+        .accessibilityHidden(true)
         .onAppear {
-            animateToTarget(progress)
+            displayedProgress = bounded(progress)
         }
         .onChange(of: progress) { newProgress in
-            animateToTarget(newProgress)
+            retarget(to: newProgress)
+        }
+        .onChange(of: reduceMotion) { enabled in
+            guard enabled else { return }
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                displayedProgress = bounded(progress)
+                renderRevision.toggle()
+            }
         }
     }
 
-    private func animateToTarget(_ target: Double) {
+    private var beaconView: some View {
+        ZStack {
+            Circle()
+                .fill(beaconFillColor)
+            Circle()
+                .stroke(
+                    accentColor,
+                    lineWidth: contrast == .increased ? 3.5 : 2.5
+                )
+            Circle()
+                .fill(accentColor)
+                .frame(
+                    width: contrast == .increased
+                        ? PPSpace.sm
+                        : PPSpace.md / 2,
+                    height: contrast == .increased
+                        ? PPSpace.sm
+                        : PPSpace.md / 2
+                )
+        }
+        .frame(width: beaconDiameter, height: beaconDiameter)
+    }
+
+    private func routeLayer(color: Color) -> some View {
+        ZStack {
+            Capsule(style: .continuous)
+                .fill(color)
+                .frame(height: trackHeight)
+                .padding(.horizontal, beaconDiameter / 2)
+
+            HStack(spacing: 0) {
+                Circle()
+                    .fill(color)
+                    .frame(width: endpointDiameter, height: endpointDiameter)
+                Spacer(minLength: 0)
+                Circle()
+                    .fill(color)
+                    .frame(width: endpointDiameter, height: endpointDiameter)
+            }
+            .padding(
+                .horizontal,
+                (beaconDiameter - endpointDiameter) / 2
+            )
+        }
+        .frame(height: routeHeight)
+    }
+
+    private func retarget(to target: Double) {
+        let resolvedTarget = bounded(target)
         if reduceMotion {
-            animatedProgress = target
+            displayedProgress = resolvedTarget
         } else {
-            if animatedProgress == 0 {
-                DispatchQueue.main.async {
-                    withAnimation(
-                        .spring(
-                            response: 0.72,
-                            dampingFraction: 0.82,
-                            blendDuration: 0.08
-                        )
-                    ) {
-                        animatedProgress = target
-                    }
-                }
-            } else {
-                withAnimation(
-                    .spring(
-                        response: 0.62,
-                        dampingFraction: 0.82,
-                        blendDuration: 0.08
-                    )
-                ) {
-                    animatedProgress = target
-                }
+            withAnimation(.easeOut(duration: stateChangeDuration)) {
+                displayedProgress = resolvedTarget
             }
         }
+    }
+
+    private func bounded(_ value: Double) -> Double {
+        min(max(value, 0), 1)
+    }
+
+    private var trackHeight: CGFloat {
+        contrast == .increased ? PPSpace.md / 2 : PPSpace.xs
+    }
+
+    private var endpointDiameter: CGFloat {
+        contrast == .increased ? PPSpace.sm + PPSpace.xxs : PPSpace.sm
     }
 }
 
@@ -3080,29 +3182,27 @@ struct HomeOrderCard: View {
             spacing: PPHomeSectionHeaderMetrics.contentSpacing
         ) {
             PPHomeSectionHeading(
-                title: HomeModelAdapter.localized(
-                    "home_pulse_current_order_title",
-                    fallback: "Current order"
-                ),
+                title: currentOrderTitle,
                 subtitle: order.reference
             )
 
             Button(action: onTap) {
-                Group {
+                VStack(alignment: .leading, spacing: PPSpace.lg) {
                     if dynamicTypeSize.isAccessibilitySize {
-                        accessibilityContent
+                        accessibilityStatusHeader
                     } else {
-                        compactContent
+                        compactStatusHeader
                     }
+
+                    statusJourney
+                    orderSummary
                 }
-                .padding(PPSpace.base)
+                .padding(PPSpace.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
                     cardShape.fill(
                         LinearGradient(
                             colors: [
-                                statusStrongSurface.opacity(
-                                    colorScheme == .dark ? 0.86 : 0.70
-                                ),
                                 statusSurface,
                                 Color.homeRaisedSurface,
                             ],
@@ -3117,14 +3217,8 @@ struct HomeOrderCard: View {
                         lineWidth: contrast == .increased ? 1.5 : 1
                     )
                 }
-                .overlay(alignment: .leading) {
-                    Capsule()
-                        .fill(statusAccent)
-                        .frame(width: 4)
-                        .padding(.vertical, PPSpace.lg)
-                        .padding(.leading, PPSpace.xs)
-                }
                 .clipShape(cardShape)
+                .contentShape(cardShape)
                 .shadow(
                     color: statusAccent.opacity(
                         contrast == .increased
@@ -3136,7 +3230,8 @@ struct HomeOrderCard: View {
                 )
             }
             .buttonStyle(HomeCardPressStyle())
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityOrderLabel)
             .accessibilityHint(
                 HomeModelAdapter.localized(
                     "home_pulse_order_details_a11y",
@@ -3150,27 +3245,17 @@ struct HomeOrderCard: View {
         RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
     }
 
-    private var compactContent: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(alignment: .center, spacing: PPSpace.md) {
-                statusGlyph
-                statusCopy
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .layoutPriority(1)
-                disclosureIndicator
-            }
-
-            statusProgress
-
-            Divider()
-                .overlay(statusBorder.opacity(0.72))
-                .accessibilityHidden(true)
-
-            orderSummary
+    private var compactStatusHeader: some View {
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            statusGlyph
+            statusCopy
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+            disclosureIndicator
         }
     }
 
-    private var accessibilityContent: some View {
+    private var accessibilityStatusHeader: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             HStack(alignment: .center, spacing: PPSpace.md) {
                 statusGlyph
@@ -3179,20 +3264,13 @@ struct HomeOrderCard: View {
             }
 
             statusCopy
-            statusProgress
-
-            Divider()
-                .overlay(statusBorder.opacity(0.72))
-                .accessibilityHidden(true)
-
-            orderSummary
         }
     }
 
     private var statusCopy: some View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
             Text(order.statusTitle)
-                .font(HomeFont.title2())
+                .font(HomeFont.bold(20))
                 .foregroundStyle(Color.homeTextPrimary)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -3206,80 +3284,102 @@ struct HomeOrderCard: View {
         }
     }
 
-    private var statusProgress: some View {
-        HomeAnimatedOrderProgress(
+    private var statusJourney: some View {
+        HomeOrderJourneyProgress(
             progress: resolvedProgress,
             accentColor: statusAccent,
-            borderColor: statusBorder
+            trackColor: journeyTrackColor,
+            beaconFillColor: statusStrongSurface
         )
-        .accessibilityHidden(true)
+        .id(order.id)
     }
 
     @ViewBuilder
     private var orderSummary: some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
                 if !order.amount.isEmpty {
                     amountLabel
                 }
                 itemCountLabel
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, PPSpace.md)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(statusBorder)
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
+            }
         } else {
-            HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+            HStack(alignment: .center, spacing: PPSpace.md) {
                 if !order.amount.isEmpty {
                     amountLabel
 
-                    Circle()
-                        .fill(statusAccent)
-                        .frame(width: 4, height: 4)
+                    Rectangle()
+                        .fill(statusBorder)
+                        .frame(width: 1, height: 22)
                         .accessibilityHidden(true)
                 }
 
                 itemCountLabel
                 Spacer(minLength: 0)
             }
+            .padding(.top, PPSpace.md)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(statusBorder)
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
+            }
         }
     }
 
     private var amountLabel: some View {
-        Text(order.amount)
-            .font(HomeFont.bold(16))
-            .foregroundStyle(Color.homeTextPrimary)
-            .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: "banknote.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(statusAccent)
+                .accessibilityHidden(true)
+
+            Text(order.amount)
+                .font(HomeFont.bold(16))
+                .foregroundStyle(Color.homeTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var itemCountLabel: some View {
-        Text(
-            String(
-                format: HomeModelAdapter.localized(
-                    "home_pulse_order_items",
-                    fallback: "%d items"
-                ),
-                order.itemCount
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: "shippingbox.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(statusAccent)
+                .accessibilityHidden(true)
+
+            Text(
+                itemCountText
             )
-        )
-        .font(HomeFont.footnote())
-        .foregroundStyle(Color.homeTextSecondary)
-        .fixedSize(horizontal: false, vertical: true)
+            .font(HomeFont.footnote())
+            .foregroundStyle(Color.homeTextSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var statusGlyph: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .fill(statusStrongSurface)
+            Circle()
+                .fill(statusGlyphFill)
 
             statusSymbol
-                .foregroundStyle(statusAccent)
-                .frame(width: 27, height: 27)
+                .foregroundStyle(statusGlyphForeground)
+                .frame(width: 23, height: 23)
         }
-        .frame(width: 60, height: 60)
+        .frame(width: 50, height: 50)
         .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .stroke(
-                    statusBorder,
-                    lineWidth: contrast == .increased ? 1.5 : 1
-                )
+            Circle().stroke(
+                statusGlyphBorder,
+                lineWidth: contrast == .increased ? 1.5 : 1
+            )
         }
         .accessibilityHidden(true)
     }
@@ -3309,21 +3409,47 @@ struct HomeOrderCard: View {
     private var disclosureIndicator: some View {
         Image(systemName: "chevron.forward")
             .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(statusAccent)
+            .foregroundStyle(disclosureColor)
             .flipsForRightToLeftLayoutDirection(true)
             .frame(width: 42, height: 42)
-            .background(statusStrongSurface, in: Circle())
-            .overlay {
-                Circle().stroke(
-                    statusBorder,
-                    lineWidth: contrast == .increased ? 1.5 : 1
-                )
-            }
             .accessibilityHidden(true)
     }
 
     private var resolvedProgress: Double {
         min(max(order.progress, 0), 1)
+    }
+
+    private var currentOrderTitle: String {
+        HomeModelAdapter.localized(
+            "home_pulse_current_order_title",
+            fallback: "Current order"
+        )
+    }
+
+    private var itemCountText: String {
+        String(
+            format: HomeModelAdapter.localized(
+                "home_pulse_order_items",
+                fallback: "%d items"
+            ),
+            order.itemCount
+        )
+    }
+
+    private var accessibilityOrderLabel: String {
+        var components = [
+            currentOrderTitle,
+            order.reference,
+            order.statusTitle,
+            order.statusHint,
+        ]
+        if !order.amount.isEmpty {
+            components.append(order.amount)
+        }
+        components.append(itemCountText)
+        return components
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
     }
 
     private var statusTraits: UITraitCollection {
@@ -3339,6 +3465,39 @@ struct HomeOrderCard: View {
 
     private var statusAccent: Color {
         Color(uiColor: statusAccentUIColor)
+    }
+
+    private var statusContrastingForeground: Color {
+        Color(uiColor: PPOrderStatusContrastingForegroundColor(
+            statusAccentUIColor,
+            statusTraits
+        ))
+    }
+
+    private var statusGlyphForeground: Color {
+        contrast == .increased
+            ? statusContrastingForeground
+            : statusAccent
+    }
+
+    private var statusGlyphFill: Color {
+        contrast == .increased ? statusAccent : statusStrongSurface
+    }
+
+    private var statusGlyphBorder: Color {
+        contrast == .increased
+            ? statusContrastingForeground.opacity(0.72)
+            : statusBorder
+    }
+
+    private var disclosureColor: Color {
+        contrast == .increased ? Color.homeTextPrimary : statusAccent
+    }
+
+    private var journeyTrackColor: Color {
+        contrast == .increased
+            ? Color.homeTextPrimary.opacity(colorScheme == .dark ? 0.48 : 0.34)
+            : statusBorder
     }
 
     private var statusSurface: Color {
@@ -4096,13 +4255,10 @@ struct HomePureLensSection: View {
 
     @ViewBuilder
     private var thresholdLayout: some View {
-        if usesAccessibilityLayout {
-            stackedThresholdLayout
+        if horizontalSizeClass == .regular, !usesAccessibilityLayout {
+            twoZoneThresholdLayout
         } else {
-            ViewThatFits(in: .horizontal) {
-                twoZoneThresholdLayout
-                stackedThresholdLayout
-            }
+            stackedThresholdLayout
         }
     }
 
@@ -5015,5 +5171,107 @@ private struct HomePureLensFocusCorners: Shape {
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - segment))
 
         return path
+    }
+}
+
+// MARK: - NextGen V6 Care-to-Listings Transition Architecture
+
+struct HomeCareWaveTransitionShape: Shape {
+    var isRightToLeft: Bool = false
+    var waveDepth: CGFloat = 20.0
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        let baseHeight = max(0, height - waveDepth)
+
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: width, y: 0))
+        path.addLine(to: CGPoint(x: width, y: baseHeight))
+
+        if isRightToLeft {
+            path.addCurve(
+                to: CGPoint(x: 0, y: baseHeight),
+                control1: CGPoint(x: width * 0.70, y: baseHeight + waveDepth * 1.1),
+                control2: CGPoint(x: width * 0.30, y: baseHeight - waveDepth * 0.4)
+            )
+        } else {
+            path.addCurve(
+                to: CGPoint(x: 0, y: baseHeight),
+                control1: CGPoint(x: width * 0.30, y: baseHeight + waveDepth * 1.1),
+                control2: CGPoint(x: width * 0.70, y: baseHeight - waveDepth * 0.4)
+            )
+        }
+
+        path.addLine(to: CGPoint(x: 0, y: 0))
+        path.closeSubpath()
+        return path
+    }
+}
+
+struct HomeCareBandOrganicTransitionBackground: View {
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        GeometryReader { _ in
+            let isRTL = layoutDirection == .rightToLeft
+            let isDark = colorScheme == .dark
+            let bandColor = Color.homeSectionBand
+
+            ZStack(alignment: .bottom) {
+                // Main section band fill
+                bandColor
+
+                // Subtle ambient top entry feather
+                LinearGradient(
+                    colors: [
+                        Color.homeCanvas.opacity(isDark ? 0.35 : 0.20),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 24)
+                .frame(maxHeight: .infinity, alignment: .top)
+
+                // Organic Asymmetric Wave Tail
+                HomeCareWaveTransitionShape(
+                    isRightToLeft: isRTL,
+                    waveDepth: 20
+                )
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            bandColor,
+                            bandColor.opacity(0.85),
+                            bandColor.opacity(0.40),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(height: 36)
+                .offset(y: 20)
+
+                // Soft Dissolve Gradient blending into Canvas below
+                LinearGradient(
+                    colors: [
+                        Color.clear,
+                        Color.ppCareAccent.opacity(isDark ? 0.04 : 0.025),
+                        Color.homeCanvas.opacity(isDark ? 0.65 : 0.50),
+                        Color.homeCanvas
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 44)
+                .offset(y: 24)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }

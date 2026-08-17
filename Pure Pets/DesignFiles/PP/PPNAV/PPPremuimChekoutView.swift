@@ -163,6 +163,134 @@ private final class PPPremiumCheckoutButton: UIControl {
         layer.shadowColor = UIColor.clear.cgColor
         layer.shadowOpacity = 0
     }
+
+    func triggerHaloExplosionAnimation(accentColor: UIColor? = nil) {
+        guard !reduceMotion else {
+            UIView.animate(withDuration: 0.16, animations: {
+                self.alpha = 0.82
+            }) { _ in
+                UIView.animate(withDuration: 0.20) {
+                    self.alpha = self.isEnabled ? 1.0 : 0.78
+                }
+            }
+            return
+        }
+
+        let toneColor = accentColor ?? PPPremiumCheckoutStyle.brand
+
+        // 1. Kinetic Pop on CTA Button
+        layer.removeAnimation(forKey: "pp_cta_kinetic_pop")
+        let popAnimation = CAKeyframeAnimation(keyPath: "transform.scale")
+        popAnimation.values = [1.0, 1.055, 0.975, 1.018, 1.0]
+        popAnimation.keyTimes = [0.0, 0.22, 0.52, 0.78, 1.0]
+        popAnimation.duration = 0.44
+        popAnimation.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1.0, 0.36, 1.0)
+        layer.add(popAnimation, forKey: "pp_cta_kinetic_pop")
+
+        // 2. Dual Concentric Expanding Halo Rings
+        for i in 0..<2 {
+            let haloLayer = CAShapeLayer()
+            let cornerRadius = layer.cornerRadius
+            let haloPath = UIBezierPath(roundedRect: bounds, cornerRadius: cornerRadius).cgPath
+            haloLayer.path = haloPath
+            haloLayer.frame = bounds
+            haloLayer.fillColor = UIColor.clear.cgColor
+            haloLayer.strokeColor = toneColor.withAlphaComponent(i == 0 ? 0.75 : 0.45).cgColor
+            haloLayer.lineWidth = i == 0 ? 2.5 : 1.5
+            haloLayer.lineCap = .round
+            haloLayer.allowsEdgeAntialiasing = true
+            layer.superlayer?.insertSublayer(haloLayer, below: layer)
+
+            let delay: CFTimeInterval = Double(i) * 0.08
+
+            let scaleAnim = CABasicAnimation(keyPath: "transform.scale")
+            scaleAnim.fromValue = 0.98
+            scaleAnim.toValue = i == 0 ? 1.28 : 1.42
+            scaleAnim.duration = 0.52
+            scaleAnim.beginTime = CACurrentMediaTime() + delay
+            scaleAnim.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
+
+            let opacityAnim = CABasicAnimation(keyPath: "opacity")
+            opacityAnim.fromValue = 1.0
+            opacityAnim.toValue = 0.0
+            opacityAnim.duration = 0.52
+            opacityAnim.beginTime = CACurrentMediaTime() + delay
+            opacityAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+
+            let group = CAAnimationGroup()
+            group.animations = [scaleAnim, opacityAnim]
+            group.duration = 0.52 + delay
+            group.isRemovedOnCompletion = false
+            group.fillMode = .forwards
+
+            haloLayer.add(group, forKey: "haloGroup")
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.60 + delay) {
+                haloLayer.removeFromSuperlayer()
+            }
+        }
+
+        // 3. Radial Micro-Spark Particle Explosion Burst
+        let particleCount = 12
+        let centerPoint = CGPoint(x: bounds.midX, y: bounds.midY)
+        let baseRadiusX = bounds.width * 0.5
+        let baseRadiusY = bounds.height * 0.5
+
+        for i in 0..<particleCount {
+            let angle = (CGFloat(i) / CGFloat(particleCount)) * (2.0 * .pi) + CGFloat.random(in: -0.15...0.15)
+            let particleSize = CGFloat.random(in: 4.5...7.5)
+            let particleLayer = CAShapeLayer()
+
+            let particleRect = CGRect(x: -particleSize / 2, y: -particleSize / 2, width: particleSize, height: particleSize)
+            let particlePath = (i % 3 == 0)
+                ? UIBezierPath(ovalIn: particleRect).cgPath
+                : UIBezierPath(roundedRect: particleRect, cornerRadius: 2.0).cgPath
+
+            particleLayer.path = particlePath
+            let particleAlpha = CGFloat.random(in: 0.75...0.95)
+            particleLayer.fillColor = (i % 2 == 0 ? toneColor : (UIColor(named: "AppSecondaryColor") ?? toneColor.withAlphaComponent(0.85))).withAlphaComponent(particleAlpha).cgColor
+            particleLayer.position = centerPoint
+            layer.superlayer?.insertSublayer(particleLayer, above: layer)
+
+            let distance = CGFloat.random(in: 32...56)
+            let targetX = centerPoint.x + cos(angle) * (baseRadiusX + distance)
+            let targetY = centerPoint.y + sin(angle) * (baseRadiusY + distance)
+
+            let posAnim = CABasicAnimation(keyPath: "position")
+            posAnim.fromValue = NSValue(cgPoint: centerPoint)
+            posAnim.toValue = NSValue(cgPoint: CGPoint(x: targetX, y: targetY))
+            posAnim.duration = 0.48
+            posAnim.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1.0)
+
+            let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
+            scaleAnim.values = [0.2, 1.2, 0.0]
+            scaleAnim.keyTimes = [0.0, 0.35, 1.0]
+            scaleAnim.duration = 0.48
+
+            let fadeAnim = CABasicAnimation(keyPath: "opacity")
+            fadeAnim.fromValue = 1.0
+            fadeAnim.toValue = 0.0
+            fadeAnim.duration = 0.48
+            fadeAnim.timingFunction = CAMediaTimingFunction(name: .easeIn)
+
+            let particleGroup = CAAnimationGroup()
+            particleGroup.animations = [posAnim, scaleAnim, fadeAnim]
+            particleGroup.duration = 0.48
+            particleGroup.isRemovedOnCompletion = false
+            particleGroup.fillMode = .forwards
+
+            particleLayer.add(particleGroup, forKey: "particleBurst")
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.50) {
+                particleLayer.removeFromSuperlayer()
+            }
+        }
+
+        // 4. Kinetic Haptic Response
+        let haptic = UIImpactFeedbackGenerator(style: .medium)
+        haptic.prepare()
+        haptic.impactOccurred()
+    }
 }
 
 private enum PPPremiumCheckoutStyle {
@@ -339,6 +467,8 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     private let glowContainerView = UIView()
     private let primaryGlowView = UIView()
     private let secondaryGlowView = UIView()
+    private let primaryGlowGradientLayer = CAGradientLayer()
+    private let secondaryGlowGradientLayer = CAGradientLayer()
     private let cardView = UIView()
     private let glassMaterialView = UIVisualEffectView(effect: nil)
     private let glassTintView = UIView()
@@ -463,6 +593,10 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         glowContainerView.layer.cornerRadius = cardView.layer.cornerRadius
         primaryGlowView.layer.cornerRadius = primaryGlowView.bounds.width * 0.5
         secondaryGlowView.layer.cornerRadius = secondaryGlowView.bounds.width * 0.5
+        primaryGlowGradientLayer.frame = primaryGlowView.bounds
+        primaryGlowGradientLayer.cornerRadius = primaryGlowView.bounds.width * 0.5
+        secondaryGlowGradientLayer.frame = secondaryGlowView.bounds
+        secondaryGlowGradientLayer.cornerRadius = secondaryGlowView.bounds.width * 0.5
         updateTopOuterShadowPath()
 
         if !didRunEntrance, cardView.bounds.height > 0 {
@@ -519,6 +653,10 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         primaryGlowView.alpha = 1
         primaryGlowView.layer.shadowRadius = 0
         primaryGlowView.layer.shadowOffset = .zero
+        primaryGlowGradientLayer.type = .radial
+        primaryGlowGradientLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        primaryGlowGradientLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
+        primaryGlowView.layer.addSublayer(primaryGlowGradientLayer)
         glowContainerView.addSubview(primaryGlowView)
 
         secondaryGlowView.translatesAutoresizingMaskIntoConstraints = false
@@ -527,6 +665,10 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         secondaryGlowView.alpha = 1
         secondaryGlowView.layer.shadowRadius = 0
         secondaryGlowView.layer.shadowOffset = .zero
+        secondaryGlowGradientLayer.type = .radial
+        secondaryGlowGradientLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        secondaryGlowGradientLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
+        secondaryGlowView.layer.addSublayer(secondaryGlowGradientLayer)
         glowContainerView.addSubview(secondaryGlowView)
 
         contentStack.translatesAutoresizingMaskIntoConstraints = false
@@ -967,16 +1109,30 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         let isDark = traitCollection.userInterfaceStyle == .dark
         glowContainerView.backgroundColor = .clear
         primaryGlowView.isHidden = false
-        primaryGlowView.alpha = 1
-        primaryGlowView.backgroundColor = brand.withAlphaComponent(isDark ? 0.16 : 0.10)
+        primaryGlowView.alpha = 0.85
+        primaryGlowView.backgroundColor = .clear
+        let primaryCenterAlpha: CGFloat = isDark ? 0.08 : 0.045
+        primaryGlowGradientLayer.colors = [
+            brand.withAlphaComponent(primaryCenterAlpha).cgColor,
+            brand.withAlphaComponent(primaryCenterAlpha * 0.40).cgColor,
+            UIColor.clear.cgColor
+        ]
+        primaryGlowGradientLayer.locations = [0.0, 0.55, 1.0]
         primaryGlowView.layer.shadowColor = UIColor.clear.cgColor
         primaryGlowView.layer.shadowOpacity = 0
         primaryGlowView.layer.shadowRadius = 0
         primaryGlowView.layer.shadowOffset = .zero
 
         secondaryGlowView.isHidden = false
-        secondaryGlowView.alpha = 0.95
-        secondaryGlowView.backgroundColor = brand.withAlphaComponent(isDark ? 0.13 : 0.08)
+        secondaryGlowView.alpha = 0.80
+        secondaryGlowView.backgroundColor = .clear
+        let secondaryCenterAlpha: CGFloat = isDark ? 0.06 : 0.035
+        secondaryGlowGradientLayer.colors = [
+            brand.withAlphaComponent(secondaryCenterAlpha).cgColor,
+            brand.withAlphaComponent(secondaryCenterAlpha * 0.35).cgColor,
+            UIColor.clear.cgColor
+        ]
+        secondaryGlowGradientLayer.locations = [0.0, 0.50, 1.0]
         secondaryGlowView.layer.shadowColor = UIColor.clear.cgColor
         secondaryGlowView.layer.shadowOpacity = 0
         secondaryGlowView.layer.shadowRadius = 0
@@ -1182,6 +1338,16 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         checkoutTitle = (title?.isEmpty == false) ? title! : NSLocalizedString("Checkout", comment: "")
         checkoutImage = image ?? UIImage(systemName: effectiveUserInterfaceLayoutDirection == .rightToLeft ? "arrow.left" : "arrow.right")
         ctaButton.configure(title: checkoutTitle, image: checkoutImage)
+    }
+
+    @objc(triggerPaymentMethodChangeFeedbackWithAccent:)
+    public func triggerPaymentMethodChangeFeedback(accentColor: UIColor?) {
+        ctaButton.triggerHaloExplosionAnimation(accentColor: accentColor)
+    }
+
+    @objc(triggerPaymentMethodChangeFeedback)
+    public func triggerPaymentMethodChangeFeedback() {
+        triggerPaymentMethodChangeFeedback(accentColor: nil)
     }
 
     @objc(setCheckoutLoading:)

@@ -406,8 +406,8 @@ struct HomeHeroView: View {
                     primarySymbol: "heart.fill",
                     primaryImageName: nil,
                     secondarySymbol: "pawprint.fill",
-                    tertiarySymbol: "checkmark.seal.fill",
-                    tertiaryImageName: nil
+                    tertiarySymbol: "bag.fill",
+                    tertiaryImageName: "shopping-bag"
                 )
             }
             return HomeHeroArtworkAsset(
@@ -420,8 +420,8 @@ struct HomeHeroView: View {
                 primarySymbol: "heart.fill",
                 primaryImageName: nil,
                 secondarySymbol: "pawprint.fill",
-                tertiarySymbol: "checkmark.seal.fill",
-                tertiaryImageName: nil
+                tertiarySymbol: "bag.fill",
+                tertiaryImageName: "shopping-bag"
             )
         case .reminder:
             return HomeHeroArtworkAsset(
@@ -434,8 +434,8 @@ struct HomeHeroView: View {
                 primarySymbol: "bell.fill",
                 primaryImageName: nil,
                 secondarySymbol: "calendar",
-                tertiarySymbol: "checkmark.circle.fill",
-                tertiaryImageName: nil
+                tertiarySymbol: "bag.fill",
+                tertiaryImageName: "shopping-bag"
             )
         case .promotion:
             let remoteURL = normalizedHeroImageURL(page.imageURL)
@@ -449,8 +449,8 @@ struct HomeHeroView: View {
                 primarySymbol: "sparkles",
                 primaryImageName: nil,
                 secondarySymbol: "tag.fill",
-                tertiarySymbol: "gift.fill",
-                tertiaryImageName: nil
+                tertiarySymbol: "bag.fill",
+                tertiaryImageName: "shopping-bag"
             )
         case .marketplace:
             let hasSelectedCategory: Bool
@@ -477,11 +477,11 @@ struct HomeHeroView: View {
                         : nil,
                     usesCategoryArtworkTreatment: true,
                     loadsFromFirebase: false,
-                    primarySymbol: "bag.fill",
-                    primaryImageName: "shopping-bag",
+                    primarySymbol: "sparkles",
+                    primaryImageName: nil,
                     secondarySymbol: "shippingbox.fill",
-                    tertiarySymbol: "checkmark.seal.fill",
-                    tertiaryImageName: "vet1"
+                    tertiarySymbol: "bag.fill",
+                    tertiaryImageName: "shopping-bag"
                 )
             }
             return HomeHeroArtworkAsset(
@@ -491,11 +491,11 @@ struct HomeHeroView: View {
                 remoteImageURL: nil,
                 usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: false,
-                primarySymbol: "bag.fill",
-                primaryImageName: "shopping-bag",
+                primarySymbol: "sparkles",
+                primaryImageName: nil,
                 secondarySymbol: "shippingbox.fill",
-                tertiarySymbol: "sparkles",
-                tertiaryImageName: "vet1"
+                tertiarySymbol: "bag.fill",
+                tertiaryImageName: "shopping-bag"
             )
         case .petOnboarding:
             return HomeHeroArtworkAsset(
@@ -508,8 +508,8 @@ struct HomeHeroView: View {
                 primarySymbol: "plus",
                 primaryImageName: nil,
                 secondarySymbol: "pawprint.fill",
-                tertiarySymbol: "heart.fill",
-                tertiaryImageName: nil
+                tertiarySymbol: "bag.fill",
+                tertiaryImageName: "shopping-bag"
             )
         case .pharmacy:
             return HomeHeroArtworkAsset(
@@ -522,8 +522,8 @@ struct HomeHeroView: View {
                 primarySymbol: "pills.fill",
                 primaryImageName: nil,
                 secondarySymbol: "bandage.fill",
-                tertiarySymbol: "cross.case.fill",
-                tertiaryImageName: nil
+                tertiarySymbol: "bag.fill",
+                tertiaryImageName: "shopping-bag"
             )
         }
     }
@@ -687,8 +687,8 @@ private struct HomeHeroArtworkAsset {
     var primarySymbol: String = "heart.fill"
     var primaryImageName: String? = nil
     var secondarySymbol: String = "pawprint.fill"
-    var tertiarySymbol: String = "checkmark.seal.fill"
-    var tertiaryImageName: String? = nil
+    var tertiarySymbol: String = "bag.fill"
+    var tertiaryImageName: String? = "shopping-bag"
 
     init(
         animationName: String? = nil,
@@ -700,8 +700,8 @@ private struct HomeHeroArtworkAsset {
         primarySymbol: String = "heart.fill",
         primaryImageName: String? = nil,
         secondarySymbol: String = "pawprint.fill",
-        tertiarySymbol: String = "checkmark.seal.fill",
-        tertiaryImageName: String? = nil
+        tertiarySymbol: String = "bag.fill",
+        tertiaryImageName: String? = "shopping-bag"
     ) {
         self.animationName = animationName
         self.imageName = imageName
@@ -1132,6 +1132,7 @@ private struct HomeHeroOrbitNode: View {
         if let imageName {
             Image(imageName)
                 .resizable()
+                .renderingMode(.template)
                 .scaledToFit()
                 .frame(width: side * 0.58, height: side * 0.58)
         } else {
@@ -1146,6 +1147,7 @@ struct HomeHeroField: View {
     let increasedContrast: Bool
     let cornerGlowOpacityScale: Double
     var isAnimated: Bool = true
+    var cornerRadius: CGFloat = PPCorner.hero
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -1156,12 +1158,14 @@ struct HomeHeroField: View {
         accent: Color,
         increasedContrast: Bool,
         cornerGlowOpacityScale: Double,
-        isAnimated: Bool = true
+        isAnimated: Bool = true,
+        cornerRadius: CGFloat = PPCorner.hero
     ) {
         self.accent = accent
         self.increasedContrast = increasedContrast
         self.cornerGlowOpacityScale = cornerGlowOpacityScale
         self.isAnimated = isAnimated
+        self.cornerRadius = cornerRadius
     }
 
     private var isRightToLeft: Bool {
@@ -1200,6 +1204,7 @@ struct HomeHeroField: View {
                 careCurrent
             }
         }
+        .clipShape(heroShape)
         .onAppear(perform: updateMotion)
         .onChange(of: reduceMotion) { _ in
             updateMotion()
@@ -1216,7 +1221,7 @@ struct HomeHeroField: View {
 
     private var heroShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: PPCorner.hero,
+            cornerRadius: cornerRadius,
             style: .continuous
         )
     }
@@ -1229,13 +1234,13 @@ struct HomeHeroField: View {
                 RadialGradient(
                     colors: [
                         Color.white.opacity(
-                            colorScheme == .dark ? 0.22 : 0.48
+                            colorScheme == .dark ? 0.14 : 0.28
                         ),
                         accent.opacity(
-                            (colorScheme == .dark ? 0.38 : 0.32) * cornerGlowOpacityScale
+                            (colorScheme == .dark ? 0.22 : 0.18) * cornerGlowOpacityScale
                         ),
                         accent.opacity(
-                            (colorScheme == .dark ? 0.16 : 0.12) * cornerGlowOpacityScale
+                            (colorScheme == .dark ? 0.08 : 0.05) * cornerGlowOpacityScale
                         ),
                         Color.clear,
                     ],
@@ -1249,13 +1254,13 @@ struct HomeHeroField: View {
                 RadialGradient(
                     colors: [
                         Color.white.opacity(
-                            colorScheme == .dark ? 0.18 : 0.42
+                            colorScheme == .dark ? 0.10 : 0.22
                         ),
                         accent.opacity(
-                            (colorScheme == .dark ? 0.32 : 0.26) * cornerGlowOpacityScale
+                            (colorScheme == .dark ? 0.18 : 0.14) * cornerGlowOpacityScale
                         ),
                         accent.opacity(
-                            (colorScheme == .dark ? 0.14 : 0.10) * cornerGlowOpacityScale
+                            (colorScheme == .dark ? 0.06 : 0.035) * cornerGlowOpacityScale
                         ),
                         Color.clear,
                     ],

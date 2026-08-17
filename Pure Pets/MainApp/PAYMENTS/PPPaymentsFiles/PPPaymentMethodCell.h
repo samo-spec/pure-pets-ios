@@ -33,5 +33,6 @@
                       indexPath:(NSIndexPath *)indexPath;
 - (void)configureAsAddNewIndexPath:(NSIndexPath *)indexPath;
 - (void)updateSelectionState:(BOOL)isSelected animated:(BOOL)animated;
++ (UIColor *)accentColorForMethod:(nullable PaymentMethod *)method;
 
 @end

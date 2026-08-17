@@ -4,7 +4,6 @@
 //
 //  Created by Mohammed Ahmed on 03/02/2026.
 //
- 
 
 #import <UIKit/UIKit.h>
 
@@ -14,7 +13,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Show picker floating on top of any controller
 + (instancetype)showInViewController:(UIViewController *)controller width:(float)width;
-- (void)attachToScrollView:(UIScrollView *)scrollView;;
+
+/// Attach pan gesture to dismiss/collapse on scroll
+- (void)attachToScrollView:(UIScrollView *)scrollView;
+
 /// Default address text (optional)
 @property (nonatomic, copy, nullable) NSString *addressText;
 
@@ -30,7 +32,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Expand programmatically
 - (void)expand;
-- (void)expandAndLock;;
+
+/// Expand and lock expanded state (collapse disabled)
+- (void)expandAndLock;
+
 @end
 
 NS_ASSUME_NONNULL_END
+

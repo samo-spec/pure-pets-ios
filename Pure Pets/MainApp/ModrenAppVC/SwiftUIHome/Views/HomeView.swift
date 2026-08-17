@@ -251,7 +251,7 @@ struct HomeView: View {
                         topPadding(for: row, after: previousRow)
                     )
                     .padding(.bottom, verticalPadding(for: row))
-                    .background(band(for: row))
+                    .background(rowBackground(for: row))
                     .homeResolvedSectionEntrance(
                         isVisible: loadedEntranceVisible,
                         sectionIndex: index,
@@ -789,12 +789,15 @@ struct HomeView: View {
         .accessibilityHidden(true)
     }
 
-    /// One rhythm break for the whole page. The care gateway is the only banded
-    /// row, so Home never reads as a stack of decorated boxes.
-    private func band(for row: HomeRenderRow) -> Color {
-        guard case let .module(module) = row.content else { return .clear }
-        if case .careGateway = module.kind { return .homeSectionBand }
-        return .clear
+    /// One rhythm break for the whole page. The care gateway features a NextGen V6
+    /// organic transition band that flows seamlessly into the discovery marketplace.
+    @ViewBuilder
+    private func rowBackground(for row: HomeRenderRow) -> some View {
+        if case let .module(module) = row.content, case .careGateway = module.kind {
+            HomeCareBandOrganicTransitionBackground()
+        } else {
+            Color.clear
+        }
     }
 
     private func reloadAccent(for row: HomeRenderRow) -> Color {
@@ -1004,7 +1007,8 @@ private struct HomeAdoptionSection: View {
             HomeHeroField(
                 accent: Color.ppAdoptionAccent,
                 increasedContrast: contrast == .increased,
-                cornerGlowOpacityScale: 1
+                cornerGlowOpacityScale: 0.50,
+                cornerRadius: PPCorner.card
             )
         }
         .overlay {
@@ -1026,7 +1030,7 @@ private struct HomeAdoptionSection: View {
     }
 
     private var cardShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
     }
 
     private var adoptionCopy: some View {

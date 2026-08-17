@@ -7,28 +7,23 @@
 
 #import "PPPaymentMethodCell.h"
 
-static CGFloat const kPPPaymentCellCornerRadius = 24.0;
-static CGFloat const kPPPaymentCellInnerInset = 14.0;
-static CGFloat const kPPPaymentCellIconSize = 38.0;
-static CGFloat const kPPPaymentCellActionSize = 30.0;
+static CGFloat const kPPPaymentCellCornerRadius = PPCornerCard;
 
 @interface PPPaymentMethodCell ()
 
 @property (nonatomic, strong) UIView *surfaceView;
 @property (nonatomic, strong) UIView *iconContainerView;
 @property (nonatomic, strong) UIImageView *iconView;
-@property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) PPInsetLabel *statusLabel;
+@property (nonatomic, strong) UIStackView *titleHeaderStack;
 @property (nonatomic, strong) UILabel *subtitleLabel;
-@property (nonatomic, strong) UIStackView *brandStack;
-@property (nonatomic, strong) NSArray<UIImageView *> *brandImageViews;
- @property (nonatomic, strong) UIView *selectionView;
+@property (nonatomic, strong) UIStackView *textStack;
+@property (nonatomic, strong) UIView *selectionView;
 @property (nonatomic, strong) UIImageView *selectionImageView;
 @property (nonatomic, strong) UIImageView *disclosureView;
 @property (nonatomic, strong) UITapGestureRecognizer *tapGesture;
 @property (nonatomic, strong) CAShapeLayer *dashedBorderLayer;
-@property (nonatomic, strong) NSLayoutConstraint *statusTrailingToMenuConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *statusTrailingToSurfaceConstraint;
 @property (nonatomic, assign) BOOL addNewStyle;
 @property (nonatomic, assign) BOOL currentSelectionState;
 
@@ -60,18 +55,14 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     self.titleLabel.text = @"";
     self.subtitleLabel.text = @"";
     self.statusLabel.text = @"";
+    self.statusLabel.hidden = YES;
     self.iconView.image = nil;
      
-    self.brandStack.hidden = YES;
     self.disclosureView.hidden = YES;
     self.selectionView.hidden = NO;
     self.accessibilityLabel = nil;
-    [self pp_updateStatusTrailingForMenuVisible:NO];
-
-    for (UIImageView *brandView in self.brandImageViews) {
-        brandView.image = nil;
-        brandView.hidden = YES;
-    }
+    self.accessibilityValue = nil;
+    self.accessibilityIdentifier = nil;
 
     [self pp_applyDashedBorderVisible:NO];
     [self updateSelectionState:NO animated:NO];
@@ -93,25 +84,31 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     }
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (!previousTraitCollection ||
+        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self updateSelectionState:self.currentSelectionState animated:NO];
+    }
+}
+
 #pragma mark - UI
 
 - (void)pp_buildUI
 {
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitButton;
 
-    [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.07;
-    self.layer.shadowRadius = 20.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    PPApplyCardShadow(self);
 
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.backgroundColor = [self pp_surfaceColorSelected:NO addNew:NO accentColor:nil];
-    self.surfaceView.layer.cornerRadius = kPPPaymentCellCornerRadius;
-    self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
+    PPApplyContinuousCorners(self.surfaceView, kPPPaymentCellCornerRadius);
     self.surfaceView.layer.borderWidth = 1.0;
     [self.surfaceView pp_setBorderColor:[self pp_borderColorSelected:NO addNew:NO accentColor:nil]];
     [self.contentView addSubview:self.surfaceView];
@@ -125,21 +122,21 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
 
     self.iconContainerView = [[UIView alloc] init];
     self.iconContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.iconContainerView.layer.cornerRadius = 16.0;
-    self.iconContainerView.layer.cornerCurve = kCACornerCurveContinuous;
+    PPApplyContinuousCorners(self.iconContainerView, 12.0);
     self.iconContainerView.clipsToBounds = YES;
     [self.surfaceView addSubview:self.iconContainerView];
 
     self.iconView = [[UIImageView alloc] init];
     self.iconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.iconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.iconView.isAccessibilityElement = NO;
     [self.iconContainerView addSubview:self.iconView];
 
     self.selectionView = [[UIView alloc] init];
     self.selectionView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.selectionView.layer.cornerRadius = 11.0;
-    self.selectionView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.selectionView.layer.borderWidth = 1.0;
+    PPApplyContinuousCorners(self.selectionView, 12.0);
+    self.selectionView.layer.borderWidth = 1.5;
+    self.selectionView.isAccessibilityElement = NO;
     [self.surfaceView addSubview:self.selectionView];
 
     UIImageSymbolConfiguration *checkConfig =
@@ -150,8 +147,8 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     self.selectionImageView = [[UIImageView alloc] initWithImage:checkImage];
     self.selectionImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.selectionImageView.contentMode = UIViewContentModeCenter;
+    self.selectionImageView.isAccessibilityElement = NO;
     [self.selectionView addSubview:self.selectionImageView];
-  
 
     self.disclosureView = [[UIImageView alloc] initWithImage:[self pp_disclosureImage]];
     self.disclosureView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -162,74 +159,77 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:15.0];
-    self.titleLabel.textColor = UIColor.labelColor;
-    self.titleLabel.numberOfLines = 2;
+    UIFont *titleBaseFont = [GM boldFontWithSize:15.5]
+        ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightBold];
+    self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+        scaledFontForFont:titleBaseFont
+        maximumPointSize:24.0];
+    self.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.titleLabel.textColor = AppPrimaryTextClr;
+    self.titleLabel.numberOfLines = 0;
     self.titleLabel.adjustsFontSizeToFitWidth = YES;
-    self.titleLabel.minimumScaleFactor = 0.82;
+    self.titleLabel.minimumScaleFactor = 0.85;
+    self.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.titleLabel.textAlignment = NSTextAlignmentNatural;
-    [self.surfaceView addSubview:self.titleLabel];
+    [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                     forAxis:UILayoutConstraintAxisHorizontal];
+
+    self.statusLabel = [[PPInsetLabel alloc] init];
+    self.statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    UIFont *statusBaseFont = [GM boldFontWithSize:11.0]
+        ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    self.statusLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2]
+        scaledFontForFont:statusBaseFont
+        maximumPointSize:15.0];
+    self.statusLabel.adjustsFontForContentSizeCategory = YES;
+    self.statusLabel.textAlignment = NSTextAlignmentCenter;
+    self.statusLabel.numberOfLines = 1;
+    self.statusLabel.adjustsFontSizeToFitWidth = NO;
+    self.statusLabel.textInsets = UIEdgeInsetsMake(2.0, 6.0, 2.0, 6.0);
+    self.statusLabel.layer.cornerRadius = 7.0;
+    self.statusLabel.layer.masksToBounds = YES;
+    self.statusLabel.hidden = YES;
+    [self.statusLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.statusLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+    self.titleHeaderStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.titleLabel,
+        self.statusLabel
+    ]];
+    self.titleHeaderStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleHeaderStack.axis = UILayoutConstraintAxisHorizontal;
+    self.titleHeaderStack.alignment = UIStackViewAlignmentCenter;
+    self.titleHeaderStack.distribution = UIStackViewDistributionFill;
+    self.titleHeaderStack.spacing = 6.0;
 
     self.subtitleLabel = [[UILabel alloc] init];
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.subtitleLabel.font = [GM MidFontWithSize:12.5];
-    self.subtitleLabel.textColor = UIColor.secondaryLabelColor;
-    self.subtitleLabel.numberOfLines = 2;
+    UIFont *subtitleBaseFont = [GM MidFontWithSize:12.5]
+        ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+    self.subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+        scaledFontForFont:subtitleBaseFont
+        maximumPointSize:18.0];
+    self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.subtitleLabel.textColor = AppSecondaryTextClr;
+    self.subtitleLabel.numberOfLines = 0;
     self.subtitleLabel.adjustsFontSizeToFitWidth = YES;
-    self.subtitleLabel.minimumScaleFactor = 0.82;
+    self.subtitleLabel.minimumScaleFactor = 0.85;
+    self.subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.subtitleLabel.textAlignment = NSTextAlignmentNatural;
-    [self.surfaceView addSubview:self.subtitleLabel];
 
-    NSMutableArray<UIImageView *> *brandViews = [NSMutableArray array];
-    for (NSInteger index = 0; index < 3; index++) {
-        UIImageView *brandView = [[UIImageView alloc] init];
-        brandView.translatesAutoresizingMaskIntoConstraints = NO;
-        brandView.contentMode = UIViewContentModeScaleAspectFit;
-        brandView.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.86];
-        brandView.layer.cornerRadius = 5.0;
-        brandView.layer.cornerCurve = kCACornerCurveContinuous;
-        brandView.layer.borderWidth = 0.6;
-        [brandView pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.18]];
-        brandView.clipsToBounds = YES;
-        brandView.hidden = YES;
-        [NSLayoutConstraint activateConstraints:@[
-            [brandView.widthAnchor constraintEqualToConstant:28.0],
-            [brandView.heightAnchor constraintEqualToConstant:18.0],
-        ]];
-        [brandViews addObject:brandView];
-    }
-    self.brandImageViews = brandViews.copy;
-
-    self.brandStack = [[UIStackView alloc] initWithArrangedSubviews:self.brandImageViews];
-    self.brandStack.translatesAutoresizingMaskIntoConstraints = NO;
-    self.brandStack.axis = UILayoutConstraintAxisHorizontal;
-    self.brandStack.alignment = UIStackViewAlignmentCenter;
-    self.brandStack.spacing = 5.0;
-    self.brandStack.hidden = YES;
-    [self.surfaceView addSubview:self.brandStack];
-
-    self.statusLabel = [[UILabel alloc] init];
-    self.statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.statusLabel.font = [GM boldFontWithSize:10.5];
-    self.statusLabel.textAlignment = NSTextAlignmentCenter;
-    self.statusLabel.numberOfLines = 1;
-    self.statusLabel.adjustsFontSizeToFitWidth = YES;
-    self.statusLabel.minimumScaleFactor = 0.78;
-    self.statusLabel.layer.cornerRadius = 10.0;
-    self.statusLabel.layer.cornerCurve = kCACornerCurveContinuous;
-    self.statusLabel.layer.masksToBounds = YES;
-    [self.statusLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.statusLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.surfaceView addSubview:self.statusLabel];
+    self.textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.titleHeaderStack,
+        self.subtitleLabel
+    ]];
+    self.textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.textStack.axis = UILayoutConstraintAxisVertical;
+    self.textStack.alignment = UIStackViewAlignmentFill;
+    self.textStack.distribution = UIStackViewDistributionFill;
+    self.textStack.spacing = 2.5;
+    [self.surfaceView addSubview:self.textStack];
 
     self.tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_didTapCard)];
     [self.surfaceView addGestureRecognizer:self.tapGesture];
-
-    self.statusTrailingToMenuConstraint =
-    [self.statusLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8.0];
-    self.statusTrailingToSurfaceConstraint =
-    [self.statusLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-kPPPaymentCellInnerInset];
-    self.statusTrailingToSurfaceConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:1.0],
@@ -237,47 +237,34 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
         [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:1.0],
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-1.0],
 
-        [self.iconContainerView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:kPPPaymentCellInnerInset],
-        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:kPPPaymentCellInnerInset],
-        [self.iconContainerView.widthAnchor constraintEqualToConstant:kPPPaymentCellIconSize],
-        [self.iconContainerView.heightAnchor constraintEqualToConstant:kPPPaymentCellIconSize],
+        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:14.0],
+        [self.iconContainerView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.iconContainerView.widthAnchor constraintEqualToConstant:44.0],
+        [self.iconContainerView.heightAnchor constraintEqualToConstant:44.0],
 
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconContainerView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconContainerView.centerYAnchor],
-        [self.iconView.widthAnchor constraintLessThanOrEqualToConstant:22.0],
-        [self.iconView.heightAnchor constraintLessThanOrEqualToConstant:22.0],
+        [self.iconView.widthAnchor constraintLessThanOrEqualToConstant:26.0],
+        [self.iconView.heightAnchor constraintLessThanOrEqualToConstant:26.0],
 
- 
-
-        [self.selectionView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
-        [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
-        [self.selectionView.widthAnchor constraintEqualToConstant:22.0],
-        [self.selectionView.heightAnchor constraintEqualToConstant:22.0],
+        [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-14.0],
+        [self.selectionView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.selectionView.widthAnchor constraintEqualToConstant:24.0],
+        [self.selectionView.heightAnchor constraintEqualToConstant:24.0],
 
         [self.selectionImageView.centerXAnchor constraintEqualToAnchor:self.selectionView.centerXAnchor],
         [self.selectionImageView.centerYAnchor constraintEqualToAnchor:self.selectionView.centerYAnchor],
 
-        [self.disclosureView.centerYAnchor constraintEqualToAnchor:self.selectionView.centerYAnchor],
-        [self.disclosureView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
-        [self.disclosureView.widthAnchor constraintEqualToConstant:13.0],
-        [self.disclosureView.heightAnchor constraintEqualToConstant:16.0],
+        [self.disclosureView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-14.0],
+        [self.disclosureView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.disclosureView.widthAnchor constraintEqualToConstant:12.0],
+        [self.disclosureView.heightAnchor constraintEqualToConstant:14.0],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.iconContainerView.bottomAnchor constant:12.0],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:kPPPaymentCellInnerInset],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-kPPPaymentCellInnerInset],
-
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:3.0],
-        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor],
-
-        [self.brandStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:kPPPaymentCellInnerInset],
-        [self.brandStack.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-15.0],
-        [self.brandStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.statusLabel.leadingAnchor constant:-8.0],
-
-        [self.statusLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.surfaceView.leadingAnchor constant:kPPPaymentCellInnerInset],
-        [self.statusLabel.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-15.0],
-        [self.statusLabel.heightAnchor constraintEqualToConstant:21.0],
-        [self.statusLabel.widthAnchor constraintGreaterThanOrEqualToConstant:58.0],
+        [self.textStack.leadingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:12.0],
+        [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.selectionView.leadingAnchor constant:-10.0],
+        [self.textStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.textStack.topAnchor constraintGreaterThanOrEqualToAnchor:self.surfaceView.topAnchor constant:8.0],
+        [self.textStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-8.0]
     ]];
 }
 
@@ -296,24 +283,31 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     [self pp_applyMethodVisualsWithAccentColor:accentColor selected:instrument.isDefault addNew:NO];
 
     self.iconView.image = [self pp_iconForMethod:method];
-    self.iconView.tintColor = accentColor;
+    BOOL isApplePay = [method.methodID.lowercaseString isEqualToString:@"applepay"] ||
+        method.type == PaymentMethodTypeApplePay;
+    self.iconView.tintColor = isApplePay ? AppPrimaryTextClr : accentColor;
     self.titleLabel.text = kLang(method.displayName);
     self.subtitleLabel.text = [self pp_subtitleForInstrument:instrument method:method];
-    self.statusLabel.text = [self pp_statusTextForSelection:instrument.isDefault];
+    
+    NSString *statusText = [self pp_statusTextForSelection:instrument.isDefault];
+    self.statusLabel.text = statusText;
+    self.statusLabel.hidden = (statusText.length == 0);
     self.statusLabel.textColor = instrument.isDefault ? UIColor.whiteColor : accentColor;
 
-    BOOL isQIBMethod = (method.type == PaymentMethodTypeQIB || [method.methodID.lowercaseString isEqualToString:@"qib"]);
-    [self pp_configureBrandRowForQIB:isQIBMethod];
-
-    //BOOL isBuiltIn = [instrument.instrumentID hasPrefix:@"builtin_"];
-    [self pp_updateStatusTrailingForMenuVisible:NO];//  [self pp_updateStatusTrailingForMenuVisible:!isBuiltIn];
     self.disclosureView.hidden = YES;
     self.selectionView.hidden = NO;
  
     [self pp_applyDashedBorderVisible:NO];
     [self updateSelectionState:instrument.isDefault animated:NO];
+    NSString *instrumentIdentity = instrument.instrumentID.length > 0
+        ? instrument.instrumentID
+        : (method.methodID ?: @"unknown");
+    self.accessibilityIdentifier = [NSString stringWithFormat:
+        @"payment.instrument.%@",
+        instrumentIdentity
+    ];
     [self pp_updateAccessibilityText];
- }
+}
 
 - (void)configureAsAddNewIndexPath:(NSIndexPath *)indexPath
 {
@@ -328,19 +322,18 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     self.iconView.image = [UIImage systemImageNamed:@"plus"];
     self.iconView.tintColor = accentColor;
     self.statusLabel.text = kLang(@"payment_add_method_badge");
+    self.statusLabel.hidden = NO;
     self.statusLabel.textColor = accentColor;
     self.titleLabel.text = kLang(@"payment_add_method");
     self.subtitleLabel.text = kLang(@"payment_add_method_subtitle");
-    self.brandStack.hidden = YES;
- 
-    [self pp_updateStatusTrailingForMenuVisible:NO];
+
     self.selectionView.hidden = YES;
     self.disclosureView.image = [self pp_disclosureImage];
     self.disclosureView.hidden = NO;
 
-   
     [self pp_applyDashedBorderVisible:YES];
     [self updateSelectionState:NO animated:NO];
+    self.accessibilityIdentifier = @"payment.method.add";
     [self pp_updateAccessibilityText];
 }
 
@@ -350,6 +343,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
 
     if (!self.addNewStyle && !self.instrument && !self.method) {
         self.statusLabel.text = @"";
+        self.statusLabel.hidden = YES;
         self.selectionView.hidden = NO;
         [self pp_applyMethodVisualsWithAccentColor:(AppPrimaryClr ?: UIColor.systemBlueColor) selected:NO addNew:NO];
         return;
@@ -358,7 +352,9 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     UIColor *accentColor = self.addNewStyle ? (AppPrimaryClr ?: UIColor.systemBlueColor) : [self pp_accentColorForMethod:self.method];
     void (^changes)(void) = ^{
         [self pp_applyMethodVisualsWithAccentColor:accentColor selected:isSelected addNew:self.addNewStyle];
-        self.statusLabel.text = [self pp_statusTextForSelection:isSelected];
+        NSString *status = [self pp_statusTextForSelection:isSelected];
+        self.statusLabel.text = status;
+        self.statusLabel.hidden = (status.length == 0);
         self.statusLabel.textColor = isSelected ? UIColor.whiteColor : accentColor;
         self.selectionImageView.alpha = isSelected ? 1.0 : 0.0;
         self.selectionImageView.tintColor = isSelected ? UIColor.whiteColor : UIColor.clearColor;
@@ -373,21 +369,16 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     }
 
     self.selectionView.hidden = NO;
-    if (animated) {
-        [UIView animateWithDuration:0.20
+    BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
+    if (shouldAnimate) {
+        [UIView animateWithDuration:0.18
                               delay:0.0
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                            options:UIViewAnimationOptionCurveEaseOut |
+                                    UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             changes();
-            self.surfaceView.transform = isSelected ? CGAffineTransformMakeScale(0.985, 0.985) : CGAffineTransformIdentity;
-        } completion:^(BOOL finished) {
-            [UIView animateWithDuration:0.18
-                                  delay:0.0
-                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                             animations:^{
-                self.surfaceView.transform = CGAffineTransformIdentity;
-            } completion:nil];
-        }];
+        } completion:nil];
     } else {
         changes();
         self.surfaceView.transform = CGAffineTransformIdentity;
@@ -421,6 +412,9 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     UIColor *safeAccent = accentColor ?: (AppPrimaryClr ?: UIColor.systemBlueColor);
     self.surfaceView.backgroundColor = [self pp_surfaceColorSelected:isSelected addNew:addNew accentColor:safeAccent];
     [self.surfaceView pp_setBorderColor:[self pp_borderColorSelected:isSelected addNew:addNew accentColor:safeAccent]];
+    self.surfaceView.layer.borderWidth = UIAccessibilityDarkerSystemColorsEnabled()
+        ? (isSelected ? 2.0 : 1.5)
+        : (isSelected ? 1.5 : 1.0);
 
     self.iconContainerView.backgroundColor = addNew
     ? [safeAccent colorWithAlphaComponent:0.12]
@@ -433,14 +427,10 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     ? safeAccent
     : [safeAccent colorWithAlphaComponent:addNew ? 0.12 : 0.10];
 
-    self.layer.shadowOpacity = isSelected ? 0.10 : 0.06;
-    self.layer.shadowRadius = isSelected ? 22.0 : 18.0;
-}
-
-- (void)pp_updateStatusTrailingForMenuVisible:(BOOL)isMenuVisible
-{
-    self.statusTrailingToMenuConstraint.active = isMenuVisible;
-    self.statusTrailingToSurfaceConstraint.active = !isMenuVisible;
+    self.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+        ? 0.0
+        : (isSelected ? PPShadowElevatedOpacity : PPShadowCardOpacity);
+    self.layer.shadowRadius = isSelected ? PPShadowElevatedRadius : PPShadowCardRadius;
 }
 
 - (UIColor *)pp_surfaceColorSelected:(BOOL)isSelected
@@ -467,9 +457,11 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
         return [safeAccent colorWithAlphaComponent:0.26];
     }
     if (isSelected) {
-        return [safeAccent colorWithAlphaComponent:0.42];
+        return [safeAccent colorWithAlphaComponent:
+            UIAccessibilityDarkerSystemColorsEnabled() ? 0.72 : 0.46];
     }
-    return [UIColor.separatorColor colorWithAlphaComponent:0.16];
+    return [[UIColor ppSurfaceBorder] colorWithAlphaComponent:
+        UIAccessibilityDarkerSystemColorsEnabled() ? 1.0 : 0.72];
 }
 
 - (NSString *)pp_subtitleForInstrument:(UserPaymentInstrument *)instrument
@@ -493,48 +485,6 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     return [[UIImage systemImageNamed:symbolName] imageByApplyingSymbolConfiguration:configuration];
 }
 
-
-
-- (void)pp_configureBrandRowForQIB:(BOOL)isVisible
-{
-    self.brandStack.hidden = !isVisible;
-    if (!isVisible) {
-        for (UIImageView *brandView in self.brandImageViews) {
-            brandView.hidden = YES;
-            brandView.image = nil;
-        }
-        return;
-    }
-
-    NSArray<NSString *> *brandNames = [self pp_qibBrandImageNames];
-    NSInteger index = 0;
-    for (UIImageView *brandView in self.brandImageViews) {
-        if (index < (NSInteger)brandNames.count) {
-            brandView.image = [UIImage imageNamed:brandNames[index]];
-            brandView.hidden = NO;
-        } else {
-            brandView.hidden = YES;
-            brandView.image = nil;
-        }
-        index++;
-    }
-}
-
-- (NSArray<NSString *> *)pp_qibBrandImageNames
-{
-    NSArray<NSString *> *candidates = @[@"master", @"visa", @"credit-card", @"card2", @"card1"];
-    NSMutableArray<NSString *> *resolved = [NSMutableArray array];
-    for (NSString *name in candidates) {
-        if ([UIImage imageNamed:name] != nil) {
-            [resolved addObject:name];
-        }
-        if (resolved.count == 3) {
-            break;
-        }
-    }
-    return resolved;
-}
-
 - (UIImage *)pp_iconForMethod:(PaymentMethod *)method
 {
     UIImage *assetImage = method.iconName.length > 0 ? [UIImage imageNamed:method.iconName] : nil;
@@ -543,13 +493,18 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     }
 
     NSString *normalizedMethodID = method.methodID.lowercaseString ?: @"";
-    NSString *symbolName = @"card2";
+    if ([normalizedMethodID isEqualToString:@"applepay"] || method.type == PaymentMethodTypeApplePay) {
+        UIImage *appleLogo = [UIImage imageNamed:@"appleLogo"];
+        if (appleLogo) {
+            return [appleLogo imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }
+    }
+
+    NSString *symbolName = @"creditcard.fill";
     if ([normalizedMethodID isEqualToString:@"cash"] || method.type == PaymentMethodTypeCash) {
         symbolName = @"shippingbox.fill";
     }
-    else if ([normalizedMethodID isEqualToString:@"applepay"] || method.type == PaymentMethodTypeApplePay) {
-        symbolName = @"appleLogo";
-    }else if ([normalizedMethodID isEqualToString:@"qib"]) {
+    else if ([normalizedMethodID isEqualToString:@"qib"]) {
         symbolName = @"lock.shield.fill";
     }
 
@@ -560,13 +515,18 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     return [[UIImage systemImageNamed:symbolName] imageByApplyingSymbolConfiguration:configuration];
 }
 
-- (UIColor *)pp_accentColorForMethod:(PaymentMethod *)method
++ (UIColor *)accentColorForMethod:(PaymentMethod *)method
 {
     NSString *normalizedMethodID = method.methodID.lowercaseString ?: @"";
     if ([normalizedMethodID isEqualToString:@"cash"] || method.type == PaymentMethodTypeCash) {
-        return UIColor.systemGreenColor;
+        return AppSuccessClr;
     }
     return AppPrimaryClr ?: UIColor.systemBlueColor;
+}
+
+- (UIColor *)pp_accentColorForMethod:(PaymentMethod *)method
+{
+    return [PPPaymentMethodCell accentColorForMethod:method];
 }
 
 - (void)pp_applyDashedBorderVisible:(BOOL)visible
@@ -592,10 +552,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     if (isSelected) {
         return kLang(@"payment_method_selected_badge");
     }
-    if ([self.instrument.instrumentID hasPrefix:@"builtin_"]) {
-        return kLang(@"payment_method_builtin_badge");
-    }
-    return kLang(@"payment_method_saved_badge");
+    return @"";
 }
 
 - (void)pp_updateAccessibilityText
@@ -607,10 +564,12 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     if (self.subtitleLabel.text.length > 0) {
         [parts addObject:self.subtitleLabel.text];
     }
-    if (self.statusLabel.text.length > 0) {
-        [parts addObject:self.statusLabel.text];
-    }
     self.accessibilityLabel = [parts componentsJoinedByString:@", "];
+    self.accessibilityValue = self.currentSelectionState
+        ? nil
+        : self.statusLabel.text;
+    self.accessibilityTraits = UIAccessibilityTraitButton |
+        (self.currentSelectionState ? UIAccessibilityTraitSelected : 0);
 }
 
 @end

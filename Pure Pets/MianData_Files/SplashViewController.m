@@ -119,8 +119,12 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     self.trackLayers = trackLayers.copy;
     self.progressLayers = progressLayers.copy;
 
-    UIImage *brandImage = [[UIImage imageNamed:@"PureIconTransFilledV3"]
+    UIImage *brandImage = [[UIImage imageNamed:@"PurePetsMark"]
         imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    if (!brandImage) {
+        brandImage = [[UIImage imageNamed:@"PureIconTransFilledV3"]
+            imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
     UIView *logoWrapperView = [[UIView alloc] init];
     logoWrapperView.backgroundColor = UIColor.clearColor;
     logoWrapperView.userInteractionEnabled = NO;
@@ -170,9 +174,9 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     self.haloLayer.cornerRadius = CGRectGetWidth(self.haloLayer.bounds) * 0.5;
 
     // Keep the raised surface comfortably inside the contour's inner edge.
-    // At the default 232pt mark field this creates a ~149pt pedestal with a
+    // At the default 232pt mark field this creates a ~153pt pedestal with a
     // 12–13pt optical inset from the widest progress stroke.
-    CGFloat pedestalDiameter = side * 0.64;
+    CGFloat pedestalDiameter = side * 0.66;
     self.pedestalLayer.frame = CGRectMake(center.x - pedestalDiameter * 0.5,
                                           center.y - pedestalDiameter * 0.5,
                                           pedestalDiameter,
@@ -181,29 +185,20 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     self.pedestalLayer.shadowPath =
         [UIBezierPath bezierPathWithOvalInRect:self.pedestalLayer.bounds].CGPath;
 
-    // The source PNG has asymmetric transparent padding. The wrapper is the
-    // optical mark bounds (and therefore the animation pivot); the image is
-    // expanded and offset inside it so the visible alpha mass is truly centered.
-    // The reduced 36% scale gives the mark breathing room on its new pedestal.
-    CGFloat visualMarkHeight = side * 0.36;
-    CGFloat wrapperWidth = visualMarkHeight * (640.0 / 760.0);
-    self.logoWrapperView.frame = CGRectMake(center.x - wrapperWidth * 0.5,
-                                            center.y - visualMarkHeight * 0.5,
-                                            wrapperWidth,
-                                            visualMarkHeight);
-    CGFloat sourceCanvasSide = visualMarkHeight * (1024.0 / 760.0);
-    CGFloat visibleMinX = sourceCanvasSide * (225.0 / 1024.0);
-    CGFloat visibleMinY = sourceCanvasSide * (108.0 / 1024.0);
-    self.logoImageView.frame = CGRectMake(-visibleMinX,
-                                          -visibleMinY,
-                                          sourceCanvasSide,
-                                          sourceCanvasSide);
+    // The PurePetsMark vector identity is 1:1 square, perfectly centered,
+    // and matches the LaunchScreen optical size (112.5pt at 232pt side).
+    CGFloat visualMarkSize = side * 0.485;
+    self.logoWrapperView.frame = CGRectMake(center.x - visualMarkSize * 0.5,
+                                            center.y - visualMarkSize * 0.5,
+                                            visualMarkSize,
+                                            visualMarkSize);
+    self.logoImageView.frame = self.logoWrapperView.bounds;
     self.markSheenContainerLayer.frame = self.logoWrapperView.bounds;
     self.markSheenLayer.frame = CGRectMake(-CGRectGetWidth(self.logoWrapperView.bounds),
                                            0.0,
                                            CGRectGetWidth(self.logoWrapperView.bounds) * 3.0,
                                            CGRectGetHeight(self.logoWrapperView.bounds));
-    self.markSheenMaskLayer.frame = self.logoImageView.frame;
+    self.markSheenMaskLayer.frame = self.logoWrapperView.bounds;
 
     CGFloat radius = side * 0.385;
     CGFloat gap = (CGFloat)(M_PI * 14.0 / 180.0);
@@ -367,6 +362,23 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
                                                                                    :0.32
                                                                                    :1.0];
     [self.pedestalLayer addAnimation:pedestalReveal forKey:@"pp.pedestal.entrance"];
+
+    self.logoWrapperView.transform = CGAffineTransformMakeScale(0.86, 0.86);
+    self.logoWrapperView.alpha = 0.0;
+    __weak typeof(self) weakLivingMark = self;
+    [UIView animateWithDuration:0.66
+                          delay:0.04
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.2
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        weakLivingMark.logoWrapperView.alpha = 1.0;
+        weakLivingMark.logoWrapperView.transform = CGAffineTransformIdentity;
+    } completion:^(BOOL finished) {
+        if (finished && !UIAccessibilityIsReduceMotionEnabled()) {
+            [weakLivingMark pp_startMarkBreathingLoop];
+        }
+    }];
 
     CAKeyframeAnimation *sheenOpacity = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
     sheenOpacity.values = @[@0.0, @0.18, @0.18, @0.0];

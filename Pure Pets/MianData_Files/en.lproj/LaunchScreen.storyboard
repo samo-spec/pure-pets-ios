@@ -17,14 +17,14 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="PureIconTransFilledV3" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
-                                <rect key="frame" x="136.7" y="262.4" width="112.5" height="112.5"/>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="PurePetsMark" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
+                                <rect key="frame" x="140.25" y="259.75" width="112.5" height="112.5"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <constraints>
-                            <constraint firstItem="0qK-kL-r8Y" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" constant="-3.6" id="4fA-xA-8gN"/>
-                            <constraint firstItem="0qK-kL-r8Y" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-107.3" id="Bqw-gR-DjB"/>
+                            <constraint firstItem="0qK-kL-r8Y" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="4fA-xA-8gN"/>
+                            <constraint firstItem="0qK-kL-r8Y" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-110" id="Bqw-gR-DjB"/>
                             <constraint firstItem="0qK-kL-r8Y" firstAttribute="width" secondItem="0qK-kL-r8Y" secondAttribute="height" multiplier="1:1" id="RjL-GP-2gW"/>
                             <constraint firstAttribute="width" constant="112.5" id="cE9-Dr-EFu" firstItem="0qK-kL-r8Y"/>
                         </constraints>
@@ -37,7 +37,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="PureIconTransFilledV3" width="1024" height="1024"/>
+        <image name="PurePetsMark" width="1254" height="1254"/>
         <namedColor name="AppForegroundColor">
             <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
         </namedColor>

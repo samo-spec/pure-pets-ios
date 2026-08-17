@@ -24,7 +24,6 @@
 #import "PPCommerceFeedbackManager.h"
 #import "PPOrderDetailsRouter.h"
 #import "Styling.h"
-#import "PetCareHelpers.h"
 
 #import "PPSelectAddressVC.h"
 #import <QuartzCore/QuartzCore.h>
@@ -40,9 +39,17 @@
 static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutPreflight";
 static NSInteger const PPOrderCheckoutPreflightCodeInvalidQIBPhone = 1004;
 
+static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
+{
+    UIContentSizeCategory category = traits.preferredContentSizeCategory;
+    return UIContentSizeCategoryIsAccessibilityCategory(category) ||
+        [category isEqualToString:UIContentSizeCategoryExtraExtraLarge] ||
+        [category isEqualToString:UIContentSizeCategoryExtraExtraExtraLarge];
+}
+
 static NSString *PPPaymentHeroAnimationName(void)
 {
-    return @"PurePetsCard3";
+    return @"payment_checkout";
 }
 
 static NSDictionary *PPPaymentHeroLocalJSON(void)
@@ -225,21 +232,14 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 @property (nonatomic, strong) id<FIRListenerRegistration> addressesListener;
 @property (nonatomic, strong) PPAddressPickerView *locView;
 @property (nonatomic, strong) UIView *heroCardView;
-@property (nonatomic, strong) UIView *heroFillView;
 @property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) UIView *heroLargeOrbView;
-@property (nonatomic, strong) UIView *heroSmallOrbView;
 @property (nonatomic, strong) UIView *heroIconPlateView;
 @property (nonatomic, strong) UIImageView *heroIconView;
 @property (nonatomic, strong) LOTAnimationView *heroAnimationView;
 @property (nonatomic, strong) UIButton *heroBackButton;
-@property (nonatomic, strong) UIView *heroSecureBadgeView;
-@property (nonatomic, strong) UIView *paymentBackgroundGlowTopView;
 @property (nonatomic, strong) UIView *bottomGlowView;
 @property (nonatomic, strong) UIView *bottomSecondaryGlowView;
 @property (nonatomic, strong) UIView *bottomTrailGlowView;
-@property (nonatomic, strong) PPInsetLabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) PaddedLabel *heroSubtitleLabel;
 @property (nonatomic, assign) BOOL didAnimatePaymentHeroEntrance;
@@ -256,6 +256,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)pp_beginPaymentHeroAmbientMotionIfNeeded;
 - (void)pp_stopPaymentHeroAmbientMotion;
 - (void)pp_updatePaymentLayoutMetrics;
+- (BOOL)pp_prefersCondensedCheckoutSummary;
+- (void)pp_applyAdaptiveSummaryPresentation;
 - (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone;
 - (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address;
 - (NSArray<CartItem *> *)pp_checkoutItems;
@@ -331,6 +333,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [_summaryView pp_startTrustBannerShimmer];
     [self pp_setupInitialAddressState];
     [self pp_refreshCheckoutCallToAction];
+    [self pp_applyAdaptiveSummaryPresentation];
 
     [self pp_navBarSetVisible:NO animated:NO];
 
@@ -437,21 +440,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         self.heroCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroCardView.bounds
                                                                         cornerRadius:self.heroCardView.layer.cornerRadius].CGPath;
     }
-    if (!CGRectIsEmpty(self.heroFillView.bounds)) {
-        self.heroGradientLayer.frame = self.heroFillView.bounds;
-        self.heroGradientLayer.cornerRadius = self.heroFillView.layer.cornerRadius;
-    }
-    if (self.heroLargeOrbView && !CGRectIsEmpty(self.heroLargeOrbView.bounds)) {
-        self.heroLargeOrbView.layer.cornerRadius = CGRectGetWidth(self.heroLargeOrbView.bounds) * 0.5;
-        self.heroLargeOrbView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.heroLargeOrbView.bounds].CGPath;
-    }
-    if (self.heroSmallOrbView && !CGRectIsEmpty(self.heroSmallOrbView.bounds)) {
-        self.heroSmallOrbView.layer.cornerRadius = CGRectGetWidth(self.heroSmallOrbView.bounds) * 0.5;
-        self.heroSmallOrbView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.heroSmallOrbView.bounds].CGPath;
-    }
-    if (self.paymentBackgroundGlowTopView && !CGRectIsEmpty(self.paymentBackgroundGlowTopView.bounds)) {
-        self.paymentBackgroundGlowTopView.layer.cornerRadius = CGRectGetWidth(self.paymentBackgroundGlowTopView.bounds) * 0.5;
-        self.paymentBackgroundGlowTopView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.paymentBackgroundGlowTopView.bounds].CGPath;
+    if (self.heroIconPlateView && !CGRectIsEmpty(self.heroIconPlateView.bounds)) {
+        self.heroIconPlateView.layer.cornerRadius = 14.0;
     }
     if (!CGRectIsEmpty(self.bottomGlowView.bounds)) {
         self.bottomGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomGlowView.bounds].CGPath;
@@ -464,10 +454,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         self.bottomTrailGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomTrailGlowView.bounds].CGPath;
     }
 
-    [self.heroCardView bringSubviewToFront:self.heroSubtitleLabel];
-    if (self.paymentBackgroundGlowTopView && self.heroCardView.superview == self.view) {
-        [self.view insertSubview:self.paymentBackgroundGlowTopView belowSubview:self.heroCardView];
-    }
+    [self pp_updatePaymentLayoutMetrics];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -486,39 +473,28 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
             isEqualToString:self.traitCollection.preferredContentSizeCategory];
     if (contentSizeChanged) {
         [self pp_updatePaymentLayoutMetrics];
+        [self pp_applyAdaptiveSummaryPresentation];
         [self.paymentCollection.collectionViewLayout invalidateLayout];
+        [self.paymentCollection reloadData];
     }
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size
+       withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
+{
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    __weak typeof(self) weakSelf = self;
+    [coordinator animateAlongsideTransition:nil completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_updatePaymentLayoutMetrics];
+        [self pp_applyAdaptiveSummaryPresentation];
+        [self.paymentCollection.collectionViewLayout invalidateLayout];
+    }];
 }
 
 - (void)pp_buildPaymentBackgroundAtmosphereIfNeeded
 {
-    if (self.paymentBackgroundGlowTopView) return;
-
-    UIView *topGlowView = [[UIView alloc] init];
-    topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    topGlowView.userInteractionEnabled = NO;
-    topGlowView.clipsToBounds = NO;
-    topGlowView.alpha = 0.0;
-    topGlowView.hidden = NO;
-    topGlowView.layer.cornerRadius = 136.0;
-    topGlowView.layer.shadowRadius = 68.0;
-    topGlowView.layer.shadowOpacity = 0.28;
-    topGlowView.layer.shadowOffset = CGSizeZero;
-    if (self.heroCardView.superview == self.view) {
-        [self.view insertSubview:topGlowView belowSubview:self.heroCardView];
-    } else {
-        [self.view addSubview:topGlowView];
-        [self.view sendSubviewToBack:topGlowView];
-    }
-
-    [NSLayoutConstraint activateConstraints:@[
-        [topGlowView.widthAnchor constraintEqualToConstant:272.0],
-        [topGlowView.heightAnchor constraintEqualToConstant:272.0],
-        [topGlowView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-82.0],
-        [topGlowView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:104.0]
-    ]];
-
-    self.paymentBackgroundGlowTopView = topGlowView;
 }
 
 - (void)pp_buildSummaryBottomGlowIfNeeded
@@ -529,33 +505,33 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     UIView *glow = [[UIView alloc] init];
     glow.translatesAutoresizingMaskIntoConstraints = NO;
     glow.userInteractionEnabled = NO;
-    glow.backgroundColor = [brandColor colorWithAlphaComponent:0.080];
-    glow.alpha = 0.52;
+    glow.backgroundColor = [brandColor colorWithAlphaComponent:0.040];
+    glow.alpha = 0.16;
     glow.layer.cornerRadius = 170.0;
-    glow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.55].CGColor;
-    glow.layer.shadowOpacity = 0.24;
+    glow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.30].CGColor;
+    glow.layer.shadowOpacity = 0.10;
     glow.layer.shadowRadius = 48.0;
     glow.layer.shadowOffset = CGSizeZero;
 
     UIView *secondaryGlow = [[UIView alloc] init];
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.22];
-    secondaryGlow.alpha = 0.36;
+    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
+    secondaryGlow.alpha = 0.14;
     secondaryGlow.layer.cornerRadius = 128.0;
     secondaryGlow.layer.shadowColor = UIColor.whiteColor.CGColor;
-    secondaryGlow.layer.shadowOpacity = 0.18;
+    secondaryGlow.layer.shadowOpacity = 0.08;
     secondaryGlow.layer.shadowRadius = 34.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
 
     UIView *trailGlow = [[UIView alloc] init];
     trailGlow.translatesAutoresizingMaskIntoConstraints = NO;
     trailGlow.userInteractionEnabled = NO;
-    trailGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.070];
-    trailGlow.alpha = 0.46;
+    trailGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.030];
+    trailGlow.alpha = 0.14;
     trailGlow.layer.cornerRadius = 210.0;
-    trailGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.48].CGColor;
-    trailGlow.layer.shadowOpacity = 0.22;
+    trailGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.25].CGColor;
+    trailGlow.layer.shadowOpacity = 0.08;
     trailGlow.layer.shadowRadius = 58.0;
     trailGlow.layer.shadowOffset = CGSizeZero;
 
@@ -600,9 +576,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.bottomGlowView.transform = CGAffineTransformIdentity;
     self.bottomSecondaryGlowView.transform = CGAffineTransformIdentity;
     self.bottomTrailGlowView.transform = CGAffineTransformIdentity;
-    self.bottomGlowView.alpha = 0.40;
-    self.bottomSecondaryGlowView.alpha = 0.24;
-    self.bottomTrailGlowView.alpha = 0.30;
+    self.bottomGlowView.alpha = 0.16;
+    self.bottomSecondaryGlowView.alpha = 0.10;
+    self.bottomTrailGlowView.alpha = 0.12;
 }
 
 - (void)pp_stopSummaryBottomGlowMotion
@@ -664,17 +640,14 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     // UIView animations that conflict with the entrance reveal.
     NSArray<CartItem *> *checkoutItems = [self pp_checkoutItems];
     PPCartSummary *summary = [self pp_checkoutSummary];
-    BOOL showShowCollectionPreview = checkoutItems.count > 3;
 
     [UIView performWithoutAnimation:^{
         [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
-        self.summaryView.showDetails = !showShowCollectionPreview;
         [self.summaryView updatePreviewItems:checkoutItems];
-        self.summaryView.showsItemsPreview = showShowCollectionPreview;
         [self.summaryView setCheckoutBTNTitle:kLang(@"payment_pay_now") image:[UIImage pp_symbolNamed:@"creditcard.fill" pointSize:18
                                                                                         weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
-        [self.summaryView layoutIfNeeded];
     }];
+    [self pp_applyAdaptiveSummaryPresentation];
 
     if (checkoutItems.count > 0) {
         [_summaryView pp_startTrustBannerShimmer];
@@ -693,6 +666,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         PPTouchTargetMin
     );
     self.locView = [PPAddressPickerView showInViewController:self width:initialPickerWidth];
+    self.locView.accessibilityIdentifier = @"paymentSelection.address";
     [self.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
     __weak typeof(self) weakSelf = self;
     self.locView.onPickAddress = ^{
@@ -803,109 +777,32 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     return button;
 }
 
-- (UIView *)pp_makePaymentHeroSecureBadgeWithBrandColor:(UIColor *)brandColor
-{
-    UIView *badge = [[UIView alloc] init];
-    badge.translatesAutoresizingMaskIntoConstraints = NO;
-    badge.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    badge.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat alpha = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.16 : 0.10;
-        return [brandColor colorWithAlphaComponent:alpha];
-    }];
-    badge.layer.cornerRadius = PPCornerPill;
-    badge.layer.cornerCurve = kCACornerCurveContinuous;
-    badge.layer.borderWidth = 0.8;
-    [badge pp_setBorderColor:[brandColor colorWithAlphaComponent:0.14]];
-    badge.layer.masksToBounds = YES;
-    self.heroSecureBadgeView = badge;
-
-    self.heroEyebrowLabel = [[PPInsetLabel alloc] init];
-    self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    UIFont *eyebrowBaseFont = [GM boldFontWithSize:PPFontCaption1]
-        ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightSemibold];
-    self.heroEyebrowLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
-        scaledFontForFont:eyebrowBaseFont
-        maximumPointSize:17.0];
-    self.heroEyebrowLabel.adjustsFontForContentSizeCategory = YES;
-    self.heroEyebrowLabel.textColor = [brandColor colorWithAlphaComponent:0.94];
-    self.heroEyebrowLabel.textAlignment = NSTextAlignmentCenter;
-    self.heroEyebrowLabel.numberOfLines = 1;
-    self.heroEyebrowLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.heroEyebrowLabel.adjustsFontSizeToFitWidth = NO;
-    self.heroEyebrowLabel.textInsets = UIEdgeInsetsMake(
-        PPSpaceMDHalf,
-        PPSpaceMD,
-        PPSpaceMDHalf,
-        PPSpaceMD
-    );
-    self.heroEyebrowLabel.text = kLang(@"payment_screen_eyebrow");
-    [badge addSubview:self.heroEyebrowLabel];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:badge.topAnchor],
-        [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor],
-        [self.heroEyebrowLabel.trailingAnchor constraintEqualToAnchor:badge.trailingAnchor],
-        [self.heroEyebrowLabel.bottomAnchor constraintEqualToAnchor:badge.bottomAnchor]
-    ]];
-
-    [badge setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
-                                          forAxis:UILayoutConstraintAxisHorizontal];
-    [badge setContentHuggingPriority:UILayoutPriorityRequired
-                              forAxis:UILayoutConstraintAxisHorizontal];
-    return badge;
-}
-
 - (void)pp_setupHeroSection
 {
-    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemPinkColor;
 
     self.heroCardView = [[UIView alloc] init];
     self.heroCardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroCardView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.heroCardView.backgroundColor = PPPetCareSurfaceColor();
-    self.heroCardView.layer.cornerRadius = 32.0;
-    self.heroCardView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.heroCardView.layer.borderWidth = 0.8;
-    [self.heroCardView pp_setBorderColor:PPPetCareBorderColor()];
-    [self.heroCardView pp_setShadowColor:[UIColor blackColor]];
-    self.heroCardView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.0 : 0.08;
-    self.heroCardView.layer.shadowRadius = 24.0;
-    self.heroCardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    self.heroCardView.backgroundColor = UIColor.clearColor;
+    self.heroCardView.accessibilityIdentifier = @"paymentSelection.hero";
+    PPApplyContinuousCorners(self.heroCardView, PPCornerHero);
+    self.heroCardView.layer.borderWidth = 0.0;
+    self.heroCardView.layer.borderColor = UIColor.clearColor.CGColor;
+    self.heroCardView.layer.shadowOpacity = 0.0;
     self.heroCardView.layer.masksToBounds = NO;
     [self.view addSubview:self.heroCardView];
-
-    self.heroFillView = [[UIView alloc] init];
-    self.heroFillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroFillView.layer.cornerRadius = 32.0;
-    self.heroFillView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.heroFillView.clipsToBounds = YES;
-    [self.heroCardView addSubview:self.heroFillView];
-
-    self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    [self.heroFillView.layer insertSublayer:self.heroGradientLayer atIndex:0];
-
-    self.heroLargeOrbView = [[UIView alloc] init];
-    self.heroLargeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroLargeOrbView.userInteractionEnabled = NO;
-    self.heroLargeOrbView.layer.cornerRadius = 60.0;
-    [self.heroFillView addSubview:self.heroLargeOrbView];
-
-    self.heroSmallOrbView = [[UIView alloc] init];
-    self.heroSmallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSmallOrbView.userInteractionEnabled = NO;
-    self.heroSmallOrbView.layer.cornerRadius = 24.0;
-    [self.heroFillView addSubview:self.heroSmallOrbView];
 
     self.heroBackButton = [self pp_makePaymentHeroBackButton];
     [self.heroCardView addSubview:self.heroBackButton];
 
     self.heroIconPlateView = [[UIView alloc] init];
     self.heroIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroIconPlateView.layer.cornerRadius = 24.0;
-    self.heroIconPlateView.layer.borderWidth = 0.0;
-    self.heroIconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
+    PPApplyContinuousCorners(self.heroIconPlateView, PPCornerMedium);
+    self.heroIconPlateView.layer.borderWidth = 1.0;
+    self.heroIconPlateView.backgroundColor = [brandColor colorWithAlphaComponent:0.08];
+    [self.heroIconPlateView pp_setBorderColor:[brandColor colorWithAlphaComponent:0.18]];
+    self.heroIconPlateView.clipsToBounds = YES;
     [self.heroCardView addSubview:self.heroIconPlateView];
 
     UIImage *paymentIcon = [UIImage systemImageNamed:@"creditcard.and.123"];
@@ -915,6 +812,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroIconView = [[UIImageView alloc] initWithImage:[paymentIcon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
     self.heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.heroIconView.tintColor = brandColor;
     self.heroIconView.isAccessibilityElement = NO;
     [self.heroIconPlateView addSubview:self.heroIconView];
 
@@ -922,7 +820,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroAnimationView.contentMode = UIViewContentModeScaleAspectFit;
     self.heroAnimationView.loopAnimation = YES;
-    self.heroAnimationView.animationSpeed = 0.44;
+    self.heroAnimationView.animationSpeed = 1.0;
     self.heroAnimationView.userInteractionEnabled = NO;
     self.heroAnimationView.backgroundColor = UIColor.clearColor;
     self.heroAnimationView.opaque = NO;
@@ -930,106 +828,85 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroAnimationView.alpha = 0.0;
     [self.heroIconPlateView addSubview:self.heroAnimationView];
 
-    UIView *secureBadge = [self pp_makePaymentHeroSecureBadgeWithBrandColor:brandColor];
-    [self.heroCardView addSubview:secureBadge];
-
     self.heroTitleLabel = [[UILabel alloc] init];
     self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTitleLabel.font = [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
-    self.heroTitleLabel.textColor = PPPetCareTextColor();
+    UIFont *titleBaseFont = [GM boldFontWithSize:16.0]
+        ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold];
+    self.heroTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+        scaledFontForFont:titleBaseFont
+        maximumPointSize:22.0];
+    self.heroTitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.heroTitleLabel.textColor = AppPrimaryTextClr;
     self.heroTitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.heroTitleLabel.numberOfLines = 1;
     self.heroTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.heroTitleLabel.adjustsFontSizeToFitWidth = YES;
-    self.heroTitleLabel.minimumScaleFactor = 0.76;
+    self.heroTitleLabel.adjustsFontSizeToFitWidth = NO;
     self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroTitleLabel.text = [self pp_paymentHeroTextForKey:@"payment_screen_title"
                                                   fallbackKey:@"SelectPaymentMethod"];
     self.heroTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
-    [self.heroTitleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                         forAxis:UILayoutConstraintAxisVertical];
+    [self.heroTitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [self.heroCardView addSubview:self.heroTitleLabel];
 
     self.heroSubtitleLabel = [[PaddedLabel alloc] init];
     self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSubtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    self.heroSubtitleLabel.textColor = UIColor.secondaryLabelColor;
-     self.heroSubtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    UIFont *subtitleBaseFont = [GM MidFontWithSize:12.5]
+        ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+    self.heroSubtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+        scaledFontForFont:subtitleBaseFont
+        maximumPointSize:16.0];
+    self.heroSubtitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.heroSubtitleLabel.textColor = AppSecondaryTextClr;
+    self.heroSubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.heroSubtitleLabel.hidden = NO;
     self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroSubtitleLabel.text = kLang(@"payment_screen_subtitle");
-    self.heroSubtitleLabel.numberOfLines = 2;
-    [self.heroSubtitleLabel setLineSpacing:2.0];
-    [self.heroCardView addSubview:self.heroTitleLabel];
+    self.heroSubtitleLabel.numberOfLines = 1;
+    [self.heroSubtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                           forAxis:UILayoutConstraintAxisHorizontal];
     [self.heroCardView addSubview:self.heroSubtitleLabel];
 
+    self.heroHeightConstraint = [self.heroCardView.heightAnchor constraintEqualToConstant:78.0];
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroCardView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:2.0],
-        [self.heroCardView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:18.0],
-        [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-18.0],
-        [self.heroCardView.heightAnchor constraintEqualToConstant:204.0],
+        [self.heroCardView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM],
+        [self.heroCardView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
+        [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
+        self.heroHeightConstraint,
 
-        [self.heroFillView.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor],
-        [self.heroFillView.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor],
-        [self.heroFillView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor],
-        [self.heroFillView.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor],
+        [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:PPSpaceMD],
+        [self.heroBackButton.centerYAnchor constraintEqualToAnchor:self.heroCardView.centerYAnchor],
+        [self.heroBackButton.widthAnchor constraintEqualToConstant:42.0],
+        [self.heroBackButton.heightAnchor constraintEqualToConstant:42.0],
 
-        [self.heroLargeOrbView.widthAnchor constraintEqualToConstant:110.0],
-        [self.heroLargeOrbView.heightAnchor constraintEqualToConstant:110.0],
-        [self.heroLargeOrbView.trailingAnchor constraintEqualToAnchor:self.heroFillView.trailingAnchor constant:10.0],
-        [self.heroLargeOrbView.topAnchor constraintEqualToAnchor:self.heroFillView.topAnchor constant:8.0],
-
-        [self.heroSmallOrbView.widthAnchor constraintEqualToConstant:48.0],
-        [self.heroSmallOrbView.heightAnchor constraintEqualToConstant:48.0],
-        [self.heroSmallOrbView.leadingAnchor constraintEqualToAnchor:self.heroFillView.leadingAnchor constant:30.0],
-        [self.heroSmallOrbView.bottomAnchor constraintEqualToAnchor:self.heroFillView.bottomAnchor constant:16.0],
-
-        [self.heroBackButton.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:18.0],
-        [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
-        [self.heroBackButton.widthAnchor constraintEqualToConstant:40.0],
-        [self.heroBackButton.heightAnchor constraintEqualToConstant:40.0],
-
-        [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-28.0],
-        [self.heroIconPlateView.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:18.0],
-        [self.heroIconPlateView.widthAnchor constraintEqualToConstant:48.0],
-        [self.heroIconPlateView.heightAnchor constraintEqualToConstant:48.0],
+        [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-PPSpaceMD],
+        [self.heroIconPlateView.centerYAnchor constraintEqualToAnchor:self.heroCardView.centerYAnchor],
+        [self.heroIconPlateView.widthAnchor constraintEqualToConstant:44.0],
+        [self.heroIconPlateView.heightAnchor constraintEqualToConstant:44.0],
 
         [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
         [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
-        [self.heroIconView.widthAnchor constraintEqualToConstant:22.0],
-        [self.heroIconView.heightAnchor constraintEqualToConstant:22.0],
+        [self.heroIconView.widthAnchor constraintEqualToConstant:20.0],
+        [self.heroIconView.heightAnchor constraintEqualToConstant:20.0],
 
         [self.heroAnimationView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
         [self.heroAnimationView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
-        [self.heroAnimationView.widthAnchor constraintEqualToConstant:92.0],
-        [self.heroAnimationView.heightAnchor constraintEqualToConstant:92.0],
+        [self.heroAnimationView.widthAnchor constraintEqualToConstant:64.0],
+        [self.heroAnimationView.heightAnchor constraintEqualToConstant:64.0],
 
-        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroBackButton.bottomAnchor constant:7.0],
-        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
-        [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
+        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroBackButton.trailingAnchor constant:PPSpaceMD],
+        [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroIconPlateView.leadingAnchor constant:-PPSpaceMD],
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:16.0],
 
-        [secureBadge.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
-        [secureBadge.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:-14.0],
-        [secureBadge.heightAnchor constraintEqualToConstant:28.0],
-        [secureBadge.widthAnchor constraintGreaterThanOrEqualToConstant:96.0],
-        [secureBadge.widthAnchor constraintLessThanOrEqualToConstant:190.0],
-
-
-        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:4.0],
         [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
-        [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroIconPlateView.leadingAnchor constant:-18],
-       // [self.heroSubtitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:34.0],
-        [self.heroSubtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:secureBadge.topAnchor constant:-10.0],
-
-
+        [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroTitleLabel.trailingAnchor],
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:3.0],
+        [self.heroSubtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.heroCardView.bottomAnchor constant:-12.0]
     ]];
 
-    [self.heroCardView bringSubviewToFront:self.heroBackButton];
-    [self.heroCardView bringSubviewToFront:self.heroIconPlateView];
-    [self.heroCardView bringSubviewToFront:secureBadge];
-    [self.heroCardView bringSubviewToFront:self.heroTitleLabel];
-
-
     [self pp_applyPaymentHeroTheme];
+    [self pp_updatePaymentLayoutMetrics];
     [self pp_preparePaymentHeroEntranceState];
 }
 
@@ -1038,12 +915,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     if (!self.heroCardView) return;
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.paymentBackgroundGlowTopView.alpha = 1.0;
-        self.paymentBackgroundGlowTopView.hidden = NO;
-        self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
         self.heroCardView.alpha = 1.0;
         self.heroCardView.transform = CGAffineTransformIdentity;
-        for (UIView *view in @[self.heroLargeOrbView, self.heroSmallOrbView, self.heroIconPlateView, self.heroBackButton, self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel, self.heroSecureBadgeView]) {
+        for (UIView *view in @[self.heroIconPlateView, self.heroBackButton, self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel]) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
@@ -1051,27 +925,18 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     }
 
     self.heroCardView.alpha = 0.0;
-    self.heroCardView.transform = CGAffineTransformMakeTranslation(0.0, 24.0);
-    self.paymentBackgroundGlowTopView.alpha = 0.0;
-    self.paymentBackgroundGlowTopView.hidden = NO;
-    self.paymentBackgroundGlowTopView.transform = CGAffineTransformMakeScale(0.92, 0.92);
-
-    for (UIView *view in @[self.heroLargeOrbView, self.heroSmallOrbView]) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeScale(0.92, 0.92);
-    }
+    self.heroCardView.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceMD);
 
     NSArray<UIView *> *heroDetailViews = @[
         self.heroIconPlateView,
         self.heroBackButton,
         self.heroIconView,
         self.heroTitleLabel,
-        self.heroSubtitleLabel,
-        self.heroSecureBadgeView
+        self.heroSubtitleLabel
     ];
     for (UIView *view in heroDetailViews) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+        view.alpha = 1.0;
+        view.transform = CGAffineTransformIdentity;
     }
 
     self.heroAnimationView.alpha = 0.0;
@@ -1084,66 +949,67 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.didAnimatePaymentHeroEntrance = YES;
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.paymentBackgroundGlowTopView.alpha = 1.0;
-        self.paymentBackgroundGlowTopView.hidden = NO;
-        self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
         self.heroCardView.alpha = 1.0;
         self.heroCardView.transform = CGAffineTransformIdentity;
-        for (UIView *view in @[self.heroLargeOrbView, self.heroSmallOrbView, self.heroIconPlateView, self.heroBackButton, self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel, self.heroSecureBadgeView]) {
+        for (UIView *view in @[self.heroIconPlateView, self.heroBackButton, self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel]) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
         return;
     }
 
-    [UIView animateWithDuration:0.82
-                          delay:0.05
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.paymentBackgroundGlowTopView.alpha = 1.0;
-        self.paymentBackgroundGlowTopView.hidden = NO;
-        self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    for (UIView *view in @[self.heroLargeOrbView, self.heroSmallOrbView]) {
-        [UIView animateWithDuration:0.82
-                              delay:0.05
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }
-
-    [UIView animateWithDuration:0.58
-                          delay:0.08
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.14
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+    [UIView animateWithDuration:0.28
+                          delay:0.04
+                        options:UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.heroCardView.alpha = 1.0;
         self.heroCardView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    NSArray<UIView *> *heroDetailViews = @[
-        self.heroIconPlateView,
-        self.heroBackButton,
-        self.heroIconView,
-        self.heroTitleLabel,
-        self.heroSubtitleLabel,
-        self.heroSecureBadgeView
-    ];
-    [heroDetailViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        [UIView animateWithDuration:0.46
-                              delay:0.16 + (0.04 * idx)
-             usingSpringWithDamping:0.90
-              initialSpringVelocity:0.18
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
+        for (UIView *view in @[
+            self.heroIconPlateView,
+            self.heroBackButton,
+            self.heroIconView,
+            self.heroTitleLabel,
+            self.heroSubtitleLabel
+        ]) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
-        } completion:nil];
+        }
+    } completion:nil];
+}
+
+- (void)pp_updatePaymentLayoutMetrics
+{
+    if (!self.heroHeightConstraint) return;
+    self.heroSubtitleLabel.hidden = NO;
+    self.heroIconPlateView.hidden = NO;
+
+    CGFloat targetHeight = 78.0;
+    if (PPPaymentUsesExpandedTextMetrics(self.traitCollection)) {
+        targetHeight = 92.0;
+    }
+    if (ABS(self.heroHeightConstraint.constant - targetHeight) > 0.5) {
+        self.heroHeightConstraint.constant = targetHeight;
+    }
+}
+
+- (BOOL)pp_prefersCondensedCheckoutSummary
+{
+    BOOL usesCompactHeight = CGRectGetHeight(self.view.bounds) > 0.0 &&
+        CGRectGetHeight(self.view.bounds) < 760.0;
+    return usesCompactHeight || PPPaymentUsesExpandedTextMetrics(self.traitCollection);
+}
+
+- (void)pp_applyAdaptiveSummaryPresentation
+{
+    if (!self.summaryView) return;
+    BOOL usesCondensedSummary = [self pp_prefersCondensedCheckoutSummary];
+    BOOL showsPreview = !usesCondensedSummary && [self pp_checkoutItems].count > 3;
+    [UIView performWithoutAnimation:^{
+        self.summaryView.showDetails = !usesCondensedSummary && !showsPreview;
+        self.summaryView.showsItemsPreview = showsPreview;
+        [self.summaryView layoutIfNeeded];
     }];
 }
 
@@ -1156,47 +1022,18 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    UIColor *accent = PPPetCareAccentColor();
-    self.heroCardView.backgroundColor = PPPetCareSurfaceColor();
-    [self.heroCardView pp_setBorderColor:PPPetCareBorderColor()];
-    self.heroCardView.layer.shadowOpacity = dark ? 0.0 : 0.08;
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
+    self.heroCardView.backgroundColor = UIColor.clearColor;
+    self.heroCardView.layer.borderWidth = 0.0;
+    [self.heroCardView pp_setBorderColor:UIColor.clearColor];
+    self.heroCardView.layer.shadowOpacity = 0.0;
 
-    self.paymentBackgroundGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.14 : 0.17];
-    self.paymentBackgroundGlowTopView.hidden = NO;
-    self.paymentBackgroundGlowTopView.layer.shadowColor = [accent colorWithAlphaComponent:dark ? 0.24 : 0.22].CGColor;
-    self.paymentBackgroundGlowTopView.layer.shadowOpacity = 0.28;
-    self.paymentBackgroundGlowTopView.layer.shadowRadius = 68.0;
-    self.paymentBackgroundGlowTopView.layer.shadowOffset = CGSizeZero;
-
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.heroGradientLayer.opacity = 1.0;
-    self.heroGradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:dark ? 0.20 : 0.13].CGColor,
-        (id)[UIColor clearColor].CGColor
-    ];
-    self.heroGradientLayer.locations = nil;
-
-    self.heroLargeOrbView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.08];
-    self.heroLargeOrbView.layer.shadowColor = [accent colorWithAlphaComponent:dark ? 0.20 : 0.16].CGColor;
-    self.heroLargeOrbView.layer.shadowOpacity = dark ? 0.14 : 0.18;
-    self.heroLargeOrbView.layer.shadowRadius = 38.0;
-    self.heroLargeOrbView.layer.shadowOffset = CGSizeZero;
-
-    self.heroSmallOrbView.backgroundColor = [accent colorWithAlphaComponent:0.0];
-    self.heroSmallOrbView.layer.shadowOpacity = 0.0;
-
-    self.heroIconPlateView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.11];
-    [self.heroIconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.16]];
+    self.heroIconPlateView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.16 : 0.08];
+    [self.heroIconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.32 : 0.16]];
     self.heroIconView.tintColor = accent;
 
-    self.heroTitleLabel.textColor = PPPetCareTextColor();
-    self.heroSubtitleLabel.textColor = dark
-        ? [UIColor colorWithWhite:1.0 alpha:0.70]
-        : PPPetCareSecondaryTextColor();
-    self.heroEyebrowLabel.textColor = [accent colorWithAlphaComponent:dark ? 0.92 : 0.82];
-    self.heroSecureBadgeView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.15 : 0.09];
-    [self.heroSecureBadgeView pp_setBorderColor:PPPetCareBorderColor()];
+    self.heroTitleLabel.textColor = AppPrimaryTextClr;
+    self.heroSubtitleLabel.textColor = AppSecondaryTextClr;
 }
 
 - (void)pp_configurePaymentHeroAnimationIfNeeded
@@ -1220,7 +1057,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     if (@available(iOS 13.0, *)) {
         dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
-    UIColor *accent = PPPetCareAccentColor() ?: AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
     UIColor *resolvedAccent = accent;
     if (@available(iOS 13.0, *)) {
         resolvedAccent = [accent resolvedColorWithTraitCollection:self.traitCollection];
@@ -1240,6 +1077,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
             return;
         }
         if (!self.heroAnimationView.hidden && !self.heroAnimationView.isAnimationPlaying) {
+            self.heroAnimationView.loopAnimation = YES;
             [self.heroAnimationView play];
         }
         return;
@@ -1258,7 +1096,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     LOTComposition *localComposition = PPPaymentPremiumHeroCompositionWithTint(resolvedAccent, highlight);
     if (localComposition) {
-        self.heroAnimationView.animationSpeed = 0.44;
+        self.heroAnimationView.animationSpeed = 1.0;
+        self.heroAnimationView.loopAnimation = YES;
         [self.heroAnimationView setSceneModel:localComposition];
         [self pp_revealPaymentHeroAnimation];
         return;
@@ -1267,9 +1106,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     __weak typeof(self) weakSelf = self;
     [Styling setAnimationNamed:animationName
                         toView:self.heroAnimationView
-                     withSpeed:0.44
+                     withSpeed:1.0
                  loopAnimation:YES
-                      autoplay:NO
+                      autoplay:YES
                     completion:^(BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
@@ -1297,8 +1136,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [self.heroAnimationView layoutIfNeeded];
     [self.heroAnimationView play];
 
-    [UIView animateWithDuration:0.26
-                          delay:self.didAnimatePaymentHeroEntrance ? 0.08 : 0.34
+    [UIView animateWithDuration:0.20
+                          delay:self.didAnimatePaymentHeroEntrance ? 0.04 : 0.18
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.heroAnimationView.alpha = 1.0;
@@ -1308,47 +1147,15 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
 - (void)pp_beginPaymentHeroAmbientMotionIfNeeded
 {
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopPaymentHeroAmbientMotion];
-        self.paymentBackgroundGlowTopView.alpha = 1.0;
-        self.paymentBackgroundGlowTopView.hidden = NO;
-        self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
-        self.heroLargeOrbView.transform = CGAffineTransformIdentity;
-        self.heroSmallOrbView.transform = CGAffineTransformIdentity;
-        return;
-    }
-
     if (self.didStartPaymentHeroAmbientMotion) {
         return;
     }
     self.didStartPaymentHeroAmbientMotion = YES;
-
-    [UIView animateWithDuration:6.0
-                          delay:0.0
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.paymentBackgroundGlowTopView.transform = CGAffineTransformMakeTranslation(-16.0, 12.0);
-        self.heroLargeOrbView.transform = CGAffineTransformMakeTranslation(-16.0, 12.0);
-    } completion:nil];
-
-    [UIView animateWithDuration:7.4
-                          delay:0.0
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.heroSmallOrbView.transform = CGAffineTransformMakeTranslation(18.0, -14.0);
-    } completion:nil];
 }
 
 - (void)pp_stopPaymentHeroAmbientMotion
 {
     self.didStartPaymentHeroAmbientMotion = NO;
-    [self.paymentBackgroundGlowTopView.layer removeAllAnimations];
-    [self.heroLargeOrbView.layer removeAllAnimations];
-    [self.heroSmallOrbView.layer removeAllAnimations];
-    self.paymentBackgroundGlowTopView.hidden = NO;
-    self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
-    self.heroLargeOrbView.transform = CGAffineTransformIdentity;
-    self.heroSmallOrbView.transform = CGAffineTransformIdentity;
 }
 
 - (NSString *)pp_trimmedAddressString:(id)value
@@ -1569,6 +1376,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
     [self.summaryView updatePreviewItems:[self pp_checkoutItems]];
+    [self pp_applyAdaptiveSummaryPresentation];
 
     [self pp_applyDefaultSelectionIfNeeded];
     [self.paymentCollection reloadData];
@@ -1579,15 +1387,21 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionVertical;
-    layout.minimumInteritemSpacing = 16.0;
-    layout.minimumLineSpacing = 16.0;
-    layout.sectionInset = UIEdgeInsetsMake(12.0, 16.0, 24.0, 16.0);
+    layout.minimumInteritemSpacing = PPSpaceMD;
+    layout.minimumLineSpacing = PPSpaceMD;
+    layout.sectionInset = UIEdgeInsetsMake(
+        PPSpaceSM,
+        PPScreenMargin,
+        PPSpaceXL,
+        PPScreenMargin
+    );
     layout.estimatedItemSize = CGSizeZero;
     self.paymentCollection = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.paymentCollection.translatesAutoresizingMaskIntoConstraints = NO;
     self.paymentCollection.delegate = self;
     self.paymentCollection.dataSource = self;
     self.paymentCollection.backgroundColor = UIColor.clearColor;
+    self.paymentCollection.accessibilityIdentifier = @"paymentSelection.methods";
     self.paymentCollection.alwaysBounceVertical = YES;
     self.paymentCollection.showsVerticalScrollIndicator = NO;
     [self.paymentCollection registerClass:[PPPaymentMethodCell class] forCellWithReuseIdentifier:@"PaymentMethodCell"];
@@ -1601,12 +1415,17 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     
     
     [self.view addSubview:self.paymentCollection];
+
+    NSLayoutConstraint *minimumMethodViewport =
+        [self.paymentCollection.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin * 2.0];
+    minimumMethodViewport.priority = UILayoutPriorityRequired - 1.0;
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:10.0],
+        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:PPSpaceSM],
         [self.paymentCollection.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.paymentCollection.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.paymentCollection.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-10.0]
+        [self.paymentCollection.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-PPSpaceSM],
+        minimumMethodViewport
     ]];
     
     [self.locView attachToScrollView:self.paymentCollection];

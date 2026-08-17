@@ -11,6 +11,7 @@
 #import "CartViewController.h"
 #import "PPPaymentMethodCell.h"
 #import "PPCommerceFeedbackManager.h"
+#import <Pure_Pets-Swift.h>
 
 #if DEBUG
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
@@ -24,6 +25,14 @@
 
 static NSString * const kPPBuiltInQIBInstrumentID = @"builtin_qib_gateway";
 static NSString * const kPPBuiltInCashInstrumentID = @"builtin_cash_on_delivery";
+
+static BOOL PPPaymentSelectionUsesExpandedTextMetrics(UITraitCollection *traits)
+{
+    UIContentSizeCategory category = traits.preferredContentSizeCategory;
+    return UIContentSizeCategoryIsAccessibilityCategory(category) ||
+        [category isEqualToString:UIContentSizeCategoryExtraExtraLarge] ||
+        [category isEqualToString:UIContentSizeCategoryExtraExtraExtraLarge];
+}
 
 static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 {
@@ -272,7 +281,16 @@ referenceSizeForFooterInSection:(NSInteger)section {
 referenceSizeForHeaderInSection:(NSInteger)section {
     (void)collectionViewLayout;
     (void)section;
-    return CGSizeMake(collectionView.bounds.size.width, 78.0);
+    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(
+        collectionView.traitCollection.preferredContentSizeCategory
+    );
+    BOOL usesExpandedTextMetrics = PPPaymentSelectionUsesExpandedTextMetrics(
+        collectionView.traitCollection
+    );
+    return CGSizeMake(
+        collectionView.bounds.size.width,
+        usesAccessibilityLayout ? 68.0 : (usesExpandedTextMetrics ? 116.0 : 82.0)
+    );
 }
 
 #pragma mark - CollectionView Data Source
@@ -327,6 +345,13 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     return nil;
 }
 
+- (void)pp_triggerCheckoutCTAHaloAnimationForMethodID:(NSString *)methodID
+{
+    PaymentMethod *method = [self methodForID:methodID];
+    UIColor *accent = [PPPaymentMethodCell accentColorForMethod:method];
+    [self.summaryView triggerPaymentMethodChangeFeedbackWithAccent:accent];
+}
+
 #pragma mark - CollectionView Delegate
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
@@ -342,6 +367,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     PPCurrentUser.SelectedInstrument = selected;
     [self pp_updateVisibleSelectionForInstrumentID:selected.instrumentID animated:YES];
     [self pp_refreshCheckoutCallToAction];
+    [self pp_triggerCheckoutCTAHaloAnimationForMethodID:selected.methodID];
 }
 
 
@@ -352,7 +378,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     UIEdgeInsets sectionInset = UIEdgeInsetsZero;
-    CGFloat spacing = 16.0;
+    CGFloat spacing = PPSpaceMD;
     UICollectionViewFlowLayout *flowLayout =
     [collectionViewLayout isKindOfClass:[UICollectionViewFlowLayout class]]
     ? (UICollectionViewFlowLayout *)collectionViewLayout
@@ -364,22 +390,22 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
     CGFloat availableWidth = collectionView.bounds.size.width;
     CGFloat contentWidth = availableWidth - sectionInset.left - sectionInset.right;
-    CGFloat itemHeight = 146.0;
-
-    NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
-    if (displayed.count == 1 && indexPath.item == 0) {
-        UserPaymentInstrument *instrument = displayed.firstObject;
-        NSString *methodID = PPPaymentSelectionNormalizedMethodID(instrument.methodID);
-        BOOL isCashOnlyMethod =
-        [methodID isEqualToString:@"cash"] ||
-        [instrument.instrumentID isEqualToString:kPPBuiltInCashInstrumentID] ||
-        instrument.method.type == PaymentMethodTypeCash;
-        if (isCashOnlyMethod) {
-            return CGSizeMake(MAX(0.0, contentWidth), itemHeight);
-        }
-    }
-
-    CGFloat itemWidth = (contentWidth - spacing) / 2.0;
+    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(
+        collectionView.traitCollection.preferredContentSizeCategory
+    );
+    BOOL usesExpandedTextMetrics = PPPaymentSelectionUsesExpandedTextMetrics(
+        collectionView.traitCollection
+    );
+    CGFloat itemHeight = usesAccessibilityLayout
+        ? 112.0
+        : (usesExpandedTextMetrics ? 92.0 : 78.0);
+    BOOL supportsTwoColumns =
+        collectionView.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular &&
+        contentWidth >= 640.0 &&
+        !usesExpandedTextMetrics;
+    CGFloat itemWidth = supportsTwoColumns
+        ? (contentWidth - spacing) / 2.0
+        : contentWidth;
     return CGSizeMake(MAX(0.0, itemWidth), itemHeight);
 }
 
@@ -442,6 +468,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         PPCurrentUser.SelectedInstrument = instrument;
         [self pp_updateVisibleSelectionForInstrumentID:instrument.instrumentID animated:YES];
         [self pp_refreshCheckoutCallToAction];
+        [self pp_triggerCheckoutCTAHaloAnimationForMethodID:instrument.methodID];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
         return;
     }
@@ -451,6 +478,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     PPCurrentUser.SelectedInstrument = instrument;
     [self pp_updateVisibleSelectionForInstrumentID:instrument.instrumentID animated:YES];
     [self pp_refreshCheckoutCallToAction];
+    [self pp_triggerCheckoutCTAHaloAnimationForMethodID:instrument.methodID];
     
     __weak typeof(self) weakSelf = self;
     [[UserPaymentInstrumentManager sharedManager] setDefaultInstrument:instrument
@@ -781,6 +809,13 @@ didChangeSelectedDetentIdentifier:(UISheetPresentationControllerDetentIdentifier
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UIButton *actionButton;
+@property (nonatomic, strong) NSLayoutConstraint *titleTrailingToActionConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *titleTrailingToEdgeConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleTrailingToActionConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleTrailingToEdgeConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleCompactHeightConstraint;
 
 @end
 
@@ -790,45 +825,91 @@ didChangeSelectedDetentIdentifier:(UISheetPresentationControllerDetentIdentifier
 {
     if (self = [super initWithFrame:frame]) {
         self.backgroundColor = UIColor.clearColor;
+        self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
         self.titleLabel = [[UILabel alloc] init];
         self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.titleLabel.font = [GM boldFontWithSize:20.0];
-        self.titleLabel.textColor = UIColor.labelColor;
+        UIFont *titleBaseFont = [GM boldFontWithSize:PPFontTitle3]
+            ?: [UIFont systemFontOfSize:PPFontTitle3 weight:UIFontWeightBold];
+        self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+            scaledFontForFont:titleBaseFont
+            maximumPointSize:30.0];
+        self.titleLabel.adjustsFontForContentSizeCategory = YES;
+        self.titleLabel.textColor = AppPrimaryTextClr;
+        self.titleLabel.numberOfLines = 2;
+        self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+        self.titleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
 
         self.subtitleLabel = [[UILabel alloc] init];
         self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.subtitleLabel.font = [GM MidFontWithSize:13.0];
-        self.subtitleLabel.textColor = UIColor.secondaryLabelColor;
-        self.subtitleLabel.numberOfLines = 2;
+        UIFont *subtitleBaseFont = [GM MidFontWithSize:PPFontSubheadline]
+            ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightMedium];
+        self.subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+            scaledFontForFont:subtitleBaseFont
+            maximumPointSize:22.0];
+        self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
+        self.subtitleLabel.textColor = AppSecondaryTextClr;
+        self.subtitleLabel.numberOfLines = 3;
+        self.subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
         self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
-        self.actionButton.titleLabel.font = [GM MidFontWithSize:13.0];
+        UIFont *actionBaseFont = [GM MidFontWithSize:PPFontFootnote]
+            ?: [UIFont systemFontOfSize:PPFontFootnote weight:UIFontWeightMedium];
+        self.actionButton.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+            scaledFontForFont:actionBaseFont
+            maximumPointSize:20.0];
+        self.actionButton.titleLabel.adjustsFontForContentSizeCategory = YES;
         self.actionButton.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
         self.actionButton.backgroundColor = [AppPrimaryClr ?: UIColor.systemBlueColor colorWithAlphaComponent:0.10];
-        self.actionButton.layer.cornerRadius = 18.0;
+        self.actionButton.layer.cornerRadius = PPCornerPill;
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
-        self.actionButton.contentEdgeInsets = UIEdgeInsetsMake(9.0, 12.0, 9.0, 12.0);
+        self.actionButton.contentEdgeInsets = UIEdgeInsetsMake(
+            PPSpaceSM,
+            PPSpaceMD,
+            PPSpaceSM,
+            PPSpaceMD
+        );
         [self.actionButton addTarget:self action:@selector(pp_didTapAction) forControlEvents:UIControlEventTouchUpInside];
 
         [self addSubview:self.titleLabel];
         [self addSubview:self.subtitleLabel];
         [self addSubview:self.actionButton];
 
+        self.titleTrailingToActionConstraint =
+            [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor
+                                                                     constant:-PPSpaceMD];
+        self.titleTrailingToEdgeConstraint =
+            [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor
+                                                            constant:-PPScreenMargin];
+        self.subtitleTrailingToActionConstraint =
+            [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor
+                                                                         constant:-PPSpaceMD];
+        self.subtitleTrailingToEdgeConstraint =
+            [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor
+                                                                constant:-PPScreenMargin];
+        self.subtitleTopConstraint =
+            [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor
+                                                          constant:PPSpaceXS];
+        self.subtitleBottomConstraint =
+            [self.subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor
+                                                                       constant:-PPSpaceSM];
+        self.subtitleCompactHeightConstraint =
+            [self.subtitleLabel.heightAnchor constraintEqualToConstant:0.0];
+        self.titleTrailingToEdgeConstraint.active = YES;
+        self.subtitleTrailingToEdgeConstraint.active = YES;
+
         [NSLayoutConstraint activateConstraints:@[
-            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:20.0],
-            [self.titleLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:6.0],
-            [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
+            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPScreenMargin],
+            [self.titleLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:PPSpaceSM],
 
-            [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
+            self.subtitleTopConstraint,
             [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-            [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
-            [self.subtitleLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-8.0],
+            self.subtitleBottomConstraint,
 
-            [self.actionButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-20.0],
+            [self.actionButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPScreenMargin],
             [self.actionButton.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-            [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:36.0],
+            [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
         ]];
     }
     return self;
@@ -842,7 +923,32 @@ didChangeSelectedDetentIdentifier:(UISheetPresentationControllerDetentIdentifier
     self.subtitleLabel.text = subtitle;
 
     BOOL hasAction = actionTitle.length > 0;
+    BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(
+        self.traitCollection.preferredContentSizeCategory
+    );
+    BOOL hidesSubtitle = usesAccessibilityLayout || subtitle.length == 0;
+    self.subtitleLabel.hidden = hidesSubtitle;
+    self.subtitleTopConstraint.active = NO;
+    self.subtitleBottomConstraint.active = NO;
+    self.subtitleCompactHeightConstraint.active = NO;
+    self.subtitleTopConstraint.active = YES;
+    if (hidesSubtitle) {
+        self.subtitleCompactHeightConstraint.active = YES;
+    } else {
+        self.subtitleBottomConstraint.active = YES;
+    }
     self.actionButton.hidden = !hasAction;
+    self.titleTrailingToActionConstraint.active = NO;
+    self.subtitleTrailingToActionConstraint.active = NO;
+    self.titleTrailingToEdgeConstraint.active = NO;
+    self.subtitleTrailingToEdgeConstraint.active = NO;
+    if (hasAction) {
+        self.titleTrailingToActionConstraint.active = YES;
+        self.subtitleTrailingToActionConstraint.active = YES;
+    } else {
+        self.titleTrailingToEdgeConstraint.active = YES;
+        self.subtitleTrailingToEdgeConstraint.active = YES;
+    }
     if (hasAction) {
         UIImage *plusIcon = [UIImage systemImageNamed:@"plus"];
         [self.actionButton setTitle:actionTitle forState:UIControlStateNormal];
