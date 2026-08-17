@@ -1,7 +1,0 @@
-name: Runner Verification
-on: [push]
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ready
