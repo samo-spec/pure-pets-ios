@@ -285,39 +285,56 @@ struct PPOrderDetailsMissionControlScreen: View {
                 "\(store.state.statusTitle). \(store.state.statusHint)"
             )
 
-            VStack(spacing: PPSpace.sm) {
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.ppSeparator.opacity(0.55))
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [accent.opacity(0.72), accent],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(
-                                width: max(
-                                    10,
-                                    proxy.size.width * store.state.statusProgress
-                                )
-                            )
+            if #available(iOS 17.0, *) {
+                PPOrderLivingHandoffRail(
+                    statusKey: store.state.statusKey,
+                    statusTitle: store.state.statusTitle,
+                    statusHint: store.state.statusHint,
+                    updatedAtText: store.state.updatedAtText,
+                    fallbackStatusSymbol: store.state.statusSymbol,
+                    accent: accent,
+                    isRightToLeft: store.isRightToLeft,
+                    presentation: .hero,
+                    titleForStep: { key, fallback in
+                        Self.stepTitle(for: key, fallback: fallback)
                     }
-                }
-                .frame(height: 8)
+                )
+                .id(store.state.orderID)
+            } else {
+                VStack(spacing: PPSpace.sm) {
+                    GeometryReader { proxy in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.ppSeparator.opacity(0.55))
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [accent.opacity(0.72), accent],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(
+                                    width: max(
+                                        10,
+                                        proxy.size.width * store.state.statusProgress
+                                    )
+                                )
+                        }
+                    }
+                    .frame(height: 8)
 
-                HStack {
-                    Label(
-                        store.state.updatedAtText,
-                        systemImage: "clock.arrow.circlepath"
-                    )
-                    Spacer()
-                    Text("\(Int(store.state.statusProgress * 100))%")
-                        .environment(\.layoutDirection, .leftToRight)
+                    HStack {
+                        Label(
+                            store.state.updatedAtText,
+                            systemImage: "clock.arrow.circlepath"
+                        )
+                        Spacer()
+                        Text("\(Int(store.state.statusProgress * 100))%")
+                            .environment(\.layoutDirection, .leftToRight)
+                    }
+                    .font(PPOrderMissionTypography.caption())
+                    .foregroundStyle(Color.ppTextSecondary)
                 }
-                .font(PPOrderMissionTypography.caption())
-                .foregroundStyle(Color.ppTextSecondary)
             }
         }
         .padding(PPSpace.xl)
@@ -624,6 +641,28 @@ struct PPOrderDetailsMissionControlScreen: View {
                 : store.state.errorMessage,
             color: store.state.isOffline ? Color.ppWarning : Color.ppError
         )
+    }
+
+    private static func stepTitle(for key: String, fallback: String) -> String {
+        switch key {
+        case "pending":
+            return PPOrderMissionText("order_placed_title")
+        case "preparing_for_shipment":
+            return PPOrderMissionText("Preparing for Shipment")
+        case "ready_for_delivery":
+            return PPOrderMissionText("Ready for Delivery")
+        case "delivery_partner_assigned":
+            return PPOrderMissionText("Delivery Partner Assigned")
+        case "on_the_way":
+            return PPOrderMissionText("On the Way")
+        case "delivered":
+            return PPOrderMissionText("Delivered")
+        case "completed":
+            return PPOrderMissionText("Completed")
+        default:
+            let localized = PPOrderMissionText(key)
+            return localized == key ? fallback : localized
+        }
     }
 }
 

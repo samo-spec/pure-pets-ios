@@ -441,7 +441,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
                                                                         cornerRadius:self.heroCardView.layer.cornerRadius].CGPath;
     }
     if (self.heroIconPlateView && !CGRectIsEmpty(self.heroIconPlateView.bounds)) {
-        self.heroIconPlateView.layer.cornerRadius = 14.0;
+        self.heroIconPlateView.layer.cornerRadius = 0.0;
+        self.heroIconPlateView.layer.borderWidth = 0.0;
+        self.heroIconPlateView.backgroundColor = UIColor.clearColor;
     }
     if (!CGRectIsEmpty(self.bottomGlowView.bounds)) {
         self.bottomGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomGlowView.bounds].CGPath;
@@ -798,11 +800,10 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     self.heroIconPlateView = [[UIView alloc] init];
     self.heroIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    PPApplyContinuousCorners(self.heroIconPlateView, PPCornerMedium);
-    self.heroIconPlateView.layer.borderWidth = 1.0;
-    self.heroIconPlateView.backgroundColor = [brandColor colorWithAlphaComponent:0.08];
-    [self.heroIconPlateView pp_setBorderColor:[brandColor colorWithAlphaComponent:0.18]];
-    self.heroIconPlateView.clipsToBounds = YES;
+    self.heroIconPlateView.backgroundColor = UIColor.clearColor;
+    self.heroIconPlateView.layer.borderWidth = 0.0;
+    [self.heroIconPlateView pp_setBorderColor:UIColor.clearColor];
+    self.heroIconPlateView.clipsToBounds = NO;
     [self.heroCardView addSubview:self.heroIconPlateView];
 
     UIImage *paymentIcon = [UIImage systemImageNamed:@"creditcard.and.123"];
@@ -882,18 +883,18 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
         [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-PPSpaceMD],
         [self.heroIconPlateView.centerYAnchor constraintEqualToAnchor:self.heroCardView.centerYAnchor],
-        [self.heroIconPlateView.widthAnchor constraintEqualToConstant:44.0],
-        [self.heroIconPlateView.heightAnchor constraintEqualToConstant:44.0],
+        [self.heroIconPlateView.widthAnchor constraintEqualToConstant:52.0],
+        [self.heroIconPlateView.heightAnchor constraintEqualToConstant:52.0],
 
         [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
         [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
-        [self.heroIconView.widthAnchor constraintEqualToConstant:20.0],
-        [self.heroIconView.heightAnchor constraintEqualToConstant:20.0],
+        [self.heroIconView.widthAnchor constraintEqualToConstant:24.0],
+        [self.heroIconView.heightAnchor constraintEqualToConstant:24.0],
 
         [self.heroAnimationView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
         [self.heroAnimationView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
-        [self.heroAnimationView.widthAnchor constraintEqualToConstant:64.0],
-        [self.heroAnimationView.heightAnchor constraintEqualToConstant:64.0],
+        [self.heroAnimationView.widthAnchor constraintEqualToConstant:56.0],
+        [self.heroAnimationView.heightAnchor constraintEqualToConstant:56.0],
 
         [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroBackButton.trailingAnchor constant:PPSpaceMD],
         [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroIconPlateView.leadingAnchor constant:-PPSpaceMD],
@@ -1028,8 +1029,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [self.heroCardView pp_setBorderColor:UIColor.clearColor];
     self.heroCardView.layer.shadowOpacity = 0.0;
 
-    self.heroIconPlateView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.16 : 0.08];
-    [self.heroIconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.32 : 0.16]];
+    self.heroIconPlateView.backgroundColor = UIColor.clearColor;
+    self.heroIconPlateView.layer.borderWidth = 0.0;
+    [self.heroIconPlateView pp_setBorderColor:UIColor.clearColor];
     self.heroIconView.tintColor = accent;
 
     self.heroTitleLabel.textColor = AppPrimaryTextClr;
@@ -1111,18 +1113,33 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
                       autoplay:YES
                     completion:^(BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self || self.heroAnimationLoadToken != token) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf.heroAnimationLoadToken != token) {
                 return;
             }
 
-            if (!success) {
-                self.heroAnimationView.hidden = YES;
-                self.heroIconView.hidden = NO;
+            if (success) {
+                [strongSelf pp_revealPaymentHeroAnimation];
                 return;
             }
 
-            [self pp_revealPaymentHeroAnimation];
+            [Styling setAnimationNamed:@"Payment"
+                                toView:strongSelf.heroAnimationView
+                             withSpeed:1.0
+                         loopAnimation:YES
+                              autoplay:YES
+                            completion:^(BOOL fallbackSuccess) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    __strong typeof(weakSelf) retrySelf = weakSelf;
+                    if (!retrySelf || retrySelf.heroAnimationLoadToken != token) return;
+                    if (fallbackSuccess) {
+                        [retrySelf pp_revealPaymentHeroAnimation];
+                    } else {
+                        retrySelf.heroAnimationView.hidden = YES;
+                        retrySelf.heroIconView.hidden = NO;
+                    }
+                });
+            }];
         });
     }];
 }
@@ -2528,6 +2545,21 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         [PPOrderDetailsRouter controllerWithOrder:order
                           entryPresentationState:presentationState
                                          message:message ?: @""];
-    [self.navigationController pushViewController:detailsVC animated:YES];
+
+    UINavigationController *nav = self.navigationController;
+    if (nav) {
+        [nav pushViewController:detailsVC animated:YES];
+
+        // Clean up navigation stack: remove payment selection screen so that popping or
+        // navigating back from order details returns directly to Home/previous root rather
+        // than landing back on the payment screen after the order has already been placed.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSMutableArray<UIViewController *> *viewControllers = [nav.viewControllers mutableCopy];
+            if ([viewControllers containsObject:self]) {
+                [viewControllers removeObject:self];
+                nav.viewControllers = viewControllers;
+            }
+        });
+    }
 }
 @end

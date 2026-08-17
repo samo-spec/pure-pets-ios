@@ -412,16 +412,15 @@ private extension PPCommerceCartHolder {
                 )
             }
         } else {
-            GeometryReader { proxy in
-                HStack(spacing: Metrics.spacing) {
-                    quantityControl
-                        .frame(width: max(0, proxy.size.width * 0.44))
+            HStack(spacing: Metrics.spacing) {
+                quantityControl
+                    .frame(maxWidth: .infinity)
 
-                    payButton(
-                        minimumWidth: minimumPayWidth,
-                        maximumWidth: .infinity
-                    )
-                }
+                payButton(
+                    minimumWidth: nil,
+                    maximumWidth: nil
+                )
+                .fixedSize(horizontal: true, vertical: false)
             }
             .frame(height: actionControlHeight)
         }
@@ -623,7 +622,10 @@ private extension PPCommerceCartHolder {
     }
 
     @ViewBuilder
-    private func payButton(minimumWidth: CGFloat, maximumWidth: CGFloat) -> some View {
+    private func payButton(
+        minimumWidth: CGFloat? = nil,
+        maximumWidth: CGFloat? = nil
+    ) -> some View {
         Button(action: beginPayment) {
             HStack(spacing: PPSpace.xs) {
                 switch criticalPhase {

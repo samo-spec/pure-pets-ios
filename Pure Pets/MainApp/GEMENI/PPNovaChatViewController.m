@@ -813,6 +813,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, assign) BOOL smartSuggestionAutoSendEnabled;
 @property (nonatomic, assign) BOOL smartSuggestionPickerVisible;
 @property (nonatomic, assign) BOOL novaInputHasText;
+@property (nonatomic, copy, nullable) NSString *initialDraftText;
+@property (nonatomic, assign) BOOL didApplyInitialDraft;
+@property (nonatomic, assign) BOOL didFocusInitialDraft;
 @property (nonatomic, strong) UIVisualEffectView *smartSuggestionPickerView;
 @property (nonatomic, strong) UILabel *smartSuggestionPickerTitleLabel;
 @property (nonatomic, strong) UIButton *smartSuggestionAutoSendButton;
@@ -946,7 +949,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @implementation PPNovaChatViewController
 
 + (void)presentNovaFromViewController:(UIViewController *)presentingVC {
+    [self presentNovaFromViewController:presentingVC initialDraft:nil];
+}
+
++ (void)presentNovaFromViewController:(UIViewController *)presentingVC
+                         initialDraft:(NSString *)initialDraft {
     PPNovaChatViewController *novaVC = [[PPNovaChatViewController alloc] init];
+    novaVC.initialDraftText = [initialDraft copy];
     novaVC.modalInPresentation = YES;
     if (@available(iOS 15.0, *)) {
         novaVC.modalPresentationStyle = UIModalPresentationFullScreen;
@@ -1016,6 +1025,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self setupTableView];
     [self pp_setupScrollToBottomButton];
     [self setupNovaEmptyState];
+    [self pp_applyInitialDraftIfNeeded];
 
     [self registerForKeyboardNotifications];
 
@@ -1091,6 +1101,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_startHeaderLiveAnimations];
     [self pp_startAmbientBackgroundAnimations];
     [self pp_startNovaSmartSuggestionRotationIfNeeded];
+
+    if (self.didApplyInitialDraft && !self.didFocusInitialDraft) {
+        self.didFocusInitialDraft = YES;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self.useSwiftUIInputBar) {
+                [self.swiftUIInputVC focusTextInput];
+            } else {
+                [self.inputbar focusTextInput];
+            }
+        });
+    }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self pp_refreshProviderSmartSuggestions];
@@ -6054,10 +6075,54 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 
 - (void)pp_handleNovaCloseTapped:(UIButton *)sender {
-    self.inputbar.hidden = YES;
     [self pp_handleNovaHeaderControlPressUp:sender];
+    if (self.didApplyInitialDraft && !self.novaHasSentFirstMessage && self.novaInputHasText) {
+        UIAlertController *alert = [UIAlertController
+            alertControllerWithTitle:kLang(@"purelens_nova_draft_discard_title")
+            message:kLang(@"purelens_nova_draft_discard_detail")
+            preferredStyle:UIAlertControllerStyleAlert];
+        __weak typeof(self) weakSelf = self;
+        [alert addAction:[UIAlertAction
+            actionWithTitle:kLang(@"purelens_nova_draft_keep_editing")
+            style:UIAlertActionStyleCancel
+            handler:^(__unused UIAlertAction *action) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                if (self.useSwiftUIInputBar) {
+                    [self.swiftUIInputVC focusTextInput];
+                } else {
+                    [self.inputbar focusTextInput];
+                }
+            }]];
+        [alert addAction:[UIAlertAction
+            actionWithTitle:kLang(@"purelens_nova_draft_discard")
+            style:UIAlertActionStyleDestructive
+            handler:^(__unused UIAlertAction *action) {
+                [weakSelf pp_dismissNova];
+            }]];
+        [self presentViewController:alert animated:YES completion:nil];
+        return;
+    }
+    [self pp_dismissNova];
+}
+
+- (void)pp_dismissNova {
+    self.inputbar.hidden = YES;
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)pp_applyInitialDraftIfNeeded {
+    if (self.didApplyInitialDraft) return;
+    NSString *draft = [self.initialDraftText
+        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (draft.length == 0) return;
+
+    self.didApplyInitialDraft = YES;
+    self.novaInputHasText = YES;
+    [self.inputbar setText:draft];
+    self.swiftUIInputVC.draftText = draft;
+    [self pp_stopNovaSmartSuggestionRotation];
 }
 
 - (void)pp_handleNovaHistoryTapped:(UIButton *)sender {
@@ -9555,6 +9620,16 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.swiftUIInputVC.thinking = YES;
     [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
     [self pp_handleNovaSubmittedText:text];
+}
+
+- (void)swiftUIChatBarDidChangeText:(NSString *)text {
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    self.novaInputHasText = trimmed.length > 0;
+    if (trimmed.length > 0) {
+        [self pp_stopNovaSmartSuggestionRotation];
+    } else {
+        [self pp_startNovaSmartSuggestionRotationIfNeeded];
+    }
 }
 
 - (void)swiftUIChatBarDidTapCamera {

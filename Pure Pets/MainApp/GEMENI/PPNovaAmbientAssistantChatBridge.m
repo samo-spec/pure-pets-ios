@@ -33,6 +33,16 @@
     [PPNovaChatViewController presentNovaFromViewController:viewController];
 }
 
++ (void)openFromViewController:(UIViewController *)viewController
+                  initialDraft:(NSString *)initialDraft
+{
+    if (!viewController) {
+        return;
+    }
+    [PPNovaChatViewController presentNovaFromViewController:viewController
+                                              initialDraft:initialDraft];
+}
+
 + (UIButton *)makeAmbientGlassBackgroundButton
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];

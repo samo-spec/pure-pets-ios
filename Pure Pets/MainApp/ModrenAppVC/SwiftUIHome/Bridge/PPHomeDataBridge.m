@@ -552,7 +552,6 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
     [self publishCurrentMainKinds];
     [self publishCachedHomeConfigOrDefaults];
     [self startHomeConfigListener];
-    [self startPromotionListener];
     [self refresh];
 }
 
@@ -572,6 +571,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
     NSInteger generation = [self advanceRefreshGeneration];
 
     [self publishCurrentMainKinds];
+    [self startPromotionListener];
     [self refreshAccessoriesForGeneration:generation];
     [self refreshFoodForGeneration:generation];
     [self refreshAdvertisementsForGeneration:generation];

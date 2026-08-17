@@ -3860,14 +3860,33 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     BOOL isChangingTabs = self.selectedIndex != (NSUInteger)index;
     if (!isChangingTabs) {
-        // Same tab tapped: pop one level toward root on each tap
         if ([viewController isKindOfClass:[UINavigationController class]]) {
             UINavigationController *nav = (UINavigationController *)viewController;
-            if (nav.viewControllers.count > 1) {
-                [nav popViewControllerAnimated:YES];
+            if (index == PPRootTabIndexHome) {
+                // Tapping Home tab routes directly to HomeView root
+                if (nav.viewControllers.count > 1) {
+                    [nav popToRootViewControllerAnimated:YES];
+                }
+            } else {
+                if (nav.viewControllers.count > 1) {
+                    [nav popViewControllerAnimated:YES];
+                }
             }
         }
         return;
+    }
+
+    if (index == PPRootTabIndexHome && [viewController isKindOfClass:[UINavigationController class]]) {
+        UINavigationController *nav = (UINavigationController *)viewController;
+        UIViewController *top = nav.topViewController;
+        Class missionControlClass = NSClassFromString(@"Pure_Pets.PPOrderDetailsMissionControlViewController");
+        Class orderDetailsClass = NSClassFromString(@"OrderDetailsViewController");
+        Class paymentClass = NSClassFromString(@"PPSelectPaymentVC");
+        if ((missionControlClass && [top isKindOfClass:missionControlClass]) ||
+            (orderDetailsClass && [top isKindOfClass:orderDetailsClass]) ||
+            (paymentClass && [top isKindOfClass:paymentClass])) {
+            [nav popToRootViewControllerAnimated:NO];
+        }
     }
 
     [super setSelectedIndex:(NSUInteger)index];

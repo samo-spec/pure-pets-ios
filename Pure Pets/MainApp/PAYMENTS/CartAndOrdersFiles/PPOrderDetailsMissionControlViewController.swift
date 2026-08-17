@@ -32,11 +32,16 @@ final class PPOrderDetailsMissionControlViewController: UIViewController {
         fatalError("PPOrderDetailsMissionControlViewController is code-only.")
     }
 
+    private var isCheckoutOrigin: Bool = false
+
     @objc(configureEntryPresentationState:message:)
     func configureEntryPresentationState(
         _ state: Int,
         message: String?
     ) {
+        if state == 1 || state == 2 {
+            isCheckoutOrigin = true
+        }
         store.configureEntryPresentation(state: state, message: message)
     }
 
@@ -129,6 +134,9 @@ final class PPOrderDetailsMissionControlViewController: UIViewController {
     }
 
     private var isPaymentOrigin: Bool {
+        if isCheckoutOrigin {
+            return true
+        }
         guard let navigationController,
               let index = navigationController.viewControllers.firstIndex(
                 of: self

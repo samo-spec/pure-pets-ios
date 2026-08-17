@@ -204,6 +204,7 @@ final class PPProviderCompaniesStore: ObservableObject {
 struct PPProviderCompaniesScreen: View {
     @ObservedObject var store: PPProviderCompaniesStore
     let onOpenStorefront: (PPProviderStorefrontProviderRecord) -> Void
+    var onDismiss: (() -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
@@ -232,6 +233,23 @@ struct PPProviderCompaniesScreen: View {
     private var discoveryHeader: some View {
         VStack(spacing: PPSpace.sm) {
             HStack(spacing: PPSpace.sm) {
+                if let onDismiss = onDismiss {
+                    Button {
+                        if !reduceMotion {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                        onDismiss()
+                    } label: {
+                        Image(systemName: "chevron.backward")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                            .foregroundStyle(Color.ppTextPrimary)
+                            .background(Color.ppSurface, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(PPProviderStorefrontL10n.text("Back"))
+                }
+
                 VStack(alignment: .leading, spacing: PPSpace.xxs) {
                     Text(store.categoryTitle)
                         .font(.custom("Beiruti-Bold", size: 24, relativeTo: .title2))
@@ -1141,6 +1159,8 @@ public final class PPProviderCompaniesViewController: UIViewController {
 
     private let store = PPProviderCompaniesStore()
     private var hostingController: UIHostingController<AnyView>?
+    private var inheritedNavigationBarHidden: Bool?
+    private var inheritedInteractivePopGestureEnabled: Bool?
 
     public init() {
         super.init(nibName: nil, bundle: nil)
@@ -1180,9 +1200,34 @@ public final class PPProviderCompaniesViewController: UIViewController {
 
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(false, animated: animated)
+        if let navigationController {
+            if inheritedNavigationBarHidden == nil {
+                inheritedNavigationBarHidden = navigationController.isNavigationBarHidden
+            }
+            navigationController.setNavigationBarHidden(true, animated: animated)
+        }
+        if let gesture = navigationController?.interactivePopGestureRecognizer {
+            if inheritedInteractivePopGestureEnabled == nil {
+                inheritedInteractivePopGestureEnabled = gesture.isEnabled
+            }
+            gesture.isEnabled = true
+        }
         navigationItem.title = store.categoryTitle
         hostingController?.rootView = rootView()
+    }
+
+    public override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if let gesture = navigationController?.interactivePopGestureRecognizer,
+           let inheritedInteractivePopGestureEnabled {
+            gesture.isEnabled = inheritedInteractivePopGestureEnabled
+            self.inheritedInteractivePopGestureEnabled = nil
+        }
+        if let navigationController,
+           let inheritedNavigationBarHidden {
+            navigationController.setNavigationBarHidden(inheritedNavigationBarHidden, animated: animated)
+            self.inheritedNavigationBarHidden = nil
+        }
     }
 
     @objc(pp_preferredBottomSurfaceKind)
@@ -1204,15 +1249,29 @@ public final class PPProviderCompaniesViewController: UIViewController {
     private func rootView() -> AnyView {
         let languageCode = Language.currentLanguageCode() ?? "ar"
         return AnyView(
-            PPProviderCompaniesScreen(store: store) { [weak self] record in
-                self?.openStorefront(record)
-            }
+            PPProviderCompaniesScreen(
+                store: store,
+                onOpenStorefront: { [weak self] record in
+                    self?.openStorefront(record)
+                },
+                onDismiss: { [weak self] in
+                    self?.handleBackAction()
+                }
+            )
             .environment(\.locale, Locale(identifier: languageCode))
             .environment(
                 \.layoutDirection,
                 languageCode == "ar" ? .rightToLeft : .leftToRight
             )
         )
+    }
+
+    private func handleBackAction() {
+        if let nav = navigationController, nav.viewControllers.count > 1 {
+            nav.popViewController(animated: true)
+        } else {
+            dismiss(animated: true)
+        }
     }
 
     private func openStorefront(_ record: PPProviderStorefrontProviderRecord) {

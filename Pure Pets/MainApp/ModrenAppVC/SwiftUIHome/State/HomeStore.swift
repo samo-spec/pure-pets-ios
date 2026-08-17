@@ -126,6 +126,7 @@ final class HomeStore: ObservableObject {
     )
     private static let trackedRefreshSources: Set<Int> = [
         PPHomeBridgeSource.mainKinds.rawValue,
+        PPHomeBridgeSource.promotions.rawValue,
         PPHomeBridgeSource.accessories.rawValue,
         PPHomeBridgeSource.food.rawValue,
         PPHomeBridgeSource.advertisements.rawValue,

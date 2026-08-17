@@ -3428,8 +3428,20 @@
 "home_marketplace_signal_all_scope" = "All";
 "home_marketplace_signal_all_scope_accessibility" = "All categories";
 "home_marketplace_signal_all_scope_hint" = "Select a category to see its live count.";
-"home_marketplace_signal_loading" = "Loading count…";
 "home_marketplace_signal_available_count_format" = "%ld available now";
+"home_hero_stat_products" = "Products";
+"home_hero_stat_services" = "Services";
+"home_hero_stat_verified" = "Verified";
+"home_hero_stat_health" = "Health & Care";
+"home_hero_stat_profile" = "Pet Profile";
+"home_hero_stat_schedule" = "Smart Reminder";
+"home_hero_stat_on_time" = "On Schedule";
+"home_hero_stat_offer" = "Special Deal";
+"home_hero_stat_fast" = "Fast Delivery";
+"home_hero_stat_pharmacy" = "Certified Meds";
+"home_hero_stat_vet_care" = "Vet Care";
+"home_hero_stat_new_pet" = "Add Pet";
+"home_hero_stat_custom_care" = "Custom Care";
 "home_marketplace_signal_unavailable_retry" = "Count unavailable. Tap to try again.";
 "home_marketplace_signal_selected" = "Selected";
 "seller_profile_back_hint" = "Double-tap to go back";
@@ -4422,6 +4434,11 @@
 
 /* PureLens Detector 3.0 host bridge */
 "purelens_remote_processing_disclosure" = "After you agree, one selected frame is sent to the Pure Pets service using Google Gemini to understand the scene. Continuous video is never sent, and the frame is deleted after the request according to the privacy policy.";
+"purelens_nova_context_draft" = "Pure Lens detected %@. I need help with: ";
+"purelens_nova_draft_discard_title" = "Discard this question?";
+"purelens_nova_draft_discard_detail" = "Your question has not been sent to Nova.";
+"purelens_nova_draft_keep_editing" = "Keep Editing";
+"purelens_nova_draft_discard" = "Discard";
 "purelens_action_order_ready" = "Order ready";
 "purelens_action_order_ready_detail" = "The product was added to your cart. Review price and stock before checkout.";
 "purelens_action_product_opened" = "Product opened";

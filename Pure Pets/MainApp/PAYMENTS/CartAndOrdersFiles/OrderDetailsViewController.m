@@ -701,6 +701,11 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (BOOL)pp_isPushedFromPaymentSelectionViewController
 {
+    if (self.entryPresentationState == PPOrderDetailsEntryPresentationStateCheckoutSuccess ||
+        self.entryPresentationState == PPOrderDetailsEntryPresentationStateVerificationPending) {
+        return YES;
+    }
+
     NSArray<UIViewController *> *viewControllers = self.navigationController.viewControllers ?: @[];
     NSUInteger currentIndex = [viewControllers indexOfObject:self];
     if (currentIndex == NSNotFound || currentIndex == 0) {

@@ -3406,8 +3406,20 @@
 "home_marketplace_signal_all_scope" = "الكل";
 "home_marketplace_signal_all_scope_accessibility" = "كل الفئات";
 "home_marketplace_signal_all_scope_hint" = "اختر فئة لعرض عددها المباشر.";
-"home_marketplace_signal_loading" = "جارٍ تحميل العدد…";
 "home_marketplace_signal_available_count_format" = "المتاح الآن: %ld";
+"home_hero_stat_products" = "منتجات حصرية";
+"home_hero_stat_services" = "خدمات موثوقة";
+"home_hero_stat_verified" = "مزودون معتمدون";
+"home_hero_stat_health" = "صحة ورعاية";
+"home_hero_stat_profile" = "ملف متكامل";
+"home_hero_stat_schedule" = "تذكير ذكي";
+"home_hero_stat_on_time" = "في الموعد";
+"home_hero_stat_offer" = "خصم خاص";
+"home_hero_stat_fast" = "توصيل سريع";
+"home_hero_stat_pharmacy" = "أدوية معتمدة";
+"home_hero_stat_vet_care" = "رعاية بيطرية";
+"home_hero_stat_new_pet" = "أضف أليفك";
+"home_hero_stat_custom_care" = "رعاية مخصصة";
 "home_marketplace_signal_unavailable_retry" = "تعذّر تحميل العدد. اضغط للمحاولة مجدداً.";
 "home_marketplace_signal_selected" = "محدد";
 "seller_profile_back_hint" = "انقر مرتين للرجوع";
@@ -4408,6 +4420,11 @@
 
 /* PureLens Detector 3.0 host bridge */
 "purelens_remote_processing_disclosure" = "بعد موافقتك، تُرسل لقطة واحدة مختارة إلى خدمة Pure Pets التي تستخدم Google Gemini لتحليل المشهد. لا يُرسل فيديو مستمر، وتُحذف اللقطة بعد إتمام الطلب وفق سياسة الخصوصية.";
+"purelens_nova_context_draft" = "رصدت بيور لينس %@. أحتاج مساعدة في: ";
+"purelens_nova_draft_discard_title" = "هل تريد حذف هذا السؤال؟";
+"purelens_nova_draft_discard_detail" = "لم يُرسل سؤالك إلى نوفا بعد.";
+"purelens_nova_draft_keep_editing" = "متابعة التعديل";
+"purelens_nova_draft_discard" = "حذف";
 "purelens_action_order_ready" = "أصبح الطلب جاهزاً";
 "purelens_action_order_ready_detail" = "تمت إضافة المنتج إلى السلة. راجع السعر والمخزون قبل إتمام الشراء.";
 "purelens_action_product_opened" = "تم فتح المنتج";

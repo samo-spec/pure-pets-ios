@@ -877,7 +877,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)setSummuryViewAtBottom
 {
     self.summaryView = [[PPPremuimChekoutView alloc] init];
-    [self.summaryView setCollapsible:YES initiallyCollapsed:NO];
+    [self.summaryView setCollapsible:YES initiallyCollapsed:YES];
     
     [self.view addSubview:self.summaryView];
     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;

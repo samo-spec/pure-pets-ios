@@ -173,6 +173,10 @@ final class PPPureLensHostPresenter: NSObject {
                     }
                 }
             },
+            guidanceActions: LensGuidanceActionClient { [weak self, weak presenter] handoff in
+                guard let self, let presenter else { return }
+                self.openNova(from: presenter, handoff: handoff)
+            },
             analytics: LensAnalyticsClient { [weak self] name, properties in
                 Task { @MainActor in
                     self?.track(name: name, properties: properties)
@@ -202,6 +206,7 @@ final class PPPureLensHostPresenter: NSObject {
             "pure_lens_image_search_failed",
             "pure_lens_discovery_item_opened",
             "pure_lens_discovery_item_open_failed",
+            "pure_lens_guidance_opened",
             Self.consentEvent
         ]
         guard allowedEvents.contains(name) else { return }
@@ -214,6 +219,32 @@ final class PPPureLensHostPresenter: NSObject {
             result[element.key] = element.value
         }
         Analytics.logEvent(name, parameters: parameters.isEmpty ? nil : parameters)
+    }
+
+    private func openNova(
+        from presenter: UIViewController,
+        handoff: LensGuidanceHandoff
+    ) {
+        let format = localized("purelens_nova_context_draft")
+        let localeIdentifier = Language.currentLanguageCode() ?? Locale.current.identifier
+        let draft = String(
+            format: format,
+            locale: Locale(identifier: localeIdentifier),
+            handoff.displayName
+        )
+        let presentNova = { [weak presenter] in
+            guard let presenter, presenter.viewIfLoaded?.window != nil else { return }
+            PPNovaAmbientAssistantChatBridge.open(
+                from: presenter,
+                initialDraft: draft
+            )
+        }
+
+        if let presented = presenter.presentedViewController {
+            presenter.dismiss(animated: true, completion: presentNova)
+        } else {
+            presentNova()
+        }
     }
 
     private var appTheme: PureLensTheme {

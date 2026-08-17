@@ -27,6 +27,11 @@ open class PPRootPassthroughHostingController<Content: View>: UIHostingControlle
         weak var hostedView: UIView?
         var isInteractivePoint: ((CGPoint) -> Bool)?
         
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            hostedView?.frame = self.bounds
+        }
+        
         override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
             guard let hostedView = hostedView else {
                 return super.hitTest(point, with: event)

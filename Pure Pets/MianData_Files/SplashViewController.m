@@ -428,6 +428,21 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 
 }
 
+- (void)pp_startMarkBreathingLoop
+{
+    if (UIAccessibilityIsReduceMotionEnabled() || NSProcessInfo.processInfo.isLowPowerModeEnabled) {
+        return;
+    }
+    CABasicAnimation *breathe = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    breathe.fromValue = @1.0;
+    breathe.toValue = @1.024;
+    breathe.duration = 0.82;
+    breathe.autoreverses = YES;
+    breathe.repeatCount = HUGE_VALF;
+    breathe.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.logoWrapperView.layer addAnimation:breathe forKey:@"pp.mark.breathe"];
+}
+
 - (void)stopMotion
 {
     [self.haloLayer removeAllAnimations];

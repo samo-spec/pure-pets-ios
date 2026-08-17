@@ -61,7 +61,7 @@ public struct PPRootBottomOverlayView: View {
     public var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
-                Spacer()
+                Spacer(minLength: 0)
                     .passthroughTouches(true)
 
                 ZStack(alignment: .bottomTrailing) {
@@ -114,6 +114,7 @@ public struct PPRootBottomOverlayView: View {
                     }
                 }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)
             .onPreferenceChange(PPRootBottomOverlayHeightKey.self) { measuredHeight in
                 DispatchQueue.main.async {
                     store.updateMeasuredBottomOverlayHeight(
@@ -123,6 +124,8 @@ public struct PPRootBottomOverlayView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .passthroughTouches(true)
         .coordinateSpace(name: PPRootBottomOverlayCoordinateSpace.name)
         .onPreferenceChange(

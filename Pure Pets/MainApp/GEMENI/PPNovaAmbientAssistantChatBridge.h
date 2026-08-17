@@ -12,6 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface PPNovaAmbientAssistantChatBridge : NSObject
 
 + (void)openFromViewController:(UIViewController *)viewController NS_SWIFT_NAME(open(from:));
++ (void)openFromViewController:(UIViewController *)viewController
+                  initialDraft:(nullable NSString *)initialDraft NS_SWIFT_NAME(open(from:initialDraft:));
 + (UIView *)makeAmbientLeadingView NS_SWIFT_NAME(makeAmbientLeadingView());
 + (UIButton *)makeAmbientGlassBackgroundButton NS_SWIFT_NAME(makeAmbientGlassBackgroundButton());
 

@@ -3021,8 +3021,8 @@ private struct HomeMainKindCellRepresentable: UIViewRepresentable {
 }
 
 /// Continuous order journey driven only by the bridge-owned scalar progress.
-/// Initial presentation is settled; real state changes retarget one private
-/// rendered value and retain a static Reduce Motion equivalent.
+/// NextGen V6 living motion with fluid spring retargeting, ambient beacon breathing halo,
+/// traveling active shimmer tracer, and waypoint nodes.
 private struct HomeOrderJourneyProgress: View {
     let progress: Double
     let accentColor: Color
@@ -3031,13 +3031,14 @@ private struct HomeOrderJourneyProgress: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.colorScheme) private var colorScheme
     @State private var displayedProgress: Double
-    @State private var renderRevision = false
+    @State private var isPulseActive = false
+    @State private var shimmerPhase: CGFloat = 0.0
 
     private let routeHeight = PPSpace.xl + PPSpace.xs
     private let beaconDiameter = PPSpace.lg
-    private let stateChangeDuration = 0.25
+    private let waypoints: [Double] = [0.0, 0.33, 0.66, 1.0]
 
     init(
         progress: Double,
@@ -3057,54 +3058,172 @@ private struct HomeOrderJourneyProgress: View {
     var body: some View {
         GeometryReader { geometry in
             let totalWidth = max(geometry.size.width, 0)
-            let routeWidth = max(totalWidth - beaconDiameter, 0)
-            let progress = bounded(displayedProgress)
-            let travelDistance = routeWidth * progress
-            let fillWidth = min(max((beaconDiameter / 2) + travelDistance, 0), totalWidth)
+            let halfBeacon = beaconDiameter / 2
+            let availableWidth = max(totalWidth - beaconDiameter, 0)
+            let currentProgress = bounded(displayedProgress)
+            let travelDistance = availableWidth * currentProgress
+            let beaconCenterX = halfBeacon + travelDistance
 
-            ZStack(alignment: .leading) {
-                routeLayer(color: trackColor)
+            ZStack {
+                baseTrackLayer(
+                    totalWidth: totalWidth,
+                    halfBeacon: halfBeacon,
+                    availableWidth: availableWidth
+                )
 
-                routeLayer(color: accentColor)
-                    .mask(alignment: .leading) {
-                        Rectangle()
-                            .frame(width: fillWidth, height: routeHeight)
-                    }
+                activeTrackLayer(
+                    totalWidth: totalWidth,
+                    halfBeacon: halfBeacon,
+                    availableWidth: availableWidth,
+                    beaconCenterX: beaconCenterX,
+                    currentProgress: currentProgress
+                )
 
-                beaconView
-                    .offset(x: (layoutDirection == .rightToLeft ? -1 : 1) * travelDistance)
+                beaconNode(centerX: beaconCenterX)
             }
             .frame(width: totalWidth, height: routeHeight)
         }
-        .id(renderRevision)
         .frame(height: routeHeight)
         .accessibilityHidden(true)
         .onAppear {
-            displayedProgress = bounded(progress)
+            startLivingMotion()
         }
         .onChange(of: progress) { newProgress in
             retarget(to: newProgress)
         }
         .onChange(of: reduceMotion) { enabled in
-            guard enabled else { return }
-            var transaction = Transaction(animation: nil)
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
+            if enabled {
                 displayedProgress = bounded(progress)
-                renderRevision.toggle()
+                isPulseActive = false
+            } else {
+                startLivingMotion()
             }
         }
     }
 
-    private var beaconView: some View {
+    private func baseTrackLayer(
+        totalWidth: CGFloat,
+        halfBeacon: CGFloat,
+        availableWidth: CGFloat
+    ) -> some View {
         ZStack {
+            Capsule(style: .continuous)
+                .fill(trackColor)
+                .frame(height: trackHeight)
+                .padding(.horizontal, halfBeacon)
+
+            ForEach(waypoints, id: \.self) { fraction in
+                let x = halfBeacon + (availableWidth * fraction)
+                Circle()
+                    .fill(trackColor)
+                    .frame(width: endpointDiameter, height: endpointDiameter)
+                    .position(x: x, y: routeHeight / 2)
+            }
+        }
+        .frame(width: totalWidth, height: routeHeight)
+    }
+
+    @ViewBuilder
+    private func activeTrackLayer(
+        totalWidth: CGFloat,
+        halfBeacon: CGFloat,
+        availableWidth: CGFloat,
+        beaconCenterX: CGFloat,
+        currentProgress: Double
+    ) -> some View {
+        let startX = halfBeacon
+        let activeWidth = max(beaconCenterX - startX, 0)
+
+        ZStack {
+            ForEach(waypoints, id: \.self) { fraction in
+                if fraction <= currentProgress + 0.01 {
+                    let x = halfBeacon + (availableWidth * fraction)
+                    Circle()
+                        .fill(accentColor)
+                        .frame(width: endpointDiameter, height: endpointDiameter)
+                        .position(x: x, y: routeHeight / 2)
+                }
+            }
+
+            if activeWidth > 0 {
+                ZStack {
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accentColor.opacity(0.85),
+                                    accentColor
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: activeWidth, height: trackHeight)
+
+                    if !reduceMotion && activeWidth > 12 {
+                        Capsule(style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.clear,
+                                        Color.white.opacity(colorScheme == .dark ? 0.45 : 0.65),
+                                        Color.clear
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: min(activeWidth * 0.40, 36), height: trackHeight)
+                            .offset(x: (shimmerPhase * activeWidth) - (activeWidth / 2))
+                            .clipShape(Capsule(style: .continuous))
+                    }
+                }
+                .position(x: startX + (activeWidth / 2), y: routeHeight / 2)
+            }
+        }
+        .frame(width: totalWidth, height: routeHeight)
+    }
+
+    private func beaconNode(centerX: CGFloat) -> some View {
+        ZStack {
+            if !reduceMotion {
+                Circle()
+                    .stroke(
+                        accentColor.opacity(isPulseActive ? 0.0 : 0.40),
+                        lineWidth: 2.0
+                    )
+                    .frame(
+                        width: isPulseActive ? beaconDiameter * 1.52 : beaconDiameter * 0.96,
+                        height: isPulseActive ? beaconDiameter * 1.52 : beaconDiameter * 0.96
+                    )
+                    .scaleEffect(isPulseActive ? 1.0 : 0.85)
+
+                Circle()
+                    .fill(accentColor.opacity(colorScheme == .dark ? 0.20 : 0.12))
+                    .frame(width: beaconDiameter * 1.28, height: beaconDiameter * 1.28)
+                    .blur(radius: 3.5)
+            }
+
             Circle()
                 .fill(beaconFillColor)
+                .frame(width: beaconDiameter, height: beaconDiameter)
+                .shadow(
+                    color: accentColor.opacity(
+                        contrast == .increased
+                            ? 0
+                            : (colorScheme == .dark ? 0.30 : 0.18)
+                    ),
+                    radius: 4,
+                    y: 1.5
+                )
+
             Circle()
                 .stroke(
                     accentColor,
                     lineWidth: contrast == .increased ? 3.5 : 2.5
                 )
+                .frame(width: beaconDiameter, height: beaconDiameter)
+
             Circle()
                 .fill(accentColor)
                 .frame(
@@ -3115,32 +3234,43 @@ private struct HomeOrderJourneyProgress: View {
                         ? PPSpace.sm
                         : PPSpace.md / 2
                 )
+                .scaleEffect(isPulseActive ? 1.12 : 0.94)
         }
-        .frame(width: beaconDiameter, height: beaconDiameter)
+        .position(x: centerX, y: routeHeight / 2)
     }
 
-    private func routeLayer(color: Color) -> some View {
-        ZStack {
-            Capsule(style: .continuous)
-                .fill(color)
-                .frame(height: trackHeight)
-                .padding(.horizontal, beaconDiameter / 2)
-
-            HStack(spacing: 0) {
-                Circle()
-                    .fill(color)
-                    .frame(width: endpointDiameter, height: endpointDiameter)
-                Spacer(minLength: 0)
-                Circle()
-                    .fill(color)
-                    .frame(width: endpointDiameter, height: endpointDiameter)
-            }
-            .padding(
-                .horizontal,
-                (beaconDiameter - endpointDiameter) / 2
-            )
+    private func startLivingMotion() {
+        let target = bounded(progress)
+        if reduceMotion {
+            displayedProgress = target
+            return
         }
-        .frame(height: routeHeight)
+
+        withAnimation(
+            .spring(
+                response: 0.65,
+                dampingFraction: 0.82,
+                blendDuration: 0.10
+            )
+        ) {
+            displayedProgress = target
+        }
+
+        withAnimation(
+            .easeInOut(duration: 1.8)
+                .repeatForever(autoreverses: true)
+                .delay(0.2)
+        ) {
+            isPulseActive = true
+        }
+
+        withAnimation(
+            .linear(duration: 2.4)
+                .repeatForever(autoreverses: false)
+                .delay(0.35)
+        ) {
+            shimmerPhase = 1.0
+        }
     }
 
     private func retarget(to target: Double) {
@@ -3148,7 +3278,13 @@ private struct HomeOrderJourneyProgress: View {
         if reduceMotion {
             displayedProgress = resolvedTarget
         } else {
-            withAnimation(.easeOut(duration: stateChangeDuration)) {
+            withAnimation(
+                .spring(
+                    response: 0.58,
+                    dampingFraction: 0.82,
+                    blendDuration: 0.10
+                )
+            ) {
                 displayedProgress = resolvedTarget
             }
         }
@@ -3284,14 +3420,31 @@ struct HomeOrderCard: View {
         }
     }
 
+    @ViewBuilder
     private var statusJourney: some View {
-        HomeOrderJourneyProgress(
-            progress: resolvedProgress,
-            accentColor: statusAccent,
-            trackColor: journeyTrackColor,
-            beaconFillColor: statusStrongSurface
-        )
-        .id(order.id)
+        if #available(iOS 17.0, *) {
+            PPOrderLivingHandoffRail(
+                statusKey: order.statusKey,
+                statusTitle: order.statusTitle,
+                statusHint: order.statusHint,
+                fallbackStatusSymbol: statusSymbolName,
+                accent: statusAccent,
+                isRightToLeft: Language.isRTL(),
+                presentation: .compact,
+                titleForStep: { key, fallback in
+                    Self.localizedStepTitle(for: key, fallback: fallback)
+                }
+            )
+            .id(order.id)
+        } else {
+            HomeOrderJourneyProgress(
+                progress: resolvedProgress,
+                accentColor: statusAccent,
+                trackColor: journeyTrackColor,
+                beaconFillColor: statusStrongSurface
+            )
+            .id(order.id)
+        }
     }
 
     @ViewBuilder
@@ -3523,6 +3676,27 @@ struct HomeOrderCard: View {
 
     private var statusSymbolName: String {
         PPOrderStatusSymbolNameForKey(order.statusKey)
+    }
+
+    private static func localizedStepTitle(for key: String, fallback: String) -> String {
+        switch key {
+        case "pending":
+            return HomeModelAdapter.localized("order_placed_title", fallback: fallback)
+        case "preparing_for_shipment":
+            return HomeModelAdapter.localized("Preparing for Shipment", fallback: fallback)
+        case "ready_for_delivery":
+            return HomeModelAdapter.localized("Ready for Delivery", fallback: fallback)
+        case "delivery_partner_assigned":
+            return HomeModelAdapter.localized("Delivery Partner Assigned", fallback: fallback)
+        case "on_the_way":
+            return HomeModelAdapter.localized("On the Way", fallback: fallback)
+        case "delivered":
+            return HomeModelAdapter.localized("Delivered", fallback: fallback)
+        case "completed":
+            return HomeModelAdapter.localized("Completed", fallback: fallback)
+        default:
+            return HomeModelAdapter.localized(key, fallback: fallback)
+        }
     }
 }
 
