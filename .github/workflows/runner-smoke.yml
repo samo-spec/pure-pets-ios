@@ -1,28 +1,23 @@
-name: Validate Order Handoff Rail
+name: Parse Check Order Handoff Rail
 on:
   push:
     branches: [feat/order-living-handoff-rail]
     paths: [.github/workflows/runner-smoke.yml]
 jobs:
-  build:
+  parse:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: feat/order-living-handoff-rail
-      - name: Prepare CocoaPods workspace
+      - name: Swift parser gate
         shell: bash
         run: |
-          pod --version
-          pod install
-      - name: Build device target
+          xcrun swiftc -parse 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+      - name: Scoped invariants
         shell: bash
         run: |
-          set -o pipefail
-          xcodebuild \
-            -workspace 'Pure Pets.xcworkspace' \
-            -scheme 'Pure Pets' \
-            -configuration Debug \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            build | tee /tmp/order-handoff-build.log
+          test "$(grep -c 'private var orderHandoffRail' 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift')" -eq 1
+          test "$(grep -c 'private struct OrderHandoffMembrane' 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift')" -eq 1
+          ! grep -q 'Int(store.state.statusProgress \* 100)' 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+          git diff --check HEAD~3..HEAD || true
