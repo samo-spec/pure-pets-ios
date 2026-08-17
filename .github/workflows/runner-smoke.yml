@@ -1,10 +1,29 @@
-name: Runner Smoke
+name: Apply Order Handoff Refactor
 on:
   push:
     branches: [feat/order-living-handoff-rail]
     paths: [.github/workflows/runner-smoke.yml]
+permissions:
+  contents: write
 jobs:
-  smoke:
+  apply:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ready
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/order-living-handoff-rail
+          fetch-depth: 0
+      - name: Apply exact scoped edit
+        run: |
+          python3 .automation/apply_order_handoff.py
+          git diff --check
+          grep -q 'private var orderHandoffRail' 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+          grep -q 'private struct OrderHandoffMembrane' 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+      - name: Commit implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+          git rm .automation/apply_order_handoff.py
+          git commit -m 'feat: add living order handoff rail'
+          git push origin HEAD:feat/order-living-handoff-rail
