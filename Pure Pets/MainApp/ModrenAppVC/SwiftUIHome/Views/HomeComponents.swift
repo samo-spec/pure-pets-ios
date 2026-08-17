@@ -2235,7 +2235,14 @@ struct HomeFeaturedPetCard: View {
                     ? nil
                     : compactHeight
             )
-            .background(Color.homeSurface, in: cardShape)
+            .background {
+                PPWaveCardBG(
+                    animationEnabled: !reduceMotion,
+                    shape: .rounded,
+                    cornerRadius: PPCorner.medium,
+                    accentColorOverride: UIColor(actionAccent)
+                )
+            }
             .clipShape(cardShape)
             .overlay {
                 cardShape.stroke(
@@ -2601,25 +2608,17 @@ private struct HomeMainKindShelfEntrance: ViewModifier {
     func body(content: Content) -> some View {
         // Driven by Home's shared initial phase, never cell onAppear. Late
         // lazy cells therefore stay still during horizontal scrolling.
+        //
+        // The pedestal rail settles in from the semantic-leading edge only.
+        // The former 3D yaw/roll and vertical arc were decorative staging on
+        // the most frequently tapped control on Home, so they are removed:
+        // the entrance now states "the shelf is arriving" and nothing more.
         content
             .scaleEffect(
                 isStaged ? stagedScale : 1,
                 anchor: semanticAnchor
             )
-            .rotation3DEffect(
-                .degrees(isStaged ? stagedYaw : 0),
-                axis: (x: 0, y: 1, z: 0),
-                anchor: semanticAnchor,
-                perspective: 0.72
-            )
-            .rotationEffect(
-                .degrees(isStaged ? stagedRoll : 0),
-                anchor: semanticAnchor
-            )
-            .offset(
-                x: isStaged ? stagedHorizontalTravel : 0,
-                y: isStaged ? stagedArcHeight : 0
-            )
+            .offset(x: isStaged ? stagedHorizontalTravel : 0)
             .animation(entranceAnimation, value: isPresented)
     }
 
@@ -2654,26 +2653,6 @@ private struct HomeMainKindShelfEntrance: ViewModifier {
     private var stagedHorizontalTravel: CGFloat {
         let base: CGFloat = isAllCategory ? 7 : 10
         return semanticSign * (base + (tier * 6))
-    }
-
-    private var stagedArcHeight: CGFloat {
-        switch cappedOrdinal {
-        case 0: return 3
-        case 1: return 7
-        case 2: return 11
-        case 3: return 8
-        default: return 4
-        }
-    }
-
-    private var stagedYaw: Double {
-        let base = isAllCategory ? 2.2 : 3.4
-        return Double(semanticSign) * (base + (Double(tier) * 0.75))
-    }
-
-    private var stagedRoll: Double {
-        let base = isAllCategory ? -0.65 : -1.15
-        return Double(semanticSign) * (base + (Double(tier) * 0.52))
     }
 
     private var entranceAnimation: Animation? {
@@ -2917,7 +2896,7 @@ struct HomeCategoryRail: View {
         let categoryID = category.map {
             HomeModelAdapter.mainKindID($0.raw)
         }
-        HomeMainKindCellRepresentable(
+        HomeMainKindPedestalCell(
             category: category,
             selected: category == nil
                 ? selectedID == nil
@@ -2988,6 +2967,717 @@ struct HomeCategoryRail: View {
     }
 }
 
+// MARK: - MainKind Pedestal — the species scope selector
+
+// Design thesis
+// -------------
+// This rail is not a card grid. It is a *scope selector*: exactly one species
+// governs every commerce rail below it, so "which one is active" is the single
+// most consequential piece of state on Home. The previous card treated all
+// species as equal-weight bordered tiles and whispered selection through a
+// 1.5pt border, so the card body carried no information at all.
+//
+// The redesign deletes the card. Each species becomes a *pedestal*: a physical
+// medallion resting on a shelf, captioned underneath on the bare Home canvas.
+// Selection is expressed by building the shelf under the chosen species while
+// the previous one is dismantled — the composition itself says "this species
+// is what everything below now stands on."
+//
+// Ownership is unchanged: `HomeStore` still owns selection, persistence, the
+// route, and the selection haptic. This view owns presentation and its press
+// feedback only.
+
+/// Press state published by `HomeMainKindPedestalButtonStyle`, so the medallion
+/// alone reacts to touch while the caption stays typographically stable.
+private struct HomeMainKindPressedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private extension EnvironmentValues {
+    var homeMainKindPressed: Bool {
+        get { self[HomeMainKindPressedKey.self] }
+        set { self[HomeMainKindPressedKey.self] = newValue }
+    }
+}
+
+private struct HomeMainKindPedestalButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .environment(\.homeMainKindPressed, configuration.isPressed)
+    }
+}
+
+private enum HomeMainKindPedestal {
+    /// Clear lane reserved between the medallion edge and the wash disc so the
+    /// selection ring can thicken without shifting layout.
+    static let ringLane: CGFloat = 5
+
+    static let idleRingWidth: CGFloat = 1
+    static let selectedRingWidth: CGFloat = 2
+    static let highContrastRingWidth: CGFloat = 2.5
+
+    static let shelfReservedHeight: CGFloat = 4
+    static let shelfIdleHeight: CGFloat = 2
+    static let shelfSelectedWidthShare: CGFloat = 0.78
+    static let shelfIdleWidthShare: CGFloat = 0.34
+
+    static let pressScale: CGFloat = 0.94
+    static let pressDuration: Double = 0.12
+
+    static let settleResponse: Double = 0.42
+    static let settleDamping: Double = 0.82
+
+    // MARK: Soft card
+
+    static let cardRadius: CGFloat = PPCorner.card
+    /// Interior breathing room the pedestal keeps away from the card edge.
+    static let cardContentInset: CGFloat = PPSpace.sm
+    /// Accent blended into the card surface on selection. Carried over from the
+    /// retired UIKit cell so the tint stays a whisper, not a fifth loud signal.
+    static let cardSelectedTint: CGFloat = 0.045
+    static let cardSelectedTintHighContrast: CGFloat = 0.075
+
+    /// PP tokens resolve on `userInterfaceStyle` only
+    /// (`UIColor.ppDynamicColor`), so appearance is the sole trait needed to
+    /// resolve a colour. Increased contrast is handled explicitly by the views
+    /// and by the required-ratio ladder below rather than through traits.
+    static func traits(colorScheme: ColorScheme) -> UITraitCollection {
+        UITraitCollection(
+            userInterfaceStyle: colorScheme == .dark ? .dark : .light
+        )
+    }
+
+    /// The soft card surface the pedestal now stands in.
+    static func cardSurface(
+        accent: UIColor,
+        selected: Bool,
+        traits: UITraitCollection,
+        highContrast: Bool
+    ) -> UIColor {
+        let surface = UIColor.ppSurfaceRaised.resolvedColor(with: traits)
+        guard selected else { return surface }
+        return blend(
+            accent,
+            with: surface,
+            ratio: highContrast
+                ? cardSelectedTintHighContrast
+                : cardSelectedTint
+        )
+    }
+
+    /// The ring, shelf, and caption now sit on the card, so the species accent
+    /// is judged against the card surface rather than the Home canvas. Ported
+    /// from the retired UIKit cell so a low-contrast `kindColor` can never
+    /// become an illegible ring or shelf.
+    static func resolvedAccent(
+        _ candidate: UIColor,
+        traits: UITraitCollection,
+        highContrast: Bool
+    ) -> UIColor {
+        let surface = UIColor.ppSurfaceRaised.resolvedColor(with: traits)
+        let text = UIColor.ppTextPrimary.resolvedColor(with: traits)
+        let brand = UIColor.ppPrimary.resolvedColor(with: traits)
+        let required: CGFloat = highContrast ? 4.5 : 3
+
+        let base = opaque(candidate.resolvedColor(with: traits)) ?? brand
+        let ladder: [UIColor] = [
+            base,
+            blend(base, with: text, ratio: 0.62),
+            brand,
+            blend(brand, with: text, ratio: 0.58)
+        ]
+        for color in ladder where contrastRatio(color, surface) >= required {
+            return color
+        }
+        return text
+    }
+
+    static func blend(
+        _ first: UIColor,
+        with second: UIColor,
+        ratio: CGFloat
+    ) -> UIColor {
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+        guard first.getRed(&r1, green: &g1, blue: &b1, alpha: &a1),
+              second.getRed(&r2, green: &g2, blue: &b2, alpha: &a2) else {
+            return first
+        }
+        let amount = min(max(ratio, 0), 1)
+        let inverse = 1 - amount
+        return UIColor(
+            red: (r1 * amount) + (r2 * inverse),
+            green: (g1 * amount) + (g2 * inverse),
+            blue: (b1 * amount) + (b2 * inverse),
+            alpha: (a1 * amount) + (a2 * inverse)
+        )
+    }
+
+    private static func opaque(_ color: UIColor) -> UIColor? {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        if color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) {
+            guard alpha >= 0.12 else { return nil }
+            return UIColor(red: red, green: green, blue: blue, alpha: 1)
+        }
+        var white: CGFloat = 0
+        if color.getWhite(&white, alpha: &alpha) {
+            guard alpha >= 0.12 else { return nil }
+            return UIColor(white: white, alpha: 1)
+        }
+        return nil
+    }
+
+    private static func contrastRatio(
+        _ first: UIColor,
+        _ second: UIColor
+    ) -> CGFloat {
+        let lighter = max(luminance(first), luminance(second))
+        let darker = min(luminance(first), luminance(second))
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    private static func luminance(_ color: UIColor) -> CGFloat {
+        guard let opaqueColor = opaque(color) else { return 0 }
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard opaqueColor.getRed(
+            &red,
+            green: &green,
+            blue: &blue,
+            alpha: &alpha
+        ) else {
+            return 0
+        }
+        func linear(_ component: CGFloat) -> CGFloat {
+            component <= 0.03928
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+        return (0.2126 * linear(red))
+            + (0.7152 * linear(green))
+            + (0.0722 * linear(blue))
+    }
+}
+
+/// Resolved pedestal geometry. Derived from the size the rail already grants a
+/// cell, so the rail's scroll anchors, "show all" grid, and per-width density
+/// contract are untouched by this redesign. The height shares account for the
+/// soft card's interior inset, so the caption never crowds the card edge.
+private struct HomeMainKindPedestalGeometry {
+    let medallionDiameter: CGFloat
+    let artworkSide: CGFloat
+    let titleLineLimit: Int
+
+    init(size: CGSize, isAccessibilitySize: Bool, isAllOption: Bool) {
+        let width = max(size.width, 1)
+        let height = max(size.height, 1)
+        let isTall = height >= 164
+
+        let ceiling: CGFloat
+        let widthShare: CGFloat
+        let heightShare: CGFloat
+        if isAccessibilitySize {
+            // Text owns the tile at accessibility sizes: the medallion yields.
+            ceiling = 44
+            widthShare = 0.42
+            heightShare = 0.26
+        } else if isTall {
+            ceiling = 92
+            widthShare = 0.62
+            heightShare = 0.52
+        } else {
+            ceiling = 78
+            widthShare = 0.62
+            heightShare = 0.50
+        }
+
+        let diameter = max(
+            44,
+            min(ceiling, min(width * widthShare, height * heightShare))
+        )
+        medallionDiameter = diameter.rounded()
+        // The "all" affordance is a system glyph, not species artwork, so it
+        // sits smaller inside the same medallion.
+        artworkSide = (medallionDiameter * (isAllOption ? 0.46 : 0.70)).rounded()
+        titleLineLimit = isAccessibilitySize ? 3 : 2
+    }
+}
+
+/// The shelf. One capsule per pedestal: a quiet socket when the species is
+/// available, an accent platform when it governs Home.
+@available(iOS 15.0, *)
+private struct HomeMainKindShelf: View {
+    let medallionDiameter: CGFloat
+    let selected: Bool
+    let accent: Color
+
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Capsule(style: .continuous)
+            .fill(fill)
+            .frame(width: width, height: height)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: HomeMainKindPedestal.shelfReservedHeight,
+                alignment: .center
+            )
+    }
+
+    private var fill: Color {
+        guard selected else {
+            return .ppSurfaceBorder.opacity(
+                contrast == .increased ? 1 : 0.85
+            )
+        }
+        return accent
+    }
+
+    private var width: CGFloat {
+        medallionDiameter * (
+            selected
+                ? HomeMainKindPedestal.shelfSelectedWidthShare
+                : HomeMainKindPedestal.shelfIdleWidthShare
+        )
+    }
+
+    private var height: CGFloat {
+        selected
+            ? HomeMainKindPedestal.shelfReservedHeight
+            : HomeMainKindPedestal.shelfIdleHeight
+    }
+}
+
+/// The medallion. A physical disc carrying species artwork, washed in that
+/// species' own `kindColor` at all times so the rail reads as a spectrum of
+/// animals instead of a row of identical boxes.
+@available(iOS 15.0, *)
+private struct HomeMainKindMedallion: View {
+    let localImage: UIImage?
+    let imageURL: String?
+    let cacheKey: String
+    let isAllOption: Bool
+    let accent: Color
+    let accentUIColor: UIColor
+    let diameter: CGFloat
+    let artworkSide: CGFloat
+    let selected: Bool
+
+    @Environment(\.homeMainKindPressed) private var pressed
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        ZStack {
+            disc
+            ring
+            artwork
+        }
+        .frame(width: diameter, height: diameter)
+        .scaleEffect(isPressedVisually ? HomeMainKindPedestal.pressScale : 1)
+        .animation(pressAnimation, value: pressed)
+    }
+
+    private var isPressedVisually: Bool {
+        pressed && !reduceMotion
+    }
+
+    private var pressAnimation: Animation? {
+        reduceMotion
+            ? nil
+            : .easeOut(duration: HomeMainKindPedestal.pressDuration)
+    }
+
+    private var discDiameter: CGFloat {
+        max(diameter - (HomeMainKindPedestal.ringLane * 2), 24)
+    }
+
+    private var disc: some View {
+        Circle()
+            // Elevated rather than raised: in dark mode this is a real step up
+            // from the card (21191C over 171214), and in light mode it is a
+            // harmless no-op, so the medallion never dissolves into the card.
+            .fill(Color.ppSurfaceElevated)
+            .overlay(wash)
+            .frame(width: discDiameter, height: discDiameter)
+            .shadow(
+                color: shadowColor,
+                radius: shadowRadius,
+                x: 0,
+                y: shadowOffsetY
+            )
+    }
+
+    @ViewBuilder
+    private var wash: some View {
+        if reduceTransparency {
+            Circle().fill(flatWash)
+        } else {
+            Circle().fill(washGradient)
+        }
+    }
+
+    private var washGradient: RadialGradient {
+        let alpha = washAlpha
+        return RadialGradient(
+            gradient: Gradient(stops: [
+                .init(color: accent.opacity(alpha), location: 0),
+                .init(color: accent.opacity(alpha * 0.46), location: 0.58),
+                .init(color: accent.opacity(0), location: 1)
+            ]),
+            center: UnitPoint(x: 0.5, y: 0.46),
+            startRadius: 0,
+            endRadius: discDiameter * 0.66
+        )
+    }
+
+    private var flatWash: Color {
+        let traits = HomeMainKindPedestal.traits(colorScheme: colorScheme)
+        return Color(
+            uiColor: HomeMainKindPedestal.blend(
+                accentUIColor,
+                with: UIColor.ppSurfaceElevated.resolvedColor(with: traits),
+                ratio: washAlpha
+            )
+        )
+    }
+
+    /// Selection deepens the wash, but an unselected species keeps a real
+    /// share of its own colour. That permanent identity is what the previous
+    /// card discarded.
+    private var washAlpha: Double {
+        if contrast == .increased {
+            return selected ? 0.54 : 0.22
+        }
+        if colorScheme == .dark {
+            return selected ? 0.42 : 0.18
+        }
+        return selected ? 0.32 : 0.13
+    }
+
+    private var ring: some View {
+        Circle()
+            .strokeBorder(ringColor, lineWidth: ringWidth)
+            .frame(width: diameter, height: diameter)
+    }
+
+    private var ringColor: Color {
+        guard selected else {
+            return .ppSurfaceBorder.opacity(contrast == .increased ? 1 : 0.72)
+        }
+        if contrast == .increased { return accent }
+        return accent.opacity(colorScheme == .dark ? 0.90 : 0.78)
+    }
+
+    private var ringWidth: CGFloat {
+        guard selected else { return HomeMainKindPedestal.idleRingWidth }
+        return contrast == .increased
+            ? HomeMainKindPedestal.highContrastRingWidth
+            : HomeMainKindPedestal.selectedRingWidth
+    }
+
+    private var shadowColor: Color {
+        guard contrast != .increased else { return .clear }
+        return .black.opacity(colorScheme == .dark ? 0.26 : 0.10)
+    }
+
+    private var shadowRadius: CGFloat {
+        contrast == .increased ? 0 : (isPressedVisually ? 4 : 8)
+    }
+
+    private var shadowOffsetY: CGFloat {
+        contrast == .increased ? 0 : (isPressedVisually ? 1 : 4)
+    }
+
+    @ViewBuilder
+    private var artwork: some View {
+        if isAllOption {
+            Image(systemName: "square.grid.2x2.fill")
+                .font(.system(size: artworkSide, weight: .semibold))
+                .foregroundColor(selected ? accent : .ppTextSecondary)
+                .frame(width: artworkSide, height: artworkSide)
+        } else if let normalizedURL {
+            AppRemoteImage(
+                urlString: normalizedURL,
+                cacheKey: cacheKey,
+                displaySize: CGSize(width: artworkSide, height: artworkSide),
+                contentMode: .fit
+            ) {
+                placeholderArtwork
+            } failurePlaceholder: {
+                placeholderArtwork
+            }
+            .frame(width: artworkSide, height: artworkSide)
+        } else {
+            placeholderArtwork
+                .frame(width: artworkSide, height: artworkSide)
+        }
+    }
+
+    @ViewBuilder
+    private var placeholderArtwork: some View {
+        if let localImage {
+            Image(uiImage: localImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+        } else {
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: artworkSide * 0.72, weight: .semibold))
+                .foregroundColor(accent)
+        }
+    }
+
+    private var normalizedURL: String? {
+        guard let imageURL else { return nil }
+        let trimmed = imageURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+/// iOS 16 restored the Large Content Viewer for custom SwiftUI controls, which
+/// the retired UIKit cell provided through `showsLargeContentViewer`.
+@available(iOS 15.0, *)
+private struct HomeMainKindLargeContentViewer: ViewModifier {
+    let title: String
+    let symbolName: String
+
+    func body(content: Content) -> some View {
+        Group {
+            if #available(iOS 16.0, *) {
+                content.accessibilityShowsLargeContentViewer {
+                    Label(title, systemImage: symbolName)
+                }
+            } else {
+                content
+            }
+        }
+    }
+}
+
+/// The production MainKind pedestal used by `HomeCategoryRail`.
+///
+/// Selection is committed on touch-up with no artificial delay: scoping Home is
+/// the dominant action on this screen and must not wait on presentation. The
+/// selection haptic and the route stay owned by `HomeStore.selectCategory`.
+@available(iOS 15.0, *)
+private struct HomeMainKindPedestalCell: View {
+    let category: HomeCategoryModel?
+    let selected: Bool
+    let size: CGSize
+    let onSelect: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Button(action: onSelect) {
+            pedestal
+        }
+        .buttonStyle(HomeMainKindPedestalButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier(accessibilityIdentifier)
+        .modifier(
+            HomeMainKindLargeContentViewer(
+                title: title,
+                symbolName: isAllOption
+                    ? "square.grid.2x2.fill"
+                    : "pawprint.fill"
+            )
+        )
+    }
+
+    private var pedestal: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+
+            HomeMainKindMedallion(
+                localImage: category?.localImage,
+                imageURL: category?.imageURL,
+                cacheKey: cacheKey,
+                isAllOption: isAllOption,
+                accent: Color(uiColor: accentUIColor),
+                accentUIColor: accentUIColor,
+                diameter: geometry.medallionDiameter,
+                artworkSide: geometry.artworkSide,
+                selected: selected
+            )
+
+            HomeMainKindShelf(
+                medallionDiameter: geometry.medallionDiameter,
+                selected: selected,
+                accent: Color(uiColor: accentUIColor)
+            )
+            .padding(.top, PPSpace.xs)
+
+            Text(title)
+                .font(titleFont)
+                .foregroundColor(selected ? .ppTextPrimary : .ppTextSecondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(geometry.titleLineLimit)
+                .minimumScaleFactor(0.78)
+                .padding(.top, PPSpace.xs)
+                .padding(.horizontal, PPSpace.sm)
+                .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, HomeMainKindPedestal.cardContentInset)
+        .frame(width: size.width, height: size.height)
+        .background(card)
+        .contentShape(Rectangle())
+        .animation(settleAnimation, value: selected)
+    }
+
+    /// The soft card: a quiet plinth the pedestal stands in. No hard border, a
+    /// wide diffuse shadow that stays behind the medallion's tighter one, and a
+    /// continuous corner curve matching `PPCorner.card`. Increased contrast
+    /// drops the shadow and substitutes a hairline so the card edge survives.
+    private var card: some View {
+        RoundedRectangle(
+            cornerRadius: HomeMainKindPedestal.cardRadius,
+            style: .continuous
+        )
+        .fill(
+            Color(
+                uiColor: HomeMainKindPedestal.cardSurface(
+                    accent: accentUIColor,
+                    selected: selected,
+                    traits: HomeMainKindPedestal.traits(
+                        colorScheme: colorScheme
+                    ),
+                    highContrast: contrast == .increased
+                )
+            )
+        )
+        .overlay(cardHairline)
+        .shadow(
+            color: cardShadowColor,
+            radius: cardShadowRadius,
+            x: 0,
+            y: cardShadowOffsetY
+        )
+    }
+
+    @ViewBuilder
+    private var cardHairline: some View {
+        if contrast == .increased {
+            RoundedRectangle(
+                cornerRadius: HomeMainKindPedestal.cardRadius,
+                style: .continuous
+            )
+            .strokeBorder(
+                selected
+                    ? Color(uiColor: accentUIColor)
+                    : Color.ppSurfaceBorder,
+                lineWidth: selected ? 2 : 1
+            )
+        } else if selected {
+            RoundedRectangle(
+                cornerRadius: HomeMainKindPedestal.cardRadius,
+                style: .continuous
+            )
+            .strokeBorder(
+                Color(uiColor: accentUIColor).opacity(
+                    colorScheme == .dark ? 0.38 : 0.22
+                ),
+                lineWidth: 1
+            )
+        }
+    }
+
+    private var cardShadowColor: Color {
+        guard contrast != .increased else { return .clear }
+        return .black.opacity(colorScheme == .dark ? 0.16 : 0.045)
+    }
+
+    private var cardShadowRadius: CGFloat {
+        contrast == .increased ? 0 : 12
+    }
+
+    private var cardShadowOffsetY: CGFloat {
+        contrast == .increased ? 0 : 6
+    }
+
+    /// One animation owner for the whole selection change: the shelf is built,
+    /// the ring thickens, the wash deepens, and the caption gains weight
+    /// together. Reduce Motion keeps every one of those state changes and drops
+    /// only the interpolation.
+    private var settleAnimation: Animation? {
+        reduceMotion
+            ? nil
+            : .spring(
+                response: HomeMainKindPedestal.settleResponse,
+                dampingFraction: HomeMainKindPedestal.settleDamping,
+                blendDuration: 0.05
+            )
+    }
+
+    private var geometry: HomeMainKindPedestalGeometry {
+        HomeMainKindPedestalGeometry(
+            size: size,
+            isAccessibilitySize: dynamicTypeSize.isAccessibilitySize,
+            isAllOption: isAllOption
+        )
+    }
+
+    private var isAllOption: Bool {
+        category == nil
+    }
+
+    private var title: String {
+        guard let category else {
+            return HomeModelAdapter.localized("all", fallback: "all")
+        }
+        return category.title
+    }
+
+    private var cacheKey: String {
+        "home-main-kind|\(category?.id ?? "all")"
+    }
+
+    private var accessibilityIdentifier: String {
+        guard let category else { return "home.mainKinds.all" }
+        return "home.mainKinds.\(HomeModelAdapter.mainKindID(category.raw))"
+    }
+
+    private var accentUIColor: UIColor {
+        HomeMainKindPedestal.resolvedAccent(
+            category?.accent ?? .ppPrimary,
+            traits: HomeMainKindPedestal.traits(colorScheme: colorScheme),
+            highContrast: contrast == .increased
+        )
+    }
+
+    private var titleFont: Font {
+        let name = selected ? "Beiruti-Bold" : "Beiruti-Medium"
+        let base = UIFont(name: name, size: 15)
+            ?? UIFont.systemFont(
+                ofSize: 15,
+                weight: selected ? .bold : .semibold
+            )
+        // The 24pt ceiling is carried over from the retired UIKit cell: past it
+        // the caption stops scaling and the tile stays composed at AX5.
+        let scaled = UIFontMetrics(forTextStyle: .subheadline).scaledFont(
+            for: base,
+            maximumPointSize: 24
+        )
+        return Font(scaled as CTFont)
+    }
+}
+
+/// Rollback seam for the pedestal redesign.
+///
+/// `PPMainKindsCell` remains in the target and is still reachable through this
+/// adapter: restoring the previous card is a one-line swap inside
+/// `HomeCategoryRail.categoryCell`. Exactly one of the two is active at a time.
 private struct HomeMainKindCellRepresentable: UIViewRepresentable {
     let category: HomeCategoryModel?
     let selected: Bool

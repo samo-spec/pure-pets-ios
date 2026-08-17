@@ -135,8 +135,23 @@ struct PPOrderLivingHandoffRail: View {
         Self.journeySteps.firstIndex { $0.key == normalizedStatusKey }
     }
 
+    private var isRTL: Bool {
+        if let layoutDirectionOverride {
+            return layoutDirectionOverride == .rightToLeft
+        }
+        return Language.isRTL() || layoutDirection == .rightToLeft
+    }
+
     private var resolvedLayoutDirection: LayoutDirection {
-        layoutDirectionOverride ?? layoutDirection
+        isRTL ? .rightToLeft : .leftToRight
+    }
+
+    private var footerNextStatusFont: Font {
+        .custom("Beiruti-Bold", size: presentation == .hero ? 14 : 12.5, relativeTo: .caption)
+    }
+
+    private var footerTimeFont: Font {
+        .custom("Beiruti-Medium", size: presentation == .hero ? 13 : 11.5, relativeTo: .caption)
     }
 
     var body: some View {
@@ -282,6 +297,13 @@ struct PPOrderLivingHandoffRail: View {
                             )
                     }
                 }
+                // Absolute placement must resolve in a physical coordinate
+                // space. `RailGeometry.futureDirection` is the single owner of
+                // journey direction, so this canvas stays left-to-right and RTL
+                // is expressed by the geometry vector alone. Without this pin,
+                // SwiftUI also mirrors every `position(x:)`, the two flips
+                // cancel, and Arabic renders identically to English.
+                .environment(\.layoutDirection, .leftToRight)
             }
             .frame(height: presentation.railHeight)
 
@@ -310,6 +332,7 @@ struct PPOrderLivingHandoffRail: View {
                         updatedAtText,
                         systemImage: "clock.arrow.circlepath"
                     )
+                    .font(footerTimeFont)
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
                 }
@@ -321,19 +344,20 @@ struct PPOrderLivingHandoffRail: View {
 
                     HStack(spacing: 5) {
                         Text(resolvedTitle(for: next))
+                            .font(footerNextStatusFont)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
 
-                        Image(systemName: "arrow.forward")
+                        Image(systemName: isRTL ? "arrow.left" : "arrow.forward")
                             .font(.system(size: 9, weight: .bold))
                     }
                     .foregroundStyle(accent)
                 } else {
                     Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(accent)
                 }
             }
-            .font(.caption)
         }
     }
 
@@ -363,8 +387,12 @@ struct PPOrderLivingHandoffRail: View {
                     updatedAtText,
                     systemImage: "clock.arrow.circlepath"
                 )
-                .font(.caption)
+                .font(footerTimeFont)
                 .foregroundStyle(.secondary)
+                // `.leading` already resolves to the right edge under the
+                // resolved RTL environment. Selecting `.trailing` for Arabic
+                // mirrored an already-mirrored alignment and pushed the
+                // timestamp to the physical left.
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -510,6 +538,10 @@ struct PPOrderLivingHandoffRail: View {
                                 visualDistance == 1 ? 0.68 : 0.46
                             )
                     )
+                    // The canvas is pinned left-to-right for placement only.
+                    // Glyphs keep the language direction so badge-bearing
+                    // symbols still mirror in Arabic.
+                    .environment(\.layoutDirection, resolvedLayoutDirection)
             }
             .frame(width: diameter, height: diameter)
             .opacity(isCompleted ? 1 : (visualDistance == 1 ? 0.72 : 0.52))
@@ -581,6 +613,8 @@ struct PPOrderLivingHandoffRail: View {
                     )
                 )
                 .foregroundStyle(accent)
+                // See `node(step:...)`: placement is pinned, glyphs are not.
+                .environment(\.layoutDirection, resolvedLayoutDirection)
         }
         .frame(
             width: presentation.activeDiameter,
