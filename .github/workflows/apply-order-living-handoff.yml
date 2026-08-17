@@ -1,0 +1,620 @@
+name: Apply Order Living Handoff Rail
+
+on:
+  push:
+    branches:
+      - feat/order-living-handoff-rail
+    paths:
+      - .github/workflows/apply-order-living-handoff.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/order-living-handoff-rail
+          fetch-depth: 0
+
+      - name: Apply scoped SwiftUI refactor
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift')
+          source = path.read_text()
+
+          source = source.replace(
+              'import MapKit\nimport SwiftUI',
+              'import Foundation\nimport MapKit\nimport SwiftUI',
+              1,
+          )
+
+          old_progress = '''            VStack(spacing: PPSpace.sm) {
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.ppSeparator.opacity(0.55))
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [accent.opacity(0.72), accent],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(
+                                width: max(
+                                    10,
+                                    proxy.size.width * store.state.statusProgress
+                                )
+                            )
+                    }
+                }
+                .frame(height: 8)
+
+                HStack {
+                    Label(
+                        store.state.updatedAtText,
+                        systemImage: "clock.arrow.circlepath"
+                    )
+                    Spacer()
+                    Text("\\(Int(store.state.statusProgress * 100))%")
+                        .environment(\\.layoutDirection, .leftToRight)
+                }
+                .font(PPOrderMissionTypography.caption())
+                .foregroundStyle(Color.ppTextSecondary)
+            }'''
+
+          replacement = '''            orderHandoffRail'''
+          if old_progress not in source:
+              raise SystemExit('Expected legacy hero progress block was not found; refusing to edit.')
+          source = source.replace(old_progress, replacement, 1)
+
+          marker = '''    private var timelineSection: some View {'''
+          if marker not in source:
+              raise SystemExit('Timeline insertion point not found; refusing to edit.')
+
+          helpers = r'''
+    private static let orderJourneySteps: [(key: String, symbol: String)] = [
+        ("pending", "bag.badge.plus"),
+        ("preparing_for_shipment", "shippingbox"),
+        ("ready_for_delivery", "shippingbox.fill"),
+        ("delivery_partner_assigned", "person.crop.circle.badge.checkmark"),
+        ("on_the_way", "location.fill"),
+        ("delivered", "house.fill"),
+        ("completed", "checkmark.seal.fill")
+    ]
+
+    private var normalizedJourneyStatusKey: String {
+        store.state.statusKey
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "-", with: "_")
+    }
+
+    private var orderJourneyCurrentIndex: Int? {
+        Self.orderJourneySteps.firstIndex {
+            $0.key == normalizedJourneyStatusKey
+        }
+    }
+
+    @ViewBuilder
+    private var orderHandoffRail: some View {
+        if let currentIndex = orderJourneyCurrentIndex {
+            VStack(spacing: PPSpace.sm) {
+                GeometryReader { proxy in
+                    let width = max(proxy.size.width, 1)
+                    let centerX = width / 2
+                    let futureDirection: CGFloat = store.isRightToLeft ? -1 : 1
+                    let lineY: CGFloat = 29
+
+                    ZStack {
+                        if currentIndex > 1 {
+                            handoffConnector(
+                                from: handoffNodeX(
+                                    index: currentIndex - 2,
+                                    currentIndex: currentIndex,
+                                    width: width,
+                                    futureDirection: futureDirection
+                                ),
+                                to: handoffNodeX(
+                                    index: currentIndex - 1,
+                                    currentIndex: currentIndex,
+                                    width: width,
+                                    futureDirection: futureDirection
+                                ),
+                                y: lineY,
+                                color: accent.opacity(0.20),
+                                height: 2
+                            )
+                        }
+
+                        if currentIndex > 0 {
+                            handoffConnector(
+                                from: handoffNodeX(
+                                    index: currentIndex - 1,
+                                    currentIndex: currentIndex,
+                                    width: width,
+                                    futureDirection: futureDirection
+                                ),
+                                to: centerX,
+                                y: lineY,
+                                color: accent.opacity(0.32),
+                                height: 2.5
+                            )
+                        }
+
+                        if currentIndex < Self.orderJourneySteps.count - 1 {
+                            let nextX = handoffNodeX(
+                                index: currentIndex + 1,
+                                currentIndex: currentIndex,
+                                width: width,
+                                futureDirection: futureDirection
+                            )
+
+                            handoffConnector(
+                                from: centerX,
+                                to: nextX,
+                                y: lineY,
+                                color: accent.opacity(0.16),
+                                height: 4
+                            )
+
+                            if !reduceMotion {
+                                handoffTravelPulse(
+                                    from: centerX,
+                                    to: nextX,
+                                    y: lineY
+                                )
+                            }
+                        }
+
+                        if currentIndex + 2 < Self.orderJourneySteps.count {
+                            handoffConnector(
+                                from: handoffNodeX(
+                                    index: currentIndex + 1,
+                                    currentIndex: currentIndex,
+                                    width: width,
+                                    futureDirection: futureDirection
+                                ),
+                                to: handoffNodeX(
+                                    index: currentIndex + 2,
+                                    currentIndex: currentIndex,
+                                    width: width,
+                                    futureDirection: futureDirection
+                                ),
+                                y: lineY,
+                                color: Color.ppSeparator.opacity(0.62),
+                                height: 1.5
+                            )
+                        }
+
+                        ForEach(Self.orderJourneySteps.indices, id: \.self) { stepIndex in
+                            if abs(stepIndex - currentIndex) <= 2 {
+                                let step = Self.orderJourneySteps[stepIndex]
+                                handoffNode(
+                                    symbol: step.symbol,
+                                    title: handoffStepTitle(step.key),
+                                    isActive: stepIndex == currentIndex,
+                                    isCompleted: stepIndex < currentIndex,
+                                    showsTitle: stepIndex == currentIndex + 1
+                                )
+                                .position(
+                                    x: handoffNodeX(
+                                        index: stepIndex,
+                                        currentIndex: currentIndex,
+                                        width: width,
+                                        futureDirection: futureDirection
+                                    ),
+                                    y: lineY
+                                )
+                                .zIndex(stepIndex == currentIndex ? 4 : 2)
+                            }
+                        }
+
+                        if currentIndex > 2 {
+                            handoffClusterMarker
+                                .position(
+                                    x: handoffCollapsedX(
+                                        isFuture: false,
+                                        width: width,
+                                        futureDirection: futureDirection
+                                    ),
+                                    y: lineY
+                                )
+                        }
+
+                        if Self.orderJourneySteps.count - currentIndex - 1 > 2 {
+                            handoffClusterMarker
+                                .position(
+                                    x: handoffCollapsedX(
+                                        isFuture: true,
+                                        width: width,
+                                        futureDirection: futureDirection
+                                    ),
+                                    y: lineY
+                                )
+                        }
+                    }
+                }
+                .frame(height: 68)
+
+                HStack(spacing: PPSpace.sm) {
+                    Label(
+                        store.state.updatedAtText,
+                        systemImage: "clock.arrow.circlepath"
+                    )
+                    .lineLimit(1)
+
+                    Spacer(minLength: PPSpace.sm)
+
+                    if currentIndex < Self.orderJourneySteps.count - 1 {
+                        HStack(spacing: 5) {
+                            Text(
+                                handoffStepTitle(
+                                    Self.orderJourneySteps[currentIndex + 1].key
+                                )
+                            )
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                            Image(
+                                systemName: store.isRightToLeft
+                                    ? "arrow.left"
+                                    : "arrow.right"
+                            )
+                            .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundStyle(accent)
+                    } else {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(accent)
+                    }
+                }
+                .font(PPOrderMissionTypography.caption(11))
+                .foregroundStyle(Color.ppTextSecondary)
+            }
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(response: 0.58, dampingFraction: 0.84),
+                value: currentIndex
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(store.state.statusTitle)
+            .accessibilityValue(
+                "\(currentIndex + 1) / \(Self.orderJourneySteps.count)"
+            )
+        } else {
+            orderHandoffExceptionRail
+        }
+    }
+
+    private var orderHandoffExceptionRail: some View {
+        VStack(spacing: PPSpace.sm) {
+            GeometryReader { proxy in
+                let centerX = proxy.size.width / 2
+                ZStack {
+                    Capsule()
+                        .fill(Color.ppSeparator.opacity(0.48))
+                        .frame(height: 2)
+                    Circle()
+                        .fill(accent.opacity(0.13))
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            Circle().stroke(accent.opacity(0.36), lineWidth: 1)
+                        )
+                        .overlay {
+                            Image(systemName: store.state.statusSymbol)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(accent)
+                        }
+                        .position(x: centerX, y: 25)
+                }
+            }
+            .frame(height: 50)
+
+            Label(
+                store.state.updatedAtText,
+                systemImage: "clock.arrow.circlepath"
+            )
+            .font(PPOrderMissionTypography.caption(11))
+            .foregroundStyle(Color.ppTextSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(store.state.statusTitle)
+        .accessibilityValue(store.state.statusHint)
+    }
+
+    private func handoffNodeX(
+        index: Int,
+        currentIndex: Int,
+        width: CGFloat,
+        futureDirection: CGFloat
+    ) -> CGFloat {
+        let centerX = width / 2
+        let compactGap = min(38, max(30, width * 0.095))
+        let completedLead = min(48, max(42, width * 0.125))
+        let activeToNextGap = min(94, max(76, width * 0.24))
+
+        let rawX: CGFloat
+        if index < currentIndex {
+            let delta = CGFloat(currentIndex - index - 1)
+            rawX = centerX - futureDirection * (completedLead + compactGap * delta)
+        } else if index > currentIndex {
+            let delta = CGFloat(index - currentIndex - 1)
+            rawX = centerX + futureDirection * (activeToNextGap + compactGap * delta)
+        } else {
+            rawX = centerX
+        }
+
+        return min(max(rawX, 18), max(18, width - 18))
+    }
+
+    private func handoffCollapsedX(
+        isFuture: Bool,
+        width: CGFloat,
+        futureDirection: CGFloat
+    ) -> CGFloat {
+        let direction = isFuture ? futureDirection : -futureDirection
+        return direction > 0 ? max(12, width - 12) : 12
+    }
+
+    private func handoffConnector(
+        from: CGFloat,
+        to: CGFloat,
+        y: CGFloat,
+        color: Color,
+        height: CGFloat
+    ) -> some View {
+        Capsule()
+            .fill(color)
+            .frame(width: max(1, abs(to - from)), height: height)
+            .position(x: (from + to) / 2, y: y)
+            .accessibilityHidden(true)
+    }
+
+    private func handoffTravelPulse(
+        from: CGFloat,
+        to: CGFloat,
+        y: CGFloat
+    ) -> some View {
+        Circle()
+            .fill(accent)
+            .frame(width: 7, height: 7)
+            .phaseAnimator([0, 1, 2]) { content, phase in
+                let progress: CGFloat = phase == 0 ? 0 : 1
+                content
+                    .position(
+                        x: from + ((to - from) * progress),
+                        y: y
+                    )
+                    .opacity(phase == 0 ? 0.16 : (phase == 1 ? 0.95 : 0))
+                    .scaleEffect(phase == 1 ? 1 : 0.68)
+            } animation: { phase in
+                switch phase {
+                case 0:
+                    return .linear(duration: 0.01)
+                case 1:
+                    return .easeInOut(duration: 1.35)
+                default:
+                    return .easeOut(duration: 0.28)
+                }
+            }
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func handoffNode(
+        symbol: String,
+        title: String,
+        isActive: Bool,
+        isCompleted: Bool,
+        showsTitle: Bool
+    ) -> some View {
+        if isActive {
+            handoffActiveNode(symbol: symbol)
+        } else {
+            VStack(spacing: 4) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            isCompleted
+                                ? accent.opacity(0.96)
+                                : Color.ppSurfaceOverlay
+                        )
+                    Circle()
+                        .stroke(
+                            isCompleted
+                                ? accent.opacity(0.22)
+                                : Color.ppSurfaceBorder,
+                            lineWidth: 1
+                        )
+                    Image(systemName: symbol)
+                        .font(.system(size: isCompleted ? 12 : 11, weight: .semibold))
+                        .foregroundStyle(
+                            isCompleted ? Color.white : Color.ppTextTertiary
+                        )
+                }
+                .frame(
+                    width: isCompleted ? 30 : 32,
+                    height: isCompleted ? 30 : 32
+                )
+
+                if showsTitle {
+                    Text(title)
+                        .font(PPOrderMissionTypography.caption(10))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .frame(width: 94)
+                }
+            }
+            .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private func handoffActiveNode(symbol: String) -> some View {
+        if reduceMotion {
+            handoffActiveMembrane(symbol: symbol, phase: 0)
+        } else {
+            Color.clear
+                .frame(width: 54, height: 54)
+                .phaseAnimator([0, 1, 2, 3]) { content, phase in
+                    content.overlay {
+                        handoffActiveMembrane(
+                            symbol: symbol,
+                            phase: CGFloat(phase) / 3
+                        )
+                    }
+                } animation: { phase in
+                    phase == 0
+                        ? .linear(duration: 0.01)
+                        : .linear(duration: 1.55)
+                }
+        }
+    }
+
+    private func handoffActiveMembrane(
+        symbol: String,
+        phase: CGFloat
+    ) -> some View {
+        let shape = OrderHandoffMembrane(phase: phase)
+        return ZStack {
+            shape.fill(Color.ppSurfaceElevated)
+            shape.fill(accent.opacity(0.13))
+            shape.stroke(accent.opacity(0.52), lineWidth: 1.1)
+            Image(systemName: symbol)
+                .font(.system(size: 19, weight: .bold))
+                .foregroundStyle(accent)
+        }
+        .frame(width: 54, height: 54)
+        .accessibilityHidden(true)
+    }
+
+    private var handoffClusterMarker: some View {
+        Image(systemName: "ellipsis")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(Color.ppTextTertiary)
+            .frame(width: 20, height: 20)
+            .accessibilityHidden(true)
+    }
+
+    private func handoffStepTitle(_ key: String) -> String {
+        switch key {
+        case "pending":
+            return PPOrderMissionText("order_placed_title")
+        case "preparing_for_shipment":
+            return PPOrderMissionText("Preparing for Shipment")
+        case "ready_for_delivery":
+            return PPOrderMissionText("Ready for Delivery")
+        case "delivery_partner_assigned":
+            return PPOrderMissionText("Delivery Partner Assigned")
+        case "on_the_way":
+            return PPOrderMissionText("On the Way")
+        case "delivered":
+            return PPOrderMissionText("Delivered")
+        case "completed":
+            return PPOrderMissionText("Completed")
+        default:
+            return store.state.statusTitle
+        }
+    }
+
+    private struct OrderHandoffMembrane: Shape {
+        var phase: CGFloat
+
+        var animatableData: CGFloat {
+            get { phase }
+            set { phase = newValue }
+        }
+
+        func path(in rect: CGRect) -> Path {
+            let pointCount = 18
+            let center = CGPoint(x: rect.midX, y: rect.midY)
+            let baseRadius = min(rect.width, rect.height) * 0.48
+            var points: [CGPoint] = []
+            points.reserveCapacity(pointCount)
+
+            for index in 0..<pointCount {
+                let angle = (CGFloat(index) / CGFloat(pointCount)) * (.pi * 2)
+                let travel = phase * (.pi * 2)
+                let waveA = CGFloat(
+                    sin(Double((angle * 3) + travel))
+                ) * 0.022
+                let waveB = CGFloat(
+                    sin(Double((angle * 2) - (travel * 0.72)))
+                ) * 0.011
+                let radius = baseRadius * (1 + waveA + waveB)
+                points.append(
+                    CGPoint(
+                        x: center.x + cos(angle) * radius,
+                        y: center.y + sin(angle) * radius
+                    )
+                )
+            }
+
+            guard let first = points.first,
+                  let last = points.last
+            else { return Path() }
+
+            var path = Path()
+            path.move(
+                to: CGPoint(
+                    x: (last.x + first.x) / 2,
+                    y: (last.y + first.y) / 2
+                )
+            )
+
+            for index in 0..<pointCount {
+                let current = points[index]
+                let next = points[(index + 1) % pointCount]
+                let midpoint = CGPoint(
+                    x: (current.x + next.x) / 2,
+                    y: (current.y + next.y) / 2
+                )
+                path.addQuadCurve(to: midpoint, control: current)
+            }
+
+            path.closeSubpath()
+            return path
+        }
+    }
+
+'''
+          source = source.replace(marker, helpers + marker, 1)
+          path.write_text(source)
+          PY
+
+          git diff --check
+          grep -q 'private var orderHandoffRail' 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+          grep -q 'private struct OrderHandoffMembrane' 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+
+      - name: Build Pure Pets device target
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace 'Pure Pets.xcworkspace' \
+            -scheme 'Pure Pets' \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee /tmp/order-handoff-build.log
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/apply-order-living-handoff.yml
+          git add 'Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderDetailsMissionControlViews.swift'
+          git commit -m 'feat: add living order handoff rail'
+          git push origin HEAD:feat/order-living-handoff-rail
