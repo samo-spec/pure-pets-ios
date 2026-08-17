@@ -10,6 +10,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat/order-living-handoff-rail
+      - name: Prepare CocoaPods workspace
+        shell: bash
+        run: |
+          pod --version
+          pod install
       - name: Build device target
         shell: bash
         run: |
