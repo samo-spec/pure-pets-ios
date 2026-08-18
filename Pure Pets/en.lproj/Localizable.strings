@@ -4561,6 +4561,7 @@
 "order_mission_address_not_selectable" = "Update this saved address before using it for this order.";
 "order_mission_location_unavailable" = "No verified delivery coordinate is available for this order.";
 "order_mission_address_edit_hint" = "You can change the delivery address while the order is pending.";
+"order_mission_address_snapshot_locked" = "This order keeps the delivery address captured at checkout. Contact support if it must be changed.";
 "order_mission_requests_hint" = "Review active and completed support cases.";
 "order_mission_no_support_activity" = "No support cases are attached to this order.";
 "order_mission_action_unavailable" = "This command is not available for the current order state.";

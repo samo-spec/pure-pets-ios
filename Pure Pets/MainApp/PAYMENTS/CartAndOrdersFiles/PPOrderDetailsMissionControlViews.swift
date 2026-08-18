@@ -508,15 +508,17 @@ struct PPOrderDetailsMissionControlScreen: View {
                 .foregroundStyle(Color.ppTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button(action: store.presentAddresses) {
-                PPOrderMissionDisclosureLabel(
-                    title: PPOrderMissionText("Select Delivery Location"),
-                    symbol: store.state.addressEditable ? "pencil" : "lock"
-                )
-                .opacity(store.state.addressEditable ? 1 : 0.64)
+            if store.state.fulfillmentVersion != 1 {
+                Button(action: store.presentAddresses) {
+                    PPOrderMissionDisclosureLabel(
+                        title: PPOrderMissionText("Select Delivery Location"),
+                        symbol: store.state.addressEditable ? "pencil" : "lock"
+                    )
+                    .opacity(store.state.addressEditable ? 1 : 0.64)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(store.state.addressEditMessage)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint(store.state.addressEditMessage)
         }
     }
 

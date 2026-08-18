@@ -173,10 +173,100 @@ static BOOL PPAppDelegateIsChatNotificationPayload(NSDictionary *userInfo) {
            threadID.length > 0;
 }
 
+static NSString *PPAppDelegateNotificationIDFromPayload(NSDictionary *userInfo) {
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    NSString *notificationID = PPAppDelegateFirstScalarForKeys(safePayload, @[@"notificationId"]);
+    return notificationID.length > 0
+        ? notificationID
+        : PPAppDelegateFirstScalarForKeys(meta, @[@"notificationId"]);
+}
+
+static BOOL PPAppDelegateHasSafeNotificationID(NSDictionary *userInfo) {
+    NSString *notificationID = PPAppDelegateNotificationIDFromPayload(userInfo);
+    return notificationID.length > 0 && notificationID.length <= 500 &&
+        [notificationID rangeOfString:@"/"].location == NSNotFound;
+}
+
+static BOOL PPAppDelegateTargetsUserApp(NSDictionary *userInfo) {
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    NSString *targetApp = [[PPAppDelegateFirstScalarForKeys(
+        safePayload,
+        @[@"targetApp", @"targetAppId", @"appId"]
+    ) lowercaseString] copy];
+    if (targetApp.length == 0) {
+        targetApp = [[PPAppDelegateFirstScalarForKeys(
+            meta,
+            @[@"targetApp", @"targetAppId", @"appId"]
+        ) lowercaseString] copy];
+    }
+    if (targetApp.length > 0) {
+        return [targetApp isEqualToString:kPPNotificationV2UserAppID];
+    }
+
+    id rawTargets = safePayload[@"targetApps"] ?: meta[@"targetApps"];
+    if (![rawTargets isKindOfClass:NSArray.class]) return NO;
+    for (id rawTarget in (NSArray *)rawTargets) {
+        if ([[PPAppDelegateScalarString(rawTarget) lowercaseString]
+                isEqualToString:kPPNotificationV2UserAppID]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 static BOOL PPAppDelegateIsTargetedAwayFromUserApp(NSDictionary *userInfo) {
-    if (![userInfo isKindOfClass:NSDictionary.class]) return NO;
-    NSString *targetApp = [PPAppDelegateTrimmedString(userInfo[@"targetApp"] ?: userInfo[@"targetAppId"] ?: userInfo[@"appId"]) lowercaseString];
-    return targetApp.length > 0 && ![targetApp isEqualToString:kPPNotificationV2UserAppID];
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    BOOL declaresTarget = PPAppDelegateFirstScalarForKeys(
+        safePayload,
+        @[@"targetApp", @"targetAppId", @"appId"]
+    ).length > 0 || PPAppDelegateFirstScalarForKeys(
+        meta,
+        @[@"targetApp", @"targetAppId", @"appId"]
+    ).length > 0 || [safePayload[@"targetApps"] isKindOfClass:NSArray.class] ||
+        [meta[@"targetApps"] isKindOfClass:NSArray.class];
+    return declaresTarget && !PPAppDelegateTargetsUserApp(safePayload);
+}
+
+static BOOL PPAppDelegateHasExactNotificationV2Schema(NSDictionary *userInfo) {
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    NSString *schema = PPAppDelegateScalarString(safePayload[@"schemaVersion"] ?: meta[@"schemaVersion"]);
+    return [schema isEqualToString:@"2"];
+}
+
+static BOOL PPAppDelegateIsOrderLifecycleNotification(NSDictionary *userInfo) {
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    NSString *type = [[PPAppDelegateFirstScalarForKeys(
+        safePayload,
+        @[@"eventType", @"notificationType", @"type"]
+    ) lowercaseString] copy];
+    if (type.length == 0) {
+        type = [[PPAppDelegateFirstScalarForKeys(
+            meta,
+            @[@"eventType", @"notificationType", @"type"]
+        ) lowercaseString] copy];
+    }
+    NSString *route = [[PPAppDelegateFirstScalarForKeys(safePayload, @[@"route"]) lowercaseString] copy];
+    return PPAppDelegateOrderIDFromPayload(safePayload).length > 0 ||
+        [type hasPrefix:@"order"] || [type hasPrefix:@"customer.order"] ||
+        [type hasPrefix:@"customer.payment"] || [type hasPrefix:@"customer.delivery"] ||
+        [type hasPrefix:@"customer.fulfillment"] || [type hasPrefix:@"customer.stock"] ||
+        [route isEqualToString:@"order"] || [route isEqualToString:@"orders"] ||
+        [route isEqualToString:@"order_details"];
+}
+
+static BOOL PPAppDelegateHasNotificationV2Marker(NSDictionary *userInfo) {
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    return safePayload[@"schemaVersion"] != nil || meta[@"schemaVersion"] != nil ||
+        safePayload[@"notificationId"] != nil || meta[@"notificationId"] != nil ||
+        safePayload[@"targetApp"] != nil || meta[@"targetApp"] != nil ||
+        safePayload[@"targetApps"] != nil || meta[@"targetApps"] != nil ||
+        safePayload[@"eventType"] != nil || meta[@"eventType"] != nil;
 }
 
 static BOOL PPAppDelegateIsProviderOnlyNotificationPayload(NSDictionary *userInfo) {
@@ -397,6 +487,22 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
 
 @implementation AppDelegate
+
++ (BOOL)pp_isNotificationPayloadRoutable:(NSDictionary *)payload
+{
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(payload);
+    if (safePayload.count == 0 || PPAppDelegateIsProviderOnlyNotificationPayload(safePayload)) {
+        return NO;
+    }
+    BOOL requiresNotificationV2 = PPAppDelegateIsOrderLifecycleNotification(safePayload) ||
+        PPAppDelegateHasNotificationV2Marker(safePayload);
+    if (!requiresNotificationV2) {
+        return YES;
+    }
+    return PPAppDelegateHasExactNotificationV2Schema(safePayload) &&
+        PPAppDelegateTargetsUserApp(safePayload) &&
+        PPAppDelegateHasSafeNotificationID(safePayload);
+}
 
 
 
@@ -687,7 +793,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     if (trimmed.length == 0) return;
 
     NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    [prefs setObject:trimmed forKey:@"PPUserTokenID"];
+    [prefs removeObjectForKey:@"PPUserTokenID"];
     [prefs setObject:trimmed forKey:@"deviceToken"];
     [prefs synchronize];
 }
@@ -1193,8 +1299,6 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
         [self pp_storeFCMTokenLocally:trimmed];
 
         if (UserManager.sharedManager.currentUser.ID.length) {
-            [UserManager.sharedManager updateCurrentUserWithPPUserTokenID:trimmed];
-            NSLog(@"[FIRMessaging] Synced FCM token to Firestore for current user");
             [self pp_attemptNotificationV2RegistrationForReason:kPPNotificationV2ReasonLegacySync];
         } else {
             NSLog(@"[FIRMessaging] Stored FCM token locally (user not logged in yet)");
@@ -1279,7 +1383,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 didReceiveRemoteNotification:(NSDictionary *)userInfo
 fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
-    if (PPAppDelegateIsProviderOnlyNotificationPayload(userInfo)) {
+    if (![AppDelegate pp_isNotificationPayloadRoutable:userInfo]) {
         completionHandler(UIBackgroundFetchResultNoData);
         return;
     }
@@ -1344,7 +1448,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
     (void)center;
     NSDictionary *userInfo = notification.request.content.userInfo ?: @{};
-    if (PPAppDelegateIsProviderOnlyNotificationPayload(userInfo)) {
+    if (![AppDelegate pp_isNotificationPayloadRoutable:userInfo]) {
         if (completionHandler) completionHandler(0);
         return;
     }
@@ -1381,7 +1485,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 {
     (void)center;
     NSDictionary *userInfo = response.notification.request.content.userInfo ?: @{};
-    if (PPAppDelegateIsProviderOnlyNotificationPayload(userInfo)) {
+    if (![AppDelegate pp_isNotificationPayloadRoutable:userInfo]) {
         if (completionHandler) completionHandler();
         return;
     }
@@ -1455,7 +1559,6 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
             return;
         }
         NSLog(@"[Installations] 🔑 Auth token refreshed (expires=%@)", tokenResult.expirationDate);
-       // UsrMgr.currentUser.PPUserTokenID =  tokenResult.authToken;
         UsrMgr.currentToken =  tokenResult.authToken;
     }];
 
@@ -1490,10 +1593,6 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
           kPPNotificationV2UserAppID);
     [self pp_storeFCMTokenLocally:fcmToken];
 
-    if (fcmToken.length && UserManager.sharedManager.currentUser.ID.length) {
-        [UserManager.sharedManager updateCurrentUserWithPPUserTokenID:fcmToken];
-        NSLog(@"[FIRMessaging] Updated user with new FCM token");
-    }
     [self pp_attemptNotificationV2RegistrationForReason:kPPNotificationV2ReasonFCMRefresh];
 }
 

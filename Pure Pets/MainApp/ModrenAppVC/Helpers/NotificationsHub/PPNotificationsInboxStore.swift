@@ -15,6 +15,7 @@ import SwiftUI
 import UIKit
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseFunctions
 
 @MainActor
 final class PPNotificationsInboxStore: ObservableObject {
@@ -273,27 +274,20 @@ final class PPNotificationsInboxStore: ObservableObject {
     private func markItemReadIfNeeded(_ item: PPNotificationInboxItem) {
         guard !item.isRead, !item.documentID.isEmpty else { return }
 
-        let uid = PPHubPayload.trimmed(Auth.auth().currentUser?.uid)
-        guard !uid.isEmpty else { return }
-
-        let inboxRef = Firestore.firestore()
-            .collection("UsersCol")
-            .document(uid)
-            .collection("inbox")
-            .document(item.documentID)
-
         let documentID = item.documentID
-        inboxRef.updateData(["isRead": true]) { [weak self] error in
-            guard let self else { return }
-            MainActor.assumeIsolated {
-                if let error {
-                    let nsError = error as NSError
-                    print("[NotificationsInbox] Read acknowledgement failed | domain=\(nsError.domain) code=\(nsError.code)")
-                    return
+        Functions.functions(region: "us-central1")
+            .httpsCallable("userNotificationInboxReadAck")
+            .call(["notificationId": documentID]) { [weak self] _, error in
+                guard let self else { return }
+                MainActor.assumeIsolated {
+                    if let error {
+                        let nsError = error as NSError
+                        print("[NotificationsInbox] Read acknowledgement failed | domain=\(nsError.domain) code=\(nsError.code)")
+                        return
+                    }
+                    self.applyLocalReadState(documentID: documentID)
                 }
-                self.applyLocalReadState(documentID: documentID)
             }
-        }
     }
 
     private func applyLocalReadState(documentID: String) {

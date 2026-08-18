@@ -2047,32 +2047,64 @@ struct HomeFeaturedCardShape: Shape {
         if #available(iOS 16.0, *) {
             return UnevenRoundedRectangle(
                 cornerRadii: RectangleCornerRadii(
-                    topLeading: base,
-                    bottomLeading: base,
-                    bottomTrailing: base,
-                    topTrailing: topTrailingRadius
+                    topLeading: tl,
+                    bottomLeading: bl,
+                    bottomTrailing: br,
+                    topTrailing: tr
                 ),
                 style: .continuous
             )
             .path(in: rect)
         } else {
-            let path = UIBezierPath()
             let minX = rect.minX
             let minY = rect.minY
             let maxX = rect.maxX
             let maxY = rect.maxY
 
+            var path = Path()
             path.move(to: CGPoint(x: minX + tl, y: minY))
             path.addLine(to: CGPoint(x: maxX - tr, y: minY))
-            path.addQuadCurve(to: CGPoint(x: maxX, y: minY + tr), controlPoint: CGPoint(x: maxX, y: minY))
+            if tr > 0 {
+                path.addArc(
+                    center: CGPoint(x: maxX - tr, y: minY + tr),
+                    radius: tr,
+                    startAngle: .degrees(-90),
+                    endAngle: .degrees(0),
+                    clockwise: false
+                )
+            }
             path.addLine(to: CGPoint(x: maxX, y: maxY - br))
-            path.addQuadCurve(to: CGPoint(x: maxX - br, y: maxY), controlPoint: CGPoint(x: maxX, y: maxY))
+            if br > 0 {
+                path.addArc(
+                    center: CGPoint(x: maxX - br, y: maxY - br),
+                    radius: br,
+                    startAngle: .degrees(0),
+                    endAngle: .degrees(90),
+                    clockwise: false
+                )
+            }
             path.addLine(to: CGPoint(x: minX + bl, y: maxY))
-            path.addQuadCurve(to: CGPoint(x: minX, y: maxY - bl), controlPoint: CGPoint(x: minX, y: maxY))
+            if bl > 0 {
+                path.addArc(
+                    center: CGPoint(x: minX + bl, y: maxY - bl),
+                    radius: bl,
+                    startAngle: .degrees(90),
+                    endAngle: .degrees(180),
+                    clockwise: false
+                )
+            }
             path.addLine(to: CGPoint(x: minX, y: minY + tl))
-            path.addQuadCurve(to: CGPoint(x: minX + tl, y: minY), controlPoint: CGPoint(x: minX, y: minY))
-            path.close()
-            return Path(path.cgPath)
+            if tl > 0 {
+                path.addArc(
+                    center: CGPoint(x: minX + tl, y: minY + tl),
+                    radius: tl,
+                    startAngle: .degrees(180),
+                    endAngle: .degrees(270),
+                    clockwise: false
+                )
+            }
+            path.closeSubpath()
+            return path
         }
     }
 }
@@ -3523,7 +3555,7 @@ private struct HomeMainKindPedestalCell: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(geometry.titleLineLimit)
                 .minimumScaleFactor(0.78)
-                .padding(.top, PPSpace.xs)
+                .padding(.top, PPSpace.xs + 2)
                 .padding(.horizontal, PPSpace.sm)
                 .frame(maxWidth: .infinity)
 

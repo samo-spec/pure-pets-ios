@@ -400,15 +400,12 @@ static inline NSString * _Nullable PPPermNameFor(UserPermission flag) {
              completion:(void (^)(NSError * _Nullable error, NSString * _Nullable imageURL))completion;
 
 /// Create/Upsert a user document at `UsersCol/<uid>`
-/// - Forces PPUserTokenID (device token) and `loginSource = UserLoginSourcePPUsers`
+/// - Forces `loginSource = UserLoginSourcePPUsers`; push bindings remain Notifications V2-owned
 /// - Returns `userID` (the Firebase UID) on success
 - (void)addUser:(UserModel *)user
      completion:(void (^)(NSError * _Nullable error, NSString * _Nullable userID))completion;
 
 - (void)getOtherUserModelFromFirestoreWithUID:(NSString *)uid completion:(void (^)(UserModel * _Nullable user, NSError * _Nullable error))completion;
-- (void)updateCurrentUserWithPPUserTokenID:(NSString *)PPUserTokenID;
-
-
 // ================================================================================
 
 - (NSString *)profileNameAndTitleWithMode:(ProfileGreetingShorteningMode)mode ;
@@ -440,7 +437,6 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
-
 
 
 

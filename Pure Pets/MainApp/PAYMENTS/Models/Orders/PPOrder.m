@@ -104,6 +104,21 @@ static BOOL PPOrderStatusContainsToken(NSString *status, NSString *token)
     return [wrapped containsString:[NSString stringWithFormat:@"_%@_", token]] || [status containsString:token];
 }
 
+static BOOL PPOrderStatusExplicitlyIndicatesCapturedPayment(NSString *status)
+{
+    if (status.length == 0) return NO;
+    static NSSet<NSString *> *capturedStatuses;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        capturedStatuses = [NSSet setWithArray:@[
+            @"paid", @"captured", @"success", @"succeeded", @"approved", @"verified",
+            @"payment_paid", @"payment_captured", @"payment_success", @"payment_succeeded",
+            @"payment_approved", @"payment_verified"
+        ]];
+    });
+    return [capturedStatuses containsObject:status];
+}
+
 static PPOrderStatus PPOrderStatusFromRawValue(id value)
 {
     if ([value isKindOfClass:NSString.class]) {
@@ -122,18 +137,7 @@ static PPOrderStatus PPOrderStatusFromRawValue(id value)
             PPOrderStatusContainsToken(normalized, @"returned")) {
             return PPOrderStatusFailed;
         }
-        if (PPOrderStatusContainsToken(normalized, @"paid") ||
-            PPOrderStatusContainsToken(normalized, @"success") ||
-            PPOrderStatusContainsToken(normalized, @"approved") ||
-            PPOrderStatusContainsToken(normalized, @"verified") ||
-            PPOrderStatusContainsToken(normalized, @"completed") ||
-            PPOrderStatusContainsToken(normalized, @"processing") ||
-            PPOrderStatusContainsToken(normalized, @"preparing") ||
-            PPOrderStatusContainsToken(normalized, @"packed") ||
-            PPOrderStatusContainsToken(normalized, @"shipped") ||
-            PPOrderStatusContainsToken(normalized, @"delivery") ||
-            PPOrderStatusContainsToken(normalized, @"delivered") ||
-            PPOrderStatusContainsToken(normalized, @"fulfilled")) {
+        if (PPOrderStatusExplicitlyIndicatesCapturedPayment(normalized)) {
             return PPOrderStatusPaid;
         }
     }
@@ -152,10 +156,11 @@ static NSString *PPOrderNormalizedPaymentMethodString(id value, id fallbackProvi
 
 static NSString *PPOrderNormalizedPaymentStatusString(id value, id paymentMethodId, id legacyStatus, id transactionId, id paidAt, id paymentCollectedAt)
 {
+    (void)transactionId;
     NSString *raw = PPOrderTrimmedString(value).lowercaseString;
     NSString *normalizedMethod = PPOrderNormalizedPaymentMethodString(paymentMethodId, nil);
 
-    if ([raw containsString:@"paid"] || [raw containsString:@"success"] || [raw containsString:@"captured"] || [raw containsString:@"approved"]) {
+    if (PPOrderStatusExplicitlyIndicatesCapturedPayment(PPOrderNormalizedStatusString(raw))) {
         return @"paid";
     }
 
@@ -167,7 +172,6 @@ static NSString *PPOrderNormalizedPaymentStatusString(id value, id paymentMethod
         return @"cancelled";
     }
 
-    if (PPOrderTrimmedString(transactionId).length > 0) return @"paid";
     if (paidAt != nil || paymentCollectedAt != nil) return @"paid";
 
     NSString *legacyRaw = PPOrderNormalizedStatusString(legacyStatus);
@@ -182,21 +186,39 @@ static NSString *PPOrderNormalizedPaymentStatusString(id value, id paymentMethod
     return @"pending";
 }
 
+static NSString *PPOrderCanonicalV1PaymentStatusString(id value, id paymentMethodId)
+{
+    NSString *raw = PPOrderNormalizedStatusString(value);
+    static NSSet<NSString *> *canonicalStatuses;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        canonicalStatuses = [NSSet setWithArray:@[@"pending", @"pending_collection", @"paid", @"failed", @"cancelled"]];
+    });
+    if ([canonicalStatuses containsObject:raw]) return raw;
+    return [PPOrderNormalizedPaymentMethodString(paymentMethodId, nil) isEqualToString:@"cash"]
+        ? @"pending_collection"
+        : @"pending";
+}
+
 static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentMethodId, id transactionId)
 {
+    (void)transactionId;
     NSString *raw = PPOrderTrimmedString(value).lowercaseString;
     NSString *normalizedMethod = PPOrderNormalizedPaymentMethodString(paymentMethodId, nil);
 
-    if ([raw containsString:@"verified"] || [raw containsString:@"success"] || [raw containsString:@"approved"]) {
+    if ([raw isEqualToString:@"verified"] ||
+        [raw isEqualToString:@"success"] ||
+        [raw isEqualToString:@"succeeded"] ||
+        [raw isEqualToString:@"approved"] ||
+        [raw isEqualToString:@"payment_verified"] ||
+        [raw isEqualToString:@"payment_success"] ||
+        [raw isEqualToString:@"payment_succeeded"] ||
+        [raw isEqualToString:@"payment_approved"]) {
         return @"verified";
     }
 
     if ([raw containsString:@"failed"] || [raw containsString:@"error"] || [raw containsString:@"rejected"]) {
         return @"failed";
-    }
-
-    if (PPOrderTrimmedString(transactionId).length > 0) {
-        return @"verified";
     }
 
     if ([normalizedMethod isEqualToString:@"cash"]) {
@@ -245,14 +267,22 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     NSString *currency = PPOrderTrimmedString(data[@"currency"]);
     order.currency = currency.length > 0 ? currency : PPOrderResolvedDefaultCurrencyCode();
 
+    // Parse authority before money normalization so Fulfillment V1 never
+    // inherits paid state from legacy status/timestamp evidence.
+    order.fulfillmentVersion = [data[@"fulfillmentVersion"] respondsToSelector:@selector(integerValue)]
+        ? [data[@"fulfillmentVersion"] integerValue]
+        : 0;
+
     order.paymentMethodId = [self normalizedPaymentMethodFromRawValue:data[@"paymentMethodId"]
                                                              provider:data[@"paymentProvider"]];
-    order.paymentStatus = [self normalizedPaymentStatusFromRawValue:data[@"paymentStatus"]
-                                                      paymentMethod:order.paymentMethodId
-                                                             status:data[@"status"]
-                                                        transaction:data[@"transactionId"]
-                                                             paidAt:data[@"paidAt"]
-                                                 paymentCollectedAt:data[@"paymentCollectedAt"]];
+    order.paymentStatus = order.fulfillmentVersion == 1
+        ? PPOrderCanonicalV1PaymentStatusString(data[@"paymentStatus"], order.paymentMethodId)
+        : [self normalizedPaymentStatusFromRawValue:data[@"paymentStatus"]
+                                     paymentMethod:order.paymentMethodId
+                                            status:data[@"status"]
+                                       transaction:data[@"transactionId"]
+                                            paidAt:data[@"paidAt"]
+                                paymentCollectedAt:data[@"paymentCollectedAt"]];
     order.paymentProvider = PPOrderTrimmedString(data[@"paymentProvider"]);
     order.verificationStatus = [self normalizedVerificationStatusFromRawValue:data[@"verificationStatus"]
                                                                 paymentMethod:order.paymentMethodId
@@ -309,9 +339,6 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
           data[@"fulfillmentVersion"] ?: @"");
 
     // Per-owner fulfillment fields (Phase 15 — additive, backward-compatible)
-    order.fulfillmentVersion = [data[@"fulfillmentVersion"] respondsToSelector:@selector(integerValue)]
-        ? [data[@"fulfillmentVersion"] integerValue]
-        : 0;
     if ([data[@"fulfillmentOrderIDs"] isKindOfClass:NSArray.class]) {
         order.fulfillmentOrderIDs = data[@"fulfillmentOrderIDs"];
     } else {
@@ -384,11 +411,11 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
 - (BOOL)hasCapturedPayment
 {
     if ([self.paymentStatus isEqualToString:@"paid"]) return YES;
+    if (self.fulfillmentVersion == 1) return NO;
     if (self.paidAt != nil) return YES;
-    if (self.transactionId.length > 0) return YES;
     
     NSString *raw = self.rawStatus.lowercaseString;
-    if ([raw containsString:@"paid"] || [raw containsString:@"success"] || [raw containsString:@"captured"] || [raw containsString:@"approved"]) {
+    if (PPOrderStatusExplicitlyIndicatesCapturedPayment(PPOrderNormalizedStatusString(raw))) {
         return YES;
     }
     return NO;

@@ -4547,6 +4547,7 @@
 "order_mission_address_not_selectable" = "حدّث هذا العنوان المحفوظ قبل استخدامه لهذا الطلب.";
 "order_mission_location_unavailable" = "لا تتوفر إحداثيات تسليم موثوقة لهذا الطلب.";
 "order_mission_address_edit_hint" = "يمكنك تغيير عنوان التسليم ما دام الطلب قيد الانتظار.";
+"order_mission_address_snapshot_locked" = "يحتفظ هذا الطلب بعنوان التسليم المسجّل عند الدفع. تواصل مع الدعم إذا لزم تغييره.";
 "order_mission_requests_hint" = "راجع حالات الدعم النشطة والمكتملة.";
 "order_mission_no_support_activity" = "لا توجد حالات دعم مرتبطة بهذا الطلب.";
 "order_mission_action_unavailable" = "هذا الأمر غير متاح لحالة الطلب الحالية.";

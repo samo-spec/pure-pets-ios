@@ -383,6 +383,7 @@ struct PPOrderMissionState {
     let supportLoading: Bool
     let timelineLoading: Bool
     let fulfillmentLoading: Bool
+    let fulfillmentVersion: Int
     let hasFulfillmentData: Bool
     let screenTitle: String
 
@@ -437,6 +438,7 @@ struct PPOrderMissionState {
         supportLoading = dictionary.missionBool("supportLoading")
         timelineLoading = dictionary.missionBool("timelineLoading")
         fulfillmentLoading = dictionary.missionBool("fulfillmentLoading")
+        fulfillmentVersion = dictionary.missionInt("fulfillmentVersion")
         hasFulfillmentData = dictionary.missionBool("hasFulfillmentData")
         screenTitle = dictionary.missionString("screenTitle")
     }

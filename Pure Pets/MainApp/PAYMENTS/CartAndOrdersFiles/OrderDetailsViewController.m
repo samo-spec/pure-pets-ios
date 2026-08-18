@@ -455,9 +455,15 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 @property (nonatomic, strong) NSArray<PPOrderTimelineEvent *> *timelineEvents;
 @property (nonatomic, strong) NSArray<PPOrderEligibilityDecision *> *eligibilityDecisions;
 @property (nonatomic, strong) NSArray<PPFulfillmentOrder *> *fulfillmentOrders;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, PPFulfillmentOrder *> *fulfillmentOrdersByID;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, id<FIRListenerRegistration>> *fulfillmentDocumentListeners;
 @property (nonatomic, strong) id<FIRListenerRegistration> orderDocumentListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> requestsListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> timelineListener;
+@property (nonatomic, strong, nullable) FIRAuthStateDidChangeListenerHandle orderAuthStateHandle;
+@property (nonatomic, assign) NSInteger realtimeObserverGeneration;
+@property (nonatomic, copy) NSString *realtimeObserverUID;
+@property (nonatomic, copy) NSString *realtimeObserverOrderID;
 @property (nonatomic, assign) BOOL isOrderDetailsScreenVisible;
 @property (nonatomic, copy, nullable) NSString *lastObservedOrderStatusKey;
 @property (nonatomic, assign) BOOL didShowEntryPresentation;
@@ -496,6 +502,12 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)pp_runPremiumEntranceIfNeeded;
 - (void)pp_actionButtonTouchDown:(UIButton *)sender;
 - (void)pp_actionButtonTouchUp:(UIButton *)sender;
+- (void)restartFulfillmentDocumentListeners;
+- (void)stopFulfillmentDocumentListeners;
+- (void)renderFulfillmentSectionFromLiveChildren;
+- (BOOL)isRealtimeObserverGenerationCurrent:(NSInteger)generation
+                                     userID:(NSString *)userID
+                                    orderID:(NSString *)orderID;
 
 @end
 
@@ -553,6 +565,34 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [self configureWithCurrentOrder];
     [self pp_preparePremiumEntranceIfNeeded];
     [self startRealtimeObservers];
+
+    __weak typeof(self) weakSelf = self;
+    self.orderAuthStateHandle = [[FIRAuth auth] addAuthStateDidChangeListener:^(
+        FIRAuth * _Nonnull auth,
+        FIRUser * _Nullable user
+    ) {
+        (void)auth;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || !self.isViewLoaded) return;
+            NSString *currentUID = [self safeString:user.uid];
+            NSString *orderOwnerUID = [self safeString:self.order.userId];
+            if (currentUID.length == 0 ||
+                orderOwnerUID.length == 0 ||
+                ![currentUID isEqualToString:orderOwnerUID]) {
+                [self stopRealtimeObservers];
+                self.supportRequests = @[];
+                self.timelineEvents = @[];
+                self.fulfillmentOrders = @[];
+                [self renderFulfillmentSectionFromLiveChildren];
+                [self showErrorMessage:kLang(@"order_mission_permission_denied")];
+                return;
+            }
+            if (![self.realtimeObserverUID isEqualToString:currentUID]) {
+                [self startRealtimeObservers];
+            }
+        });
+    }];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -682,6 +722,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.supportRequests = @[];
     self.timelineEvents = @[];
     self.eligibilityDecisions = @[];
+    self.fulfillmentOrders = @[];
+    self.fulfillmentOrdersByID = [NSMutableDictionary dictionary];
+    self.fulfillmentDocumentListeners = [NSMutableDictionary dictionary];
     self.orderManager = [PPOrderManager shared];
     self.isResolvingAddress = NO;
     self.didShowEntryPresentation = NO;
@@ -691,6 +734,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.isOrderDetailsScreenVisible = NO;
     self.isProgressTimelineExpanded = NO;
     self.lastObservedOrderStatusKey = nil;
+    self.realtimeObserverGeneration = 0;
+    self.realtimeObserverUID = @"";
+    self.realtimeObserverOrderID = @"";
     self.didPreparePremiumEntrance = NO;
     self.didRunPremiumEntrance = NO;
 
@@ -2798,7 +2844,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [self applyActionButton:self.trackOrderButton visible:hasOrder eligible:YES];
     [self applyActionButton:self.viewRequestsButton visible:hasOrder eligible:YES];
     [self applyActionButton:self.contactSupportButton visible:hasOrder eligible:YES];
-    [self applyActionButton:self.editLocationButton visible:hasOrder && !deliveredLike && !shippedLike && !cancelledLike && ![self isFailureStatusKey:statusKey] eligible:cancelDecision.isEligible];
+    [self applyActionButton:self.editLocationButton visible:hasOrder && self.order.fulfillmentVersion != 1 && !deliveredLike && !shippedLike && !cancelledLike && ![self isFailureStatusKey:statusKey] eligible:cancelDecision.isEligible];
     [self applyActionButton:self.cancelOrderButton visible:hasOrder && !deliveredLike && !shippedLike && !cancelledLike && ![self isFailureStatusKey:statusKey] eligible:cancelDecision.isEligible];
     [self applyActionButton:self.returnRequestButton visible:hasOrder && deliveredLike eligible:returnDecision.isEligible];
     [self applyActionButton:self.replacementButton visible:hasOrder && deliveredLike eligible:replacementDecision.isEligible];
@@ -3237,6 +3283,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)editLocationTapped
 {
+    if (self.order.fulfillmentVersion == 1) {
+        [self showInfoMessage:kLang(@"order_mission_address_snapshot_locked")];
+        return;
+    }
     PPOrderEligibilityDecision *decision = [self decisionForAction:PPOrderCustomerActionTypeCancel];
     if (!decision.isEligible) {
         [self showInfoMessage:decision.message.length > 0 ? decision.message : kLang(@"order_edit_location_pending_only")];
@@ -3384,6 +3434,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)presentAddressPickerFromPaymentSource
 {
+    if (self.order.fulfillmentVersion == 1) {
+        [self showInfoMessage:kLang(@"order_mission_address_snapshot_locked")];
+        return;
+    }
     __weak typeof(self) weakSelf = self;
     void (^presentPicker)(NSArray<PPAddressModel *> *) = ^(NSArray<PPAddressModel *> *addresses) {
         if (addresses.count == 0) {
@@ -3457,6 +3511,13 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             }
             self.selectedAddressModel = snapshotAddress;
         }
+    }
+
+    // Fulfillment V1 renders the immutable checkout snapshot only. A saved
+    // address can change later and must not rewrite historical order details.
+    if (self.order.fulfillmentVersion == 1) {
+        [self refreshDeliveryMap];
+        return;
     }
 
     if (self.availableAddresses.count > 0) {
@@ -3551,6 +3612,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)updateDeliveryAddressWithAddress:(PPAddressModel *)address
 {
     if (!address) return;
+    if (self.order.fulfillmentVersion == 1) {
+        [self showInfoMessage:kLang(@"order_mission_address_snapshot_locked")];
+        return;
+    }
 
     NSString *addressID = [self effectiveAddressID:address];
     NSDictionary *snapshot = [self shippingSnapshotFromAddress:address];
@@ -3751,17 +3816,27 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)startRealtimeObservers
 {
     [self stopRealtimeObservers];
-    if (![self safeString:self.order.orderId].length) return;
+    NSString *orderID = [[self safeString:self.order.orderId] copy];
+    NSString *observerUID = [[self safeString:[FIRAuth auth].currentUser.uid] copy];
+    NSString *ownerUID = [self safeString:self.order.userId];
+    if (orderID.length == 0 || observerUID.length == 0 ||
+        ownerUID.length == 0 || ![ownerUID isEqualToString:observerUID]) {
+        return;
+    }
+    self.realtimeObserverUID = observerUID;
+    self.realtimeObserverOrderID = orderID;
+    NSInteger generation = self.realtimeObserverGeneration;
     self.lastObservedOrderStatusKey = [self normalizedStatusKeyForOrder:self.order];
     NSLog(@"PPLAB OrderDetails listener start | orderId=%@ status=%@",
-          self.order.orderId ?: @"",
+          orderID,
           self.lastObservedOrderStatusKey ?: @"");
 
     __weak typeof(self) weakSelf = self;
-    FIRDocumentReference *orderRef = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:self.order.orderId];
+    FIRDocumentReference *orderRef = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:orderID];
     self.orderDocumentListener = [orderRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
+        if (!strongSelf ||
+            ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:orderID]) return;
         if (error || !snapshot.exists) {
             NSLog(@"PPLAB OrderDetails listener snapshot | orderId=%@ exists=%d error=%@",
                   strongSelf.order.orderId ?: @"",
@@ -3769,8 +3844,14 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
                   error.localizedDescription ?: @"");
             return;
         }
+        NSString *snapshotOwnerUID = [strongSelf safeString:snapshot.data[@"userId"]];
+        if (snapshotOwnerUID.length == 0 || ![snapshotOwnerUID isEqualToString:observerUID]) {
+            [strongSelf stopRealtimeObservers];
+            [strongSelf showErrorMessage:kLang(@"order_mission_permission_denied")];
+            return;
+        }
         PPOrder *updatedOrder = [PPOrder orderFromSnapshot:snapshot];
-        if (!updatedOrder) return;
+        if (!updatedOrder || ![updatedOrder.orderId isEqualToString:orderID]) return;
 
         NSString *nextStatusKey = [strongSelf normalizedStatusKeyForOrder:updatedOrder];
         NSString *previousStatusKey = [strongSelf safeString:strongSelf.lastObservedOrderStatusKey];
@@ -3795,11 +3876,12 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         }
     }];
 
-    self.requestsListener = [self.orderManager listenToSupportRequestsForOrderID:self.order.orderId
+    self.requestsListener = [self.orderManager listenToSupportRequestsForOrderID:orderID
                                                                           update:^(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable __unused error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
+            if (!strongSelf ||
+                ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:orderID]) return;
             strongSelf.supportRequests = requests ?: @[];
             strongSelf.eligibilityDecisions = [strongSelf.orderManager eligibilityDecisionsForOrder:strongSelf.order
                                                                                         requests:strongSelf.supportRequests
@@ -3811,19 +3893,41 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.timelineListener = [self.orderManager listenToTimelineEventsForOrder:self.order
                                                                        update:^(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable __unused error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            weakSelf.timelineEvents = events ?: @[];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf ||
+                ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:orderID]) return;
+            strongSelf.timelineEvents = events ?: @[];
         });
     }];
+
+    [self restartFulfillmentDocumentListeners];
 }
 
 - (void)stopRealtimeObservers
 {
+    self.realtimeObserverGeneration += 1;
+    self.realtimeObserverUID = @"";
+    self.realtimeObserverOrderID = @"";
     [self.orderDocumentListener remove];
     [self.requestsListener remove];
     [self.timelineListener remove];
     self.orderDocumentListener = nil;
     self.requestsListener = nil;
     self.timelineListener = nil;
+    [self stopFulfillmentDocumentListeners];
+}
+
+- (BOOL)isRealtimeObserverGenerationCurrent:(NSInteger)generation
+                                     userID:(NSString *)userID
+                                    orderID:(NSString *)orderID
+{
+    NSString *currentUID = [self safeString:[FIRAuth auth].currentUser.uid];
+    return generation == self.realtimeObserverGeneration &&
+        userID.length > 0 && orderID.length > 0 &&
+        [self.realtimeObserverUID isEqualToString:userID] &&
+        [self.realtimeObserverOrderID isEqualToString:orderID] &&
+        [currentUID isEqualToString:userID] &&
+        [[self safeString:self.order.orderId] isEqualToString:orderID];
 }
 
 - (void)pp_prepareCheckoutConfettiViewIfNeeded
@@ -4079,6 +4183,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)dealloc
 {
+    if (self.orderAuthStateHandle) {
+        [[FIRAuth auth] removeAuthStateDidChangeListener:self.orderAuthStateHandle];
+        self.orderAuthStateHandle = nil;
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:kCartPricingConfigurationDidChangeNotification
                                                   object:nil];
@@ -4121,14 +4229,18 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     if (currency.length == 0) currency = @"QAR";
     double total = MAX(0.0, order.totalAmount);
     double effectiveShippingFee = MAX(0.0, order.shippingFee);
-    if (effectiveShippingFee <= 0.0 &&
-        total <= MAX(0.0, order.amount) + 0.009 &&
-        order.amount > 0.0) {
-        effectiveShippingFee = MAX(0.0, [CartManager sharedManager].deliveryFee);
+    if (order.fulfillmentVersion != 1) {
+        // Preserve only the documented legacy fallback. V1 monetary fields are
+        // the immutable server checkout snapshot, including an explicit zero.
+        if (effectiveShippingFee <= 0.0 &&
+            total <= MAX(0.0, order.amount) + 0.009 &&
+            order.amount > 0.0) {
+            effectiveShippingFee = MAX(0.0, [CartManager sharedManager].deliveryFee);
+        }
+        double recomputedTotal = MAX(0.0, order.amount) + effectiveShippingFee;
+        if (recomputedTotal > total) total = recomputedTotal;
+        if (total <= 0.0) total = MAX(0.0, order.amount);
     }
-    double recomputedTotal = MAX(0.0, order.amount) + effectiveShippingFee;
-    if (recomputedTotal > total) total = recomputedTotal;
-    if (total <= 0.0) total = MAX(0.0, order.amount);
     return [NSString stringWithFormat:@"%.2f %@", total, currency];
 }
 
@@ -4163,6 +4275,15 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (NSString *)resolvedDeliveryAddressText
 {
+    if (self.order.fulfillmentVersion == 1) {
+        NSDictionary *snapshot = [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class]
+            ? self.order.shippingAddressSnapshot : nil;
+        for (NSString *key in @[@"displayName", @"address", @"locatioName", @"addressLine1"]) {
+            NSString *value = [self safeString:snapshot[key]];
+            if (value.length > 0) return value;
+        }
+        return @"--";
+    }
     if (self.selectedAddressModel.displayName.length > 0) {
         return self.selectedAddressModel.displayName;
     }
@@ -4420,27 +4541,112 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)configureFulfillmentSection
 {
     if (!self.order.hasFulfillmentOrders) {
+        [self stopFulfillmentDocumentListeners];
         self.fulfillmentOrders = @[];
         self.fulfillmentSectionCard.hidden = YES;
         self.fulfillmentSectionCard.frame = CGRectZero;
         [self layoutFooterView];
         return;
     }
-    PPweakify(self);
-    [[PPOrderManager shared] fetchFulfillmentOrdersWithIDs:self.order.fulfillmentOrderIDs completion:^(NSArray<PPFulfillmentOrder *> *orders) {
-        PPstrongify(self);
-        if (!self) return;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.fulfillmentOrders = orders ?: @[];
-            UIView *card = [self buildFulfillmentGroupsCard:self.fulfillmentOrders];
-            [self.fulfillmentSectionCard removeFromSuperview];
-            self.fulfillmentSectionCard = card ?: [[UIView alloc] initWithFrame:CGRectZero];
-            self.fulfillmentSectionCard.hidden = (card == nil);
-            [self.footerContainer addSubview:self.fulfillmentSectionCard];
-            [self.footerContainer sendSubviewToBack:self.fulfillmentSectionCard];
-            [self layoutFooterView];
-        });
-    }];
+    [self restartFulfillmentDocumentListeners];
+    [self renderFulfillmentSectionFromLiveChildren];
+}
+
+- (NSArray<NSString *> *)normalizedFulfillmentOrderIDs
+{
+    NSMutableOrderedSet<NSString *> *ids = [NSMutableOrderedSet orderedSet];
+    for (id value in self.order.fulfillmentOrderIDs ?: @[]) {
+        NSString *fulfillmentID = [self safeString:value];
+        if (fulfillmentID.length > 0) {
+            [ids addObject:fulfillmentID];
+        }
+    }
+    return ids.array;
+}
+
+- (void)restartFulfillmentDocumentListeners
+{
+    NSArray<NSString *> *fulfillmentIDs = [self normalizedFulfillmentOrderIDs];
+    NSSet<NSString *> *desiredIDs = [NSSet setWithArray:fulfillmentIDs];
+
+    for (NSString *existingID in self.fulfillmentDocumentListeners.allKeys.copy) {
+        if (![desiredIDs containsObject:existingID]) {
+            [self.fulfillmentDocumentListeners[existingID] remove];
+            [self.fulfillmentDocumentListeners removeObjectForKey:existingID];
+            [self.fulfillmentOrdersByID removeObjectForKey:existingID];
+        }
+    }
+
+    NSString *parentOrderID = [[self safeString:self.order.orderId] copy];
+    NSString *observerUID = [self.realtimeObserverUID copy];
+    NSInteger generation = self.realtimeObserverGeneration;
+    if (parentOrderID.length == 0 ||
+        ![self isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:parentOrderID]) {
+        [self stopFulfillmentDocumentListeners];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    for (NSString *fulfillmentID in fulfillmentIDs) {
+        if (self.fulfillmentDocumentListeners[fulfillmentID]) continue;
+
+        FIRDocumentReference *ref = [[[FIRFirestore firestore] collectionWithPath:@"FulfillmentOrders"] documentWithPath:fulfillmentID];
+        id<FIRListenerRegistration> listener = [ref addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf ||
+                    ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:parentOrderID]) return;
+
+                if (error || !snapshot.exists || ![snapshot.data isKindOfClass:NSDictionary.class]) {
+                    if (!error) {
+                        [strongSelf.fulfillmentOrdersByID removeObjectForKey:fulfillmentID];
+                        [strongSelf renderFulfillmentSectionFromLiveChildren];
+                    }
+                    return;
+                }
+
+                NSString *childOwnerUID = [strongSelf safeString:snapshot.data[@"parentUserId"]];
+                PPFulfillmentOrder *fulfillment = [PPFulfillmentOrder fromDictionary:snapshot.data fulfillmentID:snapshot.documentID];
+                if (childOwnerUID.length == 0 || ![childOwnerUID isEqualToString:observerUID] ||
+                    fulfillment.parentOrderId.length == 0 || ![fulfillment.parentOrderId isEqualToString:parentOrderID]) {
+                    [strongSelf.fulfillmentOrdersByID removeObjectForKey:fulfillmentID];
+                } else {
+                    strongSelf.fulfillmentOrdersByID[fulfillmentID] = fulfillment;
+                }
+                [strongSelf renderFulfillmentSectionFromLiveChildren];
+            });
+        }];
+        if (listener) {
+            self.fulfillmentDocumentListeners[fulfillmentID] = listener;
+        }
+    }
+}
+
+- (void)stopFulfillmentDocumentListeners
+{
+    for (id<FIRListenerRegistration> listener in self.fulfillmentDocumentListeners.allValues.copy) {
+        [listener remove];
+    }
+    [self.fulfillmentDocumentListeners removeAllObjects];
+    [self.fulfillmentOrdersByID removeAllObjects];
+}
+
+- (void)renderFulfillmentSectionFromLiveChildren
+{
+    NSMutableArray<PPFulfillmentOrder *> *ordered = [NSMutableArray array];
+    for (NSString *fulfillmentID in [self normalizedFulfillmentOrderIDs]) {
+        PPFulfillmentOrder *fulfillment = self.fulfillmentOrdersByID[fulfillmentID];
+        if (fulfillment) [ordered addObject:fulfillment];
+    }
+    self.fulfillmentOrders = ordered.copy;
+
+    UIView *card = [self buildFulfillmentGroupsCard:self.fulfillmentOrders];
+    [self.fulfillmentSectionCard removeFromSuperview];
+    self.fulfillmentSectionCard = card ?: [[UIView alloc] initWithFrame:CGRectZero];
+    self.fulfillmentSectionCard.hidden = (card == nil);
+    [self.footerContainer addSubview:self.fulfillmentSectionCard];
+    [self.footerContainer sendSubviewToBack:self.fulfillmentSectionCard];
+    [self layoutFooterView];
 }
 
 - (NSDictionary<NSString *, NSNumber *> *)fulfillmentSummaryMetricsForOrders:(NSArray<PPFulfillmentOrder *> *)orders
@@ -4584,7 +4790,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [group addSubview:amountPill];
 
     UILabel *amountLabel = [[UILabel alloc] init];
-    amountLabel.text = [NSString stringWithFormat:@"%@ %.0f", fo.currency, fo.providerNet];
+    amountLabel.text = [NSString stringWithFormat:@"%@ %.0f", fo.currency, fo.subtotal];
     amountLabel.font = [GM boldFontWithSize:PPFontCallout];
     amountLabel.textColor = UIColor.labelColor;
     amountLabel.textAlignment = NSTextAlignmentCenter;
@@ -4628,6 +4834,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             @"delivery_assigned":  kLang(@"fulfillment_status_delivery_assigned"),
             @"awaiting_handover":  kLang(@"fulfillment_status_awaiting_handover"),
             @"handed_over":        kLang(@"fulfillment_status_handed_over"),
+            @"in_transit":         kLang(@"fulfillment_status_in_transit"),
+            @"delivered":          kLang(@"fulfillment_status_delivered"),
+            @"payment_pending":    kLang(@"fulfillment_status_payment_pending"),
+            @"payment_confirmed":  kLang(@"fulfillment_status_payment_confirmed"),
             @"completed":          kLang(@"fulfillment_status_completed"),
             @"cancelled":          kLang(@"fulfillment_status_cancelled"),
             @"failed":             kLang(@"fulfillment_status_failed"),

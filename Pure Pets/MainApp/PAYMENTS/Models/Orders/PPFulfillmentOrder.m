@@ -9,7 +9,8 @@
     f.parentOrderId = [dict[@"parentOrderId"] isKindOfClass:NSString.class] ? dict[@"parentOrderId"] : @"";
     f.ownerID = [dict[@"ownerID"] isKindOfClass:NSString.class] ? dict[@"ownerID"] : @"";
     f.ownerType = [dict[@"ownerType"] isKindOfClass:NSString.class] ? dict[@"ownerType"] : @"platform";
-    f.status = [dict[@"status"] isKindOfClass:NSString.class] ? dict[@"status"] : @"new_request";
+    NSString *rawStatus = [dict[@"status"] isKindOfClass:NSString.class] ? dict[@"status"] : @"";
+    f.status = [[rawStatus stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString];
 
     NSArray *items = [dict[@"items"] isKindOfClass:NSArray.class] ? dict[@"items"] : @[];
     f.itemCount = items.count;

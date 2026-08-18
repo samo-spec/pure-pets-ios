@@ -1,5 +1,6 @@
 #import "SceneDelegate.h"
 #import "AppDelegate.h"
+#import "AppDelegate.h"
 #import "PPUserSigningController.h"
 #import "SplashViewController.h"
 #import "PPRootTabBarController.h"
@@ -17,6 +18,7 @@
 @property (nonatomic, assign) BOOL didShowMainVC;
 @property (nonatomic, strong) id authListenerHandle;
 @property (nonatomic, strong) NSDictionary *pendingChatNotification;
+@property (nonatomic, strong) NSMutableOrderedSet<NSString *> *handledNotificationIDs;
 @property (nonatomic, copy) NSString *activeUserScopedListenersUID;
 @property (nonatomic, copy) NSString *pendingUserScopedListenersUID;
 
@@ -71,7 +73,34 @@ static NSString *PPSceneOrderIDFromPayload(NSDictionary *payload)
     return orderID;
 }
 
+static NSString *PPSceneNotificationIDFromPayload(NSDictionary *payload)
+{
+    NSDictionary *safePayload = PPSceneSafeDictionary(payload);
+    NSDictionary *meta = PPSceneSafeDictionary(safePayload[@"meta"]);
+    NSString *notificationID = PPSceneFirstScalarForKeys(safePayload, @[@"notificationId"]);
+    return notificationID.length > 0
+        ? notificationID
+        : PPSceneFirstScalarForKeys(meta, @[@"notificationId"]);
+}
+
 @implementation SceneDelegate
+
+- (BOOL)pp_consumeNotificationIdentityForPayload:(NSDictionary *)payload
+{
+    NSString *notificationID = PPSceneNotificationIDFromPayload(payload);
+    if (notificationID.length == 0) return YES;
+    if (!self.handledNotificationIDs) {
+        self.handledNotificationIDs = [NSMutableOrderedSet orderedSet];
+    }
+    if ([self.handledNotificationIDs containsObject:notificationID]) {
+        return NO;
+    }
+    [self.handledNotificationIDs addObject:notificationID];
+    while (self.handledNotificationIDs.count > 128) {
+        [self.handledNotificationIDs removeObjectAtIndex:0];
+    }
+    return YES;
+}
 
 - (void)pp_applyCurrentLanguageSemanticToWindow:(nullable UIWindow *)window
 {
@@ -232,8 +261,11 @@ willConnectToSession:(UISceneSession *)session
             connectionOptions.notificationResponse;
 
         if (response) {
-            self.pendingChatNotification =
-                response.notification.request.content.userInfo;
+            NSDictionary *payload = response.notification.request.content.userInfo;
+            if ([AppDelegate pp_isNotificationPayloadRoutable:payload] &&
+                [self pp_consumeNotificationIdentityForPayload:payload]) {
+                self.pendingChatNotification = payload;
+            }
         }
     
     [self setNavigationBarAppearance];
@@ -290,6 +322,8 @@ willConnectToSession:(UISceneSession *)session
 
 - (void)handleRemoteNotificationUserInfo:(NSDictionary *)userInfo {
     NSDictionary *safeUserInfo = PPSceneSafeDictionary(userInfo);
+    if (![AppDelegate pp_isNotificationPayloadRoutable:safeUserInfo]) return;
+    if (![self pp_consumeNotificationIdentityForPayload:safeUserInfo]) return;
     if (!self.window.rootViewController ||
         [self.window.rootViewController isKindOfClass:SplashViewController.class] ||
         self.window.windowScene.activationState == UISceneActivationStateUnattached) {
@@ -319,6 +353,7 @@ willConnectToSession:(UISceneSession *)session
 - (void)pp_handleNotificationTap:(NSDictionary *)userInfo {
 
     NSDictionary *safeUserInfo = PPSceneSafeDictionary(userInfo);
+    if (![AppDelegate pp_isNotificationPayloadRoutable:safeUserInfo]) return;
     NSString *type = [[PPSceneFirstScalarForKeys(safeUserInfo, @[@"notificationType", @"type"]) lowercaseString] copy];
     NSString *threadID = PPSceneFirstScalarForKeys(safeUserInfo, @[@"threadID", @"threadId", @"conversationId"]);
     NSString *orderId = PPSceneOrderIDFromPayload(safeUserInfo);

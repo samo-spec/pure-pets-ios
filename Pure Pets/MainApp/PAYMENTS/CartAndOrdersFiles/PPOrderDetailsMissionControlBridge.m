@@ -467,6 +467,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         FIRAuth * _Nonnull auth,
         FIRUser * _Nullable user
     ) {
+        (void)auth;
         PPMissionOnMain(^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self || !self.running || !self.ownershipVerified) return;
@@ -475,6 +476,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                 [currentUID isEqualToString:self.verifiedOwnerUID]) {
                 return;
             }
+            self.generation += 1;
+            [self stopListeners];
             self.ownershipVerified = NO;
             self.addressMutationContractSatisfied = NO;
             self.verifiedOwnerUID = @"";
@@ -533,7 +536,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                                                               listener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         PPMissionOnMain(^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self || !self.running || generation != self.generation) return;
+            if (!self || !self.running || generation != self.generation ||
+                ![self hasCurrentOwnerAuthority]) return;
             self.hasLoadedOrder = YES;
             if (error) {
                 NSString *currentUID = FIRAuth.auth.currentUser.uid ?: @"";
@@ -631,7 +635,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                                                                                   NSError * _Nullable error) {
         PPMissionOnMain(^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self || !self.running || generation != self.generation) return;
+            if (!self || !self.running || generation != self.generation ||
+                ![self hasCurrentOwnerAuthority]) return;
             self.supportLoading = !error && isFromCache;
             self.supportRequests = requests ?: @[];
             self.supportErrorMessage = error ? kLang(@"order_mission_support_load_error") : @"";
@@ -645,7 +650,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                                                                                  NSError * _Nullable error) {
         PPMissionOnMain(^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self || !self.running || generation != self.generation) return;
+            if (!self || !self.running || generation != self.generation ||
+                ![self hasCurrentOwnerAuthority]) return;
             self.timelineLoading = !error && isFromCache;
             self.timelineEvents = events ?: @[];
             self.timelineErrorMessage = error ? kLang(@"order_mission_timeline_load_error") : @"";
@@ -747,12 +753,16 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     double subtotal = MAX(0.0, order.amount);
     double shipping = MAX(0.0, order.shippingFee);
     double total = MAX(0.0, order.totalAmount);
-    if (shipping <= 0.0 && total <= subtotal + 0.009 && subtotal > 0.0) {
-        shipping = MAX(0.0, CartManager.sharedManager.deliveryFee);
+    if (order.fulfillmentVersion != 1) {
+        // Legacy orders predate the immutable checkout snapshot contract and
+        // may still require the historical pricing fallback.
+        if (shipping <= 0.0 && total <= subtotal + 0.009 && subtotal > 0.0) {
+            shipping = MAX(0.0, CartManager.sharedManager.deliveryFee);
+        }
+        double recomputedTotal = subtotal + shipping;
+        if (recomputedTotal > total) total = recomputedTotal;
+        if (total <= 0.0) total = subtotal;
     }
-    double recomputedTotal = subtotal + shipping;
-    if (recomputedTotal > total) total = recomputedTotal;
-    if (total <= 0.0) total = subtotal;
 
     NSDictionary *coordinate = [self deliveryCoordinate];
     NSArray *requests = [self requestDictionaries];
@@ -837,6 +847,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         NSString *value = PPMissionSafeString(snapshot[key]);
         if (value.length > 0) return value;
     }
+    if (self.order.fulfillmentVersion == 1) return @"";
     PPAddressModel *savedAddress = [self selectedSavedAddress];
     if (savedAddress.displayName.length > 0) return savedAddress.displayName;
     if (savedAddress.locatioName.length > 0) return savedAddress.locatioName;
@@ -858,7 +869,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             longitude = PPMissionDouble(parts[1], NAN);
         }
     }
-    if (!isfinite(latitude) || !isfinite(longitude)) {
+    if ((!isfinite(latitude) || !isfinite(longitude)) && self.order.fulfillmentVersion != 1) {
         NSString *points = PPMissionSafeString([self selectedSavedAddress].locationPoints);
         NSArray<NSString *> *parts = [points componentsSeparatedByString:@","];
         if (parts.count >= 2) {
@@ -890,6 +901,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 
 - (void)resolveSelectedAddressIfNeededForGeneration:(NSInteger)generation
 {
+    if (self.order.fulfillmentVersion == 1) return;
     NSString *identifier = PPMissionSafeString(self.order.shippingAddressId);
     if (identifier.length == 0 &&
         [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class]) {
@@ -933,6 +945,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 {
     NSString *status = PPMissionNormalizedKey(self.order.rawStatus);
     return [self hasCurrentOwnerAuthority] &&
+        self.order.fulfillmentVersion != 1 &&
         !self.isOffline && self.addressMutationContractSatisfied &&
         ([status isEqualToString:@"pending"] || [status isEqualToString:@"failed"]);
 }
@@ -944,6 +957,9 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     }
     if (self.isOffline) {
         return kLang(@"order_mission_address_online_required");
+    }
+    if (self.order.fulfillmentVersion == 1) {
+        return kLang(@"order_mission_address_snapshot_locked");
     }
     if (!self.addressMutationContractSatisfied) {
         return kLang(@"order_mission_address_owner_unavailable");
@@ -1342,7 +1358,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         id<FIRListenerRegistration> listener = [reference addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
             PPMissionOnMain(^{
                 __strong typeof(weakSelf) self = weakSelf;
-                if (!self || !self.running || generation != self.generation) return;
+                if (!self || !self.running || generation != self.generation ||
+                    ![self hasCurrentOwnerAuthority]) return;
                 if (error) {
                     self.fulfillmentErrorMessage = kLang(@"order_mission_fulfillment_load_error");
                     [self.missingFulfillmentIDs addObject:identifier];
@@ -1351,7 +1368,9 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                     [self.missingFulfillmentIDs addObject:identifier];
                 } else {
                     NSString *parentID = PPMissionSafeString(snapshot.data[@"parentOrderId"] ?: snapshot.data[@"orderId"]);
-                    if (parentID.length > 0 && ![parentID isEqualToString:self.order.orderId]) {
+                    NSString *parentUserID = PPMissionSafeString(snapshot.data[@"parentUserId"]);
+                    if (parentID.length == 0 || ![parentID isEqualToString:self.order.orderId] ||
+                        parentUserID.length == 0 || ![parentUserID isEqualToString:self.verifiedOwnerUID]) {
                         self.fulfillmentErrorMessage = kLang(@"order_mission_permission_denied");
                         [self.missingFulfillmentIDs addObject:identifier];
                     } else {
@@ -1818,6 +1837,10 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             if (!self) return;
             if (![self hasCurrentOwnerAuthority]) {
                 if (completion) completion(nil, PPMissionError(403, kLang(@"order_mission_permission_denied")));
+                return;
+            }
+            if (![self isAddressEditable]) {
+                if (completion) completion(nil, PPMissionError(403, [self addressEditBlockedMessage]));
                 return;
             }
             if (fetchError || !document.exists) {

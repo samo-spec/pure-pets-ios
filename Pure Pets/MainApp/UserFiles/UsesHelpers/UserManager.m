@@ -485,11 +485,6 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
     data[@"loginDate"] = now;
     data[@"updatedAt"] = now;
     data[@"loginSource"] = @(UserLoginSourcePPUsers);  // Always mark login source as main app
-    // Device token (PPUserTokenID) if available from messaging
-    NSString *deviceToken = [[NSUserDefaults standardUserDefaults] stringForKey:@"deviceToken"];
-    if (deviceToken) {
-        data[@"PPUserTokenID"] = deviceToken;
-    }
     return data;
 }
 
@@ -1043,9 +1038,6 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
 
 // Finalize sign-in by loading the user model and caching it
 - (void)finalizeSignInForAuthUser:(FIRUser *)authUser completion:(FUUserCompletion)completion {
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    NSString *pushToken = PPSafeString([prefs valueForKey:@"PPUserTokenID"]) ?: nil;
-
     [self validateCurrentAuthSessionWithCompletion:^(NSError * _Nullable validationError) {
         if (validationError) {
             if (completion) completion(nil, validationError);
@@ -1069,33 +1061,12 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
                 return;
             }
 
-            if (pushToken.length > 0) {
-                self.currentUser.PPUserTokenID = pushToken;
-                [self updateCurrentUserWithPPUserTokenID:pushToken];
-            }
             if (completion) completion(self.currentUser, nil);
         }];
     }];
 }
 
 #pragma mark - Sign Out & Deletion
-
-- (void)clearFCMTokenOnServerForCurrentUser {
-    FIRUser *authUser = [FIRAuth auth].currentUser;
-    if (!authUser || !authUser.uid.length) {
-        return;
-    }
-    FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *docRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:authUser.uid];
-    [docRef updateData:@{@"PPUserTokenID": [FIRFieldValue fieldValueForDelete]}
-            completion:^(NSError * _Nullable error) {
-                if (error) {
-                    NSLog(@"[UserManager] Failed to clear FCM token on server: %@", error.localizedDescription);
-                } else {
-                    NSLog(@"[UserManager] FCM token cleared from server on logout");
-                }
-            }];
-}
 
 - (void)pp_deactivateNotificationDeviceV2ForLogoutWithCompletion:(dispatch_block_t)completion
 {
@@ -1214,8 +1185,6 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
             return;
         }
         didContinueLogout = YES;
-
-        [strongSelf clearFCMTokenOnServerForCurrentUser];
 
         NSError *signOutError = nil;
         BOOL status = [[FIRAuth auth] signOut:&signOutError];
@@ -2302,7 +2271,9 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
         @"isSuperAdmin",
         @"isAdminAll",
         @"isBlocked",
-        @"role"
+        @"role",
+        @"PPUserTokenID",
+        @"PPProTokenID"
     ];
     for (NSString *blocked in blockedFields) {
         [safeFields removeObjectForKey:blocked];
@@ -3151,12 +3122,8 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     NSMutableDictionary *dict = [[user toDictionary] mutableCopy];
     if (!dict) dict = [NSMutableDictionary dictionary];
 
-    // Enforce PPUserTokenID and loginSource per your constraints
-    NSString *deviceToken = user.PPUserTokenID.length ? user.PPUserTokenID
-                         : [[NSUserDefaults standardUserDefaults] stringForKey:@"deviceToken"];
-    if (deviceToken.length) {
-        dict[@"PPUserTokenID"] = deviceToken;
-    }
+    [dict removeObjectForKey:@"PPUserTokenID"];
+    [dict removeObjectForKey:@"PPProTokenID"];
     dict[@"loginSource"] = @(UserLoginSourcePPUsers);
     dict[@"updatedAt"]   = [NSDate date];
 
@@ -3355,11 +3322,10 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     NSMutableDictionary *doc = [[user toDictionary] mutableCopy];
     if (!doc) doc = [NSMutableDictionary dictionary];
 
-    // Enforce required fields
-    // PPUserTokenID (device token)
-    NSString *token = user.PPUserTokenID.length ? user.PPUserTokenID
-                     : [[NSUserDefaults standardUserDefaults] stringForKey:@"deviceToken"];
-    if (token.length) { doc[@"PPUserTokenID"] = token; }
+    // Legacy raw push fields are read-compatible only. Device registration is
+    // owned by registerNotificationDeviceV2.
+    [doc removeObjectForKey:@"PPUserTokenID"];
+    [doc removeObjectForKey:@"PPProTokenID"];
 
     // Always mark login source as PPUsers
     doc[@"loginSource"] = @(UserLoginSourcePPUsers);
@@ -3439,57 +3405,6 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         }
     }];
 }
-
-- (void)updateCurrentUserWithPPUserTokenID:(NSString *)PPUserTokenID {
-    NSString *trim = [PPUserTokenID isKindOfClass:[NSString class]]
-        ? [PPUserTokenID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
-        : nil;
-    if (trim.length == 0) {
-        NSLog(@"[UserManager] ⚠️ updateCurrentUserWithPPUserTokenID called with empty PPUserTokenID");
-        return;
-    }
-
-    // Always cache locally so we can attach it at first sign-in as well.
-    [[NSUserDefaults standardUserDefaults] setObject:trim forKey:@"PPUserTokenID"];
-    [[NSUserDefaults standardUserDefaults] setObject:trim forKey:@"deviceToken"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-
-    FIRUser *authUser = [FIRAuth auth].currentUser;
-    if (!authUser) {
-        NSLog(@"[UserManager] ℹ️ No auth user yet — stored PPUserTokenID for later use");
-        return;
-    }
-
-    if (self.currentUser && [self.currentUser.PPUserTokenID isEqualToString:trim]) {
-        NSLog(@"[UserManager] ℹ️ PPUserTokenID matches cached token. Skipping Firestore update.");
-        return;
-    }
-
-    // Update Firestore: UsersCol/<uid>
-    NSDictionary *fields = @{
-        @"PPUserTokenID"       : trim,
-        @"loginSource" : @(UserLoginSourcePPUsers),
-        @"updatedAt"   : [NSDate date]
-    };
-
-    __weak typeof(self) weakSelf = self;
-    [self updateUserDocumentForUID:authUser.uid fields:fields completion:^(NSError * _Nullable error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (error) {
-            NSLog(@"[UserManager] ❌ Failed to update PPUserTokenID in Firestore: %@", error);
-            return;
-        }
-
-        NSLog(@"[UserManager] ✅ PPUserTokenID synced to Firestore for UID=%@", authUser.uid);
-
-        if (strongSelf.currentUser) {
-            strongSelf.currentUser.PPUserTokenID = trim;
-            [strongSelf cacheUser:strongSelf.currentUser];
-        }
-    }];
-}
-
-
 
 - (NSString *)profileNameAndTitleWithMode:(ProfileGreetingShorteningMode)mode {
     // Defensive: reset currentUser if not logged in

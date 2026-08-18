@@ -14,7 +14,6 @@
 @import FirebaseAuth;
 
 static NSString * const kPPUsersCollection = @"UsersCol";
-static NSString * const kPPDefaultsUserTokenKey = @"PPUserTokenID";
 static NSString * const kPPFirestoreUserNameField = @"UserName";
 static NSString * const kPPSheetCustomMediumDetentIdentifier = @"pp_auth_custom_medium";
 static NSUInteger const kPPMinimumPhoneDigits = 6;
@@ -2285,12 +2284,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 [self completeUserFetchWithUser:user error:reloadError completion:completion];
             }];
             return;
-        }
-
-        NSString *pushToken = PPSafeString([[NSUserDefaults standardUserDefaults] valueForKey:kPPDefaultsUserTokenKey]) ?: @"";
-        if (pushToken.length > 0) {
-            resolvedUser.PPUserTokenID = pushToken;
-            [UsrMgr updateCurrentUserWithPPUserTokenID:pushToken];
         }
 
         // Bootstrap country/mobile metadata once for fresh accounts when we can infer safe values.

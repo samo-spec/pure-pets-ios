@@ -20,6 +20,8 @@
 @property (nonatomic, strong) FileUploadManager * _Nullable uploadManager;
 @property (nonatomic, strong) AVAudioPlayer * _Nullable audioPlayer;
 
++ (BOOL)pp_isNotificationPayloadRoutable:(NSDictionary *)payload;
+
 @end
 
 
