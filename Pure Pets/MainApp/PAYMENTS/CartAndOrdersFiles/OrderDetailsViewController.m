@@ -3337,10 +3337,14 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
     if (shouldCancelPendingCheckout) {
         __weak typeof(self) weakSelf = self;
-        NSLog(@"PPLAB consumer cancellation route=checkout-callable orderId=%@", self.order.orderId);
+        NSLog(@"PPBackend > ORDER_DETAILS : Callable invoke [cancelOrderCheckout] | orderId=%@ | status=%@", self.order.orderId, statusKey);
         [self.orderManager cancelPendingCheckoutOrder:self.order
                                            completion:^(BOOL success, BOOL alreadyCancelled, NSError * _Nullable error) {
-            NSLog(@"PPLAB consumer checkout cancellation result orderId=%@ success=%d alreadyCancelled=%d code=%ld", self.order.orderId, success, alreadyCancelled, (long)error.code);
+            NSLog(@"PPBackend > ORDER_DETAILS : Callable result [cancelOrderCheckout] | orderId=%@ | success=%d | alreadyCancelled=%d | error=%@",
+                  self.order.orderId,
+                  success,
+                  alreadyCancelled,
+                  error.localizedDescription ?: @"none");
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) strongSelf = weakSelf;
                 if (!strongSelf) return;
@@ -3364,11 +3368,17 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     draft.reasonTitle = kLang(@"order_cancel_button");
 
     __weak typeof(self) weakSelf = self;
-    NSLog(@"PPLAB consumer cancellation route=support-callable orderId=%@ fulfillmentVersion=%ld", self.order.orderId, (long)self.order.fulfillmentVersion);
+    NSLog(@"PPBackend > ORDER_DETAILS : Callable invoke [submitOrderSupportRequest:cancel] | orderId=%@ | fulfillmentVersion=%ld",
+          self.order.orderId,
+          (long)self.order.fulfillmentVersion);
     [self.orderManager submitSupportDraft:draft
                                  forOrder:self.order
                                completion:^(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error) {
-        NSLog(@"PPLAB consumer cancellation result orderId=%@ requestId=%@ deduplicated=%d code=%ld", self.order.orderId, request.requestId, deduplicated, (long)error.code);
+        NSLog(@"PPBackend > ORDER_DETAILS : Callable result [submitOrderSupportRequest:cancel] | orderId=%@ | requestId=%@ | deduplicated=%d | error=%@",
+              self.order.orderId,
+              request.requestId ?: @"none",
+              deduplicated,
+              error.localizedDescription ?: @"none");
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
@@ -3821,14 +3831,19 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     NSString *ownerUID = [self safeString:self.order.userId];
     if (orderID.length == 0 || observerUID.length == 0 ||
         ownerUID.length == 0 || ![ownerUID isEqualToString:observerUID]) {
+        NSLog(@"PPBackend > ORDER_DETAILS : Listener setup aborted | orderID=%@ | observerUID=%@ | ownerUID=%@",
+              orderID ?: @"empty",
+              observerUID ?: @"empty",
+              ownerUID ?: @"empty");
         return;
     }
     self.realtimeObserverUID = observerUID;
     self.realtimeObserverOrderID = orderID;
     NSInteger generation = self.realtimeObserverGeneration;
     self.lastObservedOrderStatusKey = [self normalizedStatusKeyForOrder:self.order];
-    NSLog(@"PPLAB OrderDetails listener start | orderId=%@ status=%@",
+    NSLog(@"PPBackend > ORDER_DETAILS : Realtime listener starting | orderID=%@ | observerUID=%@ | initialStatus=%@ | collection=Orders",
           orderID,
+          observerUID,
           self.lastObservedOrderStatusKey ?: @"");
 
     __weak typeof(self) weakSelf = self;
@@ -3838,14 +3853,20 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         if (!strongSelf ||
             ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:orderID]) return;
         if (error || !snapshot.exists) {
-            NSLog(@"PPLAB OrderDetails listener snapshot | orderId=%@ exists=%d error=%@",
-                  strongSelf.order.orderId ?: @"",
+            NSLog(@"PPBackend > ORDER_DETAILS : Snapshot error or missing | orderID=%@ | exists=%d | error=%@",
+                  strongSelf.order.orderId ?: orderID,
                   snapshot.exists,
-                  error.localizedDescription ?: @"");
+                  error.localizedDescription ?: @"none");
             return;
         }
+        NSLog(@"PPBackend > ORDER_DETAILS : Snapshot received | orderID=%@ | exists=%d | isFromCache=%d | hasPendingWrites=%d",
+              orderID,
+              snapshot.exists,
+              snapshot.metadata.isFromCache,
+              snapshot.metadata.hasPendingWrites);
         NSString *snapshotOwnerUID = [strongSelf safeString:snapshot.data[@"userId"]];
         if (snapshotOwnerUID.length == 0 || ![snapshotOwnerUID isEqualToString:observerUID]) {
+            NSLog(@"PPBackend > ORDER_DETAILS : Permission mismatch | snapshotOwnerUID=%@ | observerUID=%@", snapshotOwnerUID, observerUID);
             [strongSelf stopRealtimeObservers];
             [strongSelf showErrorMessage:kLang(@"order_mission_permission_denied")];
             return;
@@ -3855,10 +3876,30 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
         NSString *nextStatusKey = [strongSelf normalizedStatusKeyForOrder:updatedOrder];
         NSString *previousStatusKey = [strongSelf safeString:strongSelf.lastObservedOrderStatusKey];
-        NSLog(@"PPLAB OrderDetails listener snapshot | orderId=%@ previousStatus=%@ nextStatus=%@",
+        NSLog(@"PPBackend > ORDER_DETAILS : Order parsed | orderID=%@ | status=%ld | rawStatus=%@ | deliveryStatus=%@ | paymentStatus=%@ | paymentMethod=%@ | amount=%.2f | itemsCount=%lu | fulfillmentVersion=%ld | shippingAddressId=%@ | statusTransition=(%@ -> %@)",
               updatedOrder.orderId ?: @"",
-              previousStatusKey ?: @"",
-              nextStatusKey ?: @"");
+              (long)updatedOrder.status,
+              updatedOrder.rawStatus ?: @"",
+              updatedOrder.deliveryStatus ?: @"",
+              updatedOrder.paymentStatus ?: @"",
+              updatedOrder.paymentMethodId ?: @"",
+              updatedOrder.amount,
+              (unsigned long)updatedOrder.items.count,
+              (long)updatedOrder.fulfillmentVersion,
+              updatedOrder.shippingAddressId ?: @"none",
+              previousStatusKey ?: @"none",
+              nextStatusKey ?: @"none");
+
+        for (NSDictionary *item in updatedOrder.items ?: @[]) {
+            if ([item isKindOfClass:NSDictionary.class]) {
+                NSLog(@"PPBackend > ORDER_DETAILS : ↳ LineItem [%@] qty=%ld price=%.2f name=%@",
+                      item[@"id"] ?: item[@"itemID"] ?: @"",
+                      (long)[item[@"qty"] ?: item[@"quantity"] integerValue],
+                      [item[@"price"] doubleValue],
+                      item[@"name"] ?: @"");
+            }
+        }
+
         BOOL shouldPlayStatusFeedback = strongSelf.isOrderDetailsScreenVisible &&
                                         previousStatusKey.length > 0 &&
                                         nextStatusKey.length > 0 &&
@@ -3883,6 +3924,16 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             if (!strongSelf ||
                 ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:orderID]) return;
             strongSelf.supportRequests = requests ?: @[];
+            NSLog(@"PPBackend > ORDER_DETAILS : Support requests snapshot | orderID=%@ | count=%lu",
+                  orderID,
+                  (unsigned long)strongSelf.supportRequests.count);
+            for (PPOrderSupportRequest *req in strongSelf.supportRequests) {
+                NSLog(@"PPBackend > ORDER_DETAILS : ↳ SupportRequest [%@] type=%@ status=%@ createdAt=%@",
+                      req.requestId ?: @"",
+                      req.type ?: @"",
+                      req.status ?: @"",
+                      req.createdAt);
+            }
             strongSelf.eligibilityDecisions = [strongSelf.orderManager eligibilityDecisionsForOrder:strongSelf.order
                                                                                         requests:strongSelf.supportRequests
                                                                                    referenceDate:[NSDate date]];
@@ -3897,6 +3948,16 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             if (!strongSelf ||
                 ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:orderID]) return;
             strongSelf.timelineEvents = events ?: @[];
+            NSLog(@"PPBackend > ORDER_DETAILS : Timeline events snapshot | orderID=%@ | count=%lu",
+                  orderID,
+                  (unsigned long)strongSelf.timelineEvents.count);
+            for (PPOrderTimelineEvent *evt in strongSelf.timelineEvents) {
+                NSLog(@"PPBackend > ORDER_DETAILS : ↳ TimelineEvent [%@] type=%@ summary=%@ createdAt=%@",
+                      evt.eventId ?: @"",
+                      evt.type ?: @"",
+                      evt.summary ?: @"",
+                      evt.createdAt);
+            }
         });
     }];
 
@@ -3905,6 +3966,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)stopRealtimeObservers
 {
+    if (self.realtimeObserverOrderID.length > 0) {
+        NSLog(@"PPBackend > ORDER_DETAILS : Realtime observers stopped for orderID=%@", self.realtimeObserverOrderID);
+    }
     self.realtimeObserverGeneration += 1;
     self.realtimeObserverUID = @"";
     self.realtimeObserverOrderID = @"";
@@ -4587,6 +4651,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     }
 
     __weak typeof(self) weakSelf = self;
+    NSLog(@"PPBackend > ORDER_DETAILS : Fulfillment listener setup | parentOrderID=%@ | targetFulfillmentCount=%lu",
+          parentOrderID,
+          (unsigned long)fulfillmentIDs.count);
     for (NSString *fulfillmentID in fulfillmentIDs) {
         if (self.fulfillmentDocumentListeners[fulfillmentID]) continue;
 
@@ -4598,6 +4665,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
                     ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:parentOrderID]) return;
 
                 if (error || !snapshot.exists || ![snapshot.data isKindOfClass:NSDictionary.class]) {
+                    NSLog(@"PPBackend > ORDER_DETAILS : FulfillmentOrder snapshot missing/error | fulfillmentID=%@ | exists=%d | error=%@",
+                          fulfillmentID,
+                          snapshot.exists,
+                          error.localizedDescription ?: @"none");
                     if (!error) {
                         [strongSelf.fulfillmentOrdersByID removeObjectForKey:fulfillmentID];
                         [strongSelf renderFulfillmentSectionFromLiveChildren];
@@ -4609,9 +4680,18 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
                 PPFulfillmentOrder *fulfillment = [PPFulfillmentOrder fromDictionary:snapshot.data fulfillmentID:snapshot.documentID];
                 if (childOwnerUID.length == 0 || ![childOwnerUID isEqualToString:observerUID] ||
                     fulfillment.parentOrderId.length == 0 || ![fulfillment.parentOrderId isEqualToString:parentOrderID]) {
+                    NSLog(@"PPBackend > ORDER_DETAILS : FulfillmentOrder discarded | fulfillmentID=%@ | ownerMismatch=%d | parentMismatch=%d",
+                          fulfillmentID,
+                          ![childOwnerUID isEqualToString:observerUID],
+                          ![fulfillment.parentOrderId isEqualToString:parentOrderID]);
                     [strongSelf.fulfillmentOrdersByID removeObjectForKey:fulfillmentID];
                 } else {
                     strongSelf.fulfillmentOrdersByID[fulfillmentID] = fulfillment;
+                    NSLog(@"PPBackend > ORDER_DETAILS : ↳ FulfillmentOrder [#%@] ownerID=%@ status=%@ itemCount=%ld",
+                          fulfillment.fulfillmentID ?: fulfillmentID,
+                          fulfillment.ownerID ?: @"none",
+                          fulfillment.status ?: @"none",
+                          (long)fulfillment.itemCount);
                 }
                 [strongSelf renderFulfillmentSectionFromLiveChildren];
             });

@@ -1,6 +1,16 @@
 import SwiftUI
 import UIKit
 
+/// Home-only geometry values. These intentionally compose existing Pure Pets
+/// tokens instead of changing legacy UIKit or non-Home SwiftUI surfaces.
+enum HomeVisualTokens {
+    static let routineRowSpacing = PPSpace.base
+    static let stickyChromeBackdropHeight: CGFloat = 124
+    static let heroHeight: CGFloat = 258
+    static let heroShadowRadius: CGFloat = 18
+    static let heroShadowOffsetY: CGFloat = 10
+}
+
 /// Home-scoped Beiruti typography that participates in Dynamic Type without
 /// changing typography behavior on unrelated legacy surfaces.
 enum HomeFont {
@@ -114,7 +124,7 @@ struct HomeCommandBar: View {
             .padding(.vertical, PPSpace.sm)
             .background(alignment: .bottom) {
                 HomeTopFadeBackdrop(contrast: contrast)
-                    .frame(height: 168)
+                    .frame(height: HomeVisualTokens.stickyChromeBackdropHeight)
                     .ignoresSafeArea(edges: .top)
             }
             .environment(
@@ -507,7 +517,7 @@ struct HomeAnimatedSearchSuggestionView: View {
                 if item.id == visibleSuggestionID {
                     Text(item.text)
                         .font(HomeFont.callout())
-                        .foregroundStyle(Color.ppTextPrimary.opacity(0.76))
+                        .foregroundStyle(Color.ppTextSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                         .multilineTextAlignment(.leading)
@@ -612,34 +622,10 @@ private struct HomeTopFadeBackdrop: View {
     let contrast: ColorSchemeContrast
 
     var body: some View {
-        LinearGradient(
-            stops: [
-                .init(color: Color.homeCanvas, location: 0),
-                .init(
-                    color: Color.homeCanvas.opacity(
-                        contrast == .increased ? 0.98 : 0.90
-                    ),
-                    location: 0.72
-                ),
-                .init(color: Color.homeCanvas.opacity(0), location: 1),
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .mask {
-            LinearGradient(
-                stops: [
-                    .init(color: .black, location: 0),
-                    .init(color: .black, location: 0.82),
-                    .init(color: .black.opacity(0.76), location: 0.92),
-                    .init(color: .clear, location: 1),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        Color.homeCanvas
+            .opacity(contrast == .increased ? 1 : 0.98)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 
@@ -822,7 +808,7 @@ private struct HomePetIdentityPill: View {
     @FocusState private var isFocused: Bool
 
     private let shape = RoundedRectangle(
-        cornerRadius: 28,
+        cornerRadius: PPCorner.card,
         style: .continuous
     )
 
@@ -850,10 +836,6 @@ private struct HomePetIdentityPill: View {
                             .minimumScaleFactor(0.82)
                     }
 
-                    if selected {
-                        selectedBadge
-                            .transition(selectionBadgeTransition)
-                    }
                 }
                 .layoutPriority(1)
             }
@@ -914,16 +896,11 @@ private struct HomePetIdentityPill: View {
                 )
 
             portraitContent
-                .frame(width: portraitImageDiameter, height: portraitImageDiameter)
+                .frame(
+                    width: portraitImageDiameter,
+                    height: portraitImageDiameter
+                )
                 .clipShape(Circle())
-                .overlay {
-                    Circle().strokeBorder(
-                        Color.ppSurfaceRaised.opacity(
-                            contrast == .increased ? 1 : 0.92
-                        ),
-                        lineWidth: 2
-                    )
-                }
         }
         .frame(width: portraitDiameter, height: portraitDiameter)
         .overlay {
@@ -936,22 +913,9 @@ private struct HomePetIdentityPill: View {
                         contrast == .increased ? 0.70 : 0.42
                     ),
                 lineWidth: selected
-                    ? (contrast == .increased ? 2.4 : 1.5)
+                    ? (contrast == .increased ? 2 : 1.2)
                     : (contrast == .increased ? 1.4 : 0.8)
             )
-        }
-        .overlay(alignment: .bottomTrailing) {
-            if selected {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 9, weight: .black))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 21, height: 21)
-                    .background(Color.ppPrimary, in: Circle())
-                    .overlay {
-                        Circle().strokeBorder(Color.ppSurfaceRaised, lineWidth: 2)
-                    }
-                    .transition(selectionBadgeTransition)
-            }
         }
         .accessibilityHidden(true)
     }
@@ -975,29 +939,6 @@ private struct HomePetIdentityPill: View {
                 accent: selected ? Color.ppPrimary : Color.ppTextTertiary
             )
         }
-    }
-
-    private var selectedBadge: some View {
-        HStack(spacing: 5) {
-            Image("pawsmall")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 12, height: 12)
-                .accessibilityHidden(true)
-
-            Text(
-                HomeModelAdapter.localized(
-                    "modern_segmented_selected",
-                    fallback: "Selected"
-                )
-            )
-            .font(HomeFont.caption2())
-            .lineLimit(1)
-        }
-        .foregroundStyle(Color.ppPrimary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.ppPrimary.opacity(0.10), in: Capsule())
     }
 
     private var defaultDot: some View {
@@ -1053,41 +994,24 @@ private struct HomePetIdentityPill: View {
     }
 
     private var surfaceBackground: some ShapeStyle {
-        if selected {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        Color.ppSoftRose.opacity(
-                            colorScheme == .dark ? 0.42 : 0.92
-                        ),
-                        Color.ppSurfaceRaised.opacity(
-                            colorScheme == .dark ? 0.96 : 0.98
-                        ),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+        selected
+            ? AnyShapeStyle(
+                Color.ppPrimary.opacity(colorScheme == .dark ? 0.20 : 0.10)
             )
-        }
-        return AnyShapeStyle(Color.ppSurfaceRaised)
+            : AnyShapeStyle(Color.ppSurfaceRaised)
     }
 
     private var borderColor: Color {
-        if selected {
-            return Color.ppPrimary.opacity(
-                contrast == .increased ? 1 : 0.48
-            )
-        }
-        return contrast == .increased
-            ? Color.ppTextPrimary.opacity(0.68)
-            : Color.ppBorder.opacity(0.62)
+        selected
+            ? Color.ppPrimary.opacity(contrast == .increased ? 1 : 0.72)
+            : (contrast == .increased
+                ? Color.ppTextPrimary.opacity(0.68)
+                : Color.ppBorder.opacity(0.62))
     }
 
     private var borderWidth: CGFloat {
-        if selected {
-            return contrast == .increased ? 2 : 0.9
-        }
-        return contrast == .increased ? 1.4 : 0.7
+        selected ? (contrast == .increased ? 2 : 1.2) :
+            (contrast == .increased ? 1.4 : 0.7)
     }
 
     private var portraitDiameter: CGFloat {
@@ -1119,11 +1043,6 @@ private struct HomePetIdentityPill: View {
                 blendDuration: 0.08
             )
     }
-
-    private var selectionBadgeTransition: AnyTransition {
-        guard !reduceMotion else { return .opacity }
-        return .scale(scale: 0.88).combined(with: .opacity)
-    }
 }
 
 private struct HomePetIdentityPressStyle: ButtonStyle {
@@ -1144,10 +1063,10 @@ private struct HomePetIdentityPressStyle: ButtonStyle {
             )
             .shadow(
                 color: Color.black.opacity(
-                    isEnabled && !configuration.isPressed ? 0.055 : 0
+                    isEnabled && !configuration.isPressed ? 0.04 : 0
                 ),
-                radius: isEnabled && !configuration.isPressed ? 18 : 0,
-                y: isEnabled && !configuration.isPressed ? 10 : 0
+                radius: isEnabled && !configuration.isPressed ? 10 : 0,
+                y: isEnabled && !configuration.isPressed ? 4 : 0
             )
             .animation(
                 reduceMotion
@@ -2183,20 +2102,23 @@ struct HomeFeaturedPetCard: View {
                 animationArea
                     .padding(.top, circleInset)
 
-                VStack(spacing: PPSpace.xxs) {
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
                     Text(action.title)
                         .font(HomeFont.bold(20))
                         .foregroundStyle(Color.homeTextPrimary)
+                        .multilineTextAlignment(.leading)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .minimumScaleFactor(0.82)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                     Text(action.subtitle)
                         .font(HomeFont.medium(14))
                         .foregroundStyle(subtitleColor)
-                        .multilineTextAlignment(.center)
+                        .multilineTextAlignment(.leading)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
                         .minimumScaleFactor(0.93)
                         .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.top, PPSpace.md)
                 .padding(.horizontal, PPSpace.sm)
@@ -3248,7 +3170,7 @@ private struct HomeMainKindShelf: View {
 
     var body: some View {
         Capsule(style: .continuous)
-            .fill(fill)
+            .fill(shelfFill)
             .frame(width: width, height: height)
             .frame(
                 maxWidth: .infinity,
@@ -3257,7 +3179,7 @@ private struct HomeMainKindShelf: View {
             )
     }
 
-    private var fill: Color {
+    private var shelfFill: Color {
         guard selected else {
             return .ppSurfaceBorder.opacity(
                 contrast == .increased ? 1 : 0.85
@@ -3681,8 +3603,9 @@ private struct HomeMainKindPedestalCell: View {
     }
 
     private var accentUIColor: UIColor {
-        HomeMainKindPedestal.resolvedAccent(
-            category?.accent ?? .ppPrimary,
+        let candidate = selected ? UIColor.ppPrimary : (category?.accent ?? .ppPrimary)
+        return HomeMainKindPedestal.resolvedAccent(
+            candidate,
             traits: HomeMainKindPedestal.traits(colorScheme: colorScheme),
             highContrast: contrast == .increased
         )

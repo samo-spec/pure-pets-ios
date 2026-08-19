@@ -844,7 +844,6 @@
 		F2F548C230186C4A00323EC4 /* PPServiceViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548BB30186C4A00323EC4 /* PPServiceViewerScreen.swift */; };
 		F2F630892F7BC98A00CC2E61 /* Beiruti-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2F630882F7BC98A00CC2E61 /* Beiruti-Black.ttf */; };
 		F2F69D302EA944DA003ADA14 /* PetAd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F69D2F2EA944DA003ADA14 /* PetAd.m */; };
-		F2F6A46330328DFE00C49CB3 /* PurePetsBrandMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F6A45930328DFD00C49CB3 /* PurePetsBrandMotion.swift */; };
 		F2F6A4653032B10900C49CB3 /* PPOrderLivingHandoffRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F6A4643032B10900C49CB3 /* PPOrderLivingHandoffRail.swift */; };
 		F2F6C8B32E8D7B430092D85D /* SplashViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F6C8B22E8D7A730092D85D /* SplashViewController.m */; };
 		F2F750CB2E7C605E00BACFA8 /* PPS.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F750CA2E7C605E00BACFA8 /* PPS.m */; };
@@ -2363,7 +2362,6 @@
 		F2F548BD30186C4A00323EC4 /* ServiceViewerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceViewerViewController.swift; sourceTree = "<group>"; };
 		F2F630882F7BC98A00CC2E61 /* Beiruti-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Black.ttf"; sourceTree = "<group>"; };
 		F2F69D2F2EA944DA003ADA14 /* PetAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAd.m; sourceTree = "<group>"; };
-		F2F6A45930328DFD00C49CB3 /* PurePetsBrandMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurePetsBrandMotion.swift; sourceTree = "<group>"; };
 		F2F6A4643032B10900C49CB3 /* PPOrderLivingHandoffRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderLivingHandoffRail.swift; sourceTree = "<group>"; };
 		F2F6C8B12E8D79C10092D85D /* SplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SplashViewController.h; sourceTree = "<group>"; };
 		F2F6C8B22E8D7A730092D85D /* SplashViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SplashViewController.m; sourceTree = "<group>"; };
@@ -4477,7 +4475,6 @@
 		F2AEC14A2D6E818A00B55427 /* MianData_Files */ = {
 			isa = PBXGroup;
 			children = (
-				F2F6A45D30328DFD00C49CB3 /* PurePetsBrandMotion */,
 				F2F6C8B12E8D79C10092D85D /* SplashViewController.h */,
 				F2F6C8B22E8D7A730092D85D /* SplashViewController.m */,
 				F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */,
@@ -5168,14 +5165,6 @@
 				F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */,
 			);
 			path = ProfileCells;
-			sourceTree = "<group>";
-		};
-		F2F6A45D30328DFD00C49CB3 /* PurePetsBrandMotion */ = {
-			isa = PBXGroup;
-			children = (
-				F2F6A45930328DFD00C49CB3 /* PurePetsBrandMotion.swift */,
-			);
-			path = PurePetsBrandMotion;
 			sourceTree = "<group>";
 		};
 		F2F750CF2E7C82FC00BACFA8 /* PPStyles */ = {
@@ -6225,7 +6214,6 @@
 				F2BCA1103022000000000110 /* PPPromoCardView.swift in Sources */,
 				F2BCA1113022000000000111 /* PPPromoPageIndicator.swift in Sources */,
 				F2E64419302F76D1005B0699 /* PPProviderStorefrontDataBridge.m in Sources */,
-				F2F6A46330328DFE00C49CB3 /* PurePetsBrandMotion.swift in Sources */,
 				F2E6441A302F76D1005B0699 /* PPProviderProfileHeroStore.swift in Sources */,
 				F2E6441B302F76D1005B0699 /* PPSellerProfileSwiftUI.swift in Sources */,
 				F2E6441C302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift in Sources */,

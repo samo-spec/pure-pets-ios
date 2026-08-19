@@ -1689,6 +1689,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         if (reset) {
             [self stopOrdersRealtimeListener];
         }
+        NSLog(@"PPBackend > ORDERS_HISTORY : Fetch aborted | reason=UserNotAuthenticated | reset=%d", reset);
         [self finishFetchingWithErrorMessage:kLang(@"UserNotAuthenticated") reset:reset];
         return;
     }
@@ -1701,6 +1702,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
     query = [query queryLimitedTo:self.pageSize];
 
+    NSLog(@"PPBackend > ORDERS_HISTORY : Query dispatch | userID=%@ | reset=%d | pageSize=%ld | startAfterDoc=%@",
+          userID,
+          reset,
+          (long)self.pageSize,
+          self.lastDocument.documentID ?: @"none");
+
     if (reset) {
         [self startOrdersRealtimeListenerWithQuery:query userID:userID];
         return;
@@ -1709,6 +1716,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     __weak typeof(self) weakSelf = self;
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            NSLog(@"PPBackend > ORDERS_HISTORY : Pagination getDocuments response | count=%lu | isFromCache=%d | error=%@",
+                  (unsigned long)snapshot.documents.count,
+                  snapshot.metadata.isFromCache,
+                  error.localizedDescription ?: @"none");
             [weakSelf handleOrdersSnapshot:snapshot error:error reset:reset];
         });
     }];
@@ -1725,8 +1736,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     [self stopOrdersRealtimeListener];
     self.ordersListenerUserID = safeUserID;
-    NSLog(@"PPLAB OrderHistory listener start | userIdLength=%lu pageSize=%ld",
-          (unsigned long)safeUserID.length,
+    NSLog(@"PPBackend > ORDERS_HISTORY : Realtime listener starting | userID=%@ | pageSize=%ld | collection=Orders",
+          safeUserID,
           (long)self.pageSize);
 
     __weak typeof(self) weakSelf = self;
@@ -1736,10 +1747,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
             if (![strongSelf.ordersListenerUserID isEqualToString:safeUserID]) return;
-            NSLog(@"PPLAB OrderHistory listener snapshot | userIdLength=%lu count=%lu error=%@",
-                  (unsigned long)safeUserID.length,
+            NSLog(@"PPBackend > ORDERS_HISTORY : Realtime snapshot received | count=%lu | isFromCache=%d | hasPendingWrites=%d | error=%@",
                   (unsigned long)snapshot.documents.count,
-                  error.localizedDescription ?: @"");
+                  snapshot.metadata.isFromCache,
+                  snapshot.metadata.hasPendingWrites,
+                  error.localizedDescription ?: @"none");
             [strongSelf handleOrdersSnapshot:snapshot error:error reset:YES];
         });
     }];
@@ -1747,6 +1759,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)stopOrdersRealtimeListener
 {
+    if (self.ordersListener) {
+        NSLog(@"PPBackend > ORDERS_HISTORY : Realtime listener stopped for userID=%@", self.ordersListenerUserID ?: @"unknown");
+    }
     [self.ordersListener remove];
     self.ordersListener = nil;
     self.ordersListenerUserID = nil;
@@ -1755,6 +1770,10 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)handleOrdersSnapshot:(FIRQuerySnapshot * _Nullable)snapshot error:(NSError * _Nullable)error reset:(BOOL)reset
 {
     if (error) {
+        NSLog(@"PPBackend > ORDERS_HISTORY : Snapshot error | domain=%@ | code=%ld | description=%@",
+              error.domain,
+              (long)error.code,
+              error.localizedDescription);
         BOOL permissionDenied = [error.domain isEqualToString:FIRFirestoreErrorDomain] &&
             error.code == FIRFirestoreErrorCodePermissionDenied;
         NSString *message = permissionDenied
@@ -1779,12 +1798,27 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         [self.orders removeAllObjects];
     }
 
+    NSInteger parsedCount = 0;
     for (FIRDocumentSnapshot *document in documents) {
         PPOrder *order = [PPOrder orderFromSnapshot:document];
         if (order) {
             [self.orders addObject:order];
+            parsedCount += 1;
+            NSLog(@"PPBackend > ORDERS_HISTORY : ↳ Order [#%@] status=%ld rawStatus=%@ amount=%.2f itemsCount=%lu createdAt=%@",
+                  order.orderId ?: @"",
+                  (long)order.status,
+                  order.rawStatus ?: @"",
+                  order.amount,
+                  (unsigned long)order.items.count,
+                  order.createdAt);
         }
     }
+
+    NSLog(@"PPBackend > ORDERS_HISTORY : Snapshot processed | totalRawDocs=%lu | successfullyParsed=%ld | cumulativeOrders=%lu | hasMorePages=%d",
+          (unsigned long)documents.count,
+          (long)parsedCount,
+          (unsigned long)self.orders.count,
+          self.hasMorePages);
 
     [self finishFetchingWithErrorMessage:nil reset:reset];
 }
@@ -1937,6 +1971,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
 
     self.displayedOrders = results.copy;
+    NSLog(@"PPBackend > ORDERS_HISTORY : Filter & search applied | statusFilter=%@ | searchQuery='%@' | totalOrders=%lu | displayedOrders=%lu",
+          self.selectedStatusFilterKey,
+          query ?: @"",
+          (unsigned long)self.orders.count,
+          (unsigned long)self.displayedOrders.count);
     if (self.orderHistorySurfaceController) {
         [self pp_publishOrderHistorySnapshot];
         return;

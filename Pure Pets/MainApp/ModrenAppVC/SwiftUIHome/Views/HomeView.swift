@@ -819,16 +819,18 @@ struct HomeView: View {
     }
 
     private func verticalPadding(for row: HomeRenderRow) -> CGFloat {
-        guard case let .module(module) = row.content else { return PPSpace.lg }
+        guard case let .module(module) = row.content else {
+            return HomeVisualTokens.routineRowSpacing
+        }
         switch module.kind {
         case .discoveryRail: return PPSpace.sm
         case .marketingStage: return PPSpace.md
-        default: return PPSpace.lg
+        default: return HomeVisualTokens.routineRowSpacing
         }
     }
 
     /// Preserve every row's existing bottom breathing room while making the
-    /// visible break before each standalone heading exactly 40 points. The
+    /// visible break before each standalone heading token-defined. The
     /// adjustment is derived from the preceding row, so Console-driven section
     /// ordering cannot change the header rhythm.
     private func topPadding(
@@ -1419,27 +1421,13 @@ private struct HomeEcosystemEntranceModifier: ViewModifier {
 
 // MARK: - HomeVerticalSectionReveal — willDisplaySection equivalent
 
-/// World-class scroll-in animation for sections inside the vertical home feed.
+/// A quiet, native scroll-in settle for sections inside the vertical Home feed.
 ///
-/// This is the SwiftUI equivalent of `collectionView(_:willDisplaySupplementaryView:…)`
-/// or a section-scoped `willDisplay`. `.onAppear` in a `LazyVStack` fires only
-/// when the view enters the visible viewport — exactly matching `willDisplay`.
-///
-/// **Dual-phase intelligence** (mirrors `HomeHorizontalCellReveal`):
-/// - `entranceAlreadyPlayed == false`: born during the initial stagger window.
-///   `HomeSectionEntranceModifier` owns these. This modifier is a no-op.
-/// - `entranceAlreadyPlayed == true`: section scrolled in after first load.
-///   Stages the section (opacity 0, scaled from the top, offset below) then
-///   springs it into its settled pose with no delay.
-///
-/// **Motion design:**
-///   • Anchor: `.top` — the header stays pinned while the body rises
-///   • y offset: +26 pt — section surfaces from just below the fold
-///   • scale: 0.976 from `.top` — subtle perspective of distance
-///   • Spring: response 0.44, dampingFraction 0.82 — slightly faster than the
-///     initial entrance so scroll-in feels immediate and rewarding, not sluggish
-///   • No artificial stagger — only one section appears at a time vertically
-///   • Reduce Motion: opacity crossfade only; no spatial transforms
+/// `LazyVStack` viewport appearances do not need a second spatial transition:
+/// the scroll view already provides it. Rows that arrive after the initial load
+/// therefore crossfade once, avoiding scale/offset springs that compete with
+/// sticky chrome and continuous scrolling. The first loaded pass remains owned
+/// by `HomeSectionEntranceModifier`.
 private struct HomeVerticalSectionReveal: ViewModifier {
     let entranceAlreadyPlayed: Bool
 
@@ -1449,53 +1437,28 @@ private struct HomeVerticalSectionReveal: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(opacityValue)
-            .scaleEffect(scaleValue, anchor: .top)
-            .offset(y: offsetY)
             .animation(revealAnimation, value: revealed)
             .onAppear { handleAppear() }
     }
-
-    // MARK: Render values
-
-    private var isStaged: Bool { !revealed && !reduceMotion }
 
     private var opacityValue: Double {
         guard entranceAlreadyPlayed else { return 1 }
         return revealed ? 1 : 0
     }
 
-    private var scaleValue: CGFloat {
-        guard entranceAlreadyPlayed, isStaged else { return 1 }
-        return 0.976
-    }
-
-    private var offsetY: CGFloat {
-        guard entranceAlreadyPlayed, isStaged else { return 0 }
-        return 26
-    }
-
     private var revealAnimation: Animation {
-        guard entranceAlreadyPlayed else { return .easeOut(duration: 0) }
-        if reduceMotion { return .easeOut(duration: 0.18) }
-        return .spring(
-            response: HomeVerticalSectionMotion.response,
-            dampingFraction: 0.82,
-            blendDuration: 0.06
-        )
+        guard entranceAlreadyPlayed else { return .linear(duration: 0) }
+        return .easeOut(duration: reduceMotion ? 0.16 : 0.20)
     }
-
-    // MARK: onAppear
 
     private func handleAppear() {
         guard !revealed else { return }
         if !entranceAlreadyPlayed {
             // Initial entrance window — HomeSectionEntranceModifier owns this.
-            // Mark ourselves settled so we stay transparent.
             revealed = true
             return
         }
-        // Scroll-in: defer one run-loop to ensure the staged pose is committed
-        // to the render tree before the spring begins.
+        // Defer one run-loop so the staged opacity is committed first.
         DispatchQueue.main.async {
             guard !revealed else { return }
             revealed = true
@@ -1564,9 +1527,9 @@ private enum HomeSectionEntranceMotion {
 }
 
 private enum HomeVerticalSectionMotion {
-    static let response: Double = 0.44
-    /// Matches the initial entrance's post-response settlement allowance.
-    static let settlementBuffer: Double = 0.12
+    static let response: Double = 0.20
+    /// Mirrors the short opacity settle before Pure Lens starts its own work.
+    static let settlementBuffer: Double = 0.06
 
     static var settleDelayNanoseconds: UInt64 {
         UInt64((response + settlementBuffer) * 1_000_000_000)

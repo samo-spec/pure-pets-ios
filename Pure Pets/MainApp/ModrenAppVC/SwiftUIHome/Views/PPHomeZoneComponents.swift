@@ -7,9 +7,9 @@ import UIKit
 /// stage, partner feature, launcher, and gateways share the same rhythm instead
 /// of each inventing its own numbers.
 enum PPHomeZoneMetrics {
-    static let stageMediaHeight: CGFloat = 176
+    static let stageMediaHeight: CGFloat = 150
     /// The marketplace ledger is denser than photographic marketing media.
-    static let marketplaceStageMediaHeight: CGFloat = 160
+    static let marketplaceStageMediaHeight: CGFloat = 136
     static let stageMediaAccessibilityHeight: CGFloat = 132
     static let marketplaceMediaAccessibilityHeight: CGFloat = 248
     static let marketplaceMediaAccessibilityMediumHeight: CGFloat = 296
@@ -26,13 +26,14 @@ enum PPHomeZoneMetrics {
 
 /// Shared geometry for every standalone Home section header.
 ///
-/// The 40-point section break is resolved by `HomeView` against the preceding
-/// row's existing bottom inset. Keeping the remaining measurements here makes
-/// the copy rhythm and action treatment identical across config-driven zones.
+/// The token-defined section break is resolved by `HomeView` against the
+/// preceding row's existing bottom inset. Keeping the remaining measurements
+/// here makes the copy rhythm and action treatment identical across
+/// config-driven zones.
 enum PPHomeSectionHeaderMetrics {
-    static let sectionTopSpacing = PPSpace.xxxl
+    static let sectionTopSpacing = PPSpace.xxl
     static let titleSubtitleSpacing = PPSpace.md
-    static let contentSpacing = PPSpace.xl
+    static let contentSpacing = PPSpace.lg
     static let actionTargetHeight: CGFloat = 44
     static let actionVisualHeight: CGFloat = 36
     static let actionHorizontalInset = PPSpace.md
@@ -398,7 +399,8 @@ struct PPHomeMarketingStage: View {
     }
 
     private var accent: Color {
-        Color(hex: page?.accentHex ?? "CB2654")
+        // TEMPORARY: Pause passing dynamic category accent color to hero; set brand color as default
+        Color.homeBrand
     }
 
     private var shape: RoundedRectangle {
@@ -417,10 +419,8 @@ struct PPHomeMarketingStage: View {
     }
 
     private func stage(_ page: HomeHeroPage) -> some View {
-        let horizontalAlignment: HorizontalAlignment =
-            isMarketplace(page) ? .center : .leading
-        let frameAlignment: Alignment =
-            isMarketplace(page) ? .center : .leading
+        let horizontalAlignment: HorizontalAlignment = .leading
+        let frameAlignment: Alignment = .leading
 
         return ZStack {
             VStack(alignment: horizontalAlignment, spacing: 0) {
@@ -583,12 +583,9 @@ struct PPHomeMarketingStage: View {
     // MARK: Copy
 
     private func copyPlate(_ page: HomeHeroPage) -> some View {
-        let horizontalAlignment: HorizontalAlignment =
-            isMarketplace(page) ? .center : .leading
-        let frameAlignment: Alignment =
-            isMarketplace(page) ? .center : .leading
-        let textAlignment: TextAlignment =
-            isMarketplace(page) ? .center : .leading
+        let horizontalAlignment: HorizontalAlignment = .leading
+        let frameAlignment: Alignment = .leading
+        let textAlignment: TextAlignment = .leading
 
         return VStack(alignment: horizontalAlignment, spacing: PPSpace.md) {
             VStack(alignment: horizontalAlignment, spacing: PPSpace.xs) {
@@ -646,20 +643,16 @@ struct PPHomeMarketingStage: View {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let primary = page.primaryTitle
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let centersContent = isMarketplace(page)
-        let horizontalAlignment: HorizontalAlignment =
-            centersContent ? .center : .leading
-        let frameAlignment: Alignment =
-            centersContent ? .center : .leading
-        let textAlignment: TextAlignment =
-            centersContent ? .center : .leading
+        let horizontalAlignment: HorizontalAlignment = .leading
+        let frameAlignment: Alignment = .leading
+        let textAlignment: TextAlignment = .leading
 
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: horizontalAlignment, spacing: PPSpace.sm) {
                 if !primary.isEmpty {
                     PPHomePrimaryAction(
                         title: primary,
-                        accent: accent,
+                        accent: Color.homeBrand,
                         fillsWidth: true,
                         action: { onPrimary(page) }
                     )
@@ -679,7 +672,7 @@ struct PPHomeMarketingStage: View {
                 if !primary.isEmpty {
                     PPHomePrimaryAction(
                         title: primary,
-                        accent: accent,
+                        accent: Color.homeBrand,
                         fillsWidth: false,
                         action: { onPrimary(page) }
                     )
@@ -692,9 +685,7 @@ struct PPHomeMarketingStage: View {
                         action: { onSecondary(page) }
                     )
                 }
-                if !centersContent {
-                    Spacer(minLength: 0)
-                }
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: frameAlignment)
         }
@@ -1255,11 +1246,11 @@ private struct PPHomeStageArtwork: View {
     }
 
     private var plateShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 32, style: .continuous)
+        RoundedRectangle(cornerRadius: 27, style: .continuous)
     }
 
     private var side: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 108 : 136
+        dynamicTypeSize.isAccessibilitySize ? 92 : 116
     }
 
     private var categoryArtworkSide: CGFloat {
@@ -1402,8 +1393,15 @@ private struct PPHomeStageArtwork: View {
     }
 
     private var scale: CGFloat {
-        if asset.name == "Shop2.json" { return 0.95 }
-        return asset.name == "petstore" ? 0.78 : 1.30
+        let baseScale: CGFloat
+        if asset.name == "Shop2.json" {
+            baseScale = 0.95
+        } else if asset.name == "petstore" {
+            baseScale = 0.78
+        } else {
+            baseScale = 1.30
+        }
+        return baseScale / 0.85
     }
 
     private var tintColor: UIColor? {
@@ -4032,20 +4030,8 @@ struct PPHomeServiceDestination: Identifiable {
     let accent: Color
 }
 
-@available(iOS 15.0, *)
-private struct PPHomeGatewaySymbolAnchorKey: PreferenceKey {
-    static var defaultValue: [String: Anchor<CGRect>] { [:] }
-
-    static func reduce(
-        value: inout [String: Anchor<CGRect>],
-        nextValue: () -> [String: Anchor<CGRect>]
-    ) {
-        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
-    }
-}
-
-/// The single care/service gateway. Replaces two overlapping legacy care
-/// presentations with one coherent treatment that keeps both destinations.
+/// The single care/service gateway keeps Vet and Pharmacy independently
+/// reachable while using one quiet, native list surface.
 @available(iOS 15.0, *)
 struct PPHomeServiceGateway: View {
     let eyebrow: String?
@@ -4054,9 +4040,7 @@ struct PPHomeServiceGateway: View {
     let destinations: [PPHomeServiceDestination]
     let onSelect: (PPHomeServiceDestination) -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -4071,8 +4055,6 @@ struct PPHomeServiceGateway: View {
             )
 
             gatewaySurface
-
-            PPHomeCareDiscoveryBridge()
         }
         .accessibilityElement(children: .contain)
     }
@@ -4084,8 +4066,9 @@ struct PPHomeServiceGateway: View {
         )
 
         return VStack(spacing: 0) {
-            ForEach(destinations) { destination in
-                if destination.id != destinations.first?.id {
+            ForEach(Array(destinations.enumerated()), id: \.element.id) {
+                index, destination in
+                if index > 0 {
                     separator
                 }
 
@@ -4101,12 +4084,11 @@ struct PPHomeServiceGateway: View {
         }
         .background(Color.homeSurface)
         .clipShape(shape)
-        .overlayPreferenceValue(PPHomeGatewaySymbolAnchorKey.self) {
-            careRail(anchors: $0)
-        }
         .overlay {
             shape.strokeBorder(
-                Color.ppCareAccent.opacity(borderOpacity),
+                Color.homeSeparator.opacity(
+                    contrast == .increased ? 1 : 0.78
+                ),
                 lineWidth: contrast == .increased ? 1.5 : 1
             )
             .allowsHitTesting(false)
@@ -4114,47 +4096,26 @@ struct PPHomeServiceGateway: View {
         .contentShape(shape)
     }
 
-    @ViewBuilder
     private func destinationRow(
         _ destination: PPHomeServiceDestination
     ) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: PPSpace.md) {
-                HStack(alignment: .center, spacing: PPSpace.md) {
-                    symbolPlate(destination)
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            symbolPlate(destination)
 
-                    Spacer(minLength: PPSpace.sm)
+            destinationCopy(destination)
 
-                    disclosure
-                }
+            Spacer(minLength: PPSpace.sm)
 
-                destinationCopy(destination)
-            }
-            .padding(PPSpace.base)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: PPHomeZoneMetrics.minimumTarget,
-                alignment: .leading
-            )
-            .contentShape(Rectangle())
-        } else {
-            HStack(alignment: .center, spacing: PPSpace.md) {
-                symbolPlate(destination)
-
-                destinationCopy(destination)
-
-                Spacer(minLength: PPSpace.sm)
-
-                disclosure
-            }
-            .padding(PPSpace.base)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: PPHomeZoneMetrics.minimumTarget * 2,
-                alignment: .leading
-            )
-            .contentShape(Rectangle())
+            disclosure
         }
+        .padding(.horizontal, PPSpace.base)
+        .padding(.vertical, PPSpace.sm)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: PPHomeZoneMetrics.minimumTarget + PPSpace.lg,
+            alignment: .leading
+        )
+        .contentShape(Rectangle())
     }
 
     private func symbolPlate(
@@ -4173,11 +4134,6 @@ struct PPHomeServiceGateway: View {
                     cornerRadius: PPCorner.small,
                     style: .continuous
                 )
-            )
-            .anchorPreference(
-                key: PPHomeGatewaySymbolAnchorKey.self,
-                value: .bounds,
-                transform: { [destination.id: $0] }
             )
             .accessibilityHidden(true)
     }
@@ -4214,80 +4170,9 @@ struct PPHomeServiceGateway: View {
 
     private var separator: some View {
         Rectangle()
-            .fill(Color.homeSeparator)
+            .fill(Color.homeSeparator.opacity(contrast == .increased ? 1 : 0.75))
             .frame(height: contrast == .increased ? 1.5 : 1)
-            .padding(
-                .leading,
-                dynamicTypeSize.isAccessibilitySize
-                    ? PPSpace.base
-                    : PPSpace.base +
-                        PPHomeZoneMetrics.gatewaySymbolPlate +
-                        PPSpace.md
-            )
-            .padding(.trailing, PPSpace.base)
-            .accessibilityHidden(true)
-    }
-
-    @ViewBuilder
-    private func careRail(
-        anchors: [String: Anchor<CGRect>]
-    ) -> some View {
-        if !dynamicTypeSize.isAccessibilitySize,
-           let firstID = destinations.first?.id,
-           let lastID = destinations.last?.id,
-           firstID != lastID,
-           let firstAnchor = anchors[firstID],
-           let lastAnchor = anchors[lastID] {
-            GeometryReader { proxy in
-                let firstFrame = proxy[firstAnchor]
-                let lastFrame = proxy[lastAnchor]
-                let midX = (firstFrame.midX + lastFrame.midX) * 0.5
-
-                Path { path in
-                    path.move(
-                        to: CGPoint(x: midX, y: firstFrame.maxY)
-                    )
-                    path.addLine(
-                        to: CGPoint(x: midX, y: lastFrame.minY)
-                    )
-                }
-                .stroke(
-                    Color.ppCareAccent,
-                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                )
-            }
-            .environment(\.layoutDirection, .leftToRight)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-    }
-
-    private var borderOpacity: Double {
-        if contrast == .increased { return 0.56 }
-        return colorScheme == .dark ? 0.26 : 0.16
-    }
-}
-
-/// An elegant NextGen V6 continuity line between the Care section and New Pet Listings.
-struct PPHomeCareDiscoveryBridge: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.clear,
-                        Color.ppCareAccent.opacity(colorScheme == .dark ? 0.22 : 0.14),
-                        Color.clear
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .frame(height: 1.0)
-            .frame(maxWidth: .infinity)
-            .padding(.top, PPSpace.md)
+            .padding(.horizontal, PPSpace.base)
             .accessibilityHidden(true)
     }
 }
@@ -4405,8 +4290,7 @@ struct PPHomeExploreMoreRow: View {
             spacing: PPHomeSectionHeaderMetrics.contentSpacing
         ) {
             PPHomeSectionHeading(
-                title: PPHomeZoneCopy.exploreMoreTitle,
-                subtitle: PPHomeZoneCopy.exploreMoreSubtitle
+                title: PPHomeZoneCopy.exploreMoreTitle
             )
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: PPSpace.sm) {
@@ -4515,7 +4399,7 @@ struct PPHomePrimaryAction: View {
                 Text(title)
                     .font(HomeFont.bold(16))
                     .lineLimit(2)
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Image(systemName: "chevron.forward")

@@ -339,6 +339,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 - (nullable PPAddressModel *)selectedSavedAddress;
 - (void)resolveSelectedAddressIfNeededForGeneration:(NSInteger)generation;
 - (void)scheduleAuthorityTimeoutForGeneration:(NSInteger)generation;
+- (void)installAuthorizedDetailListenersForGeneration:(NSInteger)generation;
 - (NSArray<NSString *> *)normalizedFulfillmentOrderIDs;
 - (NSString *)resolvedCurrencyCode;
 - (BOOL)hasCurrentOwnerAuthority;
@@ -531,15 +532,19 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 
     __weak typeof(self) weakSelf = self;
     FIRDocumentReference *orderReference = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:orderID];
+    NSLog(@"PPBackend > ORDER_DETAILS : MissionControl realtime listener starting | orderID=%@ | generation=%ld", orderID, (long)generation);
     self.orderListener =
         [orderReference addSnapshotListenerWithIncludeMetadataChanges:YES
                                                               listener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         PPMissionOnMain(^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self || !self.running || generation != self.generation ||
-                ![self hasCurrentOwnerAuthority]) return;
+            // The parent snapshot establishes ownership. It must be allowed to
+            // validate the authenticated UID and set ownershipVerified before
+            // downstream listeners require current-owner authority.
+            if (!self || !self.running || generation != self.generation) return;
             self.hasLoadedOrder = YES;
             if (error) {
+                NSLog(@"PPBackend > ORDER_DETAILS : MissionControl snapshot error | orderID=%@ | error=%@", orderID, error.localizedDescription);
                 NSString *currentUID = FIRAuth.auth.currentUser.uid ?: @"";
                 NSString *knownOwnerUID = self.verifiedOwnerUID.length > 0
                     ? self.verifiedOwnerUID
@@ -563,6 +568,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                 return;
             }
             if (!snapshot.exists) {
+                NSLog(@"PPBackend > ORDER_DETAILS : MissionControl snapshot not found | orderID=%@ | isFromCache=%d", orderID, snapshot.metadata.isFromCache);
                 if (snapshot.metadata.isFromCache) {
                     self.isOffline = YES;
                     self.streamErrorMessage = self.ownershipVerified
@@ -582,6 +588,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             NSString *authenticatedUID = FIRAuth.auth.currentUser.uid ?: @"";
             NSString *ownerUID = PPMissionSafeString(data[@"userId"] ?: data[@"uid"]);
             if (authenticatedUID.length == 0 || ownerUID.length == 0 || ![authenticatedUID isEqualToString:ownerUID]) {
+                NSLog(@"PPBackend > ORDER_DETAILS : MissionControl owner mismatch | authUID=%@ | ownerUID=%@", authenticatedUID, ownerUID);
                 self.ownershipVerified = NO;
                 self.addressMutationContractSatisfied = NO;
                 self.verifiedOwnerUID = @"";
@@ -592,6 +599,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 
             PPOrder *updatedOrder = [PPOrder orderFromSnapshot:snapshot];
             if (!updatedOrder) {
+                NSLog(@"PPBackend > ORDER_DETAILS : MissionControl failed to parse order | orderID=%@", orderID);
                 self.ownershipVerified = NO;
                 self.addressMutationContractSatisfied = NO;
                 self.verifiedOwnerUID = @"";
@@ -602,6 +610,12 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 
             NSString *nextStatus = PPMissionNormalizedKey(updatedOrder.customerVisibleStatusKey);
             BOOL statusChanged = self.lastStatusKey.length > 0 && ![self.lastStatusKey isEqualToString:nextStatus];
+            NSLog(@"PPBackend > ORDER_DETAILS : MissionControl order parsed | orderID=%@ | status=%ld | paymentStatus=%@ | itemsCount=%lu | statusChanged=%d",
+                  updatedOrder.orderId,
+                  (long)updatedOrder.status,
+                  updatedOrder.paymentStatus,
+                  (unsigned long)updatedOrder.items.count,
+                  statusChanged);
             self.order = updatedOrder;
             self.ownershipVerified = YES;
             self.verifiedOwnerUID = ownerUID;
@@ -623,41 +637,55 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             self.lastStatusKey = nextStatus;
             [self rebuildLineItems];
             [self resolveSelectedAddressIfNeededForGeneration:generation];
-            [self restartFulfillmentListenersForGeneration:generation];
+            [self installAuthorizedDetailListenersForGeneration:generation];
             [self emitState];
             [self resolveLineItemsIfNeeded];
         });
     }];
 
-    self.supportListener = [self.orderManager listenToSupportRequestsForOrderID:orderID
-                                                                 metadataUpdate:^(NSArray<PPOrderSupportRequest *> *requests,
-                                                                                  BOOL isFromCache,
-                                                                                  NSError * _Nullable error) {
-        PPMissionOnMain(^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self || !self.running || generation != self.generation ||
-                ![self hasCurrentOwnerAuthority]) return;
-            self.supportLoading = !error && isFromCache;
-            self.supportRequests = requests ?: @[];
-            self.supportErrorMessage = error ? kLang(@"order_mission_support_load_error") : @"";
-            [self emitState];
-        });
-    }];
+}
 
-    self.timelineListener = [self.orderManager listenToTimelineEventsForOrder:self.order
-                                                                metadataUpdate:^(NSArray<PPOrderTimelineEvent *> *events,
-                                                                                 BOOL isFromCache,
-                                                                                 NSError * _Nullable error) {
-        PPMissionOnMain(^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self || !self.running || generation != self.generation ||
-                ![self hasCurrentOwnerAuthority]) return;
-            self.timelineLoading = !error && isFromCache;
-            self.timelineEvents = events ?: @[];
-            self.timelineErrorMessage = error ? kLang(@"order_mission_timeline_load_error") : @"";
-            [self emitState];
-        });
-    }];
+- (void)installAuthorizedDetailListenersForGeneration:(NSInteger)generation
+{
+    if (!self.running || generation != self.generation || ![self hasCurrentOwnerAuthority]) return;
+
+    NSString *orderID = PPMissionSafeString(self.order.orderId);
+    if (orderID.length == 0) return;
+
+    __weak typeof(self) weakSelf = self;
+    if (!self.supportListener) {
+        self.supportListener = [self.orderManager listenToSupportRequestsForOrderID:orderID
+                                                                     metadataUpdate:^(NSArray<PPOrderSupportRequest *> *requests,
+                                                                                      BOOL isFromCache,
+                                                                                      NSError * _Nullable error) {
+            PPMissionOnMain(^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || !self.running || generation != self.generation ||
+                    ![self hasCurrentOwnerAuthority]) return;
+                self.supportLoading = !error && isFromCache;
+                self.supportRequests = requests ?: @[];
+                self.supportErrorMessage = error ? kLang(@"order_mission_support_load_error") : @"";
+                [self emitState];
+            });
+        }];
+    }
+
+    if (!self.timelineListener) {
+        self.timelineListener = [self.orderManager listenToTimelineEventsForOrder:self.order
+                                                                    metadataUpdate:^(NSArray<PPOrderTimelineEvent *> *events,
+                                                                                     BOOL isFromCache,
+                                                                                     NSError * _Nullable error) {
+            PPMissionOnMain(^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || !self.running || generation != self.generation ||
+                    ![self hasCurrentOwnerAuthority]) return;
+                self.timelineLoading = !error && isFromCache;
+                self.timelineEvents = events ?: @[];
+                self.timelineErrorMessage = error ? kLang(@"order_mission_timeline_load_error") : @"";
+                [self emitState];
+            });
+        }];
+    }
 
     [self restartFulfillmentListenersForGeneration:generation];
 }

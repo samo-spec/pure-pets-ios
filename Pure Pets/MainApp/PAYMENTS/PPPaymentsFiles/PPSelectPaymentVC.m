@@ -30,11 +30,7 @@
 
 @import FirebaseAuth;
 
-#if DEBUG
-#define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
-#else
-#define PPORDERLog(...)
-#endif
+#define PPORDERLog(fmt, ...) NSLog((@"PPBackend > SELECT_PAYMENT : " fmt), ##__VA_ARGS__)
 
 static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutPreflight";
 static NSInteger const PPOrderCheckoutPreflightCodeInvalidQIBPhone = 1004;
@@ -1246,10 +1242,10 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         }
         PPAddressModel *preferred = [strongSelf pp_preferredAddressFrom:strongSelf.Addresses];
         strongSelf.selectedAddress = preferred;
-        PPORDERLog(@"Addresses refreshed | count=%lu | selectedAddressId=%@",
+        PPORDERLog(@"Addresses refreshed | count=%lu | selectedAddressId=%@ | isDefault=%d",
                    (unsigned long)strongSelf.Addresses.count,
-                   [strongSelf pp_effectiveAddressID:preferred]);
-
+                   [strongSelf pp_effectiveAddressID:preferred],
+                   preferred.isDefault);
         NSString *addressText = [strongSelf pp_bestAddressDisplayText:preferred];
         if (addressText.length > 0) {
             [strongSelf.locView setAddressText:addressText];
@@ -1464,6 +1460,13 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         [PPHUD dismiss];
         if (!error) {
             PPORDERLog(@"Payment instruments loaded | count=%lu", (unsigned long)instruments.count);
+            for (UserPaymentInstrument *inst in instruments ?: @[]) {
+                PPORDERLog(@"↳ Instrument [#%@] methodID=%@ masked=%@ isDefault=%d",
+                           inst.instrumentID ?: @"",
+                           inst.methodID ?: @"",
+                           inst.maskedDetails ?: @"",
+                           inst.isDefault);
+            }
             weakSelf.userInstruments = instruments ?: @[];
             [weakSelf pp_applyDefaultSelectionIfNeeded];
             [weakSelf.paymentCollection reloadData];

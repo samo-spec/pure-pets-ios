@@ -124,7 +124,7 @@ private struct HomeUniversalCompatibilityCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
                     Text(viewModel.priceText)
                         .font(HomeFont.bold(17))
-                        .foregroundStyle(Color.ppBrandPrimary)
+                        .foregroundStyle(Color.ppTextPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
 

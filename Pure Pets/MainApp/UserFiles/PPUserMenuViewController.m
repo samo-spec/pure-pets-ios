@@ -621,14 +621,35 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
 #pragma mark - Quick Access Cell
 
 static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickAccessCell";
-static const CGFloat PPUserMenuQuickAccessPillHeight = 60.0;
-static const CGFloat PPUserMenuQuickAccessRowHeight = 72.0;
+static const CGFloat PPUserMenuQuickAccessTileHeight = 68.0;
+static const CGFloat PPUserMenuQuickAccessGridSpacing = 12.0;
 static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
+static const NSInteger PPUserMenuQuickAccessSurfaceTag = 7701;
+
+/// Adaptive grid: 2 state tiles per row on compact widths, 4 on regular (iPad).
+static NSInteger PPUserMenuQuickAccessColumnCount(UITraitCollection *traitCollection)
+{
+    if (traitCollection && traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular) {
+        return 4;
+    }
+    return 2;
+}
+
+/// Total section row height for the adaptive grid (rows + inter-tile spacing + insets).
+static CGFloat PPUserMenuQuickAccessHeightForItemCount(NSInteger itemCount, UITraitCollection *traitCollection)
+{
+    if (itemCount <= 0) {
+        return 0.0;
+    }
+    NSInteger columns = MAX(1, PPUserMenuQuickAccessColumnCount(traitCollection));
+    NSInteger rows = (itemCount + columns - 1) / columns;
+    return (rows * PPUserMenuQuickAccessTileHeight)
+         + ((rows - 1) * PPUserMenuQuickAccessGridSpacing)
+         + (PPUserMenuQuickAccessVerticalInset * 2.0);
+}
 
 @interface PPUserMenuQuickAccessCell : UITableViewCell
-@property (nonatomic, strong) UIScrollView *scrollView;
-@property (nonatomic, strong) UIStackView *stackView;
-@property (nonatomic, strong) NSArray *quickAccessItems;
+@property (nonatomic, strong) UIStackView *gridStackView;
 @property (nonatomic, copy) void (^actionHandler)(PPUserMenuAction action);
 - (void)configureWithItems:(NSArray *)items actionHandler:(void (^)(PPUserMenuAction action))actionHandler;
 @end
@@ -644,35 +665,24 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
         self.selectionStyle = UITableViewCellSelectionStyleNone;
         self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
-        UIScrollView *scrollView = [UIScrollView new];
-        scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-        scrollView.showsHorizontalScrollIndicator = NO;
-        scrollView.alwaysBounceHorizontal = NO;
-        [self.contentView addSubview:scrollView];
-        self.scrollView = scrollView;
-
-        UIStackView *stackView = [[UIStackView alloc] init];
-        stackView.translatesAutoresizingMaskIntoConstraints = NO;
-        stackView.axis = UILayoutConstraintAxisHorizontal;
-        stackView.alignment = UIStackViewAlignmentCenter;
-        stackView.spacing = 12.0;
-        stackView.distribution = UIStackViewDistributionFillEqually;
-        [scrollView addSubview:stackView];
-        self.stackView = stackView;
+        // Adaptive 2x2 state grid (4-across on regular width). The dead
+        // horizontal scroll view from the pill row is gone: the grid owns the
+        // full content width, so every tile is always visible and hittable.
+        UIStackView *gridStack = [[UIStackView alloc] init];
+        gridStack.translatesAutoresizingMaskIntoConstraints = NO;
+        gridStack.axis = UILayoutConstraintAxisVertical;
+        gridStack.alignment = UIStackViewAlignmentFill;
+        gridStack.distribution = UIStackViewDistributionFill;
+        gridStack.spacing = PPUserMenuQuickAccessGridSpacing;
+        gridStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        [self.contentView addSubview:gridStack];
+        self.gridStackView = gridStack;
 
         [NSLayoutConstraint activateConstraints:@[
-            [scrollView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-            [scrollView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-            [scrollView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-            [scrollView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-            [scrollView.heightAnchor constraintGreaterThanOrEqualToConstant:PPUserMenuQuickAccessRowHeight],
-
-            [stackView.topAnchor constraintEqualToAnchor:scrollView.topAnchor constant:PPUserMenuQuickAccessVerticalInset],
-            [stackView.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor constant:PPScreenMargin],
-            [stackView.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor constant:-PPScreenMargin],
-            [stackView.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor constant:-PPUserMenuQuickAccessVerticalInset],
-            [stackView.heightAnchor constraintEqualToConstant:PPUserMenuQuickAccessPillHeight],
-            [stackView.widthAnchor constraintEqualToAnchor:scrollView.widthAnchor constant:-(PPScreenMargin * 2)]
+            [gridStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPUserMenuQuickAccessVerticalInset],
+            [gridStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+            [gridStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+            [gridStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPUserMenuQuickAccessVerticalInset]
         ]];
     }
     return self;
@@ -680,19 +690,42 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 
 - (void)configureWithItems:(NSArray *)items actionHandler:(void (^)(PPUserMenuAction action))actionHandler
 {
-    self.quickAccessItems = items;
     self.actionHandler = actionHandler;
 
-    // Clear existing views
-    for (UIView *view in self.stackView.arrangedSubviews) {
-        [self.stackView removeArrangedSubview:view];
+    // Clear existing tiles
+    for (UIView *view in self.gridStackView.arrangedSubviews) {
+        [self.gridStackView removeArrangedSubview:view];
         [view removeFromSuperview];
     }
 
-    // Add new buttons for each quick access item
-    for (PPUserMenuItem *item in items) {
+    // Lay tiles out row by row inside the adaptive grid
+    NSInteger columns = PPUserMenuQuickAccessColumnCount(self.traitCollection);
+    UIStackView *currentRow = nil;
+    for (NSInteger index = 0; index < (NSInteger)items.count; index++) {
+        if (index % columns == 0) {
+            currentRow = [[UIStackView alloc] init];
+            currentRow.translatesAutoresizingMaskIntoConstraints = NO;
+            currentRow.axis = UILayoutConstraintAxisHorizontal;
+            currentRow.alignment = UIStackViewAlignmentFill;
+            currentRow.distribution = UIStackViewDistributionFillEqually;
+            currentRow.spacing = PPUserMenuQuickAccessGridSpacing;
+            currentRow.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+            [self.gridStackView addArrangedSubview:currentRow];
+        }
+        PPUserMenuItem *item = items[index];
         UIButton *button = [self pp_createQuickAccessButtonWithItem:item];
-        [self.stackView addArrangedSubview:button];
+        [currentRow addArrangedSubview:button];
+    }
+
+    // Keep tile widths balanced when the final row is not full
+    NSInteger remainder = (NSInteger)items.count % columns;
+    if (remainder != 0 && currentRow) {
+        for (NSInteger filler = remainder; filler < columns; filler++) {
+            UIView *spacer = [UIView new];
+            spacer.userInteractionEnabled = NO;
+            spacer.backgroundColor = UIColor.clearColor;
+            [currentRow addArrangedSubview:spacer];
+        }
     }
 }
 
@@ -700,72 +733,94 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
-    // Use the existing PPUserMenuCell styling as inspiration
+    // Functional tint from the model is demoted to a quiet icon wash; text
+    // stays on neutral brand tokens so every tile clears WCAG AA (the old
+    // tinted title, e.g. systemYellow on white, could not).
+    UIColor *tint = PPUserMenuColor(item.tintColor, AppPrimaryClr);
+
     UIView *surface = [UIView new];
     surface.translatesAutoresizingMaskIntoConstraints = NO;
     surface.userInteractionEnabled = NO;
+    surface.tag = PPUserMenuQuickAccessSurfaceTag;
     surface.backgroundColor = PPUserMenuSurfaceColor();
     surface.layer.borderWidth = 0.75;
     [surface pp_setBorderColor:PPUserMenuBorderColor()];
-    PPApplyContinuousCorners(surface, 18.0);
+    PPApplyContinuousCorners(surface, PPCornerMedium);
     PPApplyCardShadow(surface);
-    surface.layer.shadowOpacity = 0.025;
+    surface.layer.shadowOpacity = 0.04;
     [button addSubview:surface];
+
+    UIView *iconContainer = [UIView new];
+    iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    iconContainer.userInteractionEnabled = NO;
+    iconContainer.backgroundColor = [tint colorWithAlphaComponent:0.14];
+    PPApplyContinuousCorners(iconContainer, PPCornerSmall);
+    [surface addSubview:iconContainer];
 
     UIImageView *iconView = [UIImageView new];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
-    UIColor *tint = PPUserMenuColor(item.tintColor, AppPrimaryClr);
-    iconView.image = PPUserMenuSymbol(item.iconName, tint, 18.0, UIImageSymbolWeightSemibold);
-    [surface addSubview:iconView];
+    iconView.image = PPUserMenuSymbol(item.iconName, tint, 16.0, UIImageSymbolWeightSemibold);
+    [iconContainer addSubview:iconView];
 
     UILabel *titleLabel = [UILabel new];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
-                       scaledFontForFont:([GM boldFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold])];
+    titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                       scaledFontForFont:([GM boldFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold])];
     titleLabel.adjustsFontForContentSizeCategory = YES;
     titleLabel.adjustsFontSizeToFitWidth = YES;
-    titleLabel.minimumScaleFactor = 0.7;
-    titleLabel.textColor = PPUserMenuColor(item.tintColor, AppPrimaryClr);
+    titleLabel.minimumScaleFactor = 0.78;
+    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    titleLabel.textColor = PPUserMenuColor(AppPrimaryTextClr, UIColor.labelColor);
     titleLabel.numberOfLines = 1;
     titleLabel.text = PPUserMenuLocalized(item.titleKey);
-    titleLabel.textAlignment = NSTextAlignmentCenter;
-    [surface addSubview:titleLabel];
+    titleLabel.textAlignment = NSTextAlignmentNatural;
 
     UILabel *captionLabel = [UILabel new];
     captionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    captionLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2]
-                         scaledFontForFont:([GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium])];
+    captionLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+                         scaledFontForFont:([GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium])];
     captionLabel.adjustsFontForContentSizeCategory = YES;
     captionLabel.adjustsFontSizeToFitWidth = YES;
-    captionLabel.minimumScaleFactor = 0.72;
+    captionLabel.minimumScaleFactor = 0.8;
+    captionLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     captionLabel.textColor = PPUserMenuColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
     captionLabel.numberOfLines = 1;
     captionLabel.text = PPUserMenuLocalized(item.subtitleKey);
-    captionLabel.textAlignment = NSTextAlignmentCenter;
-    [surface addSubview:captionLabel];
+    captionLabel.textAlignment = NSTextAlignmentNatural;
+
+    UIStackView *labelsStack = [[UIStackView alloc] initWithArrangedSubviews:@[titleLabel, captionLabel]];
+    labelsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    labelsStack.axis = UILayoutConstraintAxisVertical;
+    labelsStack.alignment = UIStackViewAlignmentFill;
+    labelsStack.distribution = UIStackViewDistributionFill;
+    labelsStack.spacing = 2.0;
+    labelsStack.userInteractionEnabled = NO;
+    labelsStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [surface addSubview:labelsStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [surface.topAnchor constraintEqualToAnchor:button.topAnchor ],
+        [surface.topAnchor constraintEqualToAnchor:button.topAnchor],
         [surface.leadingAnchor constraintEqualToAnchor:button.leadingAnchor],
         [surface.trailingAnchor constraintEqualToAnchor:button.trailingAnchor],
         [surface.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
-        [surface.heightAnchor constraintEqualToConstant:PPUserMenuQuickAccessPillHeight],
+        [surface.heightAnchor constraintEqualToConstant:PPUserMenuQuickAccessTileHeight],
 
-        [iconView.centerXAnchor constraintEqualToAnchor:surface.centerXAnchor],
-        [iconView.topAnchor constraintEqualToAnchor:surface.topAnchor constant:7.0],
-        [iconView.widthAnchor constraintEqualToConstant:18.0],
-        [iconView.heightAnchor constraintEqualToConstant:18.0],
+        [iconContainer.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceMD],
+        [iconContainer.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
+        [iconContainer.widthAnchor constraintEqualToConstant:36.0],
+        [iconContainer.heightAnchor constraintEqualToConstant:36.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:3.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:6.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-6.0],
+        [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:20.0],
+        [iconView.heightAnchor constraintEqualToConstant:20.0],
 
-        [captionLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:0.0],
-        [captionLabel.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:6.0],
-        [captionLabel.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-6.0],
-        [captionLabel.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-5.0]
+        [labelsStack.leadingAnchor constraintEqualToAnchor:iconContainer.trailingAnchor constant:PPSpaceSM + PPSpaceXXS],
+        [labelsStack.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceMD],
+        [labelsStack.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor]
     ]];
 
     button.tag = item.action;
@@ -775,10 +830,11 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
         : titleLabel.text;
     button.accessibilityTraits = UIAccessibilityTraitButton;
 
-    // Add pressed state styling
+    // Pressed state styling
     [button addTarget:self action:@selector(pp_buttonTouchDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(pp_buttonTouchUp:) forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(pp_buttonTouchUp:) forControlEvents:UIControlEventTouchDragExit];
+    [button addTarget:self action:@selector(pp_buttonTouchUp:) forControlEvents:UIControlEventTouchCancel];
 
     return button;
 }
@@ -792,24 +848,35 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 
 - (void)pp_buttonTouchDown:(UIButton *)sender
 {
-    UIView *surface = sender.subviews.firstObject;
-    if ([surface isKindOfClass:UIView.class]) {
-        [UIView animateWithDuration:0.10 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
-            surface.transform = CGAffineTransformMakeScale(0.96, 0.96);
-            surface.alpha = 0.86;
-        } completion:nil];
+    UIView *surface = [sender viewWithTag:PPUserMenuQuickAccessSurfaceTag];
+    if (![surface isKindOfClass:UIView.class]) {
+        return;
     }
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    [UIView animateWithDuration:PPAnimDurationFast
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        surface.transform = reduceMotion
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeScale(PPTapCardScaleDown, PPTapCardScaleDown);
+        surface.alpha = 0.9;
+    } completion:nil];
 }
 
 - (void)pp_buttonTouchUp:(UIButton *)sender
 {
-    UIView *surface = sender.subviews.firstObject;
-    if ([surface isKindOfClass:UIView.class]) {
-        [UIView animateWithDuration:0.18 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
-            surface.transform = CGAffineTransformIdentity;
-            surface.alpha = 1.0;
-        } completion:nil];
+    UIView *surface = [sender viewWithTag:PPUserMenuQuickAccessSurfaceTag];
+    if (![surface isKindOfClass:UIView.class]) {
+        return;
     }
+    [UIView animateWithDuration:PPAnimDurationNormal
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        surface.transform = CGAffineTransformIdentity;
+        surface.alpha = 1.0;
+    } completion:nil];
 }
 
 @end
@@ -916,10 +983,12 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
     [self pp_applyHeaderMaterialPalette];
     [self pp_startHeroBackgroundMotionIfNeeded];
     if (previousTraitCollection &&
-        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection] ||
+         previousTraitCollection.horizontalSizeClass != self.traitCollection.horizontalSizeClass)) {
         // Quick Access describes the next appearance action. Rebuild its
         // model after UIKit resolves a Light/Dark/System trait transition so
-        // the title and icon match the effective appearance.
+        // the title and icon match the effective appearance. A size-class
+        // change also re-lays the adaptive grid (2 columns compact, 4 regular).
         [self pp_rebuildSections];
     }
     [self.tableView reloadData];
@@ -1702,7 +1771,7 @@ static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
         return UITableViewAutomaticDimension;
     }
     if ([section.titleKey isEqualToString:@"quick_access_settings_section"]) {
-        return PPUserMenuQuickAccessRowHeight;
+        return PPUserMenuQuickAccessHeightForItemCount(section.items.count, self.traitCollection);
     }
     return UITableViewAutomaticDimension;
 }

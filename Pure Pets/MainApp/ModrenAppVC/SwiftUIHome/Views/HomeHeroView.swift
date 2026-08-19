@@ -17,8 +17,8 @@ struct HomeHeroView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
-    @Environment(\.scenePhase) private var scenePhase
-    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 302
+    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat =
+        HomeVisualTokens.heroHeight
     
     private var selectedPage: HomeHeroPage? {
         guard pages.indices.contains(selectedIndex) else { return nil }
@@ -51,7 +51,8 @@ struct HomeHeroView: View {
     }
     
     private func hero(_ page: HomeHeroPage) -> some View {
-        let accent = Color(hex: page.accentHex)
+        // TEMPORARY: Pause passing dynamic category accent color to hero; set brand color as default
+        let accent = Color.homeBrand
         return ZStack {
             HomeHeroField(
                 accent: accent,
@@ -111,9 +112,15 @@ struct HomeHeroView: View {
                             .frame(maxHeight: .infinity)
                         }
                     }
-                    .padding(.horizontal, compactWidth ? PPSpace.md : PPSpace.lg)
-                    .padding(.top, PPSpace.md)
-                    .padding(.bottom, allowsPaging ? PPSpace.xs : PPSpace.md)
+                    .padding(
+                        .horizontal,
+                        compactWidth ? PPSpace.sm : PPSpace.base
+                    )
+                    .padding(.top, PPSpace.sm)
+                    .padding(
+                        .bottom,
+                        allowsPaging ? PPSpace.xxs : PPSpace.sm
+                    )
                 }
                 
                 if allowsPaging {
@@ -129,7 +136,7 @@ struct HomeHeroView: View {
         .modifier(
             HomeHeroPageMotionModifier(
                 pageID: AnyHashable(page.id),
-                reduceMotion: false
+                reduceMotion: reduceMotion
             )
         )
         .clipShape(
@@ -148,8 +155,8 @@ struct HomeHeroView: View {
                 ? 0
                 : (colorScheme == .dark ? 0.20 : 0.06)
             ),
-            radius: 28,
-            y: 16
+            radius: HomeVisualTokens.heroShadowRadius,
+            y: HomeVisualTokens.heroShadowOffsetY
         )
         .contentShape(
             RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
@@ -211,7 +218,7 @@ struct HomeHeroView: View {
             
             heroMetaPill(page, accent: accent)
             
-            primaryButton(page, accent: accent)
+            primaryButton(page)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -400,8 +407,7 @@ struct HomeHeroView: View {
     }
     
     private func primaryButton(
-        _ page: HomeHeroPage,
-        accent: Color
+        _ page: HomeHeroPage
     ) -> some View {
         Button(action: onPrimaryAction) {
             HStack(alignment: .center, spacing: PPSpace.xs) {
@@ -432,22 +438,25 @@ struct HomeHeroView: View {
             .padding(.trailing, 10)
             .background(
                 LinearGradient(
-                    colors: [accent, accent.opacity(0.86)],
+                    colors: [
+                        Color.homeBrand,
+                        Color.homeBrand.opacity(0.86)
+                    ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
                 in: RoundedRectangle(
-                    cornerRadius: 18,
+                    cornerRadius: PPCorner.medium,
                     style: .continuous
                 )
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
                     .stroke(Color.white.opacity(0.18), lineWidth: 1)
             }
         }
         .buttonStyle(
-            HomeHeroPrimaryButtonStyle(reduceMotion: false)
+            HomeHeroPrimaryButtonStyle(reduceMotion: reduceMotion)
         )
         .accessibilityHint(
             HomeModelAdapter.localized(
@@ -496,17 +505,12 @@ struct HomeHeroView: View {
             usesCategoryArtworkTreatment: asset.usesCategoryArtworkTreatment,
             loadsFromFirebase: asset.loadsFromFirebase,
             stabilizesCentralArtworkScale: page.kind == .pet,
-            primarySymbol: asset.primarySymbol,
-            primaryImageName: asset.primaryImageName,
-            secondarySymbol: asset.secondarySymbol,
-            tertiarySymbol: asset.tertiarySymbol,
-            tertiaryImageName: asset.tertiaryImageName,
             compact: compact,
             isActive: true
         )
         .frame(
-            width: compact ? 128 : 154,
-            height: compact ? 164 : 190
+            width: compact ? 118 : 140,
+            height: compact ? 150 : 172
         )
     }
     
@@ -560,12 +564,7 @@ struct HomeHeroView: View {
                     localImage: nil,
                     remoteImageURL: imageURL,
                     usesCategoryArtworkTreatment: false,
-                    loadsFromFirebase: false,
-                    primarySymbol: "heart.fill",
-                    primaryImageName: nil,
-                    secondarySymbol: "pawprint.fill",
-                    tertiarySymbol: "bag.fill",
-                    tertiaryImageName: "shopping-bag"
+                    loadsFromFirebase: false
                 )
             }
             return HomeHeroArtworkAsset(
@@ -574,12 +573,7 @@ struct HomeHeroView: View {
                 localImage: nil,
                 remoteImageURL: nil,
                 usesCategoryArtworkTreatment: false,
-                loadsFromFirebase: true,
-                primarySymbol: "heart.fill",
-                primaryImageName: nil,
-                secondarySymbol: "pawprint.fill",
-                tertiarySymbol: "bag.fill",
-                tertiaryImageName: "shopping-bag"
+                loadsFromFirebase: true
             )
         case .reminder:
             return HomeHeroArtworkAsset(
@@ -588,12 +582,7 @@ struct HomeHeroView: View {
                 localImage: nil,
                 remoteImageURL: nil,
                 usesCategoryArtworkTreatment: false,
-                loadsFromFirebase: true,
-                primarySymbol: "bell.fill",
-                primaryImageName: nil,
-                secondarySymbol: "calendar",
-                tertiarySymbol: "bag.fill",
-                tertiaryImageName: "shopping-bag"
+                loadsFromFirebase: true
             )
         case .promotion:
             let remoteURL = normalizedHeroImageURL(page.imageURL)
@@ -603,12 +592,7 @@ struct HomeHeroView: View {
                 localImage: nil,
                 remoteImageURL: remoteURL,
                 usesCategoryArtworkTreatment: false,
-                loadsFromFirebase: false,
-                primarySymbol: "sparkles",
-                primaryImageName: nil,
-                secondarySymbol: "tag.fill",
-                tertiarySymbol: "bag.fill",
-                tertiaryImageName: "shopping-bag"
+                loadsFromFirebase: false
             )
         case .marketplace:
             let hasSelectedCategory: Bool
@@ -634,12 +618,7 @@ struct HomeHeroView: View {
                     ? normalizedHeroImageURL(page.imageURL)
                     : nil,
                     usesCategoryArtworkTreatment: true,
-                    loadsFromFirebase: false,
-                    primarySymbol: "sparkles",
-                    primaryImageName: nil,
-                    secondarySymbol: "shippingbox.fill",
-                    tertiarySymbol: "bag.fill",
-                    tertiaryImageName: "shopping-bag"
+                    loadsFromFirebase: false
                 )
             }
             return HomeHeroArtworkAsset(
@@ -648,12 +627,7 @@ struct HomeHeroView: View {
                 localImage: nil,
                 remoteImageURL: nil,
                 usesCategoryArtworkTreatment: false,
-                loadsFromFirebase: false,
-                primarySymbol: "sparkles",
-                primaryImageName: nil,
-                secondarySymbol: "shippingbox.fill",
-                tertiarySymbol: "bag.fill",
-                tertiaryImageName: "shopping-bag"
+                loadsFromFirebase: false
             )
         case .petOnboarding:
             return HomeHeroArtworkAsset(
@@ -662,12 +636,7 @@ struct HomeHeroView: View {
                 localImage: nil,
                 remoteImageURL: nil,
                 usesCategoryArtworkTreatment: false,
-                loadsFromFirebase: true,
-                primarySymbol: "plus",
-                primaryImageName: nil,
-                secondarySymbol: "pawprint.fill",
-                tertiarySymbol: "bag.fill",
-                tertiaryImageName: "shopping-bag"
+                loadsFromFirebase: true
             )
         case .pharmacy:
             return HomeHeroArtworkAsset(
@@ -676,12 +645,7 @@ struct HomeHeroView: View {
                 localImage: nil,
                 remoteImageURL: nil,
                 usesCategoryArtworkTreatment: false,
-                loadsFromFirebase: false,
-                primarySymbol: "pills.fill",
-                primaryImageName: nil,
-                secondarySymbol: "bandage.fill",
-                tertiarySymbol: "bag.fill",
-                tertiaryImageName: "shopping-bag"
+                loadsFromFirebase: false
             )
         }
     }
@@ -847,24 +811,14 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         var remoteImageURL: String? = nil
         var usesCategoryArtworkTreatment: Bool = false
         var loadsFromFirebase: Bool = false
-        var primarySymbol: String = "heart.fill"
-        var primaryImageName: String? = nil
-        var secondarySymbol: String = "pawprint.fill"
-        var tertiarySymbol: String = "bag.fill"
-        var tertiaryImageName: String? = "shopping-bag"
-        
+
         init(
             animationName: String? = nil,
             imageName: String? = nil,
             localImage: UIImage? = nil,
             remoteImageURL: String? = nil,
             usesCategoryArtworkTreatment: Bool = false,
-            loadsFromFirebase: Bool = false,
-            primarySymbol: String = "heart.fill",
-            primaryImageName: String? = nil,
-            secondarySymbol: String = "pawprint.fill",
-            tertiarySymbol: String = "bag.fill",
-            tertiaryImageName: String? = "shopping-bag"
+            loadsFromFirebase: Bool = false
         ) {
             self.animationName = animationName
             self.imageName = imageName
@@ -872,11 +826,6 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
             self.remoteImageURL = remoteImageURL
             self.usesCategoryArtworkTreatment = usesCategoryArtworkTreatment
             self.loadsFromFirebase = loadsFromFirebase
-            self.primarySymbol = primarySymbol
-            self.primaryImageName = primaryImageName
-            self.secondarySymbol = secondarySymbol
-            self.tertiarySymbol = tertiarySymbol
-            self.tertiaryImageName = tertiaryImageName
         }
     }
     
@@ -889,63 +838,27 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         let usesCategoryArtworkTreatment: Bool
         let loadsFromFirebase: Bool
         let stabilizesCentralArtworkScale: Bool
-        let primarySymbol: String
-        let primaryImageName: String?
-        let secondarySymbol: String
-        let tertiarySymbol: String
-        let tertiaryImageName: String?
         let compact: Bool
         let isActive: Bool
         
         @Environment(\.layoutDirection) private var layoutDirection
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
-        @Environment(\.accessibilityDifferentiateWithoutColor)
-        private var differentiateWithoutColor
         @Environment(\.colorScheme) private var colorScheme
         @Environment(\.colorSchemeContrast) private var contrast
         @Environment(\.scenePhase) private var scenePhase
         @State private var presented = false
-        @State private var isFloating = false
-        @State private var isBubblePulsing = false
         
         var body: some View {
             ZStack {
                 portalCore
-                orbitalPath
-                
-                
-                
-                orbitNode(
-                    symbol: primarySymbol,
-                    imageName: primaryImageName,
-                    x: compact ? 42 : 52,
-                    y: compact ? -48 : -58,
-                    delay: 0.10
-                )
-                
-                orbitNode(
-                    symbol: secondarySymbol,
-                    imageName: nil,
-                    x: compact ? -48 : -61,
-                    y: compact ? 10 : 12,
-                    delay: 0.16
-                )
-                
-                orbitNode(
-                    symbol: tertiarySymbol,
-                    imageName: tertiaryImageName,
-                    x: compact ? 35 : 43,
-                    y: compact ? 36 : 44,
-                    delay: 0.22
-                )
-                
+
                 centralArtworkStage
                     .scaleEffect(
-                        (presented
-                         ? (stabilizesCentralArtworkScale ? 1 : 1.035)
-                         : 0.94) * (isBubblePulsing ? 1.02 : 0.99)
+                        presented
+                            ? (stabilizesCentralArtworkScale ? 1 : 1.02)
+                            : 0.96
                     )
-                    .offset(y: (presented ? 3 : 13) + (isFloating ? -6 : 2))
+                    .offset(y: presented ? 2 : 8)
                     .opacity(presented ? 1 : 0)
                     .animation(
                         reduceMotion
@@ -959,19 +872,10 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
                         value: presented
                     )
             }
-            .offset(y: isFloating ? -5 : 3)
             .modifier(
                 HomeHeroGatewayStageFrame(compact: compact)
             )
-            .onAppear {
-                updatePresentation()
-                withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
-                    isFloating = true
-                }
-                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
-                    isBubblePulsing = true
-                }
-            }
+            .onAppear(perform: updatePresentation)
             .onChange(of: reduceMotion) { _ in
                 updatePresentation()
             }
@@ -1020,7 +924,7 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
             )
             .frame(width: portalWidth, height: portalDiameter)
             .offset(x: trailingShift)
-            .scaleEffect((presented ? 1 : 0.92) * (isBubblePulsing ? 1.035 : 0.985))
+            .scaleEffect(presented ? 1 : 0.94)
             .opacity(presented ? 1 : 0.62)
             .shadow(
                 color: accent.opacity(
@@ -1028,8 +932,8 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
                     ? 0
                     : (colorScheme == .dark ? 0.22 : 0.14)
                 ),
-                radius: 18,
-                y: 8
+                radius: 12,
+                y: 6
             )
             .animation(
                 reduceMotion
@@ -1037,78 +941,6 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
                 : .easeOut(duration: 0.26),
                 value: presented
             )
-        }
-        
-        private var orbitalPath: some View {
-            ZStack {
-                Circle()
-                    .stroke(
-                        accent.opacity(
-                            contrast == .increased ? 0.58 : 0.22
-                        ),
-                        style: StrokeStyle(
-                            lineWidth: contrast == .increased ? 1.4 : 1,
-                            lineCap: .round,
-                            dash: differentiateWithoutColor ? [5, 4] : []
-                        )
-                    )
-                
-                Circle()
-                    .trim(from: 0.04, to: presented ? 0.82 : 0.16)
-                    .stroke(
-                        AngularGradient(
-                            colors: [
-                                Color.clear,
-                                accent.opacity(0.36),
-                                accent,
-                                Color.homeBrand.opacity(0.72),
-                                Color.clear,
-                            ],
-                            center: .center
-                        ),
-                        style: StrokeStyle(
-                            lineWidth: contrast == .increased ? 2.6 : 2,
-                            lineCap: .round
-                        )
-                    )
-                    .rotationEffect(.degrees(presented ? 42 : -82))
-                    .animation(
-                        reduceMotion
-                        ? nil
-                        : .easeOut(duration: 0.28).delay(0.08),
-                        value: presented
-                    )
-            }
-            .modifier(
-                HomeHeroSquareStageFrame(side: orbitDiameter)
-            )
-            .scaleEffect(x: 1, y: 0.82)
-            .rotationEffect(.degrees(-8))
-            .opacity(presented ? 1 : 0.34)
-            .animation(
-                reduceMotion
-                ? nil
-                : .easeOut(duration: 0.24),
-                value: presented
-            )
-        }
-        
-        private func orbitNode(
-            symbol: String,
-            imageName: String?,
-            x: CGFloat,
-            y: CGFloat,
-            delay: Double
-        ) -> some View {
-            HomeHeroOrbitNode(
-                symbol: symbol,
-                imageName: imageName,
-                accent: accent,
-                side: compact ? 27 : 30,
-                isPresented: presented,
-                delay: delay
-            )
-            .offset(x: x, y: y)
         }
         
         @ViewBuilder
@@ -1206,11 +1038,7 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         }
         
         private var portalDiameter: CGFloat {
-            compact ? 94 : 114
-        }
-        
-        private var orbitDiameter: CGFloat {
-            compact ? 112 : 134
+            compact ? 80 : 97
         }
         
         @ViewBuilder
@@ -1238,69 +1066,6 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
                 withTransaction(transaction) {
                     presented = value
                 }
-            }
-        }
-    }
-    
-    private struct HomeHeroOrbitNode: View {
-        let symbol: String
-        let imageName: String?
-        let accent: Color
-        let side: CGFloat
-        let isPresented: Bool
-        let delay: Double
-        
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
-        @Environment(\.colorScheme) private var colorScheme
-        @Environment(\.colorSchemeContrast) private var contrast
-        
-        var body: some View {
-            nodeIcon
-                .foregroundStyle(accent)
-                .modifier(HomeHeroSquareStageFrame(side: side))
-                .background(Color.ppSurfaceRaised, in: Circle())
-                .overlay {
-                    Circle()
-                        .stroke(
-                            contrast == .increased
-                            ? Color.ppTextPrimary.opacity(0.72)
-                            : Color.white.opacity(
-                                colorScheme == .dark ? 0.16 : 0.92
-                            ),
-                            lineWidth: contrast == .increased ? 1.5 : 1
-                        )
-                }
-                .shadow(
-                    color: accent.opacity(
-                        contrast == .increased
-                        ? 0
-                        : (colorScheme == .dark ? 0.18 : 0.12)
-                    ),
-                    radius: 7,
-                    y: 3
-                )
-                .scaleEffect(isPresented ? 1 : 0.84)
-                .opacity(isPresented ? 1 : 0)
-                .animation(
-                    reduceMotion
-                    ? nil
-                    : .easeOut(duration: 0.22).delay(delay),
-                    value: isPresented
-                )
-                .accessibilityHidden(true)
-        }
-        
-        @ViewBuilder
-        private var nodeIcon: some View {
-            if let imageName {
-                Image(imageName)
-                    .resizable()
-                    .renderingMode(.template)
-                    .scaledToFit()
-                    .frame(width: side * 0.58, height: side * 0.58)
-            } else {
-                Image(systemName: symbol)
-                    .font(.system(size: side * 0.37, weight: .bold))
             }
         }
     }
@@ -1815,21 +1580,13 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         
         func body(content: Content) -> some View {
             content.frame(
-                width: compact ? 128 : 154,
-                height: compact ? 164 : 190
+                width: compact ? 118 : 140,
+                height: compact ? 150 : 172
             )
         }
     }
     
     private struct HomeHeroArtworkStageFrame: ViewModifier {
-        let side: CGFloat
-        
-        func body(content: Content) -> some View {
-            content.frame(width: side, height: side)
-        }
-    }
-    
-    private struct HomeHeroSquareStageFrame: ViewModifier {
         let side: CGFloat
         
         func body(content: Content) -> some View {

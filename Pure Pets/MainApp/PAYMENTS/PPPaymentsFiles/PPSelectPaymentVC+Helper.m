@@ -13,11 +13,7 @@
 #import "PPCommerceFeedbackManager.h"
 #import <Pure_Pets-Swift.h>
 
-#if DEBUG
-#define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
-#else
-#define PPORDERLog(...)
-#endif
+#define PPORDERLog(fmt, ...) NSLog((@"PPBackend > SELECT_PAYMENT : " fmt), ##__VA_ARGS__)
 
 @interface PPSelectPaymentVC (PPPaymentFlowBridge)
 - (void)finishPayments;

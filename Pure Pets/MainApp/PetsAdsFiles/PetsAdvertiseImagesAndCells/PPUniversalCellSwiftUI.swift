@@ -2084,7 +2084,9 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
 
-    private let cardRadius: CGFloat = 23
+    private var cardRadius: CGFloat {
+        store.isHomePresentation ? PPCorner.card : 23
+    }
     private let mediaBottomRadius: CGFloat = 8
 
     init(store: PPUniversalCardStore) {
@@ -2833,7 +2835,7 @@ private struct PPUniversalCardRenderer: View {
                             relativeTo: .title3
                         )
                     )
-                    .foregroundStyle(Color.ppBrandPrimary)
+                    .foregroundStyle(priceForeground)
                     .lineLimit(1)
                     .minimumScaleFactor(0.92)
 
@@ -2845,7 +2847,7 @@ private struct PPUniversalCardRenderer: View {
                             relativeTo: .caption
                         )
                     )
-                    .foregroundStyle(Color.ppBrandPrimary.opacity(0.82))
+                    .foregroundStyle(priceCurrencyForeground)
                     .lineLimit(1)
             } else {
                 Text(displayPrice)
@@ -2856,7 +2858,7 @@ private struct PPUniversalCardRenderer: View {
                             relativeTo: .title3
                         )
                     )
-                    .foregroundStyle(Color.ppBrandPrimary)
+                    .foregroundStyle(priceForeground)
                     .lineLimit(1)
                     .minimumScaleFactor(0.88)
             }
@@ -2888,6 +2890,16 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var priceForeground: Color {
+        store.isHomePresentation ? store.palette.ink : Color.ppBrandPrimary
+    }
+
+    private var priceCurrencyForeground: Color {
+        store.isHomePresentation
+            ? store.palette.secondaryInk
+            : Color.ppBrandPrimary.opacity(0.82)
     }
 
     private var priceFontSize: CGFloat {
