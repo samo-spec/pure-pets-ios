@@ -399,8 +399,7 @@ struct PPHomeMarketingStage: View {
     }
 
     private var accent: Color {
-        // TEMPORARY: Pause passing dynamic category accent color to hero; set brand color as default
-        Color.homeBrand
+        Color(hex: page?.accentHex ?? "CB2654")
     }
 
     private var shape: RoundedRectangle {
@@ -419,8 +418,8 @@ struct PPHomeMarketingStage: View {
     }
 
     private func stage(_ page: HomeHeroPage) -> some View {
-        let horizontalAlignment: HorizontalAlignment = .leading
-        let frameAlignment: Alignment = .leading
+        let horizontalAlignment: HorizontalAlignment = .center
+        let frameAlignment: Alignment = .center
 
         return ZStack {
             VStack(alignment: horizontalAlignment, spacing: 0) {
@@ -482,6 +481,12 @@ struct PPHomeMarketingStage: View {
                 // category plate reads against the hero background without
                 // changing other Home marketing surfaces.
                 cornerGlowOpacityScale: isMarketplace(page) ? 0.72 : 0.5
+            )
+
+            // Next-Gen V6 Ambient Living Flanks (Left & Right Bubbles & Icons)
+            PPHomeHeroFlankLivingBubblesView(
+                accent: accent,
+                isDark: colorScheme == .dark
             )
 
             if presentsSelectedCategoryArtwork(page) {
@@ -583,9 +588,9 @@ struct PPHomeMarketingStage: View {
     // MARK: Copy
 
     private func copyPlate(_ page: HomeHeroPage) -> some View {
-        let horizontalAlignment: HorizontalAlignment = .leading
-        let frameAlignment: Alignment = .leading
-        let textAlignment: TextAlignment = .leading
+        let horizontalAlignment: HorizontalAlignment = .center
+        let frameAlignment: Alignment = .center
+        let textAlignment: TextAlignment = .center
 
         return VStack(alignment: horizontalAlignment, spacing: PPSpace.md) {
             VStack(alignment: horizontalAlignment, spacing: PPSpace.xs) {
@@ -594,6 +599,7 @@ struct PPHomeMarketingStage: View {
                         .font(HomeFont.bold(11))
                         .foregroundStyle(accent)
                         .multilineTextAlignment(textAlignment)
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -602,6 +608,7 @@ struct PPHomeMarketingStage: View {
                     .foregroundStyle(Color.homeTextPrimary)
                     .lineSpacing(2)
                     .multilineTextAlignment(textAlignment)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -611,10 +618,12 @@ struct PPHomeMarketingStage: View {
                         .foregroundStyle(Color.homeTextSecondary)
                         .lineSpacing(1)
                         .multilineTextAlignment(textAlignment)
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             // One focusable element that always leads with the disclosure and
             // carries the complete value, even when visible copy is clamped.
             .accessibilityElement(children: .combine)
@@ -629,6 +638,7 @@ struct PPHomeMarketingStage: View {
                     count: pages.count,
                     selectedIndex: selectedIndex
                 )
+                .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .padding(.horizontal, PPSpace.lg)
@@ -643,16 +653,16 @@ struct PPHomeMarketingStage: View {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let primary = page.primaryTitle
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let horizontalAlignment: HorizontalAlignment = .leading
-        let frameAlignment: Alignment = .leading
-        let textAlignment: TextAlignment = .leading
+        let horizontalAlignment: HorizontalAlignment = .center
+        let frameAlignment: Alignment = .center
+        let textAlignment: TextAlignment = .center
 
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: horizontalAlignment, spacing: PPSpace.sm) {
                 if !primary.isEmpty {
                     PPHomePrimaryAction(
                         title: primary,
-                        accent: Color.homeBrand,
+                        accent: accent,
                         fillsWidth: true,
                         action: { onPrimary(page) }
                     )
@@ -672,7 +682,7 @@ struct PPHomeMarketingStage: View {
                 if !primary.isEmpty {
                     PPHomePrimaryAction(
                         title: primary,
-                        accent: Color.homeBrand,
+                        accent: accent,
                         fillsWidth: false,
                         action: { onPrimary(page) }
                     )
@@ -685,7 +695,6 @@ struct PPHomeMarketingStage: View {
                         action: { onSecondary(page) }
                     )
                 }
-                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: frameAlignment)
         }
@@ -1696,8 +1705,353 @@ struct PPHomeHeroLivingBlobShape: Shape {
     }
 }
 
+/// Next-Gen V6 Organic Feeding Rising Bubble Particle
+/// Emerges from within the lower core of the living blob and rises smoothly
+/// to the upper perimeter with organic lateral sway, breathing scale, and glassy specular shine.
+struct PPHomeHeroFeedingRisingBubble: View {
+    let size: CGFloat
+    let startX: CGFloat
+    let startY: CGFloat
+    let endY: CGFloat
+    let swayWidth: CGFloat
+    let duration: Double
+    let delay: Double
+    let accent: Color
+    let isDark: Bool
+
+    @State private var riseProgress: CGFloat = 0
+    @State private var isGlimmering = false
+
+    var body: some View {
+        let currentY = startY + (endY - startY) * riseProgress
+        let currentX = startX + sin(riseProgress * .pi * 2.5) * swayWidth
+        let scale: CGFloat = riseProgress < 0.20
+            ? (0.4 + (riseProgress / 0.20) * 0.6)
+            : (riseProgress > 0.75 ? (1.0 - ((riseProgress - 0.75) / 0.25) * 0.35) : 1.0)
+        let opacity: Double = riseProgress < 0.15
+            ? Double(riseProgress / 0.15)
+            : (riseProgress > 0.72 ? Double(1.0 - ((riseProgress - 0.72) / 0.28)) : (isDark ? 0.90 : 0.82))
+
+        ZStack {
+            // Soft Radial Glow Core
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.white.opacity(isDark ? 0.95 : 0.98),
+                            accent.opacity(isDark ? 0.65 : 0.45),
+                            accent.opacity(0.15),
+                            Color.clear,
+                        ],
+                        center: UnitPoint(x: 0.32, y: 0.26),
+                        startRadius: 0,
+                        endRadius: size * 0.88
+                    )
+                )
+                .overlay {
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(isDark ? 0.90 : 0.96),
+                                    accent.opacity(isDark ? 0.60 : 0.40),
+                                    Color.white.opacity(0.25),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.75
+                        )
+                }
+
+            // Top-left Specular Sheen Pinpoint
+            Circle()
+                .fill(Color.white.opacity(isDark ? 0.95 : 0.98))
+                .frame(width: max(1.2, size * 0.26), height: max(1.2, size * 0.26))
+                .offset(x: -size * 0.22, y: -size * 0.22)
+        }
+        .frame(width: size, height: size)
+        .scaleEffect(scale * (isGlimmering ? 1.08 : 0.94))
+        .opacity(opacity)
+        .offset(x: currentX, y: currentY)
+        .shadow(
+            color: accent.opacity(isDark ? 0.45 : 0.28),
+            radius: max(2, size * 0.55),
+            x: 0,
+            y: 1.5
+        )
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: duration)
+                    .repeatForever(autoreverses: false)
+                    .delay(delay)
+            ) {
+                riseProgress = 1.0
+            }
+            withAnimation(
+                .easeInOut(duration: duration * 0.5)
+                    .repeatForever(autoreverses: true)
+                    .delay(delay + 0.1)
+            ) {
+                isGlimmering = true
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Next-Gen V6 Swarm of Alive Micro-Bubbles Feeding the Living Plate
+struct PPHomeHeroFeedingBubblesSwarmView: View {
+    let accent: Color
+    let isDark: Bool
+
+    private let bubbleSpecs: [(size: CGFloat, x: CGFloat, startY: CGFloat, endY: CGFloat, sway: CGFloat, dur: Double, delay: Double)] = [
+        (size: 6.5, x: -26, startY: 36, endY: -44, sway: 7.5, dur: 2.8, delay: 0.0),
+        (size: 4.2, x: -12, startY: 42, endY: -50, sway: -6.0, dur: 3.4, delay: 0.35),
+        (size: 8.5, x: 8, startY: 38, endY: -46, sway: 8.5, dur: 2.6, delay: 0.7),
+        (size: 3.6, x: 24, startY: 34, endY: -42, sway: -7.0, dur: 3.1, delay: 1.1),
+        (size: 5.2, x: -36, startY: 28, endY: -38, sway: 5.0, dur: 3.6, delay: 0.5),
+        (size: 7.2, x: 32, startY: 30, endY: -48, sway: -8.0, dur: 2.9, delay: 1.4),
+        (size: 4.8, x: 2, startY: 45, endY: -52, sway: 6.5, dur: 3.0, delay: 1.8),
+        (size: 9.2, x: -18, startY: 40, endY: -45, sway: -9.5, dur: 3.5, delay: 2.2),
+        (size: 3.8, x: 16, startY: 44, endY: -50, sway: 7.0, dur: 2.7, delay: 0.25),
+        (size: 5.8, x: -6, startY: 35, endY: -42, sway: -5.5, dur: 3.7, delay: 1.6),
+        (size: 6.2, x: -28, startY: 32, endY: -40, sway: 8.0, dur: 3.2, delay: 2.0),
+        (size: 4.0, x: -34, startY: 38, endY: -46, sway: -6.5, dur: 2.5, delay: 0.9),
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<bubbleSpecs.count, id: \.self) { i in
+                let b = bubbleSpecs[i]
+                PPHomeHeroFeedingRisingBubble(
+                    size: b.size,
+                    startX: b.x,
+                    startY: b.startY,
+                    endY: b.endY,
+                    swayWidth: b.sway,
+                    duration: b.dur,
+                    delay: b.delay,
+                    accent: accent,
+                    isDark: isDark
+                )
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Next-Gen V6 Organic Flank Glass Bubble with Optional Floating Icon
+/// Renders an ultra-premium water/glass sphere that smoothly appears, gently bobs/drifts,
+/// and softly disappears in an organic continuous loop on the empty flanks of the hero.
+struct PPHomeHeroFlankGlassOrb: View {
+    let size: CGFloat
+    let relativeX: CGFloat
+    let relativeY: CGFloat
+    let iconName: String?
+    let duration: Double
+    let delay: Double
+    let accent: Color
+    let isDark: Bool
+
+    @State private var phase: Double = 0.0
+    @State private var isGlimmering: Bool = false
+
+    var body: some View {
+        // Continuous organic life cycle:
+        // phase goes 0.0 -> 1.0
+        // 0.0..0.20: fade in & scale in
+        // 0.20..0.75: floating / bobbing / visible
+        // 0.75..1.00: float up & fade out
+        let opacity: Double = phase < 0.20
+            ? Double(phase / 0.20)
+            : (phase > 0.75 ? Double(1.0 - ((phase - 0.75) / 0.25)) : (isDark ? 0.88 : 0.82))
+        let scale: CGFloat = phase < 0.20
+            ? (0.35 + (phase / 0.20) * 0.65)
+            : (phase > 0.75 ? (1.0 + ((phase - 0.75) / 0.25) * 0.18) : 1.0)
+        let floatY = sin(phase * .pi * 3.0) * 6.0 - (phase * 12.0)
+        let floatX = cos(phase * .pi * 2.0) * 4.0
+
+        ZStack {
+            // Glass Sphere Body
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.white.opacity(isDark ? 0.75 : 0.88),
+                            accent.opacity(isDark ? 0.40 : 0.22),
+                            accent.opacity(0.08),
+                            Color.clear,
+                        ],
+                        center: UnitPoint(x: 0.32, y: 0.28),
+                        startRadius: 0,
+                        endRadius: size * 0.85
+                    )
+                )
+                .overlay {
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(isDark ? 0.85 : 0.95),
+                                    accent.opacity(isDark ? 0.50 : 0.35),
+                                    Color.white.opacity(0.20),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.85
+                        )
+                }
+
+            // Specular Pinpoint Highlight
+            Circle()
+                .fill(Color.white.opacity(isDark ? 0.92 : 0.98))
+                .frame(width: max(1.5, size * 0.22), height: max(1.5, size * 0.22))
+                .offset(x: -size * 0.22, y: -size * 0.22)
+
+            // Optional Icon
+            if let iconName {
+                Image(systemName: iconName)
+                    .font(.system(size: max(8, size * 0.42), weight: .bold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isDark ? 0.95 : 0.98),
+                                accent.opacity(isDark ? 0.85 : 0.75)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(
+                        color: accent.opacity(isDark ? 0.55 : 0.35),
+                        radius: 3,
+                        x: 0,
+                        y: 1
+                    )
+            }
+        }
+        .frame(width: size, height: size)
+        .scaleEffect(scale * (isGlimmering ? 1.06 : 0.96))
+        .opacity(opacity)
+        .offset(x: floatX, y: floatY)
+        .shadow(
+            color: accent.opacity(isDark ? 0.38 : 0.22),
+            radius: max(3, size * 0.45),
+            x: 0,
+            y: 3
+        )
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: duration)
+                    .repeatForever(autoreverses: false)
+                    .delay(delay)
+            ) {
+                phase = 1.0
+            }
+            withAnimation(
+                .easeInOut(duration: duration * 0.45)
+                    .repeatForever(autoreverses: true)
+                    .delay(delay + 0.15)
+            ) {
+                isGlimmering = true
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Next-Gen V6 Ambient Living Flanks
+/// Fills the left and right empty spaces surrounding the central plate with
+/// smooth, alive, organic floating water/glass bubbles and micro-icon badges.
+struct PPHomeHeroFlankLivingBubblesView: View {
+    let accent: Color
+    let isDark: Bool
+
+    private let leftOrbs: [(size: CGFloat, relX: CGFloat, relY: CGFloat, icon: String?, dur: Double, delay: Double)] = [
+        (size: 32, relX: 0.35, relY: 0.28, icon: "gift.fill", dur: 3.8, delay: 0.0),
+        (size: 20, relX: 0.75, relY: 0.18, icon: nil, dur: 3.2, delay: 0.6),
+        (size: 36, relX: 0.45, relY: 0.70, icon: "bag.fill", dur: 4.2, delay: 1.2),
+        (size: 16, relX: 0.18, relY: 0.60, icon: nil, dur: 2.8, delay: 1.8),
+        (size: 26, relX: 0.72, relY: 0.85, icon: "sparkles", dur: 3.5, delay: 0.9),
+        (size: 18, relX: 0.22, relY: 0.42, icon: "drop.fill", dur: 3.0, delay: 2.1),
+    ]
+
+    private let rightOrbs: [(size: CGFloat, relX: CGFloat, relY: CGFloat, icon: String?, dur: Double, delay: Double)] = [
+        (size: 34, relX: 0.60, relY: 0.25, icon: "pawprint.fill", dur: 4.0, delay: 0.3),
+        (size: 22, relX: 0.25, relY: 0.32, icon: nil, dur: 3.1, delay: 1.1),
+        (size: 30, relX: 0.68, relY: 0.68, icon: "tag.fill", dur: 3.6, delay: 0.7),
+        (size: 16, relX: 0.85, relY: 0.45, icon: nil, dur: 2.9, delay: 1.9),
+        (size: 28, relX: 0.30, relY: 0.78, icon: "heart.fill", dur: 4.4, delay: 1.4),
+        (size: 20, relX: 0.50, relY: 0.90, icon: "drop.fill", dur: 3.3, delay: 2.3),
+    ]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let totalWidth = proxy.size.width
+            let totalHeight = proxy.size.height
+            // Flank width is the region outside the central 150pt plate area
+            let flankWidth = max(30, (totalWidth - 140) / 2)
+
+            ZStack {
+                // Left Flank
+                flankSection(
+                    orbs: leftOrbs,
+                    width: flankWidth,
+                    height: totalHeight
+                )
+                .frame(width: flankWidth, height: totalHeight)
+                .position(x: flankWidth / 2, y: totalHeight / 2)
+
+                // Right Flank
+                flankSection(
+                    orbs: rightOrbs,
+                    width: flankWidth,
+                    height: totalHeight
+                )
+                .frame(width: flankWidth, height: totalHeight)
+                .position(x: totalWidth - (flankWidth / 2), y: totalHeight / 2)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func flankSection(
+        orbs: [(size: CGFloat, relX: CGFloat, relY: CGFloat, icon: String?, dur: Double, delay: Double)],
+        width: CGFloat,
+        height: CGFloat
+    ) -> some View {
+        ZStack {
+            ForEach(0..<orbs.count, id: \.self) { i in
+                let orb = orbs[i]
+                let xPos = width * orb.relX
+                let yPos = height * orb.relY
+
+                PPHomeHeroFlankGlassOrb(
+                    size: orb.size,
+                    relativeX: orb.relX,
+                    relativeY: orb.relY,
+                    iconName: orb.icon,
+                    duration: orb.dur,
+                    delay: orb.delay,
+                    accent: accent,
+                    isDark: isDark
+                )
+                .position(x: xPos, y: yPos)
+            }
+        }
+        .frame(width: width, height: height)
+        .clipped()
+    }
+}
+
 /// Next-Gen V6 Single Living Blob View
-/// Generates ONE deforming closed path, fills it once, and strokes THAT EXACT SAME PATH ONCE.
+/// Generates ONE deforming closed path, fills it once, renders an internal feeding bubble swarm, and strokes THAT EXACT SAME PATH ONCE.
 struct PPHomeHeroLivingBlobView: View {
     let fillGradient: LinearGradient
     let accent: Color
@@ -1711,6 +2065,13 @@ struct PPHomeHeroLivingBlobView: View {
         ZStack {
             // ONE fill of the deforming blob shape
             shape.fill(fillGradient)
+
+            // Ultra-Premium Next-Gen V6 Organic Feeding Rising Bubbles Swarm
+            PPHomeHeroFeedingBubblesSwarmView(
+                accent: accent,
+                isDark: isDark
+            )
+            .clipShape(shape)
 
             // ONE stroke of THAT EXACT SAME PATH with subtle traveling specular sheen
             shape.stroke(
@@ -1856,7 +2217,8 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 )
                 .frame(
                     width: geometry.portalWidth,
-                    height: geometry.contentHeight
+                    height: geometry.contentHeight,
+                    alignment: .center
                 )
 
                 if showsStatistics {
@@ -1868,13 +2230,9 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 }
             }
             .frame(
-                width: geometry.contentWidth,
-                height: geometry.contentHeight,
+                maxWidth: .infinity,
+                maxHeight: .infinity,
                 alignment: .center
-            )
-            .position(
-                x: proxy.size.width / 2,
-                y: proxy.size.height / 2
             )
         }
     }

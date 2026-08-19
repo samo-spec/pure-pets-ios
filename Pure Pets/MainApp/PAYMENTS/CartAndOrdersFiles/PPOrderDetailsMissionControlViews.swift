@@ -6,6 +6,36 @@
 import MapKit
 import SwiftUI
 
+private enum PPOrderMissionColorRole {
+    static var journeyHistory: Color { .ppTextSecondary }
+    static var commerce: Color { .ppQuickActionShopping }
+    static var financialMetadata: Color { .ppTextSecondary }
+    static var location: Color { .ppInfo }
+    static var fulfillmentOperations: Color { .ppQuickActionServices }
+    static var support: Color { .ppQuickActionCommunity }
+    static var primaryAction: Color { .ppPrimary }
+
+    static func action(
+        kind: String,
+        isDestructive: Bool,
+        fallback: Color
+    ) -> Color {
+        if isDestructive { return .ppError }
+        switch kind {
+        case "track":
+            return .ppInfo
+        case "requests", "support":
+            return support
+        case "return", "replacement":
+            return commerce
+        case "refund", "complaint":
+            return .ppWarning
+        default:
+            return fallback
+        }
+    }
+}
+
 @available(iOS 17.0, *)
 struct PPOrderDetailsMissionControlScreen: View {
     @ObservedObject var store: PPOrderDetailsMissionControlStore
@@ -86,6 +116,12 @@ struct PPOrderDetailsMissionControlScreen: View {
         Color(uiColor: store.state.statusColor)
     }
 
+    private enum HeroMetric {
+        static let statusEmblem: CGFloat = 60
+        static let statusSymbol: CGFloat = 22
+        static let statusRail: CGFloat = 3
+    }
+
     private var rootNotice: Binding<PPOrderMissionNotice?> {
         Binding(
             get: { store.activeSheet == nil ? store.notice : nil },
@@ -145,8 +181,16 @@ struct PPOrderDetailsMissionControlScreen: View {
                 Image(systemName: "headphones")
                     .font(.system(size: 17, weight: .semibold))
                     .frame(width: 44, height: 44)
-                    .background(accent.opacity(0.18), in: Circle())
-                    .overlay(Circle().stroke(accent.opacity(0.42), lineWidth: 1))
+                    .background(
+                        PPOrderMissionColorRole.support.opacity(0.16),
+                        in: Circle()
+                    )
+                    .overlay(
+                        Circle().stroke(
+                            PPOrderMissionColorRole.support.opacity(0.32),
+                            lineWidth: 1
+                        )
+                    )
             }
             .buttonStyle(.plain)
             .accessibilityLabel(PPOrderMissionText("cart_support_menu_title"))
@@ -221,70 +265,163 @@ struct PPOrderDetailsMissionControlScreen: View {
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: PPSpace.lg) {
-            HStack(alignment: .top, spacing: PPSpace.base) {
-                VStack(alignment: .leading, spacing: PPSpace.xs) {
-                    Text(PPOrderMissionText("order_mission_eyebrow"))
-                        .font(PPOrderMissionTypography.caption(12))
-                        .tracking(store.isRightToLeft ? 0 : 1.3)
-                        .foregroundStyle(accent)
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            heroReferenceStrip
+            heroStatusChapter
+            heroJourneySurface
+        }
+        .padding(PPSpace.base)
+        .modifier(
+            PPOrderMissionGlassCard(
+                accent: accent,
+                emphasis: true,
+                usesAccentBorder: false
+            )
+        )
+    }
 
-                    Button(action: store.copyReference) {
-                        HStack(spacing: PPSpace.xs) {
-                            Text("#\(store.state.reference)")
-                                .font(PPOrderMissionTypography.headline(19))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.72)
-                                .environment(\.layoutDirection, .leftToRight)
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
+    private var heroReferenceStrip: some View {
+        Button(action: store.copyReference) {
+            HStack(spacing: PPSpace.md) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(Color.ppSecondarySurface, in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    Text(PPOrderMissionText("order_mission_eyebrow"))
+                        .font(PPOrderMissionTypography.caption(11))
+                        .tracking(store.isRightToLeft ? 0 : 0.9)
+                        .foregroundStyle(Color.ppTextTertiary)
+
+                    Text(verbatim: "#\(store.state.reference)")
+                        .font(PPOrderMissionTypography.headline(18))
                         .foregroundStyle(Color.ppTextPrimary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        "\(PPOrderMissionText("OrderID")) \(store.state.reference)"
-                    )
-                    .accessibilityHint(
-                        PPOrderMissionText("order_mission_copy_reference")
-                    )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .environment(\.layoutDirection, .leftToRight)
                 }
 
                 Spacer(minLength: PPSpace.sm)
 
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.2))
-                        .frame(width: 74, height: 74)
-                    Circle()
-                        .stroke(accent.opacity(0.42), lineWidth: 1)
-                        .frame(width: 62, height: 62)
-                    Image(systemName: store.state.statusSymbol)
-                        .font(.system(size: 25, weight: .bold))
-                        .foregroundStyle(accent)
-                        .symbolEffect(
-                            .bounce,
-                            value: reduceMotion ? 0 : store.state.statusRevision
-                        )
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(PPOrderMissionColorRole.primaryAction)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        PPOrderMissionColorRole.primaryAction.opacity(0.10),
+                        in: Circle()
+                    )
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, PPSpace.xs)
+            .padding(.vertical, PPSpace.sm)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(Color.ppSeparator)
+                    .frame(height: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(PPOrderMissionText("OrderID")) \(store.state.reference)"
+        )
+        .accessibilityHint(
+            PPOrderMissionText("order_mission_copy_reference")
+        )
+    }
+
+    @ViewBuilder
+    private var heroStatusChapter: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    heroStatusEmblem
+                    heroStatusCopy
                 }
-                .accessibilityHidden(true)
+            } else {
+                HStack(alignment: .center, spacing: PPSpace.base) {
+                    heroStatusEmblem
+                    heroStatusCopy
+                    Spacer(minLength: 0)
+                }
             }
-
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                Text(store.state.statusTitle)
-                    .font(PPOrderMissionTypography.display())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(store.state.statusHint)
-                    .font(PPOrderMissionTypography.body())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(
-                "\(store.state.statusTitle). \(store.state.statusHint)"
+        }
+        .padding(PPSpace.base)
+        .background(
+            Color.ppSecondarySurface,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
             )
+        )
+        .overlay(
+            RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+            .stroke(Color.ppSurfaceBorder, lineWidth: 1)
+        )
+        .overlay(alignment: .leading) {
+            Capsule()
+                .fill(accent)
+                .frame(width: HeroMetric.statusRail)
+                .padding(.vertical, PPSpace.md)
+        }
+    }
 
+    private var heroStatusEmblem: some View {
+        Image(systemName: store.state.statusSymbol)
+            .font(.system(size: HeroMetric.statusSymbol, weight: .bold))
+            .foregroundStyle(accent)
+            .frame(
+                width: HeroMetric.statusEmblem,
+                height: HeroMetric.statusEmblem
+            )
+            .background(
+                accent.opacity(0.14),
+                in: RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+            )
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.medium,
+                    style: .continuous
+                )
+                .stroke(accent.opacity(0.28), lineWidth: 1)
+            )
+            .symbolEffect(
+                .bounce,
+                value: reduceMotion ? 0 : store.state.statusRevision
+            )
+            .accessibilityHidden(true)
+    }
+
+    private var heroStatusCopy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(store.state.statusTitle)
+                .font(PPOrderMissionTypography.display(31))
+                .foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(store.state.statusHint)
+                .font(PPOrderMissionTypography.body())
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(store.state.statusTitle). \(store.state.statusHint)"
+        )
+    }
+
+    private var heroJourneySurface: some View {
+        Group {
             if #available(iOS 17.0, *) {
                 PPOrderLivingHandoffRail(
                     statusKey: store.state.statusKey,
@@ -329,7 +466,9 @@ struct PPOrderDetailsMissionControlScreen: View {
                             systemImage: "clock.arrow.circlepath"
                         )
                         Spacer()
-                        Text("\(Int(store.state.statusProgress * 100))%")
+                        Text(
+                            verbatim: "\(Int(store.state.statusProgress * 100))%"
+                        )
                             .environment(\.layoutDirection, .leftToRight)
                     }
                     .font(PPOrderMissionTypography.caption())
@@ -337,8 +476,8 @@ struct PPOrderDetailsMissionControlScreen: View {
                 }
             }
         }
-        .padding(PPSpace.xl)
-        .modifier(PPOrderMissionGlassCard(accent: accent, emphasis: true))
+        .padding(.horizontal, PPSpace.xs)
+        .padding(.vertical, PPSpace.xs)
     }
 
     private var timelineSection: some View {
@@ -346,11 +485,11 @@ struct PPOrderDetailsMissionControlScreen: View {
             eyebrow: PPOrderMissionText("order_mission_journey_eyebrow"),
             title: PPOrderMissionText("order_tracking_title"),
             symbol: "point.topleft.down.to.point.bottomright.curvepath",
-            accent: accent
+            accent: PPOrderMissionColorRole.journeyHistory
         ) {
             if store.state.timelineLoading && store.state.timeline.isEmpty {
                 ProgressView()
-                    .tint(accent)
+                    .tint(PPOrderMissionColorRole.primaryAction)
                     .frame(maxWidth: .infinity, minHeight: 64)
                     .accessibilityLabel(PPOrderMissionText("Loading"))
             } else {
@@ -376,7 +515,7 @@ struct PPOrderDetailsMissionControlScreen: View {
                             index, event in
                             PPOrderMissionTimelineRow(
                                 event: event,
-                                accent: accent,
+                                accent: PPOrderMissionColorRole.journeyHistory,
                                 isLast: index == min(3, store.state.timeline.count - 1)
                             )
                         }
@@ -401,7 +540,7 @@ struct PPOrderDetailsMissionControlScreen: View {
             eyebrow: PPOrderMissionText("order_mission_manifest_eyebrow"),
             title: PPOrderMissionText("order_items_section_title"),
             symbol: "shippingbox",
-            accent: accent
+            accent: PPOrderMissionColorRole.commerce
         ) {
             if store.state.items.isEmpty {
                 PPOrderMissionInlineEmpty(
@@ -414,7 +553,10 @@ struct PPOrderDetailsMissionControlScreen: View {
                         Button {
                             store.openItem(item)
                         } label: {
-                            PPOrderMissionItemRow(item: item, accent: accent)
+                            PPOrderMissionItemRow(
+                                item: item,
+                                accent: PPOrderMissionColorRole.primaryAction
+                            )
                         }
                         .buttonStyle(.plain)
                         .disabled(!item.canOpen)
@@ -429,7 +571,7 @@ struct PPOrderDetailsMissionControlScreen: View {
             eyebrow: PPOrderMissionText("order_mission_finance_eyebrow"),
             title: PPOrderMissionText("order_mission_settlement"),
             symbol: "creditcard",
-            accent: accent
+            accent: PPOrderMissionColorRole.financialMetadata
         ) {
             VStack(spacing: PPSpace.md) {
                 PPOrderMissionKeyValue(
@@ -466,7 +608,7 @@ struct PPOrderDetailsMissionControlScreen: View {
             eyebrow: PPOrderMissionText("order_mission_destination_eyebrow"),
             title: PPOrderMissionText("DeliveryLocation"),
             symbol: "mappin.and.ellipse",
-            accent: accent
+            accent: PPOrderMissionColorRole.location
         ) {
             if store.state.hasCoordinate {
                 PPOrderMissionMap(
@@ -529,17 +671,16 @@ struct PPOrderDetailsMissionControlScreen: View {
                 eyebrow: PPOrderMissionText("order_mission_fulfillment_eyebrow"),
                 title: PPOrderMissionText("fulfillment_section_title"),
                 symbol: "square.3.layers.3d",
-                accent: accent
+                accent: PPOrderMissionColorRole.fulfillmentOperations
             ) {
                 PPOrderMissionFulfillmentSummaryView(
-                    summary: store.state.fulfillmentSummary,
-                    accent: accent
+                    summary: store.state.fulfillmentSummary
                 )
 
                 if store.state.fulfillmentLoading {
                     ProgressView(PPOrderMissionText("fulfillment_loading"))
                         .font(PPOrderMissionTypography.callout())
-                        .tint(accent)
+                        .tint(PPOrderMissionColorRole.primaryAction)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -583,11 +724,11 @@ struct PPOrderDetailsMissionControlScreen: View {
             eyebrow: PPOrderMissionText("order_mission_support_eyebrow"),
             title: PPOrderMissionText("order_requests_history_title"),
             symbol: "tray.full",
-            accent: accent
+            accent: PPOrderMissionColorRole.support
         ) {
             if store.state.supportLoading && store.state.requests.isEmpty {
                 ProgressView()
-                    .tint(accent)
+                    .tint(PPOrderMissionColorRole.primaryAction)
                     .frame(maxWidth: .infinity, minHeight: 64)
                     .accessibilityLabel(PPOrderMissionText("Loading"))
             } else {
@@ -630,7 +771,7 @@ struct PPOrderDetailsMissionControlScreen: View {
     private var commandDeck: some View {
         PPOrderMissionCommandOrbit(
             actions: store.state.actions.filter(\.isVisible),
-            accent: accent,
+            accent: PPOrderMissionColorRole.primaryAction,
             handle: store.handle
         )
     }
@@ -671,6 +812,7 @@ struct PPOrderDetailsMissionControlScreen: View {
 struct PPOrderMissionGlassCard: ViewModifier {
     let accent: Color
     var emphasis = false
+    var usesAccentBorder = true
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(
@@ -684,7 +826,9 @@ struct PPOrderMissionGlassCard: ViewModifier {
             )
             .overlay(
                 shape.stroke(
-                    emphasis ? accent.opacity(0.42) : Color.ppSurfaceBorder,
+                    emphasis && usesAccentBorder
+                        ? accent.opacity(0.42)
+                        : Color.ppSurfaceBorder,
                     lineWidth: emphasis ? 1.1 : 1
                 )
             )
@@ -977,30 +1121,36 @@ struct PPOrderMissionInlineNotice: View {
 
 private struct PPOrderMissionFulfillmentSummaryView: View {
     let summary: PPOrderMissionFulfillmentSummary
-    let accent: Color
 
     var body: some View {
         HStack(spacing: PPSpace.sm) {
             summaryMetric(
                 value: summary.total,
-                title: PPOrderMissionText("order_mission_total_groups")
+                title: PPOrderMissionText("order_mission_total_groups"),
+                color: .ppInfo
             )
             summaryMetric(
                 value: summary.pending,
-                title: PPOrderMissionText("fulfillment_summary_pending")
+                title: PPOrderMissionText("fulfillment_summary_pending"),
+                color: summary.pending > 0 ? .ppWarning : .ppTextTertiary
             )
             summaryMetric(
                 value: summary.completed,
-                title: PPOrderMissionText("fulfillment_summary_completed")
+                title: PPOrderMissionText("fulfillment_summary_completed"),
+                color: summary.completed > 0 ? .ppSuccess : .ppTextTertiary
             )
         }
     }
 
-    private func summaryMetric(value: Int, title: String) -> some View {
+    private func summaryMetric(
+        value: Int,
+        title: String,
+        color: Color
+    ) -> some View {
         VStack(spacing: 2) {
-            Text("\(value)")
+            Text(verbatim: "\(value)")
                 .font(PPOrderMissionTypography.headline(20))
-                .foregroundStyle(accent)
+                .foregroundStyle(color)
             Text(title)
                 .font(PPOrderMissionTypography.caption(11))
                 .foregroundStyle(Color.ppTextSecondary)
@@ -1008,7 +1158,7 @@ private struct PPOrderMissionFulfillmentSummaryView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, minHeight: 64)
-        .modifier(PPOrderMissionInsetSurface(accent: accent, prominence: 0.16))
+        .modifier(PPOrderMissionInsetSurface(accent: color, prominence: 0.16))
         .accessibilityElement(children: .combine)
     }
 }
@@ -1030,7 +1180,9 @@ struct PPOrderMissionFulfillmentRow: View {
                 Text(fulfillment.ownerTitle)
                     .font(PPOrderMissionTypography.callout())
                     .foregroundStyle(Color.ppTextPrimary)
-                Text("\(fulfillment.statusTitle) • \(fulfillment.itemCountText)")
+                Text(
+                    verbatim: "\(fulfillment.statusTitle) • \(fulfillment.itemCountText)"
+                )
                     .font(PPOrderMissionTypography.caption())
                     .foregroundStyle(Color.ppTextSecondary)
                     .lineLimit(2)
@@ -1055,30 +1207,39 @@ struct PPOrderMissionFulfillmentRow: View {
 private struct PPOrderMissionRequestPreview: View {
     let request: PPOrderMissionRequest
 
+    private var supportColor: Color { PPOrderMissionColorRole.support }
+
     var body: some View {
         HStack(spacing: PPSpace.md) {
             Image(systemName: "shield.lefthalf.filled")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
+                .foregroundStyle(supportColor)
                 .frame(width: 38, height: 38)
-                .background(Color.ppPrimary.opacity(0.18), in: Circle())
-                .overlay(Circle().stroke(Color.ppPrimary.opacity(0.3), lineWidth: 1))
+                .background(supportColor.opacity(0.16), in: Circle())
+                .overlay(
+                    Circle().stroke(
+                        supportColor.opacity(0.30),
+                        lineWidth: 1
+                    )
+                )
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(request.typeTitle)
                     .font(PPOrderMissionTypography.callout())
                     .foregroundStyle(Color.ppTextPrimary)
-                Text("\(request.statusTitle) • \(request.createdAtText)")
+                Text(
+                    verbatim: "\(request.statusTitle) • \(request.createdAtText)"
+                )
                     .font(PPOrderMissionTypography.caption())
                     .foregroundStyle(Color.ppTextSecondary)
             }
             Spacer(minLength: PPSpace.sm)
             Image(systemName: "chevron.forward")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
+                .foregroundStyle(supportColor)
         }
         .padding(PPSpace.sm)
-        .modifier(PPOrderMissionInsetSurface(accent: Color.ppPrimary))
+        .modifier(PPOrderMissionInsetSurface(accent: supportColor))
         .accessibilityElement(children: .combine)
     }
 }
@@ -1129,8 +1290,16 @@ private struct PPOrderMissionActionTile: View {
     let action: PPOrderMissionAction
     let accent: Color
 
+    private var actionColor: Color {
+        PPOrderMissionColorRole.action(
+            kind: action.kind,
+            isDestructive: action.isDestructive,
+            fallback: accent
+        )
+    }
+
     var body: some View {
-        let color = action.isDestructive ? Color.ppError : accent
+        let color = actionColor
         let shape = RoundedRectangle(
             cornerRadius: PPCorner.card,
             style: .continuous

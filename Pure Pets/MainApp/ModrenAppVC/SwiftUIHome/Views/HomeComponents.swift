@@ -2551,7 +2551,7 @@ private struct HomeCardPressStyle: ButtonStyle {
     }
 }
 
-private struct HomeMainKindShelfEntrance: ViewModifier {
+private struct HomeMainKindHabitatEntrance: ViewModifier {
     let isPresented: Bool
     let ordinal: Int
     let isAllCategory: Bool
@@ -2563,10 +2563,10 @@ private struct HomeMainKindShelfEntrance: ViewModifier {
         // Driven by Home's shared initial phase, never cell onAppear. Late
         // lazy cells therefore stay still during horizontal scrolling.
         //
-        // The pedestal rail settles in from the semantic-leading edge only.
+        // The habitat rail settles in from the semantic-leading edge only.
         // The former 3D yaw/roll and vertical arc were decorative staging on
         // the most frequently tapped control on Home, so they are removed:
-        // the entrance now states "the shelf is arriving" and nothing more.
+        // the entrance now states "the habitats are arriving" and nothing more.
         content
             .scaleEffect(
                 isStaged ? stagedScale : 1,
@@ -2655,7 +2655,7 @@ struct HomeCategoryRail: View {
                     "home_pulse_categories_subtitle",
                     fallback: "The selected species shapes relevant results"
                 ),
-                titleAccent: Color.ppPrimary,
+                titleAccent: selectedCategoryAccent,
                 actionTitle: layoutActionTitle,
                 action: toggleLayout,
                 actionIconName: isExpanded
@@ -2811,6 +2811,16 @@ struct HomeCategoryRail: View {
         "home-main-kind-all"
     }
 
+    private var selectedCategoryAccent: Color {
+        guard let selectedID,
+              let category = categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedID
+              }) else {
+            return Color.ppPrimary
+        }
+        return Color(uiColor: category.accent)
+    }
+
     private var selectedScrollID: String {
         guard let selectedID,
               let category = categories.first(where: {
@@ -2850,7 +2860,7 @@ struct HomeCategoryRail: View {
         let categoryID = category.map {
             HomeModelAdapter.mainKindID($0.raw)
         }
-        HomeMainKindPedestalCell(
+        HomeMainKindCellRepresentable(
             category: category,
             selected: category == nil
                 ? selectedID == nil
@@ -2862,7 +2872,7 @@ struct HomeCategoryRail: View {
         )
         .frame(width: size.width, height: size.height)
         .modifier(
-            HomeMainKindShelfEntrance(
+            HomeMainKindHabitatEntrance(
                 isPresented: entrancePresented,
                 ordinal: entranceOrdinal,
                 isAllCategory: category == nil
@@ -2921,28 +2931,31 @@ struct HomeCategoryRail: View {
     }
 }
 
-// MARK: - MainKind Pedestal — the species scope selector
+// MARK: - MainKind Habitat — the species scope selector
 
 // Design thesis
 // -------------
 // This rail is not a card grid. It is a *scope selector*: exactly one species
 // governs every commerce rail below it, so "which one is active" is the single
-// most consequential piece of state on Home. The previous card treated all
-// species as equal-weight bordered tiles and whispered selection through a
-// 1.5pt border, so the card body carried no information at all.
+// most consequential piece of state on Home. The retired pedestal whispered
+// that state through three micro-signals — a 2pt ring, a 4pt shelf, and a
+// 4.5% tint on a flat card — so selection never survived a squint.
 //
-// The redesign deletes the card. Each species becomes a *pedestal*: a physical
-// medallion resting on a shelf, captioned underneath on the bare Home canvas.
-// Selection is expressed by building the shelf under the chosen species while
-// the previous one is dismantled — the composition itself says "this species
-// is what everything below now stands on."
+// The habitat redesign turns selection into ONE causal event: the species'
+// lamp switches on. A canopy of the species' own accent pours in from above
+// the card, the artwork disc lifts toward the light on an accent-tinted
+// shadow, a thin iris ring opens around the disc like a spotlight aperture,
+// and the ground line rises to meet it with a soft glow. Idle habitats carry
+// no outer ring at all — identity comes from the species-washed disc alone —
+// so the rail reads as a spectrum of unlit habitats and the lit one is
+// unmistakable from across the room.
 //
 // Ownership is unchanged: `HomeStore` still owns selection, persistence, the
 // route, and the selection haptic. This view owns presentation and its press
 // feedback only.
 
-/// Press state published by `HomeMainKindPedestalButtonStyle`, so the medallion
-/// alone reacts to touch while the caption stays typographically stable.
+/// Press state published by `HomeMainKindHabitatButtonStyle`, so the disc and
+/// the lamp react to touch while the caption stays typographically stable.
 private struct HomeMainKindPressedKey: EnvironmentKey {
     static let defaultValue = false
 }
@@ -2954,42 +2967,57 @@ private extension EnvironmentValues {
     }
 }
 
-private struct HomeMainKindPedestalButtonStyle: ButtonStyle {
+private struct HomeMainKindHabitatButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .environment(\.homeMainKindPressed, configuration.isPressed)
     }
 }
 
-private enum HomeMainKindPedestal {
-    /// Clear lane reserved between the medallion edge and the wash disc so the
-    /// selection ring can thicken without shifting layout.
-    static let ringLane: CGFloat = 5
+private enum HomeMainKindHabitat {
+    /// Clear lane reserved between the disc edge and the iris so the aperture
+    /// ring can open without shifting layout.
+    static let irisLane: CGFloat = 5
 
-    static let idleRingWidth: CGFloat = 1
-    static let selectedRingWidth: CGFloat = 2
-    static let highContrastRingWidth: CGFloat = 2.5
+    static let idleRimWidth: CGFloat = 1
+    static let selectedRimWidth: CGFloat = 1.5
+    /// The aperture is now the only accent ring on a lit habitat, so it carries
+    /// slightly more weight than the retired multi-ring treatment did.
+    static let irisWidth: CGFloat = 2
+    static let highContrastIrisWidth: CGFloat = 2.5
 
-    static let shelfReservedHeight: CGFloat = 4
-    static let shelfIdleHeight: CGFloat = 2
-    static let shelfSelectedWidthShare: CGFloat = 0.78
-    static let shelfIdleWidthShare: CGFloat = 0.34
+    static let groundReservedHeight: CGFloat = 4
+    static let groundIdleHeight: CGFloat = 2
+    static let groundSelectedWidthShare: CGFloat = 0.78
+    static let groundIdleWidthShare: CGFloat = 0.34
 
-    static let pressScale: CGFloat = 0.94
+    static let pressScale: CGFloat = 0.93
     static let pressDuration: Double = 0.12
+    /// How far the disc rises toward the canopy when its species takes Home.
+    static let selectedDiscLift: CGFloat = 1.06
+    /// The whole lit tile rises a hair above the rail. Kept small enough to
+    /// stay inside the rail's reserved shadow insets, so nothing reflows and
+    /// no neighbour is clipped.
+    static let selectedCardLift: CGFloat = 1.02
+
+    // MARK: Scope mark
+
+    /// Diameter is fixed rather than Dynamic Type scaled: the mark is a state
+    /// glyph, VoiceOver already announces selection through `.isSelected`, and
+    /// a growing badge would collide with the caption at AX sizes.
+    static let scopeMarkDiameter: CGFloat = 22
+    static let scopeMarkInset: CGFloat = PPSpace.sm
+    static let scopeMarkRingWidth: CGFloat = 2
+    static let scopeMarkGlyphScale: CGFloat = 0.44
 
     static let settleResponse: Double = 0.42
     static let settleDamping: Double = 0.82
 
-    // MARK: Soft card
+    // MARK: Habitat card
 
     static let cardRadius: CGFloat = PPCorner.card
-    /// Interior breathing room the pedestal keeps away from the card edge.
+    /// Interior breathing room the habitat keeps away from the card edge.
     static let cardContentInset: CGFloat = PPSpace.sm
-    /// Accent blended into the card surface on selection. Carried over from the
-    /// retired UIKit cell so the tint stays a whisper, not a fifth loud signal.
-    static let cardSelectedTint: CGFloat = 0.045
-    static let cardSelectedTintHighContrast: CGFloat = 0.075
 
     /// PP tokens resolve on `userInterfaceStyle` only
     /// (`UIColor.ppDynamicColor`), so appearance is the sole trait needed to
@@ -3001,22 +3029,17 @@ private enum HomeMainKindPedestal {
         )
     }
 
-    /// The soft card surface the pedestal now stands in.
-    static func cardSurface(
-        accent: UIColor,
-        selected: Bool,
-        traits: UITraitCollection,
-        highContrast: Bool
-    ) -> UIColor {
-        let surface = UIColor.ppSurfaceRaised.resolvedColor(with: traits)
-        guard selected else { return surface }
-        return blend(
-            accent,
-            with: surface,
-            ratio: highContrast
-                ? cardSelectedTintHighContrast
-                : cardSelectedTint
-        )
+    /// The soft card surface the habitat lives in.
+    ///
+    /// Neutral in every state, deliberately. Washing the selected card in the
+    /// species accent made the lit tile read *paler* than its plain white
+    /// neighbours — selection looked closer to a disabled state than an active
+    /// one — and it spent the same colour on two different meanings, so
+    /// "this is the bird habitat" and "the bird habitat is scoping Home" became
+    /// indistinguishable. State now belongs to the brand-owned scope mark and
+    /// to elevation; the accent is reserved for species identity.
+    static func cardSurface(traits: UITraitCollection) -> UIColor {
+        UIColor.ppSurfaceRaised.resolvedColor(with: traits)
     }
 
     /// The ring, shelf, and caption now sit on the card, so the species accent
@@ -3114,12 +3137,12 @@ private enum HomeMainKindPedestal {
     }
 }
 
-/// Resolved pedestal geometry. Derived from the size the rail already grants a
+/// Resolved habitat geometry. Derived from the size the rail already grants a
 /// cell, so the rail's scroll anchors, "show all" grid, and per-width density
 /// contract are untouched by this redesign. The height shares account for the
 /// soft card's interior inset, so the caption never crowds the card edge.
-private struct HomeMainKindPedestalGeometry {
-    let medallionDiameter: CGFloat
+private struct HomeMainKindHabitatGeometry {
+    let discDiameter: CGFloat
     let artworkSide: CGFloat
     let titleLineLimit: Int
 
@@ -3132,7 +3155,7 @@ private struct HomeMainKindPedestalGeometry {
         let widthShare: CGFloat
         let heightShare: CGFloat
         if isAccessibilitySize {
-            // Text owns the tile at accessibility sizes: the medallion yields.
+            // Text owns the tile at accessibility sizes: the disc yields.
             ceiling = 44
             widthShare = 0.42
             heightShare = 0.26
@@ -3150,19 +3173,20 @@ private struct HomeMainKindPedestalGeometry {
             44,
             min(ceiling, min(width * widthShare, height * heightShare))
         )
-        medallionDiameter = diameter.rounded()
+        discDiameter = diameter.rounded()
         // The "all" affordance is a system glyph, not species artwork, so it
-        // sits smaller inside the same medallion.
-        artworkSide = (medallionDiameter * (isAllOption ? 0.46 : 0.70)).rounded()
+        // sits smaller inside the same disc.
+        artworkSide = (discDiameter * (isAllOption ? 0.46 : 0.70)).rounded()
         titleLineLimit = isAccessibilitySize ? 3 : 2
     }
 }
 
-/// The shelf. One capsule per pedestal: a quiet socket when the species is
-/// available, an accent platform when it governs Home.
+/// The ground. One capsule per habitat: a quiet patch when the species is
+/// available, a raised accent platform with a soft glow when it holds the
+/// lamp — the floor rises to meet the lifted disc.
 @available(iOS 15.0, *)
-private struct HomeMainKindShelf: View {
-    let medallionDiameter: CGFloat
+private struct HomeMainKindGround: View {
+    let discDiameter: CGFloat
     let selected: Bool
     let accent: Color
 
@@ -3170,44 +3194,131 @@ private struct HomeMainKindShelf: View {
 
     var body: some View {
         Capsule(style: .continuous)
-            .fill(shelfFill)
+            .fill(groundFill)
             .frame(width: width, height: height)
+            .shadow(color: glowColor, radius: glowRadius, x: 0, y: 0)
             .frame(
                 maxWidth: .infinity,
-                minHeight: HomeMainKindPedestal.shelfReservedHeight,
+                minHeight: HomeMainKindHabitat.groundReservedHeight,
                 alignment: .center
             )
     }
 
-    private var shelfFill: Color {
-        guard selected else {
-            return .ppSurfaceBorder.opacity(
-                contrast == .increased ? 1 : 0.85
-            )
-        }
+    private var groundFill: Color {
+        // The idle shelf was a small grey dash under every disc: chrome that
+        // stated nothing an available species needs to state. The lane stays
+        // reserved so nothing shifts, but only a lit habitat draws its shelf.
+        guard selected else { return .clear }
         return accent
     }
 
+    /// The glow is light spilling off the raised ground, so increased contrast
+    /// trades it for raw opacity the edge can survive outdoors.
+    private var glowColor: Color {
+        guard selected, contrast != .increased else { return .clear }
+        return accent.opacity(0.45)
+    }
+
+    private var glowRadius: CGFloat {
+        selected && contrast != .increased ? 4 : 0
+    }
+
     private var width: CGFloat {
-        medallionDiameter * (
+        discDiameter * (
             selected
-                ? HomeMainKindPedestal.shelfSelectedWidthShare
-                : HomeMainKindPedestal.shelfIdleWidthShare
+                ? HomeMainKindHabitat.groundSelectedWidthShare
+                : HomeMainKindHabitat.groundIdleWidthShare
         )
     }
 
     private var height: CGFloat {
         selected
-            ? HomeMainKindPedestal.shelfReservedHeight
-            : HomeMainKindPedestal.shelfIdleHeight
+            ? HomeMainKindHabitat.groundReservedHeight
+            : HomeMainKindHabitat.groundIdleHeight
     }
 }
 
-/// The medallion. A physical disc carrying species artwork, washed in that
-/// species' own `kindColor` at all times so the rail reads as a spectrum of
-/// animals instead of a row of identical boxes.
+/// The lamp. A cone of the species' accent pouring in from just above the
+/// card's top edge: the single unmistakable signal that this habitat scopes
+/// Home. It stays in the tree at zero opacity while idle so the light fades
+/// in instead of popping, and pressing a lit habitat brightens the pour a
+/// notch so the whole card answers the finger. Reduce Transparency swaps the
+/// cone for an even flat tint; increased contrast deepens the pour so the
+/// state survives glare.
 @available(iOS 15.0, *)
-private struct HomeMainKindMedallion: View {
+private struct HomeMainKindCanopy: View {
+    let accent: Color
+    let selected: Bool
+    let pressed: Bool
+    let cardHeight: CGFloat
+    let cardRadius: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+            .fill(pourStyle)
+            .opacity(strength)
+            .animation(pressAnimation, value: pressed)
+            .allowsHitTesting(false)
+    }
+
+    private var pressAnimation: Animation? {
+        reduceMotion
+            ? nil
+            : .easeOut(duration: HomeMainKindHabitat.pressDuration)
+    }
+
+    /// The cone: brightest just past the top edge and dissolved before the
+    /// caption, so the light never taxes title legibility.
+    private var pourStyle: AnyShapeStyle {
+        if reduceTransparency {
+            return AnyShapeStyle(accent)
+        }
+        return AnyShapeStyle(
+            RadialGradient(
+                gradient: Gradient(stops: [
+                    .init(color: accent, location: 0),
+                    .init(color: accent.opacity(0.38), location: 0.44),
+                    .init(color: accent.opacity(0), location: 1)
+                ]),
+                center: UnitPoint(x: 0.5, y: -0.18),
+                startRadius: 0,
+                endRadius: cardHeight * 0.98
+            )
+        )
+    }
+
+    /// The pour is now a whisper of species light at the card's top edge rather
+    /// than a wash: the scope mark and elevation carry the state, so this only
+    /// has to hint that the habitat is lit. Keeping it faint is what lets the
+    /// card stay a neutral surface instead of reading as a coloured tile.
+    private var strength: Double {
+        guard selected else { return 0 }
+        let base: Double
+        if reduceTransparency {
+            base = contrast == .increased
+                ? 0.14
+                : (colorScheme == .dark ? 0.10 : 0.07)
+        } else if contrast == .increased {
+            base = 0.18
+        } else {
+            base = colorScheme == .dark ? 0.14 : 0.09
+        }
+        return pressed && !reduceMotion ? base + 0.05 : base
+    }
+}
+
+/// The disc. Species artwork floating inside its habitat: an elevated circle
+/// washed in that species' own `kindColor` at all times, so the rail reads as
+/// a spectrum of animals instead of a row of identical boxes. When the lamp
+/// switches on, the disc rises toward the canopy on a tinted shadow, its rim
+/// turns accent, and the iris opens around it like a spotlight aperture.
+@available(iOS 15.0, *)
+private struct HomeMainKindDisc: View {
     let localImage: UIImage?
     let imageURL: String?
     let cacheKey: String
@@ -3226,12 +3337,12 @@ private struct HomeMainKindMedallion: View {
 
     var body: some View {
         ZStack {
+            iris
             disc
-            ring
             artwork
         }
         .frame(width: diameter, height: diameter)
-        .scaleEffect(isPressedVisually ? HomeMainKindPedestal.pressScale : 1)
+        .scaleEffect(discScale)
         .animation(pressAnimation, value: pressed)
     }
 
@@ -3239,30 +3350,87 @@ private struct HomeMainKindMedallion: View {
         pressed && !reduceMotion
     }
 
+    /// Pressing pulls the disc back down from its lifted selected pose, so a
+    /// lit habitat still answers the finger physically.
+    private var discScale: CGFloat {
+        if isPressedVisually { return HomeMainKindHabitat.pressScale }
+        return selected ? HomeMainKindHabitat.selectedDiscLift : 1
+    }
+
     private var pressAnimation: Animation? {
         reduceMotion
             ? nil
-            : .easeOut(duration: HomeMainKindPedestal.pressDuration)
+            : .easeOut(duration: HomeMainKindHabitat.pressDuration)
     }
 
-    private var discDiameter: CGFloat {
-        max(diameter - (HomeMainKindPedestal.ringLane * 2), 24)
+    /// The artwork-bearing circle, one iris lane inside the allocated frame.
+    private var fieldDiameter: CGFloat {
+        max(diameter - (HomeMainKindHabitat.irisLane * 2), 24)
+    }
+
+    /// The spotlight aperture: an accent ring one lane outside the disc that
+    /// exists only while this species holds Home. It stays in the tree at zero
+    /// opacity so opening the iris is a fade, never a pop.
+    private var iris: some View {
+        Circle()
+            .strokeBorder(irisColor, lineWidth: irisWidth)
+            .frame(width: diameter, height: diameter)
+            .opacity(selected ? 1 : 0)
+    }
+
+    private var irisColor: Color {
+        if contrast == .increased { return accent }
+        return accent.opacity(colorScheme == .dark ? 0.9 : 0.75)
+    }
+
+    private var irisWidth: CGFloat {
+        contrast == .increased
+            ? HomeMainKindHabitat.highContrastIrisWidth
+            : HomeMainKindHabitat.irisWidth
     }
 
     private var disc: some View {
         Circle()
             // Elevated rather than raised: in dark mode this is a real step up
             // from the card (21191C over 171214), and in light mode it is a
-            // harmless no-op, so the medallion never dissolves into the card.
+            // harmless no-op, so the disc never dissolves into the card.
             .fill(Color.ppSurfaceElevated)
             .overlay(wash)
-            .frame(width: discDiameter, height: discDiameter)
+            .overlay(rim)
+            .frame(width: fieldDiameter, height: fieldDiameter)
             .shadow(
                 color: shadowColor,
                 radius: shadowRadius,
                 x: 0,
                 y: shadowOffsetY
             )
+    }
+
+    /// The disc's own rim: a quiet hairline while idle, an accent edge once
+    /// the lamp is on. This replaces the retired outer ring, so idle habitats
+    /// carry no grey chrome beyond this line.
+    private var rim: some View {
+        Circle()
+            .strokeBorder(rimColor, lineWidth: rimWidth)
+    }
+
+    private var rimColor: Color {
+        if contrast == .increased {
+            return selected ? accent : .ppSurfaceBorder
+        }
+        if selected {
+            return accent.opacity(colorScheme == .dark ? 0.85 : 0.65)
+        }
+        // Idle habitats previously carried a grey hairline that read as chrome
+        // around the artwork. A whisper of the species' own colour finishes the
+        // disc instead of outlining it.
+        return accent.opacity(colorScheme == .dark ? 0.30 : 0.18)
+    }
+
+    private var rimWidth: CGFloat {
+        selected
+            ? HomeMainKindHabitat.selectedRimWidth
+            : HomeMainKindHabitat.idleRimWidth
     }
 
     @ViewBuilder
@@ -3284,14 +3452,14 @@ private struct HomeMainKindMedallion: View {
             ]),
             center: UnitPoint(x: 0.5, y: 0.46),
             startRadius: 0,
-            endRadius: discDiameter * 0.66
+            endRadius: fieldDiameter * 0.66
         )
     }
 
     private var flatWash: Color {
-        let traits = HomeMainKindPedestal.traits(colorScheme: colorScheme)
+        let traits = HomeMainKindHabitat.traits(colorScheme: colorScheme)
         return Color(
-            uiColor: HomeMainKindPedestal.blend(
+            uiColor: HomeMainKindHabitat.blend(
                 accentUIColor,
                 with: UIColor.ppSurfaceElevated.resolvedColor(with: traits),
                 ratio: washAlpha
@@ -3312,38 +3480,30 @@ private struct HomeMainKindMedallion: View {
         return selected ? 0.32 : 0.13
     }
 
-    private var ring: some View {
-        Circle()
-            .strokeBorder(ringColor, lineWidth: ringWidth)
-            .frame(width: diameter, height: diameter)
-    }
-
-    private var ringColor: Color {
-        guard selected else {
-            return .ppSurfaceBorder.opacity(contrast == .increased ? 1 : 0.72)
-        }
-        if contrast == .increased { return accent }
-        return accent.opacity(colorScheme == .dark ? 0.90 : 0.78)
-    }
-
-    private var ringWidth: CGFloat {
-        guard selected else { return HomeMainKindPedestal.idleRingWidth }
-        return contrast == .increased
-            ? HomeMainKindPedestal.highContrastRingWidth
-            : HomeMainKindPedestal.selectedRingWidth
-    }
-
+    /// The lift shadow: neutral and close while idle; tinted with the species'
+    /// accent and pushed further down once the disc rises toward the canopy,
+    /// so the lift reads physically instead of as a flat scale.
     private var shadowColor: Color {
         guard contrast != .increased else { return .clear }
+        if isPressedVisually {
+            return .black.opacity(colorScheme == .dark ? 0.22 : 0.09)
+        }
+        if selected {
+            return accent.opacity(colorScheme == .dark ? 0.42 : 0.28)
+        }
         return .black.opacity(colorScheme == .dark ? 0.26 : 0.10)
     }
 
     private var shadowRadius: CGFloat {
-        contrast == .increased ? 0 : (isPressedVisually ? 4 : 8)
+        guard contrast != .increased else { return 0 }
+        if isPressedVisually { return 4 }
+        return selected ? 11 : 8
     }
 
     private var shadowOffsetY: CGFloat {
-        contrast == .increased ? 0 : (isPressedVisually ? 1 : 4)
+        guard contrast != .increased else { return 0 }
+        if isPressedVisually { return 1 }
+        return selected ? 6 : 4
     }
 
     @ViewBuilder
@@ -3411,13 +3571,13 @@ private struct HomeMainKindLargeContentViewer: ViewModifier {
     }
 }
 
-/// The production MainKind pedestal used by `HomeCategoryRail`.
+/// The production MainKind habitat used by `HomeCategoryRail`.
 ///
 /// Selection is committed on touch-up with no artificial delay: scoping Home is
 /// the dominant action on this screen and must not wait on presentation. The
 /// selection haptic and the route stay owned by `HomeStore.selectCategory`.
 @available(iOS 15.0, *)
-private struct HomeMainKindPedestalCell: View {
+private struct HomeMainKindHabitatCell: View {
     let category: HomeCategoryModel?
     let selected: Bool
     let size: CGSize
@@ -3427,12 +3587,13 @@ private struct HomeMainKindPedestalCell: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.homeMainKindPressed) private var pressed
 
     var body: some View {
         Button(action: onSelect) {
-            pedestal
+            habitat
         }
-        .buttonStyle(HomeMainKindPedestalButtonStyle())
+        .buttonStyle(HomeMainKindHabitatButtonStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityAddTraits(.isButton)
@@ -3448,24 +3609,24 @@ private struct HomeMainKindPedestalCell: View {
         )
     }
 
-    private var pedestal: some View {
+    private var habitat: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            HomeMainKindMedallion(
+            HomeMainKindDisc(
                 localImage: category?.localImage,
                 imageURL: category?.imageURL,
                 cacheKey: cacheKey,
                 isAllOption: isAllOption,
                 accent: Color(uiColor: accentUIColor),
                 accentUIColor: accentUIColor,
-                diameter: geometry.medallionDiameter,
+                diameter: geometry.discDiameter,
                 artworkSide: geometry.artworkSide,
                 selected: selected
             )
 
-            HomeMainKindShelf(
-                medallionDiameter: geometry.medallionDiameter,
+            HomeMainKindGround(
+                discDiameter: geometry.discDiameter,
                 selected: selected,
                 accent: Color(uiColor: accentUIColor)
             )
@@ -3483,34 +3644,38 @@ private struct HomeMainKindPedestalCell: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, HomeMainKindPedestal.cardContentInset)
+        .padding(.vertical, HomeMainKindHabitat.cardContentInset)
         .frame(width: size.width, height: size.height)
         .background(card)
+        .overlay(alignment: .topTrailing) {
+            HomeMainKindScopeMark(selected: selected)
+                .padding(HomeMainKindHabitat.scopeMarkInset)
+        }
         .contentShape(Rectangle())
+        .scaleEffect(selected ? HomeMainKindHabitat.selectedCardLift : 1)
         .animation(settleAnimation, value: selected)
     }
 
-    /// The soft card: a quiet plinth the pedestal stands in. No hard border, a
-    /// wide diffuse shadow that stays behind the medallion's tighter one, and a
-    /// continuous corner curve matching `PPCorner.card`. Increased contrast
-    /// drops the shadow and substitutes a hairline so the card edge survives.
+    /// The habitat card: a neutral surface in every state. Selection is carried
+    /// by the brand scope mark, a genuine step up in elevation, the accent
+    /// aperture around the disc, the raised shelf, and caption weight — not by
+    /// tinting the card. A quiet hairline keeps every tile crisp against the
+    /// warm Home canvas; increased contrast promotes it to a real border.
     private var card: some View {
         RoundedRectangle(
-            cornerRadius: HomeMainKindPedestal.cardRadius,
+            cornerRadius: HomeMainKindHabitat.cardRadius,
             style: .continuous
         )
         .fill(
             Color(
-                uiColor: HomeMainKindPedestal.cardSurface(
-                    accent: accentUIColor,
-                    selected: selected,
-                    traits: HomeMainKindPedestal.traits(
+                uiColor: HomeMainKindHabitat.cardSurface(
+                    traits: HomeMainKindHabitat.traits(
                         colorScheme: colorScheme
-                    ),
-                    highContrast: contrast == .increased
+                    )
                 )
             )
         )
+        .overlay(canopy)
         .overlay(cardHairline)
         .shadow(
             color: cardShadowColor,
@@ -3520,11 +3685,23 @@ private struct HomeMainKindPedestalCell: View {
         )
     }
 
+    /// The lamp, layered between the card surface and the hairline so the
+    /// pour always stays inside the card's silhouette.
+    private var canopy: some View {
+        HomeMainKindCanopy(
+            accent: Color(uiColor: accentUIColor),
+            selected: selected,
+            pressed: pressed,
+            cardHeight: max(size.height, 1),
+            cardRadius: HomeMainKindHabitat.cardRadius
+        )
+    }
+
     @ViewBuilder
     private var cardHairline: some View {
         if contrast == .increased {
             RoundedRectangle(
-                cornerRadius: HomeMainKindPedestal.cardRadius,
+                cornerRadius: HomeMainKindHabitat.cardRadius,
                 style: .continuous
             )
             .strokeBorder(
@@ -3533,49 +3710,65 @@ private struct HomeMainKindPedestalCell: View {
                     : Color.ppSurfaceBorder,
                 lineWidth: selected ? 2 : 1
             )
-        } else if selected {
+        } else {
+            // Idle tiles previously had no edge at all and dissolved into the
+            // warm canvas; a lit tile keeps a whisper of its species colour so
+            // identity survives without the card reading as an outlined box.
             RoundedRectangle(
-                cornerRadius: HomeMainKindPedestal.cardRadius,
+                cornerRadius: HomeMainKindHabitat.cardRadius,
                 style: .continuous
             )
             .strokeBorder(
-                Color(uiColor: accentUIColor).opacity(
-                    colorScheme == .dark ? 0.38 : 0.22
-                ),
-                lineWidth: 1
+                selected
+                    ? Color(uiColor: accentUIColor).opacity(
+                        colorScheme == .dark ? 0.42 : 0.30
+                    )
+                    : Color.ppSurfaceBorder.opacity(
+                        colorScheme == .dark ? 0.55 : 0.30
+                    ),
+                lineWidth: selected ? 1 : 0.5
             )
         }
     }
 
+    /// Elevation is the physical half of the selection signal, so it stays
+    /// neutral: a wider, deeper drop that lifts the lit tile off the rail. The
+    /// accent-tinted card shadow was retired with the accent card wash, since
+    /// together they smeared the species colour across the whole tile.
     private var cardShadowColor: Color {
         guard contrast != .increased else { return .clear }
-        return .black.opacity(colorScheme == .dark ? 0.16 : 0.045)
+        if selected {
+            return .black.opacity(colorScheme == .dark ? 0.30 : 0.11)
+        }
+        return .black.opacity(colorScheme == .dark ? 0.18 : 0.05)
     }
 
     private var cardShadowRadius: CGFloat {
-        contrast == .increased ? 0 : 12
+        guard contrast != .increased else { return 0 }
+        return selected ? 18 : 10
     }
 
     private var cardShadowOffsetY: CGFloat {
-        contrast == .increased ? 0 : 6
+        guard contrast != .increased else { return 0 }
+        return selected ? 10 : 5
     }
 
-    /// One animation owner for the whole selection change: the shelf is built,
-    /// the ring thickens, the wash deepens, and the caption gains weight
-    /// together. Reduce Motion keeps every one of those state changes and drops
-    /// only the interpolation.
+    /// One animation owner for the whole selection change: the lamp fades in,
+    /// the iris opens, the disc lifts, the ground rises with its glow, and the
+    /// caption gains weight together. Reduce Motion keeps every one of those
+    /// state changes and drops only the interpolation.
     private var settleAnimation: Animation? {
         reduceMotion
             ? nil
             : .spring(
-                response: HomeMainKindPedestal.settleResponse,
-                dampingFraction: HomeMainKindPedestal.settleDamping,
+                response: HomeMainKindHabitat.settleResponse,
+                dampingFraction: HomeMainKindHabitat.settleDamping,
                 blendDuration: 0.05
             )
     }
 
-    private var geometry: HomeMainKindPedestalGeometry {
-        HomeMainKindPedestalGeometry(
+    private var geometry: HomeMainKindHabitatGeometry {
+        HomeMainKindHabitatGeometry(
             size: size,
             isAccessibilitySize: dynamicTypeSize.isAccessibilitySize,
             isAllOption: isAllOption
@@ -3603,10 +3796,10 @@ private struct HomeMainKindPedestalCell: View {
     }
 
     private var accentUIColor: UIColor {
-        let candidate = selected ? UIColor.ppPrimary : (category?.accent ?? .ppPrimary)
-        return HomeMainKindPedestal.resolvedAccent(
+        let candidate = category?.accent ?? UIColor.ppPrimary
+        return HomeMainKindHabitat.resolvedAccent(
             candidate,
-            traits: HomeMainKindPedestal.traits(colorScheme: colorScheme),
+            traits: HomeMainKindHabitat.traits(colorScheme: colorScheme),
             highContrast: contrast == .increased
         )
     }
@@ -3628,11 +3821,73 @@ private struct HomeMainKindPedestalCell: View {
     }
 }
 
-/// Rollback seam for the pedestal redesign.
+/// The scope mark: the state half of the selection signal.
 ///
-/// `PPMainKindsCell` remains in the target and is still reachable through this
-/// adapter: restoring the previous card is a one-line swap inside
-/// `HomeCategoryRail.categoryCell`. Exactly one of the two is active at a time.
+/// Every species turns Home's scope on with the same `ppPrimary` mark, so the
+/// meaning "this filter is active" is one constant, brand-owned symbol while
+/// the species accent stays reserved for identity. It is an overlay on the card
+/// corner, so switching species never reflows the rail, and it is hidden from
+/// assistive technology because the cell already carries `.isSelected`.
+@available(iOS 15.0, *)
+private struct HomeMainKindScopeMark: View {
+    let selected: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Circle()
+            .fill(Color.ppPrimary)
+            .overlay(ring)
+            .overlay(glyph)
+            .frame(
+                width: HomeMainKindHabitat.scopeMarkDiameter,
+                height: HomeMainKindHabitat.scopeMarkDiameter
+            )
+            .shadow(color: shadowColor, radius: 4, x: 0, y: 2)
+            // Kept in the tree at zero opacity so the mark fades and springs in
+            // under the cell's single settle animation instead of popping.
+            .opacity(selected ? 1 : 0)
+            .scaleEffect(selected ? 1 : 0.35)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    /// A ring in the card surface colour cuts the mark out of the tile, so the
+    /// crimson never touches the species artwork or the card edge directly.
+    private var ring: some View {
+        Circle().strokeBorder(
+            Color.ppSurfaceRaised,
+            lineWidth: HomeMainKindHabitat.scopeMarkRingWidth
+        )
+    }
+
+    /// White is the only foreground that holds AA contrast on `ppPrimary` in
+    /// both appearances; the palette exposes no on-primary token.
+    private var glyph: some View {
+        Image(systemName: "checkmark")
+            .font(
+                .system(
+                    size: HomeMainKindHabitat.scopeMarkDiameter
+                        * HomeMainKindHabitat.scopeMarkGlyphScale,
+                    weight: .bold
+                )
+            )
+            .foregroundColor(.white)
+    }
+
+    private var shadowColor: Color {
+        guard contrast != .increased else { return .clear }
+        return .black.opacity(colorScheme == .dark ? 0.34 : 0.16)
+    }
+}
+
+/// Production UIKit bridge for the species scope selector.
+///
+/// `HomeCategoryRail.categoryCell` mounts this adapter as the one active
+/// category renderer. `HomeMainKindHabitatCell` remains available as the narrow
+/// rollback seam; selection, persistence, routing, and haptics stay owned by
+/// `HomeStore`.
 private struct HomeMainKindCellRepresentable: UIViewRepresentable {
     let category: HomeCategoryModel?
     let selected: Bool
@@ -4861,7 +5116,7 @@ private struct HomeSkeletonShimmer: View {
 /// **Dual-phase intelligence:**
 /// - If `entranceAlreadyPlayed == false` the cell is being born during the
 ///   initial section entrance stagger; the existing `ppUniversalHomeShelfEntrance` /
-///   `HomeMainKindShelfEntrance` systems own those cells. This modifier
+///   `HomeMainKindHabitatEntrance` systems own those cells. This modifier
 ///   immediately marks itself revealed and stays fully transparent.
 /// - If `entranceAlreadyPlayed == true` the cell has lazily entered during
 ///   horizontal scrolling. This modifier stages it at the leading edge

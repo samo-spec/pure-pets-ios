@@ -69,7 +69,7 @@ NS_INLINE PPOrderStatusVisualPhase PPOrderStatusVisualPhaseForKey(NSString * _Nu
     if (PPOrderStatusAppearanceMatchesAny(key, @[@"completed", @"fulfilled", @"closed"])) {
         return PPOrderStatusVisualPhaseCompleted;
     }
-    if (PPOrderStatusAppearanceMatchesAny(key, @[@"delivered", @"payment_pending", @"payment_confirmed"])) {
+    if (PPOrderStatusAppearanceMatchesAny(key, @[@"delivered"])) {
         return PPOrderStatusVisualPhaseDelivered;
     }
     if (PPOrderStatusAppearanceMatchesAny(key, @[@"picked_up", @"in_transit", @"out_for_delivery", @"on_the_way", @"shipped", @"shipping", @"handed_over"])) {
@@ -81,13 +81,13 @@ NS_INLINE PPOrderStatusVisualPhase PPOrderStatusVisualPhaseForKey(NSString * _Nu
     if (PPOrderStatusAppearanceMatchesAny(key, @[@"ready_for_delivery", @"ready_to_ship", @"delivery_requested", @"delivery_reassigned", @"ready_for_pickup", @"ready"])) {
         return PPOrderStatusVisualPhaseReady;
     }
-    if (PPOrderStatusAppearanceMatchesAny(key, @[@"preparing_for_shipment", @"processing", @"preparing", @"packed", @"confirmed", @"accepted", @"start_preparing"])) {
+    if (PPOrderStatusAppearanceMatchesAny(key, @[@"preparing_for_shipment", @"processing", @"preparing", @"packed", @"start_preparing", @"accepted"])) {
         return PPOrderStatusVisualPhasePreparing;
     }
-    if (PPOrderStatusAppearanceMatchesAny(key, @[@"paid", @"payment_verified", @"payment_collected", @"success", @"approved", @"captured", @"authorized", @"verified"])) {
+    if (PPOrderStatusAppearanceMatchesAny(key, @[@"confirmed", @"paid", @"payment_confirmed", @"payment_verified", @"payment_collected", @"success", @"approved", @"captured", @"authorized", @"verified"])) {
         return PPOrderStatusVisualPhasePaymentConfirmed;
     }
-    if (PPOrderStatusAppearanceMatchesAny(key, @[@"pending", @"placed", @"created", @"new_request", @"waiting", @"pending_review", @"pending_collection"])) {
+    if (PPOrderStatusAppearanceMatchesAny(key, @[@"pending", @"placed", @"created", @"new_request", @"waiting", @"payment_pending", @"pending_review", @"pending_collection"])) {
         return PPOrderStatusVisualPhasePlaced;
     }
     return PPOrderStatusVisualPhaseNeutral;
@@ -112,30 +112,30 @@ NS_INLINE UIColor *PPOrderStatusAccentColorForPhase(PPOrderStatusVisualPhase pha
 {
     switch (phase) {
         case PPOrderStatusVisualPhasePlaced:
-            return PPOrderStatusDynamicColor(0xA45A00, 0xA45A00);
+            return PPOrderStatusDynamicColor(0xFF9F0A, 0xFF9F0A); // Amber #FF9F0A (Pending)
         case PPOrderStatusVisualPhasePaymentConfirmed:
-            return PPOrderStatusDynamicColor(0x00666E, 0x68DDE4);
+            return PPOrderStatusDynamicColor(0x007AFF, 0x007AFF); // Blue #007AFF (Confirmed)
         case PPOrderStatusVisualPhasePreparing:
-            return PPOrderStatusDynamicColor(0x6F3DB4, 0x6F3DB4);
+            return PPOrderStatusDynamicColor(0x5856D6, 0x5856D6); // Indigo #5856D6 (Preparing)
         case PPOrderStatusVisualPhaseReady:
-            return PPOrderStatusDynamicColor(0x1769E0, 0x1769E0);
+            return PPOrderStatusDynamicColor(0x5856D6, 0x5856D6); // Indigo #5856D6 (Preparing / Ready)
         case PPOrderStatusVisualPhaseAssigned:
-            return PPOrderStatusDynamicColor(0x087A75, 0x087A75);
+            return PPOrderStatusDynamicColor(0xAF52DE, 0xAF52DE); // Violet #AF52DE (Out for Delivery / Assigned)
         case PPOrderStatusVisualPhaseInTransit:
-            return PPOrderStatusDynamicColor(0x4D57D8, 0x4D57D8);
+            return PPOrderStatusDynamicColor(0xAF52DE, 0xAF52DE); // Violet #AF52DE (Out for Delivery)
         case PPOrderStatusVisualPhaseDelivered:
-            return PPOrderStatusDynamicColor(0x16825D, 0x16825D);
+            return PPOrderStatusDynamicColor(0x34C759, 0x34C759); // Green #34C759 (Delivered)
         case PPOrderStatusVisualPhaseCompleted:
-            return PPOrderStatusDynamicColor(0x0B6B4B, 0x0B6B4B);
+            return PPOrderStatusDynamicColor(0x34C759, 0x34C759); // Green #34C759 (Completed)
         case PPOrderStatusVisualPhaseCancelled:
-            return PPOrderStatusDynamicColor(0xC9333E, 0xC9333E);
+            return PPOrderStatusDynamicColor(0xFF453A, 0xFF453A); // Red #FF453A (Cancelled)
         case PPOrderStatusVisualPhaseDelayed:
-            return PPOrderStatusDynamicColor(0xA8481E, 0xFFAD79);
+            return PPOrderStatusDynamicColor(0xFF453A, 0xFF453A); // Red #FF453A (Failed / Delayed)
         case PPOrderStatusVisualPhaseReturned:
-            return PPOrderStatusDynamicColor(0x84386C, 0xF1A1D3);
+            return PPOrderStatusDynamicColor(0xFF453A, 0xFF453A); // Red #FF453A (Returned)
         case PPOrderStatusVisualPhaseNeutral:
         default:
-            return PPOrderStatusDynamicColor(0x53606E, 0xBDC7D3);
+            return PPOrderStatusDynamicColor(0x8E8E93, 0x8E8E93); // Gray #8E8E93 (Hold / Unknown)
     }
 }
 
@@ -143,30 +143,30 @@ NS_INLINE UIColor *PPOrderStatusShineColorForPhase(PPOrderStatusVisualPhase phas
 {
     switch (phase) {
         case PPOrderStatusVisualPhasePlaced:
-            return PPOrderStatusDynamicColor(0xFFF2E0, 0xFFF2E0);
+            return PPOrderStatusDynamicColor(0xFFF4E5, 0x4D2F00);
         case PPOrderStatusVisualPhasePaymentConfirmed:
-            return PPOrderStatusDynamicColor(0x31C6D1, 0xB4F7FA);
+            return PPOrderStatusDynamicColor(0xE5F2FF, 0x003366);
         case PPOrderStatusVisualPhasePreparing:
-            return PPOrderStatusDynamicColor(0xF3ECFC, 0xF3ECFC);
+            return PPOrderStatusDynamicColor(0xEFEFFD, 0x242359);
         case PPOrderStatusVisualPhaseReady:
-            return PPOrderStatusDynamicColor(0xEAF2FF, 0xEAF2FF);
+            return PPOrderStatusDynamicColor(0xEFEFFD, 0x242359);
         case PPOrderStatusVisualPhaseAssigned:
-            return PPOrderStatusDynamicColor(0xE6F5F3, 0xE6F5F3);
+            return PPOrderStatusDynamicColor(0xF7EEFC, 0x47215B);
         case PPOrderStatusVisualPhaseInTransit:
-            return PPOrderStatusDynamicColor(0xECEEFE, 0xECEEFE);
+            return PPOrderStatusDynamicColor(0xF7EEFC, 0x47215B);
         case PPOrderStatusVisualPhaseDelivered:
-            return PPOrderStatusDynamicColor(0xE8F5EE, 0xE8F5EE);
+            return PPOrderStatusDynamicColor(0xEBF9EE, 0x155024);
         case PPOrderStatusVisualPhaseCompleted:
-            return PPOrderStatusDynamicColor(0xE3F1EB, 0xE3F1EB);
+            return PPOrderStatusDynamicColor(0xEBF9EE, 0x155024);
         case PPOrderStatusVisualPhaseCancelled:
-            return PPOrderStatusDynamicColor(0xFDECEE, 0xFDECEE);
+            return PPOrderStatusDynamicColor(0xFFEBEA, 0x661C17);
         case PPOrderStatusVisualPhaseDelayed:
-            return PPOrderStatusDynamicColor(0xF08049, 0xFFE1CF);
+            return PPOrderStatusDynamicColor(0xFFEBEA, 0x661C17);
         case PPOrderStatusVisualPhaseReturned:
-            return PPOrderStatusDynamicColor(0xD66CAB, 0xFFE0F3);
+            return PPOrderStatusDynamicColor(0xFFEBEA, 0x661C17);
         case PPOrderStatusVisualPhaseNeutral:
         default:
-            return PPOrderStatusDynamicColor(0x8B98A7, 0xEFF3F7);
+            return PPOrderStatusDynamicColor(0xF2F2F7, 0x3A3A3C);
     }
 }
 

@@ -889,12 +889,15 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
          callWithObject:payload
          completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
             if (error || ![result.data isKindOfClass:NSDictionary.class]) {
+                NSString *serverReason = PPOrderFunctionsServerMessageFromError(error);
                 NSError *resolvedError = PPOrderWrappedCallableError(error);
                 NSError *finalError = resolvedError ?: [NSError errorWithDomain:@"PPOrder"
                                                                            code:500
                                                                        userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_generic_error")}];
-                PPORDERLog(@"Create pending order failed | paymentMethod=%@ | error=%@",
+                PPORDERLog(@"Create pending order failed | paymentMethod=%@ | functionsCode=%ld | serverReason=%@ | error=%@",
                            resolvedPaymentMethodID ?: @"",
+                           (long)error.code,
+                           serverReason.length > 0 ? serverReason : @"(not supplied)",
                            finalError.localizedDescription ?: @"Unknown");
                 if (completion) completion(nil, finalError);
                 return;

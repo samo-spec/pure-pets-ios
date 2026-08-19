@@ -51,14 +51,19 @@ struct HomeHeroView: View {
     }
     
     private func hero(_ page: HomeHeroPage) -> some View {
-        // TEMPORARY: Pause passing dynamic category accent color to hero; set brand color as default
-        let accent = Color.homeBrand
+        let accent = Color(hex: page.accentHex)
         return ZStack {
             HomeHeroField(
                 accent: accent,
                 increasedContrast: contrast == .increased,
                 cornerGlowOpacityScale: 0.78,
                 isAnimated: true
+            )
+            
+            // Next-Gen V6 Ambient Living Flanks (Left & Right Bubbles & Icons)
+            PPHomeHeroFlankLivingBubblesView(
+                accent: accent,
+                isDark: colorScheme == .dark
             )
             
             VStack(spacing: 0) {
@@ -190,20 +195,21 @@ struct HomeHeroView: View {
         _ page: HomeHeroPage,
         accent: Color
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .center, spacing: 10) {
             eyebrowLabel(page, accent: accent)
+                .frame(maxWidth: .infinity, alignment: .center)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .center, spacing: 4) {
                 Text(compactHeroTitle(page.title))
                     .font(HomeFont.title1())
                     .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.78)
                     .allowsTightening(true)
                     .frame(
                         maxWidth: .infinity,
-                        alignment: .leading
+                        alignment: .center
                     )
                     .accessibilityLabel(page.title)
                     .accessibilityAddTraits(.isHeader)
@@ -211,16 +217,23 @@ struct HomeHeroView: View {
                 Text(page.subtitle)
                     .font(HomeFont.subheadline())
                     .foregroundStyle(Color.ppTextSecondary)
-                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(.center)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 5 : 2)
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: .center
+                    )
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             
             heroMetaPill(page, accent: accent)
+                .frame(maxWidth: .infinity, alignment: .center)
             
-            primaryButton(page)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            primaryButton(page, accent: accent)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
     
     private func heroMetaPill(
@@ -263,6 +276,7 @@ struct HomeHeroView: View {
                 )
         )
         .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
     
     private func heroMetaItems(for page: HomeHeroPage) -> [HomeHeroMetaItem] {
@@ -407,7 +421,8 @@ struct HomeHeroView: View {
     }
     
     private func primaryButton(
-        _ page: HomeHeroPage
+        _ page: HomeHeroPage,
+        accent: Color
     ) -> some View {
         Button(action: onPrimaryAction) {
             HStack(alignment: .center, spacing: PPSpace.xs) {
@@ -439,8 +454,8 @@ struct HomeHeroView: View {
             .background(
                 LinearGradient(
                     colors: [
-                        Color.homeBrand,
-                        Color.homeBrand.opacity(0.86)
+                        accent,
+                        accent.opacity(0.86)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -452,8 +467,14 @@ struct HomeHeroView: View {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.24), lineWidth: 1)
             }
+            .shadow(
+                color: accent.opacity(colorScheme == .dark ? 0.42 : 0.28),
+                radius: 12,
+                x: 0,
+                y: 6
+            )
         }
         .buttonStyle(
             HomeHeroPrimaryButtonStyle(reduceMotion: reduceMotion)
@@ -510,7 +531,8 @@ struct HomeHeroView: View {
         )
         .frame(
             width: compact ? 118 : 140,
-            height: compact ? 150 : 172
+            height: compact ? 150 : 172,
+            alignment: .center
         )
     }
     
@@ -550,6 +572,8 @@ struct HomeHeroView: View {
                 )
             }
         }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, PPSpace.base)
     }
     
     private func heroArtworkAsset(
@@ -1581,7 +1605,8 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         func body(content: Content) -> some View {
             content.frame(
                 width: compact ? 118 : 140,
-                height: compact ? 150 : 172
+                height: compact ? 150 : 172,
+                alignment: .center
             )
         }
     }

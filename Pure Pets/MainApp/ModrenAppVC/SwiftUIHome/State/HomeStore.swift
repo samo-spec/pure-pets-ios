@@ -2272,8 +2272,15 @@ final class HomeStore: ObservableObject {
     }
 
     private var selectedCategoryHex: String {
-        // TEMPORARY: Pause passing dynamic category accent color to hero; set brand color as default
-        return "CB2654"
+        guard let category = selectedCategory else { return "CB2654" }
+        let presentation =
+            PPHomeDataBridge.categoryPresentation(for: category.raw)
+        let raw = presentation["colorHex"] as? String ?? ""
+        let selectedKindHex =
+            hexString(from: presentation["accent"] as? UIColor)
+            ?? hexString(from: category.accent)
+            ?? "CB2654"
+        return normalizedHex(raw, fallback: selectedKindHex)
     }
 
     private func nextReminder(for pet: HomePetModel) -> NSObject? {
