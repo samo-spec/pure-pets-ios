@@ -9,6 +9,9 @@ enum HomeVisualTokens {
     static let heroHeight: CGFloat = 258
     static let heroShadowRadius: CGFloat = 18
     static let heroShadowOffsetY: CGFloat = 10
+    /// A touch below the full-capsule radius: the command surface keeps its pill
+    /// identity while reading slightly more composed and less balloon-like.
+    static let commandPillCorner: CGFloat = 20
 }
 
 /// Home-scoped Beiruti typography that participates in Dynamic Type without
@@ -160,33 +163,31 @@ struct HomeCommandBar: View {
 #endif
     }
 
+    /// One capsule whose primary purpose is search, so search leads the pill in
+    /// every mode. Location rides as an icon-only context button beside it,
+    /// Nova and the cart form the trailing cluster, and every control keeps its
+    /// own action and accessibility identity inside the same surface. In the
+    /// stacked accessibility lane search owns the first row and location keeps
+    /// its full text treatment, because icon-only has no place at AX sizes.
     @ViewBuilder
     private var commandContent: some View {
         if usesStackedSearchLane {
-            VStack(spacing: PPSpace.md) {
+            VStack(spacing: PPSpace.sm) {
+                HStack(spacing: PPSpace.sm) {
+                    searchField
+                    novaButton
+                }
                 HStack(spacing: PPSpace.md) {
                     locationButton
                     cartButtonWithTrailingRoom
                 }
-                HStack(spacing: PPSpace.md) {
-                    searchField
-                    novaButton
-                }
-            }
-        } else if showsLocationLane {
-            HStack(spacing: PPSpace.sm) {
-                locationButton
-                commandVerticalSeparator
-                compactSearchButton
-                if showsNova {
-                    novaButton
-                }
-                commandVerticalSeparator
-                cartButtonWithTrailingRoom
             }
         } else {
             HStack(spacing: PPSpace.sm) {
                 searchField
+                if showsLocationLane {
+                    locationIconButton
+                }
                 if showsNova {
                     novaButton
                 }
@@ -241,26 +242,32 @@ struct HomeCommandBar: View {
         .accessibilityValue(locationTitle)
     }
 
-    private var compactSearchButton: some View {
-        Button(action: searchAction) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 17, weight: .bold))
+    /// Icon-only location context for the single-lane capsule: the pin on its
+    /// soft accent seat, with the live area name carried by the accessibility
+    /// value instead of visible text, so search keeps the dominant share.
+    private var locationIconButton: some View {
+        Button(action: locationAction) {
+            Image(systemName: "location.fill")
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(Color.ppAccentText)
-                .frame(
-                    width: resolvedControlHeight,
-                    height: resolvedControlHeight
+                .frame(width: 28, height: 28)
+                .background(
+                    Color.ppAccentText.opacity(
+                        contrast == .increased
+                            ? 0.24
+                            : (colorScheme == .dark ? 0.18 : 0.11)
+                    ),
+                    in: Circle()
                 )
-                .contentShape(HomeCommandBar.controlShape)
+                .frame(width: 40, height: 40)
+                .contentShape(Circle())
         }
         .buttonStyle(commandButtonStyle)
         .accessibilityLabel(HomeModelAdapter.localized(
-            "home_pulse_search_a11y",
-            fallback: "Search Pure Pets"
+            "home_pulse_location_context",
+            fallback: "Your area"
         ))
-        .accessibilityHint(HomeModelAdapter.localized(
-            "home_pulse_search_prompt",
-            fallback: "Search products, pets, and services"
-        ))
+        .accessibilityValue(locationTitle)
     }
 
     @ViewBuilder
@@ -303,16 +310,18 @@ struct HomeCommandBar: View {
         }
     }
 
-    /// The one Home search treatment: an accent magnifier, the live rotating
-    /// suggestion, and a semantic-trailing chevron on a token surface. Text and
-    /// symbol both resolve through measured tokens, so contrast is provable in
-    /// light, dark, and Increased Contrast.
+    /// The one Home search treatment: an accent magnifier seated on its own
+    /// soft key, the live rotating suggestion, and a semantic-trailing chevron
+    /// on the token surface. Search carries the capsule's visual weight, so the
+    /// glyph reads as the capsule's purpose before the first suggestion word.
     private var searchField: some View {
         Button(action: searchAction) {
             HStack(spacing: PPSpace.md) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Color.ppAccentText)
+                    .frame(width: 30, height: 30)
+                    .background(searchKeyTint, in: Circle())
                     .accessibilityHidden(true)
 
                 HomeAnimatedSearchSuggestionView(isRTL: state.isRightToLeft)
@@ -325,7 +334,7 @@ struct HomeCommandBar: View {
                     .flipsForRightToLeftLayoutDirection(true)
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, PPSpace.base)
+            .padding(.horizontal, PPSpace.md + PPSpace.xxs)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: resolvedControlHeight)
             .contentShape(HomeCommandBar.controlShape)
@@ -353,8 +362,11 @@ struct HomeCommandBar: View {
         Capsule(style: .continuous)
     }
 
-    private var commandPillShape: Capsule {
-        Capsule(style: .continuous)
+    private var commandPillShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: HomeVisualTokens.commandPillCorner,
+            style: .continuous
+        )
     }
 
     private var commandTint: Color {
@@ -365,7 +377,17 @@ struct HomeCommandBar: View {
         Color.homeBrand.opacity(
             contrast == .increased
                 ? 0.5
-                : (colorScheme == .dark ? 0.22 : 0.12)
+                : (colorScheme == .dark ? 0.22 : 0.10)
+        )
+    }
+
+    /// The soft accent seat for the search glyph: the capsule's purpose reads
+    /// before the first suggestion word, in light, dark, and Increased Contrast.
+    private var searchKeyTint: Color {
+        Color.ppAccentText.opacity(
+            contrast == .increased
+                ? 0.26
+                : (colorScheme == .dark ? 0.20 : 0.12)
         )
     }
 
@@ -516,7 +538,7 @@ struct HomeAnimatedSearchSuggestionView: View {
             ForEach(suggestions) { item in
                 if item.id == visibleSuggestionID {
                     Text(item.text)
-                        .font(HomeFont.callout())
+                        .font(HomeFont.medium(16))
                         .foregroundStyle(Color.ppTextSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
@@ -1783,10 +1805,16 @@ private enum HomeQuickActionTone {
         case "shop":
             // Shopping: a warmer, grounded rose.
             return .ppQuickActionShopping
+        case "food":
+            return .ppQuickActionFood
         case "pet":
             return .ppAdoptionAccent
-        case "pharmacy", "vet":
+        case "pharmacy":
             return .ppCareAccent
+        case "vet":
+            return Color(red: 0.31, green: 0.53, blue: 0.70)
+        case "services":
+            return .ppQuickActionServices
         case "ads":
             return .ppAdoptionAccent
         default:
@@ -1802,7 +1830,7 @@ struct HomePriorityGrid: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline)
-    private var compactCardHeight: CGFloat = 120
+    private var compactCardHeight: CGFloat = 110
 
     private enum Layout {
         static let columnSpacing = PPSpace.md
@@ -1917,8 +1945,10 @@ struct HomePriorityGrid: View {
     }
 
     private var secondaryGrid: some View {
-        let firstRow = Array(secondaryActions.prefix(2))
-        let secondRow = Array(secondaryActions.dropFirst(2).prefix(2))
+        let count = secondaryActions.count
+        let firstRowCount = (count == 6 || count == 4) ? count / 2 : ((count == 5) ? 2 : (count > 4 ? (count + 1) / 2 : min(2, count)))
+        let firstRow = Array(secondaryActions.prefix(firstRowCount))
+        let secondRow = Array(secondaryActions.dropFirst(firstRowCount))
 
         return VStack(spacing: Layout.cardSpacing) {
             secondaryRow(firstRow)
@@ -2045,6 +2075,7 @@ struct HomeFeaturedPetCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var loadedPetImageIdentity: String?
+    @State private var haloBreathing = false
 
     private var animationHaloSize: CGFloat {
         dynamicTypeSize.isAccessibilitySize ? 132 : regularCircleSize
@@ -2054,11 +2085,6 @@ struct HomeFeaturedPetCard: View {
         dynamicTypeSize.isAccessibilitySize
             ? 204
             : animationHaloSize * 1.55
-    }
-
-    private var regularCTAWidth: CGFloat? {
-        guard let regularWidth else { return nil }
-        return max(regularWidth - (PPSpace.sm * 2), 44)
     }
 
     private var subtitleColor: Color {
@@ -2094,6 +2120,62 @@ struct HomeFeaturedPetCard: View {
         return "\(pet.id)|\(petImageURL)"
     }
 
+    /// The pet's own name when Home resolved one: real data, never invented.
+    private var petName: String? {
+        let name = pet?.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let name, !name.isEmpty else { return nil }
+        return name
+    }
+
+    private func petEyebrow(_ name: String) -> some View {
+        HStack(spacing: PPSpace.xxs) {
+            Circle()
+                .fill(actionAccent)
+                .frame(width: 5, height: 5)
+                .accessibilityHidden(true)
+
+            Text(name)
+                .font(HomeFont.bold(11))
+                .foregroundStyle(Color.homeTextPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.80)
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, 3)
+        .background(
+            actionAccent.opacity(colorScheme == .dark ? 0.18 : 0.11),
+            in: Capsule(style: .continuous)
+        )
+        .accessibilityHidden(true)
+    }
+
+    /// One action, one affordance. The retired gradient CTA duplicated the
+    /// whole-card tap and shouted inside a quiet column; the manage row now
+    /// states the destination in strong plain text while the card stays the
+    /// single pressable surface.
+    private var manageRow: some View {
+        HStack(spacing: PPSpace.xs) {
+            Text(
+                HomeModelAdapter.localized(
+                    "home_pulse_manage_pet_cta",
+                    fallback: "إدارة حيواني"
+                )
+            )
+            .font(HomeFont.bold(13))
+            .foregroundStyle(Color.homeTextPrimary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+            .minimumScaleFactor(0.78)
+
+            Image(systemName: "chevron.forward")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(actionAccent)
+                .flipsForRightToLeftLayoutDirection(true)
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 44 : 24)
+    }
+
     var body: some View {
         Button {
             onSelect(action)
@@ -2103,75 +2185,35 @@ struct HomeFeaturedPetCard: View {
                     .padding(.top, circleInset)
 
                 VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    if let petName {
+                        petEyebrow(petName)
+                    }
+
                     Text(action.title)
-                        .font(HomeFont.bold(20))
+                        .font(HomeFont.bold(17))
                         .foregroundStyle(Color.homeTextPrimary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                        .minimumScaleFactor(0.82)
+                        .minimumScaleFactor(0.80)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     Text(action.subtitle)
-                        .font(HomeFont.medium(14))
+                        .font(HomeFont.medium(12))
                         .foregroundStyle(subtitleColor)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
-                        .minimumScaleFactor(0.93)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        .minimumScaleFactor(0.90)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.top, PPSpace.md)
+                .padding(.top, PPSpace.sm)
                 .padding(.horizontal, PPSpace.sm)
 
                 Spacer(minLength: PPSpace.xs)
 
-                HStack(spacing: PPSpace.sm) {
-                    Text(
-                        HomeModelAdapter.localized(
-                            "home_pulse_manage_pet_cta",
-                            fallback: "إدارة حيواني"
-                        )
-                    )
-                    .font(HomeFont.bold(14))
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .minimumScaleFactor(0.78)
-
-                    Image(systemName: "chevron.forward")
-                        .font(.system(size: 11, weight: .bold))
-                        .flipsForRightToLeftLayoutDirection(true)
-                        .accessibilityHidden(true)
-                }
-                .foregroundStyle(Color.white)
-                .frame(maxWidth: .infinity)
-                .frame(
-                    width: dynamicTypeSize.isAccessibilitySize
-                        ? nil
-                        : regularCTAWidth
-                )
-                .frame(minHeight: 44)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            actionAccent.opacity(0.88),
-                            actionAccent,
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(
-                        cornerRadius: PPCorner.small + 6,
-                        style: .continuous
-                    )
-                )
-                .shadow(
-                    color: actionAccent.opacity(
-                        colorScheme == .dark ? 0.18 : 0.24
-                    ),
-                    radius: 7,
-                    y: 4
-                )
-                .padding(.horizontal, PPSpace.sm)
-                .padding(.bottom, PPSpace.sm)
+                manageRow
+                    .padding(.horizontal, PPSpace.sm)
+                    .padding(.bottom, PPSpace.sm)
             }
             .frame(maxWidth: .infinity)
             .frame(
@@ -2220,26 +2262,42 @@ struct HomeFeaturedPetCard: View {
         .accessibilityHint(action.subtitle)
     }
 
+    /// The portrait's ambient halo breathes on the hero's own 3.8s rhythm —
+    /// one living signal that this card is about a living being. Reduce Motion
+    /// and Increased Contrast hold it still; leaving the row ends the loop.
     private var animationArea: some View {
         ZStack {
             Circle()
                 .fill(
-                    actionAccent.opacity(
-                        colorScheme == .dark ? 0.19 : 0.12
+                    RadialGradient(
+                        colors: [
+                            actionAccent.opacity(
+                                colorScheme == .dark ? 0.26 : 0.17
+                            ),
+                            actionAccent.opacity(
+                                colorScheme == .dark ? 0.12 : 0.07
+                            ),
+                            actionAccent.opacity(0),
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: animationHaloSize * 0.62
                     )
                 )
                 .overlay {
                     Circle().stroke(
                         actionAccent.opacity(
-                            contrast == .increased ? 0.48 : 0.16
+                            contrast == .increased ? 0.48 : 0.14
                         ),
                         lineWidth: contrast == .increased ? 1.5 : 0.8
                     )
                 }
                 .frame(
-                    width: animationHaloSize,
-                    height: animationHaloSize
+                    width: animationHaloSize * 1.18,
+                    height: animationHaloSize * 1.18
                 )
+                .scaleEffect(haloBreathing ? 1.03 : 0.97)
+                .opacity(haloBreathing ? 1 : 0.85)
 
             if petImageIdentity == nil ||
                 loadedPetImageIdentity != petImageIdentity {
@@ -2254,9 +2312,30 @@ struct HomeFeaturedPetCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: animationHaloSize)
+        .frame(height: animationHaloSize * 1.18)
+        .onAppear(perform: startHaloBreath)
+        .onDisappear(perform: stopHaloBreath)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private func startHaloBreath() {
+        guard !reduceMotion,
+              contrast != .increased,
+              !haloBreathing else { return }
+        withAnimation(
+            .easeInOut(duration: 3.8).repeatForever(autoreverses: true)
+        ) {
+            haloBreathing = true
+        }
+    }
+
+    private func stopHaloBreath() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            haloBreathing = false
+        }
     }
 
     @ViewBuilder
@@ -2390,13 +2469,16 @@ private struct HomeSecondaryActionCard: View {
             )
             .background(Color.homeSurface, in: cardShape)
             .overlay {
+                // Identity lives in the medallion, not the frame: the tile
+                // keeps a neutral hairline so the grid reads calm and the
+                // accent is spent once, where it means something.
                 cardShape.stroke(
-                    accentColor.opacity(
-                        contrast == .increased
-                            ? 0.62
-                            : (colorScheme == .dark ? 0.28 : 0.14)
-                    ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                    contrast == .increased
+                        ? Color.homeTextPrimary.opacity(0.62)
+                        : Color.homeTextSecondary.opacity(
+                            colorScheme == .dark ? 0.26 : 0.18
+                        ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.7
                 )
             }
             .contentShape(cardShape)
@@ -2422,31 +2504,78 @@ private struct HomeSecondaryActionCard: View {
             .padding(PPSpace.md)
         } else {
             ZStack(alignment: .topTrailing) {
-                VStack(alignment: .leading, spacing: 0) {
-                    actionIcon(size: 34)
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    actionMedallion
 
                     Spacer(minLength: PPSpace.xs)
 
-                    compactActionCopy
+                    Text(action.title)
+                        .font(HomeFont.bold(15))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !action.subtitle.isEmpty {
+                        Text(action.subtitle)
+                            .font(HomeFont.medium(11))
+                            .foregroundStyle(Color.homeTextSecondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.84)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
 
-                directionIndicator(size: 22)
+                directionIndicator(size: 18)
             }
             .padding(.horizontal, PPSpace.sm)
             .padding(.top, PPSpace.md)
-            .padding(.bottom, PPSpace.base)
+            .padding(.bottom, PPSpace.md)
         }
     }
 
-    private var compactActionCopy: some View {
-        Text(action.title)
-            .font(HomeFont.bold(16))
-            .foregroundStyle(Color.homeTextPrimary)
-            .multilineTextAlignment(.leading)
-            .lineLimit(2)
-            .minimumScaleFactor(0.80)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+    /// The species seat: a soft radial bloom carries the accent so the glyph
+    /// reads as a living mark instead of a boxed icon.
+    private var actionMedallion: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            accentColor.opacity(
+                                colorScheme == .dark ? 0.26 : 0.16
+                            ),
+                            accentColor.opacity(
+                                colorScheme == .dark ? 0.10 : 0.05
+                            ),
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 26
+                    )
+                )
+                .frame(width: 52, height: 52)
+
+            actionGlyph(pointSize: 17)
+                .frame(width: 36, height: 36)
+                .background(
+                    accentColor.opacity(
+                        colorScheme == .dark ? 0.24 : 0.13
+                    ),
+                    in: Circle()
+                )
+                .overlay {
+                    if contrast == .increased {
+                        Circle().stroke(
+                            accentColor.opacity(0.56),
+                            lineWidth: 1.5
+                        )
+                    }
+                }
+        }
+        .accessibilityHidden(true)
     }
 
     private var expandedActionCopy: some View {
@@ -2469,14 +2598,8 @@ private struct HomeSecondaryActionCard: View {
     }
 
     private func actionIcon(size: CGFloat) -> some View {
-        Image(systemName: resolvedSymbol)
-            .font(
-                .system(
-                    size: dynamicTypeSize.isAccessibilitySize ? 18 : 16,
-                    weight: .bold
-                )
-            )
-            .foregroundStyle(accentColor)
+        let glyphSize: CGFloat = dynamicTypeSize.isAccessibilitySize ? 18 : 16
+        return actionGlyph(pointSize: glyphSize)
             .frame(width: size, height: size)
             .background(
                 accentColor.opacity(
@@ -2502,10 +2625,33 @@ private struct HomeSecondaryActionCard: View {
             .accessibilityHidden(true)
     }
 
+    @ViewBuilder
+    private func actionGlyph(pointSize: CGFloat) -> some View {
+        if action.id == "food" || resolvedSymbol == "pet-food" {
+            Image("pet-food")
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: pointSize, height: pointSize)
+                .foregroundStyle(accentColor)
+        } else {
+            Image(systemName: resolvedSymbol)
+                .font(.system(size: pointSize, weight: .bold))
+                .foregroundStyle(accentColor)
+        }
+    }
+
     private func directionIndicator(size: CGFloat) -> some View {
         Image(systemName: "chevron.forward")
-            .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(accentColor)
+            .font(
+                .system(
+                    size: dynamicTypeSize.isAccessibilitySize ? 9 : 8,
+                    weight: .bold
+                )
+            )
+            .foregroundStyle(
+                accentColor.opacity(contrast == .increased ? 1 : 0.88)
+            )
             .flipsForRightToLeftLayoutDirection(true)
             .frame(width: size, height: size)
             .background(
@@ -2517,7 +2663,7 @@ private struct HomeSecondaryActionCard: View {
             .overlay {
                 Circle().stroke(
                     accentColor.opacity(
-                        contrast == .increased ? 0.52 : 0.13
+                        contrast == .increased ? 0.52 : 0.115
                     ),
                     lineWidth: contrast == .increased ? 1.5 : 0.7
                 )
@@ -2528,9 +2674,11 @@ private struct HomeSecondaryActionCard: View {
     private var resolvedSymbol: String {
         switch action.id {
         case "shop": return "bag.fill"
+        case "food": return "pet-food"
         case "ads": return "heart.fill"
         case "pharmacy": return "pills.fill"
         case "vet": return "cross.case.fill"
+        case "services": return "hands.sparkles.fill"
         default: return action.systemImage
         }
     }
@@ -2540,7 +2688,7 @@ private struct HomeSecondaryActionCard: View {
     }
 }
 
-private struct HomeCardPressStyle: ButtonStyle {
+struct HomeCardPressStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
@@ -2635,8 +2783,8 @@ struct HomeCategoryRail: View {
 
     private enum RailLayout {
         static let cellSpacing = PPSpace.md
-        static let shadowTopInset = PPSpace.md
-        static let shadowBottomInset = PPSpace.lg
+        static let shadowTopInset = PPSpace.sm
+        static let shadowBottomInset = PPSpace.md
         static let screenGutter = PPSpace.screenMargin
         static let horizontalCellWidthScale: CGFloat = 0.85
     }
@@ -2661,6 +2809,7 @@ struct HomeCategoryRail: View {
                 actionIconName: isExpanded
                     ? "chevron.up"
                     : "chevron.forward",
+                actionAccent: selectedCategoryAccent,
                 actionAccessibilityIdentifier:
                     "home.mainKinds.layoutToggle",
                 actionAccessibilityValue: layoutActionTitle,
@@ -2866,6 +3015,9 @@ struct HomeCategoryRail: View {
                 ? selectedID == nil
                 : categoryID == selectedID,
             size: size,
+            allPreviewKinds: category == nil
+                ? categories.prefix(3).map(\.raw)
+                : [],
             onSelect: {
                 onSelect(category)
             }
@@ -2904,16 +3056,16 @@ struct HomeCategoryRail: View {
         if dynamicTypeSize.isAccessibilitySize {
             baseSize = CGSize(
                 width: width < 375 ? 120 : 132,
-                height: 148
+                height: 156
             )
         } else if width >= 700 {
-            baseSize = CGSize(width: 140, height: 184)
+            baseSize = CGSize(width: 140, height: 180)
         } else if width >= 430 {
-            baseSize = CGSize(width: 140, height: 143)
+            baseSize = CGSize(width: 140, height: 148)
         } else if width < 375 {
-            baseSize = CGSize(width: 120, height: 130)
+            baseSize = CGSize(width: 120, height: 132)
         } else {
-            baseSize = CGSize(width: 132, height: 132)
+            baseSize = CGSize(width: 132, height: 142)
         }
         return CGSize(
             width: baseSize.width * RailLayout.horizontalCellWidthScale,
@@ -3005,7 +3157,7 @@ private enum HomeMainKindHabitat {
     /// Diameter is fixed rather than Dynamic Type scaled: the mark is a state
     /// glyph, VoiceOver already announces selection through `.isSelected`, and
     /// a growing badge would collide with the caption at AX sizes.
-    static let scopeMarkDiameter: CGFloat = 22
+    static let scopeMarkDiameter: CGFloat = 26.6
     static let scopeMarkInset: CGFloat = PPSpace.sm
     static let scopeMarkRingWidth: CGFloat = 2
     static let scopeMarkGlyphScale: CGFloat = 0.44
@@ -3149,24 +3301,24 @@ private struct HomeMainKindHabitatGeometry {
     init(size: CGSize, isAccessibilitySize: Bool, isAllOption: Bool) {
         let width = max(size.width, 1)
         let height = max(size.height, 1)
-        let isTall = height >= 164
+        let isTall = height >= 140
 
         let ceiling: CGFloat
         let widthShare: CGFloat
         let heightShare: CGFloat
         if isAccessibilitySize {
             // Text owns the tile at accessibility sizes: the disc yields.
-            ceiling = 44
-            widthShare = 0.42
-            heightShare = 0.26
+            ceiling = 42
+            widthShare = 0.40
+            heightShare = 0.24
         } else if isTall {
-            ceiling = 92
-            widthShare = 0.62
-            heightShare = 0.52
+            ceiling = 84
+            widthShare = 0.56
+            heightShare = 0.46
         } else {
-            ceiling = 78
-            widthShare = 0.62
-            heightShare = 0.50
+            ceiling = 72
+            widthShare = 0.52
+            heightShare = 0.42
         }
 
         let diameter = max(
@@ -3176,7 +3328,7 @@ private struct HomeMainKindHabitatGeometry {
         discDiameter = diameter.rounded()
         // The "all" affordance is a system glyph, not species artwork, so it
         // sits smaller inside the same disc.
-        artworkSide = (discDiameter * (isAllOption ? 0.46 : 0.70)).rounded()
+        artworkSide = (discDiameter * (isAllOption ? 0.255 : 0.70) * 0.85).rounded()
         titleLineLimit = isAccessibilitySize ? 3 : 2
     }
 }
@@ -3205,22 +3357,18 @@ private struct HomeMainKindGround: View {
     }
 
     private var groundFill: Color {
-        // The idle shelf was a small grey dash under every disc: chrome that
-        // stated nothing an available species needs to state. The lane stays
-        // reserved so nothing shifts, but only a lit habitat draws its shelf.
-        guard selected else { return .clear }
-        return accent
+        guard !selected else { return .clear }
+        return contrast == .increased ? .clear : accent.opacity(0.35)
     }
 
     /// The glow is light spilling off the raised ground, so increased contrast
     /// trades it for raw opacity the edge can survive outdoors.
     private var glowColor: Color {
-        guard selected, contrast != .increased else { return .clear }
-        return accent.opacity(0.45)
+        .clear
     }
 
     private var glowRadius: CGFloat {
-        selected && contrast != .increased ? 4 : 0
+        0
     }
 
     private var width: CGFloat {
@@ -3339,11 +3487,32 @@ private struct HomeMainKindDisc: View {
         ZStack {
             iris
             disc
+            artworkHalo
             artwork
         }
         .frame(width: diameter, height: diameter)
         .scaleEffect(discScale)
         .animation(pressAnimation, value: pressed)
+    }
+
+    private var artworkHalo: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: accent.opacity(colorScheme == .dark ? 0.32 : 0.20), location: 0),
+                        .init(color: accent.opacity(colorScheme == .dark ? 0.10 : 0.05), location: 0.55),
+                        .init(color: accent.opacity(0), location: 1)
+                    ]),
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: artworkSide * 0.82
+                )
+            )
+            .frame(width: artworkSide * 1.5, height: artworkSide * 1.5)
+            .opacity(selected ? 0.85 : 0)
+            .scaleEffect(selected ? 1.05 : 0.75)
+            .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.75), value: selected)
     }
 
     private var isPressedVisually: Bool {
@@ -3486,49 +3655,63 @@ private struct HomeMainKindDisc: View {
     private var shadowColor: Color {
         guard contrast != .increased else { return .clear }
         if isPressedVisually {
-            return .black.opacity(colorScheme == .dark ? 0.22 : 0.09)
+            return .black.opacity(colorScheme == .dark ? 0.12 : 0.05)
         }
         if selected {
-            return accent.opacity(colorScheme == .dark ? 0.42 : 0.28)
+            return accent.opacity(colorScheme == .dark ? 0.22 : 0.12)
         }
-        return .black.opacity(colorScheme == .dark ? 0.26 : 0.10)
+        return .black.opacity(colorScheme == .dark ? 0.14 : 0.05)
     }
 
     private var shadowRadius: CGFloat {
         guard contrast != .increased else { return 0 }
-        if isPressedVisually { return 4 }
-        return selected ? 11 : 8
+        if isPressedVisually { return 2 }
+        return selected ? 6 : 4
     }
 
     private var shadowOffsetY: CGFloat {
         guard contrast != .increased else { return 0 }
         if isPressedVisually { return 1 }
-        return selected ? 6 : 4
+        return selected ? 3 : 2
     }
 
     @ViewBuilder
     private var artwork: some View {
-        if isAllOption {
-            Image(systemName: "square.grid.2x2.fill")
-                .font(.system(size: artworkSide, weight: .semibold))
-                .foregroundColor(selected ? accent : .ppTextSecondary)
+        Group {
+            if isAllOption {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: artworkSide, weight: .semibold))
+                    .foregroundColor(selected ? accent : .ppTextSecondary)
+                    .frame(width: artworkSide, height: artworkSide)
+            } else if let normalizedURL {
+                AppRemoteImage(
+                    urlString: normalizedURL,
+                    cacheKey: cacheKey,
+                    displaySize: CGSize(width: artworkSide, height: artworkSide),
+                    contentMode: .fit
+                ) {
+                    placeholderArtwork
+                } failurePlaceholder: {
+                    placeholderArtwork
+                }
                 .frame(width: artworkSide, height: artworkSide)
-        } else if let normalizedURL {
-            AppRemoteImage(
-                urlString: normalizedURL,
-                cacheKey: cacheKey,
-                displaySize: CGSize(width: artworkSide, height: artworkSide),
-                contentMode: .fit
-            ) {
+            } else {
                 placeholderArtwork
-            } failurePlaceholder: {
-                placeholderArtwork
+                    .frame(width: artworkSide, height: artworkSide)
             }
-            .frame(width: artworkSide, height: artworkSide)
-        } else {
-            placeholderArtwork
-                .frame(width: artworkSide, height: artworkSide)
         }
+        .offset(y: selected ? 8 : 0)
+        .scaleEffect(selected ? 1.2 : (isPressedVisually ? 0.94 : 1.0))
+        .shadow(
+            color: selected ? accent.opacity(colorScheme == .dark ? 0.35 : 0.20) : .clear,
+            radius: selected ? 5 : 0,
+            x: 0,
+            y: 1
+        )
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.72),
+            value: selected
+        )
     }
 
     @ViewBuilder
@@ -3603,7 +3786,7 @@ private struct HomeMainKindHabitatCell: View {
             HomeMainKindLargeContentViewer(
                 title: title,
                 symbolName: isAllOption
-                    ? "square.grid.2x2.fill"
+                    ? "line.3.horizontal"
                     : "pawprint.fill"
             )
         )
@@ -3611,7 +3794,7 @@ private struct HomeMainKindHabitatCell: View {
 
     private var habitat: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
+            Spacer(minLength: PPSpace.xs)
 
             HomeMainKindDisc(
                 localImage: category?.localImage,
@@ -3625,31 +3808,41 @@ private struct HomeMainKindHabitatCell: View {
                 selected: selected
             )
 
-            HomeMainKindGround(
-                discDiameter: geometry.discDiameter,
-                selected: selected,
-                accent: Color(uiColor: accentUIColor)
-            )
-            .padding(.top, PPSpace.xs)
+            Spacer(minLength: PPSpace.xs)
 
-            Text(title)
-                .font(titleFont)
-                .foregroundColor(selected ? .ppTextPrimary : .ppTextSecondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(geometry.titleLineLimit)
-                .minimumScaleFactor(0.78)
-                .padding(.top, PPSpace.xs + 2)
-                .padding(.horizontal, PPSpace.sm)
-                .frame(maxWidth: .infinity)
+            // Bottom-anchored footer (line above name + category name)
+            VStack(spacing: 4) {
+                HomeMainKindGround(
+                    discDiameter: geometry.discDiameter,
+                    selected: selected,
+                    accent: Color(uiColor: accentUIColor)
+                )
 
-            Spacer(minLength: 0)
+                Text(title)
+                    .font(titleFont)
+                    .foregroundColor(selected ? .ppTextPrimary : .ppTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(geometry.titleLineLimit)
+                    .minimumScaleFactor(0.78)
+                    .padding(.horizontal, PPSpace.sm)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding(.bottom, 4)
         }
-        .padding(.vertical, HomeMainKindHabitat.cardContentInset)
         .frame(width: size.width, height: size.height)
         .background(card)
         .overlay(alignment: .topTrailing) {
             HomeMainKindScopeMark(selected: selected)
                 .padding(HomeMainKindHabitat.scopeMarkInset)
+        }
+        .overlay(alignment: .bottom) {
+            Capsule()
+                .fill(Color(uiColor: accentUIColor))
+                .frame(width: 38, height: 3.6)
+                .offset(y: 8)
+                .opacity(selected ? 1 : 0)
+                .scaleEffect(selected ? 1 : 0.72)
+                .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.75), value: selected)
         }
         .contentShape(Rectangle())
         .scaleEffect(selected ? HomeMainKindHabitat.selectedCardLift : 1)
@@ -3887,11 +4080,13 @@ private struct HomeMainKindScopeMark: View {
 /// `HomeCategoryRail.categoryCell` mounts this adapter as the one active
 /// category renderer. `HomeMainKindHabitatCell` remains available as the narrow
 /// rollback seam; selection, persistence, routing, and haptics stay owned by
-/// `HomeStore`.
+/// `HomeStore`. The UIKit cell releases this callback only after its bounded
+/// tap halo finishes, so navigation ordering has one explicit owner.
 private struct HomeMainKindCellRepresentable: UIViewRepresentable {
     let category: HomeCategoryModel?
     let selected: Bool
     let size: CGSize
+    let allPreviewKinds: [NSObject]
     let onSelect: () -> Void
 
     func makeUIView(context: Context) -> PPMainKindsCell {
@@ -3910,6 +4105,9 @@ private struct HomeMainKindCellRepresentable: UIViewRepresentable {
             selected: selected,
             restoredSelectionAppearance: false
         )
+        if category == nil {
+            cell.configureAllPreview(withMainKinds: allPreviewKinds)
+        }
         cell.onSelect = { _, _ in
             onSelect()
         }

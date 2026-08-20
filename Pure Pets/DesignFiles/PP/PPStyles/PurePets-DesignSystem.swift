@@ -140,6 +140,7 @@ private enum PPPaletteHex {
         static let discountCoral  = "D63A50"
         static let accentText     = "CB2654"
         static let quickActionShopping  = "D14A61"
+        static let quickActionFood      = "E87A3B"
         static let quickActionAnimals   = "9E5CAD"
         static let quickActionServices  = "47929C"
         static let quickActionCommunity = "618CB8"
@@ -170,6 +171,7 @@ private enum PPPaletteHex {
         static let pressed    = "A91E46"
         static let accentText = "E05A7E"
         static let quickActionShopping  = "DF6A7D"
+        static let quickActionFood      = "F08C4F"
         static let quickActionAnimals   = "B881C2"
         static let quickActionServices  = "64AAB0"
         static let quickActionCommunity = "7CA0C6"
@@ -263,6 +265,13 @@ private enum PPPaletteHex {
         dynamicHex(
             light: PPPaletteHex.Light.quickActionShopping,
             dark: PPPaletteHex.Dark.quickActionShopping
+        )
+    }
+
+    @objc static var ppQuickActionFood: UIColor {
+        dynamicHex(
+            light: PPPaletteHex.Light.quickActionFood,
+            dark: PPPaletteHex.Dark.quickActionFood
         )
     }
 
@@ -437,6 +446,7 @@ public extension Color {
     static var ppAccent: Color         { Color(uiColor: .ppAccent) }
     static var ppAccentText: Color     { Color(uiColor: .ppAccentText) }
     static var ppQuickActionShopping: Color  { Color(uiColor: .ppQuickActionShopping) }
+    static var ppQuickActionFood: Color      { Color(uiColor: .ppQuickActionFood) }
     static var ppQuickActionAnimals: Color   { Color(uiColor: .ppQuickActionAnimals) }
     static var ppQuickActionServices: Color  { Color(uiColor: .ppQuickActionServices) }
     static var ppCareAccent: Color           { Color(uiColor: .ppCareAccent) }

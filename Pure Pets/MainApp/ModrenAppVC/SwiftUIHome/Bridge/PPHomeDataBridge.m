@@ -143,7 +143,8 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
         [UIImageSymbolConfiguration configurationWithPointSize:42.0
                                                         weight:UIImageSymbolWeightSemibold];
     NSString *fallbackSymbol = @"storefront.fill";
-    if ([self.animationName isEqualToString:@"HomePetPulse"]) {
+    if ([self.animationName isEqualToString:@"HomePetPulse"] ||
+        [self.animationName containsString:@"Loader cat"]) {
         fallbackSymbol = @"pawprint.fill";
     } else if ([self.animationName isEqualToString:@"HomeCareReminder"] ||
                [self.animationName isEqualToString:@"Caretiming"]) {
@@ -301,6 +302,9 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
             [self.animationName isEqualToString:@"Profile.lottie"];
         BOOL marketplaceAnimation = [self pp_isMarketplaceAnimationName];
         BOOL bagAnimation = [self pp_isBagAnimationName];
+        BOOL petPulseAnimation =
+            [self.animationName isEqualToString:@"HomePetPulse"] ||
+            [self.animationName.lastPathComponent.lowercaseString isEqualToString:@"homepetpulse.json"];
         BOOL marketplaceBagAnimation =
             [self.animationName.lastPathComponent.lowercaseString
                 isEqualToString:@"bag2.json"];
@@ -310,12 +314,14 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
             self.animationView.animationSpeed = 0.60;
         } else if (profileAnimation || bagAnimation) {
             self.animationView.animationSpeed = 0.85;
+        } else if (petPulseAnimation) {
+            self.animationView.animationSpeed = 0.80;
         } else {
             self.animationView.animationSpeed =
                 self.loadsFromFirebase ? 0.3 : 0.8;
         }
         self.animationView.animationProgress =
-            (profileAnimation || marketplaceAnimation || bagAnimation)
+            (profileAnimation || marketplaceAnimation || bagAnimation || petPulseAnimation)
                 ? 0.0
                 : 0.32;
         if (self.customTintColor) {

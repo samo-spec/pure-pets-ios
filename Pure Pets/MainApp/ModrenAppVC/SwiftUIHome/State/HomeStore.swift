@@ -515,6 +515,8 @@ final class HomeStore: ObservableObject {
         switch action.destination {
         case .shop:
             router.openAccessories(mainKind: kind)
+        case .food:
+            router.openFood(mainKind: kind)
         case .advertisements:
             router.openAdvertisements(mainKind: kind)
         case .veterinary:
@@ -1560,23 +1562,7 @@ final class HomeStore: ObservableObject {
     }
 
     private func buildPriorityActions() -> [HomePriorityAction] {
-        let petTitle = HomeModelAdapter.localized(
-            "home_pulse_priority_my_pet",
-            fallback: "My pet"
-        )
-        let petSubtitle = HomeModelAdapter.localized(
-            "home_pulse_priority_personalize",
-            fallback: "Pet profile, info, vaccines and more"
-        )
         return [
-            HomePriorityAction(
-                id: "pet",
-                title: petTitle,
-                subtitle: petSubtitle,
-                systemImage: "pawprint.fill",
-                accent: UIColor(red: 0.88, green: 0.20, blue: 0.42, alpha: 1.0),
-                destination: .petProfile
-            ),
             HomePriorityAction(
                 id: "shop",
                 title: HomeModelAdapter.localized(
@@ -1590,6 +1576,20 @@ final class HomeStore: ObservableObject {
                 systemImage: "bag.fill",
                 accent: UIColor(red: 0.86, green: 0.23, blue: 0.37, alpha: 1.0),
                 destination: .shop
+            ),
+            HomePriorityAction(
+                id: "food",
+                title: HomeModelAdapter.localized(
+                    "home_pulse_priority_food",
+                    fallback: "Food"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "home_pulse_priority_food_subtitle",
+                    fallback: "Nutrition & treats"
+                ),
+                systemImage: "pet-food",
+                accent: .ppQuickActionFood,
+                destination: .food
             ),
             HomePriorityAction(
                 id: "ads",
@@ -1609,15 +1609,29 @@ final class HomeStore: ObservableObject {
                 id: "vet",
                 title: HomeModelAdapter.localized(
                     "home_pulse_priority_vet",
-                    fallback: "Vet & Pharmacy"
+                    fallback: "Veterinary"
                 ),
                 subtitle: HomeModelAdapter.localized(
                     "home_pulse_priority_vet_subtitle",
-                    fallback: "Clinics & medicines"
+                    fallback: "Clinics & care"
                 ),
                 systemImage: "cross.case.fill",
                 accent: UIColor(red: 0.31, green: 0.53, blue: 0.70, alpha: 1.0),
                 destination: .veterinary
+            ),
+            HomePriorityAction(
+                id: "pharmacy",
+                title: HomeModelAdapter.localized(
+                    "home_pulse_priority_pharmacy",
+                    fallback: "Pharmacy"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "home_pulse_priority_pharmacy_subtitle",
+                    fallback: "Pet medicines"
+                ),
+                systemImage: "pills.fill",
+                accent: UIColor(red: 0.22, green: 0.65, blue: 0.58, alpha: 1.0),
+                destination: .pharmacy
             ),
             HomePriorityAction(
                 id: "services",

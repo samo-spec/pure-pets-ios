@@ -32,6 +32,13 @@ private struct HomeRenderRow: Identifiable {
     }
 }
 
+private enum HomeBottomContentClearance {
+    static let standardNavigationReserve =
+        PPSpace.xxxl + PPSpace.xxxl + PPSpace.base
+    static let accessibilityNavigationReserve =
+        PPSpace.xxxxl + PPSpace.xxxxl + PPSpace.xxxxl
+}
+
 @available(iOS 15.0, *)
 private struct HomeLivingGatewayStage: View {
     let pages: [HomeHeroPage]
@@ -116,37 +123,37 @@ struct HomeView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    Color.clear
-                        .frame(height: 1)
-                        .id(topAnchor)
-                        .accessibilityHidden(true)
+            VStack(spacing: 0) {
+                HomeCommandBar(
+                    state: store.state,
+                    searchProminence: plan.searchProminence,
+                    searchAction: store.router.openSearch,
+                    cartAction: store.router.openCart,
+                    locationAction: store.locationTapped,
+                    novaAction: store.router.openNova
+                )
+                .zIndex(10)
 
-                    Section {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: 1)
+                            .id(topAnchor)
+                            .accessibilityHidden(true)
+
                         content
-                            .padding(.top, PPSpace.sm)
+                            .padding(.top, PPSpace.xs)
                             .padding(.bottom, bottomPadding)
-                    } header: {
-                        HomeCommandBar(
-                            state: store.state,
-                            searchProminence: plan.searchProminence,
-                            searchAction: store.router.openSearch,
-                            cartAction: store.router.openCart,
-                            locationAction: store.locationTapped,
-                            novaAction: store.router.openNova
-                        )
-                        .zIndex(10)
                     }
+                }
+                .scrollDismissesKeyboardCompat()
+                .refreshable {
+                    await store.refresh()
                 }
             }
             .background(background)
             .overlay(alignment: .bottom) {
                 bottomNavigationFade
-            }
-            .scrollDismissesKeyboardCompat()
-            .refreshable {
-                await store.refresh()
             }
             .onChange(of: store.scrollToTopGeneration) { _ in
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.28)) {
@@ -686,7 +693,10 @@ struct HomeView: View {
     // MARK: Loading / empty
 
     private var loadingContent: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xl) {
+        VStack(
+            alignment: .leading,
+            spacing: PPHomeSectionHeaderMetrics.sectionTopSpacing
+        ) {
             PPHomeMarketingStage(
                 pages: [],
                 selectedIndex: 0,
@@ -699,7 +709,7 @@ struct HomeView: View {
             .padding(.horizontal, PPSpace.screenMargin)
 
             PPHomeEcosystemLauncher(
-                featuredAction: placeholderFeaturedAction,
+                featuredAction: nil,
                 featuredPet: nil,
                 actions: placeholderActions,
                 onSelect: { _ in }
@@ -708,10 +718,6 @@ struct HomeView: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .padding(.horizontal, PPSpace.screenMargin)
-            .padding(
-                .top,
-                PPHomeSectionHeaderMetrics.sectionTopSpacing - PPSpace.xl
-            )
 
             HomeInlineState(
                 symbol: "hourglass",
@@ -793,11 +799,7 @@ struct HomeView: View {
     /// organic transition band that flows seamlessly into the discovery marketplace.
     @ViewBuilder
     private func rowBackground(for row: HomeRenderRow) -> some View {
-        if case let .module(module) = row.content, case .careGateway = module.kind {
-            HomeCareBandOrganicTransitionBackground()
-        } else {
-            Color.clear
-        }
+        Color.clear
     }
 
     private func reloadAccent(for row: HomeRenderRow) -> Color {
@@ -896,8 +898,10 @@ struct HomeView: View {
     }
 
     private var bottomPadding: CGFloat {
-        store.state.bottomContentClearance +
-            (dynamicTypeSize.isAccessibilitySize ? 144 : 96)
+        max(0, store.state.bottomContentClearance) +
+            (dynamicTypeSize.isAccessibilitySize
+                ? HomeBottomContentClearance.accessibilityNavigationReserve
+                : HomeBottomContentClearance.standardNavigationReserve)
     }
 
     private func startLoadedEntranceIfNeeded() {
@@ -915,7 +919,7 @@ struct HomeView: View {
     }
 
     private var placeholderActions: [HomePriorityAction] {
-        ["shop", "ads", "pharmacy", "vet"].map {
+        ["shop", "food", "ads", "vet", "pharmacy", "services"].map {
             placeholderAction(id: $0)
         }
     }

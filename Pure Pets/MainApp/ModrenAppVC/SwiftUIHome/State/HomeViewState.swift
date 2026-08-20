@@ -202,6 +202,7 @@ struct HomeCategoryModel: Identifiable {
 
 enum HomePriorityDestination {
     case shop
+    case food
     case advertisements
     case veterinary
     case pharmacy

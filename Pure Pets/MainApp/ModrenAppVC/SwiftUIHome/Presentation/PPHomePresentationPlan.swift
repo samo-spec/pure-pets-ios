@@ -60,9 +60,9 @@ enum PPHomePresentationLimits {
     static let marketingStages = 1
     static let livePriorityItems = 1
     /// Total launcher capacity used by adoption-gateway arbitration.
-    static let ecosystemLauncherActions = 5
-    /// Four compact destinations sit beside the leading My Pet tile.
-    static let ecosystemLauncherSecondaryActions = 4
+    static let ecosystemLauncherActions = 6
+    /// Six compact destinations across Home's ecosystem launcher.
+    static let ecosystemLauncherSecondaryActions = 6
     static let commerceRails = 3
     static let partnerFeatures = 1
 }

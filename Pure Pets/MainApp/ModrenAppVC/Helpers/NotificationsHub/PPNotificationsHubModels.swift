@@ -27,8 +27,6 @@ enum PPHubMetrics {
     static let contentTopGap: CGFloat = 12
     static let segmentIconPlateSize: CGFloat = 26
     static let segmentIconSize: CGFloat = 14
-    static let segmentActiveRailWidth: CGFloat = 30
-    static let segmentActiveRailHeight: CGFloat = 3
     /// `PPSpaceMDHalf` — the icon/title gap inside a segment.
     static let segmentContentSpacing: CGFloat = 6
 

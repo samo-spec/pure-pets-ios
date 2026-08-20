@@ -17,7 +17,7 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="PurePetsMark" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logoImag" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
                                 <rect key="frame" x="140.25" y="259.75" width="112.5" height="112.5"/>
                             </imageView>
                         </subviews>
@@ -37,7 +37,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="PurePetsMark" width="1254" height="1254"/>
+        <image name="logoImag" width="1254" height="1254"/>
         <namedColor name="AppForegroundColor">
             <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
         </namedColor>

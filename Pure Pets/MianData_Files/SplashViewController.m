@@ -119,8 +119,12 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     self.trackLayers = trackLayers.copy;
     self.progressLayers = progressLayers.copy;
 
-    UIImage *brandImage = [[UIImage imageNamed:@"PurePetsMark"]
+    UIImage *brandImage = [[UIImage imageNamed:@"logoImag"]
         imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    if (!brandImage) {
+        brandImage = [[UIImage imageNamed:@"PurePetsMark"]
+            imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
     if (!brandImage) {
         brandImage = [[UIImage imageNamed:@"PureIconTransFilledV3"]
             imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];

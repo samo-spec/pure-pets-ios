@@ -7,7 +7,7 @@ import UIKit
 /// stage, partner feature, launcher, and gateways share the same rhythm instead
 /// of each inventing its own numbers.
 enum PPHomeZoneMetrics {
-    static let stageMediaHeight: CGFloat = 150
+    static let stageMediaHeight: CGFloat = 146
     /// The marketplace ledger is denser than photographic marketing media.
     static let marketplaceStageMediaHeight: CGFloat = 136
     static let stageMediaAccessibilityHeight: CGFloat = 132
@@ -31,7 +31,7 @@ enum PPHomeZoneMetrics {
 /// here makes the copy rhythm and action treatment identical across
 /// config-driven zones.
 enum PPHomeSectionHeaderMetrics {
-    static let sectionTopSpacing = PPSpace.xxl
+    static let sectionTopSpacing = PPSpace.lg
     static let titleSubtitleSpacing = PPSpace.md
     static let contentSpacing = PPSpace.lg
     static let actionTargetHeight: CGFloat = 44
@@ -76,6 +76,7 @@ struct PPHomeSectionHeading: View {
     let actionTitle: String?
     let action: (() -> Void)?
     let actionIconName: String
+    let actionAccent: Color?
     let actionAccessibilityIdentifier: String?
     let actionAccessibilityValue: String?
     let actionGeneratesHaptic: Bool
@@ -90,6 +91,7 @@ struct PPHomeSectionHeading: View {
         actionTitle: String? = nil,
         action: (() -> Void)? = nil,
         actionIconName: String = "chevron.forward",
+        actionAccent: Color? = nil,
         actionAccessibilityIdentifier: String? = nil,
         actionAccessibilityValue: String? = nil,
         actionGeneratesHaptic: Bool = false
@@ -101,6 +103,7 @@ struct PPHomeSectionHeading: View {
         self.actionTitle = actionTitle
         self.action = action
         self.actionIconName = actionIconName
+        self.actionAccent = actionAccent
         self.actionAccessibilityIdentifier = actionAccessibilityIdentifier
         self.actionAccessibilityValue = actionAccessibilityValue
         self.actionGeneratesHaptic = actionGeneratesHaptic
@@ -178,6 +181,7 @@ struct PPHomeSectionHeading: View {
         PPHomeSectionActionButton(
             title: title,
             iconName: actionIconName,
+            accent: actionAccent,
             accessibilityIdentifier: actionAccessibilityIdentifier,
             accessibilityValue: actionAccessibilityValue,
             generatesHaptic: actionGeneratesHaptic,
@@ -190,6 +194,7 @@ struct PPHomeSectionHeading: View {
 private struct PPHomeSectionActionButton: View {
     let title: String
     let iconName: String
+    let accent: Color?
     let accessibilityIdentifier: String?
     let accessibilityValue: String?
     let generatesHaptic: Bool
@@ -222,7 +227,7 @@ private struct PPHomeSectionActionButton: View {
                     .flipsForRightToLeftLayoutDirection(true)
                     .accessibilityHidden(true)
             }
-            .foregroundStyle(Color.ppAccentText)
+            .foregroundStyle(accent ?? Color.ppAccentText)
             .padding(
                 .horizontal,
                 PPHomeSectionHeaderMetrics.actionHorizontalInset
@@ -231,7 +236,7 @@ private struct PPHomeSectionActionButton: View {
                 minHeight: PPHomeSectionHeaderMetrics.actionVisualHeight
             )
             .fixedSize(horizontal: true, vertical: false)
-            .modifier(PPHomeSectionActionSurfaceModifier())
+            .modifier(PPHomeSectionActionSurfaceModifier(accent: accent))
         }
         .buttonStyle(
             PPHomeSectionActionPressStyle(reduceMotion: reduceMotion)
@@ -257,6 +262,8 @@ private struct PPHomeSectionActionButton: View {
 
 @available(iOS 15.0, *)
 private struct PPHomeSectionActionSurfaceModifier: ViewModifier {
+    let accent: Color?
+
     @Environment(\.accessibilityReduceTransparency)
     private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
@@ -266,15 +273,19 @@ private struct PPHomeSectionActionSurfaceModifier: ViewModifier {
         Capsule(style: .continuous)
     }
 
+    private var baseColor: Color {
+        accent ?? Color.homeBrand
+    }
+
     private var tint: Color {
-        Color.homeBrand.opacity(colorScheme == .dark ? 0.10 : 0.055)
+        baseColor.opacity(colorScheme == .dark ? 0.12 : 0.065)
     }
 
     private var stroke: Color {
-        Color.homeBrand.opacity(
+        baseColor.opacity(
             contrast == .increased
                 ? 0.54
-                : (colorScheme == .dark ? 0.30 : 0.20)
+                : (colorScheme == .dark ? 0.32 : 0.22)
         )
     }
 
@@ -439,17 +450,17 @@ struct PPHomeMarketingStage: View {
                 accent.opacity(
                     contrast == .increased
                         ? 0.62
-                        : (colorScheme == .dark ? 0.30 : 0.16)
+                        : (colorScheme == .dark ? 0.24 : 0.12)
                 ),
                 lineWidth: contrast == .increased ? 1.5 : 1
             )
         }
         .shadow(
             color: Color.black.opacity(
-                contrast == .increased ? 0 : (colorScheme == .dark ? 0.24 : 0.07)
+                contrast == .increased ? 0 : (colorScheme == .dark ? 0.22 : 0.06)
             ),
-            radius: contrast == .increased ? 0 : 18,
-            y: contrast == .increased ? 0 : 8
+            radius: contrast == .increased ? 0 : 16,
+            y: contrast == .increased ? 0 : 7
         )
         .modifier(
             PPHomeStagePagingGesture(
@@ -479,8 +490,9 @@ struct PPHomeMarketingStage: View {
                 increasedContrast: contrast == .increased,
                 // Marketplace keeps its own stronger field so the centered
                 // category plate reads against the hero background without
-                // changing other Home marketing surfaces.
-                cornerGlowOpacityScale: isMarketplace(page) ? 0.72 : 0.5
+                // changing other Home marketing surfaces. Non-marketplace
+                // pages soften a notch so the focal plate owns the band.
+                cornerGlowOpacityScale: isMarketplace(page) ? 0.72 : 0.42
             )
 
             // Next-Gen V6 Ambient Living Flanks (Left & Right Bubbles & Icons)
@@ -540,7 +552,7 @@ struct PPHomeMarketingStage: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: PPSpace.xl)
+            .frame(height: PPSpace.lg)
             .allowsHitTesting(false)
         }
         .accessibilityHidden(!isMarketplace(page))
@@ -592,7 +604,7 @@ struct PPHomeMarketingStage: View {
         let frameAlignment: Alignment = .center
         let textAlignment: TextAlignment = .center
 
-        return VStack(alignment: horizontalAlignment, spacing: PPSpace.md) {
+        return VStack(alignment: horizontalAlignment, spacing: PPSpace.sm) {
             VStack(alignment: horizontalAlignment, spacing: PPSpace.xs) {
                 if !page.eyebrow.isEmpty {
                     Text(page.eyebrow)
@@ -614,7 +626,7 @@ struct PPHomeMarketingStage: View {
 
                 if !page.subtitle.isEmpty {
                     Text(page.subtitle)
-                        .font(HomeFont.callout())
+                        .font(HomeFont.medium(16))
                         .foregroundStyle(Color.homeTextSecondary)
                         .lineSpacing(1)
                         .multilineTextAlignment(textAlignment)
@@ -642,8 +654,8 @@ struct PPHomeMarketingStage: View {
             }
         }
         .padding(.horizontal, PPSpace.lg)
-        .padding(.top, PPSpace.base)
-        .padding(.bottom, PPSpace.lg)
+        .padding(.top, PPSpace.sm + PPSpace.xxs)
+        .padding(.bottom, PPSpace.base)
         .frame(maxWidth: .infinity, alignment: frameAlignment)
     }
 
@@ -840,7 +852,7 @@ private struct PPHomeStageArtwork: View {
             plateShape.strokeBorder(
                 contrast == .increased
                     ? Color.ppTextPrimary.opacity(0.62)
-                    : Color.white.opacity(colorScheme == .dark ? 0.16 : 0.82),
+                    : Color.white.opacity(colorScheme == .dark ? 0.12 : 0.55),
                 lineWidth: contrast == .increased ? 1.5 : 1
             )
             .scaleEffect(plateFramePresented ? 1 : 0.985)
@@ -866,7 +878,7 @@ private struct PPHomeStageArtwork: View {
                         endRadius: side * 0.62
                     )
                 )
-                .frame(width: side * 1.18, height: side * 1.24)
+                .frame(width: side * 1.14, height: side * 1.20)
                 .scaleEffect(referenceHaloScale)
                 .opacity(referenceHaloOpacity)
                 .allowsHitTesting(false)
@@ -1259,11 +1271,11 @@ private struct PPHomeStageArtwork: View {
     }
 
     private var side: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 92 : 116
+        dynamicTypeSize.isAccessibilitySize ? 98 : 128
     }
 
     private var categoryArtworkSide: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 68 : 84
+        dynamicTypeSize.isAccessibilitySize ? 76 : 94
     }
 
     private var hasSelectedCategoryArtwork: Bool {
@@ -1359,8 +1371,8 @@ private struct PPHomeStageArtwork: View {
         return shape
             .fill(
                 colorScheme == .dark
-                    ? Color(white: 0.18).opacity(0.92)
-                    : Color.white.opacity(0.86)
+                    ? Color(white: 0.16).opacity(0.85)
+                    : Color.white.opacity(0.78)
             )
             .frame(width: side, height: side)
             .overlay {
@@ -1383,7 +1395,7 @@ private struct PPHomeStageArtwork: View {
                     contrast == .increased
                         ? Color.ppTextPrimary.opacity(0.72)
                         : Color.white.opacity(
-                            colorScheme == .dark ? 0.12 : 0.76
+                            colorScheme == .dark ? 0.10 : 0.50
                         ),
                     lineWidth: contrast == .increased ? 1.5 : 1
                 )
@@ -1392,7 +1404,7 @@ private struct PPHomeStageArtwork: View {
                 color: PPHomeMarketplaceHeroReferenceMotion.tileShadowTone.opacity(
                     contrast == .increased
                         ? 0
-                        : (colorScheme == .dark ? 0.18 : 0.075)
+                        : (colorScheme == .dark ? 0.15 : 0.06)
                 ),
                 radius: PPHomeMarketplaceHeroReferenceMotion.tileShadowRadius,
                 y: PPHomeMarketplaceHeroReferenceMotion.tileShadowY
@@ -1427,15 +1439,16 @@ private struct PPHomeStageArtwork: View {
 /// the reference tile positions: 12pt horizontal overhang, 9pt above the
 /// plate, and 11pt below it.
 private enum PPHomeMarketplaceHeroReferenceMotion {
-    static let plateCenterY: CGFloat = 6
+    static let plateCenterY: CGFloat = PPSpace.xxs
+    static let portalShellOpacity: Double = 0.70
     static let tileHorizontalOverhang: CGFloat = 12
     static let primaryTileTopOverhang: CGFloat = 9
     static let secondaryTileBottomOverhang: CGFloat = 2
-    static let primaryTileSide: CGFloat = 39
-    static let secondaryTileSide: CGFloat = 34
-    static let tileCorner: CGFloat = 18
-    static let tileIconSide: CGFloat = 18
-    static let tileIconFontSize: CGFloat = 15
+    static let primaryTileSide: CGFloat = 34
+    static let secondaryTileSide: CGFloat = 29
+    static let tileCorner: CGFloat = 16
+    static let tileIconSide: CGFloat = 17
+    static let tileIconFontSize: CGFloat = 14
     static let tileShadowRadius: CGFloat = 10
     static let tileShadowY: CGFloat = 5
     static let secondaryTileTone = Color(hex: "6EAFA2")
@@ -1445,9 +1458,9 @@ private enum PPHomeMarketplaceHeroReferenceMotion {
     static let visualFloatDuration: Double = 3.8
     static let visualFloatDurationNanoseconds: UInt64 = 3_800_000_000
 
-    static let haloStaticOpacity: Double = 0.88
-    static let haloFromOpacity: Double = 0.78
-    static let haloToOpacity: Double = 0.98
+    static let haloStaticOpacity: Double = 0.60
+    static let haloFromOpacity: Double = 0.52
+    static let haloToOpacity: Double = 0.70
     static let haloFromScale: CGFloat = 0.97
     static let haloToScale: CGFloat = 1.045
     static let haloDuration: Double = 3.8
@@ -1489,8 +1502,8 @@ private enum PPHomeLivingLedgerMetrics {
     /// The plate (`padSide` / `padHeight`) keeps its full composition size;
     /// only the artwork inside it is inset slightly so the species never
     /// touches the portal edge.
-    static let plateScale: CGFloat = 1.06
-    static let categoryArtworkScale: CGFloat = 0.78
+    static let plateScale: CGFloat = 1.10
+    static let categoryArtworkScale: CGFloat = 0.82
     static let allCategoryLottieScale: CGFloat = 0.82
     static let categoryWashWidthRatio: CGFloat = 1.46
     static let categoryWashHeightRatio: CGFloat = 0.94
@@ -1972,22 +1985,24 @@ struct PPHomeHeroFlankLivingBubblesView: View {
     let accent: Color
     let isDark: Bool
 
+    private static let visualProminence: Double = 0.63
+
     private let leftOrbs: [(size: CGFloat, relX: CGFloat, relY: CGFloat, icon: String?, dur: Double, delay: Double)] = [
-        (size: 32, relX: 0.35, relY: 0.28, icon: "gift.fill", dur: 3.8, delay: 0.0),
-        (size: 20, relX: 0.75, relY: 0.18, icon: nil, dur: 3.2, delay: 0.6),
-        (size: 36, relX: 0.45, relY: 0.70, icon: "bag.fill", dur: 4.2, delay: 1.2),
-        (size: 16, relX: 0.18, relY: 0.60, icon: nil, dur: 2.8, delay: 1.8),
-        (size: 26, relX: 0.72, relY: 0.85, icon: "sparkles", dur: 3.5, delay: 0.9),
-        (size: 18, relX: 0.22, relY: 0.42, icon: "drop.fill", dur: 3.0, delay: 2.1),
+        (size: 26, relX: 0.35, relY: 0.28, icon: "gift.fill", dur: 3.8, delay: 0.0),
+        (size: 16, relX: 0.75, relY: 0.18, icon: nil, dur: 3.2, delay: 0.6),
+        (size: 29, relX: 0.45, relY: 0.70, icon: "bag.fill", dur: 4.2, delay: 1.2),
+        (size: 13, relX: 0.18, relY: 0.60, icon: nil, dur: 2.8, delay: 1.8),
+        (size: 21, relX: 0.72, relY: 0.85, icon: "sparkles", dur: 3.5, delay: 0.9),
+        (size: 15, relX: 0.22, relY: 0.42, icon: "drop.fill", dur: 3.0, delay: 2.1),
     ]
 
     private let rightOrbs: [(size: CGFloat, relX: CGFloat, relY: CGFloat, icon: String?, dur: Double, delay: Double)] = [
-        (size: 34, relX: 0.60, relY: 0.25, icon: "pawprint.fill", dur: 4.0, delay: 0.3),
-        (size: 22, relX: 0.25, relY: 0.32, icon: nil, dur: 3.1, delay: 1.1),
-        (size: 30, relX: 0.68, relY: 0.68, icon: "tag.fill", dur: 3.6, delay: 0.7),
-        (size: 16, relX: 0.85, relY: 0.45, icon: nil, dur: 2.9, delay: 1.9),
-        (size: 28, relX: 0.30, relY: 0.78, icon: "heart.fill", dur: 4.4, delay: 1.4),
-        (size: 20, relX: 0.50, relY: 0.90, icon: "drop.fill", dur: 3.3, delay: 2.3),
+        (size: 27, relX: 0.60, relY: 0.25, icon: "pawprint.fill", dur: 4.0, delay: 0.3),
+        (size: 18, relX: 0.25, relY: 0.32, icon: nil, dur: 3.1, delay: 1.1),
+        (size: 24, relX: 0.68, relY: 0.68, icon: "tag.fill", dur: 3.6, delay: 0.7),
+        (size: 13, relX: 0.85, relY: 0.45, icon: nil, dur: 2.9, delay: 1.9),
+        (size: 23, relX: 0.30, relY: 0.78, icon: "heart.fill", dur: 4.4, delay: 1.4),
+        (size: 16, relX: 0.50, relY: 0.90, icon: "drop.fill", dur: 3.3, delay: 2.3),
     ]
 
     var body: some View {
@@ -2016,6 +2031,9 @@ struct PPHomeHeroFlankLivingBubblesView: View {
                 .frame(width: flankWidth, height: totalHeight)
                 .position(x: totalWidth - (flankWidth / 2), y: totalHeight / 2)
             }
+            // Ambient satellites support the focal plate; they never compete
+            // with it. One quiet opacity ceiling keeps them atmospheric.
+            .opacity(Self.visualProminence)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -2157,6 +2175,12 @@ private struct PPHomeMarketplaceLivingLedger: View {
     @State private var viewportResolved = false
     @State private var latestViewportFrame: CGRect = .null
     @State private var isBubblePulsing = false
+
+    private var portalShellOpacity: Double {
+        contrast == .increased || reduceTransparency
+            ? 1
+            : PPHomeMarketplaceHeroReferenceMotion.portalShellOpacity
+    }
 
     var body: some View {
         Group {
@@ -2446,6 +2470,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 isDark: colorScheme == .dark
             )
             .frame(width: padWidth, height: padHeight)
+                .opacity(portalShellOpacity)
                 .scaleEffect(
                     (identityPresented ? 1 : 0.98) *
                         plateBreathScale *
@@ -2564,8 +2589,8 @@ private struct PPHomeMarketplaceLivingLedger: View {
         return shape
             .fill(
                 colorScheme == .dark
-                    ? Color(white: 0.18).opacity(0.92)
-                    : Color.white.opacity(0.86)
+                    ? Color(white: 0.16).opacity(0.85)
+                    : Color.white.opacity(0.78)
             )
             .frame(width: side, height: side)
             .overlay {
@@ -2588,7 +2613,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                     contrast == .increased
                         ? Color.ppTextPrimary.opacity(0.72)
                         : Color.white.opacity(
-                            colorScheme == .dark ? 0.12 : 0.76
+                            colorScheme == .dark ? 0.10 : 0.50
                         ),
                     lineWidth: contrast == .increased ? 1.5 : 1
                 )
@@ -2597,7 +2622,7 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 color: PPHomeMarketplaceHeroReferenceMotion.tileShadowTone.opacity(
                     contrast == .increased
                         ? 0
-                        : (colorScheme == .dark ? 0.18 : 0.075)
+                        : (colorScheme == .dark ? 0.15 : 0.06)
                 ),
                 radius: PPHomeMarketplaceHeroReferenceMotion.tileShadowRadius,
                 y: PPHomeMarketplaceHeroReferenceMotion.tileShadowY
@@ -4554,7 +4579,8 @@ struct PPHomePetContextStrip: View {
 
     var body: some View {
         if pets.isEmpty {
-            emptyState
+            HomeBuildPetProfileFeaturedCard(onOpenProfiles: onOpenProfiles)
+                .padding(.horizontal, PPSpace.screenMargin)
         } else {
             HomePetSwitcher(
                 pets: pets,
@@ -4564,63 +4590,221 @@ struct PPHomePetContextStrip: View {
             )
         }
     }
+}
 
-    private var emptyState: some View {
-        VStack(
-            alignment: .leading,
-            spacing: PPHomeSectionHeaderMetrics.contentSpacing
-        ) {
-            PPHomeSectionHeading(
-                title: PPHomeZoneCopy.petEmptyTitle,
-                subtitle: PPHomeZoneCopy.petEmptySubtitle
-            )
+@available(iOS 15.0, *)
+private struct HomeBuildPetProfileFeaturedCard: View {
+    let onOpenProfiles: () -> Void
 
-            Button(action: onOpenProfiles) {
-                HStack(spacing: PPSpace.md) {
-                    Image(systemName: "pawprint.circle.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(Color.ppAdoptionAccent)
-                        .accessibilityHidden(true)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.layoutDirection) private var layoutDirection
 
-                    Text(PPHomeZoneCopy.petOpenProfile)
-                        .font(HomeFont.bold(15))
-                        .foregroundStyle(Color.homeTextPrimary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
+    private var actionAccent: Color {
+        Color.ppAdoptionAccent
+    }
+
+    private var cardShape: HomeFeaturedCardShape {
+        HomeFeaturedCardShape(
+            cornerRadius: PPCorner.medium,
+            topTrailingDelta: 12,
+            isRightToLeft: layoutDirection == .rightToLeft
+        )
+    }
+
+    private var animationHaloSize: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 116 : 94
+    }
+
+    private var animationViewSize: CGFloat {
+        dynamicTypeSize.isAccessibilitySize
+            ? 180
+            : animationHaloSize * 1.55
+    }
+
+    private var subtitleColor: Color {
+        Color.homeTextPrimary.opacity(
+            contrast == .increased
+                ? 0.92
+                : (colorScheme == .dark ? 0.84 : 0.76)
+        )
+    }
+
+    var body: some View {
+        Button(action: onOpenProfiles) {
+            ZStack(alignment: .trailing) {
+                animationArea
+                    .padding(.trailing, PPSpace.base)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: PPSpace.xs) {
+                        pawBadge
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.bottom, PPSpace.xs)
+
+                    VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                        Text(PPHomeZoneCopy.petEmptyTitle)
+                            .font(HomeFont.bold(18))
+                            .foregroundStyle(Color.homeTextPrimary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                            .minimumScaleFactor(0.82)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(PPHomeZoneCopy.petEmptySubtitle)
+                            .font(HomeFont.medium(13))
+                            .foregroundStyle(subtitleColor)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+                            .minimumScaleFactor(0.92)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
                     Spacer(minLength: PPSpace.sm)
 
-                    Image(systemName: "chevron.forward")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.homeTextSecondary)
-                        .flipsForRightToLeftLayoutDirection(true)
-                        .accessibilityHidden(true)
+                    HStack(spacing: PPSpace.xs) {
+                        Text(PPHomeZoneCopy.petOpenProfile)
+                            .font(HomeFont.bold(13))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.80)
+
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 10, weight: .bold))
+                            .flipsForRightToLeftLayoutDirection(true)
+                            .accessibilityHidden(true)
+                    }
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, PPSpace.base)
+                    .frame(height: 38)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                actionAccent.opacity(0.88),
+                                actionAccent,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(
+                            cornerRadius: PPCorner.small + 4,
+                            style: .continuous
+                        )
+                    )
+                    .shadow(
+                        color: actionAccent.opacity(
+                            colorScheme == .dark ? 0.18 : 0.24
+                        ),
+                        radius: 6,
+                        y: 3
+                    )
                 }
-                .padding(PPSpace.base)
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: PPHomeZoneMetrics.minimumTarget + 12,
-                    alignment: .leading
-                )
-                .background(
-                    Color.homeSurface,
-                    in: RoundedRectangle(
-                        cornerRadius: PPCorner.card,
-                        style: .continuous
-                    )
-                )
-                .contentShape(
-                    RoundedRectangle(
-                        cornerRadius: PPCorner.card,
-                        style: .continuous
-                    )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, PPSpace.base)
+                .padding(.trailing, animationHaloSize + 12 + PPSpace.base)
+                .padding(.vertical, PPSpace.base)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(
+                minHeight: dynamicTypeSize.isAccessibilitySize ? 180 : 152
+            )
+            .background {
+                PPWaveCardBG(
+                    animationEnabled: !reduceMotion,
+                    shape: .rounded,
+                    cornerRadius: PPCorner.medium,
+                    accentColorOverride: UIColor(actionAccent)
                 )
             }
-            .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
-            .accessibilityLabel(PPHomeZoneCopy.petOpenProfile)
-            .accessibilityHint(PPHomeZoneCopy.petEmptyHint)
+            .clipShape(cardShape)
+            .overlay {
+                cardShape.stroke(
+                    actionAccent.opacity(
+                        contrast == .increased
+                            ? 0.62
+                            : (colorScheme == .dark ? 0.28 : 0.14)
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                )
+            }
+            .contentShape(cardShape)
         }
-        .padding(.horizontal, PPSpace.screenMargin)
+        .buttonStyle(HomeCardPressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(PPHomeZoneCopy.petEmptyTitle)
+        .accessibilityHint(PPHomeZoneCopy.petEmptyHint)
+    }
+
+    private var animationArea: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    actionAccent.opacity(
+                        colorScheme == .dark ? 0.19 : 0.12
+                    )
+                )
+                .overlay {
+                    Circle().stroke(
+                        actionAccent.opacity(
+                            contrast == .increased ? 0.48 : 0.16
+                        ),
+                        lineWidth: contrast == .increased ? 1.5 : 0.8
+                    )
+                }
+                .frame(
+                    width: animationHaloSize,
+                    height: animationHaloSize
+                )
+
+            if reduceMotion {
+                Image("pawprint")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundStyle(actionAccent)
+                    .frame(
+                        width: animationHaloSize * 0.66,
+                        height: animationHaloSize * 0.66
+                    )
+            } else {
+                HomeHeroLottieRepresentable(
+                    animationName: "LottieAnimations/Loader cat.json",
+                    loadsFromFirebase: true,
+                    playbackEnabled: true
+                )
+                .frame(
+                    width: animationViewSize,
+                    height: animationViewSize
+                )
+                .clipShape(Circle())
+            }
+        }
+        .frame(width: animationHaloSize, height: animationHaloSize)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var pawBadge: some View {
+        Image("pawsmall")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(actionAccent)
+            .frame(width: 32, height: 32)
+            .background(Color.homeRaisedSurface.opacity(0.8), in: Circle())
+            .overlay {
+                Circle().stroke(
+                    actionAccent.opacity(
+                        contrast == .increased ? 0.48 : 0.14
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                )
+            }
+            .shadow(
+                color: actionAccent.opacity(0.12),
+                radius: 4,
+                y: 2
+            )
+            .accessibilityHidden(true)
     }
 }
 

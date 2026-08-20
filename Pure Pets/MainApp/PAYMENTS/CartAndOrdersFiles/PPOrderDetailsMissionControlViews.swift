@@ -359,13 +359,13 @@ struct PPOrderDetailsMissionControlScreen: View {
                 style: .continuous
             )
         )
-        .overlay(
+        .overlay {
             RoundedRectangle(
                 cornerRadius: PPCorner.medium,
                 style: .continuous
             )
-            .stroke(Color.ppSurfaceBorder, lineWidth: 1)
-        )
+            .strokeBorder(Color.ppBorder.opacity(0.80), lineWidth: 0.75)
+        }
         .overlay(alignment: .leading) {
             Capsule()
                 .fill(accent)
@@ -814,29 +814,41 @@ struct PPOrderMissionGlassCard: ViewModifier {
     var emphasis = false
     var usesAccentBorder = true
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(
             cornerRadius: emphasis ? PPCorner.hero : PPCorner.card,
             style: .continuous
         )
+        let border = contrast == .increased
+            ? Color.ppTextPrimary.opacity(0.52)
+            : (emphasis && usesAccentBorder
+                ? accent.opacity(0.24)
+                : Color.ppBorder.opacity(0.80))
+
         content
             .background(
-                emphasis ? Color.ppSurfaceElevated : Color.ppSurface,
+                emphasis && !reduceTransparency
+                    ? Color.ppSurfaceOverlay.opacity(colorScheme == .dark ? 0.66 : 0.54)
+                    : Color.ppSurface,
                 in: shape
             )
-            .overlay(
-                shape.stroke(
-                    emphasis && usesAccentBorder
-                        ? accent.opacity(0.42)
-                        : Color.ppSurfaceBorder,
-                    lineWidth: emphasis ? 1.1 : 1
+            .overlay {
+                shape.strokeBorder(
+                    border,
+                    lineWidth: contrast == .increased ? 1.5 : 0.75
                 )
-            )
+            }
             .shadow(
-                color: Color.black.opacity(emphasis ? 0.09 : 0.055),
-                radius: emphasis ? 20 : 12,
+                color: contrast == .increased
+                    ? .clear
+                    : Color.black.opacity(colorScheme == .dark ? 0.14 : 0.045),
+                radius: emphasis ? 16 : 11,
                 x: 0,
-                y: emphasis ? 8 : 4
+                y: emphasis ? 7 : 4
             )
     }
 }
@@ -845,22 +857,28 @@ private struct PPOrderMissionInsetSurface: ViewModifier {
     let accent: Color
     var prominence: CGFloat = 0.12
 
+    @Environment(\.colorSchemeContrast) private var contrast
+
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(
             cornerRadius: PPCorner.medium,
             style: .continuous
         )
+        let border = contrast == .increased
+            ? Color.ppTextPrimary.opacity(0.52)
+            : Color.ppBorder.opacity(0.80)
+
         content
             .background(
                 Color.ppSecondarySurface,
                 in: shape
             )
-            .overlay(
-                shape.stroke(
-                    accent.opacity(prominence),
-                    lineWidth: 1
+            .overlay {
+                shape.strokeBorder(
+                    border,
+                    lineWidth: contrast == .increased ? 1.5 : 0.75
                 )
-            )
+            }
     }
 }
 
@@ -1250,45 +1268,261 @@ private struct PPOrderMissionCommandOrbit: View {
     let handle: (PPOrderMissionAction) -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var visibleActions: [PPOrderMissionAction] {
+        actions.filter(\.isVisible)
+    }
+
+    private var readyActions: [PPOrderMissionAction] {
+        visibleActions.filter(\.isEligible)
+    }
+
+    private var lockedActions: [PPOrderMissionAction] {
+        visibleActions.filter { !$0.isEligible }
+    }
+
+    /// Highest-value next step, derived purely from the bridge action contract.
+    /// Return/replacement tiles are only visible for delivered-like orders, so
+    /// their presence re-prioritizes the hero toward after-delivery workflows.
+    private var heroAction: PPOrderMissionAction? {
+        heroRanking.lazy.compactMap { kind in
+            readyActions.first { $0.kind == kind }
+        }.first
+    }
+
+    private var heroRanking: [String] {
+        let deliveredLike = visibleActions.contains {
+            $0.kind == "return" || $0.kind == "replacement"
+        }
+        return deliveredLike
+            ? ["return", "replacement", "refund", "complaint", "track", "support"]
+            : ["cancel", "track", "complaint", "refund", "support"]
+    }
+
+    private var gridActions: [PPOrderMissionAction] {
+        guard let hero = heroAction else { return readyActions }
+        return readyActions.filter { $0.id != hero.id }
+    }
 
     var body: some View {
-        PPOrderMissionSection(
-            eyebrow: PPOrderMissionText("order_mission_command_eyebrow"),
-            title: PPOrderMissionText("order_mission_command_deck"),
-            symbol: "command",
-            accent: accent
-        ) {
-            LazyVGrid(
-                columns: dynamicTypeSize.isAccessibilitySize
-                    ? [GridItem(.flexible())]
-                    : [GridItem(.flexible()), GridItem(.flexible())],
-                spacing: PPSpace.md
-            ) {
-                ForEach(actions) { action in
-                    Button {
-                        handle(action)
-                    } label: {
-                        PPOrderMissionActionTile(
-                            action: action,
-                            accent: accent
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityValue(
-                        action.isEligible
-                            ? PPOrderMissionText("order_mission_available")
-                            : PPOrderMissionText("order_mission_unavailable")
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            deckHeader
+            if visibleActions.isEmpty {
+                emptyDeck
+            } else {
+                if let hero = heroAction {
+                    PPOrderMissionHeroCommand(
+                        action: hero,
+                        accent: accent,
+                        handle: { perform($0) }
                     )
-                    .accessibilityHint(action.message)
                 }
+                if !gridActions.isEmpty {
+                    readyGrid
+                }
+                if !lockedActions.isEmpty {
+                    lockedSection
+                }
+                deckFooter
+            }
+        }
+        .padding(PPSpace.base)
+        .modifier(PPOrderMissionGlassCard(accent: accent))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var deckHeader: some View {
+        HStack(spacing: PPSpace.md) {
+            Image(systemName: "command")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(accent)
+                .frame(width: 38, height: 38)
+                .background(
+                    LinearGradient(
+                        colors: [accent.opacity(0.24), accent.opacity(0.07)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: Circle()
+                )
+                .overlay(Circle().stroke(accent.opacity(0.32), lineWidth: 1))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(PPOrderMissionText("order_mission_command_eyebrow"))
+                    .font(PPOrderMissionTypography.caption(11))
+                    .tracking(layoutDirection == .rightToLeft ? 0 : 0.9)
+                    .foregroundStyle(Color.ppTextTertiary)
+                Text(PPOrderMissionText("order_mission_command_deck"))
+                    .font(PPOrderMissionTypography.headline())
+                    .foregroundStyle(Color.ppTextPrimary)
+            }
+
+            Spacer(minLength: PPSpace.sm)
+
+            readinessPill
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            String(
+                format: PPOrderMissionText("order_mission_command_ready_a11y"),
+                readyActions.count,
+                visibleActions.count
+            )
+        )
+    }
+
+    private var readinessPill: some View {
+        let count = readyActions.count
+        let isReady = count > 0
+        let tint = isReady ? accent : Color.ppTextTertiary
+        return HStack(spacing: PPSpace.xs) {
+            Circle()
+                .fill(isReady ? tint : Color.ppTextTertiary)
+                .frame(width: 6, height: 6)
+            Text(
+                isReady
+                    ? String(
+                        format: PPOrderMissionText("order_mission_command_ready_format"),
+                        count
+                    )
+                    : PPOrderMissionText("order_mission_command_none_ready")
+            )
+            .font(PPOrderMissionTypography.caption(12))
+            .foregroundStyle(Color.ppTextPrimary)
+        }
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, 6)
+        .background(tint.opacity(0.14), in: Capsule())
+        .overlay(Capsule().stroke(tint.opacity(0.30), lineWidth: 1))
+        .accessibilityHidden(true)
+    }
+
+    private var readyGrid: some View {
+        LazyVGrid(
+            columns: dynamicTypeSize.isAccessibilitySize
+                ? [GridItem(.flexible())]
+                : [GridItem(.flexible()), GridItem(.flexible())],
+            spacing: PPSpace.md
+        ) {
+            ForEach(gridActions) { action in
+                Button {
+                    perform(action)
+                } label: {
+                    PPOrderMissionActionTile(action: action, accent: accent)
+                }
+                .buttonStyle(PPOrderMissionCommandPressStyle())
+                .accessibilityValue(PPOrderMissionText("order_mission_available"))
+                .accessibilityHint(action.message)
             }
         }
     }
+
+    private var lockedSection: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.ppTextTertiary)
+                    .accessibilityHidden(true)
+                Text(PPOrderMissionText("order_mission_command_locked_title"))
+                    .font(PPOrderMissionTypography.caption(11.5))
+                    .tracking(layoutDirection == .rightToLeft ? 0 : 0.9)
+                    .foregroundStyle(Color.ppTextTertiary)
+                Spacer(minLength: 0)
+                Text(
+                    String(
+                        format: PPOrderMissionText("order_mission_command_unavailable_format"),
+                        lockedActions.count
+                    )
+                )
+                .font(PPOrderMissionTypography.caption(12))
+                .foregroundStyle(Color.ppTextSecondary)
+                .accessibilityHidden(true)
+            }
+            ForEach(lockedActions) { action in
+                PPOrderMissionLockedRow(action: action)
+            }
+        }
+        .padding(PPSpace.md)
+        .background(
+            Color.ppSurfaceOverlay,
+            in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .strokeBorder(Color.ppBorder.opacity(0.80), lineWidth: 0.75)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var deckFooter: some View {
+        VStack(spacing: PPSpace.sm) {
+            Rectangle()
+                .fill(Color.ppSeparator)
+                .frame(height: 1)
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.ppTextTertiary)
+                    .accessibilityHidden(true)
+                Text(PPOrderMissionText("order_mission_command_footer"))
+                    .font(PPOrderMissionTypography.caption(11.5))
+                    .foregroundStyle(Color.ppTextTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var emptyDeck: some View {
+        HStack(spacing: PPSpace.md) {
+            Image(systemName: "command")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.ppTextTertiary)
+                .frame(width: 40, height: 40)
+                .background(Color.ppSurfaceOverlay, in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(PPOrderMissionText("order_mission_command_empty_title"))
+                    .font(PPOrderMissionTypography.callout())
+                    .foregroundStyle(Color.ppTextPrimary)
+                Text(PPOrderMissionText("order_mission_command_empty_message"))
+                    .font(PPOrderMissionTypography.caption())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(PPSpace.md)
+        .background(
+            Color.ppSurfaceOverlay,
+            in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .strokeBorder(Color.ppBorder.opacity(0.80), lineWidth: 0.75)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func perform(_ action: PPOrderMissionAction) {
+        if !reduceMotion {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        handle(action)
+    }
 }
 
-private struct PPOrderMissionActionTile: View {
+private struct PPOrderMissionHeroCommand: View {
     let action: PPOrderMissionAction
     let accent: Color
+    let handle: (PPOrderMissionAction) -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
 
     private var actionColor: Color {
         PPOrderMissionColorRole.action(
@@ -1301,67 +1535,211 @@ private struct PPOrderMissionActionTile: View {
     var body: some View {
         let color = actionColor
         let shape = RoundedRectangle(
-            cornerRadius: PPCorner.card,
+            cornerRadius: PPCorner.medium,
             style: .continuous
         )
 
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(spacing: PPSpace.sm) {
+        Button {
+            if !reduceMotion {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+            handle(action)
+        } label: {
+            HStack(spacing: PPSpace.md) {
                 Image(systemName: action.symbol)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(
-                        action.isEligible ? color : Color.ppTextTertiary
-                    )
-                    .frame(width: 40, height: 40)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 54, height: 54)
                     .background(
-                        action.isEligible ? color.opacity(0.13) : Color.ppSurfaceOverlay,
-                        in: Circle()
-                    )
-                    .overlay(
-                        Circle().stroke(
-                            action.isEligible ? color.opacity(0.20) : Color.ppSurfaceBorder,
-                            lineWidth: 1
+                        LinearGradient(
+                            colors: [color, color.opacity(0.72)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(
+                            cornerRadius: PPCorner.medium,
+                            style: .continuous
                         )
                     )
+                    .overlay(
+                        RoundedRectangle(
+                            cornerRadius: PPCorner.medium,
+                            style: .continuous
+                        )
+                        .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                    )
+                    .shadow(color: color.opacity(0.35), radius: 8, x: 0, y: 4)
                     .accessibilityHidden(true)
-                Spacer(minLength: 0)
-                if !action.isEligible {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.ppTextTertiary)
-                        .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(PPOrderMissionText("order_mission_command_primary_eyebrow"))
+                        .font(PPOrderMissionTypography.caption(10.5))
+                        .tracking(layoutDirection == .rightToLeft ? 0 : 1.0)
+                        .foregroundStyle(color)
+                    Text(action.title)
+                        .font(PPOrderMissionTypography.headline(20))
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !action.message.isEmpty {
+                        Text(action.message)
+                            .font(PPOrderMissionTypography.caption())
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Spacer(minLength: PPSpace.sm)
+
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(color)
+                    .frame(width: 36, height: 36)
+                    .background(color.opacity(0.12), in: Circle())
+                    .overlay(
+                        Circle().stroke(color.opacity(0.22), lineWidth: 1)
+                    )
+                    .accessibilityHidden(true)
+            }
+            .padding(PPSpace.base)
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [Color.ppSecondarySurface, color.opacity(0.08)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: shape
+            )
+            .overlay(shape.stroke(color.opacity(0.40), lineWidth: 1.2))
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(color)
+                    .frame(width: 3.5)
+                    .padding(.vertical, PPSpace.base)
+            }
+            .shadow(color: color.opacity(0.16), radius: 14, x: 0, y: 6)
+        }
+        .buttonStyle(PPOrderMissionCommandPressStyle())
+        .accessibilityHint(action.message)
+    }
+}
+
+private struct PPOrderMissionActionTile: View {
+    let action: PPOrderMissionAction
+    let accent: Color
+
+    var body: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PPCorner.medium,
+            style: .continuous
+        )
+        let iconShape = RoundedRectangle(
+            cornerRadius: PPCorner.verysmall + 2,
+            style: .continuous
+        )
+
+        HStack(spacing: PPSpace.md) {
+            Image(systemName: action.symbol)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.white)
+                .frame(width: 34, height: 34)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.22),
+                            Color.white.opacity(0.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: iconShape
+                )
+                .overlay(
+                    iconShape.stroke(Color.white.opacity(0.24), lineWidth: 1)
+                )
+                .shadow(color: accent.opacity(0.24), radius: 5, x: 0, y: 2)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(action.title)
+                    .font(PPOrderMissionTypography.headline(15))
+                    .foregroundStyle(Color.white)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !action.message.isEmpty {
+                    Text(action.message)
+                        .font(PPOrderMissionTypography.caption(11))
+                        .foregroundStyle(Color.white.opacity(0.78))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            Text(action.title)
-                .font(PPOrderMissionTypography.headline())
-                .foregroundStyle(
-                    action.isEligible ? Color.ppTextPrimary : Color.ppTextSecondary
-                )
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !action.isEligible, !action.message.isEmpty {
-                Text(action.message)
-                    .font(PPOrderMissionTypography.caption())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Spacer(minLength: 0)
         }
-        .padding(PPSpace.md)
-        .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, PPSpace.md)
+        .frame(maxWidth: .infinity, minHeight: 64)
         .background(
-            action.isEligible ? Color.ppSecondarySurface : Color.ppSurfaceOverlay,
+            LinearGradient(
+                colors: [accent, accent.opacity(0.82)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
             in: shape
         )
-        .overlay(
-            shape.stroke(
-                action.isEligible ? color.opacity(0.20) : Color.ppSurfaceBorder,
-                lineWidth: 1
+        .overlay(shape.stroke(Color.white.opacity(0.14), lineWidth: 1))
+        .shadow(color: accent.opacity(0.20), radius: 10, x: 0, y: 4)
+    }
+}
+
+private struct PPOrderMissionLockedRow: View {
+    let action: PPOrderMissionAction
+
+    var body: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Color.ppTextTertiary)
+                .frame(width: 24, height: 24)
+                .background(Color.ppSurfaceElevated, in: Circle())
+                .overlay(
+                    Circle().stroke(Color.ppSurfaceBorder, lineWidth: 1)
+                )
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(action.title)
+                    .font(PPOrderMissionTypography.callout())
+                    .foregroundStyle(Color.ppTextSecondary)
+                if !action.message.isEmpty {
+                    Text(action.message)
+                        .font(PPOrderMissionTypography.caption(11.5))
+                        .foregroundStyle(Color.ppTextTertiary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct PPOrderMissionCommandPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(
+                configuration.isPressed && !reduceMotion ? 0.975 : 1
             )
-        )
-        .opacity(action.isEligible ? 1 : 0.78)
+            .opacity(configuration.isPressed ? 0.94 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
