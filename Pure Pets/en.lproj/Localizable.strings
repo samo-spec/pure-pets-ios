@@ -4616,3 +4616,16 @@
 "a11y_command_deck_selected" = "Selected";
 "a11y_command_deck_unread_count" = "%ld unread";
 "pp_command_deck_demo_create_description" = "Create is a command, not a navigation destination.";
+
+// SwiftyMax V6 Settings
+"settings_v6_eyebrow" = "PURE PETS";
+"settings_v6_title" = "Settings";
+"settings_v6_subtitle" = "Make Pure Pets feel right for you.";
+"settings_location_eyebrow" = "SMART LOCATION";
+"settings_experience_title" = "Experience";
+"settings_appearance_title" = "Appearance";
+"settings_language_title" = "Language";
+"settings_privacy_alerts_title" = "Privacy & Alerts";
+"settings_data_legal_title" = "Data & Legal";
+"settings_logout_subtitle" = "Sign out on this device";
+"settings_delete_subtitle" = "Permanently remove your account and data";
