@@ -150,7 +150,18 @@ public final class PPMainKindsCell: UICollectionViewCell {
         setLayoutRect(geometry.artworkGroupFrame, on: artworkGroupView)
         groundShadowView.frame = geometry.groundShadowFrame
         portraitGroupView.frame = artworkGroupView.bounds
-        artworkView.frame = geometry.primaryArtworkFrame
+        if content?.isAll ?? false {
+            let reducedWidth = (geometry.primaryArtworkFrame.width * 0.60).rounded()
+            let reducedHeight = (geometry.primaryArtworkFrame.height * 0.60).rounded()
+            artworkView.frame = CGRect(
+                x: (geometry.primaryArtworkFrame.minX + (geometry.primaryArtworkFrame.width - reducedWidth) / 2).rounded(),
+                y: (geometry.primaryArtworkFrame.minY + (geometry.primaryArtworkFrame.height - reducedHeight) / 2).rounded(),
+                width: reducedWidth,
+                height: reducedHeight
+            ).integral
+        } else {
+            artworkView.frame = geometry.primaryArtworkFrame
+        }
         applySymbolConfiguration(
             to: artworkView,
             frame: geometry.primaryArtworkFrame,
@@ -508,7 +519,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         isAll: Bool = false
     ) {
         let side = max(min(frame.width, frame.height), 1)
-        let scaleFactor: CGFloat = isAll ? 0.285 : 0.62
+        let scaleFactor: CGFloat = isAll ? (0.285 * 0.60) : 0.62
         imageView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
             pointSize: side * scaleFactor,
             weight: .semibold,
@@ -650,6 +661,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
         for content: PPMainKindsContent
     ) -> (image: UIImage?, isTemplate: Bool) {
         if content.isAll {
+            if let image = UIImage(named: "menugrid") {
+                return (image, true)
+            }
             let configuration = UIImage.SymbolConfiguration(
                 pointSize: 15,
                 weight: .semibold,

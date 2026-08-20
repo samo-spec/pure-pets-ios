@@ -7,9 +7,9 @@ import UIKit
 /// stage, partner feature, launcher, and gateways share the same rhythm instead
 /// of each inventing its own numbers.
 enum PPHomeZoneMetrics {
-    static let stageMediaHeight: CGFloat = 146
+    static let stageMediaHeight: CGFloat = 132
     /// The marketplace ledger is denser than photographic marketing media.
-    static let marketplaceStageMediaHeight: CGFloat = 136
+    static let marketplaceStageMediaHeight: CGFloat = 124
     static let stageMediaAccessibilityHeight: CGFloat = 132
     static let marketplaceMediaAccessibilityHeight: CGFloat = 248
     static let marketplaceMediaAccessibilityMediumHeight: CGFloat = 296
@@ -552,7 +552,7 @@ struct PPHomeMarketingStage: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: PPSpace.lg)
+            .frame(height: PPSpace.sm)
             .allowsHitTesting(false)
         }
         .accessibilityHidden(!isMarketplace(page))
@@ -654,7 +654,7 @@ struct PPHomeMarketingStage: View {
             }
         }
         .padding(.horizontal, PPSpace.lg)
-        .padding(.top, PPSpace.sm + PPSpace.xxs)
+        .padding(.top, PPSpace.xxs)
         .padding(.bottom, PPSpace.base)
         .frame(maxWidth: .infinity, alignment: frameAlignment)
     }

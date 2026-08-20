@@ -3679,10 +3679,13 @@ private struct HomeMainKindDisc: View {
     private var artwork: some View {
         Group {
             if isAllOption {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: artworkSide, weight: .semibold))
+                let allArtworkSide = artworkSide * 0.60
+                Image("menugrid")
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
                     .foregroundColor(selected ? accent : .ppTextSecondary)
-                    .frame(width: artworkSide, height: artworkSide)
+                    .frame(width: allArtworkSide, height: allArtworkSide)
             } else if let normalizedURL {
                 AppRemoteImage(
                     urlString: normalizedURL,
@@ -3745,7 +3748,15 @@ private struct HomeMainKindLargeContentViewer: ViewModifier {
         Group {
             if #available(iOS 16.0, *) {
                 content.accessibilityShowsLargeContentViewer {
-                    Label(title, systemImage: symbolName)
+                    if symbolName == "menugrid" {
+                        Label {
+                            Text(title)
+                        } icon: {
+                            Image("menugrid")
+                        }
+                    } else {
+                        Label(title, systemImage: symbolName)
+                    }
                 }
             } else {
                 content
@@ -3786,7 +3797,7 @@ private struct HomeMainKindHabitatCell: View {
             HomeMainKindLargeContentViewer(
                 title: title,
                 symbolName: isAllOption
-                    ? "line.3.horizontal"
+                    ? "menugrid"
                     : "pawprint.fill"
             )
         )
