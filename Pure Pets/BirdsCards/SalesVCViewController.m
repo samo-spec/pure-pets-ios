@@ -448,7 +448,7 @@
 -(void)shareCard:(CardModel *)card andImage:(UIImage *)image
 {
     NSString *text = [NSString stringWithFormat:@"(%@) %@",card.RingID,card.CardTitle];
-           UIImage *img = (UIImage *)UIImageJPEGRepresentation([GM setWatermarkImage:[UIImage imageNamed:@"logoImag"] toImage:image], 80) ;
+           UIImage *img = (UIImage *)UIImageJPEGRepresentation([GM setWatermarkImage:[UIImage imageNamed:@"newlogo"] toImage:image], 80) ;
            [GM shareToWhatsApp:text sharingImage:img inViewController:self];
 }
 

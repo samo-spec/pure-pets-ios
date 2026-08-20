@@ -1769,7 +1769,7 @@ NSString* getSubKindName(NSInteger subKindID, NSArray<SubKindModel*> *subKindsAr
             [self dismissViewControllerAnimated:NO completion:^{
                 NSString *text = [NSString stringWithFormat:@"(%@) %@",self.selectedCard.RingID,self.selectedCard.CardTitle];
                 UIImage *watermarkedImage =
-                [GM setWatermarkImage:[UIImage imageNamed:@"logoImag"]
+                [GM setWatermarkImage:[UIImage imageNamed:@"newlogo"]
                               toImage:self.selectedImage ?: [UIImage imageNamed:@"placeholder3"]];
                 NSData *imageData = UIImageJPEGRepresentation(watermarkedImage, 0.8);
                 UIImage *img = [UIImage imageWithData:imageData] ?: watermarkedImage;
@@ -1778,7 +1778,7 @@ NSString* getSubKindName(NSInteger subKindID, NSArray<SubKindModel*> *subKindsAr
         } else {
             NSString *text = [NSString stringWithFormat:@"(%@) %@",self.selectedCard.RingID,self.selectedCard.CardTitle];
             UIImage *watermarkedImage =
-            [GM setWatermarkImage:[UIImage imageNamed:@"logoImag"]
+            [GM setWatermarkImage:[UIImage imageNamed:@"newlogo"]
                           toImage:self.selectedImage ?: [UIImage imageNamed:@"placeholder3"]];
             NSData *imageData = UIImageJPEGRepresentation(watermarkedImage, 0.8);
             UIImage *img = [UIImage imageWithData:imageData] ?: watermarkedImage;

@@ -47,7 +47,7 @@
     // Logo (Centered)
     // =========================
     
-    UIImage *logo = [UIImage imageNamed:@"tintLogo"];
+    UIImage *logo = [UIImage imageNamed:@"newlogo"];
     if (logo) {
         CGFloat h = 120;
         CGFloat w = logo.size.width * (h / logo.size.height);

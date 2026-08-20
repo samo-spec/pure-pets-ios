@@ -185,6 +185,7 @@ public struct PPCommandDeckTabBar: View {
     @Binding private var selection: PPCommandDeckTab
 
     private let unreadChats: Int
+    private let sessionState: PPRootSessionState
     private let theme: PPCommandDeckTheme
     private let copy: PPCommandDeckCopy
     private let onCreate: () -> Void
@@ -209,12 +210,14 @@ public struct PPCommandDeckTabBar: View {
     public init(
         selection: Binding<PPCommandDeckTab>,
         unreadChats: Int = 0,
+        sessionState: PPRootSessionState = .init(),
         theme: PPCommandDeckTheme = .default,
         copy: PPCommandDeckCopy = .default,
         onCreate: @escaping () -> Void
     ) {
         self._selection = selection
         self.unreadChats = max(0, unreadChats)
+        self.sessionState = sessionState
         self.theme = theme
         self.copy = copy
         self.onCreate = onCreate
@@ -269,6 +272,7 @@ public struct PPCommandDeckTabBar: View {
                     tab: tab,
                     isSelected: selection == tab,
                     unreadChats: unreadChats,
+                    sessionState: sessionState,
                     theme: theme,
                     selectionNamespace: selectionNamespace,
                     onTap: { handleTap(on: tab) }
@@ -418,6 +422,7 @@ private struct PPCommandDeckTile: View {
     let tab: PPCommandDeckTab
     let isSelected: Bool
     let unreadChats: Int
+    let sessionState: PPRootSessionState
     let theme: PPCommandDeckTheme
     let selectionNamespace: Namespace.ID
     let onTap: () -> Void
@@ -510,41 +515,53 @@ private struct PPCommandDeckTile: View {
         }
     }
 
-    private var icon: some View {
-        Image(
-            systemName: isSelected
-                ? tab.selectedSystemImage
-                : tab.systemImage
-        )
-        .font(
-            .system(
-                size: PPCommandDeckMetrics.iconPointSize,
-                weight: isSelected ? .semibold : .regular
+    @ViewBuilder
+    private var iconBase: some View {
+        if tab == .menu {
+            PPRootAvatarView(
+                sessionState: sessionState,
+                isSelected: isSelected
             )
-        )
-        // Outline → filled is the primary, non-color state signal.
-        .contentTransition(.symbolEffect(.replace))
-        .frame(height: 24)
-        .overlay(alignment: .topTrailing) {
-            if tab == .chats, unreadChats > 0 {
-                PPCommandDeckUnreadBadge(
-                    count: unreadChats,
-                    tint: theme.accent
+            .accessibilityHidden(true)
+        } else {
+            Image(
+                systemName: isSelected
+                    ? tab.selectedSystemImage
+                    : tab.systemImage
+            )
+            .font(
+                .system(
+                    size: PPCommandDeckMetrics.iconPointSize,
+                    weight: isSelected ? .bold : .medium
                 )
-                .alignmentGuide(.top) { $0[.top] + 6 }
-                .alignmentGuide(.trailing) { $0[.trailing] - 7 }
-                .transition(
-                    reduceMotion
-                        ? .opacity
-                        : .scale(scale: 0.6).combined(with: .opacity)
-                )
-                .accessibilityHidden(true)
-            }
+            )
         }
-        .animation(
-            reduceMotion ? nil : .snappy(duration: 0.24),
-            value: unreadChats
-        )
+    }
+
+    private var icon: some View {
+        iconBase
+            .contentTransition(.opacity)
+            .frame(height: tab == .menu ? 34 : 24)
+            .overlay(alignment: .topTrailing) {
+                if tab == .chats, unreadChats > 0 {
+                    PPCommandDeckUnreadBadge(
+                        count: unreadChats,
+                        tint: theme.accent
+                    )
+                    .alignmentGuide(.top) { $0[.top] + 6 }
+                    .alignmentGuide(.trailing) { $0[.trailing] - 7 }
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .scale(scale: 0.6).combined(with: .opacity)
+                    )
+                    .accessibilityHidden(true)
+                }
+            }
+            .animation(
+                reduceMotion ? nil : .snappy(duration: 0.24),
+                value: unreadChats
+            )
     }
 
     private var ink: Color {

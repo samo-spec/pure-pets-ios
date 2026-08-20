@@ -146,6 +146,7 @@ private struct PPRootCommandDeck: View {
                 set: { store.selectTab($0.ppRootTab) }
             ),
             unreadChats: store.unreadChatsCount,
+            sessionState: store.sessionState,
             copy: PPCommandDeckCopy(
                 navigationLabel: LocalizedStringKey(
                     localized("a11y_command_deck_navigation")

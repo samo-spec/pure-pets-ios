@@ -32,13 +32,6 @@ private struct HomeRenderRow: Identifiable {
     }
 }
 
-private enum HomeBottomContentClearance {
-    static let standardNavigationReserve =
-        PPSpace.xxxl + PPSpace.xxxl + PPSpace.base
-    static let accessibilityNavigationReserve =
-        PPSpace.xxxxl + PPSpace.xxxxl + PPSpace.xxxxl
-}
-
 @available(iOS 15.0, *)
 private struct HomeLivingGatewayStage: View {
     let pages: [HomeHeroPage]
@@ -898,10 +891,11 @@ struct HomeView: View {
     }
 
     private var bottomPadding: CGFloat {
-        max(0, store.state.bottomContentClearance) +
-            (dynamicTypeSize.isAccessibilitySize
-                ? HomeBottomContentClearance.accessibilityNavigationReserve
-                : HomeBottomContentClearance.standardNavigationReserve)
+        // The root dock clearance already includes its measured height and
+        // physical bottom inset. Keep only a small visual breathing room here;
+        // adding a second navigation reserve creates the empty tail below the
+        // final Home row.
+        max(0, store.state.bottomContentClearance) + PPSpace.base
     }
 
     private func startLoadedEntranceIfNeeded() {
