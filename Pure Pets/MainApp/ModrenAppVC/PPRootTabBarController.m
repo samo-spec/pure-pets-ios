@@ -92,10 +92,6 @@ static CGFloat const PPRootCenterActionSize = PPButtonHeightMD;
 @property (nonatomic, strong) NSArray<UITabBarItem *> *premiumTabItems;
 @property (nonatomic, strong) UIButton *premiumNovaButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *premiumNovaLottieView;
-@property (nonatomic, strong, nullable) LOTAnimationView *guestProfileLottieView;
-@property (nonatomic, strong, nullable) LOTColorValueCallback *guestProfileLottieColorCallback;
-@property (nonatomic, assign) BOOL guestProfileLottieLoading;
-@property (nonatomic, assign) BOOL guestProfileLottieReady;
 @property (nonatomic, assign) BOOL premiumNovaVisibleByConfiguration;
 @property (nonatomic, assign) BOOL premiumBottomNavigationHidden;
 @property (nonatomic, assign) NSUInteger premiumBottomNavigationTransitionToken;
@@ -144,14 +140,7 @@ static CGFloat const PPRootCenterActionSize = PPButtonHeightMD;
 - (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected;
 - (UIImage *)pp_profileTabItemImageSelected:(BOOL)selected;
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected;
-- (void)pp_prepareGuestProfileAnimationIfNeeded;
-- (void)pp_applyGuestProfileAnimationTint;
 - (void)pp_refreshProfileTabPresentation;
-- (void)pp_layoutGuestProfileAnimation;
-- (void)pp_updateGuestProfileAnimationPlayback;
-- (void)pp_refreshGuestProfileAnimationAfterSelection;
-- (void)pp_handleProfileAuthenticationChange:(NSNotification *)notification;
-- (void)pp_handleReduceMotionStatusChange:(NSNotification *)notification;
 - (void)pp_handleReduceTransparencyStatusChange:(NSNotification *)notification;
 - (void)pp_handleRootTabContentSizeCategoryChange:(NSNotification *)notification;
 - (void)pp_handleRootTabLanguageChange:(NSNotification *)notification;
@@ -1425,7 +1414,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
     [self pp_updateRootTabSelectionMarkerAnimated:NO];
-    [self pp_refreshGuestProfileAnimationAfterSelection];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
 }
 
@@ -1668,8 +1656,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     } else {
         [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
         [self pp_assertPremiumTabBarState];
-        [self pp_layoutGuestProfileAnimation];
-        [self pp_updateGuestProfileAnimationPlayback];
         [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:self.selectedViewController animated:NO];
         [self pp_showIntroIfNeeded];
     }
@@ -1680,7 +1666,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
-    [self.guestProfileLottieView stop];
 }
 
 - (BOOL)canBecomeFirstResponder
@@ -1931,7 +1916,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_updateBlockedOverlayTopInset];
         [self pp_updateTabBarSelectionIndicatorIfNeeded];
         [self pp_applyPremiumTabSelectionAnimated:NO];
-        [self pp_layoutGuestProfileAnimation];
         [self pp_applyBottomNavigationClearanceToVisibleLists];
         [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
         [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
@@ -1953,7 +1937,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             self.premiumDockAppliedItemWidth = 0.0;
             [self configureAppearance];
             [self pp_updatePremiumBottomFadeAppearance];
-            [self pp_applyGuestProfileAnimationTint];
             [self pp_updateTabBarSelectionIndicatorIfNeeded];
             [self pp_updateRootTabSelectionMarkerAnimated:NO];
             [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
@@ -3294,27 +3277,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                    withConfiguration:symbolConfiguration];
 }
 
-- (BOOL)pp_isGuestProfileTabState
-{
-    return !PPIsUserLoggedIn;
-}
-
 - (UIImage *)pp_profileTabItemImageSelected:(BOOL)selected
 {
-    if ([self pp_isGuestProfileTabState] && self.guestProfileLottieReady) {
-        static UIImage *transparentProfileImage = nil;
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
-            format.opaque = NO;
-            format.scale = UIScreen.mainScreen.scale;
-            UIGraphicsImageRenderer *renderer =
-                [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(32.0, 32.0) format:format];
-            transparentProfileImage = [[renderer imageWithActions:^(__unused UIGraphicsImageRendererContext *context) {
-            }] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-        });
-        return transparentProfileImage;
-    }
     return [self pp_userMenuTabAvatarImageSelected:selected];
 }
 
@@ -3380,91 +3344,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     return [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 }
 
-- (void)pp_prepareGuestProfileAnimationIfNeeded
-{
-    if (![self pp_isGuestProfileTabState] ||
-        self.guestProfileLottieReady ||
-        self.guestProfileLottieLoading) {
-        return;
-    }
-
-    self.guestProfileLottieLoading = YES;
-    __weak typeof(self) weakSelf = self;
-    [AppClasses fetchLottieJSONFromFirebasePath:@"Profile.lottie"
-                                     completion:^(NSDictionary *jsonDict, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) {
-                return;
-            }
-
-            strongSelf.guestProfileLottieLoading = NO;
-            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
-                NSLog(@"[PPRootTabBarController] Profile.lottie failed to load: %@",
-                      error.localizedDescription ?: @"Invalid animation data");
-                return;
-            }
-
-            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
-            if (!composition) {
-                NSLog(@"[PPRootTabBarController] Profile.lottie could not create a composition.");
-                return;
-            }
-
-            LOTAnimationView *animationView = strongSelf.guestProfileLottieView;
-            if (!animationView) {
-                animationView = [[LOTAnimationView alloc] init];
-                animationView.userInteractionEnabled = NO;
-                animationView.isAccessibilityElement = NO;
-                animationView.accessibilityElementsHidden = YES;
-                animationView.backgroundColor = UIColor.clearColor;
-                animationView.contentMode = UIViewContentModeScaleAspectFill;
-                animationView.clipsToBounds = YES;
-                animationView.loopAnimation = YES;
-                animationView.animationSpeed = 0.85;
-                animationView.hidden = YES;
-                strongSelf.guestProfileLottieView = animationView;
-            }
-
-            [animationView setSceneModel:composition];
-            strongSelf.guestProfileLottieReady = YES;
-            [strongSelf pp_applyGuestProfileAnimationTint];
-            [strongSelf pp_refreshProfileTabPresentation];
-        });
-    }];
-}
-
-- (void)pp_applyGuestProfileAnimationTint
-{
-    LOTAnimationView *animationView = self.guestProfileLottieView;
-    if (!animationView || !self.guestProfileLottieReady) {
-        return;
-    }
-
-    UIColor *primaryColor = AppSecondaryTextClr ?: UIColor.systemPinkColor;
-    if (@available(iOS 13.0, *)) {
-        primaryColor = [primaryColor resolvedColorWithTraitCollection:self.traitCollection];
-    }
-
-    LOTColorValueCallback *colorCallback =
-        [LOTColorValueCallback withCGColor:primaryColor.CGColor];
-    self.guestProfileLottieColorCallback = colorCallback;
-    animationView.tintColor = primaryColor;
-
-    // The bundled animation names its paint nodes "F" and "S", so target the
-    // shared Color property instead of relying on exported Fill/Stroke names.
-    [animationView setValueDelegate:colorCallback
-                         forKeypath:[LOTKeypath keypathWithString:@"**.Color"]];
-}
-
-- (UITabBarItem *)pp_guestProfileAnimationTabItem
-{
-    if (self.viewControllers.count <= PPRootTabIndexOrders) {
-        return nil;
-    }
-    return self.viewControllers[PPRootTabIndexOrders].tabBarItem;
-}
-
 - (UIView *)pp_viewForTabBarItem:(UITabBarItem *)item
 {
     if (!item) {
@@ -3511,11 +3390,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_refreshProfileTabPresentation
 {
-    BOOL isGuest = [self pp_isGuestProfileTabState];
-    if (isGuest) {
-        [self pp_prepareGuestProfileAnimationIfNeeded];
-    }
-
     UIImage *normalImage = [self pp_profileTabItemImageSelected:NO];
     UIImage *selectedImage = [self pp_profileTabItemImageSelected:YES];
 
@@ -3532,18 +3406,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         }
     }
 
-    if (!isGuest || !self.guestProfileLottieReady) {
-        [self.guestProfileLottieView stop];
-        self.guestProfileLottieView.hidden = YES;
-        [self.guestProfileLottieView removeFromSuperview];
-    }
-
     [self.tabBar setNeedsLayout];
     [self.premiumTabbarView setNeedsLayout];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self pp_layoutGuestProfileAnimation];
-        [self pp_updateGuestProfileAnimationPlayback];
-    });
 }
 
 - (nullable UILabel *)pp_titleLabelInView:(UIView *)view matchingTitle:(NSString *)title
@@ -3664,99 +3528,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self pp_updateRootTabSelectionMarkerAnimated:NO];
 }
 
-- (void)pp_layoutGuestProfileAnimation
-{
-    LOTAnimationView *animationView = self.guestProfileLottieView;
-    if (![self pp_isGuestProfileTabState] || !self.guestProfileLottieReady || !animationView) {
-        return;
-    }
-
-    UITabBarItem *item = [self pp_guestProfileAnimationTabItem];
-    UIView *itemView = [self pp_viewForTabBarItem:item];
-    if (!itemView || CGRectIsEmpty(itemView.bounds)) {
-        return;
-    }
-    [itemView layoutIfNeeded];
-
-    UITabBar *displayedTabBar = self.tabBar;
-    UIView *animationHostView = displayedTabBar.superview ?: self.view;
-    if (!displayedTabBar || !animationHostView) {
-        return;
-    }
-
-    // Keep custom content outside UIKit's private UITabBarButton hierarchy.
-    // UIKit changes that hierarchy's alpha/visibility during selection, which
-    // caused the guest animation to disappear until the item was deselected.
-    if (animationView.superview != animationHostView) {
-        [animationView removeFromSuperview];
-        [animationHostView addSubview:animationView];
-    }
-    if (displayedTabBar.superview == animationHostView) {
-        [animationHostView insertSubview:animationView aboveSubview:displayedTabBar];
-    } else {
-        [animationHostView bringSubviewToFront:animationView];
-    }
-
-    UIImageView *iconImageView = [self pp_bestTabIconImageViewInView:itemView];
-    CGPoint iconCenterInItem = CGPointMake(CGRectGetMidX(itemView.bounds),
-                                           MIN(24.0, CGRectGetMidY(itemView.bounds)));
-    CGPoint iconCenter = [animationHostView convertPoint:iconCenterInItem fromView:itemView];
-    if (iconImageView && !CGRectIsEmpty(iconImageView.bounds)) {
-        CGRect iconRect =
-            [animationHostView convertRect:iconImageView.bounds fromView:iconImageView];
-        iconCenter = CGPointMake(CGRectGetMidX(iconRect), CGRectGetMidY(iconRect));
-    }
-
-    BOOL selected = self.selectedIndex == PPRootTabIndexOrders;
-    CGFloat animationSize = selected ? 34.0 : 32.0;
-    animationView.bounds = CGRectMake(0.0, 0.0, animationSize, animationSize);
-    animationView.center = iconCenter;
-    animationView.layer.cornerRadius = animationSize * 0.5;
-    animationView.layer.zPosition = 0.0;
-    animationView.alpha = 1.0;
-    animationView.layer.opacity = 1.0;
-    animationView.transform = CGAffineTransformIdentity;
-}
-
-- (void)pp_updateGuestProfileAnimationPlayback
-{
-    LOTAnimationView *animationView = self.guestProfileLottieView;
-    BOOL shouldShow =
-        [self pp_isGuestProfileTabState] &&
-        self.guestProfileLottieReady &&
-        animationView.superview &&
-        self.view.window &&
-        !self.premiumBottomNavigationHidden;
-
-    if (!shouldShow) {
-        [animationView stop];
-        animationView.hidden = YES;
-        return;
-    }
-
-    animationView.hidden = NO;
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [animationView stop];
-        animationView.animationProgress = 0.42;
-    } else if (!animationView.isAnimationPlaying) {
-        [animationView play];
-    }
-}
-
-- (void)pp_refreshGuestProfileAnimationAfterSelection
-{
-    [self pp_layoutGuestProfileAnimation];
-    [self pp_updateGuestProfileAnimationPlayback];
-
-    // UIKit may finish updating the selected tab item on the next run loop.
-    // Reattach after that update so the custom Lottie never remains in an old
-    // item view or underneath the selected icon presentation.
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self pp_layoutGuestProfileAnimation];
-        [self pp_updateGuestProfileAnimationPlayback];
-    });
-}
-
 - (void)pp_handleProfileAuthenticationChange:(__unused NSNotification *)notification
 {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -3769,7 +3540,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.leadingTabButton.transform = CGAffineTransformIdentity;
     self.premiumNovaButton.transform = CGAffineTransformIdentity;
     [self pp_updateRootTabSelectionMarkerAnimated:NO];
-    [self pp_updateGuestProfileAnimationPlayback];
 }
 
 - (void)pp_handleReduceTransparencyStatusChange:(__unused NSNotification *)notification
@@ -3892,7 +3662,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [super setSelectedIndex:(NSUInteger)index];
     [self tabBarController:self didSelectViewController:viewController];
     [self pp_applyPremiumTabSelectionAnimated:YES];
-    [self pp_refreshGuestProfileAnimationAfterSelection];
 }
 
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated
@@ -3920,12 +3689,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                                    UIViewAnimationOptionAllowUserInteraction
                         animations:updates
                         completion:^(__unused BOOL finished) {
-            [self pp_refreshGuestProfileAnimationAfterSelection];
-        }];
+                }];
     } else {
         updates();
-        [self pp_refreshGuestProfileAnimationAfterSelection];
-    }
+        }
 }
 
 - (void)pp_animatePremiumBottomNavigationEntranceIfNeeded
@@ -3993,7 +3760,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
     self.tabBar.userInteractionEnabled = !hidden;
     self.premiumBottomNavigationHidden = hidden;
-    [self pp_updateGuestProfileAnimationPlayback];
 
     NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:3];
     if (self.leadingTabButton) {
@@ -4041,8 +3807,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         self.leadingTabButton.transform = CGAffineTransformIdentity;
         self.tabBar.userInteractionEnabled = !hidden;
         [self pp_applyBottomNavigationClearanceToVisibleLists];
-        [self pp_layoutGuestProfileAnimation];
-        [self pp_updateGuestProfileAnimationPlayback];
     };
     if (!animated) {
         changes();
@@ -4535,7 +4299,6 @@ shouldSelectViewController:(UIViewController *)viewController {
     [self pp_updateRootTabSelectionMarkerAnimated:YES];
     [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:YES];
     [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:viewController animated:YES];
-    [self pp_refreshGuestProfileAnimationAfterSelection];
 }
 
 

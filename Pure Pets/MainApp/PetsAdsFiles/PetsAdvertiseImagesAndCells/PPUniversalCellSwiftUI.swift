@@ -2085,7 +2085,7 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
 
     private var cardRadius: CGFloat {
-        store.isHomePresentation ? PPCorner.card : 23
+        store.isHomePresentation ? HomeVisualTokens.cardCorner : 23
     }
     private let mediaBottomRadius: CGFloat = 8
 
@@ -2486,10 +2486,20 @@ private struct PPUniversalCardRenderer: View {
                        let discount = store.model.discountText,
                        !discount.isEmpty {
                         PPDiscountBadge(localizedText: discount)
+                            .scaleEffect(
+                                store.isHomePresentation
+                                    ? HomeVisualTokens.productDiscountVisualScale
+                                    : 1,
+                                anchor: .bottomTrailing
+                            )
                     }
                 }
             }
-            .padding(6)
+            .padding(
+                store.isHomePresentation
+                    ? HomeVisualTokens.productDiscountInset
+                    : 6
+            )
 
             if store.model.videoURL != nil && !store.isVideoPlaying {
                 Button {
@@ -2825,7 +2835,12 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var priceRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 5) {
+        HStack(
+            alignment: .firstTextBaseline,
+            spacing: store.isHomePresentation
+                ? HomeVisualTokens.productPriceRowSpacing
+                : 5
+        ) {
             if let price = store.model.price {
                 Text(formattedNumber(price))
                     .font(
@@ -2868,7 +2883,7 @@ private struct PPUniversalCardRenderer: View {
                     .font(
                         .custom(
                             "Beiruti-Medium",
-                            size: 17,
+                            size: store.isHomePresentation ? 15 : 17,
                             relativeTo: .caption
                         )
                     )
@@ -3166,7 +3181,7 @@ private struct PPUniversalCardRenderer: View {
                 "Retry",
                 fallback: "Retry"
             ),
-            tint: store.palette.primary,
+            tint: primaryActionAccent,
             itemSymbol: "shippingbox.fill",
             isEnabled: store.canIncreaseQuantity,
             cornerRadius: 13,
@@ -3244,7 +3259,7 @@ private struct PPUniversalCardRenderer: View {
             }
             .foregroundStyle(primaryActionForeground)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: standardActionHeight)
+            .frame(minHeight: standardActionVisualHeight)
             .background(
                 primaryActionBackground
                     .clipShape(actionShape)
@@ -3252,6 +3267,8 @@ private struct PPUniversalCardRenderer: View {
             .overlay(
                 actionShape.stroke(primaryActionBorder, lineWidth: 0.75)
             )
+            .frame(minHeight: standardActionHeight)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
         .disabled(store.isNotifyInFlight)
@@ -3447,7 +3464,7 @@ private struct PPUniversalCardRenderer: View {
                 itemID: store.model.id,
                 collection: store.favoriteCollection,
                 isRightToLeft: store.isRightToLeft,
-                accentColor: store.palette.primary
+                accentColor: primaryActionAccent
             )
             .frame(
                 width: 44,
@@ -3472,10 +3489,19 @@ private struct PPUniversalCardRenderer: View {
                         : store.palette.ink
                 )
                 .frame(
-                    width: 44,
-                    height: 44
+                    width: store.isHomePresentation
+                        ? HomeVisualTokens.productUtilityVisualSize
+                        : HomeVisualTokens.minimumTouchTarget,
+                    height: store.isHomePresentation
+                        ? HomeVisualTokens.productUtilityVisualSize
+                        : HomeVisualTokens.minimumTouchTarget
                 )
                 .background(.ultraThinMaterial, in: Circle())
+                .frame(
+                    width: HomeVisualTokens.minimumTouchTarget,
+                    height: HomeVisualTokens.minimumTouchTarget
+                )
+                .contentShape(Circle())
             }
             .buttonStyle(PPUniversalScaleButtonStyle())
         }
@@ -3489,8 +3515,12 @@ private struct PPUniversalCardRenderer: View {
                 .font(.system(size: 15.5, weight: .semibold))
                 .foregroundStyle(saveForLaterIconColor)
                 .frame(
-                    width: 44,
-                    height: 44
+                    width: store.isHomePresentation
+                        ? HomeVisualTokens.productUtilityVisualSize
+                        : HomeVisualTokens.minimumTouchTarget,
+                    height: store.isHomePresentation
+                        ? HomeVisualTokens.productUtilityVisualSize
+                        : HomeVisualTokens.minimumTouchTarget
                 )
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay(
@@ -3501,6 +3531,10 @@ private struct PPUniversalCardRenderer: View {
                             ),
                             lineWidth: 0.75
                         )
+                )
+                .frame(
+                    width: HomeVisualTokens.minimumTouchTarget,
+                    height: HomeVisualTokens.minimumTouchTarget
                 )
                 .contentShape(Circle())
         }
@@ -3527,7 +3561,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var saveForLaterIconColor: Color {
         if store.isSavedForLater {
-            return store.palette.primary
+            return primaryActionAccent
         }
         return Color(
             uiColor: UIColor(named: "SecondaryTextColor") ??
@@ -3598,7 +3632,22 @@ private struct PPUniversalCardRenderer: View {
         )
     }
 
+    private var primaryActionAccent: Color {
+        store.isHomePresentation ? HomeSemanticTone.brand : store.palette.primary
+    }
+
     private var semanticAccent: Color {
+        if store.isHomePresentation {
+            switch store.context {
+            case .services, .vets:
+                return HomeSemanticTone.health
+            case .ads, .homeAds, .adopt:
+                return HomeSemanticTone.care
+            case .market, .food, .accessory, .savedForLater:
+                return HomeSemanticTone.brand
+            }
+        }
+
         switch store.context {
         case .services, .vets:
             return .ppCareAccent
@@ -3672,14 +3721,26 @@ private struct PPUniversalCardRenderer: View {
             )
 
         case .pordersForHomeView:
-            cardShape.stroke(
-                colorScheme == .dark && store.userBordersV2
-                    ? (store.isSelected
-                        ? store.palette.primary.opacity(0.12)
-                       : store.palette.diffColor.opacity(0.08))
-                    : Color.clear,
-                lineWidth: 0.75
-            )
+            if store.isHomePresentation {
+                cardShape.strokeBorder(
+                    HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: colorSchemeContrast
+                    ),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(
+                        contrast: colorSchemeContrast
+                    )
+                )
+            } else {
+                cardShape.stroke(
+                    colorScheme == .dark && store.userBordersV2
+                        ? (store.isSelected
+                            ? store.palette.primary.opacity(0.12)
+                           : store.palette.diffColor.opacity(0.08))
+                        : Color.clear,
+                    lineWidth: 0.75
+                )
+            }
         }
     }
 
@@ -3846,7 +3907,9 @@ private struct PPUniversalCardRenderer: View {
             : 0
         let actionHeight: CGFloat = accessibility ? 52 : 44
         let metadataHeight: CGFloat = accessibility ? 36 : 28
-        let titleToPriceSpacing: CGFloat = accessibility ? 6 : 4
+        let titleToPriceSpacing: CGFloat = accessibility
+            ? 8
+            : HomeVisualTokens.productTitleToPriceSpacing
         let priceToActionSpacing: CGFloat = accessibility ? 10 : 8
         let actionToMetadataSpacing: CGFloat = accessibility ? 10 : 8
         let informationVerticalInset: CGFloat = accessibility ? 24 : 20
@@ -4018,7 +4081,7 @@ private struct PPUniversalCardRenderer: View {
         if store.model.usesQuantityControl &&
             store.quantity > 0 &&
             !store.isOutOfStock {
-            return store.palette.primary
+            return primaryActionAccent
         }
         return store.isOutOfStock ? .white : store.palette.onPrimary
     }
@@ -4030,11 +4093,11 @@ private struct PPUniversalCardRenderer: View {
         } else if usesAdsModeCTAGradient {
             adsModeCTAGradient
         } else if store.model.usesQuantityControl && store.quantity > 0 {
-            store.palette.primary.opacity(
+            primaryActionAccent.opacity(
                 colorScheme == .dark ? 0.18 : 0.09
             )
         } else {
-            store.palette.primary
+            primaryActionAccent
         }
     }
 
@@ -4043,7 +4106,7 @@ private struct PPUniversalCardRenderer: View {
             return .clear
         }
         if store.model.usesQuantityControl && store.quantity > 0 {
-            return store.palette.primary.opacity(0.20)
+            return primaryActionAccent.opacity(0.20)
         }
         return .clear
     }
@@ -4060,8 +4123,8 @@ private struct PPUniversalCardRenderer: View {
     private var adsModeCTAGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                store.palette.primary,
-                store.palette.primary
+                primaryActionAccent,
+                primaryActionAccent
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -4105,7 +4168,19 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var standardActionHeight: CGFloat {
-        return dynamicTypeSize.isAccessibilitySize ? 52 : 44
+        dynamicTypeSize.isAccessibilitySize ? 52 : HomeVisualTokens.minimumTouchTarget
+    }
+
+    /// Ads keep the full interactive frame, but on Home their visible button
+    /// is intentionally quieter so media, title, and price lead the card.
+    private var standardActionVisualHeight: CGFloat {
+        guard store.isHomePresentation,
+              isAdAction,
+              !dynamicTypeSize.isAccessibilitySize
+        else {
+            return standardActionHeight
+        }
+        return HomeVisualTokens.advertisementActionVisualHeight
     }
 
     private var cardShape: RoundedRectangle {
@@ -4120,7 +4195,12 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var actionShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 13, style: .continuous)
+        RoundedRectangle(
+            cornerRadius: store.isHomePresentation && isAdAction
+                ? HomeVisualTokens.advertisementActionCorner
+                : 13,
+            style: .continuous
+        )
     }
 }
 

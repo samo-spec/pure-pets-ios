@@ -17,8 +17,8 @@ enum PPHomeZoneMetrics {
     static let marketplaceMediaAccessibilityExtraLargeHeight: CGFloat = 368
     static let marketplaceMediaAccessibilityMaximumHeight: CGFloat = 400
     static let partnerMediaSide: CGFloat = 104
-    static let minimumTarget: CGFloat = 44
-    static let gatewaySymbolPlate: CGFloat = 42
+    static let minimumTarget: CGFloat = HomeVisualTokens.minimumTouchTarget
+    static let gatewaySymbolPlate: CGFloat = HomeVisualTokens.iconContainerSize
     static let statusSymbolPlate: CGFloat = 46
     static let pageDot: CGFloat = 6
     static let pageDotSelected: CGFloat = 18
@@ -31,10 +31,10 @@ enum PPHomeZoneMetrics {
 /// here makes the copy rhythm and action treatment identical across
 /// config-driven zones.
 enum PPHomeSectionHeaderMetrics {
-    static let sectionTopSpacing = PPSpace.lg
+    static let sectionTopSpacing = HomeVisualTokens.sectionVerticalSpacing
     static let titleSubtitleSpacing = PPSpace.md
-    static let contentSpacing = PPSpace.lg
-    static let actionTargetHeight: CGFloat = 44
+    static let contentSpacing = HomeVisualTokens.sectionVerticalSpacing
+    static let actionTargetHeight: CGFloat = HomeVisualTokens.minimumTouchTarget
     static let actionVisualHeight: CGFloat = 36
     static let actionHorizontalInset = PPSpace.md
     static let actionLabelSpacing = PPSpace.xs
@@ -45,21 +45,18 @@ enum PPHomeSectionHeaderMetrics {
 /// introduces a colour: every value resolves through an existing Pure Pets
 /// semantic token.
 enum PPHomeZoneTone {
-    /// Matches the production quick-action tone mapping so the ecosystem
-    /// launcher and the legacy grid agree on category meaning.
-    static func accent(for actionID: String, fallback: UIColor) -> Color {
+    /// Home navigation is deliberately limited to the same three semantic
+    /// families as the discovery launcher; glyph and copy do the rest.
+    static func accent(for actionID: String, fallback _: UIColor) -> Color {
         switch actionID {
-        case "shop":
-            return Color.ppQuickActionShopping
-        case "pet", "ads":
-            return Color.ppAdoptionAccent
-        case "pharmacy", "vet", "services":
-            // One care hue for the three care destinations. Colour stays
-            // semantic; the destinations separate by glyph and label, not by
-            // inventing a fourth hue outside the palette.
-            return Color.ppCareAccent
+        case "shop", "ads":
+            return HomeSemanticTone.brand
+        case "pharmacy", "vet":
+            return HomeSemanticTone.health
+        case "food", "pet", "services":
+            return HomeSemanticTone.care
         default:
-            return Color(uiColor: fallback)
+            return HomeSemanticTone.brand
         }
     }
 }
@@ -1985,7 +1982,7 @@ struct PPHomeHeroFlankLivingBubblesView: View {
     let accent: Color
     let isDark: Bool
 
-    private static let visualProminence: Double = 0.63
+    private static let visualProminence = HomeVisualTokens.heroFlankOpacity
 
     private let leftOrbs: [(size: CGFloat, relX: CGFloat, relY: CGFloat, icon: String?, dur: Double, delay: Double)] = [
         (size: 26, relX: 0.35, relY: 0.28, icon: "gift.fill", dur: 3.8, delay: 0.0),
@@ -2572,6 +2569,8 @@ private struct PPHomeMarketplaceLivingLedger: View {
                 metrics.primaryTileTopOverhang +
                 metrics.secondaryTileBottomOverhang
         )
+        .scaleEffect(HomeVisualTokens.heroSatelliteScale)
+        .opacity(HomeVisualTokens.heroSatelliteOpacity)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -4423,6 +4422,7 @@ struct PPHomeServiceGateway: View {
     let destinations: [PPHomeServiceDestination]
     let onSelect: (PPHomeServiceDestination) -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -4444,7 +4444,7 @@ struct PPHomeServiceGateway: View {
 
     private var gatewaySurface: some View {
         let shape = RoundedRectangle(
-            cornerRadius: PPCorner.card,
+            cornerRadius: HomeVisualTokens.cardCorner,
             style: .continuous
         )
 
@@ -4469,20 +4469,32 @@ struct PPHomeServiceGateway: View {
         .clipShape(shape)
         .overlay {
             shape.strokeBorder(
-                Color.homeSeparator.opacity(
-                    contrast == .increased ? 1 : 0.78
+                HomeVisualTokens.cardBorder(
+                    colorScheme: colorScheme,
+                    contrast: contrast
                 ),
-                lineWidth: contrast == .increased ? 1.5 : 1
+                lineWidth: HomeVisualTokens.cardBorderWidth(
+                    contrast: contrast
+                )
             )
             .allowsHitTesting(false)
         }
+        .shadow(
+            color: contrast == .increased ? .clear : PPShadow.subtle.color,
+            radius: contrast == .increased ? 0 : PPShadow.subtle.radius,
+            x: PPShadow.subtle.x,
+            y: contrast == .increased ? 0 : PPShadow.subtle.y
+        )
         .contentShape(shape)
     }
 
     private func destinationRow(
         _ destination: PPHomeServiceDestination
     ) -> some View {
-        HStack(alignment: .center, spacing: PPSpace.md) {
+        HStack(
+            alignment: .center,
+            spacing: HomeVisualTokens.destinationTileSpacing
+        ) {
             symbolPlate(destination)
 
             destinationCopy(destination)
@@ -4491,11 +4503,11 @@ struct PPHomeServiceGateway: View {
 
             disclosure
         }
-        .padding(.horizontal, PPSpace.base)
+        .padding(.horizontal, HomeVisualTokens.destinationTileContentInset)
         .padding(.vertical, PPSpace.sm)
         .frame(
             maxWidth: .infinity,
-            minHeight: PPHomeZoneMetrics.minimumTarget + PPSpace.lg,
+            minHeight: HomeVisualTokens.destinationTileHeight,
             alignment: .leading
         )
         .contentShape(Rectangle())
@@ -4508,13 +4520,13 @@ struct PPHomeServiceGateway: View {
             .font(.system(size: 18, weight: .bold))
             .foregroundStyle(destination.accent)
             .frame(
-                width: PPHomeZoneMetrics.gatewaySymbolPlate,
-                height: PPHomeZoneMetrics.gatewaySymbolPlate
+                width: HomeVisualTokens.iconContainerSize,
+                height: HomeVisualTokens.iconContainerSize
             )
             .background(
                 destination.accent.opacity(0.12),
                 in: RoundedRectangle(
-                    cornerRadius: PPCorner.small,
+                    cornerRadius: HomeVisualTokens.iconContainerCorner,
                     style: .continuous
                 )
             )
@@ -4580,7 +4592,7 @@ struct PPHomePetContextStrip: View {
     var body: some View {
         if pets.isEmpty {
             HomeBuildPetProfileFeaturedCard(onOpenProfiles: onOpenProfiles)
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
         } else {
             HomePetSwitcher(
                 pets: pets,
@@ -4602,13 +4614,19 @@ private struct HomeBuildPetProfileFeaturedCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
 
+    /// Coral remains part of the pet-profile artwork and supporting badge.
     private var actionAccent: Color {
-        Color.ppAdoptionAccent
+        HomeSemanticTone.care
+    }
+
+    /// The visible action itself follows Home's global primary-action system.
+    private var primaryActionAccent: Color {
+        HomeSemanticTone.brand
     }
 
     private var cardShape: HomeFeaturedCardShape {
         HomeFeaturedCardShape(
-            cornerRadius: PPCorner.medium,
+            cornerRadius: HomeVisualTokens.compactCardCorner,
             topTrailingDelta: 12,
             isRightToLeft: layoutDirection == .rightToLeft
         )
@@ -4680,21 +4698,14 @@ private struct HomeBuildPetProfileFeaturedCard: View {
                     .padding(.horizontal, PPSpace.base)
                     .frame(height: 38)
                     .background(
-                        LinearGradient(
-                            colors: [
-                                actionAccent.opacity(0.88),
-                                actionAccent,
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
+                        primaryActionAccent,
                         in: RoundedRectangle(
-                            cornerRadius: PPCorner.small + 4,
+                            cornerRadius: HomeVisualTokens.primaryActionCorner,
                             style: .continuous
                         )
                     )
                     .shadow(
-                        color: actionAccent.opacity(
+                        color: primaryActionAccent.opacity(
                             colorScheme == .dark ? 0.18 : 0.24
                         ),
                         radius: 6,
@@ -4714,21 +4725,28 @@ private struct HomeBuildPetProfileFeaturedCard: View {
                 PPWaveCardBG(
                     animationEnabled: !reduceMotion,
                     shape: .rounded,
-                    cornerRadius: PPCorner.medium,
+                    cornerRadius: HomeVisualTokens.compactCardCorner,
                     accentColorOverride: UIColor(actionAccent)
                 )
             }
             .clipShape(cardShape)
             .overlay {
                 cardShape.stroke(
-                    actionAccent.opacity(
-                        contrast == .increased
-                            ? 0.62
-                            : (colorScheme == .dark ? 0.28 : 0.14)
+                    HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: contrast
                     ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                    lineWidth: HomeVisualTokens.cardBorderWidth(
+                        contrast: contrast
+                    )
                 )
             }
+            .shadow(
+                color: contrast == .increased ? .clear : PPShadow.subtle.color,
+                radius: contrast == .increased ? 0 : PPShadow.subtle.radius,
+                x: PPShadow.subtle.x,
+                y: contrast == .increased ? 0 : PPShadow.subtle.y
+            )
             .contentShape(cardShape)
         }
         .buttonStyle(HomeCardPressStyle())
@@ -4824,6 +4842,8 @@ struct PPHomeExploreMoreRow: View {
     let entries: [Entry]
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -4835,49 +4855,96 @@ struct PPHomeExploreMoreRow: View {
                 title: PPHomeZoneCopy.exploreMoreTitle
             )
 
-            LazyVGrid(columns: columns, alignment: .leading, spacing: PPSpace.sm) {
+            LazyVGrid(
+                columns: columns,
+                alignment: .leading,
+                spacing: HomeVisualTokens.destinationTileSpacing
+            ) {
                 ForEach(entries) { entry in
+                    let tone = destinationTone(for: entry)
                     Button(action: entry.action) {
-                        HStack(spacing: PPSpace.sm) {
+                        HStack(
+                            alignment: .center,
+                            spacing: HomeVisualTokens.destinationTileSpacing
+                        ) {
                             Image(systemName: entry.symbol)
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(Color.ppAccentText)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(tone)
+                                .frame(
+                                    width: HomeVisualTokens
+                                        .destinationIconContainerSize,
+                                    height: HomeVisualTokens
+                                        .destinationIconContainerSize
+                                )
+                                .background(
+                                    tone.opacity(
+                                        contrast == .increased ? 0.18 : 0.10
+                                    ),
+                                    in: RoundedRectangle(
+                                        cornerRadius: HomeVisualTokens
+                                            .iconContainerCorner,
+                                        style: .continuous
+                                    )
+                                )
                                 .accessibilityHidden(true)
 
                             Text(entry.title)
-                                .font(HomeFont.medium(14))
+                                .font(HomeFont.bold(15))
                                 .foregroundStyle(Color.homeTextPrimary)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.leading)
                                 .fixedSize(horizontal: false, vertical: true)
-
-                            Spacer(minLength: PPSpace.xs)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    alignment: .leading
+                                )
 
                             Image(systemName: "chevron.forward")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(Color.homeTextSecondary)
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(
+                                    Color.homeTextSecondary.opacity(
+                                        contrast == .increased ? 0.82 : 0.52
+                                    )
+                                )
                                 .flipsForRightToLeftLayoutDirection(true)
+                                .frame(width: 20, height: 20)
                                 .accessibilityHidden(true)
                         }
-                        .padding(.horizontal, PPSpace.md)
+                        .padding(
+                            .horizontal,
+                            HomeVisualTokens.destinationTileContentInset
+                        )
                         .frame(
                             maxWidth: .infinity,
-                            minHeight: PPHomeZoneMetrics.minimumTarget,
+                            minHeight: HomeVisualTokens.destinationTileHeight,
                             alignment: .leading
                         )
                         .background(
                             Color.homeSurface,
-                            in: RoundedRectangle(
-                                cornerRadius: PPCorner.small,
-                                style: .continuous
-                            )
+                            in: destinationTileShape
                         )
-                        .contentShape(
-                            RoundedRectangle(
-                                cornerRadius: PPCorner.small,
-                                style: .continuous
+                        .overlay {
+                            destinationTileShape.stroke(
+                                HomeVisualTokens.cardBorder(
+                                    colorScheme: colorScheme,
+                                    contrast: contrast
+                                ),
+                                lineWidth: HomeVisualTokens.cardBorderWidth(
+                                    contrast: contrast
+                                )
                             )
+                        }
+                        .shadow(
+                            color: contrast == .increased
+                                ? .clear
+                                : PPShadow.subtle.color,
+                            radius: contrast == .increased
+                                ? 0
+                                : PPShadow.subtle.radius,
+                            x: PPShadow.subtle.x,
+                            y: contrast == .increased ? 0 : PPShadow.subtle.y
                         )
+                        .contentShape(destinationTileShape)
                     }
                     .buttonStyle(
                         PPHomeSurfacePressStyle(reduceMotion: reduceMotion)
@@ -4892,9 +4959,30 @@ struct PPHomeExploreMoreRow: View {
     private var columns: [GridItem] {
         let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
         return Array(
-            repeating: GridItem(.flexible(), spacing: PPSpace.sm),
+            repeating: GridItem(
+                .flexible(),
+                spacing: HomeVisualTokens.destinationTileSpacing
+            ),
             count: count
         )
+    }
+
+    private var destinationTileShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: HomeVisualTokens.destinationTileCorner,
+            style: .continuous
+        )
+    }
+
+    private func destinationTone(for entry: Entry) -> Color {
+        switch entry.symbol {
+        case "stethoscope", "cross.case.fill":
+            return HomeSemanticTone.health
+        case "heart.fill", "pawprint.fill", "cart.fill":
+            return HomeSemanticTone.care
+        default:
+            return HomeSemanticTone.brand
+        }
     }
 }
 

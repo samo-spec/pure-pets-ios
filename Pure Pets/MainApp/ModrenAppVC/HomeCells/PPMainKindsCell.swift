@@ -910,7 +910,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 borderWidth: highContrast ? 2 : 1,
                 atmosphereAlpha: 1,
                 livingLightAlpha: 1,
-                indicatorAlpha: 1,
+                indicatorAlpha: highContrast ? 0.72 : 0.46,
                 indicatorTransform: .identity,
                 titleColor: text,
                 artworkTransform: CGAffineTransform(translationX: 0, y: 8).scaledBy(x: 1.2, y: 1.2),
@@ -1351,11 +1351,10 @@ private enum PPMainKindsMetrics {
     static let groundBlurRadius: CGFloat = 7
     static let sidePortraitAlpha: CGFloat = 0.86
 
-    /// The short accent indicator drawn under the caption while a kind holds
-    /// Home. It replaces the retired full-width filled tray, so selection now
-    /// reads as a quiet accent line instead of a heavy bottom capsule.
-    static let indicatorWidth: CGFloat = 38.7
-    static let indicatorHeight: CGFloat = 3.6
+    /// The selected category keeps its border and lifted artwork as its two
+    /// state signals. This underscored accent is intentionally quiet.
+    static let indicatorWidth: CGFloat = 24
+    static let indicatorHeight: CGFloat = 2
     static let indicatorTitleSpacing: CGFloat = 4
 
     static let pressScale: CGFloat = 0.974

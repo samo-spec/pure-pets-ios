@@ -135,7 +135,7 @@ struct HomeView: View {
                             .accessibilityHidden(true)
 
                         content
-                            .padding(.top, PPSpace.xs)
+                            .padding(.top, HomeVisualTokens.compactRowSpacing)
                             .padding(.bottom, bottomPadding)
                     }
                 }
@@ -200,7 +200,7 @@ struct HomeView: View {
                 state: store.state,
                 retry: store.retryAll
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
             .padding(.vertical, PPSpace.sm)
 
             switch store.state.phase {
@@ -220,7 +220,7 @@ struct HomeView: View {
                     ),
                     action: store.retryAll
                 )
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
                 .padding(.vertical, PPSpace.xl)
             case .empty:
                 emptyContent
@@ -335,7 +335,7 @@ struct HomeView: View {
             )
         case .exploreMore:
             PPHomeExploreMoreRow(entries: exploreMoreEntries(for: resolvedPlan))
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
         }
     }
 
@@ -352,7 +352,7 @@ struct HomeView: View {
 
         case let .marketingStage(source):
             marketingStage(source)
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
         case .ecosystemLauncher:
             PPHomeEcosystemLauncher(
@@ -368,7 +368,7 @@ struct HomeView: View {
                 ),
                 onSelect: store.performPriorityAction
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
         case .livePriorityOrder:
             if let order = store.state.featuredOrder {
@@ -376,7 +376,7 @@ struct HomeView: View {
                     order: order,
                     onTap: { store.openOrder(order) }
                 )
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
             }
 
         case .livePriorityCare:
@@ -387,7 +387,7 @@ struct HomeView: View {
                     page: reminder,
                     action: { store.performHeroAction(reminder) }
                 )
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
             }
 
         case .discoveryRail:
@@ -411,15 +411,15 @@ struct HomeView: View {
 
         case let .partnerFeature(source):
             partnerFeature(source)
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
         case let .careGateway(variant):
             careGateway(variant)
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
         case .adoptionGateway:
             HomeAdoptionSection(action: store.openAdoption)
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
         case .petContext:
             PPHomePetContextStrip(
@@ -440,7 +440,7 @@ struct HomeView: View {
                     },
                     action: pureLensAction
                 )
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
                 .modifier(HomePureLensMotionGate(
                     homeEntranceAlreadyPresented: loadedEntranceVisible,
                     sectionIndex: sectionIndex,
@@ -560,7 +560,7 @@ struct HomeView: View {
                     fallback: ""
                 ),
                 symbol: "stethoscope",
-                accent: .homeVeterinary
+                accent: HomeSemanticTone.health
             ),
             PPHomeServiceDestination(
                 id: "pharmacy",
@@ -573,7 +573,7 @@ struct HomeView: View {
                     fallback: ""
                 ),
                 symbol: "cross.case.fill",
-                accent: .homePharmacy
+                accent: HomeSemanticTone.health
             ),
         ]
     }
@@ -699,7 +699,7 @@ struct HomeView: View {
                 onSecondary: { _ in },
                 onInteractionChanged: { _ in }
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
             PPHomeEcosystemLauncher(
                 featuredAction: nil,
@@ -710,7 +710,7 @@ struct HomeView: View {
             .redacted(reason: .placeholder)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
             HomeInlineState(
                 symbol: "hourglass",
@@ -725,7 +725,7 @@ struct HomeView: View {
                 actionTitle: nil,
                 action: nil
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
         }
         .padding(.vertical, PPSpace.lg)
     }
@@ -746,7 +746,7 @@ struct HomeView: View {
                 action: store.exploreMarketplace
             )
         }
-        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
         .padding(.vertical, PPSpace.xl)
         .homeEntrance(
             isVisible: loadedEntranceVisible,
@@ -818,8 +818,8 @@ struct HomeView: View {
             return HomeVisualTokens.routineRowSpacing
         }
         switch module.kind {
-        case .discoveryRail: return PPSpace.sm
-        case .marketingStage: return PPSpace.md
+        case .discoveryRail: return HomeVisualTokens.compactRowSpacing
+        case .marketingStage: return HomeVisualTokens.mediaRowSpacing
         default: return HomeVisualTokens.routineRowSpacing
         }
     }
@@ -942,7 +942,12 @@ struct HomeHeaderSparkleMotion: View {
 
     var body: some View {
         Image(systemName: "sparkles")
-            .font(.system(size: 18, weight: .semibold))
+            .font(
+                .system(
+                    size: 18,
+                    weight: HomeVisualTokens.commandIconWeight
+                )
+            )
             .foregroundStyle(Color.ppAdoptionAccent)
             .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.08 : 0.96))
             .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.86))
@@ -1558,7 +1563,7 @@ private struct HomeSectionDataReloadModifier: ViewModifier {
                     signalOpacity: signalOpacity,
                     lineAnchor: semanticLineAnchor
                 )
-                .padding(.leading, PPSpace.screenMargin)
+                .padding(.leading, HomeVisualTokens.contentHorizontalMargin)
             }
             .task(id: revision) {
                 await presentReloadSignalIfNeeded()

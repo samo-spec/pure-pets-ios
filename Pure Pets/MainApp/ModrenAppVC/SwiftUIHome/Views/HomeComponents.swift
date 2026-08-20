@@ -4,7 +4,52 @@ import UIKit
 /// Home-only geometry values. These intentionally compose existing Pure Pets
 /// tokens instead of changing legacy UIKit or non-Home SwiftUI surfaces.
 enum HomeVisualTokens {
+    // Layout rhythm
+    static let contentHorizontalMargin = PPSpace.screenMargin
     static let routineRowSpacing = PPSpace.base
+    static let compactRowSpacing = PPSpace.sm
+    static let mediaRowSpacing = PPSpace.md
+    static let sectionVerticalSpacing = PPSpace.lg
+    static let minimumTouchTarget: CGFloat = 44
+
+    // Shared surfaces
+    static let cardCorner = PPCorner.card
+    static let compactCardCorner = PPCorner.medium
+    static let iconContainerSize: CGFloat = 44
+    static let compactIconContainerSize: CGFloat = 36
+    static let iconContainerCorner = PPCorner.small
+    static let compactButtonVisualHeight: CGFloat = 44
+    static let primaryActionVisualHeight: CGFloat = 50
+    static let discoveryCardHeight: CGFloat = 112
+    static let discoveryCardContentInset: CGFloat = PPSpace.md + PPSpace.xxs
+    static let discoveryCardVerticalInset = PPSpace.sm + PPSpace.xxs
+    static let destinationTileHeight: CGFloat = 56
+    static let destinationTileSpacing = PPSpace.md
+    static let destinationIconContainerSize: CGFloat = 36
+    static let destinationTileCorner = PPCorner.medium
+    static let destinationTileContentInset = PPSpace.base
+
+    // Home commerce cards retain a 44pt hit target while their circular
+    // utility affordances read visually lighter within the media field.
+    static let productUtilityVisualSize: CGFloat = 40
+    static let productDiscountInset = PPSpace.sm
+    static let productDiscountVisualScale: CGFloat = 0.92
+    static let productTitleToPriceSpacing = PPSpace.xs + PPSpace.xxs
+    static let productPriceRowSpacing = PPSpace.xs + PPSpace.xxs
+    static let advertisementActionVisualHeight: CGFloat = 40
+    static let primaryActionCorner = PPCorner.small + PPSpace.xs
+    static let advertisementActionCorner = primaryActionCorner
+
+    // Command surface
+    static let commandIconWeight: Font.Weight = .semibold
+    static let commandDividerOpacity: Double = 0.66
+    static let commandPaleTintMultiplier: Double = 0.94
+
+    // Hero decoration remains deliberately subordinate to the central mark.
+    static let heroFlankOpacity: Double = 0.52
+    static let heroSatelliteOpacity: Double = 0.80
+    static let heroSatelliteScale: CGFloat = 0.82
+
     static let stickyChromeBackdropHeight: CGFloat = 124
     static let heroHeight: CGFloat = 258
     static let heroShadowRadius: CGFloat = 18
@@ -12,6 +57,31 @@ enum HomeVisualTokens {
     /// A touch below the full-capsule radius: the command surface keeps its pill
     /// identity while reading slightly more composed and less balloon-like.
     static let commandPillCorner: CGFloat = 20
+
+    static func reducedPaleTintOpacity(_ base: Double) -> Double {
+        base * commandPaleTintMultiplier
+    }
+
+    static func cardBorder(
+        colorScheme: ColorScheme,
+        contrast: ColorSchemeContrast
+    ) -> Color {
+        if contrast == .increased {
+            return Color.ppTextPrimary.opacity(0.62)
+        }
+        return Color.ppSurfaceBorder.opacity(colorScheme == .dark ? 0.88 : 0.72)
+    }
+
+    static func cardBorderWidth(contrast: ColorSchemeContrast) -> CGFloat {
+        contrast == .increased ? 1.5 : 0.75
+    }
+}
+
+/// The only accent families used by Home navigation and supporting surfaces.
+enum HomeSemanticTone {
+    static let brand = Color.ppPrimary
+    static let health = Color.ppCareAccent
+    static let care = Color.ppAdoptionAccent
 }
 
 /// Home-scoped Beiruti typography that participates in Dynamic Type without
@@ -123,7 +193,7 @@ struct HomeCommandBar: View {
 
     var body: some View {
         commandContainer
-            .padding(.horizontal, PPSpace.screenMargin + 1)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin + 1)
             .padding(.vertical, PPSpace.sm)
             .background(alignment: .bottom) {
                 HomeTopFadeBackdrop(contrast: contrast)
@@ -203,7 +273,12 @@ struct HomeCommandBar: View {
         Button(action: locationAction) {
             HStack(spacing: PPSpace.md) {
                 Image(systemName: "location.fill")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(
+                        .system(
+                            size: 16,
+                            weight: HomeVisualTokens.commandIconWeight
+                        )
+                    )
                     .foregroundStyle(Color.ppAccentText)
                     .accessibilityHidden(true)
 
@@ -225,7 +300,12 @@ struct HomeCommandBar: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(
+                        .system(
+                            size: 11,
+                            weight: HomeVisualTokens.commandIconWeight
+                        )
+                    )
                     .foregroundStyle(Color.homeTextSecondary)
                     .accessibilityHidden(true)
             }
@@ -248,14 +328,21 @@ struct HomeCommandBar: View {
     private var locationIconButton: some View {
         Button(action: locationAction) {
             Image(systemName: "location.fill")
-                .font(.system(size: 14, weight: .bold))
+                .font(
+                    .system(
+                        size: 14,
+                        weight: HomeVisualTokens.commandIconWeight
+                    )
+                )
                 .foregroundStyle(Color.ppAccentText)
                 .frame(width: 28, height: 28)
                 .background(
                     Color.ppAccentText.opacity(
                         contrast == .increased
                             ? 0.24
-                            : (colorScheme == .dark ? 0.18 : 0.11)
+                            : HomeVisualTokens.reducedPaleTintOpacity(
+                                colorScheme == .dark ? 0.18 : 0.11
+                            )
                     ),
                     in: Circle()
                 )
@@ -318,7 +405,12 @@ struct HomeCommandBar: View {
         Button(action: searchAction) {
             HStack(spacing: PPSpace.md) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(
+                        .system(
+                            size: 15,
+                            weight: HomeVisualTokens.commandIconWeight
+                        )
+                    )
                     .foregroundStyle(Color.ppAccentText)
                     .frame(width: 30, height: 30)
                     .background(searchKeyTint, in: Circle())
@@ -329,7 +421,12 @@ struct HomeCommandBar: View {
                     .layoutPriority(1)
 
                 Image(systemName: "chevron.forward")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(
+                        .system(
+                            size: 11,
+                            weight: HomeVisualTokens.commandIconWeight
+                        )
+                    )
                     .foregroundStyle(Color.homeTextSecondary)
                     .flipsForRightToLeftLayoutDirection(true)
                     .accessibilityHidden(true)
@@ -387,7 +484,9 @@ struct HomeCommandBar: View {
         Color.ppAccentText.opacity(
             contrast == .increased
                 ? 0.26
-                : (colorScheme == .dark ? 0.20 : 0.12)
+                : HomeVisualTokens.reducedPaleTintOpacity(
+                    colorScheme == .dark ? 0.20 : 0.12
+                )
         )
     }
 
@@ -397,7 +496,9 @@ struct HomeCommandBar: View {
     }
 
     private var commandSeparatorColor: Color {
-        commandBorder.opacity(contrast == .increased ? 1 : 0.86)
+        commandBorder.opacity(
+            contrast == .increased ? 1 : HomeVisualTokens.commandDividerOpacity
+        )
     }
 
     private var commandVerticalSeparator: some View {
@@ -489,6 +590,8 @@ struct HomeAnimatedSearchSuggestionView: View {
     let isRTL: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
 
@@ -533,13 +636,21 @@ struct HomeAnimatedSearchSuggestionView: View {
         "\(scenePhase == .active)-\(reduceMotion)-\(isRTL)"
     }
 
+    private var searchPlaceholderColor: Color {
+        Color.homeTextPrimary.opacity(
+            contrast == .increased
+                ? 0.94
+                : (colorScheme == .dark ? 0.84 : 0.78)
+        )
+    }
+
     var body: some View {
         ZStack(alignment: .leading) {
             ForEach(suggestions) { item in
                 if item.id == visibleSuggestionID {
                     Text(item.text)
                         .font(HomeFont.medium(16))
-                        .foregroundStyle(Color.ppTextSecondary)
+                        .foregroundStyle(searchPlaceholderColor)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                         .multilineTextAlignment(.leading)
@@ -591,7 +702,12 @@ struct HomeAnimatedSearchSuggestionView: View {
     private var cartButton: some View {
         Button(action: cartAction) {
             Image(systemName: "cart.fill")
-                .font(.system(size: 17, weight: .semibold))
+                .font(
+                    .system(
+                        size: 17,
+                        weight: HomeVisualTokens.commandIconWeight
+                    )
+                )
                 .foregroundStyle(Color.ppTextPrimary)
                 .frame(
                     width: resolvedControlHeight,
@@ -790,7 +906,7 @@ struct HomePetSwitcher: View {
                 ),
                 action: onEdit
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .center, spacing: PPSpace.sm) {
@@ -805,7 +921,7 @@ struct HomePetSwitcher: View {
                         .modifier(HomePetPillCascade(ordinal: index))
                     }
                 }
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
                 // The pill shadow reaches ~28pt below its frame. Pre-iOS 17
                 // this padding is the only room it has; from iOS 17 the scroll
                 // clip is lifted so the elevation is never sliced.
@@ -1802,23 +1918,14 @@ private enum HomeQuickActionTone {
 
     static func accent(for action: HomePriorityAction) -> Color {
         switch action.id {
-        case "shop":
-            // Shopping: a warmer, grounded rose.
-            return .ppQuickActionShopping
-        case "food":
-            return .ppQuickActionFood
-        case "pet":
-            return .ppAdoptionAccent
-        case "pharmacy":
-            return .ppCareAccent
-        case "vet":
-            return Color(red: 0.31, green: 0.53, blue: 0.70)
-        case "services":
-            return .ppQuickActionServices
-        case "ads":
-            return .ppAdoptionAccent
+        case "shop", "ads":
+            return HomeSemanticTone.brand
+        case "pharmacy", "vet":
+            return HomeSemanticTone.health
+        case "food", "pet", "services":
+            return HomeSemanticTone.care
         default:
-            return Color(uiColor: action.accent)
+            return HomeSemanticTone.brand
         }
     }
 }
@@ -1830,7 +1937,7 @@ struct HomePriorityGrid: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline)
-    private var compactCardHeight: CGFloat = 110
+    private var compactCardHeight: CGFloat = HomeVisualTokens.discoveryCardHeight
 
     private enum Layout {
         static let columnSpacing = PPSpace.md
@@ -2101,7 +2208,7 @@ struct HomeFeaturedPetCard: View {
 
     private var cardShape: HomeFeaturedCardShape {
         HomeFeaturedCardShape(
-            cornerRadius: PPCorner.medium,
+            cornerRadius: HomeVisualTokens.compactCardCorner,
             topTrailingDelta: 12,
             isRightToLeft: layoutDirection == .rightToLeft
         )
@@ -2235,21 +2342,28 @@ struct HomeFeaturedPetCard: View {
                 PPWaveCardBG(
                     animationEnabled: !reduceMotion,
                     shape: .rounded,
-                    cornerRadius: PPCorner.medium,
+                    cornerRadius: HomeVisualTokens.compactCardCorner,
                     accentColorOverride: UIColor(actionAccent)
                 )
             }
             .clipShape(cardShape)
             .overlay {
                 cardShape.stroke(
-                    actionAccent.opacity(
-                        contrast == .increased
-                            ? 0.62
-                            : (colorScheme == .dark ? 0.28 : 0.14)
+                    HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: contrast
                     ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                    lineWidth: HomeVisualTokens.cardBorderWidth(
+                        contrast: contrast
+                    )
                 )
             }
+            .shadow(
+                color: contrast == .increased ? .clear : PPShadow.subtle.color,
+                radius: contrast == .increased ? 0 : PPShadow.subtle.radius,
+                x: PPShadow.subtle.x,
+                y: contrast == .increased ? 0 : PPShadow.subtle.y
+            )
             .overlay(alignment: .topLeading) {
                 pawBadge
                     .padding(PPSpace.md)
@@ -2408,10 +2522,23 @@ struct HomeFeaturedPetCard: View {
         Image("pawsmall")
             .font(.system(size: 16, weight: .bold))
             .foregroundStyle(actionAccent)
-            .frame(width: 38, height: 38)
-            .background(Color.homeRaisedSurface.opacity(0.8), in: Circle())
+            .frame(
+                width: HomeVisualTokens.iconContainerSize,
+                height: HomeVisualTokens.iconContainerSize
+            )
+            .background(
+                Color.homeRaisedSurface.opacity(0.8),
+                in: RoundedRectangle(
+                    cornerRadius: HomeVisualTokens.iconContainerCorner,
+                    style: .continuous
+                )
+            )
             .overlay {
-                Circle().stroke(
+                RoundedRectangle(
+                    cornerRadius: HomeVisualTokens.iconContainerCorner,
+                    style: .continuous
+                )
+                .stroke(
                     actionAccent.opacity(
                         contrast == .increased ? 0.48 : 0.14
                     ),
@@ -2438,16 +2565,16 @@ private struct HomeSecondaryActionCard: View {
 
     private var cardShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: PPCorner.medium,
+            cornerRadius: HomeVisualTokens.compactCardCorner,
             style: .continuous
         )
     }
 
     private var subtitleColor: Color {
-        Color.homeTextPrimary.opacity(
+        Color.homeTextSecondary.opacity(
             contrast == .increased
-                ? 0.92
-                : (colorScheme == .dark ? 0.84 : 0.76)
+                ? 1
+                : (colorScheme == .dark ? 0.88 : 0.82)
         )
     }
 
@@ -2469,18 +2596,22 @@ private struct HomeSecondaryActionCard: View {
             )
             .background(Color.homeSurface, in: cardShape)
             .overlay {
-                // Identity lives in the medallion, not the frame: the tile
-                // keeps a neutral hairline so the grid reads calm and the
-                // accent is spent once, where it means something.
                 cardShape.stroke(
-                    contrast == .increased
-                        ? Color.homeTextPrimary.opacity(0.62)
-                        : Color.homeTextSecondary.opacity(
-                            colorScheme == .dark ? 0.26 : 0.18
-                        ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.7
+                    HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: contrast
+                    ),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(
+                        contrast: contrast
+                    )
                 )
             }
+            .shadow(
+                color: contrast == .increased ? .clear : PPShadow.subtle.color,
+                radius: contrast == .increased ? 0 : PPShadow.subtle.radius,
+                x: PPShadow.subtle.x,
+                y: contrast == .increased ? 0 : PPShadow.subtle.y
+            )
             .contentShape(cardShape)
         }
         .buttonStyle(HomeCardPressStyle())
@@ -2493,7 +2624,7 @@ private struct HomeSecondaryActionCard: View {
     private var cardContent: some View {
         if dynamicTypeSize.isAccessibilitySize {
             HStack(spacing: PPSpace.md) {
-                actionIcon(size: 44)
+                actionIcon(size: HomeVisualTokens.iconContainerSize)
 
                 expandedActionCopy
 
@@ -2520,7 +2651,7 @@ private struct HomeSecondaryActionCard: View {
                     if !action.subtitle.isEmpty {
                         Text(action.subtitle)
                             .font(HomeFont.medium(11))
-                            .foregroundStyle(Color.homeTextSecondary)
+                            .foregroundStyle(subtitleColor)
                             .multilineTextAlignment(.leading)
                             .lineLimit(1)
                             .minimumScaleFactor(0.84)
@@ -2530,52 +2661,15 @@ private struct HomeSecondaryActionCard: View {
 
                 directionIndicator(size: 18)
             }
-            .padding(.horizontal, PPSpace.sm)
-            .padding(.top, PPSpace.md)
-            .padding(.bottom, PPSpace.md)
+            .padding(.horizontal, HomeVisualTokens.discoveryCardContentInset)
+            .padding(.vertical, HomeVisualTokens.discoveryCardVerticalInset)
         }
     }
 
-    /// The species seat: a soft radial bloom carries the accent so the glyph
-    /// reads as a living mark instead of a boxed icon.
+    /// Every discovery tile uses the same calm 44pt semantic icon seat; the
+    /// glyph carries category meaning while the card surface stays neutral.
     private var actionMedallion: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            accentColor.opacity(
-                                colorScheme == .dark ? 0.26 : 0.16
-                            ),
-                            accentColor.opacity(
-                                colorScheme == .dark ? 0.10 : 0.05
-                            ),
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 26
-                    )
-                )
-                .frame(width: 52, height: 52)
-
-            actionGlyph(pointSize: 17)
-                .frame(width: 36, height: 36)
-                .background(
-                    accentColor.opacity(
-                        colorScheme == .dark ? 0.24 : 0.13
-                    ),
-                    in: Circle()
-                )
-                .overlay {
-                    if contrast == .increased {
-                        Circle().stroke(
-                            accentColor.opacity(0.56),
-                            lineWidth: 1.5
-                        )
-                    }
-                }
-        }
-        .accessibilityHidden(true)
+        actionIcon(size: HomeVisualTokens.iconContainerSize)
     }
 
     private var expandedActionCopy: some View {
@@ -2606,13 +2700,13 @@ private struct HomeSecondaryActionCard: View {
                     colorScheme == .dark ? 0.20 : 0.11
                 ),
                 in: RoundedRectangle(
-                    cornerRadius: PPCorner.small,
+                    cornerRadius: HomeVisualTokens.iconContainerCorner,
                     style: .continuous
                 )
             )
             .overlay {
                 RoundedRectangle(
-                    cornerRadius: PPCorner.small,
+                    cornerRadius: HomeVisualTokens.iconContainerCorner,
                     style: .continuous
                 )
                 .stroke(
@@ -2785,7 +2879,7 @@ struct HomeCategoryRail: View {
         static let cellSpacing = PPSpace.md
         static let shadowTopInset = PPSpace.sm
         static let shadowBottomInset = PPSpace.md
-        static let screenGutter = PPSpace.screenMargin
+        static let screenGutter = HomeVisualTokens.contentHorizontalMargin
         static let horizontalCellWidthScale: CGFloat = 0.85
     }
 
@@ -2985,7 +3079,7 @@ struct HomeCategoryRail: View {
     ) -> UnitPoint {
         let availableWidth = max(viewportWidth - itemSize.width, 1)
         let insetFraction = min(
-            max(PPSpace.screenMargin / availableWidth, 0),
+            max(HomeVisualTokens.contentHorizontalMargin / availableWidth, 0),
             0.5
         )
         return UnitPoint(
@@ -4836,7 +4930,7 @@ struct HomeFeedSection: View {
                     ? nil
                     : { store.seeAll(section.kind) }
             )
-            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
             switch section.state {
             case .loading:
@@ -4894,7 +4988,7 @@ struct HomeFeedSection: View {
                         ? nil
                         : { store.seeAll(section.kind) }
                 )
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
             case let .failed(title, message, retryTitle):
                 HomeInlineState(
                     symbol: "arrow.clockwise.circle",
@@ -4903,7 +4997,7 @@ struct HomeFeedSection: View {
                     actionTitle: retryTitle,
                     action: { store.retry(section: section.kind) }
                 )
-                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
             }
         }
         .accessibilityElement(children: .contain)
@@ -5618,7 +5712,9 @@ struct HomePureLensSection: View {
             chamberShape
                 .stroke(
                     palette.chamberContent.opacity(
-                        contrast == .increased ? 0.30 : 0.12
+                        contrast == .increased
+                            ? 0.22
+                            : HomePureLensMetrics.chamberBorderOpacity
                     ),
                     lineWidth: contrast == .increased ? 1.5 : 0.7
                 )
@@ -5641,26 +5737,27 @@ struct HomePureLensSection: View {
             .strokeBorder(
                 isFocused
                     ? Color.ppPrimary
-                    : palette.cardBorder(
-                        increasedContrast: contrast == .increased
+                    : HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: contrast
                     ),
                 lineWidth: isFocused
                     ? (contrast == .increased ? 3 : 2.4)
-                    : (contrast == .increased ? 1.5 : 0.7)
+                    : HomeVisualTokens.cardBorderWidth(contrast: contrast)
             )
             .accessibilityHidden(true)
     }
 
     private var cardShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: PPCorner.card,
+            cornerRadius: HomeVisualTokens.cardCorner,
             style: .continuous
         )
     }
 
     private var chamberShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: PPCorner.medium,
+            cornerRadius: HomeVisualTokens.compactCardCorner,
             style: .continuous
         )
     }
@@ -5807,16 +5904,23 @@ private struct HomePureLensMotionTaskID: Hashable {
 }
 
 private enum HomePureLensMetrics {
-    static let chamberHeight: CGFloat = 124
-    static let maximumChamberHeight: CGFloat = 142
-    static let accessibilityMaximumChamberHeight: CGFloat = 158
+    // The chamber remains the visual anchor but now sits roughly 10% shorter
+    // than the former scanner viewport, so it reads as a native Home module.
+    static let chamberHeight: CGFloat = 112
+    static let maximumChamberHeight: CGFloat = 128
+    static let accessibilityMaximumChamberHeight: CGFloat = 142
     static let compactChamberWidth: CGFloat = 132
     static let regularChamberWidth: CGFloat = 280
     static let compactMinimumCopyWidth: CGFloat = 174
     static let regularMinimumCopyWidth: CGFloat = 300
-    static let minimumTwoZoneHeight: CGFloat = 160
+    static let minimumTwoZoneHeight: CGFloat = 150
     static let actionMinimumHeight: CGFloat = 46
     static let maximumCardWidth: CGFloat = 820
+    static let chamberBorderOpacity: Double = 0.08
+    static let outerRingOpacity: Double = 0.08
+    static let apertureRingOpacity: Double = 0.38
+    static let scanLineOpacity: Double = 0.50
+    static let scanLineHeight: CGFloat = 1.5
     static let readinessDuration: Double = 0.18
     static let readinessDurationNanoseconds: UInt64 = 180_000_000
 
@@ -5874,6 +5978,12 @@ private struct HomePureLensPalette {
 
     var chamberBackground: Color {
         isDark ? Color.ppSurfaceElevated : Color.ppTextPrimary
+    }
+
+    /// A restrained raspberry veil warms the otherwise dark viewport without
+    /// introducing a separate scanner palette or a new visual effect.
+    var chamberWarmTint: Color {
+        Color.ppPrimary.opacity(isDark ? 0.12 : 0.06)
     }
 
     var chamberContent: Color {
@@ -5949,7 +6059,7 @@ private struct HomePureLensCardSurface: View {
 
     private var cardShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: PPCorner.card,
+            cornerRadius: HomeVisualTokens.cardCorner,
             style: .continuous
         )
     }
@@ -5992,7 +6102,10 @@ private struct HomePureLensActionRail: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(palette.chamberContent)
             }
-            .frame(width: 40, height: 40)
+            .frame(
+                width: HomeVisualTokens.compactIconContainerSize,
+                height: HomeVisualTokens.compactIconContainerSize
+            )
             .accessibilityHidden(true)
 
             Text(title)
@@ -6075,6 +6188,9 @@ private struct HomePureLensOpticalChamber: View {
             Rectangle()
                 .fill(palette.chamberBackground)
 
+            Rectangle()
+                .fill(palette.chamberWarmTint)
+
             // Depth-of-field bloom with ambient optical breathing
             Circle()
                 .fill(
@@ -6090,27 +6206,36 @@ private struct HomePureLensOpticalChamber: View {
                         endRadius: 68
                     )
                 )
-                .frame(width: 136, height: 136)
-                .scaleEffect(focusWashScale * (ambientBreath ? 1.06 : 0.94))
-                .opacity(max(focusWashOpacity, ambientBreath ? (reduceTransparency ? 0.22 : 0.16) : 0.08))
+                .frame(width: 124, height: 124)
+                .scaleEffect(focusWashScale * (ambientBreath ? 1.04 : 0.96))
+                .opacity(
+                    max(
+                        focusWashOpacity,
+                        ambientBreath
+                            ? (reduceTransparency ? 0.16 : 0.10)
+                            : 0.06
+                    )
+                )
                 .allowsHitTesting(false)
 
             Circle()
                 .strokeBorder(
                     palette.chamberContent.opacity(
-                        reduceTransparency ? 0.20 : 0.12
+                        reduceTransparency
+                            ? 0.16
+                            : HomePureLensMetrics.outerRingOpacity
                     ),
                     lineWidth: 1
                 )
-                .frame(width: 120, height: 120)
-                .scaleEffect(focusFieldScale * (ambientBreath ? 1.015 : 0.985))
+                .frame(width: 112, height: 112)
+                .scaleEffect(focusFieldScale * (ambientBreath ? 1.01 : 0.99))
 
             Circle()
                 .strokeBorder(
                     palette.signal.opacity(apertureRingOpacity),
                     lineWidth: apertureLineWidth
                 )
-                .frame(width: 78, height: 78)
+                .frame(width: 72, height: 72)
                 .scaleEffect(apertureScale * (ambientBreath ? 1.03 : 0.97))
 
             Circle()
@@ -6134,7 +6259,9 @@ private struct HomePureLensOpticalChamber: View {
                         colors: [
                             palette.signal.opacity(0),
                             palette.signal.opacity(
-                                reduceTransparency ? 0.88 : 0.72
+                                reduceTransparency
+                                    ? 0.66
+                                    : HomePureLensMetrics.scanLineOpacity
                             ),
                             palette.signal.opacity(0),
                         ],
@@ -6142,7 +6269,7 @@ private struct HomePureLensOpticalChamber: View {
                         endPoint: .trailing
                     )
                 )
-                .frame(height: 2.5)
+                .frame(height: HomePureLensMetrics.scanLineHeight)
                 .padding(.horizontal, PPSpace.lg)
                 .offset(y: scanSweepOffset)
                 .opacity(scanSweepOpacity)
@@ -6321,7 +6448,7 @@ private struct HomePureLensOpticalChamber: View {
     }
 
     private var apertureRingOpacity: Double {
-        let base = reduceTransparency ? 0.72 : 0.48
+        let base = reduceTransparency ? 0.60 : HomePureLensMetrics.apertureRingOpacity
         switch focusPhase {
         case .rest: return base
         case .hunting: return base * 0.72

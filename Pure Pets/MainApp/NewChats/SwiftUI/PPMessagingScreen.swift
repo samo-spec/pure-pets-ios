@@ -298,10 +298,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
     }
 
     private func updateBottomNavigationClearance() {
-        let clearance = PPPetAdViewerLegacyBridge.bottomNavigationClearance(
-            from: self
-        )
-        screenState.bottomNavigationClearance = max(0, clearance)
+        screenState.bottomNavigationClearance = 0
     }
 
     private func updateNavigationPresentationStyle() {
@@ -1600,7 +1597,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
     @objc(setBottomNavigationClearance:)
     public func setBottomNavigationClearance(_ clearance: CGFloat) {
         onMain { [weak self] in
-            self?.screenState.bottomNavigationClearance = max(0, clearance)
+            self?.screenState.bottomNavigationClearance = 0
         }
     }
 
@@ -2893,19 +2890,13 @@ private struct PPMessagingScreen: View {
                 .padding(.top, 8)
                 .padding(
                     .bottom,
-                    state.keyboardIsPresented
-                        ? 10
-                        : max(18, state.bottomNavigationClearance)
+                    state.keyboardIsPresented ? 8 : 10
                 )
                 .animation(reduceMotion ? nil : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22), value: state.keyboardIsPresented)
                 .background {
                     PPMessagingComposerBackdrop()
                 }
             }
-            // Native SwiftUI safe-area layout owns the status bar. Only the
-            // composer reaches the physical bottom; the keyboard safe area
-            // remains authoritative when editing begins.
-            .ignoresSafeArea(.container, edges: .bottom)
             .background {
                 PPMessagingCanvas(backgroundImage: state.backgroundImage)
                     .ignoresSafeArea()
