@@ -113,6 +113,9 @@ firebase-debug.log
 firestore-debug.log
 firebase-debug.*.log
 
+# Project-local PPAgent skill cache
+.agents/vendor/
+
 # Project-specific
 *.zip
 *.apk
