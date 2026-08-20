@@ -4602,3 +4602,16 @@
 "a11y_command_deck_selected" = "محدد";
 "a11y_command_deck_unread_count" = "%ld غير مقروءة";
 "pp_command_deck_demo_create_description" = "الإضافة إجراء وليست وجهة تنقل.";
+
+// SwiftyMax V6 Settings
+"settings_v6_eyebrow" = "PURE PETS";
+"settings_v6_title" = "الإعدادات";
+"settings_v6_subtitle" = "اضبط Pure Pets بالطريقة التي تناسبك.";
+"settings_location_eyebrow" = "الموقع الذكي";
+"settings_experience_title" = "التجربة";
+"settings_appearance_title" = "المظهر";
+"settings_language_title" = "اللغة";
+"settings_privacy_alerts_title" = "الخصوصية والتنبيهات";
+"settings_data_legal_title" = "البيانات والشروط";
+"settings_logout_subtitle" = "تسجيل الخروج من هذا الجهاز";
+"settings_delete_subtitle" = "حذف حسابك وبياناتك نهائيًا";
