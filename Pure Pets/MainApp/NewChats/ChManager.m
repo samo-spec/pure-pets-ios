@@ -35,6 +35,7 @@ static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue
 #import "UserManager.h"
 #import "UserModel.h"
 #import "PPFirebaseSessionBridge.h"
+#import "PPAlertHelper.h"
 #import "PPInAppChatNotificationPresenter.h"
 
 static BOOL PPChatAlertsAllowed(void) {
@@ -206,28 +207,18 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                                    dispatch_get_main_queue(), ^{
                         UIViewController *retry = [PPOverlayCoordinator pp_resolvedPresenterFrom:controller];
                         if (retry && [PPOverlayCoordinator pp_canPresentFrom:retry]) {
-                            UIAlertController *alert =
-                                [UIAlertController alertControllerWithTitle:(kLang(@"Support") ?: @"Support")
-                                                                    message:(message.length ? message : (kLang(@"Support chat is temporarily unavailable.") ?: @"Support chat is temporarily unavailable."))
-                                                             preferredStyle:UIAlertControllerStyleAlert];
-                            [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"OK") ?: @"OK")
-                                                                      style:UIAlertActionStyleDefault
-                                                                    handler:nil]];
-                            [retry presentViewController:alert animated:YES completion:nil];
+                            [PPAlertHelper showErrorIn:retry
+                                                 title:(kLang(@"Support") ?: @"Support")
+                                              subtitle:(message.length ? message : (kLang(@"Support chat is temporarily unavailable.") ?: @"Support chat is temporarily unavailable."))];
                         }
                     });
                 }
                 return;
             }
 
-            UIAlertController *alert =
-                [UIAlertController alertControllerWithTitle:(kLang(@"Support") ?: @"Support")
-                                                    message:(message.length ? message : (kLang(@"Support chat is temporarily unavailable.") ?: @"Support chat is temporarily unavailable."))
-                                             preferredStyle:UIAlertControllerStyleAlert];
-            [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"OK") ?: @"OK")
-                                                      style:UIAlertActionStyleDefault
-                                                    handler:nil]];
-            [presenter presentViewController:alert animated:YES completion:nil];
+            [PPAlertHelper showErrorIn:presenter
+                                 title:(kLang(@"Support") ?: @"Support")
+                              subtitle:(message.length ? message : (kLang(@"Support chat is temporarily unavailable.") ?: @"Support chat is temporarily unavailable."))];
         };
         tryPresent(0);
     });

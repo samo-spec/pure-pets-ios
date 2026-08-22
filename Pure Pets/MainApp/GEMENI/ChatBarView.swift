@@ -1646,7 +1646,7 @@ struct ChatBarView: View {
     // MARK: - Formatting / Accessibility
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {

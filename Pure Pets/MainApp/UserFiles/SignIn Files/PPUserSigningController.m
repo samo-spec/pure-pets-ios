@@ -1510,7 +1510,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (!configuration) {
         return NO;
     }
-    GIDSignIn.sharedInstance.configuration = configuration;
+    // GIDSignIn.sharedInstance.configuration removed to preserve App Check
     return YES;
 }
 

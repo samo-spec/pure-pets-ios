@@ -571,38 +571,30 @@ UIBarButtonItem *addbuttonBuyer;
 {
     (void)buttonItem;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"form_draft_prompt_title")
-                                                                   message:kLang(@"form_draft_prompt_message")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    alert.view.tintColor = [GM appPrimaryColor];
-
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"form_draft_save_and_close")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction *action) {
+    [PPAlertHelper showThreeActionConfirmationIn:self
+                                           title:kLang(@"form_draft_prompt_title")
+                                        subtitle:kLang(@"form_draft_prompt_message")
+                                   primaryButton:kLang(@"form_draft_save_and_close")
+                                    primaryStyle:UIAlertActionStyleDefault
+                                 secondaryButton:kLang(@"form_draft_discard")
+                                  secondaryStyle:UIAlertActionStyleDestructive
+                                  tertiaryButton:kLang(@"form_draft_keep_editing")
+                                   tertiaryStyle:UIAlertActionStyleCancel
+                                    primaryBlock:^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         [strongSelf syncSelectedBirdsAndPriceRows];
         [strongSelf saveDraftForLater];
         [strongSelf->prefs setInteger:0 forKey:@"FromForm"];
         [strongSelf dismissViewControllerAnimated:YES completion:nil];
-    }]];
-
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"form_draft_discard")
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(__unused UIAlertAction *action) {
+    } secondaryBlock:^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         [strongSelf clearSavedDraft];
         [strongSelf->prefs setInteger:0 forKey:@"FromForm"];
         [strongSelf dismissViewControllerAnimated:YES completion:nil];
-    }]];
-
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"form_draft_keep_editing")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-
-    [self presentViewController:alert animated:YES completion:nil];
+    } tertiaryBlock:^{}];
 }
 
 
@@ -1163,19 +1155,19 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
 - (void)pp_showUploadTimeoutError {
     if (self.presentedViewController) return;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"upload_timeout_title")
-                                                                  message:kLang(@"upload_timeout_message")
-                                                           preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction *action) {
-        [weakSelf sendFormDataToServer];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"upload_timeout_title")
+                             subtitle:kLang(@"upload_timeout_message")
+                        confirmButton:kLang(@"KLang_Retry")
+                         cancelButton:kLang(@"cancel")
+                                 icon:PPSYSImage(@"arrow.clockwise")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf sendFormDataToServer];
+    } cancelBlock:^{}];
 }
 
 - (void)sendFormDataToServer {

@@ -13,6 +13,7 @@
 #import "GM.h"
 #import "PPModernAvatarRenderer.h"
 #import "ImagePicker.h"
+#import "PPAlertHelper.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <AVFoundation/AVFoundation.h>
 @import Firebase;
@@ -438,22 +439,20 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
         return;
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"deleteStore")
-                                                                   message:kLang(@"Are you sure you want to delete this item?")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"delete")
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(__unused UIAlertAction * _Nonnull action) {
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"deleteStore")
+                             subtitle:kLang(@"Are you sure you want to delete this item?")
+                        confirmButton:kLang(@"delete")
+                         cancelButton:kLang(@"Cancel")
+                                 icon:PPSYSImage(@"trash")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
         self.errorLabel.hidden = YES;
         self.onDelete(self);
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:^{}];
 }
 
 - (void)pp_changeMediaTapped

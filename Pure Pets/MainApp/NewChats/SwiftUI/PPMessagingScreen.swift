@@ -1867,7 +1867,7 @@ private final class PPMessagingScreenState: ObservableObject {
         let trimmedTitle = ad.adTitle?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let title = trimmedTitle.isEmpty
-            ? NSLocalizedString("pet_ad_viewer_title_fallback", comment: "")
+            ? (Language.get("pet_ad_viewer_title_fallback", alter: "pet_ad_viewer_title_fallback") ?? NSLocalizedString("pet_ad_viewer_title_fallback", comment: ""))
             : trimmedTitle
         let price = PPPetAdViewerLegacyBridge.formattedPrice(for: ad)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1904,12 +1904,12 @@ private final class PPMessagingScreenState: ObservableObject {
         composerReplyMessageID = message.id
 
         let senderName = message.isOutgoing
-            ? NSLocalizedString("chat_reply_sender_you", comment: "")
+            ? (Language.get("chat_reply_sender_you", alter: "chat_reply_sender_you") ?? NSLocalizedString("chat_reply_sender_you", comment: ""))
             : (conversationName.isEmpty
-                ? NSLocalizedString("Chat", comment: "")
+                ? (Language.get("Chat", alter: "Chat") ?? NSLocalizedString("Chat", comment: ""))
                 : conversationName)
         composerState.replyTitle = String(
-            format: NSLocalizedString("chat_replying_to_format", comment: ""),
+            format: (Language.get("chat_replying_to_format", alter: "chat_replying_to_format") ?? NSLocalizedString("chat_replying_to_format", comment: "")),
             senderName
         )
         composerState.replySubtitle = replyPreviewText(for: message)
@@ -2178,25 +2178,25 @@ private final class PPMessagingScreenState: ObservableObject {
 
     private func replyPreviewText(for message: PPMessagingMessageSnapshot) -> String {
         if message.isDeleted {
-            return NSLocalizedString("chat_message_unsent", comment: "")
+            return (Language.get("chat_message_unsent", alter: "chat_message_unsent") ?? NSLocalizedString("chat_message_unsent", comment: ""))
         }
 
         switch message.kind {
         case "image":
-            return NSLocalizedString("chat_reply_image", comment: "")
+            return (Language.get("chat_reply_image", alter: "chat_reply_image") ?? NSLocalizedString("chat_reply_image", comment: ""))
         case "video":
-            return NSLocalizedString("chat_reply_video", comment: "")
+            return (Language.get("chat_reply_video", alter: "chat_reply_video") ?? NSLocalizedString("chat_reply_video", comment: ""))
         case "audio":
-            return NSLocalizedString("chat_reply_audio", comment: "")
+            return (Language.get("chat_reply_audio", alter: "chat_reply_audio") ?? NSLocalizedString("chat_reply_audio", comment: ""))
         case "sticker":
-            return NSLocalizedString("chat_reply_sticker", comment: "")
+            return (Language.get("chat_reply_sticker", alter: "chat_reply_sticker") ?? NSLocalizedString("chat_reply_sticker", comment: ""))
         case "text":
             let text = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
             return text.isEmpty
-                ? NSLocalizedString("chat_reply_unavailable", comment: "")
+                ? (Language.get("chat_reply_unavailable", alter: "chat_reply_unavailable") ?? NSLocalizedString("chat_reply_unavailable", comment: ""))
                 : String(text.prefix(240))
         default:
-            return NSLocalizedString("chat_reply_unavailable", comment: "")
+            return (Language.get("chat_reply_unavailable", alter: "chat_reply_unavailable") ?? NSLocalizedString("chat_reply_unavailable", comment: ""))
         }
     }
 }
@@ -2486,7 +2486,7 @@ private enum PPMessagingSupportContextFormatter {
 
     static func detailsMessage(status: String) -> String {
         String(
-            format: NSLocalizedString("chat_support_context_detail_format", comment: ""),
+            format: (Language.get("chat_support_context_detail_format", alter: "chat_support_context_detail_format") ?? NSLocalizedString("chat_support_context_detail_format", comment: "")),
             statusText(status)
         )
     }
@@ -2890,13 +2890,14 @@ private struct PPMessagingScreen: View {
                 .padding(.top, 8)
                 .padding(
                     .bottom,
-                    state.keyboardIsPresented ? 8 : 10
+                    state.keyboardIsPresented ? 8 : 22
                 )
                 .animation(reduceMotion ? nil : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22), value: state.keyboardIsPresented)
                 .background {
                     PPMessagingComposerBackdrop()
                 }
             }
+            .ignoresSafeArea(.container, edges: .bottom)
             .background {
                 PPMessagingCanvas(backgroundImage: state.backgroundImage)
                     .ignoresSafeArea()
@@ -3538,7 +3539,7 @@ private struct PPMessagingScreen: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4001,7 +4002,7 @@ private struct PPMessagingHeader: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4015,7 +4016,7 @@ private struct PPMessagingAvatar: View {
         ZStack(alignment: .bottomTrailing) {
             Group {
                 if usesSupportLogo {
-                    Image("PPLogo")
+                    Image("tintLogo")
                         .resizable()
                         .scaledToFit()
                         .padding(7)
@@ -4127,7 +4128,7 @@ private struct PPMessagingConnectionRibbon: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4224,7 +4225,7 @@ private struct PPMessagingLoadingState: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4266,7 +4267,7 @@ private struct PPMessagingEmptyState: View {
                     localized("chat_empty_thread_action"),
                     systemImage: "square.and.pencil"
                 )
-                .font(.custom("Beiruti-SemiBold", size: 14.5, relativeTo: .body))
+                .font(Font.ppBeirutiSemiBold(size: 14.5, relativeTo: .body))
                 .padding(.horizontal, 16)
                 .frame(minHeight: 44)
                 .background(
@@ -4288,7 +4289,7 @@ private struct PPMessagingEmptyState: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4361,7 +4362,7 @@ private struct PPMessagingOfflineState: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4440,9 +4441,9 @@ private enum PPMessagingAdapter {
             in: .whitespacesAndNewlines
         )
         let displayName = snapshot.isOutgoing
-            ? NSLocalizedString("chat_reply_sender_you", comment: "")
+            ? (Language.get("chat_reply_sender_you", alter: "chat_reply_sender_you") ?? NSLocalizedString("chat_reply_sender_you", comment: ""))
             : (trimmedConversationName.isEmpty
-                ? NSLocalizedString("Chat", comment: "")
+                ? (Language.get("Chat", alter: "Chat") ?? NSLocalizedString("Chat", comment: ""))
                 : trimmedConversationName)
         let initials: String = {
             let parts = displayName.split(separator: " ").prefix(2)
@@ -4482,7 +4483,7 @@ private enum PPMessagingAdapter {
                     case "audio": preview = .voice
                     case "sticker":
                         preview = .sticker(
-                            description: NSLocalizedString("chat_reply_sticker", comment: "")
+                            description: (Language.get("chat_reply_sticker", alter: "chat_reply_sticker") ?? NSLocalizedString("chat_reply_sticker", comment: ""))
                         )
                     default: preview = .text(src.text)
                     }
@@ -4494,7 +4495,7 @@ private enum PPMessagingAdapter {
                 messageID: MessageID(deterministicUUID(from: replyID)),
                 senderDisplayName: replySource.map { source in
                     source.isOutgoing
-                        ? NSLocalizedString("chat_reply_sender_you", comment: "")
+                        ? (Language.get("chat_reply_sender_you", alter: "chat_reply_sender_you") ?? NSLocalizedString("chat_reply_sender_you", comment: ""))
                         : displayNameForIncomingReply(conversationName: conversationName)
                 } ?? displayNameForIncomingReply(conversationName: conversationName),
                 preview: preview
@@ -4517,7 +4518,7 @@ private enum PPMessagingAdapter {
         conversationName: String
     ) -> String {
         let trimmed = conversationName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? NSLocalizedString("Chat", comment: "") : trimmed
+        return trimmed.isEmpty ? (Language.get("Chat", alter: "Chat") ?? NSLocalizedString("Chat", comment: "")) : trimmed
     }
 
     private static func outgoingState(from snapshot: PPMessagingMessageSnapshot) -> OutgoingDeliveryState {
@@ -4558,7 +4559,7 @@ private enum PPMessagingAdapter {
                     width: max(snapshot.mediaWidth, 200),
                     height: max(snapshot.mediaHeight, 200)
                 ),
-                accessibilityDescription: NSLocalizedString("chat_reply_image", comment: "")
+                accessibilityDescription: (Language.get("chat_reply_image", alter: "chat_reply_image") ?? NSLocalizedString("chat_reply_image", comment: ""))
             ))
 
         case "video":
@@ -4570,7 +4571,7 @@ private enum PPMessagingAdapter {
                     width: max(snapshot.mediaWidth, 200),
                     height: max(snapshot.mediaHeight, 200)
                 ),
-                accessibilityDescription: NSLocalizedString("chat_reply_video", comment: "")
+                accessibilityDescription: (Language.get("chat_reply_video", alter: "chat_reply_video") ?? NSLocalizedString("chat_reply_video", comment: ""))
             ))
 
         case "audio":
@@ -4585,7 +4586,7 @@ private enum PPMessagingAdapter {
 
         case "sticker":
             // swiftlint:disable:next force_try
-            let desc = try! NonEmptyText(NSLocalizedString("chat_reply_sticker", comment: ""))
+            let desc = try! NonEmptyText((Language.get("chat_reply_sticker", alter: "chat_reply_sticker") ?? NSLocalizedString("chat_reply_sticker", comment: "")))
             return .sticker(StickerPayload(
                 assetURL: snapshot.mediaURL,
                 fallbackEmoji: "🐾",
@@ -4659,7 +4660,7 @@ private struct PPMessagingReplyPreview: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4807,7 +4808,7 @@ private struct PPMessagingTypingRow: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4890,7 +4891,7 @@ private struct PPMessagingDateSeparator: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4926,7 +4927,7 @@ private struct PPMessagingUnreadSeparator: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -4998,7 +4999,7 @@ private struct PPMessagingLatestButton: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 
@@ -5099,7 +5100,7 @@ private struct PPMessagingMediaViewer: View {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, comment: "")
+        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
 }
 

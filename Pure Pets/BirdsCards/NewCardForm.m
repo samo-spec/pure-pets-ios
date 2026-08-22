@@ -2968,37 +2968,29 @@ UIBarButtonItem *addbutton;
 - (void)presentUnsavedChangesPromptFromBarButtonItem:(UIBarButtonItem *)buttonItem {
     (void)buttonItem;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"form_draft_prompt_title")
-                                                                   message:kLang(@"form_draft_prompt_message")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    alert.view.tintColor = [GM appPrimaryColor];
-
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"form_draft_save_and_close")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction *action) {
+    [PPAlertHelper showThreeActionConfirmationIn:self
+                                           title:kLang(@"form_draft_prompt_title")
+                                        subtitle:kLang(@"form_draft_prompt_message")
+                                   primaryButton:kLang(@"form_draft_save_and_close")
+                                    primaryStyle:UIAlertActionStyleDefault
+                                 secondaryButton:kLang(@"form_draft_discard")
+                                  secondaryStyle:UIAlertActionStyleDestructive
+                                  tertiaryButton:kLang(@"form_draft_keep_editing")
+                                   tertiaryStyle:UIAlertActionStyleCancel
+                                    primaryBlock:^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         [strongSelf saveDraftForLater];
         [strongSelf.prefs setInteger:0 forKey:@"FromForm"];
         [strongSelf closeSelfController];
-    }]];
-
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"form_draft_discard")
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(__unused UIAlertAction *action) {
+    } secondaryBlock:^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         [strongSelf clearSavedDraft];
         [strongSelf.prefs setInteger:0 forKey:@"FromForm"];
         [strongSelf closeSelfController];
-    }]];
-
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"form_draft_keep_editing")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-
-    [self presentViewController:alert animated:YES completion:nil];
+    } tertiaryBlock:^{}];
 }
 
 // =============================================================================

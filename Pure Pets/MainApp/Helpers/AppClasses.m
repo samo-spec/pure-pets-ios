@@ -6,6 +6,7 @@
 //
 
 #import "AppClasses.h"
+#import "PPAlertHelper.h"
 @import Firebase;
  @import FirebaseStorage;
  #if __has_include(<SSZipArchive/SSZipArchive.h>)
@@ -299,12 +300,9 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
             }
         } else if (viewController) {
             // Device can't make calls or simulator
-            UIAlertController *alert = [UIAlertController
-                                       alertControllerWithTitle:@"Error"
-                                       message:@"Your device cannot make phone calls"
-                                       preferredStyle:UIAlertControllerStyleAlert];
-            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-            [viewController presentViewController:alert animated:YES completion:nil];
+            [PPAlertHelper showErrorIn:viewController
+                                 title:kLang(@"Error")
+                              subtitle:kLang(@"Your device cannot make phone calls")];
         }
     });
 }

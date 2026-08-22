@@ -42,51 +42,64 @@ struct PPAccessoryRemoteImageView: View {
     var body: some View {
         ZStack {
             if isAvatar {
-                PPAccessoryPalette.brand.opacity(0.12)
+                PPAccessoryPalette.appBackground
             } else {
                 PPAccessorySubviewBackground.mediaFill
             }
 
-            AppRemoteImage(
-                urlString: urlString,
-                cacheKey: cacheKey,
-                displaySize: displaySize,
-                contentMode: isAvatar ? .fill : contentMode,
-                showsRetryAction: !isAvatar,
-                onImageLoaded: onImageLoaded
-            ) {
-                ZStack {
-                    placeholder
-                    if let blurHashImage {
-                        Image(uiImage: blurHashImage)
-                            .resizable()
-                            .aspectRatio(
-                                contentMode: isAvatar ? .fill : contentMode
-                            )
-                    }
-                    if !isAvatar {
-                        ProgressView()
-                            .tint(PPAccessoryPalette.accent)
-                            .accessibilityLabel(
-                                PPAccessoryViewerL10n.text(
-                                    "accessory_view_loading_image"
-                                )
-                            )
-                    }
-                }
-            } failurePlaceholder: {
-                if isAvatar {
-                    avatarFallback
+            if urlString == "purepets://support-logo" {
+                if let image = UIImage(named: "newlogo") {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: isAvatar ? .fill : contentMode)
                 } else {
-                    VStack(spacing: 10) {
-                        Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 26, weight: .semibold))
-                        Text(PPAccessoryViewerL10n.text("Retry"))
-                            .font(PPAccessoryTypography.calloutBold)
+                    Image(systemName: "person.crop.circle.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: isAvatar ? .fill : contentMode)
+                        .foregroundStyle(Color.ppPrimary)
+                }
+            } else {
+                AppRemoteImage(
+                    urlString: urlString,
+                    cacheKey: cacheKey,
+                    displaySize: displaySize,
+                    contentMode: isAvatar ? .fill : contentMode,
+                    showsRetryAction: !isAvatar,
+                    onImageLoaded: onImageLoaded
+                ) {
+                    ZStack {
+                        placeholder
+                        if let blurHashImage {
+                            Image(uiImage: blurHashImage)
+                                .resizable()
+                                .aspectRatio(
+                                    contentMode: isAvatar ? .fill : contentMode
+                                )
+                        }
+                        if !isAvatar {
+                            ProgressView()
+                                .tint(PPAccessoryPalette.accent)
+                                .accessibilityLabel(
+                                    PPAccessoryViewerL10n.text(
+                                        "accessory_view_loading_image"
+                                    )
+                                )
+                        }
                     }
-                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
+                } failurePlaceholder: {
+                    if isAvatar {
+                        avatarFallback
+                    } else {
+                        VStack(spacing: 10) {
+                            Image(systemName: "photo.badge.exclamationmark")
+                                .font(.system(size: 26, weight: .semibold))
+                            Text(PPAccessoryViewerL10n.text("Retry"))
+                                .font(PPAccessoryTypography.calloutBold)
+                        }
+                        .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                    }
                 }
             }
         }
@@ -119,8 +132,8 @@ struct PPAccessoryRemoteImageView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    PPAccessoryPalette.brand.opacity(0.18),
-                    PPAccessoryPalette.accent.opacity(0.24)
+                    Color.ppElevatedSurface,
+                    PPAccessoryPalette.appBackground
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

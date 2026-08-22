@@ -3180,21 +3180,17 @@ shouldChangeCharactersInRange:(NSRange)range
         return;
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"DeleteAddress") ?: @"Delete address"
-                                                                   message:kLang(@"DeleteConfirmMessage") ?: @"Are you sure you want to delete this address?"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") ?: @"Cancel"
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Delete") ?: @"Delete"
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(__unused UIAlertAction *action) {
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"DeleteAddress") ?: @"Delete address"
+                             subtitle:kLang(@"DeleteConfirmMessage") ?: @"Are you sure you want to delete this address?"
+                        confirmButton:kLang(@"Delete") ?: @"Delete"
+                         cancelButton:kLang(@"Cancel") ?: @"Cancel"
+                                 icon:PPSYSImage(@"trash")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
-            return;
-        }
+        if (!self) return;
 
         [self pp_setSavingState:YES];
         [PPHUD showLoading];
@@ -3217,9 +3213,7 @@ shouldChangeCharactersInRange:(NSRange)range
                 [self pp_closeAfterPersistence];
             });
         }];
-    }]];
-
-    [self presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:^{}];
 }
 
 #pragma mark - Location
@@ -3312,21 +3306,19 @@ shouldChangeCharactersInRange:(NSRange)range
     }
     self.didShowLocationPermissionAlert = YES;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"pp_perm_location_title")
-                                                                   message:kLang(@"pp_perm_location_denied_message")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_open_settings")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction *action) {
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"pp_perm_location_title")
+                             subtitle:kLang(@"pp_perm_location_denied_message")
+                        confirmButton:kLang(@"pp_perm_open_settings")
+                         cancelButton:kLang(@"pp_perm_not_now")
+                                 icon:PPSYSImage(@"location.slash")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         NSURL *settingsURL = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
         if ([[UIApplication sharedApplication] canOpenURL:settingsURL]) {
             [[UIApplication sharedApplication] openURL:settingsURL options:@{} completionHandler:nil];
         }
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_not_now")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:^{}];
 }
 
 #pragma mark - Trait Collection

@@ -19,6 +19,7 @@
 #import "Language.h"
 #import "PPFirebaseSessionBridge.h"
 #import "PPAuthScaffoldView.h"
+#import "PPAlertHelper.h"
 
 @import FirebaseAuth;
 @import FirebaseStorage;
@@ -1808,13 +1809,9 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     NSString *safeMessage = message.length > 0
         ? [PPFirebaseSessionBridge publicMessageForText:message fallbackKey:@"SomethingWentWrong"]
         : message;
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title ?: @""
-                                                                   message:safeMessage ?: @""
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"ok_button")
-                                              style:UIAlertActionStyleDefault
-                                            handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showErrorIn:self
+                         title:title ?: kLang(@"Error")
+                      subtitle:safeMessage ?: @""];
 }
 
 #pragma mark - Avatar Picker

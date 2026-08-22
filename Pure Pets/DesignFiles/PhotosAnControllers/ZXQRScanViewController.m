@@ -7,6 +7,7 @@
 //
 
 #import "ZXQRScanViewController.h"
+#import "PPAlertHelper.h"
 #import <AVFoundation/AVFoundation.h>
 #import "PPPermissionHelper.h"
 
@@ -256,18 +257,33 @@
                     message:(NSString *)msg
                 buttonTexts:(NSArray *)arrTexts
                buttonAction:(void (^)(int buttonIndex))buttonAction{
-    if (arrTexts && arrTexts.count) {
-        UIAlertController * alert = [UIAlertController alertControllerWithTitle:title ? title : @"hint" message:msg preferredStyle:UIAlertControllerStyleAlert];
-        int index = 0;
-        for (NSString * strText in arrTexts) {
-            [alert addAction:[UIAlertAction actionWithTitle:strText ? strText :@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-                if (buttonAction) {
-                    buttonAction(index);
-                }
-            }]];
-            index++;
-        }
-        [self presentViewController:alert animated:true completion:nil];
+    if (arrTexts && arrTexts.count > 1) {
+        NSString *primary = arrTexts.firstObject ?: @"OK";
+        NSString *secondary = arrTexts.count > 1 ? arrTexts[1] : @"Cancel";
+        [PPAlertHelper showConfirmationIn:self
+                                    title:title ?: @"hint"
+                                 subtitle:msg
+                            confirmButton:primary
+                             cancelButton:secondary
+                                     icon:nil
+                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+            if (buttonAction) {
+                buttonAction(didConfirm ? 0 : 1);
+            }
+        } cancelBlock:^{
+            if (buttonAction) {
+                buttonAction(1);
+            }
+        }];
+    } else {
+        [PPAlertHelper showInfoIn:self
+                            title:title ?: @"hint"
+                         subtitle:msg
+                       completion:^{
+            if (buttonAction) {
+                buttonAction(0);
+            }
+        }];
     }
 }
 

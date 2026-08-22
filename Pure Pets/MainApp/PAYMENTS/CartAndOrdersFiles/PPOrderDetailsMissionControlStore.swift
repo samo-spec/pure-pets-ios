@@ -14,7 +14,15 @@ import UIKit
 final class PPOrderDetailsMissionControlStore: ObservableObject {
     @Published private(set) var state: PPOrderMissionState = .empty
     @Published var activeSheet: PPOrderMissionSheet?
-    @Published var notice: PPOrderMissionNotice?
+    @Published var notice: PPOrderMissionNotice? {
+        didSet {
+            guard let notice else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.presentPPAlert(for: notice)
+            }
+        }
+    }
     @Published private(set) var isCommandRunning = false
     @Published private(set) var addresses: [PPOrderMissionAddress] = []
     @Published private(set) var addressesLoading = false
@@ -576,6 +584,24 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
         guard !request.requestID.isEmpty else { return false }
         presentRequest(request)
         return true
+    }
+
+    private func presentPPAlert(for notice: PPOrderMissionNotice) {
+        let vc = self.presenter ?? AppManager.sharedInstance().topViewController()
+        if notice.isError {
+            PPAlertHelper.showFail(
+                in: vc,
+                title: notice.title,
+                subtitle: notice.message.isEmpty ? nil : notice.message,
+                completion: nil
+            )
+        } else {
+            PPAlertHelper.showInfo(
+                in: vc,
+                title: notice.title,
+                subtitle: notice.message.isEmpty ? nil : notice.message
+            )
+        }
     }
 
     nonisolated private static func dictionary(

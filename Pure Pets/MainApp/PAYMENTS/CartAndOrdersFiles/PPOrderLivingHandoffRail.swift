@@ -53,6 +53,7 @@ struct PPOrderLivingHandoffRail: View {
     let fallbackStatusSymbol: String
     let accent: Color
     let presentation: Presentation
+    let showsFooter: Bool
     private let layoutDirectionOverride: LayoutDirection?
 
     /// Optional title resolver. Use this to keep localization owned by the local app.
@@ -70,6 +71,7 @@ struct PPOrderLivingHandoffRail: View {
         accent: Color,
         isRightToLeft: Bool? = nil,
         presentation: Presentation = .hero,
+        showsFooter: Bool = true,
         titleForStep: ((String, String) -> String)? = nil
     ) {
         self.statusKey = statusKey
@@ -79,6 +81,7 @@ struct PPOrderLivingHandoffRail: View {
         self.fallbackStatusSymbol = fallbackStatusSymbol
         self.accent = accent
         self.presentation = presentation
+        self.showsFooter = showsFooter
         self.layoutDirectionOverride = isRightToLeft.map {
             $0 ? .rightToLeft : .leftToRight
         }
@@ -307,7 +310,9 @@ struct PPOrderLivingHandoffRail: View {
             }
             .frame(height: presentation.railHeight)
 
-            footer(currentIndex: currentIndex)
+            if showsFooter {
+                footer(currentIndex: currentIndex)
+            }
         }
         .animation(
             reduceMotion

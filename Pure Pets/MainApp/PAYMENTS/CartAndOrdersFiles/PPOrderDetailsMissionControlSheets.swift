@@ -41,22 +41,6 @@ struct PPOrderMissionSheetRoot: View {
             store.isRightToLeft ? .rightToLeft : .leftToRight
         )
         .environment(\.locale, Locale(identifier: store.languageCode))
-        .alert(item: sheetNotice) { notice in
-            Alert(
-                title: Text(notice.title),
-                message: Text(notice.message),
-                dismissButton: .default(Text(PPOrderMissionText("OK")))
-            )
-        }
-    }
-
-    private var sheetNotice: Binding<PPOrderMissionNotice?> {
-        Binding(
-            get: { store.activeSheet == nil ? nil : store.notice },
-            set: { newValue in
-                if newValue == nil { store.notice = nil }
-            }
-        )
     }
 }
 

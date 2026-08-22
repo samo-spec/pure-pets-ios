@@ -17,6 +17,7 @@
 #import "PPChatsFunc.h"
 #import "PPSelectOptionViewController.h"
 #import "PPStoriesViewController.h"
+#import "PPAlertHelper.h"
 
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <UIKit/UIKit.h>
@@ -1609,17 +1610,15 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:kLang(@"chat_delete_thread_title")
-                                            message:kLang(@"chat_delete_thread_message")
-                                     preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel")
-                                             style:UIAlertActionStyleCancel
-                                           handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Delete")
-                                             style:UIAlertActionStyleDestructive
-                                           handler:^(__unused UIAlertAction *action) {
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"chat_delete_thread_title")
+                             subtitle:kLang(@"chat_delete_thread_message")
+                        confirmButton:kLang(@"Delete")
+                         cancelButton:kLang(@"Cancel")
+                                 icon:PPSYSImage(@"trash")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) {
             return;
@@ -1629,8 +1628,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
             [self pp_deleteThreadAtIndexPath:currentIndexPath
                                   completion:^(__unused BOOL finished) {}];
         }
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:^{}];
 }
 
 - (void)pp_deleteThreadAtIndexPath:(NSIndexPath *)indexPath

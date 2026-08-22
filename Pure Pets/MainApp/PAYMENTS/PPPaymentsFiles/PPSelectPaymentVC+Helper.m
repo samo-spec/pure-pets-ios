@@ -11,6 +11,7 @@
 #import "CartViewController.h"
 #import "PPPaymentMethodCell.h"
 #import "PPCommerceFeedbackManager.h"
+#import "PPAlertHelper.h"
 #import <Pure_Pets-Swift.h>
 
 #define PPORDERLog(fmt, ...) NSLog((@"PPBackend > SELECT_PAYMENT : " fmt), ##__VA_ARGS__)
@@ -576,18 +577,10 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 /// Displays success confirmation alert
 - (void)pp_showPaymentSuccessForMethod:(NSString *)methodName {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"payment_success_title")
-                                                                   message:[NSString stringWithFormat:kLang(@"payment_success_message_format"), methodName ?: @""]
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:kLang(@"OK")
-                                                       style:UIAlertActionStyleDefault
-                                                     handler:^(UIAlertAction * _Nonnull action) {
-        NSLog(@"[PPPaymentHelper] Dismissed success alert");
-    }];
-    
-    [alert addAction:okAction];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showSuccessIn:self
+                           title:kLang(@"payment_success_title")
+                        subtitle:[NSString stringWithFormat:kLang(@"payment_success_message_format"), methodName ?: @""]
+                        OKAction:nil];
 }
 
 #pragma mark - Example Integration with PPPaymentTabBar

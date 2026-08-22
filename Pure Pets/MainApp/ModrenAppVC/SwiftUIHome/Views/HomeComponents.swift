@@ -11,6 +11,9 @@ enum HomeVisualTokens {
     static let mediaRowSpacing = PPSpace.md
     static let sectionVerticalSpacing = PPSpace.lg
     static let minimumTouchTarget: CGFloat = 44
+    /// The shared Home marketplace shelf is six points tighter than the
+    /// legacy universal-card footprint.
+    static let universalCardHeight: CGFloat = 310
 
     // Shared surfaces
     static let cardCorner = PPCorner.card
@@ -36,6 +39,9 @@ enum HomeVisualTokens {
     static let productDiscountVisualScale: CGFloat = 0.92
     static let productTitleToPriceSpacing = PPSpace.xs + PPSpace.xxs
     static let productPriceRowSpacing = PPSpace.xs + PPSpace.xxs
+    /// The Home cart surface is visually lighter while non-commerce actions
+    /// keep their existing action geometry.
+    static let universalCartActionVisualHeight: CGFloat = minimumTouchTarget - PPSpace.xxs
     static let advertisementActionVisualHeight: CGFloat = 40
     static let primaryActionCorner = PPCorner.small + PPSpace.xs
     static let advertisementActionCorner = primaryActionCorner
@@ -952,34 +958,15 @@ private struct HomePetIdentityPill: View {
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(alignment: .center, spacing: PPSpace.sm) {
+            HStack(alignment: .center, spacing: PPSpace.sm + 2) {
                 portrait
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(displayName)
-                        .font(HomeFont.headline())
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
-                        .minimumScaleFactor(0.82)
-
-                    if let petContext {
-                        Text(petContext)
-                            .font(HomeFont.footnote())
-                            .foregroundStyle(Color.ppTextSecondary)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(
-                                dynamicTypeSize.isAccessibilitySize ? 3 : 1
-                            )
-                            .minimumScaleFactor(0.82)
-                    }
-
-                }
-                .layoutPriority(1)
+                nameAndMetadata
+                Spacer(minLength: 0)
+                selectionIndicator
             }
-            .padding(.leading, PPSpace.sm)
+            .padding(.leading, PPSpace.sm + 2)
             .padding(.trailing, PPSpace.md)
-            .padding(.vertical, PPSpace.sm)
+            .padding(.vertical, PPSpace.sm + 2)
             .frame(
                 minWidth: minimumWidth,
                 maxWidth: maximumWidth,
@@ -992,12 +979,6 @@ private struct HomePetIdentityPill: View {
             .overlay {
                 shape.strokeBorder(borderColor, lineWidth: borderWidth)
             }
-            .overlay(alignment: .topTrailing) {
-                if pet.isDefault && !selected {
-                    defaultDot
-                        .padding(8)
-                }
-            }
             .overlay {
                 if isFocused {
                     shape.strokeBorder(
@@ -1006,6 +987,14 @@ private struct HomePetIdentityPill: View {
                     )
                 }
             }
+            .shadow(
+                color: selected
+                    ? Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.07)
+                    : Color.black.opacity(colorScheme == .dark ? 0.12 : 0.03),
+                radius: selected ? 8 : 4,
+                x: 0,
+                y: selected ? 3 : 2
+            )
             .contentShape(shape)
         }
         .buttonStyle(HomePetIdentityPressStyle())
@@ -1022,13 +1011,70 @@ private struct HomePetIdentityPill: View {
         .animation(selectionAnimation, value: selected)
     }
 
+    @ViewBuilder
+    private var nameAndMetadata: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: PPSpace.xs) {
+                Text(displayName)
+                    .font(HomeFont.headline())
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+                    .minimumScaleFactor(0.82)
+
+                if pet.isDefault {
+                    defaultTag
+                }
+            }
+
+            if let petContext {
+                Text(petContext)
+                    .font(HomeFont.footnote())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(
+                        dynamicTypeSize.isAccessibilitySize ? 3 : 1
+                    )
+                    .minimumScaleFactor(0.82)
+            }
+        }
+        .layoutPriority(1)
+    }
+
+    private var defaultTag: some View {
+        let tagColor = selected ? Color.ppPrimary : Color.ppTextTertiary
+        let tagBg = (selected ? Color.ppPrimary : Color.ppBorder).opacity(0.12)
+        return Text(HomeModelAdapter.localized("default", fallback: "Default"))
+            .font(HomeFont.bold(10))
+            .foregroundStyle(tagColor)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1.5)
+            .background(tagBg, in: Capsule())
+    }
+
+    private var selectionIndicator: some View {
+        let shadowColor = Color.ppPrimary.opacity(colorScheme == .dark ? 0.40 : 0.25)
+        return ZStack {
+            Circle()
+                .fill(Color.ppPrimary)
+                .frame(width: 22, height: 22)
+            Image(systemName: "checkmark")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .shadow(color: shadowColor, radius: 4, x: 0, y: 2)
+        .scaleEffect(selected ? 1 : 0.001)
+        .opacity(selected ? 1 : 0)
+        .animation(selectionAnimation, value: selected)
+    }
+
     private var portrait: some View {
         ZStack {
             Circle()
                 .fill(
                     selected
                         ? Color.ppPrimary.opacity(
-                            colorScheme == .dark ? 0.18 : 0.13
+                            colorScheme == .dark ? 0.16 : 0.10
                         )
                         : Color.ppSecondarySurface
                 )
@@ -1045,14 +1091,14 @@ private struct HomePetIdentityPill: View {
             Circle().strokeBorder(
                 selected
                     ? Color.ppPrimary.opacity(
-                        contrast == .increased ? 1 : 0.90
+                        contrast == .increased ? 1 : 0.85
                     )
                     : Color.ppBorder.opacity(
-                        contrast == .increased ? 0.70 : 0.42
+                        contrast == .increased ? 0.70 : 0.40
                     ),
                 lineWidth: selected
-                    ? (contrast == .increased ? 2 : 1.2)
-                    : (contrast == .increased ? 1.4 : 0.8)
+                    ? (contrast == .increased ? 2 : 1.5)
+                    : (contrast == .increased ? 1.4 : 0.75)
             )
         }
         .accessibilityHidden(true)
@@ -1077,13 +1123,6 @@ private struct HomePetIdentityPill: View {
                 accent: selected ? Color.ppPrimary : Color.ppTextTertiary
             )
         }
-    }
-
-    private var defaultDot: some View {
-        Circle()
-            .fill(Color.ppPrimary.opacity(0.72))
-            .frame(width: 7, height: 7)
-            .accessibilityHidden(true)
     }
 
     private var displayName: String {
@@ -1133,23 +1172,21 @@ private struct HomePetIdentityPill: View {
 
     private var surfaceBackground: some ShapeStyle {
         selected
-            ? AnyShapeStyle(
-                Color.ppPrimary.opacity(colorScheme == .dark ? 0.20 : 0.10)
-            )
-            : AnyShapeStyle(Color.ppSurfaceRaised)
+            ? AnyShapeStyle(Color.ppForeground)
+            : AnyShapeStyle(Color.ppForeground)
     }
 
     private var borderColor: Color {
         selected
-            ? Color.ppPrimary.opacity(contrast == .increased ? 1 : 0.72)
+            ? Color.ppPrimary.opacity(contrast == .increased ? 1 : 0.48)
             : (contrast == .increased
                 ? Color.ppTextPrimary.opacity(0.68)
-                : Color.ppBorder.opacity(0.62))
+                : Color.ppBorder.opacity(0.50))
     }
 
     private var borderWidth: CGFloat {
-        selected ? (contrast == .increased ? 2 : 1.2) :
-            (contrast == .increased ? 1.4 : 0.7)
+        selected ? (contrast == .increased ? 2 : 1.25) :
+            (contrast == .increased ? 1.4 : 0.75)
     }
 
     private var portraitDiameter: CGFloat {
@@ -3480,6 +3517,120 @@ private struct HomeMainKindGround: View {
     }
 }
 
+/// An ultra-premium semi-circle glass plate sitting below the category image on selected state.
+/// Mixed with the MainKind accent color with a crystalline specular highlight.
+@available(iOS 15.0, *)
+private struct HomeMainKindSemiCirclePlate: View {
+    let diameter: CGFloat
+    let accent: Color
+    let selected: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        SemiCirclePlateShape()
+            .fill(plateFill)
+            .overlay(
+                SemiCirclePlateShape()
+                    .strokeBorder(borderStroke, lineWidth: contrast == .increased ? 1.5 : 0.75)
+            )
+            .overlay(alignment: .top) {
+                Capsule()
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.70 : 0.85))
+                    .frame(width: plateWidth * 0.85, height: 1.0)
+                    .offset(y: 0.5)
+            }
+            .frame(width: plateWidth, height: plateHeight)
+            .shadow(
+                color: selected ? accent.opacity(colorScheme == .dark ? 0.35 : 0.20) : .clear,
+                radius: 6,
+                x: 0,
+                y: 3
+            )
+            .opacity(selected ? 1 : 0)
+            .scaleEffect(selected ? 1 : 0.65)
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.75),
+                value: selected
+            )
+    }
+
+    private var plateWidth: CGFloat {
+        min(56, max(44, diameter * 0.96))
+    }
+
+    private var plateHeight: CGFloat {
+        18
+    }
+
+    private var plateFill: some ShapeStyle {
+        if reduceTransparency {
+            return AnyShapeStyle(accent.opacity(colorScheme == .dark ? 0.32 : 0.22))
+        }
+        return AnyShapeStyle(
+            LinearGradient(
+                colors: [
+                    accent.opacity(contrast == .increased ? 0.48 : (colorScheme == .dark ? 0.36 : 0.26)),
+                    accent.opacity(contrast == .increased ? 0.32 : (colorScheme == .dark ? 0.22 : 0.14)),
+                    accent.opacity(contrast == .increased ? 0.18 : (colorScheme == .dark ? 0.10 : 0.05))
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    private var borderStroke: Color {
+        accent.opacity(contrast == .increased ? 0.85 : (colorScheme == .dark ? 0.45 : 0.32))
+    }
+}
+
+/// Custom semi-circle plate shape with flat top and curved bottom arc.
+@available(iOS 15.0, *)
+private struct SemiCirclePlateShape: InsettableShape {
+    var insetAmount: CGFloat = 0
+
+    func inset(by amount: CGFloat) -> some InsettableShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let insetRect = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        var path = Path()
+        let w = insetRect.width
+        let h = insetRect.height
+        let cornerRadius: CGFloat = max(1.0, 3.0 - insetAmount)
+
+        path.move(to: CGPoint(x: insetRect.minX + cornerRadius, y: insetRect.minY))
+        path.addLine(to: CGPoint(x: insetRect.maxX - cornerRadius, y: insetRect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: insetRect.maxX, y: insetRect.minY + cornerRadius),
+            control: CGPoint(x: insetRect.maxX, y: insetRect.minY)
+        )
+        path.addCurve(
+            to: CGPoint(x: insetRect.midX, y: insetRect.maxY),
+            control1: CGPoint(x: insetRect.maxX, y: insetRect.minY + (h * 0.65)),
+            control2: CGPoint(x: insetRect.minX + (w * 0.82), y: insetRect.maxY)
+        )
+        path.addCurve(
+            to: CGPoint(x: insetRect.minX, y: insetRect.minY + cornerRadius),
+            control1: CGPoint(x: insetRect.minX + (w * 0.18), y: insetRect.maxY),
+            control2: CGPoint(x: insetRect.minX, y: insetRect.minY + (h * 0.65))
+        )
+        path.addQuadCurve(
+            to: CGPoint(x: insetRect.minX + cornerRadius, y: insetRect.minY),
+            control: CGPoint(x: insetRect.minX, y: insetRect.minY)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
 /// The lamp. A cone of the species' accent pouring in from just above the
 /// card's top edge: the single unmistakable signal that this habitat scopes
 /// Home. It stays in the tree at zero opacity while idle so the light fades
@@ -3901,17 +4052,26 @@ private struct HomeMainKindHabitatCell: View {
         VStack(spacing: 0) {
             Spacer(minLength: PPSpace.xs)
 
-            HomeMainKindDisc(
-                localImage: category?.localImage,
-                imageURL: category?.imageURL,
-                cacheKey: cacheKey,
-                isAllOption: isAllOption,
-                accent: Color(uiColor: accentUIColor),
-                accentUIColor: accentUIColor,
-                diameter: geometry.discDiameter,
-                artworkSide: geometry.artworkSide,
-                selected: selected
-            )
+            ZStack(alignment: .bottom) {
+                HomeMainKindDisc(
+                    localImage: category?.localImage,
+                    imageURL: category?.imageURL,
+                    cacheKey: cacheKey,
+                    isAllOption: isAllOption,
+                    accent: Color(uiColor: accentUIColor),
+                    accentUIColor: accentUIColor,
+                    diameter: geometry.discDiameter,
+                    artworkSide: geometry.artworkSide,
+                    selected: selected
+                )
+
+                HomeMainKindSemiCirclePlate(
+                    diameter: geometry.discDiameter,
+                    accent: Color(uiColor: accentUIColor),
+                    selected: selected
+                )
+                .offset(y: 8)
+            }
 
             Spacer(minLength: PPSpace.xs)
 
@@ -4539,33 +4699,22 @@ struct HomeOrderCard: View {
                 .padding(PPSpace.lg)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
-                    cardShape.fill(
-                        LinearGradient(
-                            colors: [
-                                statusSurface,
-                                Color.homeRaisedSurface,
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    cardShape.fill(Color.ppForeground)
                 }
                 .overlay {
                     cardShape.stroke(
-                        statusBorder,
+                        statusAccent.opacity(colorScheme == .dark ? 0.30 : 0.18),
                         lineWidth: contrast == .increased ? 1.5 : 1
                     )
                 }
                 .clipShape(cardShape)
                 .contentShape(cardShape)
                 .shadow(
-                    color: statusAccent.opacity(
-                        contrast == .increased
-                            ? 0
-                            : (colorScheme == .dark ? 0.05 : 0.07)
-                    ),
-                    radius: contrast == .increased ? 0 : 8,
-                    y: contrast == .increased ? 0 : 3
+                    color: contrast == .increased
+                        ? .clear
+                        : Color.black.opacity(colorScheme == .dark ? 0.16 : 0.04),
+                    radius: contrast == .increased ? 0 : 10,
+                    y: contrast == .increased ? 0 : 4
                 )
             }
             .buttonStyle(HomeCardPressStyle())
@@ -4581,7 +4730,7 @@ struct HomeOrderCard: View {
     }
 
     private var cardShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+        RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
     }
 
     private var compactStatusHeader: some View {
@@ -4634,6 +4783,7 @@ struct HomeOrderCard: View {
                 accent: statusAccent,
                 isRightToLeft: Language.isRTL(),
                 presentation: .compact,
+                showsFooter: false,
                 titleForStep: { key, fallback in
                     Self.localizedStepTitle(for: key, fallback: fallback)
                 }
@@ -4650,20 +4800,60 @@ struct HomeOrderCard: View {
         }
     }
 
+    private static let canonicalJourneyStepKeys = [
+        "pending",
+        "preparing_for_shipment",
+        "ready_for_delivery",
+        "delivery_partner_assigned",
+        "on_the_way",
+        "delivered",
+        "completed"
+    ]
+
+    private var nextStepTitle: String? {
+        let normalized = order.statusKey
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "-", with: "_")
+        guard let idx = Self.canonicalJourneyStepKeys.firstIndex(of: normalized),
+              idx < Self.canonicalJourneyStepKeys.count - 1 else {
+            return nil
+        }
+        let nextKey = Self.canonicalJourneyStepKeys[idx + 1]
+        let fallback: String
+        switch nextKey {
+        case "preparing_for_shipment": fallback = "Preparing"
+        case "ready_for_delivery": fallback = "Ready"
+        case "delivery_partner_assigned": fallback = "Partner assigned"
+        case "on_the_way": fallback = "On the way"
+        case "delivered": fallback = "Delivered"
+        case "completed": fallback = "Completed"
+        default: fallback = ""
+        }
+        return Self.localizedStepTitle(for: nextKey, fallback: fallback)
+    }
+
     @ViewBuilder
     private var orderSummary: some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: PPSpace.sm) {
-                if !order.amount.isEmpty {
-                    amountLabel
+                HStack(spacing: PPSpace.md) {
+                    if !order.amount.isEmpty {
+                        amountLabel
+                        separatorLine
+                    }
+                    itemCountLabel
                 }
-                itemCountLabel
+                if let nextStepTitle {
+                    nextStatusLabel(nextStepTitle)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, PPSpace.md)
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(statusBorder)
+                    .fill(statusBorder.opacity(0.60))
                     .frame(height: 1)
                     .accessibilityHidden(true)
             }
@@ -4672,23 +4862,47 @@ struct HomeOrderCard: View {
                 if !order.amount.isEmpty {
                     amountLabel
 
-                    Rectangle()
-                        .fill(statusBorder)
-                        .frame(width: 1, height: 22)
-                        .accessibilityHidden(true)
+                    separatorLine
                 }
 
                 itemCountLabel
-                Spacer(minLength: 0)
+
+                Spacer(minLength: PPSpace.sm)
+
+                if let nextStepTitle {
+                    nextStatusLabel(nextStepTitle)
+                }
             }
             .padding(.top, PPSpace.md)
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(statusBorder)
+                    .fill(statusBorder.opacity(0.60))
                     .frame(height: 1)
                     .accessibilityHidden(true)
             }
         }
+    }
+
+    private func nextStatusLabel(_ title: String) -> some View {
+        HStack(spacing: 5) {
+            Text(title)
+                .font(HomeFont.bold(13))
+                .foregroundStyle(statusAccent)
+                .lineLimit(1)
+                .minimumScaleFactor(0.80)
+
+            Image(systemName: Language.isRTL() ? "arrow.left" : "arrow.forward")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(statusAccent)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var separatorLine: some View {
+        Rectangle()
+            .fill(statusBorder.opacity(0.70))
+            .frame(width: 1, height: 18)
+            .accessibilityHidden(true)
     }
 
     private var amountLabel: some View {
@@ -4914,7 +5128,7 @@ struct HomeFeedSection: View {
     private let thirdCardPeekFraction: CGFloat = 0.12
 
     private var cardRailHeight: CGFloat {
-        328 + (PPSpace.xs * 2)
+        HomeVisualTokens.universalCardHeight + (PPSpace.xs * 2)
     }
 
     var body: some View {
@@ -5228,10 +5442,17 @@ private struct HomeCardSkeletonRail: View {
                             .fill(Color.ppSeparator)
                             .frame(width: 100, height: 13)
                         Spacer()
-                        Capsule().fill(Color.ppSoftRose).frame(height: 46)
+                        Capsule()
+                            .fill(Color.ppSoftRose)
+                            .frame(
+                                height: HomeVisualTokens.universalCartActionVisualHeight
+                            )
                     }
                     .padding(PPSpace.sm)
-                    .frame(width: cardWidth, height: 328)
+                    .frame(
+                        width: cardWidth,
+                        height: HomeVisualTokens.universalCardHeight
+                    )
                     .background(Color.ppSurfaceRaised)
                     .overlay {
                         HomeSkeletonShimmer(phaseOffset: Double(index) * 0.18)

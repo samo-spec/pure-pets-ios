@@ -1899,6 +1899,38 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     return YES;
 }
 
+- (BOOL)pp_openNotificationsInboxAnimated:(BOOL)animated
+{
+    if (self.viewControllers.count <= PPRootTabIndexChats) {
+        return NO;
+    }
+
+    UIViewController *targetController = self.viewControllers[PPRootTabIndexChats];
+    if (![targetController isKindOfClass:UINavigationController.class]) {
+        return NO;
+    }
+    if (![self tabBarController:self shouldSelectViewController:targetController]) {
+        return NO;
+    }
+
+    UINavigationController *notificationsNavigationController =
+        (UINavigationController *)targetController;
+    UIViewController *hubController =
+        notificationsNavigationController.viewControllers.firstObject;
+    if (![hubController isKindOfClass:PPNotificationsHubViewController.class]) {
+        return NO;
+    }
+
+    if (notificationsNavigationController.viewControllers.count > 1) {
+        [notificationsNavigationController setViewControllers:@[hubController] animated:NO];
+    }
+    self.selectedIndex = PPRootTabIndexChats;
+    [self tabBarController:self didSelectViewController:targetController];
+    [(PPNotificationsHubViewController *)hubController pp_showNotificationsInbox];
+    [self pp_applyPremiumTabSelectionAnimated:animated];
+    return YES;
+}
+
 -(void)viewWillLayoutSubviews
 {
     [super viewWillLayoutSubviews];

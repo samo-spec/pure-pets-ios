@@ -912,19 +912,11 @@ static UIViewController *PPAccessoryResolvedPresenter(
          playEvent:PPCommerceFeedbackEventPaymentFailure];
         UIViewController *presenter =
             PPAccessoryResolvedPresenter(viewController);
-        UIAlertController *alert =
-            [UIAlertController
-             alertControllerWithTitle:
-                [self localizedTextForKey:@"Out of stock"
-                                 fallback:@"Out of stock"]
-             message:nil
-             preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:
-            [UIAlertAction
-             actionWithTitle:[self localizedTextForKey:@"OK" fallback:@"OK"]
-             style:UIAlertActionStyleDefault
-             handler:nil]];
-        [presenter presentViewController:alert animated:YES completion:nil];
+        [PPAlertHelper showWarningIn:presenter
+                               title:[self localizedTextForKey:@"Out of stock"
+                                                      fallback:@"Out of stock"]
+                            subtitle:nil
+                          completion:nil];
         finish(PPAccessoryCartResultCodeOutOfStock);
         return;
     }
@@ -1010,19 +1002,11 @@ static UIViewController *PPAccessoryResolvedPresenter(
          playEvent:PPCommerceFeedbackEventPaymentFailure];
         UIViewController *presenter =
             PPAccessoryResolvedPresenter(viewController);
-        UIAlertController *alert =
-            [UIAlertController
-             alertControllerWithTitle:
-                [self localizedTextForKey:@"Out of stock"
-                                 fallback:@"Out of stock"]
-             message:nil
-             preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:
-            [UIAlertAction
-             actionWithTitle:[self localizedTextForKey:@"OK" fallback:@"OK"]
-             style:UIAlertActionStyleDefault
-             handler:nil]];
-        [presenter presentViewController:alert animated:YES completion:nil];
+        [PPAlertHelper showWarningIn:presenter
+                               title:[self localizedTextForKey:@"Out of stock"
+                                                      fallback:@"Out of stock"]
+                            subtitle:nil
+                          completion:nil];
         finish(PPAccessoryCartResultCodeOutOfStock, 0);
         return;
     }
@@ -1151,55 +1135,33 @@ static UIViewController *PPAccessoryResolvedPresenter(
                     @"cart_provider_switch_title"
                                      fallback:
                     @"Cart belongs to another provider"]];
-        UIAlertController *alert =
-            [UIAlertController
-             alertControllerWithTitle:title
-             message:message
-             preferredStyle:UIAlertControllerStyleAlert];
-
-        [alert addAction:
-            [UIAlertAction
-             actionWithTitle:
-                [self localizedTextForKey:
-                    @"accessory_view_view_current_cart"
-                                     fallback:@"View current cart"]
-             style:UIAlertActionStyleDefault
-             handler:^(__unused UIAlertAction *action) {
-                handleAddResult(NO, YES);
+        [PPAlertHelper showThreeActionConfirmationIn:presenter
+                                               title:title
+                                            subtitle:message
+                                       primaryButton:[self localizedTextForKey:@"accessory_view_start_new_cart" fallback:@"Start new cart & add"]
+                                        primaryStyle:UIAlertActionStyleDestructive
+                                     secondaryButton:[self localizedTextForKey:@"accessory_view_view_current_cart" fallback:@"View current cart"]
+                                      secondaryStyle:UIAlertActionStyleDefault
+                                      tertiaryButton:[self localizedTextForKey:@"cart_provider_switch_cancel" fallback:@"Cancel"]
+                                       tertiaryStyle:UIAlertActionStyleCancel
+                                        primaryBlock:^{
+            [cartManager clearCartAndSyncToFirestoreWithCompletion:^(BOOL cleared) {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    [self openCartFromViewController:presenter];
+                    if (!cleared) {
+                        handleAddResult(NO, NO);
+                        return;
+                    }
+                    commitPreparedItem();
                 });
-             }]];
-        [alert addAction:
-            [UIAlertAction
-             actionWithTitle:
-                [self localizedTextForKey:
-                    @"accessory_view_start_new_cart"
-                                     fallback:@"Start new cart & add"]
-             style:UIAlertActionStyleDestructive
-             handler:^(__unused UIAlertAction *action) {
-                [cartManager
-                 clearCartAndSyncToFirestoreWithCompletion:^(BOOL cleared) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        if (!cleared) {
-                            handleAddResult(NO, NO);
-                            return;
-                        }
-                        commitPreparedItem();
-                    });
-                 }];
-             }]];
-        [alert addAction:
-            [UIAlertAction
-             actionWithTitle:
-                [self localizedTextForKey:
-                    @"cart_provider_switch_cancel"
-                                     fallback:@"Cancel"]
-             style:UIAlertActionStyleCancel
-             handler:^(__unused UIAlertAction *action) {
-                handleAddResult(NO, YES);
-             }]];
-        [presenter presentViewController:alert animated:YES completion:nil];
+            }];
+        } secondaryBlock:^{
+            handleAddResult(NO, YES);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self openCartFromViewController:presenter];
+            });
+        } tertiaryBlock:^{
+            handleAddResult(NO, YES);
+        }];
         return;
     }
 

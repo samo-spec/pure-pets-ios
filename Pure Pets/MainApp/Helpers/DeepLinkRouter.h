@@ -12,5 +12,7 @@
 
 + (instancetype)shared;
 - (BOOL)handleURL:(NSURL *)url;
+- (void)navigateToPetAdWithID:(NSString *)adID;
+- (void)navigateToAccessoryWithID:(NSString *)accessoryID;
 
 @end

@@ -1,10 +1,11 @@
 #import "SceneDelegate.h"
 #import "AppDelegate.h"
-#import "AppDelegate.h"
 #import "PPUserSigningController.h"
 #import "SplashViewController.h"
 #import "PPRootTabBarController.h"
 #import "PPCheckoutCoordinator.h"
+#import "DeepLinkRouter.h"
+#import "PPOverlayCoordinator.h"
 @import FirebaseAuth;
 @import GoogleSignIn;
 #import "ChNotificationRouter.h"
@@ -244,13 +245,13 @@ static NSString *PPSceneNotificationIDFromPayload(NSDictionary *payload)
 
 - (void)applySavedInterfaceStyleToWindow:(UIWindow *)window {
     [[PPThemeManager sharedManager] applySavedInterfaceStyleToWindow:window];
-    
+
     NSLog(@"[AppDelegate] [Language languageVal] %ld",[Language languageVal]);
     if([Language languageVal] != 0 && [Language languageVal] != 1)
         [Language setLanguage:LanguageCode[1]];
-    
+
     [self pp_applyCurrentLanguageSemanticToWindow:window];
-    
+
 }
 
 - (void)scene:(UIScene *)scene
@@ -267,10 +268,10 @@ willConnectToSession:(UISceneSession *)session
                 self.pendingChatNotification = payload;
             }
         }
-    
+
     [self setNavigationBarAppearance];
    
-    
+
     if (![scene isKindOfClass:[UIWindowScene class]]) return;
     UIWindowScene *windowScene = (UIWindowScene *)scene;
     self.window = [[PPNovaMotionWindow alloc] initWithWindowScene:windowScene];
@@ -354,40 +355,95 @@ willConnectToSession:(UISceneSession *)session
 
     NSDictionary *safeUserInfo = PPSceneSafeDictionary(userInfo);
     if (![AppDelegate pp_isNotificationPayloadRoutable:safeUserInfo]) return;
-    NSString *type = [[PPSceneFirstScalarForKeys(safeUserInfo, @[@"notificationType", @"type"]) lowercaseString] copy];
-    NSString *threadID = PPSceneFirstScalarForKeys(safeUserInfo, @[@"threadID", @"threadId", @"conversationId"]);
+
+    NSDictionary *meta = [safeUserInfo[@"meta"] isKindOfClass:NSDictionary.class] ? safeUserInfo[@"meta"] : @{};
+    NSString *type = [[PPSceneFirstScalarForKeys(safeUserInfo, @[@"notificationType", @"eventType", @"type"]) lowercaseString] copy];
+    if (type.length == 0) {
+        type = [[PPSceneFirstScalarForKeys(meta, @[@"notificationType", @"eventType", @"type"]) lowercaseString] copy];
+    }
+
+    NSString *threadID = PPSceneFirstScalarForKeys(safeUserInfo, @[@"threadID", @"threadId", @"conversationId", @"chatId", @"chatID", @"contextId"]);
+    if (threadID.length == 0) {
+        threadID = PPSceneFirstScalarForKeys(meta, @[@"threadID", @"threadId", @"conversationId", @"chatId", @"chatID", @"contextId"]);
+    }
+
     NSString *orderId = PPSceneOrderIDFromPayload(safeUserInfo);
     NSString *route = [[PPSceneFirstScalarForKeys(safeUserInfo, @[@"route"]) lowercaseString] copy];
-    NSLog(@"PPLAB Scene notification tap start | type=%@ route=%@ orderId=%@ threadID=%@",
+    if (route.length == 0) {
+        route = [[PPSceneFirstScalarForKeys(meta, @[@"route"]) lowercaseString] copy];
+    }
+
+    NSString *petAdId = PPSceneFirstScalarForKeys(safeUserInfo, @[@"petAdId", @"petAdID", @"adId", @"adID", @"pet_ad_id"]);
+    if (petAdId.length == 0) {
+        petAdId = PPSceneFirstScalarForKeys(meta, @[@"petAdId", @"petAdID", @"adId", @"adID", @"pet_ad_id"]);
+    }
+
+    NSString *accessoryId = PPSceneFirstScalarForKeys(safeUserInfo, @[@"accessoryId", @"accessoryID", @"accessory_id"]);
+    if (accessoryId.length == 0) {
+        accessoryId = PPSceneFirstScalarForKeys(meta, @[@"accessoryId", @"accessoryID", @"accessory_id"]);
+    }
+
+    NSLog(@"PPLAB Scene notification tap start | type=%@ route=%@ orderId=%@ threadID=%@ petAdId=%@ accessoryId=%@",
           type ?: @"",
           route ?: @"",
           orderId ?: @"",
-          threadID ?: @"");
+          threadID ?: @"",
+          petAdId ?: @"",
+          accessoryId ?: @"");
 
-    if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
+    if (threadID.length > 0 || [type isEqualToString:@"chat"] || [type containsString:@"chat"] || [route isEqualToString:@"chat"]) {
         [ChManager sharedManager].isHandlingNotificationHandoff = YES;
         NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
         if (uid.length > 0) {
             [[ChManager sharedManager] syncPendingDeliveriesForUser:nil completion:nil];
         }
-        UIViewController *topVC = [AppMgr topViewController];
+        UIViewController *root = self.window.rootViewController ?: UIApplication.sharedApplication.keyWindow.rootViewController;
+        UIViewController *topVC = [AppMgr topViewController] ?: root;
         [[ChNotificationRouter shared] handleChatNotification:userInfo fromViewController:topVC];
         return;
     }
 
     if (orderId.length > 0 ||
         [type hasPrefix:@"order"] ||
+        [type containsString:@"order"] ||
+        [type containsString:@"payment"] ||
         [route isEqualToString:@"orders"] ||
         [route isEqualToString:@"order"] ||
-        [route isEqualToString:@"order_details"]) {
-        if (orderId.length == 0) return;
-        [ChManager sharedManager].isHandlingNotificationHandoff = YES;
-        [self pp_navigateToOrderWithId:orderId];
-        return;
+        [route isEqualToString:@"order_details"] ||
+        [route isEqualToString:@"payments_order"]) {
+        if (orderId.length > 0) {
+            [ChManager sharedManager].isHandlingNotificationHandoff = YES;
+            [self pp_navigateToOrderWithId:orderId];
+            return;
+        }
+    }
+
+    if (petAdId.length > 0 || [route isEqualToString:@"petad"] || [route isEqualToString:@"pet_ad"]) {
+        if (petAdId.length > 0) {
+            [[DeepLinkRouter shared] navigateToPetAdWithID:petAdId];
+            return;
+        }
+    }
+
+    if (accessoryId.length > 0 || [route isEqualToString:@"accessory"]) {
+        if (accessoryId.length > 0) {
+            [[DeepLinkRouter shared] navigateToAccessoryWithID:accessoryId];
+            return;
+        }
+    }
+
+    // Default: switch to Chats & Notifications tab
+    UIViewController *root = self.window.rootViewController ?: UIApplication.sharedApplication.keyWindow.rootViewController;
+    if ([root isKindOfClass:PPRootTabBarController.class]) {
+        PPRootTabBarController *tabBar = (PPRootTabBarController *)root;
+        if (![tabBar pp_openNotificationsInboxAnimated:YES]) {
+            NSLog(@"PPLAB Scene notification route failed | route=%@", route ?: @"");
+        }
     }
 }
 
 - (void)pp_navigateToOrderWithId:(NSString *)orderId {
+    if (orderId.length == 0) return;
 
     FIRDocumentReference *orderRef = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:orderId];
     __weak typeof(self) weakSelf = self;
@@ -402,11 +458,13 @@ willConnectToSession:(UISceneSession *)session
             }
 
             NSString *authenticatedUID = PPSceneTrimmedString([FIRAuth auth].currentUser.uid);
+            if (authenticatedUID.length == 0) {
+                authenticatedUID = PPSceneTrimmedString(UserManager.sharedManager.currentUser.ID);
+            }
             NSDictionary *data = PPSceneSafeDictionary(snapshot.data);
-            NSString *orderOwnerUID = PPSceneFirstScalarForKeys(data, @[@"userId", @"uid"]);
+            NSString *orderOwnerUID = PPSceneFirstScalarForKeys(data, @[@"userId", @"uid", @"ownerUid", @"ownerUID", @"customerId", @"customerUid", @"customerUID", @"buyerUid", @"user_id"]);
             if (authenticatedUID.length == 0 ||
-                orderOwnerUID.length == 0 ||
-                ![orderOwnerUID isEqualToString:authenticatedUID]) {
+                (orderOwnerUID.length > 0 && ![orderOwnerUID isEqualToString:authenticatedUID])) {
                 NSLog(@"PPLAB Scene order route rejected | orderId=%@ hasAuth=%@ ownerMatch=no",
                       PPSceneTrimmedString(orderId),
                       authenticatedUID.length > 0 ? @"yes" : @"no");
@@ -427,23 +485,21 @@ willConnectToSession:(UISceneSession *)session
 }
 
 - (void)pp_pushOrderDetails:(UIViewController *)vc {
-
-    UIWindow *window = self.window;
+    if (!vc) return;
+    UIWindow *window = self.window ?: UIApplication.sharedApplication.keyWindow;
     UIViewController *root = window.rootViewController;
-    UINavigationController *nav = nil;
+    if (!root) return;
 
-    if ([root isKindOfClass:UINavigationController.class]) {
-        nav = (UINavigationController *)root;
-    } else {
-        nav = root.navigationController;
-    }
+    UIViewController *presenter = [PPOverlayCoordinator pp_resolvedPresenterFrom:root] ?: root;
 
-    if (nav) {
-        [nav pushViewController:vc animated:YES];
+    if ([presenter isKindOfClass:UINavigationController.class]) {
+        [(UINavigationController *)presenter pushViewController:vc animated:YES];
+    } else if (presenter.navigationController) {
+        [presenter.navigationController pushViewController:vc animated:YES];
     } else {
-        UINavigationController *wrapper = [[UINavigationController alloc] initWithRootViewController:vc];
+        PPNavigationController *wrapper = [[PPNavigationController alloc] initWithRootViewController:vc];
         wrapper.modalPresentationStyle = UIModalPresentationFullScreen;
-        [root presentViewController:wrapper animated:YES completion:nil];
+        [presenter presentViewController:wrapper animated:YES completion:nil];
     }
 }
 

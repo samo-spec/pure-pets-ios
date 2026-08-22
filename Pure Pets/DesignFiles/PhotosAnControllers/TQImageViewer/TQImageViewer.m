@@ -11,6 +11,7 @@ if ([NSThread isMainThread]) { \
 }
 #endif
 #import "PPAdSharingHelper.h"
+#import "PPAlertHelper.h"
 @interface ViewerAttribute ()
 @end
 
@@ -2031,15 +2032,13 @@ if ([NSThread isMainThread]) { \
 }
 
 - (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    [alert addAction:[UIAlertAction actionWithTitle:@"OK"
-                                              style:UIAlertActionStyleDefault
-                                            handler:nil]];
-    
-    [_currentViewer presentViewController:alert animated:YES completion:nil];
+    UIViewController *presenter = _currentViewer ?: AppMgr.topViewController;
+    if (presenter) {
+        [PPAlertHelper showInfoIn:presenter
+                            title:title ?: @""
+                         subtitle:message ?: @""
+                       completion:nil];
+    }
 }
 
 #pragma mark - Cleanup

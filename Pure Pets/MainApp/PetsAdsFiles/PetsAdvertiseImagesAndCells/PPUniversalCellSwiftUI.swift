@@ -680,12 +680,12 @@ public struct PPUniversalCardView: View {
             return dynamicTypeSize.isAccessibilitySize ? 540 : 184
         }
         if store.isHomePresentation {
-            return 328
+            return HomeVisualTokens.universalCardHeight
         }
         if store.model.isSkeleton && store.context.isCatalogCommerce {
-            return 292
+            return 280
         }
-        return dynamicTypeSize.isAccessibilitySize ? 520 : 340
+        return dynamicTypeSize.isAccessibilitySize ? 508 : 328
     }
 
     private var legacySourceSignature: String {
@@ -3211,7 +3211,7 @@ private struct PPUniversalCardRenderer: View {
                 ),
                 isEnabled: !store.model.isSkeleton,
                 canRemove: true,
-                controlHeight: standardActionHeight,
+                controlHeight: homeCartActionHeight,
                 onIncrement: {
                     PPUniversalHaptics.light()
                     store.changeQuantity(by: 1)
@@ -3905,7 +3905,9 @@ private struct PPUniversalCardRenderer: View {
         let priceHeight: CGFloat = reservesPriceRow
             ? (accessibility ? 40 : 30)
             : 0
-        let actionHeight: CGFloat = accessibility ? 52 : 44
+        let actionHeight: CGFloat = accessibility
+            ? 52
+            : homeCartActionHeight
         let metadataHeight: CGFloat = accessibility ? 36 : 28
         let titleToPriceSpacing: CGFloat = accessibility
             ? 8
@@ -4169,6 +4171,19 @@ private struct PPUniversalCardRenderer: View {
 
     private var standardActionHeight: CGFloat {
         dynamicTypeSize.isAccessibilitySize ? 52 : HomeVisualTokens.minimumTouchTarget
+    }
+
+    /// Only the in-stock Home cart CTA adopts the compact visual treatment.
+    /// Every other card action keeps the standard action geometry.
+    private var homeCartActionHeight: CGFloat {
+        guard store.isHomePresentation,
+              store.model.usesQuantityControl,
+              !store.isOutOfStock,
+              !dynamicTypeSize.isAccessibilitySize
+        else {
+            return standardActionHeight
+        }
+        return HomeVisualTokens.universalCartActionVisualHeight
     }
 
     /// Ads keep the full interactive frame, but on Home their visible button

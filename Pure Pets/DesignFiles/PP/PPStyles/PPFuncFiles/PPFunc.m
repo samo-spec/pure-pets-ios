@@ -9,6 +9,7 @@
 #import "CartViewController.h"
 #import "UserManager.h"
 #import "PPUserKitCompatibility.h"
+#import "PPAlertHelper.h"
 @import FirebaseStorage;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -2916,20 +2917,16 @@ static char kUIViewTapActionKey;
         __strong typeof(weakSuperVC) strongSuperVC = weakSuperVC;
         if (!strongSuperVC) return;
 
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"Logout")
-                                                                       message:kLang(@"LogoutMessage")
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        UIAlertAction *cancel = [UIAlertAction actionWithTitle:kLang(@"Cancel")
-                                                         style:UIAlertActionStyleCancel
-                                                       handler:nil];
-        UIAlertAction *logout = [UIAlertAction actionWithTitle:kLang(@"Logout")
-                                                         style:UIAlertActionStyleDestructive
-                                                       handler:^(__unused UIAlertAction *confirmAction) {
+        [PPAlertHelper showConfirmationIn:strongSuperVC
+                                    title:kLang(@"Logout")
+                                 subtitle:kLang(@"LogoutMessage")
+                            confirmButton:kLang(@"Logout")
+                             cancelButton:kLang(@"Cancel")
+                                     icon:PPSYSImage(@"rectangle.portrait.and.arrow.right")
+                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+            if (!didConfirm) return;
             [GM logoutFromConroller:strongSuperVC];
-        }];
-        [alert addAction:cancel];
-        [alert addAction:logout];
-        [strongSuperVC presentViewController:alert animated:YES completion:nil];
+        } cancelBlock:^{}];
     }];
 
     return [UIMenu menuWithTitle:@""

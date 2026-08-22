@@ -4003,10 +4003,10 @@
 "accessory_view_pet_fit_hint" = "Expands or collapses the sourced fit details.";
 "accessory_view_expanded" = "Expanded";
 "accessory_view_collapsed" = "Collapsed";
-"accessory_view_pet_category" = "Pet category";
-"accessory_view_product_category" = "Product category";
-"accessory_view_product_group" = "Product group";
-"accessory_view_pack_weight" = "Pack weight";
+"accessory_view_pet_category" = "Pet";
+"accessory_view_product_category" = "Category";
+"accessory_view_product_group" = "Group";
+"accessory_view_pack_weight" = "Weight";
 "accessory_view_accessory_fit_gap" = "Species, breed, size, age, material, and safety compatibility are not included in this listing. Ask the seller before choosing.";
 "accessory_view_food_fit_gap" = "Species, life stage, ingredients, allergens, nutrition, and feeding guidance are not included in this listing. Ask the seller before feeding.";
 "accessory_view_medicine_fit_gap" = "Species, dosage, contraindications, ingredients, and veterinary guidance are not included in this listing. Ask a veterinarian or the seller before use.";
@@ -4629,3 +4629,21 @@
 "settings_data_legal_title" = "Data & Legal";
 "settings_logout_subtitle" = "Sign out on this device";
 "settings_delete_subtitle" = "Permanently remove your account and data";
+
+// Order NextGen V6 Actions
+"order_v6_action_track_title" = "Track Order";
+"order_v6_action_track_sub" = "Live route & status";
+"order_v6_action_requests_title" = "Support Cases";
+"order_v6_action_requests_sub" = "Past & active cases";
+"order_v6_action_support_title" = "Get Help";
+"order_v6_action_support_sub" = "Assistance & inquiries";
+"order_v6_action_complaint_title" = "Report Issue";
+"order_v6_action_complaint_sub" = "Delivery & order issues";
+"order_v6_action_cancel_title" = "Cancel Order";
+"order_v6_action_cancel_sub" = "Cancel before shipping";
+"order_v6_action_return_title" = "Return Items";
+"order_v6_action_return_sub" = "Return purchased items";
+"order_v6_action_replacement_title" = "Replace Items";
+"order_v6_action_replacement_sub" = "Exchange damaged items";
+"order_v6_action_refund_title" = "Request Refund";
+"order_v6_action_refund_sub" = "Refund to payment";

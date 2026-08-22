@@ -214,7 +214,7 @@ static NSInteger const PPIntroBodyTag = 104;
     brandContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:brandContainer];
 
-    self.logoView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"PPLogo"]];
+    self.logoView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"tintLogo"]];
     self.logoView.translatesAutoresizingMaskIntoConstraints = NO;
     self.logoView.contentMode = UIViewContentModeScaleAspectFit;
     [brandContainer addSubview:self.logoView];

@@ -7,6 +7,7 @@
 //
 
 #import "PPPermissionHelper.h"
+#import "PPAlertHelper.h"
 
 typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
     PPPermissionFeatureTypeCamera,
@@ -154,24 +155,20 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
                               restricted:(BOOL)isRestricted
                          onViewController:(UIViewController *)viewController
 {
-    UIAlertController *alert =
-    [UIAlertController alertControllerWithTitle:[self pp_featureTitleForType:featureType]
-                                        message:[self pp_deniedMessageForRestrictedState:isRestricted]
-                                 preferredStyle:UIAlertControllerStyleAlert];
+    UIViewController *presenter = [self pp_presentingViewControllerFrom:viewController];
+    if (!presenter) return;
 
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_open_settings")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction * _Nonnull action) {
+    NSString *cancelTitle = (featureType != PPPermissionFeatureTypeCamera) ? kLang(@"cancel") : @"";
+    [PPAlertHelper showConfirmationIn:presenter
+                                title:[self pp_featureTitleForType:featureType]
+                             subtitle:[self pp_deniedMessageForRestrictedState:isRestricted]
+                        confirmButton:kLang(@"pp_perm_open_settings")
+                         cancelButton:cancelTitle.length > 0 ? cancelTitle : @""
+                                 icon:PPSYSImage(@"gearshape")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         [self openAppSettings];
-    }]];
-
-    if (featureType != PPPermissionFeatureTypeCamera) {
-        [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
-                                                  style:UIAlertActionStyleCancel
-                                                handler:nil]];
-    }
-
-    [self pp_presentAlertController:alert fromViewController:viewController];
+    } cancelBlock:^{}];
 }
 
 #pragma mark - Camera
@@ -324,26 +321,18 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
         return;
     }
 
-    UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:feature
-                                            message:message
-                                     preferredStyle:UIAlertControllerStyleAlert];
-
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_continue")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(UIAlertAction * _Nonnull action) {
-        if (completion) completion(YES);
-    }]];
-
-    if (allowDeclineAction) {
-        [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_not_now")
-                                                  style:UIAlertActionStyleCancel
-                                                handler:^(UIAlertAction * _Nonnull action) {
-            if (completion) completion(NO);
-        }]];
-    }
-
-    [self pp_presentAlertController:alert fromViewController:presenter];
+    NSString *cancelTitle = allowDeclineAction ? kLang(@"pp_perm_not_now") : @"";
+    [PPAlertHelper showConfirmationIn:presenter
+                                title:feature
+                             subtitle:message
+                        confirmButton:kLang(@"pp_perm_continue")
+                         cancelButton:cancelTitle.length > 0 ? cancelTitle : @""
+                                 icon:PPSYSImage(@"hand.raised")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (completion) completion(didConfirm);
+    } cancelBlock:^{
+        if (completion) completion(NO);
+    }];
 }
 
 #pragma mark - Denied Alert
@@ -354,22 +343,16 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
     UIViewController *presenter = [self pp_presentingViewControllerFrom:viewController];
     if (!presenter) return;
 
-    UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:feature
-                                            message:[self pp_deniedMessageForRestrictedState:NO]
-                                     preferredStyle:UIAlertControllerStyleAlert];
-
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_open_settings")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(UIAlertAction * _Nonnull action) {
+    [PPAlertHelper showConfirmationIn:presenter
+                                title:feature
+                             subtitle:[self pp_deniedMessageForRestrictedState:NO]
+                        confirmButton:kLang(@"pp_perm_open_settings")
+                         cancelButton:kLang(@"cancel")
+                                 icon:PPSYSImage(@"gearshape")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         [self openAppSettings];
-    }]];
-
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-
-    [self pp_presentAlertController:alert fromViewController:presenter];
+    } cancelBlock:^{}];
 }
 
 #pragma mark - Settings

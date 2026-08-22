@@ -2917,17 +2917,22 @@ static CGFloat PPProfileBottomBarClearance(void) {
         return YES;
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"Confirm")
-                                                                   message:kLang(@"changes_not_saved")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Discard")
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(__unused UIAlertAction *action) {
+    __weak typeof(self) weakSelf = self;
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"unsaved_changes_title")
+                             subtitle:kLang(@"unsaved_changes_message")
+                        confirmButton:kLang(@"leave_button")
+                         cancelButton:kLang(@"stay_button")
+                                 icon:nil
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) {
+            return;
+        }
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
         self.showingSave = NO;
         [self.navigationController popViewControllerAnimated:YES];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:nil];
     return NO;
 }
 

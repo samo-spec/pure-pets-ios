@@ -1,6 +1,7 @@
 #import "LocationPickerViewController.h"
 #import "CitiesManager.h"
 #import "CountryModel.h"
+#import "PPAlertHelper.h"
 #import <CoreLocation/CoreLocation.h>
 #import <float.h>
 #import <math.h>
@@ -1720,14 +1721,10 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     }
 
     [self shakeView:self.dockContainerView];
-    UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:kLang(@"location_picker_alert_title")
-                                            message:kLang(@"location_picker_alert_message")
-                                     preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"OK")
-                                              style:UIAlertActionStyleDefault
-                                            handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showWarningIn:self
+                           title:kLang(@"location_picker_alert_title")
+                        subtitle:kLang(@"location_picker_alert_message")
+                      completion:nil];
 }
 
 + (NSString *)titleFromAddress:(GMSAddress *)address

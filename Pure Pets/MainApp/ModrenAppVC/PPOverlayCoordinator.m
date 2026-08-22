@@ -60,13 +60,7 @@
     if (!presenter) {
         return NO;
     }
-    if (!presenter.view.window) {
-        return NO;
-    }
-    if (presenter.isBeingPresented || presenter.isBeingDismissed) {
-        return NO;
-    }
-    if (presenter.transitionCoordinator) {
+    if (presenter.isBeingDismissed) {
         return NO;
     }
     if (presenter.presentedViewController && !presenter.presentedViewController.isBeingDismissed) {

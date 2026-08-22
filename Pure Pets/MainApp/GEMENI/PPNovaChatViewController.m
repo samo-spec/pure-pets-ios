@@ -21,6 +21,7 @@
 #import "CartManager.h"
 #import "PPNovaLocalChatMemory.h"
 #import "CartItem.h"
+#import "PPAlertHelper.h"
 #import "PPHUD.h"
 #import "AccessViewerVC.h"
 #import "PPPetAdViewerLegacyBridge.h"
@@ -642,12 +643,18 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_handleClearHistoryTapped {
-    UIAlertController *confirm = [UIAlertController alertControllerWithTitle:kLang(@"nova_history_clear_confirm_title")
-                                                                    message:kLang(@"nova_history_clear_confirm_message")
-                                                              preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *clearAction = [UIAlertAction actionWithTitle:kLang(@"nova_history_clear_confirm_action")
-                                                          style:UIAlertActionStyleDestructive
-                                                        handler:^(__unused UIAlertAction *action) {
+    __weak typeof(self) weakSelf = self;
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"nova_history_clear_confirm_title")
+                             subtitle:kLang(@"nova_history_clear_confirm_message")
+                        confirmButton:kLang(@"nova_history_clear_confirm_action")
+                         cancelButton:kLang(@"Cancel")
+                                 icon:PPSYSImage(@"trash")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
         [[PPNovaLocalChatMemory sharedMemory] clearAllMessages];
         self.allHistoryMessages = @[];
         self.starredHistoryMessages = @[];
@@ -666,13 +673,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             self.emptyStateView.alpha = 1.0;
             self.tableView.alpha = 0.0;
         } completion:nil];
-    }];
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:kLang(@"Cancel")
-                                                           style:UIAlertActionStyleCancel
-                                                         handler:nil];
-    [confirm addAction:clearAction];
-    [confirm addAction:cancelAction];
-    [self presentViewController:confirm animated:YES completion:nil];
+    } cancelBlock:nil];
 }
 
 - (void)pp_runEntranceAnimationIfNeeded {
@@ -6077,30 +6078,25 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)pp_handleNovaCloseTapped:(UIButton *)sender {
     [self pp_handleNovaHeaderControlPressUp:sender];
     if (self.didApplyInitialDraft && !self.novaHasSentFirstMessage && self.novaInputHasText) {
-        UIAlertController *alert = [UIAlertController
-            alertControllerWithTitle:kLang(@"purelens_nova_draft_discard_title")
-            message:kLang(@"purelens_nova_draft_discard_detail")
-            preferredStyle:UIAlertControllerStyleAlert];
         __weak typeof(self) weakSelf = self;
-        [alert addAction:[UIAlertAction
-            actionWithTitle:kLang(@"purelens_nova_draft_keep_editing")
-            style:UIAlertActionStyleCancel
-            handler:^(__unused UIAlertAction *action) {
-                __strong typeof(weakSelf) self = weakSelf;
-                if (!self) return;
-                if (self.useSwiftUIInputBar) {
-                    [self.swiftUIInputVC focusTextInput];
-                } else {
-                    [self.inputbar focusTextInput];
-                }
-            }]];
-        [alert addAction:[UIAlertAction
-            actionWithTitle:kLang(@"purelens_nova_draft_discard")
-            style:UIAlertActionStyleDestructive
-            handler:^(__unused UIAlertAction *action) {
-                [weakSelf pp_dismissNova];
-            }]];
-        [self presentViewController:alert animated:YES completion:nil];
+        [PPAlertHelper showConfirmationIn:self
+                                    title:kLang(@"purelens_nova_draft_discard_title")
+                                 subtitle:kLang(@"purelens_nova_draft_discard_detail")
+                            confirmButton:kLang(@"purelens_nova_draft_discard")
+                             cancelButton:kLang(@"purelens_nova_draft_keep_editing")
+                                     icon:nil
+                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+            if (!didConfirm) return;
+            [weakSelf pp_dismissNova];
+        } cancelBlock:^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            if (self.useSwiftUIInputBar) {
+                [self.swiftUIInputVC focusTextInput];
+            } else {
+                [self.inputbar focusTextInput];
+            }
+        }];
         return;
     }
     [self pp_dismissNova];

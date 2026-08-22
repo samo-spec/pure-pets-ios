@@ -19,6 +19,7 @@
 #import "ChManager.h"
 #import "CartManager.h"
 #import "CountryModel.h"
+#import "PPAlertHelper.h"
 
 #import <float.h>
 #import <math.h>
@@ -2019,11 +2020,9 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         [UIApplication.sharedApplication openURL:URL options:@{} completionHandler:nil];
         return;
     }
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"order_support_request_call")
-                                                                   message:kLang(@"order_mission_call_unavailable")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"OK") style:UIAlertActionStyleDefault handler:nil]];
-    [viewController presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showErrorIn:viewController
+                         title:kLang(@"order_support_request_call")
+                      subtitle:kLang(@"order_mission_call_unavailable")];
 }
 
 @end

@@ -844,14 +844,22 @@ typedef NS_ENUM(NSInteger, PPAlertActionStyle) {
 }
 
 + (void)showErrorIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle {
+    [self showErrorIn:vc title:title subtitle:subtitle completion:nil];
+}
+
++ (void)showErrorIn:(UIViewController *)vc
+              title:(NSString *)title
+           subtitle:(NSString * _Nullable)subtitle
+         completion:(void (^ _Nullable)(void))completion {
     UIImage *icon = [self symbolImageNamed:@"xmark.seal.fill" fallbackType:PPAlertTypeError];
+    AlertCompletionBlock wrapped = completion ? ^(__unused NSString * _Nullable text, __unused BOOL didConfirm) { completion(); } : nil;
     PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeError
                                              title:title
                                           subtitle:subtitle ?: @""
                                               icon:icon
                                        confirmTitle:kLang(@"OK")
                                         cancelTitle:nil
-                                      confirmAction:nil
+                                      confirmAction:wrapped
                                        cancelAction:nil];
     [alert showInViewController:[self presenterForViewController:vc]];
 }

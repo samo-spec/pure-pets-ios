@@ -24,12 +24,16 @@ private enum PPOrderMissionColorRole {
         switch kind {
         case "track":
             return .ppInfo
-        case "requests", "support":
-            return support
+        case "requests":
+            return .ppQuickActionCommunity
+        case "support":
+            return .ppQuickActionServices
         case "return", "replacement":
             return commerce
         case "refund", "complaint":
             return .ppWarning
+        case "cancel":
+            return .ppError
         default:
             return fallback
         }
@@ -93,13 +97,6 @@ struct PPOrderDetailsMissionControlScreen: View {
                 .presentationBackground(.regularMaterial)
                 .presentationCornerRadius(PPCorner.hero)
         }
-        .alert(item: rootNotice) { notice in
-            Alert(
-                title: Text(notice.title),
-                message: Text(notice.message),
-                dismissButton: .default(Text(PPOrderMissionText("OK")))
-            )
-        }
         .onReceive(
             NotificationCenter.default.publisher(
                 for: Notification.Name("LanguageDidChangeNotification")
@@ -120,15 +117,6 @@ struct PPOrderDetailsMissionControlScreen: View {
         static let statusEmblem: CGFloat = 60
         static let statusSymbol: CGFloat = 22
         static let statusRail: CGFloat = 3
-    }
-
-    private var rootNotice: Binding<PPOrderMissionNotice?> {
-        Binding(
-            get: { store.activeSheet == nil ? store.notice : nil },
-            set: { newValue in
-                if newValue == nil { store.notice = nil }
-            }
-        )
     }
 
     private var contentInset: CGFloat {
@@ -353,7 +341,7 @@ struct PPOrderDetailsMissionControlScreen: View {
         }
         .padding(PPSpace.base)
         .background(
-            Color.ppSecondarySurface,
+            Color.ppForeground,
             in: RoundedRectangle(
                 cornerRadius: PPCorner.medium,
                 style: .continuous
@@ -364,7 +352,7 @@ struct PPOrderDetailsMissionControlScreen: View {
                 cornerRadius: PPCorner.medium,
                 style: .continuous
             )
-            .strokeBorder(Color.ppBorder.opacity(0.80), lineWidth: 0.75)
+            .strokeBorder(Color.ppBorder.opacity(0.65), lineWidth: 0.75)
         }
         .overlay(alignment: .leading) {
             Capsule()
@@ -831,9 +819,7 @@ struct PPOrderMissionGlassCard: ViewModifier {
 
         content
             .background(
-                emphasis && !reduceTransparency
-                    ? Color.ppSurfaceOverlay.opacity(colorScheme == .dark ? 0.66 : 0.54)
-                    : Color.ppSurface,
+                Color.ppForeground,
                 in: shape
             )
             .overlay {
@@ -845,10 +831,10 @@ struct PPOrderMissionGlassCard: ViewModifier {
             .shadow(
                 color: contrast == .increased
                     ? .clear
-                    : Color.black.opacity(colorScheme == .dark ? 0.14 : 0.045),
-                radius: emphasis ? 16 : 11,
+                    : Color.black.opacity(colorScheme == .dark ? 0.16 : 0.04),
+                radius: emphasis ? 16 : 10,
                 x: 0,
-                y: emphasis ? 7 : 4
+                y: emphasis ? 7 : 3
             )
     }
 }
@@ -1523,6 +1509,7 @@ private struct PPOrderMissionHeroCommand: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.colorScheme) private var colorScheme
 
     private var actionColor: Color {
         PPOrderMissionColorRole.action(
@@ -1538,6 +1525,10 @@ private struct PPOrderMissionHeroCommand: View {
             cornerRadius: PPCorner.medium,
             style: .continuous
         )
+        let iconShape = RoundedRectangle(
+            cornerRadius: PPCorner.verysmall + 4,
+            style: .continuous
+        )
 
         Button {
             if !reduceMotion {
@@ -1546,29 +1537,17 @@ private struct PPOrderMissionHeroCommand: View {
             handle(action)
         } label: {
             HStack(spacing: PPSpace.md) {
-                Image(systemName: action.symbol)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 54, height: 54)
+                Image(systemName: action.v6Symbol)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(color)
+                    .frame(width: 48, height: 48)
                     .background(
-                        LinearGradient(
-                            colors: [color, color.opacity(0.72)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        in: RoundedRectangle(
-                            cornerRadius: PPCorner.medium,
-                            style: .continuous
-                        )
+                        color.opacity(colorScheme == .dark ? 0.22 : 0.12),
+                        in: iconShape
                     )
                     .overlay(
-                        RoundedRectangle(
-                            cornerRadius: PPCorner.medium,
-                            style: .continuous
-                        )
-                        .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                        iconShape.stroke(color.opacity(colorScheme == .dark ? 0.38 : 0.22), lineWidth: 1)
                     )
-                    .shadow(color: color.opacity(0.35), radius: 8, x: 0, y: 4)
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -1576,26 +1555,23 @@ private struct PPOrderMissionHeroCommand: View {
                         .font(PPOrderMissionTypography.caption(10.5))
                         .tracking(layoutDirection == .rightToLeft ? 0 : 1.0)
                         .foregroundStyle(color)
-                    Text(action.title)
-                        .font(PPOrderMissionTypography.headline(20))
+                    Text(action.v6Title)
+                        .font(PPOrderMissionTypography.headline(18))
                         .foregroundStyle(Color.ppTextPrimary)
                         .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !action.message.isEmpty {
-                        Text(action.message)
-                            .font(PPOrderMissionTypography.caption())
-                            .foregroundStyle(Color.ppTextSecondary)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                        .lineLimit(1)
+                    Text(action.v6Subtitle)
+                        .font(PPOrderMissionTypography.caption(12))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(1)
                 }
 
                 Spacer(minLength: PPSpace.sm)
 
                 Image(systemName: "arrow.up.right")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(color)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 32, height: 32)
                     .background(color.opacity(0.12), in: Circle())
                     .overlay(
                         Circle().stroke(color.opacity(0.22), lineWidth: 1)
@@ -1603,26 +1579,27 @@ private struct PPOrderMissionHeroCommand: View {
                     .accessibilityHidden(true)
             }
             .padding(PPSpace.base)
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
             .background(
-                LinearGradient(
-                    colors: [Color.ppSecondarySurface, color.opacity(0.08)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
+                Color.ppForeground,
                 in: shape
             )
-            .overlay(shape.stroke(color.opacity(0.40), lineWidth: 1.2))
+            .overlay(
+                shape.strokeBorder(
+                    color.opacity(colorScheme == .dark ? 0.35 : 0.22),
+                    lineWidth: 1.2
+                )
+            )
             .overlay(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(color)
                     .frame(width: 3.5)
-                    .padding(.vertical, PPSpace.base)
+                    .padding(.vertical, PPSpace.md)
             }
-            .shadow(color: color.opacity(0.16), radius: 14, x: 0, y: 6)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.16 : 0.04), radius: 10, x: 0, y: 4)
         }
         .buttonStyle(PPOrderMissionCommandPressStyle())
-        .accessibilityHint(action.message)
+        .accessibilityHint(action.v6Subtitle)
     }
 }
 
@@ -1630,70 +1607,79 @@ private struct PPOrderMissionActionTile: View {
     let action: PPOrderMissionAction
     let accent: Color
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    private var actionColor: Color {
+        PPOrderMissionColorRole.action(
+            kind: action.kind,
+            isDestructive: action.isDestructive,
+            fallback: accent
+        )
+    }
+
     var body: some View {
         let shape = RoundedRectangle(
             cornerRadius: PPCorner.medium,
             style: .continuous
         )
         let iconShape = RoundedRectangle(
-            cornerRadius: PPCorner.verysmall + 2,
+            cornerRadius: PPCorner.verysmall + 3,
             style: .continuous
         )
+        let color = actionColor
 
-        HStack(spacing: PPSpace.md) {
-            Image(systemName: action.symbol)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.white)
-                .frame(width: 34, height: 34)
+        HStack(spacing: PPSpace.sm + 2) {
+            Image(systemName: action.v6Symbol)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 38, height: 38)
                 .background(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.22),
-                            Color.white.opacity(0.08)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
+                    color.opacity(colorScheme == .dark ? 0.22 : 0.10),
                     in: iconShape
                 )
                 .overlay(
-                    iconShape.stroke(Color.white.opacity(0.24), lineWidth: 1)
+                    iconShape.stroke(color.opacity(colorScheme == .dark ? 0.38 : 0.22), lineWidth: 1)
                 )
-                .shadow(color: accent.opacity(0.24), radius: 5, x: 0, y: 2)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(action.title)
-                    .font(PPOrderMissionTypography.headline(15))
-                    .foregroundStyle(Color.white)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(action.v6Title)
+                    .font(PPOrderMissionTypography.headline(14))
+                    .foregroundStyle(Color.ppTextPrimary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(1)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .minimumScaleFactor(0.85)
 
-                if !action.message.isEmpty {
-                    Text(action.message)
-                        .font(PPOrderMissionTypography.caption(11))
-                        .foregroundStyle(Color.white.opacity(0.78))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(action.v6Subtitle)
+                    .font(PPOrderMissionTypography.caption(11))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.80)
             }
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, PPSpace.md)
-        .padding(.vertical, PPSpace.md)
-        .frame(maxWidth: .infinity, minHeight: 64)
+        .padding(.vertical, PPSpace.sm + 2)
+        .frame(maxWidth: .infinity, minHeight: 62)
         .background(
-            LinearGradient(
-                colors: [accent, accent.opacity(0.82)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
+            Color.ppForeground,
             in: shape
         )
-        .overlay(shape.stroke(Color.white.opacity(0.14), lineWidth: 1))
-        .shadow(color: accent.opacity(0.20), radius: 10, x: 0, y: 4)
+        .overlay(
+            shape.strokeBorder(
+                color.opacity(colorScheme == .dark ? 0.30 : 0.18),
+                lineWidth: 1
+            )
+        )
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.14 : 0.035),
+            radius: 8,
+            x: 0,
+            y: 3
+        )
     }
 }
 

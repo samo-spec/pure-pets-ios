@@ -28,11 +28,6 @@ struct AdoptPetDetailsScreen: View {
     var hostViewControllerProvider: () -> UIViewController?
 
     @State private var currentImageIndex = 0
-    @State private var showingReportAlert = false
-    @State private var reportReasonText = ""
-    @State private var showingReportSuccess = false
-    @State private var showingReportFailure = false
-    @State private var reportFailureMessage = ""
     @State private var hasAppeared = false
 
     init(
@@ -83,30 +78,6 @@ struct AdoptPetDetailsScreen: View {
         }
         .navigationBarHidden(true)
         .onAppear(perform: beginEntrance)
-        .alert(PPAdoptLang("adopt_detail_report_title"), isPresented: $showingReportAlert) {
-            TextField(PPAdoptLang("adopt_detail_report_prompt"), text: $reportReasonText)
-                .textFieldStyle(.roundedBorder)
-                .disableAutocorrection(true)
-
-            Button(PPAdoptLang("adopt_detail_report_submit"), action: submitReport)
-                .disabled(
-                    reportReasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || store.isReporting
-                )
-            Button(PPAdoptLang("Cancel"), role: .cancel) { }
-        } message: {
-            Text(PPAdoptLang("adopt_detail_report_explanation"))
-        }
-        .alert(PPAdoptLang("adopt_detail_report_success_title"), isPresented: $showingReportSuccess) {
-            Button(PPAdoptLang("OK"), role: .cancel) { }
-        } message: {
-            Text(PPAdoptLang("adopt_detail_report_success_message"))
-        }
-        .alert(PPAdoptLang("adopt_detail_report_failed_title"), isPresented: $showingReportFailure) {
-            Button(PPAdoptLang("OK"), role: .cancel) { }
-        } message: {
-            Text(reportFailureMessage)
-        }
     }
 
     // MARK: - Layout and semantic content
@@ -945,23 +916,34 @@ struct AdoptPetDetailsScreen: View {
             UserManager.showPromptOnTopController()
             return
         }
-        showingReportAlert = true
-    }
-
-    private func submitReport() {
-        let reason = reportReasonText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !reason.isEmpty else { return }
-
-        store.reportPet(reason: reason) { result in
-            switch result {
-            case .success:
-                reportReasonText = ""
-                showingReportSuccess = true
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-            case .failure:
-                reportFailureMessage = PPAdoptLang("adopt_detail_report_failed_message")
-                showingReportFailure = true
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
+        let host = hostViewControllerProvider() ?? AppManager.sharedInstance().topViewController()
+        PPAlertHelper.showTextField(
+            in: host,
+            title: PPAdoptLang("adopt_detail_report_title"),
+            subtitle: PPAdoptLang("adopt_detail_report_explanation"),
+            placeholder: PPAdoptLang("adopt_detail_report_prompt"),
+            initialText: nil,
+            confirmText: PPAdoptLang("adopt_detail_report_submit"),
+            cancelText: PPAdoptLang("Cancel")
+        ) { text, didConfirm in
+            guard didConfirm, let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
+            self.store.reportPet(reason: text) { result in
+                switch result {
+                case .success:
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    PPAlertHelper.showSuccess(
+                        in: host,
+                        title: PPAdoptLang("adopt_detail_report_success_title"),
+                        subtitle: PPAdoptLang("adopt_detail_report_success_message")
+                    )
+                case .failure:
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    PPAlertHelper.showError(
+                        in: host,
+                        title: PPAdoptLang("adopt_detail_report_failed_title"),
+                        subtitle: PPAdoptLang("adopt_detail_report_failed_message")
+                    )
+                }
             }
         }
     }

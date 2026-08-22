@@ -24,6 +24,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private let atmosphereView = UIView()
     private let artworkGroupView = UIView()
     private let groundShadowView = UIView()
+    private let semiCirclePlateView = PPMainKindsGlassPlateView()
     private let portraitGroupView = UIView()
     private let artworkHaloView = UIView()
     private let artworkView = UIImageView()
@@ -109,6 +110,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         artworkView.isHidden = false
         artworkHaloView.alpha = 0
         artworkHaloView.transform = .identity
+        semiCirclePlateView.alpha = 0
+        semiCirclePlateView.transform = .identity
         for previewView in previewImageViews {
             previewView.image = nil
             previewView.isHidden = true
@@ -148,6 +151,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         canvasView.frame = surfaceView.bounds
         atmosphereView.frame = canvasView.bounds
         setLayoutRect(geometry.artworkGroupFrame, on: artworkGroupView)
+        setLayoutRect(geometry.semiCirclePlateFrame, on: semiCirclePlateView)
         groundShadowView.frame = geometry.groundShadowFrame
         portraitGroupView.frame = artworkGroupView.bounds
         if content?.isAll ?? false {
@@ -448,6 +452,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         artworkHaloLayer.locations = [0, 0.48, 1.0]
         artworkHaloView.layer.addSublayer(artworkHaloLayer)
         artworkGroupView.addSubview(artworkHaloView)
+        artworkGroupView.addSubview(semiCirclePlateView)
         artworkGroupView.addSubview(portraitGroupView)
 
         configureImageView(artworkView)
@@ -894,6 +899,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 ? 0
                 : Float(darkMode ? 0.10 : 0.04)
         }
+
+        semiCirclePlateView.configure(
+            kindColor: kindColor,
+            accentColor: accent,
+            darkMode: darkMode,
+            highContrast: highContrast,
+            reduceTransparency: reduceTransparency
+        )
         CATransaction.commit()
     }
 
@@ -916,6 +929,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 artworkTransform: CGAffineTransform(translationX: 0, y: 8).scaledBy(x: 1.2, y: 1.2),
                 artworkHaloAlpha: 1,
                 artworkHaloTransform: CGAffineTransform(scaleX: 1.05, y: 1.05),
+                semiCirclePlateAlpha: 1,
+                semiCirclePlateTransform: .identity,
                 surfaceTransform: CGAffineTransform(translationX: 0, y: -1),
                 groundAlpha: 0,
                 shadowOpacity: highContrast ? 0 : (darkMode ? 0.12 : 0.04),
@@ -935,6 +950,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
             artworkTransform: .identity,
             artworkHaloAlpha: 0,
             artworkHaloTransform: CGAffineTransform(scaleX: 0.75, y: 0.75),
+            semiCirclePlateAlpha: 0,
+            semiCirclePlateTransform: CGAffineTransform(scaleX: 0.65, y: 0.65).translatedBy(x: 0, y: -4),
             surfaceTransform: .identity,
             groundAlpha: highContrast ? 0 : 1,
             shadowOpacity: highContrast ? 0 : (darkMode ? 0.06 : 0.02),
@@ -967,6 +984,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         artworkGroupView.transform = style.artworkTransform
         artworkHaloView.alpha = style.artworkHaloAlpha
         artworkHaloView.transform = style.artworkHaloTransform
+        semiCirclePlateView.alpha = style.semiCirclePlateAlpha
+        semiCirclePlateView.transform = style.semiCirclePlateTransform
         surfaceView.transform = style.surfaceTransform
         groundShadowView.alpha = style.groundAlpha
         canvasView.alpha = 1
@@ -1192,6 +1211,11 @@ public final class PPMainKindsCell: UICollectionViewCell {
         if enteringSelection {
             atmosphereView.alpha = restored ? 0.76 : 0.52
             groundShadowView.alpha = restored ? 0.82 : 0.58
+            semiCirclePlateView.alpha = restored ? 0.85 : 0.45
+            semiCirclePlateView.transform = CGAffineTransform(
+                scaleX: restored ? 0.95 : 0.85,
+                y: restored ? 0.95 : 0.85
+            )
             selectionIndicatorView.transform = CGAffineTransform(
                 scaleX: restored ? 0.96 : 0.86,
                 y: restored ? 0.99 : 0.80
@@ -1371,6 +1395,7 @@ private struct PPMainKindsGeometry {
     let cardFrame: CGRect
     let artworkGroupFrame: CGRect
     let primaryArtworkFrame: CGRect
+    let semiCirclePlateFrame: CGRect
     let groundShadowFrame: CGRect
     let previewFrames: [CGRect]
     let previewTransforms: [CGAffineTransform]
@@ -1459,6 +1484,17 @@ private struct PPMainKindsGeometry {
             height: artworkSide
         ).integral
 
+        let plateWidth = min(54, max(42, artworkSide * 1.05))
+        let plateHeight: CGFloat = 16
+        let plateX = (groupWidth - plateWidth) / 2
+        let plateY = primaryArtworkFrame.maxY - 8
+        semiCirclePlateFrame = CGRect(
+            x: plateX,
+            y: plateY,
+            width: plateWidth,
+            height: plateHeight
+        ).integral
+
         let artworkCanvasMidY = artworkGroupFrame.minY + primaryArtworkFrame.midY
         let haloSide = min(
             84,
@@ -1531,6 +1567,8 @@ private struct PPMainKindsVisualStyle {
     let artworkTransform: CGAffineTransform
     let artworkHaloAlpha: CGFloat
     let artworkHaloTransform: CGAffineTransform
+    let semiCirclePlateAlpha: CGFloat
+    let semiCirclePlateTransform: CGAffineTransform
     let surfaceTransform: CGAffineTransform
     let groundAlpha: CGFloat
     let shadowOpacity: CGFloat
@@ -1628,5 +1666,162 @@ private extension UIColor {
         return (0.2126 * linear(red))
             + (0.7152 * linear(green))
             + (0.0722 * linear(blue))
+    }
+}
+
+// MARK: - Ultra-Premium Semi-Circle Glass Plate
+
+/// An ultra-premium semi-circle glass plate sitting below the category image on selected state.
+/// Crafted with real-time blur material, MainKind color wash, specular edge highlight, and soft under-glow.
+private final class PPMainKindsGlassPlateView: UIView {
+    private let blurEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+    private let plateTintLayer = CAGradientLayer()
+    private let specularRimLayer = CAShapeLayer()
+    private let borderOutlineLayer = CAShapeLayer()
+    private let ambientGlowLayer = CAShapeLayer()
+
+    private var kindColor: UIColor = .ppPrimary
+    private var accentColor: UIColor = .ppPrimary
+    private var isDarkMode: Bool = false
+    private var isHighContrast: Bool = false
+    private var isReduceTransparency: Bool = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        isAccessibilityElement = false
+        clipsToBounds = false
+        backgroundColor = .clear
+
+        layer.addSublayer(ambientGlowLayer)
+
+        blurEffectView.isUserInteractionEnabled = false
+        blurEffectView.clipsToBounds = true
+        addSubview(blurEffectView)
+
+        plateTintLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
+        plateTintLayer.endPoint = CGPoint(x: 0.5, y: 1.0)
+        blurEffectView.contentView.layer.addSublayer(plateTintLayer)
+
+        specularRimLayer.fillColor = UIColor.clear.cgColor
+        specularRimLayer.lineCap = .round
+        blurEffectView.contentView.layer.addSublayer(specularRimLayer)
+
+        borderOutlineLayer.fillColor = UIColor.clear.cgColor
+        layer.addSublayer(borderOutlineLayer)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(
+        kindColor: UIColor,
+        accentColor: UIColor,
+        darkMode: Bool,
+        highContrast: Bool,
+        reduceTransparency: Bool
+    ) {
+        self.kindColor = kindColor
+        self.accentColor = accentColor
+        self.isDarkMode = darkMode
+        self.isHighContrast = highContrast
+        self.isReduceTransparency = reduceTransparency
+        updateAppearance()
+    }
+
+    func updateAppearance() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+
+        if isReduceTransparency {
+            blurEffectView.isHidden = true
+            backgroundColor = kindColor.withAlphaComponent(isDarkMode ? 0.32 : 0.22)
+        } else {
+            blurEffectView.isHidden = false
+            backgroundColor = .clear
+            blurEffectView.effect = UIBlurEffect(
+                style: isDarkMode ? .systemUltraThinMaterialDark : .systemUltraThinMaterialLight
+            )
+        }
+
+        let topAlpha: CGFloat = isHighContrast ? 0.48 : (isDarkMode ? 0.36 : 0.26)
+        let midAlpha: CGFloat = isHighContrast ? 0.32 : (isDarkMode ? 0.22 : 0.14)
+        let bottomAlpha: CGFloat = isHighContrast ? 0.18 : (isDarkMode ? 0.10 : 0.05)
+
+        plateTintLayer.colors = [
+            kindColor.withAlphaComponent(topAlpha).cgColor,
+            kindColor.withAlphaComponent(midAlpha).cgColor,
+            kindColor.withAlphaComponent(bottomAlpha).cgColor
+        ]
+        plateTintLayer.locations = [0.0, 0.45, 1.0]
+
+        let specularAlpha: CGFloat = isHighContrast ? 0.90 : (isDarkMode ? 0.70 : 0.85)
+        specularRimLayer.strokeColor = UIColor.white.withAlphaComponent(specularAlpha).cgColor
+        specularRimLayer.lineWidth = 1.0
+
+        let borderAlpha: CGFloat = isHighContrast ? 0.85 : (isDarkMode ? 0.45 : 0.32)
+        borderOutlineLayer.strokeColor = kindColor.withAlphaComponent(borderAlpha).cgColor
+        borderOutlineLayer.lineWidth = isHighContrast ? 1.5 : 0.75
+
+        ambientGlowLayer.shadowColor = kindColor.cgColor
+        ambientGlowLayer.shadowRadius = isDarkMode ? 8 : 6
+        ambientGlowLayer.shadowOffset = CGSize(width: 0, height: 3)
+        ambientGlowLayer.shadowOpacity = isHighContrast ? 0 : (isDarkMode ? 0.35 : 0.20)
+
+        CATransaction.commit()
+        setNeedsLayout()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard bounds.width > 0 && bounds.height > 0 else { return }
+
+        let path = createSemiCirclePath(in: bounds)
+        let topRimPath = createTopRimPath(in: bounds)
+
+        blurEffectView.frame = bounds
+        plateTintLayer.frame = blurEffectView.contentView.bounds
+
+        let maskLayer = CAShapeLayer()
+        maskLayer.path = path.cgPath
+        blurEffectView.layer.mask = maskLayer
+
+        specularRimLayer.path = topRimPath.cgPath
+        borderOutlineLayer.path = path.cgPath
+        ambientGlowLayer.shadowPath = path.cgPath
+    }
+
+    private func createSemiCirclePath(in rect: CGRect) -> UIBezierPath {
+        let w = rect.width
+        let h = rect.height
+        let cornerRadius: CGFloat = 3.0
+
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: cornerRadius, y: 0))
+        path.addLine(to: CGPoint(x: w - cornerRadius, y: 0))
+        path.addQuadCurve(to: CGPoint(x: w, y: cornerRadius), controlPoint: CGPoint(x: w, y: 0))
+
+        path.addCurve(
+            to: CGPoint(x: w / 2, y: h),
+            controlPoint1: CGPoint(x: w, y: h * 0.65),
+            controlPoint2: CGPoint(x: w * 0.82, y: h)
+        )
+        path.addCurve(
+            to: CGPoint(x: 0, y: cornerRadius),
+            controlPoint1: CGPoint(x: w * 0.18, y: h),
+            controlPoint2: CGPoint(x: 0, y: h * 0.65)
+        )
+        path.addQuadCurve(to: CGPoint(x: cornerRadius, y: 0), controlPoint: CGPoint(x: 0, y: 0))
+        path.close()
+        return path
+    }
+
+    private func createTopRimPath(in rect: CGRect) -> UIBezierPath {
+        let w = rect.width
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: 3, y: 0.5))
+        path.addLine(to: CGPoint(x: w - 3, y: 0.5))
+        return path
     }
 }

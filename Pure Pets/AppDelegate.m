@@ -8,6 +8,7 @@
 #import "PPOfflineBannerView.h"
 #import "InstallationManager.h"
 #import "SceneDelegate.h"
+#import "PPAlertHelper.h"
 #import <Pure_Pets-Swift.h>
 #if __has_include(<FirebaseAppCheck/FirebaseAppCheck.h>)
 @import FirebaseAppCheck;
@@ -190,7 +191,7 @@ static BOOL PPAppDelegateHasSafeNotificationID(NSDictionary *userInfo) {
 
 static BOOL PPAppDelegateTargetsUserApp(NSDictionary *userInfo) {
     NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
-    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    NSDictionary *meta = [safePayload[@"meta"] isKindOfClass:NSDictionary.class] ? safePayload[@"meta"] : @{};
     NSString *targetApp = [[PPAppDelegateFirstScalarForKeys(
         safePayload,
         @[@"targetApp", @"targetAppId", @"appId"]
@@ -202,32 +203,64 @@ static BOOL PPAppDelegateTargetsUserApp(NSDictionary *userInfo) {
         ) lowercaseString] copy];
     }
     if (targetApp.length > 0) {
-        return [targetApp isEqualToString:kPPNotificationV2UserAppID];
+        return [targetApp isEqualToString:kPPNotificationV2UserAppID] ||
+               [targetApp isEqualToString:@"user"] ||
+               [targetApp isEqualToString:@"all"] ||
+               [targetApp isEqualToString:@"consumer"];
     }
 
     id rawTargets = safePayload[@"targetApps"] ?: meta[@"targetApps"];
-    if (![rawTargets isKindOfClass:NSArray.class]) return NO;
-    for (id rawTarget in (NSArray *)rawTargets) {
-        if ([[PPAppDelegateScalarString(rawTarget) lowercaseString]
-                isEqualToString:kPPNotificationV2UserAppID]) {
+    if ([rawTargets isKindOfClass:NSString.class]) {
+        NSString *rawString = [(NSString *)rawTargets lowercaseString];
+        if ([rawString containsString:kPPNotificationV2UserAppID] ||
+            [rawString containsString:@"user"] ||
+            [rawString containsString:@"all"]) {
             return YES;
         }
+        NSData *data = [((NSString *)rawTargets) dataUsingEncoding:NSUTF8StringEncoding];
+        if (data) {
+            id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+            if ([parsed isKindOfClass:NSArray.class]) {
+                rawTargets = parsed;
+            }
+        }
     }
-    return NO;
+    if ([rawTargets isKindOfClass:NSArray.class]) {
+        for (id rawTarget in (NSArray *)rawTargets) {
+            NSString *targetStr = [[PPAppDelegateScalarString(rawTarget) lowercaseString] copy];
+            if ([targetStr isEqualToString:kPPNotificationV2UserAppID] ||
+                [targetStr isEqualToString:@"user"] ||
+                [targetStr isEqualToString:@"all"] ||
+                [targetStr isEqualToString:@"consumer"]) {
+                return YES;
+            }
+        }
+        return NO;
+    }
+    return YES;
 }
 
 static BOOL PPAppDelegateIsTargetedAwayFromUserApp(NSDictionary *userInfo) {
     NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
-    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
-    BOOL declaresTarget = PPAppDelegateFirstScalarForKeys(
+    NSDictionary *meta = [safePayload[@"meta"] isKindOfClass:NSDictionary.class] ? safePayload[@"meta"] : @{};
+    NSString *targetApp = [[PPAppDelegateFirstScalarForKeys(
         safePayload,
         @[@"targetApp", @"targetAppId", @"appId"]
-    ).length > 0 || PPAppDelegateFirstScalarForKeys(
-        meta,
-        @[@"targetApp", @"targetAppId", @"appId"]
-    ).length > 0 || [safePayload[@"targetApps"] isKindOfClass:NSArray.class] ||
-        [meta[@"targetApps"] isKindOfClass:NSArray.class];
-    return declaresTarget && !PPAppDelegateTargetsUserApp(safePayload);
+    ) lowercaseString] copy];
+    if (targetApp.length == 0) {
+        targetApp = [[PPAppDelegateFirstScalarForKeys(
+            meta,
+            @[@"targetApp", @"targetAppId", @"appId"]
+        ) lowercaseString] copy];
+    }
+    if (targetApp.length > 0) {
+        if ([targetApp isEqualToString:@"pro_ios"] ||
+            [targetApp isEqualToString:@"pro_android"] ||
+            [targetApp isEqualToString:@"admin_ios"]) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 static BOOL PPAppDelegateHasExactNotificationV2Schema(NSDictionary *userInfo) {
@@ -494,14 +527,10 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     if (safePayload.count == 0 || PPAppDelegateIsProviderOnlyNotificationPayload(safePayload)) {
         return NO;
     }
-    BOOL requiresNotificationV2 = PPAppDelegateIsOrderLifecycleNotification(safePayload) ||
-        PPAppDelegateHasNotificationV2Marker(safePayload);
-    if (!requiresNotificationV2) {
-        return YES;
+    if (PPAppDelegateIsTargetedAwayFromUserApp(safePayload)) {
+        return NO;
     }
-    return PPAppDelegateHasExactNotificationV2Schema(safePayload) &&
-        PPAppDelegateTargetsUserApp(safePayload) &&
-        PPAppDelegateHasSafeNotificationID(safePayload);
+    return YES;
 }
 
 
@@ -1351,31 +1380,16 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
  
 - (void)showUnsupportedVersionAlert {
-    // Localized title & message
     NSString *title = kLang(@"Unsupported iOS Version");
     NSString *message = kLang(@"This version of the app is available on iOS 26 and above.");
-    NSString *okButton = kLang(@"OK");
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:okButton
-                                                       style:UIAlertActionStyleDefault
-                                                     handler:nil];
-
-    [alert addAction:okAction];
-
-   /*
-    UILabel *titleLabel = [alert valueForKey:@"_titleLabel"];
-    if ([titleLabel isKindOfClass:[UILabel class]]) {
-        titleLabel.textAlignment = Language.isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    UIViewController *topVC = AppMgr.topViewController;
+    if (topVC) {
+        [PPAlertHelper showWarningIn:topVC
+                               title:title
+                            subtitle:message
+                          completion:nil];
     }
-    */
-
-    
-
-    [AppMgr.topViewController presentViewController:alert animated:YES completion:nil];
 }
 
 

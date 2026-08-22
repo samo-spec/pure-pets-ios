@@ -8,6 +8,7 @@
 
 
 #import "BottomOptionsViewController.h"
+#import "PPAlertHelper.h"
 
 @interface BottomOptionsViewController () <UITableViewDelegate, UITableViewDataSource>
 
@@ -314,46 +315,31 @@
 
 
 - (void)showCustomTitleAlert {
-    UIAlertController *alert =
-    [UIAlertController alertControllerWithTitle:kLang(@"customTitle")
-                                        message:kLang(@"enterCustomTitle")
-                                 preferredStyle:UIAlertControllerStyleAlert];
-
-    [alert addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
-        textField.placeholder = kLang(@"customTitlePlaceholder");
-        textField.textAlignment = ([Language languageVal] == 0) ? NSTextAlignmentLeft : NSTextAlignmentRight;
-    }];
-
-    UIAlertAction *cancel =
-    [UIAlertAction actionWithTitle:kLang(@"cancel")
-                             style:UIAlertActionStyleCancel
-                           handler:nil];
-
-    UIAlertAction *confirm =
-    [UIAlertAction actionWithTitle:kLang(@"confirm")
-                             style:UIAlertActionStyleDefault
-                           handler:^(UIAlertAction * _Nonnull action) {
-        NSString *input = alert.textFields.firstObject.text;
+    __weak typeof(self) weakSelf = self;
+    [PPAlertHelper showTextFieldAlertIn:self
+                                  title:kLang(@"customTitle")
+                               subtitle:kLang(@"enterCustomTitle")
+                            placeholder:kLang(@"customTitlePlaceholder")
+                            initialText:nil
+                            confirmText:kLang(@"confirm")
+                             cancelText:kLang(@"cancel")
+                             completion:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        NSString *input = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
         if (input.length > 0) {
-            if(self.optionsType == PPOptionsTypeAddressTitles)
-            {
+            if (self.optionsType == PPOptionsTypeAddressTitles) {
                  
-            }
-            else
-            {
+            } else {
                 OptionModel *custom = [[OptionModel alloc] initWithID:OptionUUIDString() title:input];
                 if (self.selectionHandler) {
                     self.selectionHandler(custom);
                 }
                 [self dismissViewControllerAnimated:YES completion:nil];
             }
-            
         }
     }];
-
-    [alert addAction:cancel];
-    [alert addAction:confirm];
-    [self presentViewController:alert animated:YES completion:nil];
 }
 
 

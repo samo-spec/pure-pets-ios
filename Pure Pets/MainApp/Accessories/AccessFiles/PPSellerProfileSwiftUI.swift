@@ -40,7 +40,20 @@ final class PPSellerProfileStore: ObservableObject {
     @Published var showsRatingSheet = false
     @Published var selectedRating = 0
     @Published var reviewComment = ""
-    @Published var alert: PPSellerProfileAlert?
+    @Published var alert: PPSellerProfileAlert? {
+        didSet {
+            guard let alert else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                let vc = self.presenter ?? AppManager.sharedInstance().topViewController()
+                PPAlertHelper.showInfo(
+                    in: vc,
+                    title: PPProviderStorefrontL10n.text(alert.titleKey),
+                    subtitle: PPProviderStorefrontL10n.text(alert.messageKey)
+                )
+            }
+        }
+    }
     @Published private(set) var cartCount = 0
     @Published private(set) var cartRevision = 0
     @Published var bottomClearance: CGFloat = 0
@@ -558,12 +571,6 @@ private struct PPSellerProfileScreen: View {
         .background(Color.ppBackground.ignoresSafeArea())
         .sheet(isPresented: $store.showsRatingSheet) {
             PPSellerProfileRatingSheet(store: store)
-        }
-        .alert(item: $store.alert) { alert in
-            Alert(
-                title: Text(PPProviderStorefrontL10n.text(alert.titleKey)),
-                message: Text(PPProviderStorefrontL10n.text(alert.messageKey))
-            )
         }
         .accessibilityIdentifier("sellerProfileSwiftUIScreen")
     }

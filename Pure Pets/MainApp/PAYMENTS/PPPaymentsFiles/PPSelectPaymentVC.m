@@ -331,25 +331,12 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [self pp_refreshCheckoutCallToAction];
     [self pp_applyAdaptiveSummaryPresentation];
 
-    [self pp_navBarSetVisible:NO animated:NO];
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"payment_screen_title") showBack:YES];
+    self.navigationController.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
 
-    UINavigationBar *navBar = self.navigationController.navigationBar;
-
-    if (@available(iOS 13.0, *)) {
-        UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
-        [appearance configureWithTransparentBackground];
-
-        appearance.backgroundColor = UIColor.clearColor;
-        appearance.shadowColor = UIColor.clearColor; // 🔥 THIS removes the line
-
-        navBar.standardAppearance = appearance;
-        navBar.scrollEdgeAppearance = appearance;
-        navBar.compactAppearance = appearance;
-    }
-
-    navBar.translucent = YES;
-    navBar.backgroundColor = UIColor.clearColor;
-    navBar.alpha = 0.0;  navBar.layer.shadowOpacity = 0.0;  self.extendedLayoutIncludesOpaqueBars = YES;
+   // navBar.translucent = YES;
+   // navBar.backgroundColor = UIColor.clearColor;
+   //navBar.alpha = 0.0;  navBar.layer.shadowOpacity = 0.0;  self.extendedLayoutIncludesOpaqueBars = YES;
     self.edgesForExtendedLayout = UIRectEdgeAll;
 
 
@@ -791,8 +778,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroCardView.layer.masksToBounds = NO;
     [self.view addSubview:self.heroCardView];
 
-    self.heroBackButton = [self pp_makePaymentHeroBackButton];
-    [self.heroCardView addSubview:self.heroBackButton];
+    // heroBackButton removed to match cart controller layout pattern
 
     self.heroIconPlateView = [[UIView alloc] init];
     self.heroIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -872,10 +858,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
         self.heroHeightConstraint,
 
-        [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:PPSpaceMD],
-        [self.heroBackButton.centerYAnchor constraintEqualToAnchor:self.heroCardView.centerYAnchor],
-        [self.heroBackButton.widthAnchor constraintEqualToConstant:42.0],
-        [self.heroBackButton.heightAnchor constraintEqualToConstant:42.0],
+
 
         [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-PPSpaceMD],
         [self.heroIconPlateView.centerYAnchor constraintEqualToAnchor:self.heroCardView.centerYAnchor],
@@ -892,7 +875,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         [self.heroAnimationView.widthAnchor constraintEqualToConstant:56.0],
         [self.heroAnimationView.heightAnchor constraintEqualToConstant:56.0],
 
-        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroBackButton.trailingAnchor constant:PPSpaceMD],
+        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:PPSpaceMD],
         [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroIconPlateView.leadingAnchor constant:-PPSpaceMD],
         [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:16.0],
 
@@ -914,7 +897,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.heroCardView.alpha = 1.0;
         self.heroCardView.transform = CGAffineTransformIdentity;
-        for (UIView *view in @[self.heroIconPlateView, self.heroBackButton, self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel]) {
+        for (UIView *view in @[self.heroIconPlateView,  self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel]) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
@@ -926,7 +909,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     NSArray<UIView *> *heroDetailViews = @[
         self.heroIconPlateView,
-        self.heroBackButton,
+        
         self.heroIconView,
         self.heroTitleLabel,
         self.heroSubtitleLabel
@@ -948,7 +931,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.heroCardView.alpha = 1.0;
         self.heroCardView.transform = CGAffineTransformIdentity;
-        for (UIView *view in @[self.heroIconPlateView, self.heroBackButton, self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel]) {
+        for (UIView *view in @[self.heroIconPlateView,  self.heroIconView, self.heroTitleLabel, self.heroSubtitleLabel]) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
@@ -965,7 +948,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         self.heroCardView.transform = CGAffineTransformIdentity;
         for (UIView *view in @[
             self.heroIconPlateView,
-            self.heroBackButton,
+            
             self.heroIconView,
             self.heroTitleLabel,
             self.heroSubtitleLabel

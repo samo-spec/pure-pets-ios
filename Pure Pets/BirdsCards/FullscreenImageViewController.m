@@ -1,6 +1,7 @@
 //  FullscreenImageViewController.m
 
 #import "FullscreenImageViewController.h"
+#import "PPAlertHelper.h"
 #import <UIKit/UIKit.h>
 
 @interface FullscreenImageViewController () <UIScrollViewDelegate,UIPrintInteractionControllerDelegate>
@@ -127,23 +128,16 @@
         [pic presentAnimated:YES completionHandler:^(UIPrintInteractionController *printInteractionController, BOOL completed, NSError *error) {
             if (!completed && error) {
                 NSLog(@"Printing failed: %@", error);
-
-                UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Print Error" message:[NSString stringWithFormat:@"Failed to print: %@", error.localizedDescription] preferredStyle:UIAlertControllerStyleAlert];
-
-                [alertController addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-
-                [self presentViewController:alertController animated:YES completion:nil];
-
+                [PPAlertHelper showErrorIn:self
+                                     title:kLang(@"Error") ?: @"Print Error"
+                                  subtitle:[NSString stringWithFormat:@"Failed to print: %@", error.localizedDescription]];
             }
         }];
     } else {
         NSLog(@"Printing is not available.");
-
-        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Print Error" message:@"Printing is not available on this device." preferredStyle:UIAlertControllerStyleAlert];
-
-        [alertController addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-
-        [self presentViewController:alertController animated:YES completion:nil];
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"Error") ?: @"Print Error"
+                          subtitle:@"Printing is not available on this device."];
     }
 }
 

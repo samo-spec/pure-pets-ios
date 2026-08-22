@@ -201,16 +201,15 @@ private enum PPCommerceCartMetrics {
     static let holderPadding: CGFloat = PPSpace.md
     static let holderHeight: CGFloat =
         (controlHeight * 2) + verticalSpacing + (holderPadding * 2)
-    static let holderRadius: CGFloat =
-        PPBottomDecisionBarGeometry.surfaceRadius
-    static let quantityControlRadius: CGFloat = PPCorner.small
+    static let holderRadius: CGFloat = 24
+    static let quantityControlRadius: CGFloat = controlRadius
     static let payWidth: CGFloat = PPSpace.xxxxl * 2
     static let thumbnailSize: CGFloat = controlHeight - PPSpace.sm
     static let minimumStandardWidth: CGFloat = 356
     static let summaryHorizontalPadding: CGFloat = PPSpace.xs
-    /// The parent preserves its safe-area contract; this modest expansion uses
-    /// part of that existing inset to give the holder more visual authority.
-    static let widthExpansion: CGFloat = PPSpace.sm
+    /// Standard screen edge margin for the commerce holder (16pt).
+    static let screenEdgePadding: CGFloat = PPSpace.base
+    static let widthExpansion: CGFloat = 0
 }
 
 @available(iOS 16.0, *)
@@ -1244,7 +1243,7 @@ private struct PPCommerceCartHolderPreview: View {
                             .foregroundStyle(Color(uiColor: .systemTeal))
                     }
                 }
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }
         }

@@ -1,5 +1,6 @@
  
 #import "PPUserSigningManager.h"
+#import "PPAlertHelper.h"
  
 
 
@@ -277,21 +278,6 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
                          success:(void (^)(UserModel *))success 
                        cancelled:(void (^)(void))cancelled {
     
-    // Show alert with message first, then present sign-in
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"auth_signin_required_title")
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"auth_signin_required_action") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        [self presentSignInFrom:presentingVC success:success failure:nil cancelled:cancelled];
-    }]];
-    
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
-        if (cancelled) {
-            cancelled();
-        }
-    }]];
-    
     PPDispatchMainThread(^{
         UIViewController *safePresenter = [[self shared] topMostViewControllerFrom:presentingVC];
         if (!safePresenter) {
@@ -300,7 +286,25 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
             }
             return;
         }
-        [safePresenter presentViewController:alert animated:YES completion:nil];
+        [PPAlertHelper showConfirmationIn:safePresenter
+                                    title:kLang(@"auth_signin_required_title")
+                                 subtitle:message
+                            confirmButton:kLang(@"auth_signin_required_action")
+                             cancelButton:kLang(@"Cancel")
+                                     icon:PPSYSImage(@"person.crop.circle")
+                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+            if (!didConfirm) {
+                if (cancelled) {
+                    cancelled();
+                }
+                return;
+            }
+            [self presentSignInFrom:presentingVC success:success failure:nil cancelled:cancelled];
+        } cancelBlock:^{
+            if (cancelled) {
+                cancelled();
+            }
+        }];
     });
 }
 

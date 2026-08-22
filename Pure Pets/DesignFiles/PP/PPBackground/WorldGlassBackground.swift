@@ -281,20 +281,20 @@ public struct WorldGlassBackground: View {
 
     // MARK: Messaging atmosphere helpers
 
-    /// A cool depth wash for the messaging canvas. Uses no brand hue.
+    /// A depth wash for the messaging canvas using app foreground color.
     private var messagingTemperature: some View {
         LinearGradient(
             colors:
                 colorScheme == .dark
                 ? [
-                    Color.worldGlassAuroraIndigo.opacity(0.14),
+                    Color.ppForeground.opacity(0.14),
                     Color.clear,
-                    Color.worldGlassAuroraAqua.opacity(0.08)
+                    Color.ppForeground.opacity(0.08)
                 ]
                 : [
-                    Color.worldGlassAuroraLilac.opacity(0.16),
+                    Color.ppForeground.opacity(0.16),
                     Color.clear,
-                    Color.worldGlassAuroraAqua.opacity(0.11)
+                    Color.ppForeground.opacity(0.11)
                 ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -522,7 +522,7 @@ private struct WorldGlassLivingField: View {
 
 /// Persistent, motionless base for the messaging aurora. Two soft cool anchors
 /// give the field depth even when animation is paused (inactive scene, Low
-/// Power, Reduce Motion, or server-requested fade).
+/// Persistent, motionless base for the messaging aurora using app foreground color.
 private struct WorldGlassAuroraStaticField: View {
     let strength: Double
     let isRightToLeft: Bool
@@ -542,7 +542,7 @@ private struct WorldGlassAuroraStaticField: View {
                     isRightToLeft: isRightToLeft
                 ),
                 radius: max(size.width * 0.72, 260),
-                color: Color.worldGlassAuroraIndigo.opacity(
+                color: Color.ppForeground.opacity(
                     0.085 * strength
                 )
             )
@@ -556,7 +556,7 @@ private struct WorldGlassAuroraStaticField: View {
                     isRightToLeft: isRightToLeft
                 ),
                 radius: max(size.width * 0.66, 240),
-                color: Color.worldGlassAuroraAqua.opacity(
+                color: Color.ppForeground.opacity(
                     0.070 * strength
                 )
             )
@@ -564,10 +564,8 @@ private struct WorldGlassAuroraStaticField: View {
     }
 }
 
-/// The living "aurora weave": cool non-brand fields drift on slow Lissajous
-/// orbits, the whole field breathes, and one silk light-sweep travels across.
-/// These are the two product-behavior signature moments — both collapse to a
-/// still frame when `time` is pinned to `0` for Reduce Motion / Low Power.
+/// The living "aurora weave": fields drift on slow Lissajous
+/// orbits using app foreground color for background glows.
 private struct WorldGlassAuroraLivingField: View {
     let time: TimeInterval
     let strength: Double
@@ -589,7 +587,7 @@ private struct WorldGlassAuroraLivingField: View {
             // Signature moment 1 — the whole field breathes gently.
             let breathScale = 1.0 + (0.045 * sin(breath))
 
-            // Indigo dawn — upper leading.
+            // Upper leading glow
             WorldGlassDrawing.drawGlow(
                 in: &context,
                 center: WorldGlassDrawing.point(
@@ -599,10 +597,10 @@ private struct WorldGlassAuroraLivingField: View {
                     isRightToLeft: isRightToLeft
                 ),
                 radius: size.width * 0.62 * breathScale,
-                color: Color.worldGlassAuroraIndigo.opacity(0.20 * strength)
+                color: Color.ppForeground.opacity(0.20 * strength)
             )
 
-            // Aqua tide — upper trailing.
+            // Upper trailing glow
             WorldGlassDrawing.drawGlow(
                 in: &context,
                 center: WorldGlassDrawing.point(
@@ -612,10 +610,10 @@ private struct WorldGlassAuroraLivingField: View {
                     isRightToLeft: isRightToLeft
                 ),
                 radius: size.width * 0.58 * breathScale,
-                color: Color.worldGlassAuroraAqua.opacity(0.17 * strength)
+                color: Color.ppForeground.opacity(0.17 * strength)
             )
 
-            // Lilac wander — mid field, the widest slow orbit.
+            // Mid field glow
             WorldGlassDrawing.drawGlow(
                 in: &context,
                 center: WorldGlassDrawing.point(
@@ -625,10 +623,10 @@ private struct WorldGlassAuroraLivingField: View {
                     isRightToLeft: isRightToLeft
                 ),
                 radius: size.width * 0.55 * breathScale,
-                color: Color.worldGlassAuroraLilac.opacity(0.13 * strength)
+                color: Color.ppForeground.opacity(0.13 * strength)
             )
 
-            // Aqua deep — lower leading.
+            // Lower leading glow
             WorldGlassDrawing.drawGlow(
                 in: &context,
                 center: WorldGlassDrawing.point(
@@ -638,10 +636,10 @@ private struct WorldGlassAuroraLivingField: View {
                     isRightToLeft: isRightToLeft
                 ),
                 radius: size.width * 0.60 * breathScale,
-                color: Color.worldGlassAuroraAqua.opacity(0.15 * strength)
+                color: Color.ppForeground.opacity(0.15 * strength)
             )
 
-            // Warm sand — lower trailing, a quiet neutral counterweight (no brand hue).
+            // Lower trailing glow
             WorldGlassDrawing.drawGlow(
                 in: &context,
                 center: WorldGlassDrawing.point(
@@ -651,7 +649,7 @@ private struct WorldGlassAuroraLivingField: View {
                     isRightToLeft: isRightToLeft
                 ),
                 radius: size.width * 0.50 * breathScale,
-                color: Color.worldGlassAuroraSand.opacity(0.10 * strength)
+                color: Color.ppForeground.opacity(0.10 * strength)
             )
 
             // Luminous core — a soft near-white lift at the crown.
@@ -931,7 +929,7 @@ private enum WorldGlassDrawing {
                 Gradient(stops: [
                     .init(color: .clear, location: 0.00),
                     .init(
-                        color: Color.worldGlassAuroraLilac.opacity(
+                        color: Color.ppForeground.opacity(
                             0.045 * strength
                         ),
                         location: bandLead
@@ -941,7 +939,7 @@ private enum WorldGlassDrawing {
                         location: bandCenter
                     ),
                     .init(
-                        color: Color.worldGlassAuroraAqua.opacity(
+                        color: Color.ppForeground.opacity(
                             0.040 * strength
                         ),
                         location: bandTrail
@@ -969,7 +967,7 @@ private enum WorldGlassDrawing {
                         location: coreLead
                     ),
                     .init(
-                        color: Color.worldGlassAuroraAqua.opacity(
+                        color: Color.ppForeground.opacity(
                             0.090 * strength
                         ),
                         location: coreTrail

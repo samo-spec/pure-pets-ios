@@ -506,7 +506,7 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
         ? 0.0
         : kPPChatNoticeAvatarSize / 2.0;
     if (isSupportIdentity) {
-        self.avatarView.image = [UIImage imageNamed:@"PPLogo"] ?: placeholder;
+        self.avatarView.image = [UIImage imageNamed:@"tintLogo"] ?: placeholder;
     } else if (avatarURL.length > 0) {
         [GM setImageFromUrlString:avatarURL imageView:self.avatarView phImage:nil completion:^(UIImage * _Nullable image, NSError * _Nullable error) {
             (void)error;

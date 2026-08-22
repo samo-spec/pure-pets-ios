@@ -16,8 +16,16 @@
 
 static NSString *PPChatRouterThreadIDFromPayload(NSDictionary *userInfo)
 {
-    id value = userInfo[@"conversationId"] ?: userInfo[@"threadID"] ?: userInfo[@"threadId"];
-    return [value isKindOfClass:NSString.class] ? value : @"";
+    if (![userInfo isKindOfClass:NSDictionary.class]) return @"";
+    NSDictionary *meta = [userInfo[@"meta"] isKindOfClass:NSDictionary.class] ? userInfo[@"meta"] : @{};
+    NSArray<NSString *> *keys = @[@"conversationId", @"conversationID", @"threadID", @"threadId", @"chatId", @"chatID", @"contextId"];
+    for (NSString *key in keys) {
+        id value = userInfo[key] ?: meta[key];
+        if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+            return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        }
+    }
+    return @"";
 }
 
 static UIViewController *PPChatRouterVisibleMessagingController(UIViewController *controller,
@@ -124,10 +132,26 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
 
     UIViewController *presentingVC = [PPOverlayCoordinator pp_resolvedPresenterFrom:sourceVC];
     if (!presentingVC) {
-        presentingVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+        presentingVC = sourceVC.view.window.rootViewController ?:
+                       UIApplication.sharedApplication.keyWindow.rootViewController;
     }
 
-    if (![PPOverlayCoordinator pp_canPresentFrom:presentingVC]) {
+    if (!presentingVC) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:UIWindowScene.class]) {
+                UIWindowScene *ws = (UIWindowScene *)scene;
+                for (UIWindow *w in ws.windows) {
+                    if (w.rootViewController) {
+                        presentingVC = [PPOverlayCoordinator pp_resolvedPresenterFrom:w.rootViewController] ?: w.rootViewController;
+                        break;
+                    }
+                }
+                if (presentingVC) break;
+            }
+        }
+    }
+
+    if (!presentingVC) {
         [ChManager sharedManager].isHandlingNotificationHandoff = NO;
         return;
     }
@@ -145,13 +169,32 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
     });
     return instance;
 }
+
 - (void)handleChatNotification:(NSDictionary *)userInfo
            fromViewController:(UIViewController *)presentingVC {
 
     NSString *threadID = PPChatRouterThreadIDFromPayload(userInfo);
 
+    if (!presentingVC) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:UIWindowScene.class]) {
+                UIWindowScene *ws = (UIWindowScene *)scene;
+                for (UIWindow *w in ws.windows) {
+                    if (w.rootViewController) {
+                        presentingVC = w.rootViewController;
+                        break;
+                    }
+                }
+                if (presentingVC) break;
+            }
+        }
+        if (!presentingVC) {
+            presentingVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+        }
+    }
+
     if (threadID.length == 0 || !presentingVC) {
-        NSLog(@"❌ [NotificationRouter] Missing threadID");
+        NSLog(@"❌ [NotificationRouter] Missing threadID=%@ presentingVC=%@", threadID ?: @"", presentingVC ? @"present" : @"nil");
         [ChManager sharedManager].isHandlingNotificationHandoff = NO;
         return;
     }
@@ -173,7 +216,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
                             completion:^(ChatThreadModel *thread) {
 
         if (!thread) {
-            NSLog(@"❌ [NotificationRouter] Thread not found");
+            NSLog(@"❌ [NotificationRouter] Thread not found for ID: %@", threadID);
             [ChManager sharedManager].isHandlingNotificationHandoff = NO;
             return;
         }
@@ -198,7 +241,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
             void (^openInRoot)(void) = ^{
                 if (rootTabController) {
                     if (![rootTabController pp_openChatThreadFromNotification:thread animated:YES]) {
-                        [ChManager sharedManager].isHandlingNotificationHandoff = NO;
+                        PPChatRouterPresentThreadFullscreen(thread, rootTabController);
                     }
                     return;
                 }

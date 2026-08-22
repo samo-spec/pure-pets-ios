@@ -304,6 +304,75 @@ struct PPOrderMissionAction: Identifiable, Hashable {
         isEligible = dictionary.missionBool("eligible")
         isDestructive = dictionary.missionBool("destructive")
     }
+
+    var v6Title: String {
+        switch kind {
+        case "track":
+            return PPOrderMissionText("order_v6_action_track_title")
+        case "requests":
+            return PPOrderMissionText("order_v6_action_requests_title")
+        case "support":
+            return PPOrderMissionText("order_v6_action_support_title")
+        case "complaint":
+            return PPOrderMissionText("order_v6_action_complaint_title")
+        case "cancel":
+            return PPOrderMissionText("order_v6_action_cancel_title")
+        case "return":
+            return PPOrderMissionText("order_v6_action_return_title")
+        case "replacement":
+            return PPOrderMissionText("order_v6_action_replacement_title")
+        case "refund":
+            return PPOrderMissionText("order_v6_action_refund_title")
+        default:
+            return title
+        }
+    }
+
+    var v6Subtitle: String {
+        switch kind {
+        case "track":
+            return PPOrderMissionText("order_v6_action_track_sub")
+        case "requests":
+            return PPOrderMissionText("order_v6_action_requests_sub")
+        case "support":
+            return PPOrderMissionText("order_v6_action_support_sub")
+        case "complaint":
+            return PPOrderMissionText("order_v6_action_complaint_sub")
+        case "cancel":
+            return PPOrderMissionText("order_v6_action_cancel_sub")
+        case "return":
+            return PPOrderMissionText("order_v6_action_return_sub")
+        case "replacement":
+            return PPOrderMissionText("order_v6_action_replacement_sub")
+        case "refund":
+            return PPOrderMissionText("order_v6_action_refund_sub")
+        default:
+            return message
+        }
+    }
+
+    var v6Symbol: String {
+        switch kind {
+        case "track":
+            return "location.fill"
+        case "requests":
+            return "tray.full.fill"
+        case "support":
+            return "lifepreserver.fill"
+        case "complaint":
+            return "exclamationmark.bubble.fill"
+        case "cancel":
+            return "xmark.circle.fill"
+        case "return":
+            return "arrow.uturn.backward.circle.fill"
+        case "replacement":
+            return "arrow.triangle.2.circlepath.circle.fill"
+        case "refund":
+            return "dollarsign.arrow.circlepath"
+        default:
+            return symbol.isEmpty ? "bolt.fill" : symbol
+        }
+    }
 }
 
 struct PPOrderMissionFulfillmentSummary: Equatable {

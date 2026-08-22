@@ -3436,21 +3436,18 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_confirmLogout
 {
     __weak typeof(self) weakSelf = self;
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:PPSettingsLocalizedString(@"Logout", @"Logout")
-                                                                   message:PPSettingsLocalizedString(@"LogoutMessage", @"Are you sure you want to log out?")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:PPSettingsLocalizedString(@"cancel", @"Cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:PPSettingsLocalizedString(@"Logout", @"Logout")
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(__unused UIAlertAction *action) {
+    [PPAlertHelper showConfirmationIn:self
+                                title:PPSettingsLocalizedString(@"Logout", @"Logout")
+                             subtitle:PPSettingsLocalizedString(@"LogoutMessage", @"Are you sure you want to log out?")
+                        confirmButton:PPSettingsLocalizedString(@"Logout", @"Logout")
+                         cancelButton:PPSettingsLocalizedString(@"cancel", @"Cancel")
+                                 icon:PPSYSImage(@"rectangle.portrait.and.arrow.right")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         [strongSelf pp_performLogout];
-    }]];
-
-    [self presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:^{}];
 }
 
 - (void)pp_performLogout

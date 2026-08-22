@@ -12,6 +12,7 @@
 #import <MapKit/MapKit.h>
 #import "PPVetCell.h"
 #import "PPMapPreviewCell.h"
+#import "PPAlertHelper.h"
 
 static NSTimeInterval const kLocationTimeout = 8.0;
 static CLLocationCoordinate2D const kSampleLocationCoordinate = {30.0444, 31.2357}; // Cairo center — change if you want
@@ -311,19 +312,25 @@ static CLLocationCoordinate2D const kSampleLocationCoordinate = {30.0444, 31.235
 
         if (showAction) {
             // add a small toolbar-like action under status (Retry / Use Sample)
-            UIAlertController *ac = [UIAlertController alertControllerWithTitle:nil message:msg preferredStyle:UIAlertControllerStyleAlert];
-            [ac addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"KLang_Retry", @"Retry") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            __weak typeof(self) weakSelf = self;
+            [PPAlertHelper showThreeActionConfirmationIn:self
+                                                   title:kLang(@"Location") ?: @"Location"
+                                                subtitle:msg
+                                           primaryButton:NSLocalizedString(@"KLang_Retry", @"Retry")
+                                            primaryStyle:UIAlertActionStyleDefault
+                                         secondaryButton:NSLocalizedString(@"KLang_UseSampleLocation", @"Use Sample Location")
+                                          secondaryStyle:UIAlertActionStyleDefault
+                                          tertiaryButton:NSLocalizedString(@"KLang_Cancel", @"Cancel")
+                                           tertiaryStyle:UIAlertActionStyleCancel
+                                            primaryBlock:^{
                 NSLog(@"[PPVETLOCATOR] user tapped Retry");
-                [self setupLocationManagerAndRequest];
-            }]];
-            [ac addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"KLang_UseSampleLocation", @"Use Sample Location") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                [weakSelf setupLocationManagerAndRequest];
+            } secondaryBlock:^{
                 NSLog(@"[PPVETLOCATOR] user tapped Use Sample Location");
                 CLLocation *c = [[CLLocation alloc] initWithLatitude:kSampleLocationCoordinate.latitude longitude:kSampleLocationCoordinate.longitude];
-                self.currentLocation = c;
-                [self fetchNearbyVetsUsingMapKitAtLocation:c];
-            }]];
-            [ac addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"KLang_Cancel", @"Cancel") style:UIAlertActionStyleCancel handler:nil]];
-            [self presentViewController:ac animated:YES completion:nil];
+                weakSelf.currentLocation = c;
+                [weakSelf fetchNearbyVetsUsingMapKitAtLocation:c];
+            } tertiaryBlock:^{}];
         }
     });
 }
@@ -510,9 +517,10 @@ static CLLocationCoordinate2D const kSampleLocationCoordinate = {30.0444, 31.235
 #pragma mark - Helpers
 - (void)showSimpleAlertWithTitle:(NSString *)title message:(NSString *)msg {
     NSLog(@"[PPVETLOCATOR] showSimpleAlert: %@ - %@", title, msg);
-    UIAlertController *ac = [UIAlertController alertControllerWithTitle:title message:msg preferredStyle:UIAlertControllerStyleAlert];
-    [ac addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_OK") style:UIAlertActionStyleDefault handler:nil]];
-    [self presentViewController:ac animated:YES completion:nil];
+    [PPAlertHelper showInfoIn:self
+                        title:title ?: @""
+                     subtitle:msg ?: @""
+                   completion:nil];
 }
 
 - (void)dealloc {

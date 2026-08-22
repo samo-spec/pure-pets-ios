@@ -1223,11 +1223,18 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (void)pp_showUploadTimeoutError {
     if (self.presentedViewController) return;
-    UIAlertController *al = [UIAlertController alertControllerWithTitle:kLang(@"upload_timeout_title") message:kLang(@"upload_timeout_message") preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) ws = self;
-    [al addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry") style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [ws uploadAd]; }]];
-    [al addAction:[UIAlertAction actionWithTitle:kLang(@"cancel") style:UIAlertActionStyleCancel handler:nil]];
-    [self presentViewController:al animated:YES completion:nil];
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"upload_timeout_title")
+                             subtitle:kLang(@"upload_timeout_message")
+                        confirmButton:kLang(@"KLang_Retry")
+                         cancelButton:kLang(@"cancel")
+                                 icon:PPSYSImage(@"arrow.clockwise")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (didConfirm) {
+            [ws uploadAd];
+        }
+    } cancelBlock:^{}];
 }
 
 - (void)pp_beginSubmitUI {

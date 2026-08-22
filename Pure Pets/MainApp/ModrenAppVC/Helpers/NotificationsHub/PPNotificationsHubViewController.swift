@@ -372,6 +372,10 @@ final class PPNotificationsHubViewController: UIViewController {
         updateBottomClearance()
     }
 
+    @objc func pp_showNotificationsInbox() {
+        model.select(.notifications)
+    }
+
     // MARK: Chrome
 
     private func applyNavigationItems() {

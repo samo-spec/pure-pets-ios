@@ -486,17 +486,17 @@ static NSString *PPOrderSupportSafeString(id value) {
     return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
-static NSString *const PPOrderSupportCallableAuthTokenKey = @"__ppAuthToken";
-static NSString *const PPOrderSupportCallablePlainAuthTokenKey = @"ppAuthToken";
+static NSString *const PPOrderCallableAuthTokenKey = @"__ppAuthToken";
+static NSString *const PPOrderCallablePlainAuthTokenKey = @"ppAuthToken";
 
-static NSDictionary *PPOrderSupportPayloadByAddingAuthToken(NSDictionary *payload, NSString *idToken) {
+static NSDictionary *PPOrderCallablePayloadByAddingAuthToken(NSDictionary *payload, NSString *idToken) {
     NSMutableDictionary *result = [payload isKindOfClass:NSDictionary.class]
         ? [payload mutableCopy]
         : [NSMutableDictionary dictionary];
     NSString *safeToken = PPOrderSupportSafeString(idToken);
     if (safeToken.length > 0) {
-        result[PPOrderSupportCallableAuthTokenKey] = safeToken;
-        result[PPOrderSupportCallablePlainAuthTokenKey] = safeToken;
+        result[PPOrderCallableAuthTokenKey] = safeToken;
+        result[PPOrderCallablePlainAuthTokenKey] = safeToken;
     }
     return result.copy;
 }
@@ -1311,38 +1311,79 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             return;
         }
 
-        NSLog(@"PPLAB checkout cancellation route=callable orderId=%@", orderID);
-        [[PPOrderFunctionsClient() HTTPSCallableWithName:@"cancelOrderCheckout"]
-         callWithObject:@{ @"orderId": orderID }
-         completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-            NSLog(@"PPLAB checkout cancellation response orderId=%@ code=%ld retry=%d", orderID, (long)error.code, didRetryAuth);
-            if (error && !didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
-                NSLog(@"PPLAB checkout cancellation callable auth retry orderId=%@", orderID);
-                [self pp_cancelPendingCheckoutOrder:order
-                                forceSessionRefresh:YES
-                                       didRetryAuth:YES
-                                         completion:completion];
-                return;
-            }
+        FIRUser *user = [FIRAuth auth].currentUser;
+        if (!user.uid.length) {
+            NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                                 code:401
+                                             userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_auth_sign_in_required")}];
+            NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:error
+                                                                      fallbackKey:@"order_cancel_checkout_failed"];
+            if (completion) completion(NO, NO, publicError);
+            return;
+        }
 
-            if (error) {
-                PPORDERLog(@"Cancel pending checkout failed | orderId=%@ | error=%@",
-                           orderID,
-                           error.localizedDescription ?: @"Unknown");
-                NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:error
+        [user getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable idToken,
+                                                       NSError * _Nullable tokenError) {
+            if (tokenError || idToken.length == 0) {
+                NSLog(@"PPLAB checkout cancellation token failed orderId=%@ code=%ld retry=%d",
+                      orderID,
+                      (long)tokenError.code,
+                      didRetryAuth);
+                if (!didRetryAuth) {
+                    [self pp_cancelPendingCheckoutOrder:order
+                                    forceSessionRefresh:YES
+                                           didRetryAuth:YES
+                                             completion:completion];
+                    return;
+                }
+
+                NSError *resolvedTokenError = tokenError ?: [NSError
+                    errorWithDomain:PPOrderSupportErrorDomain
+                               code:401
+                           userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_auth_session_refresh_failed")}];
+                NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:resolvedTokenError
                                                                           fallbackKey:@"order_cancel_checkout_failed"];
-                NSLog(@"PPLAB checkout cancellation failed orderId=%@ code=%ld", orderID, (long)publicError.code);
                 if (completion) completion(NO, NO, publicError);
                 return;
             }
 
-            NSDictionary *data = [result.data isKindOfClass:NSDictionary.class]
-                ? (NSDictionary *)result.data
-                : @{};
-            NSLog(@"PPLAB checkout cancellation accepted orderId=%@ alreadyCancelled=%d", orderID, [data[@"alreadyCancelled"] boolValue]);
-            if (completion) {
-                completion(YES, [data[@"alreadyCancelled"] boolValue], nil);
-            }
+            NSDictionary *payload = PPOrderCallablePayloadByAddingAuthToken(
+                @{ @"orderId": orderID },
+                idToken
+            );
+            NSLog(@"PPLAB checkout cancellation route=callable orderId=%@ tokenFallback=1", orderID);
+            [[PPOrderFunctionsClient() HTTPSCallableWithName:@"cancelOrderCheckout"]
+             callWithObject:payload
+             completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+                NSLog(@"PPLAB checkout cancellation response orderId=%@ code=%ld retry=%d", orderID, (long)error.code, didRetryAuth);
+                if (error && !didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
+                    NSLog(@"PPLAB checkout cancellation callable auth retry orderId=%@", orderID);
+                    [self pp_cancelPendingCheckoutOrder:order
+                                    forceSessionRefresh:YES
+                                           didRetryAuth:YES
+                                             completion:completion];
+                    return;
+                }
+
+                if (error) {
+                    PPORDERLog(@"Cancel pending checkout failed | orderId=%@ | error=%@",
+                               orderID,
+                               error.localizedDescription ?: @"Unknown");
+                    NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:error
+                                                                              fallbackKey:@"order_cancel_checkout_failed"];
+                    NSLog(@"PPLAB checkout cancellation failed orderId=%@ code=%ld", orderID, (long)publicError.code);
+                    if (completion) completion(NO, NO, publicError);
+                    return;
+                }
+
+                NSDictionary *data = [result.data isKindOfClass:NSDictionary.class]
+                    ? (NSDictionary *)result.data
+                    : @{};
+                NSLog(@"PPLAB checkout cancellation accepted orderId=%@ alreadyCancelled=%d", orderID, [data[@"alreadyCancelled"] boolValue]);
+                if (completion) {
+                    completion(YES, [data[@"alreadyCancelled"] boolValue], nil);
+                }
+            }];
         }];
     }];
 }
@@ -1942,7 +1983,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         }
 
         void (^callWithToken)(NSString *) = ^(NSString *idToken) {
-            NSDictionary *authenticatedPayload = PPOrderSupportPayloadByAddingAuthToken(payload, idToken);
+            NSDictionary *authenticatedPayload = PPOrderCallablePayloadByAddingAuthToken(payload, idToken);
             NSLog(@"PPLAB order request token fallback orderId=%@ type=%@ forceRefresh=%d", order.orderId, requestType, shouldForceTokenRefresh);
             callCreateRequest(authenticatedPayload);
         };

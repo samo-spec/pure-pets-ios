@@ -8,6 +8,7 @@
 #import "PPVerificationCodeViewController.h"
 #import "Language.h"
 #import "PPAuthScaffoldView.h"
+#import "PPAlertHelper.h"
 @import FirebaseAuth;
 
 #if DEBUG
@@ -924,32 +925,19 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 
 - (void)showInvalidCodeAlert {
-    UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:kLang(@"invalid_code_title")
-                                            message:kLang(@"invalid_code_message")
-                                     preferredStyle:UIAlertControllerStyleAlert];
-
-    UIAlertAction *ok =
-        [UIAlertAction actionWithTitle:kLang(@"ok_button")
-                                 style:UIAlertActionStyleDefault
-                               handler:^(UIAlertAction * _Nonnull action) {
-        [self focusField];
+    __weak typeof(self) weakSelf = self;
+    [PPAlertHelper showErrorIn:self
+                         title:kLang(@"invalid_code_title")
+                      subtitle:kLang(@"invalid_code_message")
+                    completion:^{
+        [weakSelf focusField];
     }];
-
-    [alert addAction:ok];
-
-    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)showResendFailureAlertWithMessage:(NSString *)message {
-    UIAlertController *alert =
-    [UIAlertController alertControllerWithTitle:kLang(@"auth_sending_code_failed_title")
-                                        message:message
-                                 preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"ok_button")
-                                              style:UIAlertActionStyleDefault
-                                            handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showErrorIn:self
+                         title:kLang(@"auth_sending_code_failed_title")
+                      subtitle:message];
 }
 
 - (void)shakeCodeField {

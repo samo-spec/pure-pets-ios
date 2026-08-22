@@ -14,6 +14,7 @@
 #import "PPSelectOptionViewController.h"
 #import "OptionModel.h"
 #import "UIViewController+PPBottomSurface.h"
+#import "PPAlertHelper.h"
 
 @import PhotosUI;
 
@@ -835,11 +836,9 @@ static CGFloat PPOrderSupportPremiumTabBarClearance(void)
     NSString *safeMessage = message.length > 0
         ? [PPFirebaseSessionBridge publicMessageForText:message fallbackKey:@"pp_order_support_submit_failed"]
         : message;
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                   message:safeMessage
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"OK") style:UIAlertActionStyleCancel handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showErrorIn:self
+                         title:title
+                      subtitle:safeMessage];
 }
 
 - (void)selectReasonTapped

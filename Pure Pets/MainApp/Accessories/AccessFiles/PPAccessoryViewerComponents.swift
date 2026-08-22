@@ -241,6 +241,11 @@ enum PPAccessoryTypography {
         size: 13,
         relativeTo: .caption
     )
+    static let caption2 = Font.custom(
+        "Beiruti-Regular",
+        size: 11,
+        relativeTo: .caption2
+    )
 }
 
 struct PPAccessoryPressStyle: ButtonStyle {
@@ -1065,7 +1070,7 @@ struct PPAccessoryProductIdentity: View {
     }
 
     private var priceRow: some View {
-        HStack(alignment: .center, spacing: PPSpace.sm) {
+        HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
             currentPrice
 
             if snapshot.hasDiscount {
@@ -1084,7 +1089,7 @@ struct PPAccessoryProductIdentity: View {
             .font(PPAccessoryTypography.price)
             .bold()
             .fontWeight(.heavy)
-            .foregroundStyle(PPAccessoryPalette.ink)
+            .foregroundStyle(Color.ppPrimary)
             .lineLimit(1)
             .minimumScaleFactor(0.78)
             .layoutPriority(2)
@@ -1330,24 +1335,26 @@ struct PPAccessoryPetFitCard: View {
         _ fact: PPAccessoryViewerDetailItem
     ) -> some View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
-            if fact.symbol == "pawprint.fill" || fact.symbol == "pawprint4" {
-                Image("pawprint4")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(PPAccessoryPalette.brand)
-                    .accessibilityHidden(true)
-            } else {
-                Image(systemName: fact.symbol)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(PPAccessoryPalette.brand)
-                    .accessibilityHidden(true)
-            }
+            HStack(alignment: .center, spacing: 4) {
+                if fact.symbol == "pawprint.fill" || fact.symbol == "pawprint4" {
+                    Image("pawprint4")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
+                        .foregroundStyle(PPAccessoryPalette.brand)
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: fact.symbol)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(PPAccessoryPalette.brand)
+                        .accessibilityHidden(true)
+                }
 
-            Text(fact.title)
-                .font(PPAccessoryTypography.caption)
-                .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                Text(fact.title)
+                    .font(PPAccessoryTypography.caption2)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+            }
 
             Text(fact.value)
                 .font(PPAccessoryTypography.calloutBold)
@@ -1756,80 +1763,62 @@ struct PPAccessoryDecisionRibbon: View {
 
 private extension PPAccessoryViewerDetailTone {
     var accessoryAccentColor: Color {
-        return PPAccessoryPalette.inkSecondary
+        switch self {
+        case .sea:   return PPAccessoryPalette.accent
+        case .sun:   return PPAccessoryPalette.warning
+        case .coral: return PPAccessoryPalette.brand
+        case .palm:  return PPAccessoryPalette.success
+        case .ink:   return PPAccessoryPalette.inkSecondary
+        }
     }
 }
 
-struct PPAccessorySpecReef: View {
+@available(iOS 16.0, *)
+struct PPAccessoryDetailRail: View {
     let details: [PPAccessoryViewerDetailItem]
     let compactColumns: Bool
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    @State private var appeared = false
+    @ScaledMetric(relativeTo: .body) private var gemWidth: CGFloat = 128
+    @ScaledMetric(relativeTo: .body) private var gemIconFrame: CGFloat = 36
+    @ScaledMetric(relativeTo: .body) private var gemIconSize: CGFloat = 17
+
+    private let interCardSpacing: CGFloat = PPSpace.sm
+    private let railInset: CGFloat = PPSpace.base
+    private let fillColumnThreshold = 3
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
-            sectionTitle(
-                PPAccessoryViewerL10n.text("accessory_view_details_title"),
-                symbol: "list.bullet.rectangle"
-            )
-            .padding(.top, compactColumns ? 12 : 16)
+            sectionHeader
+                .padding(.top, compactColumns ? PPSpace.md : PPSpace.lg)
 
             if railDetails.isEmpty {
-                emptyDetails
+                emptyState
+            } else if dynamicTypeSize.isAccessibilitySize {
+                accessibilityList
+            } else if railDetails.count <= fillColumnThreshold {
+                fillWidthRail
             } else {
-                detailsRail
+                scrollingRail
+            }
+        }
+        .onAppear {
+            if reduceMotion {
+                appeared = true
+            } else {
+                withAnimation(.spring(response: 0.52, dampingFraction: 0.86)) {
+                    appeared = true
+                }
             }
         }
     }
 
-    @ViewBuilder
-    private var detailsRail: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                ForEach(railDetails) { detail in
-                    detailRow(detail, fillsWidth: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .accessibilityElement(children: .contain)
-        } else {
-            if railDetails.count <= detailRailFillColumnLimit {
-                HStack(alignment: .top, spacing: detailRailSpacing) {
-                    ForEach(railDetails) { detail in
-                        detailRow(detail, fillsWidth: true)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityElement(children: .contain)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: detailRailSpacing) {
-                        ForEach(railDetails) { detail in
-                            detailRow(detail, fillsWidth: false)
-                                .fixedSize(horizontal: true, vertical: false)
-                        }
-                    }
-                    .padding(.vertical, 1)
-                    .padding(.trailing, 1)
-                }
-                .accessibilityElement(children: .contain)
-            }
-        }
-    }
-
-    private var detailRailFillColumnLimit: Int {
-        3
-    }
-
-    private var detailRailSpacing: CGFloat {
-        PPSpace.sm
-    }
-
-    private var detailIconSize: CGFloat {
-        PPSpace.xxl + PPSpace.xs
-    }
+    // MARK: - Data
 
     private var railDetails: [PPAccessoryViewerDetailItem] {
         details.filter { detail in
@@ -1837,125 +1826,249 @@ struct PPAccessorySpecReef: View {
         }
     }
 
-    private func detailRow(
+    // MARK: - Section Header
+
+    private var sectionHeader: some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: "list.bullet.rectangle.portrait.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(PPAccessoryPalette.brand)
+                .frame(width: PPSpace.xxl, height: PPSpace.xxl)
+                .background(
+                    PPAccessoryPalette.brand.opacity(
+                        colorSchemeContrast == .increased ? 0.18 : 0.10
+                    ),
+                    in: RoundedRectangle(
+                        cornerRadius: 9,
+                        style: .continuous
+                    )
+                )
+                .accessibilityHidden(true)
+
+            Text(PPAccessoryViewerL10n.text("accessory_view_details_title"))
+                .font(PPAccessoryTypography.headline)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+
+            Spacer(minLength: PPSpace.sm)
+
+            if railDetails.count > 4 {
+                countBadge
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var countBadge: some View {
+        Text(PPAccessoryViewerL10n.integer(railDetails.count))
+            .font(PPAccessoryTypography.captionBold)
+            .foregroundStyle(PPAccessoryPalette.inkSecondary)
+            .padding(.horizontal, PPSpace.sm)
+            .padding(.vertical, 3)
+            .background(
+                PPAccessorySubviewBackground.quietFill,
+                in: Capsule(style: .continuous)
+            )
+    }
+
+    // MARK: - Fill-Width Layout
+
+    private var fillWidthRail: some View {
+        HStack(alignment: .top, spacing: interCardSpacing) {
+            ForEach(Array(railDetails.enumerated()), id: \.element.id) { index, detail in
+                gemCard(detail, index: index, fillsWidth: true)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    // MARK: - Scrolling Rail
+
+    @ViewBuilder
+    private var scrollingRail: some View {
+        if #available(iOS 17.0, *) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: interCardSpacing) {
+                    railCardList(fillsWidth: false)
+                }
+                .padding(.horizontal, railInset)
+                .padding(.vertical, 2)
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: interCardSpacing) {
+                    railCardList(fillsWidth: false)
+                }
+                .padding(.horizontal, railInset)
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private func railCardList(fillsWidth: Bool) -> some View {
+        ForEach(Array(railDetails.enumerated()), id: \.element.id) { index, detail in
+            gemCard(detail, index: index, fillsWidth: fillsWidth)
+        }
+    }
+
+    // MARK: - Accessibility Layout
+
+    private var accessibilityList: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            ForEach(Array(railDetails.enumerated()), id: \.element.id) { index, detail in
+                gemCard(detail, index: index, fillsWidth: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    // MARK: - Detail Gem Card
+
+    private func gemCard(
         _ detail: PPAccessoryViewerDetailItem,
+        index: Int,
         fillsWidth: Bool
     ) -> some View {
         let accent = detail.tone.accessoryAccentColor
 
-        return HStack(alignment: .top, spacing: 12) {
+        return VStack(spacing: 7) {
             ZStack {
                 RoundedRectangle(
-                    cornerRadius: PPCorner.verysmall,
+                    cornerRadius: 8,
                     style: .continuous
                 )
                 .fill(
                     accent.opacity(
-                        colorSchemeContrast == .increased ? 0.20 : 0.11
+                        colorSchemeContrast == .increased ? 0.18 : 0.10
                     )
                 )
+                .frame(
+                    width: gemIconFrame,
+                    height: gemIconFrame
+                )
 
-                if detail.symbol == "pawprint.fill" {
-                    Image("pawprint4")
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 18, height: 18)
-                        .foregroundStyle(accent)
-                        .accessibilityHidden(true)
-                } else {
-                    Image(systemName: detail.symbol)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(accent)
-                        .accessibilityHidden(true)
-                }
+                detailIconView(detail, accent: accent)
             }
-            .frame(width: detailIconSize, height: detailIconSize)
+            .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                Text(detail.title)
-                    .font(PPAccessoryTypography.captionBold)
-                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                    .lineLimit(fillsWidth ? nil : 1)
-                    .fixedSize(horizontal: !fillsWidth, vertical: true)
+            Text(detail.value)
+                .font(PPAccessoryTypography.bodyBold)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .lineLimit(fillsWidth ? 3 : 2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
 
-                Text(detail.value)
-                    .font(PPAccessoryTypography.bodyBold)
-                    .foregroundStyle(PPAccessoryPalette.ink)
-                    .lineLimit(
-                        fillsWidth || dynamicTypeSize.isAccessibilitySize
-                            ? nil
-                            : 1
-                    )
-                    .fixedSize(horizontal: !fillsWidth, vertical: true)
-            }
-
-            if fillsWidth {
-                Spacer(minLength: 0)
-            }
+            Text(detail.title)
+                .font(PPAccessoryTypography.caption)
+                .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 2)
         }
-        .padding(.horizontal, PPSpace.md)
-        .padding(.vertical, PPSpace.sm)
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.md)
         .frame(
-            maxWidth: fillsWidth ? .infinity : nil,
-            alignment: .topLeading
+            width: fillsWidth ? nil : gemWidth,
+            alignment: .top
         )
-        .ppAccessorySubviewBackground(
-            PPAccessorySubviewBackground.baseSurface,
-            in: RoundedRectangle(
+        .background(
+            RoundedRectangle(
                 cornerRadius: PPCorner.small,
                 style: .continuous
-            ),
-            stroke: accent.opacity(
-                colorSchemeContrast == .increased ? 0.44 : 0.20
-            ),
-            lineWidth: colorSchemeContrast == .increased ? 1.25 : 0.8
+            )
+            .fill(PPAccessorySubviewBackground.baseSurface)
         )
-        .overlay(alignment: .leading) {
-            Capsule(style: .continuous)
-                .fill(
-                    accent.opacity(
-                        colorSchemeContrast == .increased ? 0.70 : 0.44
-                    )
-                )
-                .frame(width: 3)
-                .padding(.vertical, PPSpace.sm)
-                .accessibilityHidden(true)
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.small,
+                style: .continuous
+            )
+            .stroke(
+                accent.opacity(
+                    colorSchemeContrast == .increased ? 0.28 : 0.14
+                ),
+                lineWidth: colorSchemeContrast == .increased ? 1.0 : 0.5
+            )
         }
-        .accessibilityElement(children: .ignore)
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: PPCorner.small,
+                style: .continuous
+            )
+        )
+        .accessibilityElement(children: .combine)
         .accessibilityLabel("\(detail.title): \(detail.value)")
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 14)
+        .animation(
+            reduceMotion
+                ? nil
+                : .spring(response: 0.48, dampingFraction: 0.84)
+                    .delay(Double(index) * 0.045),
+            value: appeared
+        )
     }
 
-    private var emptyDetails: some View {
-        let accent = PPAccessoryPalette.brandDarker
+    // MARK: - Icon
 
-        return HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius: PPCorner.small,
-                    style: .continuous
+    @ViewBuilder
+    private func detailIconView(
+        _ detail: PPAccessoryViewerDetailItem,
+        accent: Color
+    ) -> some View {
+        if detail.symbol == "pawprint.fill" {
+            Image("pawprint4")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(
+                    width: gemIconSize,
+                    height: gemIconSize
                 )
-                .fill(
-                    accent.opacity(
+                .foregroundStyle(accent)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: detail.symbol)
+                .font(.system(
+                    size: gemIconSize,
+                    weight: .semibold
+                ))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(accent)
+                .accessibilityHidden(true)
+        }
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(PPAccessoryPalette.brandDarker)
+                .frame(width: PPSpace.xxxl, height: PPSpace.xxxl)
+                .background(
+                    PPAccessoryPalette.brandDarker.opacity(
                         colorSchemeContrast == .increased ? 0.20 : 0.11
+                    ),
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
                     )
                 )
+                .accessibilityHidden(true)
 
-                Image(systemName: "doc.text.magnifyingglass")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(accent)
-                    .accessibilityHidden(true)
-            }
-            .frame(width: PPSpace.xxxl, height: PPSpace.xxxl)
-
-            Text(
-                PPAccessoryViewerL10n.text(
-                    "accessory_view_details_empty"
-                )
-            )
-            .font(PPAccessoryTypography.body)
-            .foregroundStyle(PPAccessoryPalette.inkSecondary)
-            .fixedSize(horizontal: false, vertical: true)
+            Text(PPAccessoryViewerL10n.text("accessory_view_details_empty"))
+                .font(PPAccessoryTypography.body)
+                .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
@@ -1967,22 +2080,11 @@ struct PPAccessorySpecReef: View {
                 cornerRadius: PPCorner.medium,
                 style: .continuous
             ),
-            stroke: accent.opacity(
+            stroke: PPAccessoryPalette.brandDarker.opacity(
                 colorSchemeContrast == .increased ? 0.44 : 0.20
             ),
             lineWidth: colorSchemeContrast == .increased ? 1.25 : 0.8
         )
-        .overlay(alignment: .leading) {
-            Capsule(style: .continuous)
-                .fill(
-                    accent.opacity(
-                        colorSchemeContrast == .increased ? 0.70 : 0.44
-                    )
-                )
-                .frame(width: 3)
-                .padding(.vertical, PPSpace.md)
-                .accessibilityHidden(true)
-        }
         .accessibilityElement(children: .combine)
     }
 }
@@ -2134,7 +2236,7 @@ struct PPAccessorySourceIsland: View {
             cornerRadius: min(size * 0.28, 26),
             style: .continuous
         )
-        let imageSize = sellerAvatarImageSize(for: owner, shellSize: size)
+        let imageScale = sellerAvatarImageScale(for: owner)
 
         return ZStack(alignment: .bottomTrailing) {
             avatarShape
@@ -2148,7 +2250,8 @@ struct PPAccessorySourceIsland: View {
                 isAvatar: true,
                 fallbackInitials: displayName(for: owner)
             )
-            .frame(width: imageSize, height: imageSize)
+            .frame(width: size, height: size)
+            .scaleEffect(imageScale)
             .frame(width: size, height: size)
             .clipShape(avatarShape)
 
@@ -2230,7 +2333,7 @@ struct PPAccessorySourceIsland: View {
                     : PPAccessoryViewerL10n.text("provider_rating_no_reviews")
             )
             .font(PPAccessoryTypography.captionBold)
-            .foregroundStyle(PPAccessoryPalette.ink)
+            .foregroundStyle(Color.ppPrimary)
             .lineLimit(1)
             .minimumScaleFactor(0.80)
         }
@@ -2282,17 +2385,16 @@ struct PPAccessorySourceIsland: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func sellerAvatarImageSize(
-        for owner: PPAccessoryViewerOwner,
-        shellSize: CGFloat
+    private func sellerAvatarImageScale(
+        for owner: PPAccessoryViewerOwner
     ) -> CGFloat {
         let url = owner.preferredAvatarURL?.trimmingCharacters(
             in: .whitespacesAndNewlines
         ) ?? ""
-        let isLogoLikeAvatar =
-            owner.companyProfileImageURL != nil ||
-            url.hasPrefix("purepets://support-logo")
-        return shellSize * (isLogoLikeAvatar ? 1.18 : 1.08)
+        if url.hasPrefix("purepets://support-logo") {
+            return 1.34
+        }
+        return owner.companyProfileImageURL != nil ? 1.18 : 1.08
     }
 
     @ViewBuilder
@@ -2793,13 +2895,8 @@ struct PPAccessorySourceIsland: View {
     private var avatarPlateFill: LinearGradient {
         LinearGradient(
             colors: [
-                PPAccessoryPalette.brand.opacity(
-                    colorSchemeContrast == .increased ? 0.20 : 0.12
-                ),
-                PPAccessoryPalette.accent.opacity(
-                    colorSchemeContrast == .increased ? 0.14 : 0.08
-                ),
-                PPAccessorySubviewBackground.baseSurface.opacity(0.96)
+                Color.ppElevatedSurface,
+                PPAccessoryPalette.appBackground
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -3019,7 +3116,7 @@ struct PPAccessorySuggestionShore: View {
                 store.openSuggestion(suggestion)
             }
         )
-        .frame(width: compact ? 172 : 195)
+        .frame(width: compact ? 172 : 195, height: compact ? 310 : 328)
         .accessibilityElement(children: .combine)
     }
 
@@ -3047,7 +3144,7 @@ struct PPAccessorySuggestionShore: View {
             discountMode: .plain,
             showsSubtitle: true
         )
-        .frame(width: compact ? 172 : 195)
+        .frame(width: compact ? 172 : 195, height: compact ? 310 : 328)
     }
 }
 
@@ -3087,7 +3184,7 @@ struct PPAccessoryPersistentDecisionBar: View {
                 ? .opacity
                 : .opacity.combined(with: .scale(scale: 0.992))
         )
-        .padding(PPBottomDecisionBarGeometry.contentPadding)
+        .padding(snapshot.showsCart ? 0 : PPBottomDecisionBarGeometry.contentPadding)
         .background {
             if !snapshot.showsCart {
                 PPAccessoryBottomFaceSurface(isCommerce: false)
@@ -3096,9 +3193,11 @@ struct PPAccessoryPersistentDecisionBar: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(
             .horizontal,
-            compact
-                ? PPBottomDecisionBarGeometry.compactScreenInset
-                : PPBottomDecisionBarGeometry.regularScreenInset
+            snapshot.showsCart
+                ? 16
+                : (compact
+                    ? PPBottomDecisionBarGeometry.compactScreenInset
+                    : PPBottomDecisionBarGeometry.regularScreenInset)
         )
         .padding(.top, PPSpace.sm)
         .padding(

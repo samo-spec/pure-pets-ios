@@ -13,6 +13,7 @@
 #import <ImageIO/ImageIO.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "PPPermissionHelper.h"
+#import "PPAlertHelper.h"
 #import "PPSelectOptionViewController.h"
 #import "OptionModel.h"
 #import "Styling.h"
@@ -3221,15 +3222,10 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     if (!viewController) return;
     NSString *finalTitle = title.length ? title : @"";
     NSString *finalMessage = message.length ? message : @"";
-    UIAlertController *alert =
-    [UIAlertController alertControllerWithTitle:finalTitle
-                                        message:finalMessage
-                                 preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:[self pp_localizedSheetStringForKey:@"OK"
-                                                                               fallback:@"OK"]
-                                              style:UIAlertActionStyleDefault
-                                            handler:nil]];
-    [viewController presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showInfoIn:viewController
+                        title:finalTitle
+                     subtitle:finalMessage
+                   completion:nil];
 }
 
 #pragma mark - Files Picker

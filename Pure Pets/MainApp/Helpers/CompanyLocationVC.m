@@ -7,6 +7,7 @@
 
 #import "CompanyLocationVC.h"
 #import "UIViewController+PPBottomSurface.h"
+#import "PPAlertHelper.h"
 #import <CoreLocation/CoreLocation.h>
 #import <GoogleMaps/GoogleMaps.h>
 
@@ -1468,13 +1469,10 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
 
 - (void)showAlert:(NSString *)message
 {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"company_location_alert_title")
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"done")
-                                              style:UIAlertActionStyleDefault
-                                            handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showInfoIn:self
+                        title:kLang(@"company_location_alert_title")
+                     subtitle:message
+                   completion:nil];
 }
 
 #pragma mark - PPBottomSurface

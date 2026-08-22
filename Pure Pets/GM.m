@@ -21,6 +21,7 @@
 #import "YYMemoryCache.h"
 #import "YYDiskCache.h"
 #import "PPFirebaseSessionBridge.h"
+#import "PPAlertHelper.h"
 #import "MainApp/NewChats/helpers/PPChatsFunc.h"
 //64605 1621158
 @import Firebase;
@@ -1917,21 +1918,20 @@ CGSize getImageSizeSafely(UIImage *image) {
     }
     
     // Present confirmation alert
-    UIAlertController *alert = [UIAlertController
-                               alertControllerWithTitle:@"Call Number"
-                               message:[NSString stringWithFormat:@"Call %@?", cleanedNumber]
-                               preferredStyle:UIAlertControllerStyleAlert];
-    
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Call" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    [PPAlertHelper showConfirmationIn:viewController
+                                title:kLang(@"Call Number") ?: @"Call Number"
+                             subtitle:[NSString stringWithFormat:@"%@ %@?", kLang(@"Call") ?: @"Call", cleanedNumber]
+                        confirmButton:kLang(@"Call") ?: @"Call"
+                         cancelButton:kLang(@"Cancel") ?: @"Cancel"
+                                 icon:PPSYSImage(@"phone.fill")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         if (@available(iOS 10.0, *)) {
             [[UIApplication sharedApplication] openURL:phoneURL options:@{} completionHandler:nil];
         } else {
             [[UIApplication sharedApplication] openURL:phoneURL];
         }
-    }]];
-    
-    [viewController presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:^{}];
 }
 
 // Helper method to clean phone number

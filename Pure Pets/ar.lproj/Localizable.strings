@@ -3981,10 +3981,10 @@
 "accessory_view_pet_fit_hint" = "يوسّع أو يطوي تفاصيل الملاءمة المأخوذة من الإعلان.";
 "accessory_view_expanded" = "موسّع";
 "accessory_view_collapsed" = "مطوي";
-"accessory_view_pet_category" = "فئة الحيوان";
-"accessory_view_product_category" = "فئة المنتج";
-"accessory_view_product_group" = "مجموعة المنتج";
-"accessory_view_pack_weight" = "وزن العبوة";
+"accessory_view_pet_category" = "الحيوان";
+"accessory_view_product_category" = "الفئة";
+"accessory_view_product_group" = "المجموعة";
+"accessory_view_pack_weight" = "الوزن";
 "accessory_view_accessory_fit_gap" = "لم يذكر الإعلان توافق النوع أو السلالة أو الحجم أو العمر أو الخامة أو إرشادات السلامة. اسأل البائع قبل الاختيار.";
 "accessory_view_food_fit_gap" = "لم يذكر الإعلان النوع أو المرحلة العمرية أو المكونات أو مسببات الحساسية أو القيم الغذائية أو دليل التغذية. اسأل البائع قبل التقديم.";
 "accessory_view_medicine_fit_gap" = "لم يذكر الإعلان النوع أو الجرعة أو موانع الاستعمال أو المكونات أو الإرشاد البيطري. استشر الطبيب البيطري أو البائع قبل الاستخدام.";
@@ -4615,3 +4615,21 @@
 "settings_data_legal_title" = "البيانات والشروط";
 "settings_logout_subtitle" = "تسجيل الخروج من هذا الجهاز";
 "settings_delete_subtitle" = "حذف حسابك وبياناتك نهائيًا";
+
+// Order NextGen V6 Actions
+"order_v6_action_track_title" = "تتبع الطلب";
+"order_v6_action_track_sub" = "مسار وحالة الشحنة";
+"order_v6_action_requests_title" = "طلبات الدعم";
+"order_v6_action_requests_sub" = "سجل الحالات والمتابعة";
+"order_v6_action_support_title" = "فتح حالة دعم";
+"order_v6_action_support_sub" = "مساعدة فورية للطلب";
+"order_v6_action_complaint_title" = "إبلاغ عن مشكلة";
+"order_v6_action_complaint_sub" = "حل مشاكل التوصيل";
+"order_v6_action_cancel_title" = "إلغاء الطلب";
+"order_v6_action_cancel_sub" = "إلغاء قبل بدء الشحن";
+"order_v6_action_return_title" = "طلب إرجاع";
+"order_v6_action_return_sub" = "إرجاع منتجات الطلب";
+"order_v6_action_replacement_title" = "طلب استبدال";
+"order_v6_action_replacement_sub" = "استبدال منتجات تالفة";
+"order_v6_action_refund_title" = "طلب استرداد";
+"order_v6_action_refund_sub" = "استرجاع المبلغ المدفوع";

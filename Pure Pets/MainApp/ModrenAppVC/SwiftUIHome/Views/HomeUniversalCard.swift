@@ -26,7 +26,7 @@ struct HomeUniversalCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 328)
+        .frame(height: HomeVisualTokens.universalCardHeight)
         .ppUniversalHomeShelfEntrance(
             isPresented: entrancePresented,
             ordinal: entranceOrdinal
@@ -232,7 +232,7 @@ private struct HomeUniversalCompatibilityCard: View {
                     }
                     .disabled(quantity >= stockLimit)
                 }
-                .frame(height: 46)
+                .frame(height: HomeVisualTokens.minimumTouchTarget)
                 .padding(.horizontal, PPSpace.xs)
                 .background(Color.ppSecondarySurface, in: Capsule())
             } else {
@@ -247,7 +247,10 @@ private struct HomeUniversalCompatibilityCard: View {
                         systemImage: "cart.badge.plus"
                     )
                     .font(HomeFont.bold(14))
-                    .frame(maxWidth: .infinity, minHeight: 46)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: HomeVisualTokens.minimumTouchTarget
+                    )
                     .foregroundStyle(Color.white)
                     .background(Color.ppPrimary, in: Capsule())
                 }

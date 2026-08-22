@@ -5,6 +5,7 @@
 #import "ServicesManager.h"
 //#import "CCActivityHUD.h"
 #import "CategoryModel.h"
+#import "PPAlertHelper.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 
 static inline BOOL PPServicesGridIsTablet(CGFloat width)
@@ -201,31 +202,25 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
     if (!indexPath || indexPath.item >= (NSInteger)self.filteredServices.count) return;
     ServiceModel *service = self.filteredServices[indexPath.item];
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:(kLang(@"service_delete_title") ?: @"Delete Service")
-                                                                   message:(kLang(@"service_delete_confirm_msg") ?: @"Are you sure you want to delete this service?")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-
     __weak typeof(self) weakSelf = self;
-    UIAlertAction *deleteAction = [UIAlertAction actionWithTitle:(kLang(@"delete") ?: @"Delete") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        //[strongSelf.activityHUD show];
+    [PPAlertHelper showConfirmationIn:self
+                                title:(kLang(@"service_delete_title") ?: @"Delete Service")
+                             subtitle:(kLang(@"service_delete_confirm_msg") ?: @"Are you sure you want to delete this service?")
+                        confirmButton:(kLang(@"delete") ?: @"Delete")
+                         cancelButton:(kLang(@"Cancel") ?: @"Cancel")
+                                 icon:PPSYSImage(@"trash")
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        if (!didConfirm) return;
         [[ServicesManager sharedInstance] deleteService:service.serviceID completion:^(NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) ss = weakSelf;
                 if (!ss) return;
-               // [ss.activityHUD dismiss];
                 if (error) {
                     [ss showAlert:(kLang(@"service_delete_failed") ?: @"Failed to delete service")];
                 }
             });
         }];
-    }];
-
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:(kLang(@"Cancel") ?: @"Cancel") style:UIAlertActionStyleCancel handler:nil];
-    [alert addAction:cancelAction];
-    [alert addAction:deleteAction];
-    [self presentViewController:alert animated:YES completion:nil];
+    } cancelBlock:^{}];
 }
 
 - (void)PPUniversalCell_tapShare:(PPUniversalCellViewModel *)universalModel {
@@ -245,9 +240,7 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
 }
 
 - (void)showAlert:(NSString *)message {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"تنبيه" message:message preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"تم" style:UIAlertActionStyleDefault handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showInfoIn:self title:kLang(@"hint") subtitle:message completion:nil];
 }
 
 #pragma mark - Private

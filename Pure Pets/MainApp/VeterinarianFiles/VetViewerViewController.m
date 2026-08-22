@@ -10,6 +10,7 @@
 #import "GM.h"
 #import "AppManager.h"
 #import "UserModel.h"
+#import "PPAlertHelper.h"
 
 @interface VetViewerViewController ()
 @property (nonatomic, strong) UIButton *closeButton;
@@ -157,9 +158,10 @@
 }
 
 - (void)locationTapped {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"الموقع" message:@"لم يتم تحديد موقع لهذه الخدمة" preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"حسناً" style:UIAlertActionStyleCancel handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPAlertHelper showInfoIn:self
+                        title:kLang(@"Location") ?: @"الموقع"
+                     subtitle:kLang(@"no_location_specified") ?: @"لم يتم تحديد موقع لهذه الخدمة"
+                   completion:nil];
 }
 
 - (void)shareTapped {

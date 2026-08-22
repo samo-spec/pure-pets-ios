@@ -5,6 +5,7 @@
 #import "PPAddressModel.h"
 #import "PPAddressesManager.h"
 #import "PPOptionCell.h"
+#import "PPAlertHelper.h"
 #import "Styling.h"
 
 @import CoreLocation;
@@ -933,13 +934,10 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         NSString *title = [self pp_localizedStringForKey:@"Location" fallback:@"Location"];
         NSString *message = [self pp_localizedStringForKey:@"unable_detect_current_location_now"
                                                   fallback:@"Unable to detect current location right now."];
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                       message:message
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:[self pp_localizedStringForKey:@"ok" fallback:@"OK"]
-                                                  style:UIAlertActionStyleDefault
-                                                handler:nil]];
-        [self presentViewController:alert animated:YES completion:nil];
+        [PPAlertHelper showWarningIn:self
+                               title:title
+                            subtitle:message
+                          completion:nil];
         return;
     }
 
