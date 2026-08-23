@@ -2,7 +2,7 @@
 //  PPWaveCardBG.swift
 //  Pure Pets
 //
-//  Reusable background-only Care Bloom material shared by premium UIKit surfaces.
+//  Reusable background-only Living Care Pulse material shared by premium surfaces.
 //
 
 import SwiftUI
@@ -106,6 +106,7 @@ public struct PPWaveCardBG: View {
     public var borderWidth: CGFloat
 
     private let interaction: PPWaveCardInteractionSnapshot
+    private let sceneActivityOverride: Bool?
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -127,6 +128,7 @@ public struct PPWaveCardBG: View {
         self.accentColorOverride = accentColorOverride
         self.borderWidth = borderWidth
         interaction = .idle
+        sceneActivityOverride = nil
     }
 
     fileprivate init(
@@ -135,7 +137,8 @@ public struct PPWaveCardBG: View {
         cornerRadius: CGFloat,
         accentColorOverride: UIColor?,
         borderWidth: CGFloat,
-        interaction: PPWaveCardInteractionSnapshot
+        interaction: PPWaveCardInteractionSnapshot,
+        sceneActivityOverride: Bool?
     ) {
         self.animationEnabled = animationEnabled
         self.shape = shape
@@ -143,6 +146,7 @@ public struct PPWaveCardBG: View {
         self.accentColorOverride = accentColorOverride
         self.borderWidth = borderWidth
         self.interaction = interaction
+        self.sceneActivityOverride = sceneActivityOverride
     }
 
     public var body: some View {
@@ -167,7 +171,9 @@ public struct PPWaveCardBG: View {
             cardShape.fill(surfaceFoundation)
 
             if !reduceTransparency {
-                cardShape.fill(.thinMaterial)
+                cardShape
+                    .fill(.ultraThinMaterial)
+                    .opacity(materialOpacity)
             }
 
             cardShape.fill(surfaceLight)
@@ -223,14 +229,20 @@ public struct PPWaveCardBG: View {
             stops: [
                 .init(
                     color: Color.white.opacity(
-                        reduceTransparency ? 0.0 : (colorScheme == .dark ? 0.025 : 0.24)
+                        reduceTransparency ? 0.0 : (colorScheme == .dark ? 0.055 : 0.20)
                     ),
                     location: 0.0
                 ),
-                .init(color: .clear, location: 0.44),
+                .init(color: .clear, location: 0.36),
+                .init(
+                    color: Color.ppSoftRose.opacity(
+                        colorScheme == .dark ? 0.050 : 0.085
+                    ),
+                    location: 0.72
+                ),
                 .init(
                     color: resolvedAccent.opacity(
-                        colorScheme == .dark ? 0.020 : 0.012
+                        colorScheme == .dark ? 0.070 : 0.055
                     ),
                     location: 1.0
                 ),
@@ -244,18 +256,25 @@ public struct PPWaveCardBG: View {
         )
     }
 
+    private var materialOpacity: Double {
+        colorScheme == .dark ? 0.34 : 0.22
+    }
+
     private var allowsAmbientMotion: Bool {
         animationEnabled
             && !reduceMotion
-            && contrast != .increased
-            && scenePhase == .active
+            && isSceneActive
     }
 
     private var allowsInteractiveResponse: Bool {
         animationEnabled
             && !reduceMotion
             && contrast != .increased
-            && scenePhase == .active
+            && isSceneActive
+    }
+
+    private var isSceneActive: Bool {
+        sceneActivityOverride ?? (scenePhase == .active)
     }
 
     private var resolvedAccent: Color {
@@ -290,7 +309,7 @@ public struct PPWaveCardBG: View {
         if colorScheme == .dark {
             return Color.ppSurfaceBorder.opacity(0.86)
         }
-        return Color.white.opacity(0.88)
+        return Color.ppSurfaceBorder.opacity(0.78)
     }
 }
 
@@ -310,15 +329,10 @@ private struct PPWaveCardHabitatField: View {
     @State private var interactionStrength: CGFloat = 0.0
     var body: some View {
         GeometryReader { proxy in
-            if reduceMotion || increasedContrast || !allowsAmbientMotion {
-                habitatCanvas(size: proxy.size, phase: 0.0)
+            if reduceMotion || !allowsAmbientMotion {
+                habitatCanvas(size: proxy.size, phase: 0.18)
             } else {
-                TimelineView(
-                    AnimationTimelineSchedule(
-                        minimumInterval: 1.0 / 24.0,
-                        paused: !allowsAmbientMotion
-                    )
-                ) { timeline in
+                TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
                     habitatCanvas(
                         size: proxy.size,
                         phase: phase(for: timeline.date)
@@ -326,7 +340,7 @@ private struct PPWaveCardHabitatField: View {
                 }
             }
         }
-        .opacity(increasedContrast ? 0.40 : 1.0)
+        .opacity(increasedContrast ? 0.62 : 1.0)
         .task(id: targetInteractionStrength) {
             await updateInteractionStrength(animated: allowsInteractiveResponse)
         }
@@ -377,8 +391,8 @@ private struct PPWaveCardHabitatField: View {
 
     private func phase(for date: Date) -> CGFloat {
         let cycle = date.timeIntervalSinceReferenceDate
-            .truncatingRemainder(dividingBy: 9.6)
-        return CGFloat(cycle / 9.6)
+            .truncatingRemainder(dividingBy: 6.4)
+        return CGFloat(cycle / 6.4)
     }
 
     private func renderHabitat(
@@ -397,7 +411,14 @@ private struct PPWaveCardHabitatField: View {
         let anchor = habitatAnchor(
             size: size,
             touchPoint: touchPoint,
-            response: response
+            response: response,
+            theta: theta
+        )
+
+        drawCounterweightGlow(
+            in: &context,
+            size: size,
+            theta: theta
         )
 
         drawHabitatAura(
@@ -422,16 +443,27 @@ private struct PPWaveCardHabitatField: View {
             theta: theta,
             response: response
         )
+        drawCareBeacon(
+            in: &context,
+            size: size,
+            anchor: anchor,
+            theta: theta
+        )
     }
 
     private func habitatAnchor(
         size: CGSize,
         touchPoint: CGPoint,
-        response: CGFloat
+        response: CGFloat,
+        theta: CGFloat
     ) -> CGPoint {
+        let basis = bloomBasis(in: size)
+        let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
         let restingAnchor = CGPoint(
-            x: size.width * anchorFraction,
-            y: size.height * 0.50
+            x: (size.width * anchorFraction)
+                + (cos(theta) * basis * 0.075 * directionSign),
+            y: (size.height * 0.50)
+                + (sin(theta) * basis * 0.085)
         )
         let delta = CGVector(
             dx: touchPoint.x - restingAnchor.x,
@@ -439,12 +471,56 @@ private struct PPWaveCardHabitatField: View {
         )
         let distance = max(1.0, hypot(delta.dx, delta.dy))
         let travel = min(
-            bloomBasis(in: size) * 0.18,
+            basis * 0.20,
             distance * 0.075
         ) * response
         return CGPoint(
             x: restingAnchor.x + ((delta.dx / distance) * travel),
             y: restingAnchor.y + ((delta.dy / distance) * travel)
+        )
+    }
+
+    private func drawCounterweightGlow(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        theta: CGFloat
+    ) {
+        let basis = bloomBasis(in: size)
+        let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
+        let center = CGPoint(
+            x: (size.width * (isRightToLeft ? 0.78 : 0.22))
+                + (cos(theta) * basis * 0.14 * directionSign),
+            y: (size.height * 0.32)
+                + (sin(theta) * basis * 0.16)
+        )
+        let radiusX = max(size.width * 0.30, basis * 1.60)
+        let radiusY = max(size.height * 0.56, basis * 1.36)
+        var glow = Path()
+        glow.addEllipse(
+            in: CGRect(
+                x: center.x - radiusX,
+                y: center.y - radiusY,
+                width: radiusX * 2.0,
+                height: radiusY * 2.0
+            )
+        )
+        let transparencyScale = reduceTransparency ? 0.76 : 1.0
+        context.fill(
+            glow,
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.ppPrimary.opacity(
+                        (isDark ? 0.095 : 0.105) * Double(transparencyScale)
+                    ),
+                    Color.ppPremiumAccent.opacity(
+                        (isDark ? 0.030 : 0.050) * Double(transparencyScale)
+                    ),
+                    .clear,
+                ]),
+                center: center,
+                startRadius: 0.0,
+                endRadius: max(radiusX, radiusY)
+            )
         )
     }
 
@@ -460,7 +536,7 @@ private struct PPWaveCardHabitatField: View {
         let radii = auraRadii(in: size, basis: basis)
         let radiusX = radii.width
         let radiusY = radii.height
-        let scale = 1.0 + (0.035 * breath) + (0.05 * response)
+        let scale = 1.0 + (0.10 * breath) + (0.055 * response)
         let rect = CGRect(
             x: anchor.x - (radiusX * scale),
             y: anchor.y - (radiusY * scale),
@@ -469,16 +545,16 @@ private struct PPWaveCardHabitatField: View {
         )
         var aura = Path()
         aura.addEllipse(in: rect)
-        let transparencyScale = reduceTransparency ? 0.42 : 1.0
+        let transparencyScale = reduceTransparency ? 0.76 : 1.0
         context.fill(
             aura,
             with: .radialGradient(
                 Gradient(colors: [
                     accent.opacity(
-                        (isDark ? 0.090 : 0.055) * Double(transparencyScale)
+                        (isDark ? 0.180 : 0.135) * Double(transparencyScale)
                     ),
                     Color.ppSoftRose.opacity(
-                        (isDark ? 0.035 : 0.075) * Double(transparencyScale)
+                        (isDark ? 0.065 : 0.115) * Double(transparencyScale)
                     ),
                     .clear,
                 ]),
@@ -512,8 +588,10 @@ private struct PPWaveCardHabitatField: View {
         let lengths: [CGFloat] = [0.70, 0.88, 1.0, 0.88, 0.70]
 
         for index in spreads.indices {
-            let independentPhase = theta + (CGFloat(index) * 1.17)
-            let respiration = sin(independentPhase) * 0.025 * directionSign
+            let independentPhase = theta
+                - 0.42
+                + (CGFloat(index) * 0.20)
+            let respiration = sin(independentPhase) * 0.090 * directionSign
             let restingAngle = baseDirection
                 + (spreads[index] * directionSign)
                 + respiration
@@ -524,7 +602,7 @@ private struct PPWaveCardHabitatField: View {
             ) + velocityLean
             let pressure = max(0.35, interaction.pressure)
             let length = basis * lengths[index]
-                * (1.0 + (sin(independentPhase + 0.44) * 0.035))
+                * (1.0 + (sin(independentPhase + 0.44) * 0.085))
                 * (1.0 + (response * pressure * 0.08))
             let width = length * (0.27 + (CGFloat(index % 2) * 0.025))
             let rootOffset = CGFloat(index - 2) * basis * 0.016
@@ -545,19 +623,26 @@ private struct PPWaveCardHabitatField: View {
                 x: root.x + (cos(angle) * length),
                 y: root.y + (sin(angle) * length)
             )
-            let opacityScale = reduceTransparency ? 0.54 : 1.0
+            let opacityScale = reduceTransparency ? 0.82 : 1.0
+            let prominence = 1.0 - (Double(abs(index - 2)) * 0.065)
             context.fill(
                 petal,
                 with: .linearGradient(
                     Gradient(colors: [
                         accent.opacity(
-                            (isDark ? 0.135 : 0.095) * Double(opacityScale)
+                            (isDark ? 0.340 : 0.260)
+                                * Double(opacityScale)
+                                * prominence
                         ),
                         Color.ppSoftRose.opacity(
-                            (isDark ? 0.055 : 0.16) * Double(opacityScale)
+                            (isDark ? 0.145 : 0.255)
+                                * Double(opacityScale)
+                                * prominence
                         ),
                         Color.ppWarmPorcelain.opacity(
-                            (isDark ? 0.025 : 0.12) * Double(opacityScale)
+                            (isDark ? 0.055 : 0.170)
+                                * Double(opacityScale)
+                                * prominence
                         ),
                     ]),
                     startPoint: root,
@@ -582,7 +667,7 @@ private struct PPWaveCardHabitatField: View {
         theta: CGFloat,
         response: CGFloat
     ) {
-        let breath = 1.0 + (sin(theta + 0.7) * 0.025) + (response * 0.055)
+        let breath = 1.0 + (sin(theta) * 0.075) + (response * 0.065)
         let width = basis * 0.42 * breath
         let height = basis * 0.34 * breath
         let rect = CGRect(
@@ -593,18 +678,18 @@ private struct PPWaveCardHabitatField: View {
         )
         var heart = Path()
         heart.addEllipse(in: rect)
-        let opacityScale = reduceTransparency ? 0.58 : 1.0
+        let opacityScale = reduceTransparency ? 0.84 : 1.0
         context.fill(
             heart,
             with: .radialGradient(
                 Gradient(colors: [
                     Color.white.opacity(
-                        (isDark ? 0.12 : 0.54) * Double(opacityScale)
+                        (isDark ? 0.22 : 0.72) * Double(opacityScale)
                     ),
                     accent.opacity(
-                        (isDark ? 0.12 : 0.075) * Double(opacityScale)
+                        (isDark ? 0.30 : 0.22) * Double(opacityScale)
                     ),
-                    Color.ppSurfaceRaised.opacity(0.02),
+                    Color.ppSurfaceRaised.opacity(isDark ? 0.08 : 0.04),
                 ]),
                 center: CGPoint(
                     x: rect.midX + (width * (isRightToLeft ? 0.16 : -0.16)),
@@ -625,15 +710,19 @@ private struct PPWaveCardHabitatField: View {
     ) {
         let basis = bloomBasis(in: size)
         let orbitRadius = companionOrbitRadius(in: size, basis: basis)
-        let opacityScale = reduceTransparency ? 0.48 : 1.0
+        let opacityScale = reduceTransparency ? 0.82 : 1.0
 
         for index in 0..<3 {
-            let baseAngle = CGFloat(index) * (.pi * 0.72) - 0.74
-            let drift = sin(theta + CGFloat(index) * 1.43) * 0.10
+            let baseAngle = CGFloat(index) * ((.pi * 2.0) / 3.0) - 0.74
+            let orbitalAngle = baseAngle + theta
             let angle = isRightToLeft
-                ? .pi - baseAngle - drift
-                : baseAngle + drift
-            let radius = orbitRadius * (0.80 + (CGFloat(index) * 0.13))
+                ? .pi - orbitalAngle
+                : orbitalAngle
+            let radialPulse = sin(
+                (theta * 2.0) + (CGFloat(index) * ((.pi * 2.0) / 3.0))
+            ) * 0.055
+            let radius = orbitRadius
+                * (0.86 + (CGFloat(index) * 0.10) + radialPulse)
             let center = CGPoint(
                 x: anchor.x + (cos(angle) * radius),
                 y: anchor.y + (sin(angle) * radius * 0.72)
@@ -656,11 +745,77 @@ private struct PPWaveCardHabitatField: View {
                 seed,
                 with: .color(
                     accent.opacity(
-                        (isDark ? 0.15 : 0.10) * Double(opacityScale)
+                        (isDark ? 0.44 : 0.34) * Double(opacityScale)
                     )
                 )
             )
         }
+    }
+
+    private func drawCareBeacon(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        anchor: CGPoint,
+        theta: CGFloat
+    ) {
+        let basis = bloomBasis(in: size)
+        let orbitRadius = companionOrbitRadius(in: size, basis: basis) * 1.18
+        let baseAngle = theta + 0.38
+        let angle = isRightToLeft ? .pi - baseAngle : baseAngle
+        let center = CGPoint(
+            x: anchor.x + (cos(angle) * orbitRadius),
+            y: anchor.y + (sin(angle) * orbitRadius * 0.72)
+        )
+        let pulse = (sin(theta * 2.0) + 1.0) * 0.5
+        let opacityScale = reduceTransparency ? 0.84 : 1.0
+        let haloDiameter = max(12.0, basis * (0.24 + (0.05 * pulse)))
+        let haloRect = CGRect(
+            x: center.x - (haloDiameter * 0.5),
+            y: center.y - (haloDiameter * 0.5),
+            width: haloDiameter,
+            height: haloDiameter
+        )
+        var halo = Path()
+        halo.addEllipse(in: haloRect)
+        context.fill(
+            halo,
+            with: .radialGradient(
+                Gradient(colors: [
+                    accent.opacity(0.38 * Double(opacityScale)),
+                    Color.ppPremiumAccent.opacity(0.18 * Double(opacityScale)),
+                    .clear,
+                ]),
+                center: center,
+                startRadius: 0.0,
+                endRadius: haloDiameter * 0.5
+            )
+        )
+
+        let coreDiameter = max(3.5, basis * 0.075)
+        let coreRect = CGRect(
+            x: center.x - (coreDiameter * 0.5),
+            y: center.y - (coreDiameter * 0.5),
+            width: coreDiameter,
+            height: coreDiameter
+        )
+        var core = Path()
+        core.addEllipse(in: coreRect)
+        context.fill(
+            core,
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(isDark ? 0.72 : 0.92),
+                    Color.ppPremiumAccent.opacity(0.76),
+                    accent.opacity(0.58),
+                ]),
+                center: CGPoint(
+                    x: coreRect.midX - (coreDiameter * 0.16),
+                    y: coreRect.midY - (coreDiameter * 0.16)
+                ),
+                startRadius: 0.0,
+                endRadius: coreDiameter * 0.62
+            )
+        )
     }
 
     private var anchorFraction: CGFloat {
@@ -860,6 +1015,7 @@ private final class PPWaveCardContainerView: UIView {
 @available(iOS 15.0, *)
 private struct PPWaveCardBGRootView: View {
     let animationEnabled: Bool
+    let sceneIsActive: Bool
     let shape: PPWaveCardBGShape
     let cornerRadius: CGFloat
     let accentColorOverride: UIColor?
@@ -875,7 +1031,8 @@ private struct PPWaveCardBGRootView: View {
             cornerRadius: cornerRadius,
             accentColorOverride: accentColorOverride,
             borderWidth: borderWidth,
-            interaction: interactionModel.snapshot
+            interaction: interactionModel.snapshot,
+            sceneActivityOverride: sceneIsActive
         )
         .environment(
             \.layoutDirection,
@@ -908,6 +1065,7 @@ public final class PPWaveCardBGHostingController: UIViewController,
     private weak var trackingView: UIView?
     private var trackingRecognizer: PPWaveCardPassiveGestureRecognizer?
     private var isVisible = false
+    private var isApplicationActive = UIApplication.shared.applicationState == .active
 
     @objc public var animationEnabled: Bool {
         didSet {
@@ -959,6 +1117,7 @@ public final class PPWaveCardBGHostingController: UIViewController,
         hostingController = UIHostingController(
             rootView: PPWaveCardBGRootView(
                 animationEnabled: false,
+                sceneIsActive: isApplicationActive,
                 shape: shape,
                 cornerRadius: cornerRadius,
                 accentColorOverride: accentColorOverride,
@@ -990,6 +1149,18 @@ public final class PPWaveCardBGHostingController: UIViewController,
             self,
             selector: #selector(accessibilityInteractionModeDidChange),
             name: UIAccessibility.voiceOverStatusDidChangeNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationActivityDidChange),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationActivityDidChange),
+            name: UIApplication.didEnterBackgroundNotification,
             object: nil
         )
         NotificationCenter.default.addObserver(
@@ -1066,12 +1237,16 @@ public final class PPWaveCardBGHostingController: UIViewController,
     }
 
     private func setVisible(_ visible: Bool) {
-        guard isVisible != visible else {
+        let applicationIsActive = UIApplication.shared.applicationState == .active
+        let activityDidChange = isApplicationActive != applicationIsActive
+        isApplicationActive = applicationIsActive
+
+        guard isVisible != visible || activityDidChange else {
             if visible { updatePassiveTracking() }
             return
         }
         isVisible = visible
-        if !visible {
+        if !visible || !applicationIsActive {
             interactionModel.reset()
         }
         updateRootView()
@@ -1082,9 +1257,21 @@ public final class PPWaveCardBGHostingController: UIViewController,
         updatePassiveTracking()
     }
 
+    @objc private func applicationActivityDidChange() {
+        let isActive = UIApplication.shared.applicationState == .active
+        guard isApplicationActive != isActive else { return }
+        isApplicationActive = isActive
+        if !isActive {
+            interactionModel.reset()
+        }
+        updateRootView()
+        updatePassiveTracking()
+    }
+
     private func updatePassiveTracking() {
         guard animationEnabled,
               isVisible,
+              isApplicationActive,
               !UIAccessibility.isReduceMotionEnabled,
               !UIAccessibility.isDarkerSystemColorsEnabled,
               !UIAccessibility.isVoiceOverRunning,
@@ -1144,6 +1331,7 @@ public final class PPWaveCardBGHostingController: UIViewController,
     ) {
         guard isVisible,
               animationEnabled,
+              isApplicationActive,
               let hostedView = viewIfLoaded,
               hostedView.bounds.width > 1.0,
               hostedView.bounds.height > 1.0
@@ -1168,7 +1356,8 @@ public final class PPWaveCardBGHostingController: UIViewController,
     private func updateRootView() {
         guard hostingController != nil else { return }
         hostingController.rootView = PPWaveCardBGRootView(
-            animationEnabled: animationEnabled && isVisible,
+            animationEnabled: animationEnabled && isVisible && isApplicationActive,
+            sceneIsActive: isApplicationActive,
             shape: shape,
             cornerRadius: cornerRadius,
             accentColorOverride: accentColorOverride,

@@ -3872,6 +3872,10 @@
 "saved_for_later_open_hint" = "Opens your saved items.";
 "cart_summary_collapse" = "Collapse order summary";
 "cart_summary_expand" = "Expand order summary";
+"checkout_horizon_item_count_format" = "Items · %@";
+"checkout_horizon_item_meta_format" = "%1$@ · %2$@";
+"checkout_horizon_product_meta_format" = "Items %1$@ · %2$@ + %3$@ delivery";
+"checkout_horizon_total_protected" = "Total · Protected";
 "reported_successfully" = "Reported successfully";
 "report" = "Report";
 

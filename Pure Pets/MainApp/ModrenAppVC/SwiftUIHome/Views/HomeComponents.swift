@@ -5793,13 +5793,10 @@ struct HomePureLensSection: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var isFocused: Bool
     @State private var readinessResolved = false
     @State private var didReportMotionSettled = false
-    @ScaledMetric(relativeTo: .body) private var chamberHeight: CGFloat =
-        HomePureLensMetrics.chamberHeight
     @ScaledMetric(relativeTo: .body) private var actionMinimumHeight: CGFloat =
         HomePureLensMetrics.actionMinimumHeight
 
@@ -5853,29 +5850,34 @@ struct HomePureLensSection: View {
 
     @ViewBuilder
     private var thresholdLayout: some View {
-        if horizontalSizeClass == .regular, !usesAccessibilityLayout {
-            twoZoneThresholdLayout
-        } else {
+        if usesAccessibilityLayout {
             stackedThresholdLayout
+        } else {
+            compactThresholdLayout
         }
     }
 
-    private var twoZoneThresholdLayout: some View {
+    /// The Home entry point is a launch affordance, not a camera preview.
+    /// Keeping its visual identity in one compact optical mark gives the
+    /// section a clear signature while reserving the vertical runway for the
+    /// live Home feed below it.
+    private var compactThresholdLayout: some View {
         HStack(alignment: .center, spacing: 0) {
             copyPanel
                 .padding(PPSpace.base)
                 .frame(
-                    minWidth: preferredMinimumCopyWidth,
                     maxWidth: .infinity,
-                    minHeight: HomePureLensMetrics.minimumTwoZoneHeight,
+                    minHeight: HomePureLensMetrics.minimumHeaderHeight,
                     alignment: .leading
                 )
                 .layoutPriority(1)
 
-            opticalChamber
-                .frame(width: preferredChamberWidth)
-                .frame(maxHeight: .infinity)
-                .padding(.vertical, PPSpace.sm)
+            HomePureLensLensMark(readinessResolved: presentationReady)
+                .frame(
+                    width: HomePureLensMetrics.lensMarkSize,
+                    height: HomePureLensMetrics.lensMarkSize
+                )
+                .padding(.vertical, PPSpace.md)
                 .padding(.trailing, PPSpace.sm)
         }
     }
@@ -5888,10 +5890,14 @@ struct HomePureLensSection: View {
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            opticalChamber
+            HomePureLensLensMark(readinessResolved: presentationReady)
+                .frame(
+                    width: HomePureLensMetrics.accessibilityLensMarkSize,
+                    height: HomePureLensMetrics.accessibilityLensMarkSize
+                )
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, PPSpace.sm)
-                .padding(.bottom, PPSpace.sm)
+                .padding(.horizontal, PPSpace.base)
+                .padding(.bottom, PPSpace.base)
         }
     }
 
@@ -5910,7 +5916,7 @@ struct HomePureLensSection: View {
             }
 
             Text(title)
-                .font(HomeFont.bold(27))
+                .font(HomeFont.bold(25))
                 .foregroundStyle(palette.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -5918,29 +5924,10 @@ struct HomePureLensSection: View {
                 .font(HomeFont.callout())
                 .foregroundStyle(palette.secondaryText)
                 .lineSpacing(2)
+                .lineLimit(usesAccessibilityLayout ? nil : 2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var opticalChamber: some View {
-        HomePureLensOpticalChamber(
-            readinessResolved: presentationReady,
-            minimumHeight: resolvedChamberHeight
-        )
-        .clipShape(chamberShape)
-        .overlay {
-            chamberShape
-                .stroke(
-                    palette.chamberContent.opacity(
-                        contrast == .increased
-                            ? 0.22
-                            : HomePureLensMetrics.chamberBorderOpacity
-                    ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.7
-                )
-                .accessibilityHidden(true)
-        }
     }
 
     private var actionRail: some View {
@@ -5972,13 +5959,6 @@ struct HomePureLensSection: View {
     private var cardShape: RoundedRectangle {
         RoundedRectangle(
             cornerRadius: HomeVisualTokens.cardCorner,
-            style: .continuous
-        )
-    }
-
-    private var chamberShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: HomeVisualTokens.compactCardCorner,
             style: .continuous
         )
     }
@@ -6015,27 +5995,6 @@ struct HomePureLensSection: View {
         HomeModelAdapter.localized(
             "home_pure_lens_action",
             fallback: "Open camera"
-        )
-    }
-
-    private var preferredChamberWidth: CGFloat {
-        horizontalSizeClass == .regular
-            ? HomePureLensMetrics.regularChamberWidth
-            : HomePureLensMetrics.compactChamberWidth
-    }
-
-    private var preferredMinimumCopyWidth: CGFloat {
-        horizontalSizeClass == .regular
-            ? HomePureLensMetrics.regularMinimumCopyWidth
-            : HomePureLensMetrics.compactMinimumCopyWidth
-    }
-
-    private var resolvedChamberHeight: CGFloat {
-        min(
-            max(chamberHeight, HomePureLensMetrics.chamberHeight),
-            usesAccessibilityLayout
-                ? HomePureLensMetrics.accessibilityMaximumChamberHeight
-                : HomePureLensMetrics.maximumChamberHeight
         )
     }
 
@@ -6125,6 +6084,12 @@ private struct HomePureLensMotionTaskID: Hashable {
 }
 
 private enum HomePureLensMetrics {
+    /// Compact Home geometry: the previous stacked camera viewport made the
+    /// entry card consume a full feed beat before its action rail. The new
+    /// optical mark keeps the same visual story in a 92pt header.
+    static let minimumHeaderHeight: CGFloat = 92
+    static let lensMarkSize: CGFloat = 76
+    static let accessibilityLensMarkSize: CGFloat = 96
     // The chamber remains the visual anchor but now sits roughly 10% shorter
     // than the former scanner viewport, so it reads as a native Home module.
     static let chamberHeight: CGFloat = 112
@@ -6159,6 +6124,83 @@ private enum HomePureLensMetrics {
     static let focusConvergeDuration: Double = 0.24
     static let focusLockDuration: Double = 0.22
     static let focusReleaseDuration: Double = 0.24
+}
+
+/// A compact, decorative lens signature for the Home launcher. It deliberately
+/// contains no camera session, result state, or gesture: the enclosing Button
+/// remains the one semantic action and the existing Pure Lens host owns every
+/// camera, permission, and discovery concern after activation.
+private struct HomePureLensLensMark: View {
+    let readinessResolved: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.homePureLensIsPressed) private var isPressed
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(palette.chamberBackground)
+
+            if !reduceTransparency {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                palette.signal.opacity(colorScheme == .dark ? 0.30 : 0.22),
+                                palette.signal.opacity(0)
+                            ],
+                            center: .center,
+                            startRadius: 2,
+                            endRadius: HomePureLensMetrics.lensMarkSize * 0.58
+                        )
+                    )
+            }
+
+            Circle()
+                .stroke(
+                    palette.chamberContent.opacity(contrast == .increased ? 0.52 : 0.24),
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                )
+                .padding(7)
+
+            Circle()
+                .stroke(
+                    palette.signal.opacity(contrast == .increased ? 0.92 : 0.68),
+                    style: StrokeStyle(lineWidth: contrast == .increased ? 2.5 : 1.6)
+                )
+                .padding(15)
+
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 21, weight: .bold))
+                .foregroundStyle(palette.chamberContent)
+
+            Circle()
+                .fill(palette.signal)
+                .frame(width: contrast == .increased ? 10 : 8, height: contrast == .increased ? 10 : 8)
+                .overlay {
+                    Circle()
+                        .stroke(palette.chamberBackground, lineWidth: 1.5)
+                }
+                .offset(x: 23, y: -23)
+        }
+        .scaleEffect(isPressed && !reduceMotion ? 0.94 : (readinessResolved ? 1 : 0.90))
+        .opacity(readinessResolved ? 1 : 0.72)
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: HomePureLensMetrics.readinessDuration),
+            value: readinessResolved
+        )
+        .accessibilityHidden(true)
+    }
+
+    private var palette: HomePureLensPalette {
+        HomePureLensPalette(
+            colorScheme: colorScheme,
+            reduceTransparency: reduceTransparency
+        )
+    }
 }
 
 private struct HomePureLensPalette {

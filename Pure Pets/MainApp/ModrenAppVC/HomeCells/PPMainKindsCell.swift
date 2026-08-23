@@ -452,8 +452,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
         artworkHaloLayer.locations = [0, 0.48, 1.0]
         artworkHaloView.layer.addSublayer(artworkHaloLayer)
         artworkGroupView.addSubview(artworkHaloView)
-        artworkGroupView.addSubview(semiCirclePlateView)
         artworkGroupView.addSubview(portraitGroupView)
+        // The pedestal supports the portrait from behind; it must never cover
+        // the category artwork as the selected-state transform settles.
+        artworkGroupView.insertSubview(
+            semiCirclePlateView,
+            belowSubview: portraitGroupView
+        )
 
         configureImageView(artworkView)
         portraitGroupView.addSubview(artworkView)
@@ -1484,10 +1489,13 @@ private struct PPMainKindsGeometry {
             height: artworkSide
         ).integral
 
-        let plateWidth = min(54, max(42, artworkSide * 1.05))
-        let plateHeight: CGFloat = 16
+        // Match the glass plate to the category portrait's rendered height.
+        // Sharing the portrait's vertical origin keeps the enlarged plate
+        // behind the artwork without spilling into the title or ground line.
+        let plateWidth = min(68, max(50, artworkSide * 1.18))
+        let plateHeight = primaryArtworkFrame.height
         let plateX = (groupWidth - plateWidth) / 2
-        let plateY = primaryArtworkFrame.maxY - 8
+        let plateY = primaryArtworkFrame.minY
         semiCirclePlateFrame = CGRect(
             x: plateX,
             y: plateY,

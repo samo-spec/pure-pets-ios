@@ -331,7 +331,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [self pp_refreshCheckoutCallToAction];
     [self pp_applyAdaptiveSummaryPresentation];
 
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"payment_screen_title") showBack:YES];
+    self.navigationItem.title = nil;
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:YES];
     self.navigationController.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
 
    // navBar.translucent = YES;
@@ -381,7 +382,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.userInstruments = @[];
     self.view.backgroundColor = AppBackgroundClr;
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.title = kLang(@"SelectPaymentMethod");
+    self.navigationItem.title = nil;
 
      [self pp_buildPaymentBackgroundAtmosphereIfNeeded];
     [self pp_buildSummaryBottomGlowIfNeeded];

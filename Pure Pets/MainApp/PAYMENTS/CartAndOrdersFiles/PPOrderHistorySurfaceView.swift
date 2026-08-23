@@ -124,7 +124,10 @@ struct PPOrderHistoryScreen: View {
             }
         }
         .padding(PPSpace.lg)
-        .ppOrderHistorySurface(active: store.snapshot.activeCount > 0)
+        .ppOrderHistorySurface(
+            active: store.snapshot.activeCount > 0,
+            usesAppForeground: true
+        )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(summaryAccessibilityLabel)
     }
@@ -589,7 +592,10 @@ private struct PPOrderHistoryJourneyCard: View {
             .padding(PPSpace.base)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .ppOrderHistorySurface(active: item.isActive)
+            .ppOrderHistorySurface(
+                active: item.isActive,
+                usesAppForeground: true
+            )
             .overlay(alignment: .leading) {
                 if item.isActive {
                     Capsule()
@@ -905,6 +911,7 @@ private struct PPOrderHistoryPressStyle: ButtonStyle {
 @available(iOS 17.0, *)
 private struct PPOrderHistorySurfaceModifier: ViewModifier {
     let active: Bool
+    let usesAppForeground: Bool
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -918,9 +925,11 @@ private struct PPOrderHistorySurfaceModifier: ViewModifier {
 
         content
             .background(
-                active && !reduceTransparency
-                    ? Color.ppSurfaceOverlay.opacity(colorScheme == .dark ? 0.66 : 0.54)
-                    : Color.ppSurface,
+                usesAppForeground
+                    ? Color.ppForeground
+                    : (active && !reduceTransparency
+                        ? Color.ppSurfaceOverlay.opacity(colorScheme == .dark ? 0.66 : 0.54)
+                        : Color.ppSurface),
                 in: shape
             )
             .overlay {
@@ -942,7 +951,15 @@ private struct PPOrderHistorySurfaceModifier: ViewModifier {
 
 @available(iOS 17.0, *)
 private extension View {
-    func ppOrderHistorySurface(active: Bool) -> some View {
-        modifier(PPOrderHistorySurfaceModifier(active: active))
+    func ppOrderHistorySurface(
+        active: Bool,
+        usesAppForeground: Bool = false
+    ) -> some View {
+        modifier(
+            PPOrderHistorySurfaceModifier(
+                active: active,
+                usesAppForeground: usesAppForeground
+            )
+        )
     }
 }

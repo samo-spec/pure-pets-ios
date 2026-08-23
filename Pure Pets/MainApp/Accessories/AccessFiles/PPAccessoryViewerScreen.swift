@@ -107,7 +107,7 @@ struct PPAccessoryViewerScreen: View {
             : min(max(contentWidth * 0.52, 420), 560)
         let topInset = topChromeInset(proxy)
         let bottomInset = bottomScreenSpacing
-        let topBarHeight: CGFloat = topInset + (compact ? 70 : 80)
+        let topBarHeight: CGFloat = topInset + (compact ? 56 : 64)
         let titleRevealOffset: CGFloat = compact ? 14 : 22
         let usesRecoveryDock =
             !snapshot.isAvailableForPurchase ||
@@ -185,7 +185,7 @@ struct PPAccessoryViewerScreen: View {
                                 text: snapshot.description
                             )
 
-                            PPAccessorySpecReef(
+                            PPAccessoryDetailRail(
                                 details: snapshot.details,
                                 compactColumns: compact
                             )

@@ -3850,6 +3850,10 @@
 "saved_for_later_open_hint" = "يفتح المنتجات المحفوظة.";
 "cart_summary_collapse" = "طي ملخص الطلب";
 "cart_summary_expand" = "توسيع ملخص الطلب";
+"checkout_horizon_item_count_format" = "العناصر · %@";
+"checkout_horizon_item_meta_format" = "%2$@ · %1$@";
+"checkout_horizon_product_meta_format" = "العناصر %1$@ · %2$@ + توصيل %3$@";
+"checkout_horizon_total_protected" = "الإجمالي · دفع آمن";
 "reported_successfully" = "تم الإبلاغ بنجاح";
 "report" = "إبلاغ";
 
