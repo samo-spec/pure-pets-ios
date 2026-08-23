@@ -1489,18 +1489,16 @@ private struct PPMainKindsGeometry {
             height: artworkSide
         ).integral
 
-        // Match the glass plate to the category portrait's rendered height.
-        // Sharing the portrait's vertical origin keeps the enlarged plate
-        // behind the artwork without spilling into the title or ground line.
-        let plateWidth = min(68, max(50, artworkSide * 1.18))
-        let plateHeight = primaryArtworkFrame.height
-        let plateX = (groupWidth - plateWidth) / 2
-        let plateY = primaryArtworkFrame.minY
+        // Match the glass plate to the category portrait's rendered square dimensions.
+        // Centered behind the artwork square with 12pt corner radius.
+        let plateSide = min(groupHeight, min(groupWidth, max(50, min(68, (artworkSide * 1.18).rounded()))))
+        let plateX = (groupWidth - plateSide) / 2
+        let plateY = (groupHeight - plateSide) / 2
         semiCirclePlateFrame = CGRect(
             x: plateX,
             y: plateY,
-            width: plateWidth,
-            height: plateHeight
+            width: plateSide,
+            height: plateSide
         ).integral
 
         let artworkCanvasMidY = artworkGroupFrame.minY + primaryArtworkFrame.midY
@@ -1677,9 +1675,9 @@ private extension UIColor {
     }
 }
 
-// MARK: - Ultra-Premium Semi-Circle Glass Plate
+// MARK: - Ultra-Premium Glass Plate
 
-/// An ultra-premium semi-circle glass plate sitting below the category image on selected state.
+/// An ultra-premium square glass plate with 12pt corner radius sitting below the category image on selected state.
 /// Crafted with real-time blur material, MainKind color wash, specular edge highlight, and soft under-glow.
 private final class PPMainKindsGlassPlateView: UIView {
     private let blurEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
@@ -1785,7 +1783,7 @@ private final class PPMainKindsGlassPlateView: UIView {
         super.layoutSubviews()
         guard bounds.width > 0 && bounds.height > 0 else { return }
 
-        let path = createSemiCirclePath(in: bounds)
+        let path = createPlatePath(in: bounds)
         let topRimPath = createTopRimPath(in: bounds)
 
         blurEffectView.frame = bounds
@@ -1800,36 +1798,16 @@ private final class PPMainKindsGlassPlateView: UIView {
         ambientGlowLayer.shadowPath = path.cgPath
     }
 
-    private func createSemiCirclePath(in rect: CGRect) -> UIBezierPath {
-        let w = rect.width
-        let h = rect.height
-        let cornerRadius: CGFloat = 3.0
-
-        let path = UIBezierPath()
-        path.move(to: CGPoint(x: cornerRadius, y: 0))
-        path.addLine(to: CGPoint(x: w - cornerRadius, y: 0))
-        path.addQuadCurve(to: CGPoint(x: w, y: cornerRadius), controlPoint: CGPoint(x: w, y: 0))
-
-        path.addCurve(
-            to: CGPoint(x: w / 2, y: h),
-            controlPoint1: CGPoint(x: w, y: h * 0.65),
-            controlPoint2: CGPoint(x: w * 0.82, y: h)
-        )
-        path.addCurve(
-            to: CGPoint(x: 0, y: cornerRadius),
-            controlPoint1: CGPoint(x: w * 0.18, y: h),
-            controlPoint2: CGPoint(x: 0, y: h * 0.65)
-        )
-        path.addQuadCurve(to: CGPoint(x: cornerRadius, y: 0), controlPoint: CGPoint(x: 0, y: 0))
-        path.close()
-        return path
+    private func createPlatePath(in rect: CGRect) -> UIBezierPath {
+        return UIBezierPath(roundedRect: rect, cornerRadius: 12.0)
     }
 
     private func createTopRimPath(in rect: CGRect) -> UIBezierPath {
         let w = rect.width
+        let cornerRadius: CGFloat = 12.0
         let path = UIBezierPath()
-        path.move(to: CGPoint(x: 3, y: 0.5))
-        path.addLine(to: CGPoint(x: w - 3, y: 0.5))
+        path.move(to: CGPoint(x: cornerRadius, y: 0.5))
+        path.addLine(to: CGPoint(x: w - cornerRadius, y: 0.5))
         return path
     }
 }
