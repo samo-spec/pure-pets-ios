@@ -3876,6 +3876,25 @@
 "checkout_horizon_item_meta_format" = "%1$@ · %2$@";
 "checkout_horizon_product_meta_format" = "Items %1$@ · %2$@ + %3$@ delivery";
 "checkout_horizon_total_protected" = "Total · Protected";
+"checkout_summary_ready_title" = "Order summary";
+"checkout_summary_ready_subtitle" = "Review the total and cart details before continuing.";
+"checkout_summary_loading_title" = "Preparing checkout";
+"checkout_summary_loading_subtitle" = "Keep this screen open while this step completes.";
+"checkout_summary_empty_title" = "Your cart is waiting";
+"checkout_summary_empty_subtitle" = "Add an item to see your checkout total here.";
+"checkout_summary_error_title" = "Checkout needs review";
+"checkout_summary_error_subtitle" = "Review your cart details and try again.";
+"checkout_summary_offline_title" = "Connection paused";
+"checkout_summary_offline_subtitle" = "Reconnect before continuing to checkout.";
+"checkout_summary_restricted_title" = "Sign in to continue";
+"checkout_summary_restricted_subtitle" = "Your account is needed before checkout can start.";
+"checkout_summary_success_title" = "Order is moving";
+"checkout_summary_success_subtitle" = "Payment state was captured. Follow the order from details.";
+"checkout_summary_total_label" = "Total";
+"checkout_summary_secure_label" = "Protected checkout";
+"checkout_summary_items_label" = "Items";
+"checkout_summary_delivery_label" = "Delivery";
+"checkout_summary_receipt_label" = "Total details";
 "reported_successfully" = "Reported successfully";
 "report" = "Report";
 

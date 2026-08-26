@@ -2,62 +2,45 @@
 //  PPPremuimChekoutView.swift
 //  Pure Pets
 //
-//  Checkout Horizon — the persistent order decision surface shared by Cart
-//  and Payment. Business state, validation, navigation, and payment ownership
-//  remain in the Objective-C hosts.
+//  Checkout Signal -- a SwiftUI-backed decision surface exposed through the
+//  legacy Objective-C runtime contract used by Cart and Payment.
 //
 
+import SwiftUI
 import UIKit
 
-// MARK: - Source-bound presentation
+// MARK: - Source-bound text, color, and layout
 
-private enum PPCheckoutHorizonFont {
-    static func medium(_ size: CGFloat, textStyle: UIFont.TextStyle) -> UIFont {
-        scaled(named: "Beiruti-Medium", size: size, weight: .medium, textStyle: textStyle)
-    }
-
-    static func bold(_ size: CGFloat, textStyle: UIFont.TextStyle) -> UIFont {
-        scaled(named: "Beiruti-Bold", size: size, weight: .bold, textStyle: textStyle)
-    }
-
-    private static func scaled(
-        named name: String,
-        size: CGFloat,
-        weight: UIFont.Weight,
-        textStyle: UIFont.TextStyle
-    ) -> UIFont {
-        let base = UIFont(name: name, size: size + 1)
-            ?? UIFont.systemFont(ofSize: size, weight: weight)
-        return UIFontMetrics(forTextStyle: textStyle).scaledFont(for: base)
+private enum PPCheckoutSignalText {
+    static func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
     }
 }
 
-private enum PPCheckoutHorizonColor {
-    static var action: UIColor { .ppPrimary }
-    static var pressedAction: UIColor { .ppPressedAction }
-    static var actionText: UIColor { .white }
-    static var surface: UIColor { .ppSurfaceElevated }
-    static var secondarySurface: UIColor { .ppSurface }
-    static var quietSurface: UIColor { .ppSurfaceOverlay }
-    static var border: UIColor { .ppSurfaceBorder }
-    static var primaryText: UIColor { .ppTextPrimary }
-    static var secondaryText: UIColor { .ppTextSecondary }
-    static var tertiaryText: UIColor { .ppTextTertiary }
-    static var protectedState: UIColor { .ppSuccess }
+private enum PPCheckoutSignalFont {
+    static func display(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
+        .custom("Beiruti-Bold", size: size, relativeTo: style)
+    }
+
+    static func bold(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
+        .custom("Beiruti-Bold", size: size, relativeTo: style)
+    }
+
+    static func medium(_ size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
+        .custom("Beiruti-Medium", size: size, relativeTo: style)
+    }
 }
 
-private enum PPCheckoutHorizonGeometry {
-    static let portraitSize: CGFloat = 68
-    static let compactPortraitSize: CGFloat = 46
-    static let maximumPortraits = 1
-    static let regularPreviewHeight: CGFloat = 78
-    static let accessibilityPreviewHeight: CGFloat = 132
-    static let checkoutMinimumWidth: CGFloat = 190
-    static let checkoutMaximumWidth: CGFloat = 226
-    static let horizontalDecisionMinimumWidth: CGFloat = 350
-    static let collapsedDecisionMinimumWidth: CGFloat = 410
+private enum PPCheckoutSignalGeometry {
+    static let checkoutMaximumWidth: CGFloat = 236
+    static let amountMinimumWidth: CGFloat = 124
+    static let sideBySideDecisionMinimumWidth: CGFloat = 680
+    static let itemPreviewHeight: CGFloat = 74
+    static let accessibilityItemPreviewHeight: CGFloat = 116
+    static let collapsedImageSize: CGFloat = 52
+    static let expandedImageSize: CGFloat = 60
     static let checkoutTapDebounce: TimeInterval = 0.45
-    static let causalMotionDuration: TimeInterval = 0.20
+    static let feedbackDuration: TimeInterval = 0.18
 
     static var hairline: CGFloat {
         UIAccessibility.isDarkerSystemColorsEnabled
@@ -66,13 +49,28 @@ private enum PPCheckoutHorizonGeometry {
     }
 }
 
-private enum PPCheckoutHorizonCurrency {
+private enum PPCheckoutSignalCurrency {
+    static var symbol: String {
+        PPCheckoutSignalText.localized("Rials")
+    }
+
+    static func number(_ value: CGFloat) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_QA")
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        formatter.usesGroupingSeparator = true
+        return formatter.string(from: NSNumber(value: Double(value)))
+            ?? String(format: "%.2f", Double(value))
+    }
+
     static func format(_ value: CGFloat) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = Locale(identifier: "en_QA")
         formatter.currencyCode = "QAR"
-        formatter.currencySymbol = NSLocalizedString("Rials", comment: "")
+        formatter.currencySymbol = symbol
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         return formatter.string(from: NSNumber(value: Double(value)))
@@ -80,54 +78,225 @@ private enum PPCheckoutHorizonCurrency {
     }
 }
 
-private func ppCheckoutHorizonSemantic() -> UISemanticContentAttribute {
+private func ppCheckoutSignalSemantic() -> UISemanticContentAttribute {
     Language.semanticAttributeForCurrentLanguage()
 }
 
-private func ppCheckoutHorizonAlignment() -> NSTextAlignment {
-    Language.alignmentForCurrentLanguage()
+private func ppCheckoutSignalIsRTL() -> Bool {
+    ppCheckoutSignalSemantic() == .forceRightToLeft
 }
 
-private func ppCheckoutHorizonIsRTL() -> Bool {
-    ppCheckoutHorizonSemantic() == .forceRightToLeft
-}
-
-private func ppCheckoutHorizonLTRIsolate(_ value: String) -> String {
+private func ppCheckoutSignalLTRIsolate(_ value: String) -> String {
     "\u{2066}\(value)\u{2069}"
 }
 
-private func ppCheckoutHorizonItemCount(_ count: Int) -> String {
-    let format = NSLocalizedString("checkout_horizon_item_count_format", comment: "")
+private func ppCheckoutSignalItemCount(_ count: Int) -> String {
+    let format = PPCheckoutSignalText.localized("checkout_horizon_item_count_format")
     return String.localizedStringWithFormat(
         format,
-        ppCheckoutHorizonLTRIsolate(String(max(count, 0)))
+        ppCheckoutSignalLTRIsolate(String(max(count, 0)))
     )
 }
 
-private func ppCheckoutHorizonItemMetadata(quantity: Int, amount: CGFloat) -> String {
-    let format = NSLocalizedString("checkout_horizon_item_meta_format", comment: "")
-    let quantityToken = ppCheckoutHorizonLTRIsolate("×\(max(quantity, 1))")
-    let amountToken = ppCheckoutHorizonLTRIsolate(PPCheckoutHorizonCurrency.format(amount))
-    return String.localizedStringWithFormat(format, quantityToken, amountToken)
-}
-
-private func ppCheckoutHorizonProductMetadata(
-    quantity: Int,
-    itemsTotal: CGFloat,
-    shippingFee: CGFloat
-) -> String {
-    let format = NSLocalizedString("checkout_horizon_product_meta_format", comment: "")
+private func ppCheckoutSignalItemMetadata(quantity: Int, amount: CGFloat) -> String {
+    let format = PPCheckoutSignalText.localized("checkout_horizon_item_meta_format")
     return String.localizedStringWithFormat(
         format,
-        ppCheckoutHorizonLTRIsolate(String(max(quantity, 0))),
-        ppCheckoutHorizonLTRIsolate(PPCheckoutHorizonCurrency.format(itemsTotal)),
-        ppCheckoutHorizonLTRIsolate(PPCheckoutHorizonCurrency.format(shippingFee))
+        ppCheckoutSignalLTRIsolate("x\(max(quantity, 1))"),
+        ppCheckoutSignalLTRIsolate(PPCheckoutSignalCurrency.format(amount))
     )
 }
 
-// MARK: - Live item identity
+// MARK: - State model
 
-private final class PPCheckoutHorizonPortraitView: UIView {
+private enum PPCheckoutSignalStatusKind: String {
+    case ready
+    case loading
+    case empty
+    case error
+    case offline
+    case restricted
+    case success
+
+    init(rawObjectiveCValue: String?) {
+        let normalized = (rawObjectiveCValue ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        self = PPCheckoutSignalStatusKind(rawValue: normalized) ?? .ready
+    }
+
+    var defaultTitleKey: String {
+        switch self {
+        case .ready:
+            return "checkout_summary_ready_title"
+        case .loading:
+            return "checkout_summary_loading_title"
+        case .empty:
+            return "checkout_summary_empty_title"
+        case .error:
+            return "checkout_summary_error_title"
+        case .offline:
+            return "checkout_summary_offline_title"
+        case .restricted:
+            return "checkout_summary_restricted_title"
+        case .success:
+            return "checkout_summary_success_title"
+        }
+    }
+
+    var defaultSubtitleKey: String {
+        switch self {
+        case .ready:
+            return "checkout_summary_ready_subtitle"
+        case .loading:
+            return "checkout_summary_loading_subtitle"
+        case .empty:
+            return "checkout_summary_empty_subtitle"
+        case .error:
+            return "checkout_summary_error_subtitle"
+        case .offline:
+            return "checkout_summary_offline_subtitle"
+        case .restricted:
+            return "checkout_summary_restricted_subtitle"
+        case .success:
+            return "checkout_summary_success_subtitle"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .ready:
+            return "cart.fill"
+        case .loading:
+            return "hourglass"
+        case .empty:
+            return "bag"
+        case .error:
+            return "exclamationmark.triangle.fill"
+        case .offline:
+            return "wifi.slash"
+        case .restricted:
+            return "person.crop.circle.badge.exclamationmark"
+        case .success:
+            return "checkmark.circle.fill"
+        }
+    }
+
+    var isBlockingAction: Bool {
+        switch self {
+        case .empty, .offline:
+            return true
+        case .ready, .loading, .error, .restricted, .success:
+            return false
+        }
+    }
+
+    func tint(protectedActive _: Bool) -> Color {
+        switch self {
+        case .ready:
+            return .ppPrimary
+        case .loading:
+            return .ppPrimary
+        case .empty:
+            return .ppTextTertiary
+        case .error:
+            return .ppError
+        case .offline:
+            return .ppWarning
+        case .restricted:
+            return .ppInfo
+        case .success:
+            return .ppSuccess
+        }
+    }
+}
+
+private struct PPCheckoutSignalStatus {
+    let kind: PPCheckoutSignalStatusKind
+    let title: String
+    let subtitle: String
+
+    static func automatic(
+        kind: PPCheckoutSignalStatusKind,
+        title: String? = nil,
+        subtitle: String? = nil
+    ) -> PPCheckoutSignalStatus {
+        let cleanTitle = (title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanSubtitle = (subtitle ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return PPCheckoutSignalStatus(
+            kind: kind,
+            title: cleanTitle.isEmpty ? PPCheckoutSignalText.localized(kind.defaultTitleKey) : cleanTitle,
+            subtitle: cleanSubtitle.isEmpty ? PPCheckoutSignalText.localized(kind.defaultSubtitleKey) : cleanSubtitle
+        )
+    }
+}
+
+private struct PPCheckoutSignalItemSnapshot: Identifiable {
+    let id: String
+    let name: String
+    let quantity: Int
+    let amount: CGFloat
+    let imageURL: String
+}
+
+private struct PPCheckoutSignalViewState {
+    var itemsTotal: CGFloat
+    var shippingFee: CGFloat
+    var subtotal: CGFloat
+    var totalText: String
+    var totalNumberText: String
+    var currencySymbolText: String
+    var itemCountText: String
+    var checkoutTitle: String
+    var checkoutImage: UIImage?
+    var showDetails: Bool
+    var showsItemsPreview: Bool
+    var collapsible: Bool
+    var summaryCollapsed: Bool
+    var checkoutLoading: Bool
+    var protectedStateIsActive: Bool
+    var paymentFeedbackActive: Bool
+    var feedbackAccent: UIColor?
+    var safeAreaBottom: CGFloat
+    var availableWidth: CGFloat
+    var isRightToLeft: Bool
+    var backgroundImage: UIImage?
+    var manualStatus: PPCheckoutSignalStatus?
+    var items: [PPCheckoutSignalItemSnapshot]
+
+    var totalQuantity: Int {
+        items.reduce(0) { $0 + max($1.quantity, 0) }
+    }
+
+    var hasCheckoutContent: Bool {
+        totalQuantity > 0 || subtotal > 0.009
+    }
+
+    var effectiveStatus: PPCheckoutSignalStatus {
+        if checkoutLoading {
+            return .automatic(kind: .loading)
+        }
+        if let manualStatus {
+            return manualStatus
+        }
+        if !hasCheckoutContent {
+            return .automatic(kind: .empty)
+        }
+        return .automatic(kind: .ready)
+    }
+
+    var isActionEnabled: Bool {
+        !checkoutLoading && hasCheckoutContent && !effectiveStatus.kind.isBlockingAction
+    }
+
+    var usesSideBySideDecision: Bool {
+        availableWidth >= PPCheckoutSignalGeometry.sideBySideDecisionMinimumWidth
+    }
+}
+
+// MARK: - Image bridge
+
+private final class PPCheckoutSignalImageHostView: UIView {
     private let imageView = UIImageView()
     private var representedKey = ""
 
@@ -146,14 +315,13 @@ private final class PPCheckoutHorizonPortraitView: UIView {
     }
 
     private func buildView() {
-        translatesAutoresizingMaskIntoConstraints = false
+        backgroundColor = .clear
         isAccessibilityElement = false
         semanticContentAttribute = .forceLeftToRight
-        layer.cornerCurve = .continuous
-        layer.masksToBounds = true
 
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.clipsToBounds = true
+        imageView.contentMode = .center
         imageView.isAccessibilityElement = false
         imageView.semanticContentAttribute = .forceLeftToRight
         addSubview(imageView)
@@ -164,40 +332,30 @@ private final class PPCheckoutHorizonPortraitView: UIView {
             imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
             imageView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
-
-        refreshColors()
-        configure(item: nil)
     }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        layer.cornerRadius = min(bounds.width, bounds.height) * 0.28
-    }
-
-    func configure(item: CartItem?) {
-        let itemID = (item?.itemID ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let imageURL = (item?.imageURL ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let key = item == nil ? "checkout-placeholder" : "\(itemID)|\(imageURL)"
-        guard representedKey != key else { return }
-        representedKey = key
+    func configure(imageURL: String, placeholderSystemName: String) {
+        let trimmedURL = imageURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextKey = "\(trimmedURL)|\(placeholderSystemName)"
+        guard representedKey != nextKey else { return }
+        representedKey = nextKey
 
         PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
-        let symbolName = item == nil ? "bag.fill" : "pawprint.fill"
         let configuration = UIImage.SymbolConfiguration(
-            pointSize: item == nil ? 18 : 17,
+            pointSize: 17,
             weight: .semibold,
             scale: .medium
         )
-        let placeholder = UIImage(systemName: symbolName, withConfiguration: configuration)
-        imageView.contentMode = .center
+        let placeholder = UIImage(systemName: placeholderSystemName, withConfiguration: configuration)
         imageView.image = placeholder
-        imageView.tintColor = PPCheckoutHorizonColor.secondaryText
+        imageView.tintColor = .ppTextSecondary
+        imageView.contentMode = .center
 
-        guard !imageURL.isEmpty else { return }
-        let expectedKey = key
+        guard !trimmedURL.isEmpty else { return }
+        let expectedKey = nextKey
         PPImageLoaderManager.shared().setImage(
             on: imageView,
-            url: imageURL,
+            url: trimmedURL,
             placeholder: placeholder,
             transitionStyle: .none
         ) { [weak self] image, _ in
@@ -218,675 +376,648 @@ private final class PPCheckoutHorizonPortraitView: UIView {
         }
     }
 
-    func prepareForReuse() {
+    func cancelLoad() {
         representedKey = ""
         PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
-        configure(item: nil)
+    }
+}
+
+private struct PPCheckoutSignalImage: UIViewRepresentable {
+    let imageURL: String
+    let placeholderSystemName: String
+
+    func makeUIView(context: Context) -> PPCheckoutSignalImageHostView {
+        PPCheckoutSignalImageHostView()
     }
 
-    func refreshColors() {
-        backgroundColor = PPCheckoutHorizonColor.quietSurface
-        layer.borderColor = PPCheckoutHorizonColor.border.cgColor
-        layer.borderWidth = PPCheckoutHorizonGeometry.hairline
-        imageView.backgroundColor = .clear
-        if imageView.image?.renderingMode != .alwaysOriginal {
-            imageView.tintColor = PPCheckoutHorizonColor.secondaryText
+    func updateUIView(_ uiView: PPCheckoutSignalImageHostView, context: Context) {
+        uiView.configure(imageURL: imageURL, placeholderSystemName: placeholderSystemName)
+    }
+
+    static func dismantleUIView(_ uiView: PPCheckoutSignalImageHostView, coordinator: ()) {
+        uiView.cancelLoad()
+    }
+}
+
+// MARK: - SwiftUI surface
+
+private struct PPCheckoutSignalRootView: View {
+    let state: PPCheckoutSignalViewState
+    let onDisclosure: () -> Void
+    let onCheckout: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var isAccessibilityLayout: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var layoutDirection: LayoutDirection {
+        state.isRightToLeft ? .rightToLeft : .leftToRight
+    }
+
+    private var status: PPCheckoutSignalStatus {
+        state.effectiveStatus
+    }
+
+    private var statusTint: Color {
+        status.kind.tint(protectedActive: state.protectedStateIsActive)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            surface
         }
-    }
-}
-
-private final class PPCheckoutHorizonPortraitCluster: UIView {
-    private let stack = UIStackView()
-    private let countBadge = UILabel()
-    private let portraits: [PPCheckoutHorizonPortraitView] = (0..<PPCheckoutHorizonGeometry.maximumPortraits)
-        .map { _ in PPCheckoutHorizonPortraitView() }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        buildView()
+        .environment(\.layoutDirection, layoutDirection)
+        .padding(.top, PPSpace.xs)
+        .padding(.horizontal, PPSpace.md)
+        .padding(.bottom, state.safeAreaBottom + PPBottomDecisionBarGeometry.bottomBreathingRoom)
     }
 
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        buildView()
-    }
-
-    private func buildView() {
-        translatesAutoresizingMaskIntoConstraints = false
-        isAccessibilityElement = false
-        semanticContentAttribute = .forceLeftToRight
-
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.axis = .horizontal
-        stack.alignment = .center
-        stack.spacing = 0
-        stack.semanticContentAttribute = .forceLeftToRight
-        stack.isUserInteractionEnabled = false
-
-        portraits.forEach { portrait in
-            stack.addArrangedSubview(portrait)
-            NSLayoutConstraint.activate([
-                portrait.widthAnchor.constraint(equalToConstant: PPCheckoutHorizonGeometry.portraitSize),
-                portrait.heightAnchor.constraint(equalToConstant: PPCheckoutHorizonGeometry.portraitSize)
-            ])
+    private var surface: some View {
+        VStack(alignment: .leading, spacing: isAccessibilityLayout ? PPSpace.base : PPSpace.md) {
+            signalHeader
+            decisionCore
+            if !state.summaryCollapsed {
+                if shouldShowReceipt {
+                    receipt
+                        .transition(.opacity)
+                }
+                if shouldShowItemsPreview {
+                    itemPreview
+                        .transition(.opacity)
+                }
+            }
         }
-        addSubview(stack)
-
-        countBadge.translatesAutoresizingMaskIntoConstraints = false
-        countBadge.font = PPCheckoutHorizonFont.bold(10, textStyle: .caption2)
-        countBadge.adjustsFontForContentSizeCategory = true
-        countBadge.textAlignment = .center
-        countBadge.semanticContentAttribute = .forceLeftToRight
-        countBadge.layer.masksToBounds = true
-        countBadge.isAccessibilityElement = false
-        addSubview(countBadge)
-
-        NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: PPCheckoutHorizonGeometry.portraitSize),
-            heightAnchor.constraint(equalToConstant: PPCheckoutHorizonGeometry.portraitSize),
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            countBadge.topAnchor.constraint(equalTo: topAnchor, constant: -PPSpace.xxs),
-            countBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PPSpace.xxs),
-            countBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 22),
-            countBadge.heightAnchor.constraint(equalToConstant: 22)
-        ])
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        countBadge.layer.cornerRadius = countBadge.bounds.height * 0.5
-    }
-
-    func configure(items: [CartItem]) {
-        let visibleCount = max(1, min(items.count, PPCheckoutHorizonGeometry.maximumPortraits))
-        for (index, portrait) in portraits.enumerated() {
-            let visible = index < visibleCount
-            portrait.isHidden = !visible
-            portrait.configure(item: index < items.count ? items[index] : nil)
-        }
-        let quantity = items.reduce(0) { $0 + max($1.quantity, 0) }
-        countBadge.text = quantity > 0 ? "\(quantity)" : nil
-        countBadge.isHidden = quantity <= 0
-    }
-
-    func refreshColors() {
-        portraits.forEach { $0.refreshColors() }
-        countBadge.backgroundColor = PPCheckoutHorizonColor.action
-        countBadge.textColor = PPCheckoutHorizonColor.actionText
-    }
-}
-
-// MARK: - Order disclosure
-
-private final class PPCheckoutHorizonHeaderControl: UIControl {
-    private let contentStack = UIStackView()
-    private let portraitCluster = PPCheckoutHorizonPortraitCluster()
-    private let textStack = UIStackView()
-    private let titleLabel = UILabel()
-    private let metaLabel = UILabel()
-    private let chevronPlate = UIView()
-    private let chevronView = UIImageView()
-    private var collapsible = false
-
-    override var isHighlighted: Bool {
-        didSet { refreshColors() }
-    }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        buildView()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        buildView()
-    }
-
-    private func buildView() {
-        translatesAutoresizingMaskIntoConstraints = false
-        isAccessibilityElement = true
-        accessibilityIdentifier = "checkoutHorizon.orderSummary"
-        layer.cornerRadius = PPCorner.medium
-        layer.cornerCurve = .continuous
-
-        contentStack.translatesAutoresizingMaskIntoConstraints = false
-        contentStack.axis = .horizontal
-        contentStack.alignment = .center
-        contentStack.spacing = PPSpace.md
-        contentStack.isUserInteractionEnabled = false
-
-        textStack.axis = .vertical
-        textStack.alignment = .fill
-        textStack.spacing = PPSpace.xxs
-        textStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        titleLabel.font = PPCheckoutHorizonFont.bold(19, textStyle: .headline)
-        titleLabel.adjustsFontForContentSizeCategory = true
-        titleLabel.numberOfLines = 2
-        titleLabel.lineBreakMode = .byWordWrapping
-        titleLabel.isAccessibilityElement = false
-
-        metaLabel.font = PPCheckoutHorizonFont.medium(12, textStyle: .caption1)
-        metaLabel.adjustsFontForContentSizeCategory = true
-        metaLabel.numberOfLines = 2
-        metaLabel.isAccessibilityElement = false
-
-        chevronPlate.translatesAutoresizingMaskIntoConstraints = false
-        chevronPlate.layer.cornerRadius = PPBottomDecisionBarGeometry.utilityControlSize * 0.34
-        chevronPlate.layer.cornerCurve = .continuous
-        chevronPlate.isAccessibilityElement = false
-
-        chevronView.translatesAutoresizingMaskIntoConstraints = false
-        chevronView.contentMode = .scaleAspectFit
-        chevronView.isAccessibilityElement = false
-        chevronPlate.addSubview(chevronView)
-
-        textStack.addArrangedSubview(titleLabel)
-        textStack.addArrangedSubview(metaLabel)
-        contentStack.addArrangedSubview(portraitCluster)
-        contentStack.addArrangedSubview(textStack)
-        contentStack.addArrangedSubview(chevronPlate)
-        addSubview(contentStack)
-
-        NSLayoutConstraint.activate([
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 78),
-            contentStack.topAnchor.constraint(equalTo: topAnchor),
-            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            contentStack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            contentStack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            chevronPlate.widthAnchor.constraint(equalToConstant: PPBottomDecisionBarGeometry.utilityControlSize),
-            chevronPlate.heightAnchor.constraint(equalToConstant: PPBottomDecisionBarGeometry.utilityControlSize),
-            chevronView.centerXAnchor.constraint(equalTo: chevronPlate.centerXAnchor),
-            chevronView.centerYAnchor.constraint(equalTo: chevronPlate.centerYAnchor),
-            chevronView.widthAnchor.constraint(equalToConstant: 16),
-            chevronView.heightAnchor.constraint(equalToConstant: 16)
-        ])
-
-        refreshColors()
-    }
-
-    func configure(items: [CartItem], title: String, metadata: String) {
-        portraitCluster.configure(items: items)
-        titleLabel.text = title
-        metaLabel.text = metadata
-        accessibilityLabel = title
-        accessibilityValue = metadata
-        refreshLanguage()
-    }
-
-    func setDisclosure(collapsible: Bool, collapsed: Bool) {
-        self.collapsible = collapsible
-        isUserInteractionEnabled = collapsible
-        accessibilityTraits = collapsible ? [.button] : [.staticText]
-        chevronPlate.isHidden = !collapsible
-        chevronView.image = UIImage(systemName: collapsed ? "chevron.up" : "chevron.down")
-        refreshColors()
-    }
-
-    func refreshLanguage() {
-        let semantic = ppCheckoutHorizonSemantic()
-        semanticContentAttribute = semantic
-        contentStack.semanticContentAttribute = semantic
-        textStack.semanticContentAttribute = semantic
-        titleLabel.textAlignment = ppCheckoutHorizonAlignment()
-        metaLabel.textAlignment = ppCheckoutHorizonAlignment()
-    }
-
-    func refreshColors() {
-        backgroundColor = isHighlighted && collapsible
-            ? PPCheckoutHorizonColor.quietSurface
-            : .clear
-        portraitCluster.refreshColors()
-        titleLabel.textColor = PPCheckoutHorizonColor.primaryText
-        metaLabel.textColor = PPCheckoutHorizonColor.secondaryText
-        chevronPlate.backgroundColor = PPCheckoutHorizonColor.quietSurface
-        chevronPlate.layer.borderColor = PPCheckoutHorizonColor.border.cgColor
-        chevronPlate.layer.borderWidth = PPCheckoutHorizonGeometry.hairline
-        chevronView.tintColor = PPCheckoutHorizonColor.secondaryText
-    }
-}
-
-private final class PPCheckoutHorizonCompactToggle: UIControl {
-    private let portrait = PPCheckoutHorizonPortraitView()
-    private let countBadge = UILabel()
-    private let chevronPlate = UIView()
-    private let chevronView = UIImageView(image: UIImage(systemName: "chevron.up"))
-
-    override var isHighlighted: Bool {
-        didSet { refreshColors() }
-    }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        buildView()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        buildView()
-    }
-
-    private func buildView() {
-        translatesAutoresizingMaskIntoConstraints = false
-        isAccessibilityElement = true
-        accessibilityTraits = [.button]
-        accessibilityIdentifier = "checkoutHorizon.compactSummary"
-        layer.cornerRadius = PPBottomDecisionBarGeometry.controlRadius
-        layer.cornerCurve = .continuous
-        layer.borderWidth = PPCheckoutHorizonGeometry.hairline
-
-        addSubview(portrait)
-        portrait.translatesAutoresizingMaskIntoConstraints = false
-
-        countBadge.translatesAutoresizingMaskIntoConstraints = false
-        countBadge.font = PPCheckoutHorizonFont.bold(10, textStyle: .caption2)
-        countBadge.adjustsFontForContentSizeCategory = true
-        countBadge.textAlignment = .center
-        countBadge.layer.masksToBounds = true
-        countBadge.isAccessibilityElement = false
-        addSubview(countBadge)
-
-        chevronPlate.translatesAutoresizingMaskIntoConstraints = false
-        chevronPlate.layer.masksToBounds = true
-        chevronPlate.isAccessibilityElement = false
-        addSubview(chevronPlate)
-
-        chevronView.translatesAutoresizingMaskIntoConstraints = false
-        chevronView.contentMode = .scaleAspectFit
-        chevronView.isAccessibilityElement = false
-        chevronPlate.addSubview(chevronView)
-
-        NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: PPBottomDecisionBarGeometry.utilityControlSize),
-            heightAnchor.constraint(equalToConstant: PPBottomDecisionBarGeometry.utilityControlSize),
-            portrait.centerXAnchor.constraint(equalTo: centerXAnchor),
-            portrait.centerYAnchor.constraint(equalTo: centerYAnchor),
-            portrait.widthAnchor.constraint(equalToConstant: PPCheckoutHorizonGeometry.compactPortraitSize),
-            portrait.heightAnchor.constraint(equalToConstant: PPCheckoutHorizonGeometry.compactPortraitSize),
-            countBadge.topAnchor.constraint(equalTo: topAnchor, constant: -PPSpace.xxs),
-            countBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PPSpace.xxs),
-            countBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
-            countBadge.heightAnchor.constraint(greaterThanOrEqualToConstant: 20),
-            chevronPlate.bottomAnchor.constraint(equalTo: bottomAnchor, constant: PPSpace.xxs),
-            chevronPlate.leadingAnchor.constraint(equalTo: leadingAnchor, constant: -PPSpace.xxs),
-            chevronPlate.widthAnchor.constraint(equalToConstant: 20),
-            chevronPlate.heightAnchor.constraint(equalToConstant: 20),
-            chevronView.centerXAnchor.constraint(equalTo: chevronPlate.centerXAnchor),
-            chevronView.centerYAnchor.constraint(equalTo: chevronPlate.centerYAnchor),
-            chevronView.widthAnchor.constraint(equalToConstant: 9),
-            chevronView.heightAnchor.constraint(equalToConstant: 9)
-        ])
-
-        refreshColors()
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        countBadge.layer.cornerRadius = countBadge.bounds.height * 0.5
-        chevronPlate.layer.cornerRadius = chevronPlate.bounds.height * 0.5
-    }
-
-    func configure(item: CartItem?, count: Int) {
-        portrait.configure(item: item)
-        countBadge.text = count > 0 ? "\(count)" : nil
-        countBadge.isHidden = count <= 0
-    }
-
-    func refreshColors() {
-        backgroundColor = isHighlighted
-            ? PPCheckoutHorizonColor.quietSurface
-            : PPCheckoutHorizonColor.secondarySurface
-        layer.borderColor = PPCheckoutHorizonColor.border.cgColor
-        layer.borderWidth = PPCheckoutHorizonGeometry.hairline
-        portrait.refreshColors()
-        countBadge.backgroundColor = PPCheckoutHorizonColor.action
-        countBadge.textColor = PPCheckoutHorizonColor.actionText
-        chevronPlate.backgroundColor = PPCheckoutHorizonColor.surface
-        chevronView.tintColor = PPCheckoutHorizonColor.secondaryText
-    }
-}
-
-// MARK: - Optional multi-item preview
-
-private final class PPCheckoutHorizonItemCell: UICollectionViewCell {
-    static let reuseIdentifier = "PPCheckoutHorizonItemCell"
-
-    private let portrait = PPCheckoutHorizonPortraitView()
-    private let textStack = UIStackView()
-    private let nameLabel = UILabel()
-    private let metaLabel = UILabel()
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        buildView()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        buildView()
-    }
-
-    private func buildView() {
-        isAccessibilityElement = true
-        accessibilityTraits = [.staticText]
-        contentView.layer.cornerRadius = PPCorner.medium
-        contentView.layer.cornerCurve = .continuous
-        contentView.layer.masksToBounds = true
-
-        portrait.translatesAutoresizingMaskIntoConstraints = false
-        textStack.translatesAutoresizingMaskIntoConstraints = false
-        textStack.axis = .vertical
-        textStack.alignment = .fill
-        textStack.spacing = PPSpace.xxs
-
-        nameLabel.font = PPCheckoutHorizonFont.medium(14, textStyle: .subheadline)
-        nameLabel.adjustsFontForContentSizeCategory = true
-        nameLabel.numberOfLines = 2
-        nameLabel.lineBreakMode = .byTruncatingTail
-
-        metaLabel.font = PPCheckoutHorizonFont.bold(13, textStyle: .footnote)
-        metaLabel.adjustsFontForContentSizeCategory = true
-        metaLabel.numberOfLines = 2
-
-        textStack.addArrangedSubview(nameLabel)
-        textStack.addArrangedSubview(metaLabel)
-        contentView.addSubview(portrait)
-        contentView.addSubview(textStack)
-
-        NSLayoutConstraint.activate([
-            portrait.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: PPSpace.sm),
-            portrait.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            portrait.widthAnchor.constraint(equalToConstant: 54),
-            portrait.heightAnchor.constraint(equalToConstant: 54),
-            textStack.leadingAnchor.constraint(equalTo: portrait.trailingAnchor, constant: PPSpace.sm),
-            textStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -PPSpace.md),
-            textStack.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: PPSpace.sm),
-            textStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -PPSpace.sm),
-            textStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
-        ])
-
-        refreshLanguage()
-        refreshColors()
-    }
-
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        portrait.prepareForReuse()
-        nameLabel.text = nil
-        metaLabel.text = nil
-        accessibilityLabel = nil
-        accessibilityValue = nil
-    }
-
-    func configure(item: CartItem) {
-        portrait.configure(item: item)
-        let rawName = (item.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = rawName.isEmpty
-            ? NSLocalizedString("checkout_item_fallback", comment: "")
-            : rawName
-        let quantity = max(item.quantity, 1)
-        let lineTotal = item.lineSubtotal > 0
-            ? item.lineSubtotal
-            : item.price * Double(quantity)
-        let metadata = ppCheckoutHorizonItemMetadata(
-            quantity: quantity,
-            amount: CGFloat(lineTotal)
+        .padding(PPBottomDecisionBarGeometry.contentPadding)
+        .background(surfaceBackground)
+        .overlay(surfaceBorder)
+        .clipShape(RoundedRectangle(
+            cornerRadius: PPCorner.card,
+            style: .continuous
+        ))
+        .shadow(
+            color: colorSchemeContrast == .increased
+                ? .clear
+                : .black.opacity(colorScheme == .dark ? 0.22 : 0.08),
+            radius: 20,
+            x: 0,
+            y: 6
         )
-
-        nameLabel.text = name
-        metaLabel.text = metadata
-        accessibilityLabel = name
-        accessibilityValue = metadata
-        refreshLanguage()
-    }
-
-    func refreshLanguage() {
-        let semantic = ppCheckoutHorizonSemantic()
-        semanticContentAttribute = semantic
-        contentView.semanticContentAttribute = semantic
-        textStack.semanticContentAttribute = semantic
-        nameLabel.textAlignment = ppCheckoutHorizonAlignment()
-        metaLabel.textAlignment = ppCheckoutHorizonAlignment()
-    }
-
-    func refreshColors() {
-        contentView.backgroundColor = PPCheckoutHorizonColor.quietSurface
-        contentView.layer.borderColor = PPCheckoutHorizonColor.border.cgColor
-        contentView.layer.borderWidth = UIAccessibility.isDarkerSystemColorsEnabled
-            ? PPCheckoutHorizonGeometry.hairline
-            : 0
-        portrait.refreshColors()
-        nameLabel.textColor = PPCheckoutHorizonColor.primaryText
-        metaLabel.textColor = PPCheckoutHorizonColor.secondaryText
-    }
-}
-
-// MARK: - Primary decision
-
-private final class PPCheckoutHorizonActionButton: UIButton {
-    private var visibleTitle = ""
-    private var visibleImage: UIImage?
-    private var loading = false
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        buildView()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        buildView()
-    }
-
-    deinit {
-        stopMotion()
-    }
-
-    private func buildView() {
-        translatesAutoresizingMaskIntoConstraints = false
-        accessibilityIdentifier = "checkoutHorizon.primaryAction"
-        adjustsImageSizeForAccessibilityContentSizeCategory = true
-        titleLabel?.numberOfLines = 2
-        titleLabel?.textAlignment = .center
-        titleLabel?.adjustsFontForContentSizeCategory = true
-        layer.cornerRadius = PPBottomDecisionBarGeometry.controlRadius
-        layer.cornerCurve = .continuous
-        layer.masksToBounds = true
-        configuration = .filled()
-        configure(title: NSLocalizedString("Checkout", comment: ""), image: nil)
-    }
-
-    override func updateConfiguration() {
-        super.updateConfiguration()
-        var configuration = UIButton.Configuration.filled()
-        configuration.cornerStyle = .fixed
-        configuration.background.cornerRadius = PPBottomDecisionBarGeometry.controlRadius
-        configuration.baseBackgroundColor = isHighlighted
-            ? PPCheckoutHorizonColor.pressedAction
-            : PPCheckoutHorizonColor.action
-        configuration.baseForegroundColor = PPCheckoutHorizonColor.actionText
-        configuration.imagePlacement = .trailing
-        configuration.imagePadding = PPSpace.sm
-        configuration.contentInsets = NSDirectionalEdgeInsets(
-            top: PPSpace.sm,
-            leading: PPSpace.md,
-            bottom: PPSpace.sm,
-            trailing: PPSpace.md
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("checkoutSignal.surface")
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: PPCheckoutSignalGeometry.feedbackDuration),
+            value: state.paymentFeedbackActive
         )
-        configuration.showsActivityIndicator = loading
-        configuration.activityIndicatorColorTransformer = UIConfigurationColorTransformer { _ in
-            PPCheckoutHorizonColor.actionText
-        }
-
-        if !loading {
-            var attributes = AttributeContainer()
-            attributes.font = PPCheckoutHorizonFont.bold(16, textStyle: .headline)
-            attributes.foregroundColor = PPCheckoutHorizonColor.actionText
-            configuration.attributedTitle = AttributedString(visibleTitle, attributes: attributes)
-            configuration.image = visibleImage?.withRenderingMode(.alwaysTemplate)
-        }
-
-        self.configuration = configuration
-        alpha = isEnabled || loading ? 1 : 0.58
     }
 
-    func configure(title: String, image: UIImage?) {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        visibleTitle = trimmed.isEmpty ? NSLocalizedString("Checkout", comment: "") : title
-        visibleImage = image
-        accessibilityLabel = visibleTitle
-        setNeedsUpdateConfiguration()
-        invalidateIntrinsicContentSize()
+    @ViewBuilder
+    private var surfaceBackground: some View {
+        ZStack {
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .fill(Color.ppSurfaceElevated)
+
+            if let image = state.backgroundImage, !reduceTransparency {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(colorScheme == .dark ? 0.04 : 0.06)
+                    .accessibilityHidden(true)
+            }
+        }
     }
 
-    func setLoading(_ loading: Bool) {
-        self.loading = loading
-        isEnabled = !loading
-        accessibilityValue = loading ? NSLocalizedString("Loading", comment: "") : nil
-        accessibilityTraits = isEnabled ? [.button] : [.button, .notEnabled]
-        setNeedsUpdateConfiguration()
+    private var surfaceBorder: some View {
+        RoundedRectangle(
+            cornerRadius: PPCorner.card,
+            style: .continuous
+        )
+        .stroke(
+            colorSchemeContrast == .increased
+                ? Color.ppTextPrimary.opacity(0.52)
+                : Color.ppSurfaceBorder.opacity(colorScheme == .dark ? 0.82 : 0.70),
+            lineWidth: colorSchemeContrast == .increased ? 1.2 : PPCheckoutSignalGeometry.hairline
+        )
     }
 
-    private var feedbackAnimator: UIViewPropertyAnimator?
-
-    func acknowledgeSelection(accentColor: UIColor?) {
-        let feedback = UISelectionFeedbackGenerator()
-        feedback.prepare()
-        feedback.selectionChanged()
-
-        stopMotion()
-        let resolvedAccent = accentColor ?? PPCheckoutHorizonColor.action
-        layer.borderWidth = 2
-        layer.borderColor = resolvedAccent.cgColor
-
-        guard !UIAccessibility.isReduceMotionEnabled else {
-            layer.borderWidth = 0
-            layer.borderColor = UIColor.clear.cgColor
-            return
+    private var signalHeader: some View {
+        HStack(alignment: .center, spacing: PPSpace.sm) {
+            statusSummary
+            Spacer(minLength: PPSpace.sm)
+            if state.collapsible {
+                disclosureButton
+                    .accessibilitySortPriority(4)
+            }
         }
-        guard window != nil, UIView.areAnimationsEnabled else {
-            layer.borderWidth = 0
-            layer.borderColor = UIColor.clear.cgColor
-            return
-        }
-
-        let animator = UIViewPropertyAnimator(
-            duration: PPCheckoutHorizonGeometry.causalMotionDuration,
-            curve: .easeOut
-        ) {
-            self.layer.borderColor = UIColor.clear.cgColor
-        }
-        animator.addCompletion { [weak self] _ in
-            guard let self else { return }
-            self.feedbackAnimator = nil
-            self.layer.borderWidth = 0
-            self.layer.borderColor = UIColor.clear.cgColor
-        }
-        feedbackAnimator = animator
-        animator.startAnimation()
+        .accessibilityElement(children: .contain)
     }
 
-    func stopMotion() {
-        feedbackAnimator?.stopAnimation(true)
-        feedbackAnimator = nil
-        layer.removeAllAnimations()
-        layer.borderWidth = 0
-        layer.borderColor = UIColor.clear.cgColor
+    private var statusSummary: some View {
+        HStack(alignment: .top, spacing: PPSpace.sm) {
+            Image(systemName: status.kind.symbolName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(statusTint)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(statusTint.opacity(colorScheme == .dark ? 0.16 : 0.10)))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                Text(status.title)
+                    .font(PPCheckoutSignalFont.bold(14, relativeTo: .subheadline))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .lineLimit(isAccessibilityLayout ? 3 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if shouldShowStatusSubtitle {
+                    Text(status.subtitle)
+                        .font(PPCheckoutSignalFont.medium(12, relativeTo: .caption))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(isAccessibilityLayout ? 4 : 2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(status.title)
+        .accessibilityValue(status.subtitle)
+        .accessibilitySortPriority(2)
+    }
+
+    private var shouldShowStatusSubtitle: Bool {
+        !state.summaryCollapsed || status.kind != .ready || isAccessibilityLayout
+    }
+
+    private var disclosureButton: some View {
+        Button(action: onDisclosure) {
+            Image(systemName: state.summaryCollapsed ? "chevron.up" : "chevron.down")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.ppTextSecondary)
+                .frame(width: PPBottomDecisionBarGeometry.utilityControlSize, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(PPCheckoutSignalText.localized(
+            state.summaryCollapsed ? "cart_summary_expand" : "cart_summary_collapse"
+        ))
+    }
+
+    private var decisionCore: some View {
+        Group {
+            if state.usesSideBySideDecision && !isAccessibilityLayout {
+                HStack(alignment: .center, spacing: PPSpace.lg) {
+                    orderSnapshot
+                    primaryAction
+                        .frame(width: PPCheckoutSignalGeometry.checkoutMaximumWidth)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: isAccessibilityLayout ? PPSpace.base : PPSpace.md) {
+                    orderSnapshot
+                    primaryAction
+                }
+            }
+        }
+    }
+
+    private var orderSnapshot: some View {
+        Group {
+            if usesVerticalSnapshot {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    HStack(alignment: .center, spacing: PPSpace.md) {
+                        imageCluster(size: snapshotImageSize)
+                        identityContent
+                    }
+                    amountBlock
+                }
+            } else {
+                HStack(alignment: .center, spacing: PPSpace.md) {
+                    imageCluster(size: snapshotImageSize)
+                    identityContent
+                    Spacer(minLength: PPSpace.sm)
+                    amountBlock
+                        .frame(
+                            minWidth: PPCheckoutSignalGeometry.amountMinimumWidth,
+                            alignment: state.isRightToLeft ? .trailing : .leading
+                        )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: state.isRightToLeft ? .trailing : .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(PPCheckoutSignalText.localized("checkout_summary_total_label"))
+        .accessibilityValue([state.totalText, primaryItemTitle, state.itemCountText].joined(separator: ", "))
+        .accessibilitySortPriority(3)
+    }
+
+    private var usesVerticalSnapshot: Bool {
+        isAccessibilityLayout || state.availableWidth < 360
+    }
+
+    private var snapshotImageSize: CGFloat {
+        state.summaryCollapsed
+            ? PPCheckoutSignalGeometry.collapsedImageSize
+            : PPCheckoutSignalGeometry.expandedImageSize
+    }
+
+    private var identityContent: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            Text(primaryItemTitle)
+                .font(PPCheckoutSignalFont.bold(
+                    state.summaryCollapsed ? 15 : 17,
+                    relativeTo: state.summaryCollapsed ? .subheadline : .headline
+                ))
+                .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(isAccessibilityLayout ? 3 : (state.summaryCollapsed ? 1 : 2))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(state.itemCountText)
+                .font(PPCheckoutSignalFont.medium(12, relativeTo: .caption))
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(isAccessibilityLayout ? 2 : 1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .layoutPriority(1)
+    }
+
+    private var amountBlock: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            Text(PPCheckoutSignalText.localized("checkout_summary_total_label"))
+                .font(PPCheckoutSignalFont.medium(12, relativeTo: .caption))
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(1)
+
+            amountAnchor
+        }
+        .frame(maxWidth: usesVerticalSnapshot ? .infinity : nil,
+               alignment: state.isRightToLeft ? .trailing : .leading)
+        .layoutPriority(2)
+    }
+
+    private var primaryItemTitle: String {
+        guard let first = state.items.first else {
+            return state.hasCheckoutContent
+                ? PPCheckoutSignalText.localized("checkout_item_fallback")
+                : PPCheckoutSignalText.localized("cartTitle")
+        }
+        return first.name
+    }
+
+    private func imageCluster(size: CGFloat) -> some View {
+        ZStack(alignment: .topTrailing) {
+            PPCheckoutSignalImage(
+                imageURL: state.items.first?.imageURL ?? "",
+                placeholderSystemName: state.hasCheckoutContent ? "pawprint.fill" : "bag"
+            )
+            .frame(width: size, height: size)
+            .background(Circle().fill(Color.ppSurface))
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color.ppSurfaceBorder.opacity(0.74), lineWidth: PPCheckoutSignalGeometry.hairline))
+
+            if state.totalQuantity > 0 {
+                Text(ppCheckoutSignalLTRIsolate(String(state.totalQuantity)))
+                    .font(PPCheckoutSignalFont.bold(10, relativeTo: .caption2))
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, PPSpace.xs)
+                    .frame(minWidth: 22, minHeight: 22)
+                    .background(Capsule().fill(Color.ppPrimary))
+                    .overlay(Capsule().stroke(Color.ppSurfaceElevated, lineWidth: 2))
+                    .offset(x: state.isRightToLeft ? -PPSpace.xs : PPSpace.xs, y: -PPSpace.xs)
+                    .accessibilityHidden(true)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var amountAnchor: some View {
+        HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
+            if state.isRightToLeft {
+                amountNumber
+                amountCurrencySymbol
+            } else {
+                amountCurrencySymbol
+                amountNumber
+            }
+        }
+        .frame(maxWidth: usesVerticalSnapshot ? .infinity : nil,
+               alignment: state.isRightToLeft ? .trailing : .leading)
+        .environment(\.layoutDirection, .leftToRight)
+    }
+
+    private var amountNumber: some View {
+        Text(state.totalNumberText)
+            .font(PPCheckoutSignalFont.display(
+                state.summaryCollapsed ? 30 : 34,
+                relativeTo: .largeTitle
+            ))
+            .foregroundStyle(Color.ppTextPrimary)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(isAccessibilityLayout ? 0.86 : 0.72)
+            .allowsTightening(true)
+            .layoutPriority(2)
+    }
+
+    private var amountCurrencySymbol: some View {
+        Text(state.currencySymbolText)
+            .font(PPCheckoutSignalFont.bold(16, relativeTo: .title3))
+            .foregroundStyle(Color.ppTextSecondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
+    }
+
+    private var primaryAction: some View {
+        Button(action: onCheckout) {
+            HStack(spacing: PPSpace.sm) {
+                if state.checkoutLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(Color.white)
+                        .controlSize(.regular)
+                        .accessibilityHidden(true)
+                }
+
+                Text(state.checkoutTitle)
+                    .font(PPCheckoutSignalFont.bold(16, relativeTo: .headline))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !state.checkoutLoading, let image = state.checkoutImage {
+                    Image(uiImage: image)
+                        .renderingMode(.template)
+                        .font(.system(size: 17, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: PPBottomDecisionBarGeometry.controlHeight)
+            .padding(.horizontal, PPSpace.base)
+        }
+        .buttonStyle(PPCheckoutSignalPrimaryButtonStyle(
+            enabled: state.isActionEnabled,
+            feedbackActive: state.paymentFeedbackActive,
+            feedbackAccent: state.feedbackAccent
+        ))
+        .disabled(!state.isActionEnabled)
+        .accessibilityLabel(state.checkoutTitle)
+        .accessibilityHint(PPCheckoutSignalText.localized("a11y_btn_checkout_hint"))
+        .accessibilityValue(state.checkoutLoading ? PPCheckoutSignalText.localized("Loading") : "")
+        .accessibilitySortPriority(5)
+    }
+
+    private var shouldShowReceipt: Bool {
+        !state.summaryCollapsed && (state.showDetails || status.kind != .ready)
+    }
+
+    private var receipt: some View {
+        VStack(spacing: 0) {
+            divider
+            if isAccessibilityLayout {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    receiptMetric(
+                        title: PPCheckoutSignalText.localized("checkout_summary_items_label"),
+                        value: PPCheckoutSignalCurrency.format(state.itemsTotal),
+                        symbol: "bag.fill"
+                    )
+                    divider
+                    receiptMetric(
+                        title: PPCheckoutSignalText.localized("checkout_summary_delivery_label"),
+                        value: deliveryValue,
+                        symbol: "shippingbox.fill"
+                    )
+                }
+                .padding(.top, PPSpace.md)
+            } else {
+                HStack(alignment: .top, spacing: PPSpace.base) {
+                    receiptMetric(
+                        title: PPCheckoutSignalText.localized("checkout_summary_items_label"),
+                        value: PPCheckoutSignalCurrency.format(state.itemsTotal),
+                        symbol: "bag.fill"
+                    )
+                    verticalDivider
+                    receiptMetric(
+                        title: PPCheckoutSignalText.localized("checkout_summary_delivery_label"),
+                        value: deliveryValue,
+                        symbol: "shippingbox.fill"
+                    )
+                }
+                .padding(.top, PPSpace.md)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(PPCheckoutSignalText.localized("checkout_summary_receipt_label"))
+    }
+
+    private var deliveryValue: String {
+        state.shippingFee <= 0.009
+            ? PPCheckoutSignalText.localized("Free")
+            : PPCheckoutSignalCurrency.format(state.shippingFee)
+    }
+
+    private func receiptMetric(title: String, value: String, symbol: String) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.ppTextTertiary)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+
+                Text(title)
+                    .font(PPCheckoutSignalFont.medium(13, relativeTo: .footnote))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(isAccessibilityLayout ? 3 : 2)
+            }
+
+            Text(value)
+                .font(PPCheckoutSignalFont.bold(16, relativeTo: .headline))
+                .foregroundStyle(Color.ppTextPrimary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.80)
+                .allowsTightening(true)
+                .frame(maxWidth: .infinity, alignment: state.isRightToLeft ? .trailing : .leading)
+                .environment(\.layoutDirection, .leftToRight)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.ppSurfaceBorder.opacity(0.58))
+            .frame(height: PPCheckoutSignalGeometry.hairline)
+            .accessibilityHidden(true)
+    }
+
+    private var verticalDivider: some View {
+        Rectangle()
+            .fill(Color.ppSurfaceBorder.opacity(0.58))
+            .frame(width: PPCheckoutSignalGeometry.hairline, height: 48)
+            .accessibilityHidden(true)
+    }
+
+    private var shouldShowItemsPreview: Bool {
+        !state.summaryCollapsed && state.showsItemsPreview && !state.items.isEmpty
+    }
+
+    private var itemPreview: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: PPSpace.sm) {
+                ForEach(state.items) { item in
+                    itemCell(item)
+                }
+            }
+            .padding(.vertical, PPSpace.xs)
+        }
+        .frame(height: isAccessibilityLayout
+            ? PPCheckoutSignalGeometry.accessibilityItemPreviewHeight
+            : PPCheckoutSignalGeometry.itemPreviewHeight)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func itemCell(_ item: PPCheckoutSignalItemSnapshot) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            PPCheckoutSignalImage(
+                imageURL: item.imageURL,
+                placeholderSystemName: "pawprint.fill"
+            )
+            .frame(width: isAccessibilityLayout ? 52 : 44, height: isAccessibilityLayout ? 52 : 44)
+            .background(Circle().fill(Color.ppSurface))
+            .clipShape(Circle())
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                Text(item.name)
+                    .font(PPCheckoutSignalFont.medium(13, relativeTo: .footnote))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .lineLimit(isAccessibilityLayout ? 3 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(ppCheckoutSignalItemMetadata(quantity: item.quantity, amount: item.amount))
+                    .font(PPCheckoutSignalFont.bold(12, relativeTo: .caption))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(2)
+                    .environment(\.layoutDirection, .leftToRight)
+            }
+        }
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, PPSpace.sm)
+        .frame(width: isAccessibilityLayout ? 292 : 220, alignment: .leading)
+        .frame(maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(Color.ppSurface.opacity(colorScheme == .dark ? 0.54 : 0.68))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .stroke(Color.ppSurfaceBorder.opacity(colorSchemeContrast == .increased ? 0.92 : 0),
+                        lineWidth: colorSchemeContrast == .increased ? 1 : 0)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(item.name)
+        .accessibilityValue(ppCheckoutSignalItemMetadata(quantity: item.quantity, amount: item.amount))
     }
 }
 
-// MARK: - Checkout Horizon
+private struct PPCheckoutSignalPrimaryButtonStyle: ButtonStyle {
+    let enabled: Bool
+    let feedbackActive: Bool
+    let feedbackAccent: UIColor?
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(Color.white)
+            .background(
+                RoundedRectangle(cornerRadius: PPBottomDecisionBarGeometry.controlRadius, style: .continuous)
+                    .fill(backgroundColor(isPressed: configuration.isPressed))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: PPBottomDecisionBarGeometry.controlRadius, style: .continuous)
+                    .stroke(
+                        feedbackActive
+                            ? Color(uiColor: feedbackAccent ?? .ppPremiumAccent)
+                            : Color.white.opacity(colorSchemeContrast == .increased ? 0.42 : 0),
+                        lineWidth: feedbackActive || colorSchemeContrast == .increased ? 2 : 0
+                    )
+            )
+            .opacity(enabled ? 1 : 0.58)
+            .contentShape(RoundedRectangle(
+                cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                style: .continuous
+            ))
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        guard enabled else {
+            return Color.ppTextTertiary.opacity(0.34)
+        }
+        return isPressed ? Color.ppPressedAction : Color.ppPrimary
+    }
+}
+
+// MARK: - Objective-C facade
 
 @objc(PPPremuimChekoutView)
 @objcMembers
-public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+public final class PPPremuimChekoutView: UIView {
     public var itemsTotal: CGFloat = 0
     public var shippingFee: CGFloat = 0
     public private(set) var subtotal: CGFloat = 0
+
     public var showDetails: Bool = true {
-        didSet {
-            updateOrderIdentity()
-            updateVisibility(animated: window != nil)
-        }
+        didSet { refreshSwiftUISurface(animated: window != nil) }
     }
+
+    public var showsItemsPreview: Bool = false {
+        didSet { refreshSwiftUISurface(animated: window != nil) }
+    }
+
     public var onTapCheckOut: (() -> Void)?
 
-    private let surfaceView = UIView()
-    private let chromeView = UIView()
-    private let backgroundArtworkView = UIImageView()
-    private let contentStack = UIStackView()
-
-    private let headerControl = PPCheckoutHorizonHeaderControl()
-    private let detailStack = UIStackView()
-
-    private let previewCollection: UICollectionView
-    private var previewHeightConstraint: NSLayoutConstraint?
-
-    private let decisionPanel = UIView()
-    private let decisionStack = UIStackView()
-    private let totalControlRow = UIStackView()
-    private let compactToggle = PPCheckoutHorizonCompactToggle()
-    private let totalStack = UIStackView()
-    private let totalCaptionRow = UIStackView()
-    private let totalProtectedIcon = UIImageView(image: UIImage(systemName: "checkmark.shield.fill"))
-    private let totalCaptionLabel = UILabel()
-    private let totalLabel = UILabel()
-    private let actionButton = PPCheckoutHorizonActionButton()
-
-    private var contentBottomConstraint: NSLayoutConstraint?
-    private var actionMinimumWidthConstraint: NSLayoutConstraint?
-    private var actionMaximumWidthConstraint: NSLayoutConstraint?
-
-    private var showsItemsPreview = false
+    private var hostingController: UIHostingController<PPCheckoutSignalRootView>?
     private var previewItems: [CartItem] = []
-    private var totalItemQuantity = 0
     private var checkoutLoading = false
     private var checkoutTapGate = false
-    private var checkoutTitle = NSLocalizedString("Checkout", comment: "")
+    private var checkoutTitle = PPCheckoutSignalText.localized("Checkout")
     private var checkoutImage: UIImage?
     private var usesDefaultCheckoutTitle = true
     private var usesAutomaticCheckoutImage = true
     private var collapsible = false
     private var summaryCollapsed = false
     private var protectedStateIsActive = false
-    private var lastVisibilitySignature = -1
-    private var usesStackedDecisionLayout = false
-
-    private var stateAnimator: UIViewPropertyAnimator?
-    private var amountAnimator: UIViewPropertyAnimator?
-    private weak var outgoingAmountLabel: UILabel?
-
-    private var reduceMotionIsEnabled: Bool {
-        if UIAccessibility.isReduceMotionEnabled { return true }
-        return false
-    }
+    private var paymentFeedbackActive = false
+    private var feedbackAccent: UIColor?
+    private var manualStatus: PPCheckoutSignalStatus?
+    private var backgroundImage: UIImage?
+    private var lastKnownWidth: CGFloat = 0
+    private var feedbackResetWorkItem: DispatchWorkItem?
 
     @objc public override init(frame: CGRect) {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .horizontal
-        layout.minimumLineSpacing = PPSpace.sm
-        layout.minimumInteritemSpacing = PPSpace.sm
-        layout.sectionInset = .zero
-        previewCollection = UICollectionView(frame: .zero, collectionViewLayout: layout)
         super.init(frame: frame)
         commonInit()
     }
 
     @objc public required init?(coder: NSCoder) {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .horizontal
-        layout.minimumLineSpacing = PPSpace.sm
-        layout.minimumInteritemSpacing = PPSpace.sm
-        layout.sectionInset = .zero
-        previewCollection = UICollectionView(frame: .zero, collectionViewLayout: layout)
         super.init(coder: coder)
         commonInit()
     }
 
     deinit {
-        stopMotion(settle: false)
+        feedbackResetWorkItem?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -895,209 +1026,27 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         backgroundColor = .clear
         clipsToBounds = false
         shouldGroupAccessibilityChildren = true
-        accessibilityIdentifier = "checkoutHorizon"
+        accessibilityIdentifier = "checkoutSignal"
 
-        buildHierarchy()
-        buildLayout()
+        installHost()
         installObservers()
-        applyLanguage()
-        refreshColors()
-        updateTotalsWithItems(0, shipping: 0, showTitle: true)
-        updatePreviewItems(nil)
-        setCheckoutBTNTitle(nil, image: nil)
-        updateVisibility(animated: false)
+        refreshSwiftUISurface(animated: false)
     }
 
-    private func buildHierarchy() {
-        surfaceView.translatesAutoresizingMaskIntoConstraints = false
-        surfaceView.layer.cornerRadius = PPBottomDecisionBarGeometry.surfaceRadius
-        surfaceView.layer.cornerCurve = .continuous
-        surfaceView.clipsToBounds = false
-        addSubview(surfaceView)
-
-        chromeView.translatesAutoresizingMaskIntoConstraints = false
-        chromeView.layer.cornerRadius = PPBottomDecisionBarGeometry.surfaceRadius
-        chromeView.layer.cornerCurve = .continuous
-        chromeView.layer.masksToBounds = true
-        surfaceView.addSubview(chromeView)
-
-        backgroundArtworkView.translatesAutoresizingMaskIntoConstraints = false
-        backgroundArtworkView.contentMode = .scaleAspectFill
-        backgroundArtworkView.semanticContentAttribute = .forceLeftToRight
-        backgroundArtworkView.isAccessibilityElement = false
-        backgroundArtworkView.isHidden = true
-        chromeView.addSubview(backgroundArtworkView)
-
-        contentStack.translatesAutoresizingMaskIntoConstraints = false
-        contentStack.axis = .vertical
-        contentStack.alignment = .fill
-        contentStack.spacing = PPSpace.sm
-        chromeView.addSubview(contentStack)
-
-        buildHeaderAndDetails()
-        buildDecisionPanel()
-
-        contentStack.addArrangedSubview(headerControl)
-        contentStack.addArrangedSubview(detailStack)
-        contentStack.addArrangedSubview(decisionPanel)
-    }
-
-    private func buildHeaderAndDetails() {
-        headerControl.addTarget(self, action: #selector(didTapSummaryDisclosure), for: .touchUpInside)
-
-        detailStack.axis = .vertical
-        detailStack.alignment = .fill
-        detailStack.spacing = PPSpace.sm
-
-        previewCollection.translatesAutoresizingMaskIntoConstraints = false
-        previewCollection.backgroundColor = .clear
-        previewCollection.showsHorizontalScrollIndicator = false
-        previewCollection.alwaysBounceHorizontal = false
-        previewCollection.dataSource = self
-        previewCollection.delegate = self
-        previewCollection.clipsToBounds = false
-        previewCollection.register(
-            PPCheckoutHorizonItemCell.self,
-            forCellWithReuseIdentifier: PPCheckoutHorizonItemCell.reuseIdentifier
-        )
-        let previewHeight = previewCollection.heightAnchor.constraint(
-            equalToConstant: PPCheckoutHorizonGeometry.regularPreviewHeight
-        )
-        previewHeightConstraint = previewHeight
-        previewHeight.isActive = true
-
-        detailStack.addArrangedSubview(previewCollection)
-    }
-
-    private func buildDecisionPanel() {
-        decisionPanel.translatesAutoresizingMaskIntoConstraints = false
-        decisionPanel.layer.cornerRadius = PPCorner.card
-        decisionPanel.layer.cornerCurve = .continuous
-        decisionPanel.layer.masksToBounds = true
-
-        decisionStack.translatesAutoresizingMaskIntoConstraints = false
-        decisionStack.axis = .horizontal
-        decisionStack.alignment = .center
-        decisionStack.distribution = .fill
-        decisionStack.spacing = PPBottomDecisionBarGeometry.controlSpacing
-        decisionPanel.addSubview(decisionStack)
-
-        totalControlRow.axis = .horizontal
-        totalControlRow.alignment = .center
-        totalControlRow.distribution = .fill
-        totalControlRow.spacing = PPBottomDecisionBarGeometry.controlSpacing
-        totalControlRow.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        totalControlRow.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        compactToggle.addTarget(self, action: #selector(didTapSummaryDisclosure), for: .touchUpInside)
-        compactToggle.isHidden = true
-
-        totalStack.axis = .vertical
-        totalStack.alignment = .fill
-        totalStack.spacing = 0
-        totalStack.isAccessibilityElement = true
-        totalStack.accessibilityIdentifier = "checkoutHorizon.total"
-        totalStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
-
-        totalCaptionRow.axis = .horizontal
-        totalCaptionRow.alignment = .center
-        totalCaptionRow.spacing = PPSpace.xs
-        totalCaptionRow.isAccessibilityElement = false
-
-        totalProtectedIcon.translatesAutoresizingMaskIntoConstraints = false
-        totalProtectedIcon.contentMode = .scaleAspectFit
-        totalProtectedIcon.isAccessibilityElement = false
-        totalProtectedIcon.setContentHuggingPriority(.required, for: .horizontal)
-
-        totalCaptionLabel.font = PPCheckoutHorizonFont.medium(12, textStyle: .caption1)
-        totalCaptionLabel.adjustsFontForContentSizeCategory = true
-        totalCaptionLabel.numberOfLines = 1
-        totalCaptionLabel.isAccessibilityElement = false
-        totalCaptionLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        totalLabel.font = PPCheckoutHorizonFont.bold(24, textStyle: .title2)
-        totalLabel.adjustsFontForContentSizeCategory = true
-        totalLabel.numberOfLines = 0
-        totalLabel.lineBreakMode = .byWordWrapping
-        totalLabel.semanticContentAttribute = .forceLeftToRight
-        totalLabel.isAccessibilityElement = false
-        totalLabel.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
-
-        totalCaptionRow.addArrangedSubview(totalProtectedIcon)
-        totalCaptionRow.addArrangedSubview(totalCaptionLabel)
-        totalStack.addArrangedSubview(totalCaptionRow)
-        totalStack.addArrangedSubview(totalLabel)
-        totalControlRow.addArrangedSubview(compactToggle)
-        totalControlRow.addArrangedSubview(totalStack)
-
-        actionButton.addTarget(self, action: #selector(didTapCheckout), for: .touchUpInside)
-        actionButton.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        actionButton.setContentCompressionResistancePriority(UILayoutPriority(999), for: .horizontal)
-
-        decisionStack.addArrangedSubview(totalControlRow)
-        decisionStack.addArrangedSubview(actionButton)
-
-        let minimumWidth = actionButton.widthAnchor.constraint(
-            greaterThanOrEqualToConstant: PPCheckoutHorizonGeometry.checkoutMinimumWidth
-        )
-        minimumWidth.priority = UILayoutPriority(999)
-        let maximumWidth = actionButton.widthAnchor.constraint(
-            lessThanOrEqualToConstant: PPCheckoutHorizonGeometry.checkoutMaximumWidth
-        )
-        actionMinimumWidthConstraint = minimumWidth
-        actionMaximumWidthConstraint = maximumWidth
+    private func installHost() {
+        let controller = UIHostingController(rootView: makeRootView())
+        controller.view.translatesAutoresizingMaskIntoConstraints = false
+        controller.view.backgroundColor = .clear
+        controller.view.isOpaque = false
+        controller.view.accessibilityIdentifier = "checkoutSignal.host"
+        hostingController = controller
+        addSubview(controller.view)
 
         NSLayoutConstraint.activate([
-            decisionStack.topAnchor.constraint(equalTo: decisionPanel.topAnchor, constant: PPSpace.xs),
-            decisionStack.leadingAnchor.constraint(equalTo: decisionPanel.leadingAnchor, constant: PPSpace.xs),
-            decisionStack.trailingAnchor.constraint(equalTo: decisionPanel.trailingAnchor, constant: -PPSpace.xs),
-            decisionStack.bottomAnchor.constraint(equalTo: decisionPanel.bottomAnchor, constant: -PPSpace.xs),
-            actionButton.heightAnchor.constraint(
-                greaterThanOrEqualToConstant: PPBottomDecisionBarGeometry.controlHeight
-            ),
-            totalProtectedIcon.widthAnchor.constraint(equalToConstant: 14),
-            totalProtectedIcon.heightAnchor.constraint(equalToConstant: 14),
-            minimumWidth,
-            maximumWidth
-        ])
-    }
-
-    private func buildLayout() {
-        let bottom = contentStack.bottomAnchor.constraint(
-            equalTo: chromeView.bottomAnchor,
-            constant: -resolvedBottomPadding
-        )
-        contentBottomConstraint = bottom
-
-        NSLayoutConstraint.activate([
-            surfaceView.topAnchor.constraint(equalTo: topAnchor, constant: PPSpace.xs),
-            surfaceView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PPSpace.md),
-            surfaceView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -PPSpace.md),
-            surfaceView.bottomAnchor.constraint(
-                equalTo: safeAreaLayoutGuide.bottomAnchor,
-                constant: -PPBottomDecisionBarGeometry.bottomBreathingRoom
-            ),
-
-            chromeView.topAnchor.constraint(equalTo: surfaceView.topAnchor),
-            chromeView.leadingAnchor.constraint(equalTo: surfaceView.leadingAnchor),
-            chromeView.trailingAnchor.constraint(equalTo: surfaceView.trailingAnchor),
-            chromeView.bottomAnchor.constraint(equalTo: surfaceView.bottomAnchor),
-
-            backgroundArtworkView.topAnchor.constraint(equalTo: chromeView.topAnchor),
-            backgroundArtworkView.leadingAnchor.constraint(equalTo: chromeView.leadingAnchor),
-            backgroundArtworkView.trailingAnchor.constraint(equalTo: chromeView.trailingAnchor),
-            backgroundArtworkView.bottomAnchor.constraint(equalTo: chromeView.bottomAnchor),
-
-            contentStack.topAnchor.constraint(equalTo: chromeView.topAnchor, constant: PPSpace.sm),
-            contentStack.leadingAnchor.constraint(
-                equalTo: chromeView.leadingAnchor,
-                constant: PPBottomDecisionBarGeometry.contentPadding
-            ),
-            contentStack.trailingAnchor.constraint(
-                equalTo: chromeView.trailingAnchor,
-                constant: -PPBottomDecisionBarGeometry.contentPadding
-            ),
-            bottom
+            controller.view.topAnchor.constraint(equalTo: topAnchor),
+            controller.view.leadingAnchor.constraint(equalTo: leadingAnchor),
+            controller.view.trailingAnchor.constraint(equalTo: trailingAnchor),
+            controller.view.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
 
@@ -1105,19 +1054,19 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         let center = NotificationCenter.default
         center.addObserver(
             self,
-            selector: #selector(reduceMotionDidChange),
+            selector: #selector(accessibilityPreferenceDidChange),
             name: UIAccessibility.reduceMotionStatusDidChangeNotification,
             object: nil
         )
         center.addObserver(
             self,
-            selector: #selector(appearancePreferenceDidChange),
+            selector: #selector(accessibilityPreferenceDidChange),
             name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification,
             object: nil
         )
         center.addObserver(
             self,
-            selector: #selector(appearancePreferenceDidChange),
+            selector: #selector(accessibilityPreferenceDidChange),
             name: UIAccessibility.reduceTransparencyStatusDidChangeNotification,
             object: nil
         )
@@ -1141,23 +1090,19 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         )
     }
 
-    private var resolvedBottomPadding: CGFloat {
-        PPSpace.md
-    }
-
-    // MARK: Lifecycle and sizing
-
     public override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
-            stopMotion(settle: true)
+            stopEphemeralFeedback()
         }
     }
 
     public override func layoutSubviews() {
-        updateAdaptiveLayout(for: bounds.width)
         super.layoutSubviews()
-        updateShadowPath()
+        let width = bounds.width
+        guard width > 1, abs(width - lastKnownWidth) > 0.5 else { return }
+        lastKnownWidth = width
+        refreshSwiftUISurface(animated: false)
     }
 
     public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -1165,23 +1110,15 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             super.traitCollectionDidChange(previousTraitCollection)
         }
 
-        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-            refreshColors()
-        }
-
-        if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
-            stopMotion(settle: true)
-            updateAdaptiveLayout(for: bounds.width)
-            previewCollection.collectionViewLayout.invalidateLayout()
-            invalidateIntrinsicContentSize()
-            superview?.setNeedsLayout()
+        if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory ||
+            traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            refreshSwiftUISurface(animated: false)
         }
     }
 
     public override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
-        invalidateIntrinsicContentSize()
-        superview?.setNeedsLayout()
+        refreshSwiftUISurface(animated: false)
     }
 
     public override var intrinsicContentSize: CGSize {
@@ -1208,229 +1145,194 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     }
 
     private func measuredHeight(for width: CGFloat) -> CGFloat {
-        let resolvedWidth = max(width, 1)
-        updateAdaptiveLayout(for: resolvedWidth)
-        let contentWidth = max(
-            resolvedWidth - (PPBottomDecisionBarGeometry.contentPadding * 2),
-            1
-        )
-        let contentSize = contentStack.systemLayoutSizeFitting(
-            CGSize(width: contentWidth, height: UIView.layoutFittingCompressedSize.height),
-            withHorizontalFittingPriority: .required,
-            verticalFittingPriority: .fittingSizeLevel
-        )
-        let exteriorHeight = PPSpace.xs
-            + safeAreaInsets.bottom
-            + PPBottomDecisionBarGeometry.bottomBreathingRoom
-        return ceil(contentSize.height + PPSpace.sm + resolvedBottomPadding + exteriorHeight)
+        guard let hostingController else { return UIView.noIntrinsicMetric }
+        let fittingWidth = max(width, 1)
+        let fittingSize = CGSize(width: fittingWidth, height: UIView.layoutFittingExpandedSize.height)
+        let size = hostingController.sizeThatFits(in: fittingSize)
+        return ceil(max(size.height, PPBottomDecisionBarGeometry.controlHeight + PPSpace.xl))
     }
 
-    private func updateAdaptiveLayout(for width: CGFloat) {
-        guard width > 1 else { return }
-        let accessibilityLayout = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-        let collapseWidth = collapsible && summaryCollapsed
-            ? PPCheckoutHorizonGeometry.collapsedDecisionMinimumWidth
-            : PPCheckoutHorizonGeometry.horizontalDecisionMinimumWidth
-        let shouldStackDecision = accessibilityLayout || width < collapseWidth
+    private func makeRootView() -> PPCheckoutSignalRootView {
+        PPCheckoutSignalRootView(
+            state: makeViewState(),
+            onDisclosure: { [weak self] in
+                self?.didTapSummaryDisclosure()
+            },
+            onCheckout: { [weak self] in
+                self?.didTapCheckout()
+            }
+        )
+    }
 
-        if shouldStackDecision != usesStackedDecisionLayout {
-            usesStackedDecisionLayout = shouldStackDecision
-            decisionStack.axis = shouldStackDecision ? .vertical : .horizontal
-            decisionStack.alignment = .fill
-            decisionStack.spacing = shouldStackDecision
-                ? PPSpace.sm
-                : PPBottomDecisionBarGeometry.controlSpacing
-            actionMinimumWidthConstraint?.isActive = !shouldStackDecision
-            actionMaximumWidthConstraint?.isActive = !shouldStackDecision
-            totalLabel.numberOfLines = shouldStackDecision ? 0 : 1
-            invalidateIntrinsicContentSize()
+    private func makeViewState() -> PPCheckoutSignalViewState {
+        let total = itemsTotal + shippingFee
+        return PPCheckoutSignalViewState(
+            itemsTotal: itemsTotal,
+            shippingFee: shippingFee,
+            subtotal: total,
+            totalText: ppCheckoutSignalLTRIsolate(PPCheckoutSignalCurrency.format(total)),
+            totalNumberText: PPCheckoutSignalCurrency.number(total),
+            currencySymbolText: PPCheckoutSignalCurrency.symbol,
+            itemCountText: ppCheckoutSignalItemCount(totalItemQuantity),
+            checkoutTitle: checkoutTitle,
+            checkoutImage: checkoutImage,
+            showDetails: showDetails,
+            showsItemsPreview: showsItemsPreview,
+            collapsible: collapsible,
+            summaryCollapsed: collapsible && summaryCollapsed,
+            checkoutLoading: checkoutLoading,
+            protectedStateIsActive: protectedStateIsActive,
+            paymentFeedbackActive: paymentFeedbackActive,
+            feedbackAccent: feedbackAccent,
+            safeAreaBottom: safeAreaInsets.bottom,
+            availableWidth: bounds.width > 1
+                ? bounds.width
+                : (lastKnownWidth > 1 ? lastKnownWidth : UIScreen.main.bounds.width),
+            isRightToLeft: ppCheckoutSignalIsRTL(),
+            backgroundImage: backgroundImage,
+            manualStatus: manualStatus,
+            items: itemSnapshots()
+        )
+    }
+
+    private var totalItemQuantity: Int {
+        previewItems.reduce(0) { partial, item in
+            partial + max(item.quantity, 0)
         }
-
-        previewHeightConstraint?.constant = accessibilityLayout
-            ? PPCheckoutHorizonGeometry.accessibilityPreviewHeight
-            : PPCheckoutHorizonGeometry.regularPreviewHeight
     }
 
-    // MARK: Appearance and language
+    private func itemSnapshots() -> [PPCheckoutSignalItemSnapshot] {
+        previewItems.enumerated().map { index, item in
+            let rawName = (item.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let name = rawName.isEmpty
+                ? PPCheckoutSignalText.localized("checkout_item_fallback")
+                : rawName
+            let rawID = (item.itemID ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let imageURL = (item.imageURL ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let quantity = max(item.quantity, 1)
+            let lineTotal = item.lineSubtotal > 0
+                ? item.lineSubtotal
+                : item.price * Double(quantity)
+            let stableID = rawID.isEmpty
+                ? "checkout-item-\(index)-\(name)-\(imageURL)"
+                : rawID
+            return PPCheckoutSignalItemSnapshot(
+                id: stableID,
+                name: name,
+                quantity: quantity,
+                amount: CGFloat(lineTotal),
+                imageURL: imageURL
+            )
+        }
+    }
 
-    private func updateShadowPath() {
-        guard surfaceView.bounds.width > 0, surfaceView.bounds.height > 0 else {
-            surfaceView.layer.shadowPath = nil
+    private func refreshSwiftUISurface(animated: Bool) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.refreshSwiftUISurface(animated: animated)
+            }
             return
         }
-        surfaceView.layer.shadowPath = UIBezierPath(
-            roundedRect: surfaceView.bounds,
-            cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius
-        ).cgPath
-    }
 
-    private func refreshColors() {
-        chromeView.backgroundColor = PPCheckoutHorizonColor.surface
-        chromeView.layer.borderColor = PPCheckoutHorizonColor.border.cgColor
-        chromeView.layer.borderWidth = PPCheckoutHorizonGeometry.hairline
-
-        surfaceView.layer.shadowColor = UIColor.black.cgColor
-        surfaceView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.20 : 0.08
-        surfaceView.layer.shadowRadius = 20
-        surfaceView.layer.shadowOffset = CGSize(width: 0, height: 6)
-
-        headerControl.refreshColors()
-
-        decisionPanel.backgroundColor = PPCheckoutHorizonColor.quietSurface
-        decisionPanel.layer.borderColor = PPCheckoutHorizonColor.border.cgColor
-        decisionPanel.layer.borderWidth = UIAccessibility.isDarkerSystemColorsEnabled
-            ? PPCheckoutHorizonGeometry.hairline
-            : 0
-        totalCaptionLabel.textColor = PPCheckoutHorizonColor.secondaryText
-        totalProtectedIcon.tintColor = protectedStateIsActive
-            ? PPCheckoutHorizonColor.protectedState
-            : PPCheckoutHorizonColor.tertiaryText
-        totalLabel.textColor = PPCheckoutHorizonColor.primaryText
-        compactToggle.refreshColors()
-
-        backgroundArtworkView.alpha = UIAccessibility.isReduceTransparencyEnabled ? 0.04 : 0.08
-        previewCollection.visibleCells.forEach { cell in
-            (cell as? PPCheckoutHorizonItemCell)?.refreshColors()
+        let applySurfaceState = { [weak self] in
+            guard let self else { return }
+            self.hostingController?.rootView = self.makeRootView()
         }
-        actionButton.setNeedsUpdateConfiguration()
+        let shouldCrossfade = animated && window != nil && UIView.areAnimationsEnabled
+        if shouldCrossfade {
+            if UIAccessibility.isReduceMotionEnabled {
+                applySurfaceState()
+            } else if let hostView = hostingController?.view {
+                UIView.transition(
+                    with: hostView,
+                    duration: PPCheckoutSignalGeometry.feedbackDuration,
+                    options: [.transitionCrossDissolve, .beginFromCurrentState, .allowUserInteraction],
+                    animations: applySurfaceState
+                )
+            } else {
+                applySurfaceState()
+            }
+        } else {
+            applySurfaceState()
+        }
+
+        hostingController?.view.invalidateIntrinsicContentSize()
+        invalidateIntrinsicContentSize()
         setNeedsLayout()
+        superview?.setNeedsLayout()
     }
 
-    private func applyLanguage() {
-        let semantic = ppCheckoutHorizonSemantic()
-        semanticContentAttribute = semantic
-        chromeView.semanticContentAttribute = semantic
-        contentStack.semanticContentAttribute = semantic
-        detailStack.semanticContentAttribute = semantic
-        decisionPanel.semanticContentAttribute = semantic
-        decisionStack.semanticContentAttribute = semantic
-        totalControlRow.semanticContentAttribute = semantic
-        totalStack.semanticContentAttribute = semantic
-        totalCaptionRow.semanticContentAttribute = semantic
-        compactToggle.semanticContentAttribute = semantic
-        actionButton.semanticContentAttribute = semantic
-
-        totalCaptionLabel.text = NSLocalizedString("checkout_horizon_total_protected", comment: "")
-        totalCaptionLabel.textAlignment = ppCheckoutHorizonAlignment()
-        totalLabel.textAlignment = ppCheckoutHorizonAlignment()
-        totalStack.accessibilityLabel = totalCaptionLabel.text
-
-        if usesDefaultCheckoutTitle {
-            checkoutTitle = NSLocalizedString("Checkout", comment: "")
-        }
-        if usesAutomaticCheckoutImage {
-            checkoutImage = UIImage(
-                systemName: ppCheckoutHorizonIsRTL() ? "arrow.left" : "arrow.right"
-            )
-        }
-        actionButton.configure(title: checkoutTitle, image: checkoutImage)
-
-        previewCollection.semanticContentAttribute = semantic
-        previewCollection.visibleCells.forEach { cell in
-            (cell as? PPCheckoutHorizonItemCell)?.refreshLanguage()
-        }
-        updateOrderIdentity()
-        updateCollapseAccessibility()
-    }
-
-    private func updateOrderIdentity() {
-        let hasContent = !previewItems.isEmpty || subtotal > 0.009
-        let firstName = (previewItems.first?.name ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let title: String
-        if !firstName.isEmpty {
-            title = firstName
-        } else if hasContent {
-            title = NSLocalizedString("checkout_item_fallback", comment: "")
-        } else {
-            title = NSLocalizedString("cartTitle", comment: "")
-        }
-        let metadata: String
-        if !hasContent {
-            metadata = NSLocalizedString("Cart", comment: "")
-        } else if showDetails {
-            metadata = ppCheckoutHorizonProductMetadata(
-                quantity: totalItemQuantity,
-                itemsTotal: itemsTotal,
-                shippingFee: shippingFee
-            )
-        } else {
-            metadata = ppCheckoutHorizonItemCount(totalItemQuantity)
-        }
-        headerControl.configure(items: previewItems, title: title, metadata: metadata)
-        compactToggle.configure(item: previewItems.first, count: totalItemQuantity)
+    private func stopEphemeralFeedback() {
+        feedbackResetWorkItem?.cancel()
+        feedbackResetWorkItem = nil
+        paymentFeedbackActive = false
+        feedbackAccent = nil
+        hostingController?.view.layer.removeAllAnimations()
+        refreshSwiftUISurface(animated: false)
     }
 
     // MARK: Public Objective-C contract
 
     @objc(updateTotalsWithItems:shipping:showTitle:)
-    func updateTotalsWithItems(_ itemsTotal: CGFloat, shipping shippingFee: CGFloat, showTitle _: Bool) {
-        let oldAmount = totalLabel.text
+    public func updateTotalsWithItems(_ itemsTotal: CGFloat, shipping shippingFee: CGFloat, showTitle _: Bool) {
         self.itemsTotal = itemsTotal
         self.shippingFee = shippingFee
         subtotal = itemsTotal + shippingFee
-
-        let totalText = PPCheckoutHorizonCurrency.format(subtotal)
-        totalStack.accessibilityValue = totalText
-
-        if let oldAmount, oldAmount != totalText {
-            animateAmountChange(from: oldAmount, to: totalText)
-        } else {
-            totalLabel.text = totalText
-        }
-
-        updateOrderIdentity()
-        updateCollapseAccessibility()
-        updateVisibility(animated: window != nil)
-    }
-
-    @objc(setShowsItemsPreview:)
-    func setShowsItemsPreview(_ showsItemsPreview: Bool) {
-        self.showsItemsPreview = showsItemsPreview
-        previewCollection.reloadData()
-        updateVisibility(animated: window != nil)
+        refreshSwiftUISurface(animated: window != nil)
     }
 
     @objc(updatePreviewItems:)
-    func updatePreviewItems(_ items: [CartItem]?) {
+    public func updatePreviewItems(_ items: [CartItem]?) {
         previewItems = items ?? []
-        totalItemQuantity = previewItems.reduce(0) { partial, item in
-            partial + max(item.quantity, 0)
-        }
-        previewCollection.alwaysBounceHorizontal = previewItems.count > 1
-        previewCollection.reloadData()
-        updateOrderIdentity()
-        updateCollapseAccessibility()
-        updateVisibility(animated: window != nil)
+        refreshSwiftUISurface(animated: window != nil)
     }
 
     @objc(setCardBackgroundImage:)
-    func setCardBackgroundImage(_ image: UIImage?) {
-        backgroundArtworkView.image = image
-        backgroundArtworkView.isHidden = image == nil
-        refreshColors()
+    public func setCardBackgroundImage(_ image: UIImage?) {
+        backgroundImage = image
+        refreshSwiftUISurface(animated: false)
     }
 
     @objc(setCheckoutBTNTitle:image:)
-    func setCheckoutBTNTitle(_ title: String?, image: UIImage?) {
-        if let title, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            checkoutTitle = title
-            usesDefaultCheckoutTitle = false
-        } else {
-            checkoutTitle = NSLocalizedString("Checkout", comment: "")
+    public func setCheckoutBTNTitle(_ title: String?, image: UIImage?) {
+        let trimmed = (title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            checkoutTitle = PPCheckoutSignalText.localized("Checkout")
             usesDefaultCheckoutTitle = true
+        } else {
+            checkoutTitle = title ?? PPCheckoutSignalText.localized("Checkout")
+            usesDefaultCheckoutTitle = false
         }
 
         usesAutomaticCheckoutImage = image == nil
         checkoutImage = image ?? UIImage(
-            systemName: ppCheckoutHorizonIsRTL() ? "arrow.left" : "arrow.right"
+            systemName: ppCheckoutSignalIsRTL() ? "arrow.left" : "arrow.right"
         )
-        actionButton.configure(title: checkoutTitle, image: checkoutImage)
+        refreshSwiftUISurface(animated: false)
     }
 
     @objc(triggerPaymentMethodChangeFeedbackWithAccent:)
     public func triggerPaymentMethodChangeFeedback(accentColor: UIColor?) {
-        actionButton.acknowledgeSelection(accentColor: accentColor)
+        let feedback = UISelectionFeedbackGenerator()
+        feedback.prepare()
+        feedback.selectionChanged()
+
+        feedbackResetWorkItem?.cancel()
+        feedbackAccent = accentColor
+        paymentFeedbackActive = true
+        refreshSwiftUISurface(animated: window != nil)
+
+        let reset = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.paymentFeedbackActive = false
+            self.feedbackAccent = nil
+            self.refreshSwiftUISurface(animated: self.window != nil)
+        }
+        feedbackResetWorkItem = reset
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + PPCheckoutSignalGeometry.feedbackDuration,
+            execute: reset
+        )
     }
 
     @objc(triggerPaymentMethodChangeFeedback)
@@ -1439,7 +1341,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     }
 
     @objc(setCheckoutLoading:)
-    func setCheckoutLoading(_ loading: Bool) {
+    public func setCheckoutLoading(_ loading: Bool) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { [weak self] in
                 self?.setCheckoutLoading(loading)
@@ -1450,240 +1352,54 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         if !loading {
             checkoutTapGate = false
         }
-        actionButton.setLoading(loading)
+        refreshSwiftUISurface(animated: window != nil)
+    }
+
+    @objc(setCheckoutSurfaceState:title:subtitle:)
+    public func setCheckoutSurfaceState(_ rawState: String?, title: String?, subtitle: String?) {
+        let kind = PPCheckoutSignalStatusKind(rawObjectiveCValue: rawState)
+        manualStatus = .automatic(kind: kind, title: title, subtitle: subtitle)
+        refreshSwiftUISurface(animated: window != nil)
+    }
+
+    @objc(clearCheckoutSurfaceState)
+    public func clearCheckoutSurfaceState() {
+        manualStatus = nil
+        refreshSwiftUISurface(animated: window != nil)
     }
 
     @objc(skipCardEntranceAnimation)
-    func skipCardEntranceAnimation() {
-        // Both production hosts own their route entrance. The rebuilt dock has
-        // no competing entrance animation, but this selector remains stable.
-        surfaceView.layer.removeAllAnimations()
-        surfaceView.alpha = 1
-        surfaceView.transform = .identity
+    public func skipCardEntranceAnimation() {
+        hostingController?.view.layer.removeAllAnimations()
+        transform = .identity
     }
 
     @objc(pp_startTrustBannerShimmer)
-    func pp_startTrustBannerShimmer() {
-        // The legacy selector now resolves to a static verified-state accent.
-        // No perpetual shimmer or continuous rendering work is introduced.
+    public func pp_startTrustBannerShimmer() {
         protectedStateIsActive = true
-        refreshColors()
+        refreshSwiftUISurface(animated: window != nil)
     }
 
     @objc(pp_stopTrustBannerShimmer)
-    func pp_stopTrustBannerShimmer() {
+    public func pp_stopTrustBannerShimmer() {
         protectedStateIsActive = false
-        refreshColors()
+        refreshSwiftUISurface(animated: window != nil)
     }
 
     @objc(setCollapsible:initiallyCollapsed:)
     public func setCollapsible(_ enabled: Bool, initiallyCollapsed collapsed: Bool) {
         collapsible = enabled
         summaryCollapsed = enabled && collapsed
-        lastVisibilitySignature = -1
-        updateCollapseAccessibility()
-        updateVisibility(animated: false)
+        refreshSwiftUISurface(animated: false)
     }
 
     @objc(setSummaryCollapsed:animated:)
     public func setSummaryCollapsed(_ collapsed: Bool, animated: Bool) {
         guard collapsible, summaryCollapsed != collapsed else { return }
         summaryCollapsed = collapsed
-        updateCollapseAccessibility()
-        updateVisibility(animated: animated)
-    }
-
-    // MARK: Reachable state presentation
-
-    private func updateCollapseAccessibility() {
-        let amount = totalLabel.text ?? ""
-        let metadata = totalItemQuantity > 0
-            ? ppCheckoutHorizonItemCount(totalItemQuantity)
-            : NSLocalizedString("Cart", comment: "")
-        let value = [metadata, amount].filter { !$0.isEmpty }.joined(separator: ", ")
-        let hint = summaryCollapsed
-            ? NSLocalizedString("cart_summary_expand", comment: "")
-            : NSLocalizedString("cart_summary_collapse", comment: "")
-
-        headerControl.setDisclosure(collapsible: collapsible, collapsed: summaryCollapsed)
-        headerControl.accessibilityValue = value
-        headerControl.accessibilityHint = collapsible ? hint : nil
-
-        compactToggle.accessibilityLabel = headerControl.accessibilityLabel
-        compactToggle.accessibilityValue = value
-        compactToggle.accessibilityHint = NSLocalizedString("cart_summary_expand", comment: "")
-    }
-
-    private func updateVisibility(animated: Bool) {
-        let collapsed = collapsible && summaryCollapsed
-        let showPreview = !collapsed && showsItemsPreview && !previewItems.isEmpty
-        let showDetailsRegion = showPreview
-
-        let signature = (collapsed ? 1 : 0)
-            | (showPreview ? 2 : 0)
-            | (collapsible ? 16 : 0)
-        let stateChanged = signature != lastVisibilitySignature
-        let collapseChanged = lastVisibilitySignature >= 0
-            && (lastVisibilitySignature & 1) != (signature & 1)
-        let reduceMotion = reduceMotionIsEnabled
-        let shouldAnimate = animated
-            && stateChanged
-            && window != nil
-            && UIView.areAnimationsEnabled
-            && !reduceMotion
-        lastVisibilitySignature = signature
-
-        stateAnimator?.stopAnimation(true)
-        stateAnimator = nil
-
-        let applyFinalState = { [weak self] in
-            guard let self else { return }
-            headerControl.isHidden = collapsed
-            headerControl.accessibilityElementsHidden = collapsed
-            detailStack.isHidden = !showDetailsRegion
-            detailStack.accessibilityElementsHidden = !showDetailsRegion
-            previewCollection.isHidden = !showPreview
-            compactToggle.isHidden = !collapsed
-            headerControl.alpha = collapsed ? 0 : 1
-            detailStack.alpha = showDetailsRegion ? 1 : 0
-            previewCollection.alpha = showPreview ? 1 : 0
-            compactToggle.alpha = collapsed ? 1 : 0
-            invalidateIntrinsicContentSize()
-            layoutIfNeeded()
-            superview?.layoutIfNeeded()
-        }
-
-        let complete = { [weak self] in
-            guard let self else { return }
-            applyFinalState()
-            self.stateAnimator = nil
-            superview?.setNeedsLayout()
-            updateShadowPath()
-            updateCollapseAccessibility()
-            if collapseChanged, UIAccessibility.isVoiceOverRunning {
-                let target: Any = collapsed ? compactToggle : headerControl
-                UIAccessibility.post(notification: .layoutChanged, argument: target)
-            }
-        }
-
-        guard shouldAnimate else {
-            applyFinalState()
-            complete()
-            return
-        }
-        guard !UIAccessibility.isReduceMotionEnabled else {
-            applyFinalState()
-            complete()
-            return
-        }
-
-        superview?.layoutIfNeeded()
-        if !collapsed {
-            headerControl.isHidden = false
-            headerControl.accessibilityElementsHidden = true
-            headerControl.alpha = 0
-            if showDetailsRegion {
-                detailStack.isHidden = false
-                detailStack.accessibilityElementsHidden = true
-                detailStack.alpha = 0
-            }
-        }
-        if collapsed {
-            compactToggle.isHidden = false
-            compactToggle.alpha = 0
-        }
-        if showPreview { previewCollection.isHidden = false }
-
-        let animator = UIViewPropertyAnimator(
-            duration: PPCheckoutHorizonGeometry.causalMotionDuration,
-            curve: .easeOut,
-            animations: applyFinalState
-        )
-        animator.addCompletion { [weak self] position in
-            guard let self else { return }
-            self.stateAnimator = nil
-            if position == .end {
-                complete()
-            } else {
-                applyFinalState()
-            }
-        }
-        stateAnimator = animator
-        animator.startAnimation()
-    }
-
-    private func animateAmountChange(from oldText: String, to newText: String) {
-        amountAnimator?.stopAnimation(true)
-        amountAnimator = nil
-        outgoingAmountLabel?.removeFromSuperview()
-        outgoingAmountLabel = nil
-        totalLabel.alpha = 1
-
-        guard !UIAccessibility.isReduceMotionEnabled else {
-            totalLabel.text = newText
-            return
-        }
-        guard window != nil, UIView.areAnimationsEnabled else {
-            totalLabel.text = newText
-            return
-        }
-
-        totalStack.layoutIfNeeded()
-        let outgoing = UILabel()
-        outgoing.translatesAutoresizingMaskIntoConstraints = false
-        outgoing.font = totalLabel.font
-        outgoing.textColor = totalLabel.textColor
-        outgoing.textAlignment = totalLabel.textAlignment
-        outgoing.adjustsFontForContentSizeCategory = true
-        outgoing.numberOfLines = totalLabel.numberOfLines
-        outgoing.semanticContentAttribute = .forceLeftToRight
-        outgoing.text = oldText
-        outgoing.isAccessibilityElement = false
-        totalStack.addSubview(outgoing)
-        NSLayoutConstraint.activate([
-            outgoing.leadingAnchor.constraint(equalTo: totalLabel.leadingAnchor),
-            outgoing.trailingAnchor.constraint(equalTo: totalLabel.trailingAnchor),
-            outgoing.topAnchor.constraint(equalTo: totalLabel.topAnchor),
-            outgoing.bottomAnchor.constraint(equalTo: totalLabel.bottomAnchor)
-        ])
-
-        outgoingAmountLabel = outgoing
-        totalLabel.text = newText
-        totalLabel.alpha = 0
-
-        let animator = UIViewPropertyAnimator(
-            duration: PPCheckoutHorizonGeometry.causalMotionDuration,
-            curve: .easeOut
-        ) {
-            outgoing.alpha = 0
-            self.totalLabel.alpha = 1
-        }
-        animator.addCompletion { [weak self, weak outgoing] _ in
-            outgoing?.removeFromSuperview()
-            guard let self else { return }
-            self.outgoingAmountLabel = nil
-            self.amountAnimator = nil
-            self.totalLabel.alpha = 1
-        }
-        amountAnimator = animator
-        animator.startAnimation()
-    }
-
-    private func stopMotion(settle: Bool) {
-        stateAnimator?.stopAnimation(true)
-        stateAnimator = nil
-        amountAnimator?.stopAnimation(true)
-        amountAnimator = nil
-        actionButton.stopMotion()
-        outgoingAmountLabel?.removeFromSuperview()
-        outgoingAmountLabel = nil
-        totalLabel.alpha = 1
-        headerControl.alpha = 1
-        detailStack.alpha = 1
-        compactToggle.alpha = 1
-        if settle {
-            lastVisibilitySignature = -1
-            updateVisibility(animated: false)
+        refreshSwiftUISurface(animated: animated)
+        if UIAccessibility.isVoiceOverRunning {
+            UIAccessibility.post(notification: .layoutChanged, argument: self)
         }
     }
 
@@ -1705,73 +1421,30 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         feedback.impactOccurred()
         onTapCheckOut?()
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + PPCheckoutHorizonGeometry.checkoutTapDebounce
+            deadline: .now() + PPCheckoutSignalGeometry.checkoutTapDebounce
         ) { [weak self] in
             guard let self, !self.checkoutLoading else { return }
             self.checkoutTapGate = false
+            self.refreshSwiftUISurface(animated: false)
         }
     }
 
-    @objc private func reduceMotionDidChange() {
-        stopMotion(settle: true)
-    }
-
-    @objc private func appearancePreferenceDidChange() {
-        refreshColors()
+    @objc private func accessibilityPreferenceDidChange() {
+        stopEphemeralFeedback()
     }
 
     @objc private func languageDidChange() {
-        stopMotion(settle: true)
-        applyLanguage()
-        previewCollection.reloadData()
-        invalidateIntrinsicContentSize()
-        superview?.setNeedsLayout()
+        if usesDefaultCheckoutTitle {
+            checkoutTitle = PPCheckoutSignalText.localized("Checkout")
+        }
+        if usesAutomaticCheckoutImage {
+            checkoutImage = UIImage(systemName: ppCheckoutSignalIsRTL() ? "arrow.left" : "arrow.right")
+        }
+        manualStatus = nil
+        stopEphemeralFeedback()
     }
 
     @objc private func applicationDidEnterBackground() {
-        stopMotion(settle: true)
-    }
-
-    // MARK: Collection view
-
-    public func collectionView(
-        _ collectionView: UICollectionView,
-        numberOfItemsInSection section: Int
-    ) -> Int {
-        previewItems.count
-    }
-
-    public func collectionView(
-        _ collectionView: UICollectionView,
-        cellForItemAt indexPath: IndexPath
-    ) -> UICollectionViewCell {
-        guard indexPath.item < previewItems.count,
-              let cell = collectionView.dequeueReusableCell(
-                  withReuseIdentifier: PPCheckoutHorizonItemCell.reuseIdentifier,
-                  for: indexPath
-              ) as? PPCheckoutHorizonItemCell else {
-            return UICollectionViewCell()
-        }
-        cell.configure(item: previewItems[indexPath.item])
-        return cell
-    }
-
-    public func collectionView(
-        _ collectionView: UICollectionView,
-        layout collectionViewLayout: UICollectionViewLayout,
-        sizeForItemAt indexPath: IndexPath
-    ) -> CGSize {
-        let accessibilityLayout = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-        let widthFraction: CGFloat = accessibilityLayout ? 0.88 : 0.61
-        let width = min(
-            accessibilityLayout ? 350 : 242,
-            max(accessibilityLayout ? 260 : 188, collectionView.bounds.width * widthFraction)
-        )
-        return CGSize(
-            width: width,
-            height: accessibilityLayout
-                ? PPCheckoutHorizonGeometry.accessibilityPreviewHeight
-                : PPCheckoutHorizonGeometry.regularPreviewHeight
-        )
+        stopEphemeralFeedback()
     }
 }

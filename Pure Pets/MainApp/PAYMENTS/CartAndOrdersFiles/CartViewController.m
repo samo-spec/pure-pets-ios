@@ -2027,6 +2027,14 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                                           palette:@[AppForgroundColr, AppForgroundColr]
                                                      makeTemplate:NO]];
 
+    if (summary.uniqueItems > 0) {
+        [self.summaryView clearCheckoutSurfaceState];
+    } else {
+        [self.summaryView setCheckoutSurfaceState:@"empty"
+                                            title:kLang(@"checkout_summary_empty_title")
+                                         subtitle:kLang(@"checkout_summary_empty_subtitle")];
+    }
+
     self.summaryView.alpha = (summary.uniqueItems > 0) ? 1.0 : 0.0;
     if (summary.uniqueItems > 0) {
         [self.summaryView pp_startTrustBannerShimmer];
@@ -2279,6 +2287,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)checkoutTapped {
     if (!UserManager.sharedManager.isUserLoggedIn) {
         [self.summaryView setCheckoutLoading:NO];
+        [self.summaryView setCheckoutSurfaceState:@"restricted"
+                                            title:kLang(@"checkout_summary_restricted_title")
+                                         subtitle:kLang(@"checkout_summary_restricted_subtitle")];
         [UserManager showPromptOnTopController];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
         return;
@@ -2286,6 +2297,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
     if ([CartManager sharedManager].cartItems.count == 0) {
         [self.summaryView setCheckoutLoading:NO];
+        [self.summaryView setCheckoutSurfaceState:@"empty"
+                                            title:kLang(@"checkout_summary_empty_title")
+                                         subtitle:kLang(@"checkout_summary_empty_subtitle")];
         [PPAlertHelper showWarningIn:self
                                title:kLang(@"checkout_cart_empty")
                             subtitle:kLang(@"checkout_cart_empty_message")];
@@ -2293,12 +2307,16 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         return;
     }
 
+    [self.summaryView clearCheckoutSurfaceState];
     [self.summaryView setCheckoutLoading:YES];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
 
     // Order is created in PPCheckoutCoordinator from payment screen.
     if (![PPSelectPaymentVC pushFromViewController:self]) {
         [self.summaryView setCheckoutLoading:NO];
+        [self.summaryView setCheckoutSurfaceState:@"error"
+                                            title:kLang(@"checkout_summary_error_title")
+                                         subtitle:kLang(@"checkout_summary_error_subtitle")];
         [[PPCommerceFeedbackManager shared]
          playEvent:PPCommerceFeedbackEventPaymentFailure];
         [PPAlertHelper showWarningIn:self

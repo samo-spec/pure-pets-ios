@@ -3854,6 +3854,25 @@
 "checkout_horizon_item_meta_format" = "%2$@ · %1$@";
 "checkout_horizon_product_meta_format" = "العناصر %1$@ · %2$@ + توصيل %3$@";
 "checkout_horizon_total_protected" = "الإجمالي · دفع آمن";
+"checkout_summary_ready_title" = "ملخص الطلب";
+"checkout_summary_ready_subtitle" = "راجع الإجمالي وتفاصيل السلة قبل المتابعة.";
+"checkout_summary_loading_title" = "جارٍ تجهيز الدفع";
+"checkout_summary_loading_subtitle" = "ابقَ على هذه الشاشة حتى تكتمل الخطوة.";
+"checkout_summary_empty_title" = "سلتك بانتظارك";
+"checkout_summary_empty_subtitle" = "أضف منتجاً لعرض إجمالي الدفع هنا.";
+"checkout_summary_error_title" = "الدفع يحتاج مراجعة";
+"checkout_summary_error_subtitle" = "راجع تفاصيل السلة ثم حاول مرة أخرى.";
+"checkout_summary_offline_title" = "الاتصال متوقف مؤقتاً";
+"checkout_summary_offline_subtitle" = "أعد الاتصال قبل متابعة الدفع.";
+"checkout_summary_restricted_title" = "سجّل الدخول للمتابعة";
+"checkout_summary_restricted_subtitle" = "نحتاج حسابك قبل بدء الدفع.";
+"checkout_summary_success_title" = "طلبك قيد التنفيذ";
+"checkout_summary_success_subtitle" = "تم حفظ حالة الدفع. تابع الطلب من التفاصيل.";
+"checkout_summary_total_label" = "الإجمالي";
+"checkout_summary_secure_label" = "دفع محمي";
+"checkout_summary_items_label" = "العناصر";
+"checkout_summary_delivery_label" = "التوصيل";
+"checkout_summary_receipt_label" = "تفاصيل الإجمالي";
 "reported_successfully" = "تم الإبلاغ بنجاح";
 "report" = "إبلاغ";
 
