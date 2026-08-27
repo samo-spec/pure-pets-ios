@@ -701,7 +701,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 @property (nonatomic, strong) PPSPinnerView *spinner;
 
 @property (nonatomic, strong) UITableView *cartTableView;
-@property (nonatomic, strong) PPPremuimChekoutView *summaryView;
+@property (nonatomic, strong) PPContextAwareCheckoutView *summaryView;
 @property (nonatomic, strong) PPBackgroundView *premiumBackgroundView;
 @property (nonatomic, strong) UIView *headerChromeContainerView;
 @property (nonatomic, strong) UIVisualEffectView *headerChromeView;
@@ -876,11 +876,12 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
 - (void)setSummuryViewAtBottom
 {
-    self.summaryView = [[PPPremuimChekoutView alloc] init];
+    self.summaryView = [[PPContextAwareCheckoutView alloc] init];
+    self.summaryView.presentationMode = PPContextAwareCheckoutModeCart;
     [self.summaryView setCollapsible:YES initiallyCollapsed:YES];
     
     [self.view addSubview:self.summaryView];
-    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-22.0].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
@@ -1073,7 +1074,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)pp_applyCartScreenBackgroundColor
 {
 
-    self.view.backgroundColor = UIColor.clearColor;
+    self.view.backgroundColor = AppBackgroundClr;
     self.navigationController.view.backgroundColor = AppBackgroundClr;
     self.cartTableView.backgroundColor = UIColor.clearColor;
     self.cartTableView.backgroundView.backgroundColor = UIColor.clearColor;
@@ -1176,7 +1177,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)pp_updatePremiumCartBackgroundAppearance
 {
     [self pp_installPremiumCartBackgroundViewIfNeeded];
-    self.view.backgroundColor = UIColor.clearColor;
+    self.view.backgroundColor = AppBackgroundClr;
     self.navigationController.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
     self.cartTableView.backgroundColor = UIColor.clearColor;
     self.cartTableView.backgroundView.backgroundColor = UIColor.clearColor;
@@ -1184,7 +1185,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.premiumBackgroundView.overrideBorders = YES;
     self.premiumBackgroundView.overrideBorderColor = UIColor.clearColor;
    // self.premiumBackgroundView.overrideCornerRadius = 0.01;
-    //self.premiumBackgroundView.overrideSurfaceColor = AppBackgroundClr;
+    self.premiumBackgroundView.overrideSurfaceColor = AppBackgroundClr;
    // self.premiumBackgroundView.accentColorOverride = AppPrimaryClr;
   // self.premiumBackgroundView.overrideTopGlowColor = AppPrimaryClrShiner ?: AppPrimaryClr;
     //self.premiumBackgroundView.overrideCenterGlowColor = AppPrimaryClr;

@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong, nullable) PPPaymentFormViewController *paymentFormVC;
 @property (nonatomic, strong) NSArray<PaymentMethod *> *availableMethods;
-@property (nonatomic, strong) PPPremuimChekoutView *summaryView;
+@property (nonatomic, strong) PPContextAwareCheckoutView *summaryView;
 @property (nonatomic, strong) UICollectionView *paymentCollection;
 @property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
 @property (nonatomic, strong) NSArray<UserPaymentInstrument *> *userInstruments;

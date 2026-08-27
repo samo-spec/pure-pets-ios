@@ -41,11 +41,28 @@ private enum PPCheckoutSignalGeometry {
     static let expandedImageSize: CGFloat = 60
     static let checkoutTapDebounce: TimeInterval = 0.45
     static let feedbackDuration: TimeInterval = 0.18
+    static let receiptVerticalDividerHeight: CGFloat = PPSpace.xxxxl
 
+    @MainActor
     static var hairline: CGFloat {
-        UIAccessibility.isDarkerSystemColorsEnabled
+        let scale = PPPremiumCheckoutScreenScale.current ?? UIScreen.main.scale
+        return UIAccessibility.isDarkerSystemColorsEnabled
             ? 1
-            : 1 / max(UIScreen.main.scale, 1)
+            : 1 / max(scale, 1)
+    }
+}
+
+/// `UIScreen.main` is deprecated on iOS 17+. Capture the scale from the active
+/// window when available so the hairline keeps resolving under scene-based
+/// lifecycle and Stage Manager.
+private enum PPPremiumCheckoutScreenScale {
+    @MainActor static var current: CGFloat? {
+        UIApplication.shared
+            .connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow })?
+            .screen.scale
     }
 }
 
@@ -461,12 +478,10 @@ private struct PPCheckoutSignalRootView: View {
             style: .continuous
         ))
         .shadow(
-            color: colorSchemeContrast == .increased
-                ? .clear
-                : .black.opacity(colorScheme == .dark ? 0.22 : 0.08),
-            radius: 20,
-            x: 0,
-            y: 6
+            color: surfaceShadow.color,
+            radius: surfaceShadow.radius,
+            x: surfaceShadow.x,
+            y: surfaceShadow.y
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("checkoutSignal.surface")
@@ -506,6 +521,18 @@ private struct PPCheckoutSignalRootView: View {
                 : Color.ppSurfaceBorder.opacity(colorScheme == .dark ? 0.82 : 0.70),
             lineWidth: colorSchemeContrast == .increased ? 1.2 : PPCheckoutSignalGeometry.hairline
         )
+    }
+
+    /// Centralised shadow so light/dark/increased-contrast all stay aligned with
+    /// the `PPShadow.card` design token. Increased contrast kills the shadow to
+    /// favour the explicit border.
+    private var surfaceShadow: PPShadow {
+        guard colorSchemeContrast != .increased else { return .clear }
+        return colorScheme == .dark
+            ? PPShadow(color: .black.opacity(0.22), radius: PPShadow.card.radius,
+                       x: PPShadow.card.x, y: PPShadow.card.y)
+            : PPShadow(color: .black.opacity(0.08), radius: PPShadow.card.radius,
+                       x: PPShadow.card.x, y: PPShadow.card.y)
     }
 
     private var signalHeader: some View {

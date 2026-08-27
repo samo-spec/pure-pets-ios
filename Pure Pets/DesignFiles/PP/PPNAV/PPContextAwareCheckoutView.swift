@@ -6,7 +6,9 @@
 //  Cart: total + CTA only because cart items are already visible above.
 //  Payment: compact order-review affordance + expandable live item list + CTA.
 //
-//  NOTE: PPPremuimChekoutView.swift is intentionally preserved unchanged.
+//  NOTE: PPPremuimChekoutView.swift remains source-compatible for legacy
+//  callers. This dock is the context-specific presentation used by Cart and
+//  Payment hosts.
 //
 
 import UIKit
@@ -18,7 +20,6 @@ import UIKit
 
 private enum PPContextCheckoutMetrics {
     static let outerInset: CGFloat = 16
-    static let bottomBreathingRoom: CGFloat = 10
     static let surfaceRadius: CGFloat = 26
     static let panelRadius: CGFloat = 20
     static let controlRadius: CGFloat = 18
@@ -26,6 +27,12 @@ private enum PPContextCheckoutMetrics {
     static let reviewHeight: CGFloat = 62
     static let itemRowHeight: CGFloat = 66
     static let maxVisibleRows = 4
+    static let maxAccessibilityVisibleRows = 2
+    static let decisionHorizontalInset: CGFloat = 14
+    static let decisionVerticalInset: CGFloat = 10
+    static let decisionContentSpacing: CGFloat = 16
+    static let breakdownHorizontalInset: CGFloat = 12
+    static let breakdownVerticalSpacing: CGFloat = 8
     static let animationDuration: TimeInterval = 0.24
     static let checkoutTapDebounce: TimeInterval = 0.45
 
@@ -47,7 +54,6 @@ private enum PPContextCheckoutColors {
     static var primaryText: UIColor { .ppTextPrimary }
     static var secondaryText: UIColor { .ppTextSecondary }
     static var tertiaryText: UIColor { .ppTextTertiary }
-    static var success: UIColor { .ppSuccess }
 }
 
 private enum PPContextCheckoutFont {
@@ -72,39 +78,43 @@ private enum PPContextCheckoutFont {
 }
 
 private enum PPContextCheckoutCopy {
+    private static func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
+    }
+
     static var reviewOrder: String {
-        ppContextIsRTL() ? "راجع طلبك" : "Review order"
+        localized("checkout_context_review_order")
     }
 
     static func reviewMeta(count: Int) -> String {
-        let resolved = max(count, 0)
-        return ppContextIsRTL()
-            ? "\(resolved) عناصر · اضغط لعرض التفاصيل"
-            : "\(resolved) items · Tap to view details"
+        String.localizedStringWithFormat(
+            localized("checkout_context_review_meta_format"),
+            max(count, 0)
+        )
     }
 
-    static var securePayment: String {
-        ppContextIsRTL() ? "دفع محمي وآمن" : "Protected & secure payment"
+    static var reviewPayment: String {
+        localized("checkout_context_review_payment_hint")
     }
 
     static var total: String {
-        ppContextIsRTL() ? "الإجمالي" : "Total"
+        localized("checkout_summary_total_label")
     }
 
     static var quantity: String {
-        ppContextIsRTL() ? "الكمية" : "Qty"
+        localized("checkout_context_quantity")
     }
 
     static var fallbackItem: String {
-        ppContextIsRTL() ? "منتج من PurePets" : "PurePets item"
+        localized("checkout_context_fallback_item")
     }
 
     static var expandHint: String {
-        ppContextIsRTL() ? "اضغط لعرض عناصر الطلب" : "Tap to show order items"
+        localized("checkout_context_expand_hint")
     }
 
     static var collapseHint: String {
-        ppContextIsRTL() ? "اضغط لإخفاء عناصر الطلب" : "Tap to hide order items"
+        localized("checkout_context_collapse_hint")
     }
 }
 
@@ -562,6 +572,93 @@ private final class PPContextCheckoutItemCell: UITableViewCell {
     }
 }
 
+// MARK: - Expanded payment pricing
+
+private final class PPContextCheckoutPricingRow: UIView {
+    private let emphasized: Bool
+    private let titleLabel = UILabel()
+    private let amountLabel = UILabel()
+    private let contentStack = UIStackView()
+
+    init(emphasized: Bool) {
+        self.emphasized = emphasized
+        super.init(frame: .zero)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        self.emphasized = false
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        translatesAutoresizingMaskIntoConstraints = false
+        isAccessibilityElement = true
+        accessibilityTraits = .staticText
+
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.axis = .horizontal
+        contentStack.alignment = .firstBaseline
+        contentStack.distribution = .fill
+        contentStack.spacing = PPContextCheckoutMetrics.breakdownVerticalSpacing
+        addSubview(contentStack)
+
+        titleLabel.font = emphasized
+            ? PPContextCheckoutFont.bold(13, style: .headline)
+            : PPContextCheckoutFont.medium(12, style: .footnote)
+        titleLabel.adjustsFontForContentSizeCategory = true
+        titleLabel.numberOfLines = 0
+        titleLabel.isAccessibilityElement = false
+        titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        amountLabel.font = emphasized
+            ? PPContextCheckoutFont.bold(16, style: .headline)
+            : PPContextCheckoutFont.bold(13, style: .footnote)
+        amountLabel.adjustsFontForContentSizeCategory = true
+        amountLabel.numberOfLines = 1
+        amountLabel.adjustsFontSizeToFitWidth = true
+        amountLabel.minimumScaleFactor = 0.82
+        amountLabel.semanticContentAttribute = .forceLeftToRight
+        amountLabel.isAccessibilityElement = false
+        amountLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        contentStack.addArrangedSubview(titleLabel)
+        contentStack.addArrangedSubview(amountLabel)
+
+        NSLayoutConstraint.activate([
+            contentStack.topAnchor.constraint(equalTo: topAnchor),
+            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            contentStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            contentStack.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        applyLanguage()
+        refreshColors()
+    }
+
+    func configure(title: String, amount: String) {
+        titleLabel.text = title
+        amountLabel.text = amount
+        accessibilityLabel = title
+        accessibilityValue = amount
+    }
+
+    func applyLanguage() {
+        let semantic = ppContextSemantic()
+        semanticContentAttribute = semantic
+        contentStack.semanticContentAttribute = semantic
+        titleLabel.textAlignment = ppContextAlignment()
+        amountLabel.textAlignment = ppContextAlignment()
+    }
+
+    func refreshColors() {
+        titleLabel.textColor = emphasized
+            ? PPContextCheckoutColors.primaryText
+            : PPContextCheckoutColors.secondaryText
+        amountLabel.textColor = PPContextCheckoutColors.primaryText
+    }
+}
+
 // MARK: - Action button
 
 private final class PPContextCheckoutActionButton: UIButton {
@@ -661,16 +758,29 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
 
     public var onTapCheckOut: (() -> Void)?
 
-    public private(set) var presentationMode: PPContextAwareCheckoutMode = .cart
+    public var presentationMode: PPContextAwareCheckoutMode = .cart {
+        didSet {
+            guard oldValue != presentationMode else {
+                updateContextVisibility(animated: false)
+                return
+            }
+            reviewExpanded = false
+            updateContextVisibility(animated: window != nil)
+        }
+    }
 
     private let surfaceView = UIView()
     private let contentStack = UIStackView()
     private let reviewControl = PPContextCheckoutReviewControl()
     private let itemsContainer = UIView()
     private let itemsTable = UITableView(frame: .zero, style: .plain)
-    private let secureRow = UIStackView()
-    private let secureIcon = UIImageView(image: UIImage(systemName: "checkmark.shield.fill"))
-    private let secureLabel = UILabel()
+    private let reviewHintRow = UIStackView()
+    private let reviewHintIcon = UIImageView(image: UIImage(systemName: "list.bullet.rectangle"))
+    private let reviewHintLabel = UILabel()
+    private let pricingBreakdownStack = UIStackView()
+    private let deliveryPricingRow = PPContextCheckoutPricingRow(emphasized: false)
+    private let pricingDivider = UIView()
+    private let itemsPricingRow = PPContextCheckoutPricingRow(emphasized: true)
     private let decisionPanel = UIView()
     private let decisionStack = UIStackView()
     private let totalStack = UIStackView()
@@ -688,7 +798,6 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     private var checkoutImage: UIImage?
     private var usesDefaultCheckoutTitle = true
     private var usesAutomaticCheckoutImage = true
-    private var protectedStateIsActive = false
     private var stateAnimator: UIViewPropertyAnimator?
 
     @objc public override init(frame: CGRect) {
@@ -757,23 +866,40 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         itemsTable.register(PPContextCheckoutItemCell.self, forCellReuseIdentifier: PPContextCheckoutItemCell.reuseIdentifier)
         itemsContainer.addSubview(itemsTable)
 
-        secureRow.translatesAutoresizingMaskIntoConstraints = false
-        secureRow.axis = .horizontal
-        secureRow.alignment = .center
-        secureRow.spacing = 6
+        reviewHintRow.translatesAutoresizingMaskIntoConstraints = false
+        reviewHintRow.axis = .horizontal
+        reviewHintRow.alignment = .center
+        reviewHintRow.spacing = 6
 
-        secureIcon.translatesAutoresizingMaskIntoConstraints = false
-        secureIcon.contentMode = .scaleAspectFit
-        secureIcon.isAccessibilityElement = false
+        reviewHintIcon.translatesAutoresizingMaskIntoConstraints = false
+        reviewHintIcon.contentMode = .scaleAspectFit
+        reviewHintIcon.isAccessibilityElement = false
 
-        secureLabel.font = PPContextCheckoutFont.bold(10, style: .caption1)
-        secureLabel.adjustsFontForContentSizeCategory = true
-        secureLabel.numberOfLines = 1
-        secureLabel.isAccessibilityElement = false
+        reviewHintLabel.font = PPContextCheckoutFont.bold(10, style: .caption1)
+        reviewHintLabel.adjustsFontForContentSizeCategory = true
+        reviewHintLabel.numberOfLines = 1
+        reviewHintLabel.isAccessibilityElement = false
 
-        secureRow.addArrangedSubview(secureIcon)
-        secureRow.addArrangedSubview(secureLabel)
-        itemsContainer.addSubview(secureRow)
+        reviewHintRow.addArrangedSubview(reviewHintIcon)
+        reviewHintRow.addArrangedSubview(reviewHintLabel)
+        itemsContainer.addSubview(reviewHintRow)
+
+        pricingBreakdownStack.translatesAutoresizingMaskIntoConstraints = false
+        pricingBreakdownStack.axis = .vertical
+        pricingBreakdownStack.alignment = .fill
+        pricingBreakdownStack.spacing = PPContextCheckoutMetrics.breakdownVerticalSpacing
+        pricingBreakdownStack.accessibilityIdentifier = "contextCheckout.expandedPricing"
+
+        pricingDivider.translatesAutoresizingMaskIntoConstraints = false
+        pricingDivider.isAccessibilityElement = false
+
+        deliveryPricingRow.accessibilityIdentifier = "contextCheckout.delivery"
+        itemsPricingRow.accessibilityIdentifier = "contextCheckout.itemsBreakdown"
+
+        pricingBreakdownStack.addArrangedSubview(deliveryPricingRow)
+        pricingBreakdownStack.addArrangedSubview(pricingDivider)
+        pricingBreakdownStack.addArrangedSubview(itemsPricingRow)
+        itemsContainer.addSubview(pricingBreakdownStack)
 
         decisionPanel.translatesAutoresizingMaskIntoConstraints = false
         decisionPanel.layer.cornerRadius = PPContextCheckoutMetrics.panelRadius
@@ -784,12 +910,14 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         decisionStack.axis = .horizontal
         decisionStack.alignment = .center
         decisionStack.distribution = .fill
-        decisionStack.spacing = 8
+        decisionStack.spacing = PPContextCheckoutMetrics.decisionContentSpacing
         decisionPanel.addSubview(decisionStack)
 
         totalStack.axis = .vertical
         totalStack.alignment = .fill
-        totalStack.spacing = 0
+        totalStack.spacing = 1
+        totalStack.isLayoutMarginsRelativeArrangement = true
+        totalStack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 2, leading: 4, bottom: 2, trailing: 4)
         totalStack.isAccessibilityElement = true
         totalStack.accessibilityIdentifier = "contextCheckout.total"
         totalStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -799,7 +927,7 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         totalCaptionLabel.numberOfLines = 1
         totalCaptionLabel.isAccessibilityElement = false
 
-        totalLabel.font = PPContextCheckoutFont.bold(22, style: .title2)
+        totalLabel.font = PPContextCheckoutFont.bold(24, style: .title2)
         totalLabel.adjustsFontForContentSizeCategory = true
         totalLabel.numberOfLines = 1
         totalLabel.adjustsFontSizeToFitWidth = true
@@ -830,17 +958,46 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
             itemsTable.trailingAnchor.constraint(equalTo: itemsContainer.trailingAnchor, constant: -4),
             tableHeight,
 
-            secureRow.topAnchor.constraint(equalTo: itemsTable.bottomAnchor, constant: 5),
-            secureRow.leadingAnchor.constraint(equalTo: itemsContainer.leadingAnchor, constant: 12),
-            secureRow.trailingAnchor.constraint(lessThanOrEqualTo: itemsContainer.trailingAnchor, constant: -12),
-            secureRow.bottomAnchor.constraint(equalTo: itemsContainer.bottomAnchor, constant: -8),
-            secureIcon.widthAnchor.constraint(equalToConstant: 13),
-            secureIcon.heightAnchor.constraint(equalToConstant: 13),
+            pricingBreakdownStack.topAnchor.constraint(
+                equalTo: itemsTable.bottomAnchor,
+                constant: PPContextCheckoutMetrics.breakdownVerticalSpacing
+            ),
+            pricingBreakdownStack.leadingAnchor.constraint(
+                equalTo: itemsContainer.leadingAnchor,
+                constant: PPContextCheckoutMetrics.breakdownHorizontalInset
+            ),
+            pricingBreakdownStack.trailingAnchor.constraint(
+                equalTo: itemsContainer.trailingAnchor,
+                constant: -PPContextCheckoutMetrics.breakdownHorizontalInset
+            ),
+            pricingDivider.heightAnchor.constraint(equalToConstant: PPContextCheckoutMetrics.hairline),
 
-            decisionStack.topAnchor.constraint(equalTo: decisionPanel.topAnchor, constant: 6),
-            decisionStack.leadingAnchor.constraint(equalTo: decisionPanel.leadingAnchor, constant: 6),
-            decisionStack.trailingAnchor.constraint(equalTo: decisionPanel.trailingAnchor, constant: -6),
-            decisionStack.bottomAnchor.constraint(equalTo: decisionPanel.bottomAnchor, constant: -6),
+            reviewHintRow.topAnchor.constraint(
+                equalTo: pricingBreakdownStack.bottomAnchor,
+                constant: PPContextCheckoutMetrics.breakdownVerticalSpacing
+            ),
+            reviewHintRow.leadingAnchor.constraint(equalTo: itemsContainer.leadingAnchor, constant: 12),
+            reviewHintRow.trailingAnchor.constraint(lessThanOrEqualTo: itemsContainer.trailingAnchor, constant: -12),
+            reviewHintRow.bottomAnchor.constraint(equalTo: itemsContainer.bottomAnchor, constant: -8),
+            reviewHintIcon.widthAnchor.constraint(equalToConstant: 13),
+            reviewHintIcon.heightAnchor.constraint(equalToConstant: 13),
+
+            decisionStack.topAnchor.constraint(
+                equalTo: decisionPanel.topAnchor,
+                constant: PPContextCheckoutMetrics.decisionVerticalInset
+            ),
+            decisionStack.leadingAnchor.constraint(
+                equalTo: decisionPanel.leadingAnchor,
+                constant: PPContextCheckoutMetrics.decisionHorizontalInset
+            ),
+            decisionStack.trailingAnchor.constraint(
+                equalTo: decisionPanel.trailingAnchor,
+                constant: -PPContextCheckoutMetrics.decisionHorizontalInset
+            ),
+            decisionStack.bottomAnchor.constraint(
+                equalTo: decisionPanel.bottomAnchor,
+                constant: -PPContextCheckoutMetrics.decisionVerticalInset
+            ),
             actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: PPContextCheckoutMetrics.actionHeight),
             actionButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 178),
             actionButton.widthAnchor.constraint(lessThanOrEqualToConstant: 226)
@@ -852,10 +1009,7 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
             surfaceView.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             surfaceView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PPContextCheckoutMetrics.outerInset),
             surfaceView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -PPContextCheckoutMetrics.outerInset),
-            surfaceView.bottomAnchor.constraint(
-                equalTo: safeAreaLayoutGuide.bottomAnchor,
-                constant: -PPContextCheckoutMetrics.bottomBreathingRoom
-            ),
+            surfaceView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             contentStack.topAnchor.constraint(equalTo: surfaceView.topAnchor, constant: 7),
             contentStack.leadingAnchor.constraint(equalTo: surfaceView.leadingAnchor, constant: 7),
@@ -900,7 +1054,7 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
         )
-        return ceil(4 + 7 + size.height + 7 + safeAreaInsets.bottom + PPContextCheckoutMetrics.bottomBreathingRoom)
+        return ceil(4 + 7 + size.height + 7)
     }
 
     public override func layoutSubviews() {
@@ -944,15 +1098,9 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
 
     // MARK: Public host contract
 
-    @objc(setPresentationMode:)
+    @nonobjc
     public func setPresentationMode(_ mode: PPContextAwareCheckoutMode) {
-        guard presentationMode != mode else {
-            updateContextVisibility(animated: false)
-            return
-        }
         presentationMode = mode
-        reviewExpanded = false
-        updateContextVisibility(animated: window != nil)
     }
 
     @objc(updateTotalsWithItems:shipping:showTitle:)
@@ -963,6 +1111,7 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         let formatted = PPContextCheckoutCurrency.format(subtotal)
         totalLabel.text = formatted
         totalStack.accessibilityValue = formatted
+        updatePricingBreakdown()
         invalidateIntrinsicContentSize()
     }
 
@@ -1001,6 +1150,24 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         actionButton.setLoading(loading)
     }
 
+    /// Cart hosts already present their localized alert or authentication prompt
+    /// for these states. Keep the legacy selectors so their feedback remains
+    /// available to VoiceOver without adding a second, competing Cart surface.
+    @objc(setCheckoutSurfaceState:title:subtitle:)
+    public func setCheckoutSurfaceState(_ rawState: String?, title: String?, subtitle: String?) {
+        _ = rawState
+        let hint = [title, subtitle]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        actionButton.accessibilityHint = hint.isEmpty ? nil : hint
+    }
+
+    @objc(clearCheckoutSurfaceState)
+    public func clearCheckoutSurfaceState() {
+        actionButton.accessibilityHint = nil
+    }
+
     @objc(setCollapsible:initiallyCollapsed:)
     public func setCollapsible(_ enabled: Bool, initiallyCollapsed collapsed: Bool) {
         // Compatibility selector. Cart is intentionally always compact.
@@ -1024,13 +1191,13 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
 
     @objc(pp_startTrustBannerShimmer)
     public func pp_startTrustBannerShimmer() {
-        protectedStateIsActive = true
+        // Legacy selector retained for callers. This dock must not imply that
+        // payment protection has been confirmed before checkout preflight.
         refreshColors()
     }
 
     @objc(pp_stopTrustBannerShimmer)
     public func pp_stopTrustBannerShimmer() {
-        protectedStateIsActive = false
         refreshColors()
     }
 
@@ -1102,13 +1269,28 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     }
 
     private func updateTableHeight() {
-        let visibleRows = min(max(checkoutItems.count, 1), PPContextCheckoutMetrics.maxVisibleRows)
-        let accessibilityMultiplier: CGFloat = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 1.35 : 1
+        let isAccessibilityLayout = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+        let maximumRows = isAccessibilityLayout
+            ? PPContextCheckoutMetrics.maxAccessibilityVisibleRows
+            : PPContextCheckoutMetrics.maxVisibleRows
+        let visibleRows = min(max(checkoutItems.count, 1), maximumRows)
+        let accessibilityMultiplier: CGFloat = isAccessibilityLayout ? 1.35 : 1
         let rowHeight = PPContextCheckoutMetrics.itemRowHeight * accessibilityMultiplier
         itemsTable.rowHeight = rowHeight
         itemsTableHeightConstraint?.constant = CGFloat(visibleRows) * rowHeight
-        itemsTable.isScrollEnabled = checkoutItems.count > PPContextCheckoutMetrics.maxVisibleRows
+        itemsTable.isScrollEnabled = checkoutItems.count > maximumRows
         invalidateIntrinsicContentSize()
+    }
+
+    private func updatePricingBreakdown() {
+        deliveryPricingRow.configure(
+            title: NSLocalizedString("checkout_summary_delivery_label", comment: ""),
+            amount: PPContextCheckoutCurrency.format(shippingFee)
+        )
+        itemsPricingRow.configure(
+            title: NSLocalizedString("checkout_summary_items_label", comment: ""),
+            amount: PPContextCheckoutCurrency.format(itemsTotal)
+        )
     }
 
     // MARK: Language / appearance
@@ -1121,16 +1303,20 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         decisionPanel.semanticContentAttribute = semantic
         decisionStack.semanticContentAttribute = semantic
         totalStack.semanticContentAttribute = semantic
-        secureRow.semanticContentAttribute = semantic
+        reviewHintRow.semanticContentAttribute = semantic
         itemsTable.semanticContentAttribute = semantic
         actionButton.semanticContentAttribute = semantic
 
         totalCaptionLabel.text = PPContextCheckoutCopy.total
         totalCaptionLabel.textAlignment = ppContextAlignment()
         totalLabel.textAlignment = ppContextAlignment()
-        secureLabel.text = PPContextCheckoutCopy.securePayment
-        secureLabel.textAlignment = ppContextAlignment()
+        reviewHintLabel.text = PPContextCheckoutCopy.reviewPayment
+        reviewHintLabel.textAlignment = ppContextAlignment()
         totalStack.accessibilityLabel = PPContextCheckoutCopy.total
+        pricingBreakdownStack.semanticContentAttribute = semantic
+        deliveryPricingRow.applyLanguage()
+        itemsPricingRow.applyLanguage()
+        updatePricingBreakdown()
 
         if usesDefaultCheckoutTitle {
             checkoutTitle = presentationMode == .payment
@@ -1168,12 +1354,12 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         itemsTable.separatorColor = PPContextCheckoutColors.border.withAlphaComponent(0.72)
         itemsTable.visibleCells.forEach { ($0 as? PPContextCheckoutItemCell)?.refreshColors() }
 
-        secureIcon.tintColor = protectedStateIsActive
-            ? PPContextCheckoutColors.success
-            : PPContextCheckoutColors.tertiaryText
-        secureLabel.textColor = protectedStateIsActive
-            ? PPContextCheckoutColors.success
-            : PPContextCheckoutColors.secondaryText
+        pricingDivider.backgroundColor = PPContextCheckoutColors.border
+        deliveryPricingRow.refreshColors()
+        itemsPricingRow.refreshColors()
+
+        reviewHintIcon.tintColor = PPContextCheckoutColors.tertiaryText
+        reviewHintLabel.textColor = PPContextCheckoutColors.secondaryText
 
         decisionPanel.backgroundColor = PPContextCheckoutColors.quietSurface
         decisionPanel.layer.borderColor = PPContextCheckoutColors.border.cgColor

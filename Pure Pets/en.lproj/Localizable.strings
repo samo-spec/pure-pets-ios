@@ -3895,6 +3895,13 @@
 "checkout_summary_items_label" = "Items";
 "checkout_summary_delivery_label" = "Delivery";
 "checkout_summary_receipt_label" = "Total details";
+"checkout_context_review_order" = "Review order";
+"checkout_context_review_meta_format" = "%ld items · Tap to view details";
+"checkout_context_review_payment_hint" = "Review payment details before continuing";
+"checkout_context_quantity" = "Qty";
+"checkout_context_fallback_item" = "PurePets item";
+"checkout_context_expand_hint" = "Tap to show order items";
+"checkout_context_collapse_hint" = "Tap to hide order items";
 "reported_successfully" = "Reported successfully";
 "report" = "Report";
 

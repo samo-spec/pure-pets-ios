@@ -69,6 +69,7 @@ struct PPShadow {
     let x: CGFloat
     let y: CGFloat
 
+    static let clear    = PPShadow(color: .clear, radius: 0, x: 0, y: 0)
     static let card     = PPShadow(color: .black.opacity(0.06), radius: 24, x: 0, y: 8)
     static let elevated = PPShadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 14)
     static let button   = PPShadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)

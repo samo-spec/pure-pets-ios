@@ -3873,6 +3873,13 @@
 "checkout_summary_items_label" = "العناصر";
 "checkout_summary_delivery_label" = "التوصيل";
 "checkout_summary_receipt_label" = "تفاصيل الإجمالي";
+"checkout_context_review_order" = "راجع طلبك";
+"checkout_context_review_meta_format" = "%ld عناصر · اضغط لعرض التفاصيل";
+"checkout_context_review_payment_hint" = "راجع تفاصيل الدفع قبل المتابعة";
+"checkout_context_quantity" = "الكمية";
+"checkout_context_fallback_item" = "منتج من PurePets";
+"checkout_context_expand_hint" = "اضغط لعرض عناصر الطلب";
+"checkout_context_collapse_hint" = "اضغط لإخفاء عناصر الطلب";
 "reported_successfully" = "تم الإبلاغ بنجاح";
 "report" = "إبلاغ";
 

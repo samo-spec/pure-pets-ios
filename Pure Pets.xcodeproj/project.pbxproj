@@ -582,6 +582,7 @@
 		F299FDDD2C61C37B00C63506 /* CircularIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F299FDDA2C61C37A00C63506 /* CircularIndicatorView.m */; };
 		F29AB78A2D5F5E99009D3060 /* RoundedImageViewWithShadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F29AB7892D5F5E99009D3060 /* RoundedImageViewWithShadow.m */; };
 		F29CA1D42E94F4DE000C50BD /* DetailsTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29CA1D32E94F4DE000C50BD /* DetailsTableViewCell.m */; };
+		F29EFA59303FC89B0092FF3C /* PPContextAwareCheckoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F29EFA58303FC89B0092FF3C /* PPContextAwareCheckoutView.swift */; };
 		F29EFFAC3020EFFA00125FB9 /* PureLens in Frameworks */ = {isa = PBXBuildFile; productRef = F29EFFAB3020EFFA00125FB9 /* PureLens */; };
 		F29EFFAE3020EFFA00125FB9 /* PurePetsEyes in Frameworks */ = {isa = PBXBuildFile; productRef = F29EFFAD3020EFFA00125FB9 /* PurePetsEyes */; };
 		F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D02D0D08CB00FF2180 /* StepperCell.m */; };
@@ -1938,6 +1939,7 @@
 		F29AB7892D5F5E99009D3060 /* RoundedImageViewWithShadow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RoundedImageViewWithShadow.m; sourceTree = "<group>"; };
 		F29CA1D22E94F4DE000C50BD /* DetailsTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DetailsTableViewCell.h; sourceTree = "<group>"; };
 		F29CA1D32E94F4DE000C50BD /* DetailsTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DetailsTableViewCell.m; sourceTree = "<group>"; };
+		F29EFA58303FC89B0092FF3C /* PPContextAwareCheckoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPContextAwareCheckoutView.swift; sourceTree = "<group>"; };
 		F29F01CF2D0D08CB00FF2180 /* StepperCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StepperCell.h; sourceTree = "<group>"; };
 		F29F01D02D0D08CB00FF2180 /* StepperCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StepperCell.m; sourceTree = "<group>"; };
 		F29F01D22D0D08FD00FF2180 /* PKYStepper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PKYStepper.h; sourceTree = "<group>"; };
@@ -4373,6 +4375,7 @@
 		F2A83AD02F88781B00930857 /* PPNAV */ = {
 			isa = PBXGroup;
 			children = (
+				F29EFA58303FC89B0092FF3C /* PPContextAwareCheckoutView.swift */,
 				F2A83AC22F88781B00930857 /* BBCheckoutSummaryView.h */,
 				F2A83AC32F88781B00930857 /* BBCheckoutSummaryView.m */,
 				F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */,
@@ -6069,6 +6072,7 @@
 				F22C07982EF66C2F00C00EAC /* NSNotificationCenter+YYAdd.m in Sources */,
 				F22C07992EF66C2F00C00EAC /* YYTimer.m in Sources */,
 				F22C079A2EF66C2F00C00EAC /* MKAnnotationView+YYWebImage.m in Sources */,
+				F29EFA59303FC89B0092FF3C /* PPContextAwareCheckoutView.swift in Sources */,
 				F22C079B2EF66C2F00C00EAC /* UIColor+YYAdd.m in Sources */,
 				F22C079C2EF66C2F00C00EAC /* YYLabel.m in Sources */,
 				F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */,

@@ -934,8 +934,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 artworkTransform: CGAffineTransform(translationX: 0, y: 8).scaledBy(x: 1.2, y: 1.2),
                 artworkHaloAlpha: 1,
                 artworkHaloTransform: CGAffineTransform(scaleX: 1.05, y: 1.05),
-                semiCirclePlateAlpha: 1,
-                semiCirclePlateTransform: .identity,
+                semiCirclePlateAlpha: 0,
+                semiCirclePlateTransform: CGAffineTransform(scaleX: 0.65, y: 0.65).translatedBy(x: 0, y: -4),
                 surfaceTransform: CGAffineTransform(translationX: 0, y: -1),
                 groundAlpha: 0,
                 shadowOpacity: highContrast ? 0 : (darkMode ? 0.12 : 0.04),
@@ -1216,11 +1216,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         if enteringSelection {
             atmosphereView.alpha = restored ? 0.76 : 0.52
             groundShadowView.alpha = restored ? 0.82 : 0.58
-            semiCirclePlateView.alpha = restored ? 0.85 : 0.45
-            semiCirclePlateView.transform = CGAffineTransform(
-                scaleX: restored ? 0.95 : 0.85,
-                y: restored ? 0.95 : 0.85
-            )
+            semiCirclePlateView.alpha = 0
+            semiCirclePlateView.transform = CGAffineTransform(scaleX: 0.65, y: 0.65).translatedBy(x: 0, y: -4)
             selectionIndicatorView.transform = CGAffineTransform(
                 scaleX: restored ? 0.96 : 0.86,
                 y: restored ? 0.99 : 0.80

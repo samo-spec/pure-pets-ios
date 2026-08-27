@@ -119,12 +119,8 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     self.trackLayers = trackLayers.copy;
     self.progressLayers = progressLayers.copy;
 
-    UIImage *brandImage = [[UIImage imageNamed:@"newlogo"]
+    UIImage *brandImage = [[UIImage imageNamed:@"logo-new"]
         imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-    if (!brandImage) {
-        brandImage = [[UIImage imageNamed:@"newlogo"]
-            imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-    }
     if (!brandImage) {
         brandImage = [[UIImage imageNamed:@"newlogo"]
             imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
@@ -189,8 +185,8 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     self.pedestalLayer.shadowPath =
         [UIBezierPath bezierPathWithOvalInRect:self.pedestalLayer.bounds].CGPath;
 
-    // The PurePetsMark vector identity is 1:1 square, perfectly centered,
-    // and matches the LaunchScreen optical size (112.5pt at 232pt side).
+    // Keep the brand identity aspect-fitted and centered at the same optical
+    // size used by LaunchScreen (112.5pt at the default 232pt mark field).
     CGFloat visualMarkSize = side * 0.485;
     self.logoWrapperView.frame = CGRectMake(center.x - visualMarkSize * 0.5,
                                             center.y - visualMarkSize * 0.5,
