@@ -417,17 +417,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         self.heroIconPlateView.layer.borderWidth = 0.0;
         self.heroIconPlateView.backgroundColor = UIColor.clearColor;
     }
-    if (!CGRectIsEmpty(self.bottomGlowView.bounds)) {
-        self.bottomGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomGlowView.bounds].CGPath;
-    }
-    if (!CGRectIsEmpty(self.bottomSecondaryGlowView.bounds)) {
-        self.bottomSecondaryGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomSecondaryGlowView.bounds].CGPath;
-    }
-    if (!CGRectIsEmpty(self.bottomTrailGlowView.bounds)) {
-        self.bottomTrailGlowView.layer.cornerRadius = CGRectGetWidth(self.bottomTrailGlowView.bounds) * 0.5;
-        self.bottomTrailGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomTrailGlowView.bounds].CGPath;
-    }
-
     [self pp_updatePaymentLayoutMetrics];
 }
 
@@ -486,6 +475,10 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     glow.layer.shadowOpacity = 0.10;
     glow.layer.shadowRadius = 48.0;
     glow.layer.shadowOffset = CGSizeZero;
+    // These glow sizes are fixed by their constraints. Build each shadow path
+    // once so navigation transitions never allocate paths during layout.
+    glow.layer.shadowPath =
+        [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, 340.0, 340.0)].CGPath;
 
     UIView *secondaryGlow = [[UIView alloc] init];
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
@@ -497,6 +490,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     secondaryGlow.layer.shadowOpacity = 0.08;
     secondaryGlow.layer.shadowRadius = 34.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
+    secondaryGlow.layer.shadowPath =
+        [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, 256.0, 256.0)].CGPath;
 
     UIView *trailGlow = [[UIView alloc] init];
     trailGlow.translatesAutoresizingMaskIntoConstraints = NO;
@@ -508,6 +503,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     trailGlow.layer.shadowOpacity = 0.08;
     trailGlow.layer.shadowRadius = 58.0;
     trailGlow.layer.shadowOffset = CGSizeZero;
+    trailGlow.layer.shadowPath =
+        [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, 420.0, 420.0)].CGPath;
 
     [self.view addSubview:trailGlow];
     [self.view addSubview:secondaryGlow];
