@@ -1,6 +1,22 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Hero composition flag
+
+/// Presentation flag for the Home hero composition.
+///
+/// `UseHeroV2 == true` renders `HomeHeroV2View`: a compact editorial card
+/// whose copy column owns the leading edge and whose category artwork plus
+/// living plate bubble form one contained object on the trailing edge.
+///
+/// `UseHeroV2 == false` restores `PPHomeMarketingStage`, the previous inset card
+/// composition. Both branches are fed the same pages and the same `HomeStore`
+/// callbacks, so this switch is presentation-only: paging state, navigation,
+/// hero actions, and the marketplace signal contract are unchanged either way.
+enum PPHomeHeroFlags {
+    static let UseHeroV2 = true
+}
+
 // MARK: - Render rows
 
 /// A flattened, ordered, stably identified render list derived from the
@@ -73,6 +89,75 @@ private struct HomeLivingGatewayStage: View {
 
     var body: some View {
         HomeHeroView(
+            pages: pages,
+            selectedIndex: resolvedIndex,
+            onSelect: onSelect,
+            onPrimaryAction: performPrimaryAction,
+            onSecondaryAction: performSecondaryAction,
+            onInteractionChanged: onInteractionChanged
+        )
+    }
+
+    private func performPrimaryAction() {
+        guard let selectedPage else { return }
+        onPrimary(selectedPage)
+    }
+
+    private func performSecondaryAction() {
+        guard let selectedPage else { return }
+        onSecondary(selectedPage)
+    }
+}
+
+/// Home Hero V2 stage.
+///
+/// Adapts `HomeStore`'s page-scoped hero callbacks to `HomeHeroV2View`, which
+/// takes index-free primary/secondary closures. The initializer intentionally
+/// mirrors `PPHomeMarketingStage` so the marketing row can be pointed at either
+/// composition without touching its call sites.
+///
+/// V2 owns its compact 16pt outer inset internally so the card and its shadow
+/// stay optically consistent across Home presentation plans. The row therefore
+/// must not add the standard section margin a second time.
+@available(iOS 15.0, *)
+private struct HomeHeroV2Stage: View {
+    let pages: [HomeHeroPage]
+    let selectedIndex: Int
+    let onSelect: (Int) -> Void
+    let onPrimary: (HomeHeroPage) -> Void
+    let onSecondary: (HomeHeroPage) -> Void
+    let onInteractionChanged: (Bool) -> Void
+
+    init(
+        pages: [HomeHeroPage],
+        selectedIndex: Int,
+        discloseCampaign: Bool,
+        marketplaceSignals: HomeMarketplaceSignals = HomeMarketplaceSignals(),
+        onSelect: @escaping (Int) -> Void,
+        onPrimary: @escaping (HomeHeroPage) -> Void,
+        onSecondary: @escaping (HomeHeroPage) -> Void,
+        onInteractionChanged: @escaping (Bool) -> Void,
+        onMarketplaceSignal: @escaping (HomeMarketplaceSignalKind) -> Void = { _ in }
+    ) {
+        self.pages = pages
+        self.selectedIndex = selectedIndex
+        self.onSelect = onSelect
+        self.onPrimary = onPrimary
+        self.onSecondary = onSecondary
+        self.onInteractionChanged = onInteractionChanged
+    }
+
+    private var resolvedIndex: Int {
+        pages.indices.contains(selectedIndex) ? selectedIndex : 0
+    }
+
+    private var selectedPage: HomeHeroPage? {
+        guard pages.indices.contains(resolvedIndex) else { return nil }
+        return pages[resolvedIndex]
+    }
+
+    var body: some View {
+        HomeHeroV2View(
             pages: pages,
             selectedIndex: resolvedIndex,
             onSelect: onSelect,
@@ -352,7 +437,15 @@ struct HomeView: View {
 
         case let .marketingStage(source):
             marketingStage(source)
-                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                // Home Hero V2 is full-bleed: its plate bubble bleeds past the
+                // trailing screen edge, so the row drops the content margin
+                // while the flag is on. V1 keeps its card inset.
+                .padding(
+                    .horizontal,
+                    PPHomeHeroFlags.UseHeroV2
+                        ? 0
+                        : HomeVisualTokens.contentHorizontalMargin
+                )
 
         case .ecosystemLauncher:
             PPHomeEcosystemLauncher(
@@ -458,7 +551,7 @@ struct HomeView: View {
         case .petContext:
             // `HomeStore` already owns rotation for these pages, so the stage
             // never starts a second timer for them.
-            PPHomeMarketingStage(
+            marketingStageComposition(
                 pages: store.state.heroPages,
                 selectedIndex: store.state.selectedHeroIndex,
                 discloseCampaign: false,
@@ -469,7 +562,7 @@ struct HomeView: View {
             )
 
         case .promotions:
-            PPHomeMarketingStage(
+            marketingStageComposition(
                 pages: store.state.promotionPages,
                 selectedIndex: store.promotionIndex,
                 discloseCampaign: true,
@@ -481,7 +574,7 @@ struct HomeView: View {
 
         case .marketplace:
             if let page = store.state.marketplaceHeroPage {
-                PPHomeMarketingStage(
+                marketingStageComposition(
                     pages: [page],
                     selectedIndex: 0,
                     discloseCampaign: false,
@@ -493,6 +586,52 @@ struct HomeView: View {
                     onMarketplaceSignal: store.loadMarketplaceSignal
                 )
             }
+        }
+    }
+
+    /// Single decision point for the Home hero composition.
+    ///
+    /// `PPHomeHeroFlags.UseHeroV2` selects between the V2 full-bleed reference
+    /// composition and the shipped `PPHomeMarketingStage` card. Both branches
+    /// receive identical page data and identical store callbacks, so flipping
+    /// the flag changes presentation only — never state, navigation, or the
+    /// marketplace signal contract.
+    @ViewBuilder
+    private func marketingStageComposition(
+        pages: [HomeHeroPage],
+        selectedIndex: Int,
+        discloseCampaign: Bool,
+        marketplaceSignals: HomeMarketplaceSignals = HomeMarketplaceSignals(),
+        onSelect: @escaping (Int) -> Void,
+        onPrimary: @escaping (HomeHeroPage) -> Void,
+        onSecondary: @escaping (HomeHeroPage) -> Void,
+        onInteractionChanged: @escaping (Bool) -> Void,
+        onMarketplaceSignal: @escaping (HomeMarketplaceSignalKind) -> Void = { _ in }
+    ) -> some View {
+        if PPHomeHeroFlags.UseHeroV2 {
+            HomeHeroV2Stage(
+                pages: pages,
+                selectedIndex: selectedIndex,
+                discloseCampaign: discloseCampaign,
+                marketplaceSignals: marketplaceSignals,
+                onSelect: onSelect,
+                onPrimary: onPrimary,
+                onSecondary: onSecondary,
+                onInteractionChanged: onInteractionChanged,
+                onMarketplaceSignal: onMarketplaceSignal
+            )
+        } else {
+            PPHomeMarketingStage(
+                pages: pages,
+                selectedIndex: selectedIndex,
+                discloseCampaign: discloseCampaign,
+                marketplaceSignals: marketplaceSignals,
+                onSelect: onSelect,
+                onPrimary: onPrimary,
+                onSecondary: onSecondary,
+                onInteractionChanged: onInteractionChanged,
+                onMarketplaceSignal: onMarketplaceSignal
+            )
         }
     }
 

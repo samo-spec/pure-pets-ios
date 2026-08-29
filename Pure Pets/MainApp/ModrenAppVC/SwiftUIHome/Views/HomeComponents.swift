@@ -5781,6 +5781,24 @@ private extension View {
     }
 }
 
+/// Home's Pure Lens launcher, composed as one optical instrument rather than as
+/// another copy-plus-artwork gateway card.
+///
+/// Two bands read as a single object from the trailing edge inward:
+///
+/// 1. the **threshold** — the copy panel and the rectangular viewfinder reticle
+///    that holds the subject;
+/// 2. the **focus deck** — a rail spanning the whole inner width with three
+///    engraved scale stops, one focus index that rests beneath the reticle, and
+///    the action legend.
+///
+/// Pressing the card racks focus: the brackets converge, the subject sharpens,
+/// the lock indicator resolves, and the index sweeps from the lens toward the
+/// copy. That is the card's only motion — there is no ambient loop, no camera
+/// session, and no second press target. Behavior is unchanged from the previous
+/// footer-button composition: one `Button`, the same `action`, the same
+/// readiness handshake with `HomePureLensMotionGate`, and the same accessibility
+/// element and `home.pureLens.open` identifier.
 @available(iOS 16.0, *)
 struct HomePureLensSection: View {
     let motionReady: Bool
@@ -5804,7 +5822,7 @@ struct HomePureLensSection: View {
         Button(action: performAction) {
             VStack(spacing: 0) {
                 thresholdLayout
-                actionRail
+                focusDeck
             }
             .frame(maxWidth: .infinity)
             .background(HomePureLensCardSurface())
@@ -5857,10 +5875,14 @@ struct HomePureLensSection: View {
         }
     }
 
-    /// The Home entry point is a launch affordance, not a camera preview.
-    /// Keeping its visual identity in one compact optical mark gives the
-    /// section a clear signature while reserving the vertical runway for the
-    /// live Home feed below it.
+    /// The Home entry point is a launch affordance, not a camera session, so
+    /// its identity lives in one instrument rather than in decoration: a
+    /// rectangular optical well at the trailing edge, and a focus deck whose
+    /// rail bridges that well back to the copy. Every other Home gateway uses
+    /// circular artwork above a filled footer button; this card deliberately
+    /// does neither, which is what keeps it from being interchangeable with
+    /// Adoption or Care while still using the same surface, corner, type and
+    /// spacing tokens.
     private var compactThresholdLayout: some View {
         HStack(alignment: .center, spacing: 0) {
             copyPanel
@@ -5872,13 +5894,9 @@ struct HomePureLensSection: View {
                 )
                 .layoutPriority(1)
 
-            HomePureLensLensMark(readinessResolved: presentationReady)
-                .frame(
-                    width: HomePureLensMetrics.lensMarkSize,
-                    height: HomePureLensMetrics.lensMarkSize
-                )
-                .padding(.vertical, PPSpace.md)
-                .padding(.trailing, PPSpace.sm)
+            HomePureLensReticle(readinessResolved: presentationReady)
+                .padding(.vertical, PPSpace.sm)
+                .padding(.trailing, PPSpace.base)
         }
     }
 
@@ -5890,21 +5908,23 @@ struct HomePureLensSection: View {
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HomePureLensLensMark(readinessResolved: presentationReady)
-                .frame(
-                    width: HomePureLensMetrics.accessibilityLensMarkSize,
-                    height: HomePureLensMetrics.accessibilityLensMarkSize
-                )
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, PPSpace.base)
-                .padding(.bottom, PPSpace.base)
+            HomePureLensReticle(
+                readinessResolved: presentationReady,
+                size: HomePureLensMetrics.accessibilityLensMarkSize
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, PPSpace.base)
+            .padding(.bottom, PPSpace.sm)
         }
     }
 
     private var copyPanel: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
             HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
-                Image(systemName: "viewfinder")
+                // The reticle beside this copy is already the viewfinder, so the
+                // eyebrow names the outcome instead of repeating the
+                // instrument: Pure Lens is a search field made of a camera.
+                Image(systemName: "magnifyingglass")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(palette.signal)
                     .accessibilityHidden(true)
@@ -5930,13 +5950,17 @@ struct HomePureLensSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var actionRail: some View {
-        HomePureLensActionRail(
+    /// The former footer bar drew a filled circle, a title and a chevron inside
+    /// its own surface, so the card presented two press affordances for one
+    /// action. The deck keeps the action title and its direction cue but stops
+    /// impersonating a button: the rail is the instrument's baseline and the
+    /// only enclosing `Button` remains the single press target.
+    private var focusDeck: some View {
+        HomePureLensFocusDeck(
             title: actionTitle,
             minimumHeight: actionMinimumHeight,
             readinessResolved: presentationReady
         )
-        .opacity(presentationReady ? 1 : 0.78)
         .offset(y: reduceMotion || presentationReady ? 0 : 3)
     }
 
@@ -6102,6 +6126,45 @@ private enum HomePureLensMetrics {
     static let minimumTwoZoneHeight: CGFloat = 150
     static let actionMinimumHeight: CGFloat = 46
     static let maximumCardWidth: CGFloat = 820
+
+    // MARK: Reticle
+
+    /// The reticle is a rounded viewfinder well, not a circular badge. Every
+    /// interior element is derived from its edge length so the compact and
+    /// accessibility sizes stay proportionally identical.
+    static let reticleWellCorner: CGFloat = PPCorner.medium
+    static let reticleBracketInsetRatio: CGFloat = 0.16
+    static let reticleSubjectRatio: CGFloat = 0.29
+    static let reticleBloomRatio: CGFloat = 0.46
+    static let reticleLockRatio: CGFloat = 0.105
+    static let reticleLockInsetRatio: CGFloat = 0.11
+
+    // MARK: Focus deck
+
+    /// The rail spans the card's whole inner width so the instrument reads as
+    /// one continuous element instead of a footer strip. The index rests under
+    /// the reticle and travels toward the copy while the press racks focus.
+    static let focusRailBandHeight: CGFloat = 6
+    static let focusRailHeight: CGFloat = 2
+    static let focusRailContrastHeight: CGFloat = 3
+    static let focusIndexWidth: CGFloat = 30
+    static let focusIndexHeight: CGFloat = 4
+    static let focusIndexContrastHeight: CGFloat = 5
+    static let focusStopDiameter: CGFloat = 3
+    /// Fixed scale marks, normalized from the leading edge. They are the
+    /// instrument's engraving, never data: this card receives no model.
+    static let focusStops: [CGFloat] = [0.20, 0.50, 0.80]
+
+    // MARK: Rack-focus feedback
+
+    /// One press-driven rack. Both legs stay inside the feedback budget and
+    /// resolve to the locked pose, so an interrupted tap never leaves the
+    /// reticle soft.
+    static let rackOpenDuration: Double = 0.12
+    static let rackLockDuration: Double = 0.20
+    static let indexTravelDuration: Double = 0.22
+    static let indexReturnDuration: Double = 0.18
+
     static let chamberBorderOpacity: Double = 0.08
     static let outerRingOpacity: Double = 0.08
     static let apertureRingOpacity: Double = 0.38
@@ -6126,12 +6189,19 @@ private enum HomePureLensMetrics {
     static let focusReleaseDuration: Double = 0.24
 }
 
-/// A compact, decorative lens signature for the Home launcher. It deliberately
-/// contains no camera session, result state, or gesture: the enclosing Button
+/// The card's whole visual signature: a rectangular optical well with white
+/// focus brackets, a subject inside it, and one lock indicator. It deliberately
+/// contains no camera session, result state, or gesture — the enclosing Button
 /// remains the one semantic action and the existing Pure Lens host owns every
 /// camera, permission, and discovery concern after activation.
-private struct HomePureLensLensMark: View {
+///
+/// One derived pose drives every layer. `isAcquiring` is true while the card is
+/// still resolving or while the finger is down, and false once focus is locked;
+/// no second piece of state is created to stage the sequence, and Reduce Motion
+/// pins the view to the locked pose permanently.
+private struct HomePureLensReticle: View {
     let readinessResolved: Bool
+    var size: CGFloat = HomePureLensMetrics.lensMarkSize
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -6141,58 +6211,137 @@ private struct HomePureLensLensMark: View {
 
     var body: some View {
         ZStack {
-            Circle()
+            wellShape
                 .fill(palette.chamberBackground)
 
             if !reduceTransparency {
-                Circle()
+                wellShape
                     .fill(
                         RadialGradient(
                             colors: [
-                                palette.signal.opacity(colorScheme == .dark ? 0.30 : 0.22),
-                                palette.signal.opacity(0)
+                                palette.signal.opacity(
+                                    colorScheme == .dark ? 0.36 : 0.28
+                                ),
+                                palette.signal.opacity(0),
                             ],
                             center: .center,
-                            startRadius: 2,
-                            endRadius: HomePureLensMetrics.lensMarkSize * 0.58
+                            startRadius: 1,
+                            endRadius: size * HomePureLensMetrics.reticleBloomRatio
                         )
                     )
+                    .opacity(isAcquiring ? 0.52 : 1)
             }
 
-            Circle()
-                .stroke(
-                    palette.chamberContent.opacity(contrast == .increased ? 0.52 : 0.24),
-                    lineWidth: contrast == .increased ? 1.5 : 0.8
-                )
-                .padding(7)
-
-            Circle()
-                .stroke(
-                    palette.signal.opacity(contrast == .increased ? 0.92 : 0.68),
-                    style: StrokeStyle(lineWidth: contrast == .increased ? 2.5 : 1.6)
-                )
-                .padding(15)
-
+            // The subject resolves from soft to sharp when focus locks.
             Image(systemName: "pawprint.fill")
-                .font(.system(size: 21, weight: .bold))
+                .font(.system(
+                    size: size * HomePureLensMetrics.reticleSubjectRatio,
+                    weight: .bold
+                ))
                 .foregroundStyle(palette.chamberContent)
+                .blur(radius: subjectBlurRadius)
+                .scaleEffect(subjectScale)
 
-            Circle()
-                .fill(palette.signal)
-                .frame(width: contrast == .increased ? 10 : 8, height: contrast == .increased ? 10 : 8)
-                .overlay {
-                    Circle()
-                        .stroke(palette.chamberBackground, lineWidth: 1.5)
-                }
-                .offset(x: 23, y: -23)
+            // Brackets live inside the well so they read against the dark
+            // optical field in both appearances instead of disappearing into
+            // the light card surface.
+            HomePureLensFocusCorners()
+                .stroke(
+                    palette.chamberContent.opacity(
+                        contrast == .increased ? 1 : 0.82
+                    ),
+                    style: StrokeStyle(
+                        lineWidth: contrast == .increased ? 2.6 : 1.8,
+                        lineCap: .round,
+                        lineJoin: .round
+                    )
+                )
+                .padding(size * HomePureLensMetrics.reticleBracketInsetRatio)
+                .scaleEffect(bracketScale)
+                .opacity(bracketOpacity)
         }
-        .scaleEffect(isPressed && !reduceMotion ? 0.94 : (readinessResolved ? 1 : 0.90))
-        .opacity(readinessResolved ? 1 : 0.72)
-        .animation(
-            reduceMotion ? nil : .easeOut(duration: HomePureLensMetrics.readinessDuration),
-            value: readinessResolved
-        )
+        .frame(width: size, height: size)
+        .clipShape(wellShape)
+        .overlay(alignment: .topTrailing) { lockIndicator }
+        .overlay {
+            wellShape
+                .strokeBorder(
+                    palette.chamberContent.opacity(
+                        contrast == .increased ? 0.52 : 0.22
+                    ),
+                    lineWidth: contrast == .increased ? 1.4 : 0.8
+                )
+        }
+        .animation(rackAnimation, value: isAcquiring)
         .accessibilityHidden(true)
+    }
+
+    private var lockIndicator: some View {
+        Circle()
+            .fill(palette.signal)
+            .frame(
+                width: size * HomePureLensMetrics.reticleLockRatio,
+                height: size * HomePureLensMetrics.reticleLockRatio
+            )
+            .overlay {
+                Circle()
+                    .strokeBorder(
+                        palette.chamberContent.opacity(
+                            contrast == .increased ? 1 : 0.85
+                        ),
+                        lineWidth: contrast == .increased ? 1.4 : 1
+                    )
+            }
+            .scaleEffect(lockScale)
+            .opacity(lockOpacity)
+            .padding(size * HomePureLensMetrics.reticleLockInsetRatio)
+    }
+
+    private var wellShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: HomePureLensMetrics.reticleWellCorner,
+            style: .continuous
+        )
+    }
+
+    // MARK: - Derived rack pose
+
+    private var isAcquiring: Bool {
+        guard !reduceMotion else { return false }
+        return isPressed || !readinessResolved
+    }
+
+    private var rackAnimation: Animation? {
+        guard !reduceMotion else { return nil }
+        return .easeOut(
+            duration: isAcquiring
+                ? HomePureLensMetrics.rackOpenDuration
+                : HomePureLensMetrics.rackLockDuration
+        )
+    }
+
+    private var bracketScale: CGFloat {
+        isAcquiring ? 1.08 : 1
+    }
+
+    private var bracketOpacity: Double {
+        isAcquiring ? 0.62 : 1
+    }
+
+    private var subjectBlurRadius: CGFloat {
+        isAcquiring ? 1.7 : 0
+    }
+
+    private var subjectScale: CGFloat {
+        isAcquiring ? 0.94 : 1
+    }
+
+    private var lockScale: CGFloat {
+        isAcquiring ? 0.80 : 1
+    }
+
+    private var lockOpacity: Double {
+        isAcquiring ? 0.45 : 1
     }
 
     private var palette: HomePureLensPalette {
@@ -6335,7 +6484,15 @@ private struct HomePureLensCardSurface: View {
     }
 }
 
-private struct HomePureLensActionRail: View {
+/// The instrument lane that replaced the footer CTA bar.
+///
+/// It carries three things and no surface of its own: a rail spanning the whole
+/// inner width, three fixed scale stops engraved on it, and one travelling
+/// focus index that rests beneath the reticle and sweeps toward the copy while
+/// the press racks focus. The action title sits under the rail as a legend, so
+/// the card no longer draws a filled circle and a chevron-in-a-circle competing
+/// with its own press target.
+private struct HomePureLensFocusDeck: View {
     let title: String
     let minimumHeight: CGFloat
     let readinessResolved: Bool
@@ -6344,32 +6501,79 @@ private struct HomePureLensActionRail: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.homePureLensIsPressed) private var isPressed
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        HStack(spacing: PPSpace.md) {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            focusRail
+            legend
+        }
+        .padding(.horizontal, PPSpace.base)
+        .padding(.top, PPSpace.xs)
+        .padding(.bottom, PPSpace.base)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: minimumHeight,
+            alignment: .leading
+        )
+    }
+
+    /// The rail is the only place in the card where geometry is read, and it is
+    /// a six-point band with three trivial children.
+    private var focusRail: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+
             ZStack {
-                Circle()
+                Capsule()
+                    .fill(railColor)
+                    .frame(height: railHeight)
+
+                ForEach(HomePureLensMetrics.focusStops, id: \.self) { stop in
+                    Circle()
+                        .fill(stopColor)
+                        .frame(
+                            width: HomePureLensMetrics.focusStopDiameter,
+                            height: HomePureLensMetrics.focusStopDiameter
+                        )
+                        .offset(x: centeredOffset(forNormalized: stop, in: width))
+                }
+
+                Capsule()
                     .fill(isPressed ? palette.signalPressed : palette.signal)
-
-                Circle()
-                    .stroke(
-                        palette.chamberContent.opacity(
-                            contrast == .increased ? 0.46 : 0.24
-                        ),
-                        lineWidth: contrast == .increased ? 1.5 : 0.7
+                    .frame(
+                        width: HomePureLensMetrics.focusIndexWidth,
+                        height: indexHeight
                     )
-
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(palette.chamberContent)
+                    .offset(x: indexOffset(in: width))
+                    .opacity(readinessResolved ? 1 : 0)
+                    .animation(indexAnimation, value: isAcquiring)
+                    .animation(
+                        reduceMotion
+                            ? nil
+                            : .easeOut(
+                                duration: HomePureLensMetrics.readinessDuration
+                            ),
+                        value: readinessResolved
+                    )
             }
             .frame(
-                width: HomeVisualTokens.compactIconContainerSize,
-                height: HomeVisualTokens.compactIconContainerSize
+                width: width,
+                height: HomePureLensMetrics.focusRailBandHeight
             )
-            .accessibilityHidden(true)
+        }
+        .frame(height: HomePureLensMetrics.focusRailBandHeight)
+        .accessibilityHidden(true)
+    }
+
+    private var legend: some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: "camera.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(isPressed ? palette.signalPressed : palette.signal)
+                .accessibilityHidden(true)
 
             Text(title)
                 .font(HomeFont.bold(16))
@@ -6378,44 +6582,88 @@ private struct HomePureLensActionRail: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .layoutPriority(1)
 
-            Spacer(minLength: PPSpace.sm)
+            Spacer(minLength: legendTrailingGap)
 
-            ZStack {
-                Circle()
-                    .fill(
-                        palette.signal.opacity(isPressed ? 0.16 : 0.10)
-                    )
-
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(palette.signal)
-                    .offset(x: forwardOffset)
-            }
-            .frame(width: 32, height: 32)
-            .accessibilityHidden(true)
+            Image(systemName: "chevron.forward")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(palette.signal)
+                .offset(x: forwardOffset)
+                .accessibilityHidden(true)
         }
-        .padding(.horizontal, PPSpace.base)
-        .padding(.vertical, PPSpace.sm)
-        .frame(
-            maxWidth: .infinity,
-            minHeight: minimumHeight,
-            alignment: .center
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .opacity(readinessResolved ? 1 : 0.78)
+    }
+
+    // MARK: - Derived rack pose
+
+    /// The index shares the reticle's single derived pose rather than owning a
+    /// second timeline, and Reduce Motion parks it at rest.
+    private var isAcquiring: Bool {
+        guard !reduceMotion else { return false }
+        return isPressed
+    }
+
+    private var indexAnimation: Animation? {
+        guard !reduceMotion else { return nil }
+        return .easeOut(
+            duration: isAcquiring
+                ? HomePureLensMetrics.indexTravelDuration
+                : HomePureLensMetrics.indexReturnDuration
         )
-        .background(palette.actionSurface)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(
-                    contrast == .increased
-                        ? palette.primaryText
-                        : palette.divider
-                )
-                .frame(height: contrast == .increased ? 1.5 : 0.7)
-        }
+    }
+
+    /// Rest is the trailing end of the rail, directly beneath the reticle.
+    /// Acquiring travels to the leading end, so the sweep always runs from the
+    /// lens toward the copy in both Arabic RTL and English LTR.
+    private func indexOffset(in width: CGFloat) -> CGFloat {
+        let usable = max(width, HomePureLensMetrics.focusIndexWidth)
+        let half = HomePureLensMetrics.focusIndexWidth / 2
+        let leadingCenter = half
+        let trailingCenter = usable - half
+        let center = isAcquiring ? leadingCenter : trailingCenter
+        return mirrored(center - usable / 2)
+    }
+
+    private func centeredOffset(
+        forNormalized position: CGFloat,
+        in width: CGFloat
+    ) -> CGFloat {
+        mirrored((position - 0.5) * width)
+    }
+
+    private func mirrored(_ offset: CGFloat) -> CGFloat {
+        layoutDirection == .rightToLeft ? -offset : offset
     }
 
     private var forwardOffset: CGFloat {
         guard isPressed, !reduceMotion, readinessResolved else { return 0 }
         return layoutDirection == .rightToLeft ? -2 : 2
+    }
+
+    private var railHeight: CGFloat {
+        contrast == .increased
+            ? HomePureLensMetrics.focusRailContrastHeight
+            : HomePureLensMetrics.focusRailHeight
+    }
+
+    private var indexHeight: CGFloat {
+        contrast == .increased
+            ? HomePureLensMetrics.focusIndexContrastHeight
+            : HomePureLensMetrics.focusIndexHeight
+    }
+
+    private var railColor: Color {
+        contrast == .increased
+            ? palette.primaryText.opacity(0.72)
+            : palette.divider
+    }
+
+    private var stopColor: Color {
+        palette.primaryText.opacity(contrast == .increased ? 0.55 : 0.24)
+    }
+
+    private var legendTrailingGap: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : PPSpace.sm
     }
 
     private var palette: HomePureLensPalette {

@@ -464,6 +464,7 @@
 		F281B414301A5AB600040E59 /* PPHomeHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B402301A5AB600040E59 /* PPHomeHostingController.swift */; };
 		F281B415301A5AB600040E59 /* HomeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B404301A5AB600040E59 /* HomeRouter.swift */; };
 		F281B416301A5AB600040E59 /* HomeHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B40A301A5AB600040E59 /* HomeHeroView.swift */; };
+		FA11E7C0A1B2C3D4E5F60002 /* HomeHeroV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */; };
 		F281B417301A5AB600040E59 /* HomeViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B407301A5AB600040E59 /* HomeViewState.swift */; };
 		F281B418301A5AB600040E59 /* HomeModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B3FF301A5AB600040E59 /* HomeModelAdapter.swift */; };
 		F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */; };
@@ -1762,6 +1763,7 @@
 		F281B407301A5AB600040E59 /* HomeViewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewState.swift; sourceTree = "<group>"; };
 		F281B409301A5AB600040E59 /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeComponents.swift; sourceTree = "<group>"; };
 		F281B40A301A5AB600040E59 /* HomeHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeroView.swift; sourceTree = "<group>"; };
+		FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeroV2View.swift; sourceTree = "<group>"; };
 		F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeUniversalCard.swift; sourceTree = "<group>"; };
 		F281B40C301A5AB600040E59 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F281B4692FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormRowFullWidthTextFieldCell.h; sourceTree = "<group>"; };
@@ -3980,6 +3982,7 @@
 				C1A0000000000000000000B1 /* PPHomeZoneComponents.swift */,
 				F281B409301A5AB600040E59 /* HomeComponents.swift */,
 				F281B40A301A5AB600040E59 /* HomeHeroView.swift */,
+				FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */,
 				F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */,
 				F281B40C301A5AB600040E59 /* HomeView.swift */,
 			);
@@ -5628,6 +5631,7 @@
 				F281B414301A5AB600040E59 /* PPHomeHostingController.swift in Sources */,
 				F281B415301A5AB600040E59 /* HomeRouter.swift in Sources */,
 				F281B416301A5AB600040E59 /* HomeHeroView.swift in Sources */,
+				FA11E7C0A1B2C3D4E5F60002 /* HomeHeroV2View.swift in Sources */,
 				F2FCF8DA3023CBB40022F78B /* PPChatsFunc.m in Sources */,
 				F281B417301A5AB600040E59 /* HomeViewState.swift in Sources */,
 				F281B418301A5AB600040E59 /* HomeModelAdapter.swift in Sources */,
