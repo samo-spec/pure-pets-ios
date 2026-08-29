@@ -17,22 +17,28 @@ import UIKit
 private let homeHeroV2ShowsSelectedMainKindArtwork = true
 
 private enum HomeHeroV2Metrics {
-    static let outerInset: CGFloat = PPSpace.base
-    static let height: CGFloat = 252
-    static let maximumHeight: CGFloat = 286
+    /// The reference hero is edge-to-edge; the living plate supplies the visual
+    /// boundary instead of an additional horizontal card inset.
+    static let outerInset: CGFloat = 0
+    static let height: CGFloat = 286
+    static let maximumHeight: CGFloat = 304
     static let accessibilityPlateHeight: CGFloat = 184
 
     static let cardRadius: CGFloat = 30
-    static let cardContentInset: CGFloat = PPSpace.lg
+    static let cardContentInset: CGFloat = PPSpace.base
     static let contentGap: CGFloat = PPSpace.sm
-    static let copyWidthRatio: CGFloat = 0.52
-    static let minimumCopyWidth: CGFloat = 158
+    static let copyWidthRatio: CGFloat = 0.45
+    static let minimumCopyWidth: CGFloat = 150
 
-    /// `PPHomeHeroLivingBlobShape` draws at 0.47 of its frame.
+    /// `PPHomeHeroLivingBlobShape` draws at 0.94 of its frame. The reference
+    /// composition intentionally lets the plate travel beyond the physical
+    /// leading/trailing edge while keeping the artwork fully inside the arc.
     static let blobInkRatio: CGFloat = 0.94
-    static let plateInk: CGFloat = 156
-    static let artworkSide: CGFloat = 126
+    static let plateInk: CGFloat = 226
+    static let artworkSide: CGFloat = 170
     static let artworkVerticalShift: CGFloat = 5
+    static let plateHorizontalOverflow: CGFloat = 42
+    static let skeletonPlateInk: CGFloat = 156
 
     /// Quiet edge affordance for horizontal paging.
     static let gripWidth: CGFloat = 14
@@ -174,9 +180,14 @@ struct HomeHeroV2View: View {
                 height - (HomeHeroV2Metrics.cardContentInset * 2)
             )
             let plateFrame = plateInk / HomeHeroV2Metrics.blobInkRatio
+            let plateOverflow = min(
+                HomeHeroV2Metrics.plateHorizontalOverflow,
+                plateFrame * 0.22
+            )
+            let visiblePlateWidth = plateFrame - plateOverflow
             let availableCopyWidth = width
-                - plateFrame
-                - (HomeHeroV2Metrics.cardContentInset * 2)
+                - visiblePlateWidth
+                - HomeHeroV2Metrics.cardContentInset
                 - HomeHeroV2Metrics.contentGap
             let copyWidth = max(
                 HomeHeroV2Metrics.minimumCopyWidth,
@@ -186,9 +197,10 @@ struct HomeHeroV2View: View {
             let copyCenterX = isRightToLeft
                 ? width - HomeHeroV2Metrics.cardContentInset - (copyWidth / 2)
                 : HomeHeroV2Metrics.cardContentInset + (copyWidth / 2)
+            let plateInsetCenter = max((plateFrame / 2) - plateOverflow, 0)
             let plateCenterX = isRightToLeft
-                ? HomeHeroV2Metrics.cardContentInset + (plateFrame / 2)
-                : width - HomeHeroV2Metrics.cardContentInset - (plateFrame / 2)
+                ? plateInsetCenter
+                : width - plateInsetCenter
             let gripCenterX = isRightToLeft
                 ? HomeHeroV2Metrics.gripEdgeInset
                     + (HomeHeroV2Metrics.gripWidth / 2)
@@ -915,8 +927,8 @@ private struct HomeHeroV2Skeleton: View {
                 Circle()
                     .fill(Color.ppSecondarySurface)
                     .frame(
-                        width: HomeHeroV2Metrics.plateInk,
-                        height: HomeHeroV2Metrics.plateInk
+                        width: HomeHeroV2Metrics.skeletonPlateInk,
+                        height: HomeHeroV2Metrics.skeletonPlateInk
                     )
             }
             .padding(HomeHeroV2Metrics.cardContentInset)
