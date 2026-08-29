@@ -71,6 +71,7 @@ final class PPHomePresentationResolverTests: XCTestCase {
             id: id,
             title: "Cats",
             imageURL: nil,
+            heroImageURL: nil,
             localImage: nil,
             accent: .ppPrimary,
             raw: NSObject()

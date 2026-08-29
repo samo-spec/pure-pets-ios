@@ -178,7 +178,7 @@ public struct PPWaveCardBG: View {
 
             cardShape.fill(surfaceLight)
 
-            PPWaveCardHabitatField(
+            PPWaveCardCompanionImprintField(
                 accent: resolvedAccent,
                 shape: shape,
                 interaction: interaction,
@@ -314,7 +314,7 @@ public struct PPWaveCardBG: View {
 }
 
 @available(iOS 15.0, *)
-private struct PPWaveCardHabitatField: View {
+private struct PPWaveCardCompanionImprintField: View {
     let accent: Color
     let shape: PPWaveCardBGShape
     let interaction: PPWaveCardInteractionSnapshot
@@ -330,10 +330,10 @@ private struct PPWaveCardHabitatField: View {
     var body: some View {
         GeometryReader { proxy in
             if reduceMotion || !allowsAmbientMotion {
-                habitatCanvas(size: proxy.size, phase: 0.18)
+                companionCanvas(size: proxy.size, phase: 0.18)
             } else {
-                TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
-                    habitatCanvas(
+                TimelineView(.periodic(from: .now, by: 1.0 / 24.0)) { timeline in
+                    companionCanvas(
                         size: proxy.size,
                         phase: phase(for: timeline.date)
                     )
@@ -350,13 +350,13 @@ private struct PPWaveCardHabitatField: View {
         allowsInteractiveResponse && interaction.isActive ? 1.0 : 0.0
     }
 
-    private func habitatCanvas(size: CGSize, phase: CGFloat) -> some View {
+    private func companionCanvas(size: CGSize, phase: CGFloat) -> some View {
         Canvas(
             opaque: false,
             colorMode: .linear,
             rendersAsynchronously: true
         ) { context, canvasSize in
-            renderHabitat(
+            renderCompanionImprint(
                 in: &context,
                 size: canvasSize,
                 phase: phase
@@ -391,11 +391,11 @@ private struct PPWaveCardHabitatField: View {
 
     private func phase(for date: Date) -> CGFloat {
         let cycle = date.timeIntervalSinceReferenceDate
-            .truncatingRemainder(dividingBy: 6.4)
-        return CGFloat(cycle / 6.4)
+            .truncatingRemainder(dividingBy: 9.6)
+        return CGFloat(cycle / 9.6)
     }
 
-    private func renderHabitat(
+    private func renderCompanionImprint(
         in context: inout GraphicsContext,
         size: CGSize,
         phase: CGFloat
@@ -408,62 +408,56 @@ private struct PPWaveCardHabitatField: View {
         )
         let response = min(max(interactionStrength, 0.0), 1.0)
         let theta = phase * .pi * 2.0
-        let anchor = habitatAnchor(
+        let basis = imprintBasis(in: size)
+        let anchor = companionAnchor(
             size: size,
             touchPoint: touchPoint,
             response: response,
-            theta: theta
+            theta: theta,
+            basis: basis
         )
+        let breathScale = 1.0
+            + (sin(theta) * 0.022)
+            + (response * 0.032)
+        let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
+        let velocityLean = min(
+            0.035,
+            max(-0.035, interaction.velocity.dy * 0.006)
+        ) * response
+        let rotation = (directionSign * 0.055) + velocityLean
 
-        drawCounterweightGlow(
-            in: &context,
-            size: size,
-            theta: theta
-        )
-
-        drawHabitatAura(
+        drawCompanionWash(
             in: &context,
             size: size,
             anchor: anchor,
+            basis: basis,
             theta: theta,
             response: response
         )
-        drawCareBloom(
+        drawCompanionImprint(
             in: &context,
-            size: size,
             anchor: anchor,
-            touchPoint: touchPoint,
+            basis: basis,
+            scale: breathScale,
+            rotation: rotation,
             theta: theta,
             response: response
-        )
-        drawCompanionSeeds(
-            in: &context,
-            size: size,
-            anchor: anchor,
-            theta: theta,
-            response: response
-        )
-        drawCareBeacon(
-            in: &context,
-            size: size,
-            anchor: anchor,
-            theta: theta
         )
     }
 
-    private func habitatAnchor(
+    private func companionAnchor(
         size: CGSize,
         touchPoint: CGPoint,
         response: CGFloat,
-        theta: CGFloat
+        theta: CGFloat,
+        basis: CGFloat
     ) -> CGPoint {
-        let basis = bloomBasis(in: size)
         let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
         let restingAnchor = CGPoint(
             x: (size.width * anchorFraction)
-                + (cos(theta) * basis * 0.075 * directionSign),
-            y: (size.height * 0.50)
-                + (sin(theta) * basis * 0.085)
+                + (cos(theta) * basis * 0.018 * directionSign),
+            y: (size.height * 0.52)
+                + (sin(theta) * basis * 0.022)
         )
         let delta = CGVector(
             dx: touchPoint.x - restingAnchor.x,
@@ -471,8 +465,8 @@ private struct PPWaveCardHabitatField: View {
         )
         let distance = max(1.0, hypot(delta.dx, delta.dy))
         let travel = min(
-            basis * 0.20,
-            distance * 0.075
+            basis * 0.09,
+            distance * 0.035
         ) * response
         return CGPoint(
             x: restingAnchor.x + ((delta.dx / distance) * travel),
@@ -480,340 +474,202 @@ private struct PPWaveCardHabitatField: View {
         )
     }
 
-    private func drawCounterweightGlow(
+    /// A quiet tonal bed that stays attached to the pet imprint, without
+    /// detached particles or a competing luminous focal point.
+    private func drawCompanionWash(
         in context: inout GraphicsContext,
         size: CGSize,
-        theta: CGFloat
-    ) {
-        let basis = bloomBasis(in: size)
-        let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
-        let center = CGPoint(
-            x: (size.width * (isRightToLeft ? 0.78 : 0.22))
-                + (cos(theta) * basis * 0.14 * directionSign),
-            y: (size.height * 0.32)
-                + (sin(theta) * basis * 0.16)
-        )
-        let radiusX = max(size.width * 0.30, basis * 1.60)
-        let radiusY = max(size.height * 0.56, basis * 1.36)
-        var glow = Path()
-        glow.addEllipse(
-            in: CGRect(
-                x: center.x - radiusX,
-                y: center.y - radiusY,
-                width: radiusX * 2.0,
-                height: radiusY * 2.0
-            )
-        )
-        let transparencyScale = reduceTransparency ? 0.76 : 1.0
-        context.fill(
-            glow,
-            with: .radialGradient(
-                Gradient(colors: [
-                    Color.ppPrimary.opacity(
-                        (isDark ? 0.095 : 0.105) * Double(transparencyScale)
-                    ),
-                    Color.ppPremiumAccent.opacity(
-                        (isDark ? 0.030 : 0.050) * Double(transparencyScale)
-                    ),
-                    .clear,
-                ]),
-                center: center,
-                startRadius: 0.0,
-                endRadius: max(radiusX, radiusY)
-            )
-        )
-    }
-
-    private func drawHabitatAura(
-        in context: inout GraphicsContext,
-        size: CGSize,
-        anchor: CGPoint,
-        theta: CGFloat,
-        response: CGFloat
-    ) {
-        let breath = (sin(theta) + 1.0) * 0.5
-        let basis = bloomBasis(in: size)
-        let radii = auraRadii(in: size, basis: basis)
-        let radiusX = radii.width
-        let radiusY = radii.height
-        let scale = 1.0 + (0.10 * breath) + (0.055 * response)
-        let rect = CGRect(
-            x: anchor.x - (radiusX * scale),
-            y: anchor.y - (radiusY * scale),
-            width: radiusX * scale * 2.0,
-            height: radiusY * scale * 2.0
-        )
-        var aura = Path()
-        aura.addEllipse(in: rect)
-        let transparencyScale = reduceTransparency ? 0.76 : 1.0
-        context.fill(
-            aura,
-            with: .radialGradient(
-                Gradient(colors: [
-                    accent.opacity(
-                        (isDark ? 0.180 : 0.135) * Double(transparencyScale)
-                    ),
-                    Color.ppSoftRose.opacity(
-                        (isDark ? 0.065 : 0.115) * Double(transparencyScale)
-                    ),
-                    .clear,
-                ]),
-                center: anchor,
-                startRadius: 0.0,
-                endRadius: max(radiusX, radiusY) * scale
-            )
-        )
-    }
-
-    private func drawCareBloom(
-        in context: inout GraphicsContext,
-        size: CGSize,
-        anchor: CGPoint,
-        touchPoint: CGPoint,
-        theta: CGFloat,
-        response: CGFloat
-    ) {
-        let baseDirection: CGFloat = isRightToLeft ? 0.0 : .pi
-        let touchDirection = atan2(
-            touchPoint.y - anchor.y,
-            touchPoint.x - anchor.x
-        )
-        let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
-        let velocityLean = min(
-            0.12,
-            max(-0.12, interaction.velocity.dy * 0.018)
-        ) * response * directionSign
-        let basis = bloomBasis(in: size)
-        let spreads: [CGFloat] = [-0.92, -0.46, 0.0, 0.46, 0.92]
-        let lengths: [CGFloat] = [0.70, 0.88, 1.0, 0.88, 0.70]
-
-        for index in spreads.indices {
-            let independentPhase = theta
-                - 0.42
-                + (CGFloat(index) * 0.20)
-            let respiration = sin(independentPhase) * 0.090 * directionSign
-            let restingAngle = baseDirection
-                + (spreads[index] * directionSign)
-                + respiration
-            let angle = interpolatedAngle(
-                from: restingAngle,
-                to: touchDirection,
-                amount: response * (index == 2 ? 0.34 : 0.20)
-            ) + velocityLean
-            let pressure = max(0.35, interaction.pressure)
-            let length = basis * lengths[index]
-                * (1.0 + (sin(independentPhase + 0.44) * 0.085))
-                * (1.0 + (response * pressure * 0.08))
-            let width = length * (0.27 + (CGFloat(index % 2) * 0.025))
-            let rootOffset = CGFloat(index - 2) * basis * 0.016
-            let root = CGPoint(
-                x: anchor.x,
-                y: anchor.y - rootOffset
-            )
-            let petal = bloomPetalPath(
-                root: root,
-                angle: angle,
-                length: length,
-                width: width,
-                curl: sin(
-                    (theta * 2.0) + (CGFloat(index) * 1.17) + 0.20
-                ) * width * 0.10 * directionSign
-            )
-            let tip = CGPoint(
-                x: root.x + (cos(angle) * length),
-                y: root.y + (sin(angle) * length)
-            )
-            let opacityScale = reduceTransparency ? 0.82 : 1.0
-            let prominence = 1.0 - (Double(abs(index - 2)) * 0.065)
-            context.fill(
-                petal,
-                with: .linearGradient(
-                    Gradient(colors: [
-                        accent.opacity(
-                            (isDark ? 0.340 : 0.260)
-                                * Double(opacityScale)
-                                * prominence
-                        ),
-                        Color.ppSoftRose.opacity(
-                            (isDark ? 0.145 : 0.255)
-                                * Double(opacityScale)
-                                * prominence
-                        ),
-                        Color.ppWarmPorcelain.opacity(
-                            (isDark ? 0.055 : 0.170)
-                                * Double(opacityScale)
-                                * prominence
-                        ),
-                    ]),
-                    startPoint: root,
-                    endPoint: tip
-                )
-            )
-        }
-
-        drawBloomHeart(
-            in: &context,
-            anchor: anchor,
-            basis: basis,
-            theta: theta,
-            response: response
-        )
-    }
-
-    private func drawBloomHeart(
-        in context: inout GraphicsContext,
         anchor: CGPoint,
         basis: CGFloat,
         theta: CGFloat,
         response: CGFloat
     ) {
-        let breath = 1.0 + (sin(theta) * 0.075) + (response * 0.065)
-        let width = basis * 0.42 * breath
-        let height = basis * 0.34 * breath
-        let rect = CGRect(
-            x: anchor.x - (width * 0.5),
-            y: anchor.y - (height * 0.5),
-            width: width,
-            height: height
-        )
-        var heart = Path()
-        heart.addEllipse(in: rect)
-        let opacityScale = reduceTransparency ? 0.84 : 1.0
-        context.fill(
-            heart,
-            with: .radialGradient(
-                Gradient(colors: [
-                    Color.white.opacity(
-                        (isDark ? 0.22 : 0.72) * Double(opacityScale)
-                    ),
-                    accent.opacity(
-                        (isDark ? 0.30 : 0.22) * Double(opacityScale)
-                    ),
-                    Color.ppSurfaceRaised.opacity(isDark ? 0.08 : 0.04),
-                ]),
-                center: CGPoint(
-                    x: rect.midX + (width * (isRightToLeft ? 0.16 : -0.16)),
-                    y: rect.midY - (height * 0.18)
-                ),
-                startRadius: 0.0,
-                endRadius: max(width, height) * 0.70
-            )
-        )
-    }
-
-    private func drawCompanionSeeds(
-        in context: inout GraphicsContext,
-        size: CGSize,
-        anchor: CGPoint,
-        theta: CGFloat,
-        response: CGFloat
-    ) {
-        let basis = bloomBasis(in: size)
-        let orbitRadius = companionOrbitRadius(in: size, basis: basis)
-        let opacityScale = reduceTransparency ? 0.82 : 1.0
-
-        for index in 0..<3 {
-            let baseAngle = CGFloat(index) * ((.pi * 2.0) / 3.0) - 0.74
-            let orbitalAngle = baseAngle + theta
-            let angle = isRightToLeft
-                ? .pi - orbitalAngle
-                : orbitalAngle
-            let radialPulse = sin(
-                (theta * 2.0) + (CGFloat(index) * ((.pi * 2.0) / 3.0))
-            ) * 0.055
-            let radius = orbitRadius
-                * (0.86 + (CGFloat(index) * 0.10) + radialPulse)
-            let center = CGPoint(
-                x: anchor.x + (cos(angle) * radius),
-                y: anchor.y + (sin(angle) * radius * 0.72)
-            )
-            let baseSeedWidth = max(1.8, basis * 0.070)
-            let seedWidth = baseSeedWidth
-                * (1.0 + (CGFloat(index) * 0.18))
-                + (response * basis * 0.020)
-            let seedHeight = seedWidth * 0.62
-            var seed = Path()
-            seed.addEllipse(
-                in: CGRect(
-                    x: center.x - (seedWidth * 0.5),
-                    y: center.y - (seedHeight * 0.5),
-                    width: seedWidth,
-                    height: seedHeight
-                )
-            )
-            context.fill(
-                seed,
-                with: .color(
-                    accent.opacity(
-                        (isDark ? 0.44 : 0.34) * Double(opacityScale)
-                    )
-                )
-            )
-        }
-    }
-
-    private func drawCareBeacon(
-        in context: inout GraphicsContext,
-        size: CGSize,
-        anchor: CGPoint,
-        theta: CGFloat
-    ) {
-        let basis = bloomBasis(in: size)
-        let orbitRadius = companionOrbitRadius(in: size, basis: basis) * 1.18
-        let baseAngle = theta + 0.38
-        let angle = isRightToLeft ? .pi - baseAngle : baseAngle
+        let directionSign: CGFloat = isRightToLeft ? -1.0 : 1.0
         let center = CGPoint(
-            x: anchor.x + (cos(angle) * orbitRadius),
-            y: anchor.y + (sin(angle) * orbitRadius * 0.72)
+            x: anchor.x + (directionSign * basis * 0.06),
+            y: anchor.y + (sin(theta) * basis * 0.012)
         )
-        let pulse = (sin(theta * 2.0) + 1.0) * 0.5
-        let opacityScale = reduceTransparency ? 0.84 : 1.0
-        let haloDiameter = max(12.0, basis * (0.24 + (0.05 * pulse)))
-        let haloRect = CGRect(
-            x: center.x - (haloDiameter * 0.5),
-            y: center.y - (haloDiameter * 0.5),
-            width: haloDiameter,
-            height: haloDiameter
+        let radii = companionWashRadii(in: size, basis: basis)
+        let breath = 1.0
+            + (((sin(theta) + 1.0) * 0.5) * 0.035)
+            + (response * 0.025)
+        let rect = CGRect(
+            x: center.x - (radii.width * breath),
+            y: center.y - (radii.height * breath),
+            width: radii.width * breath * 2.0,
+            height: radii.height * breath * 2.0
         )
-        var halo = Path()
-        halo.addEllipse(in: haloRect)
+        var wash = Path()
+        wash.addEllipse(in: rect)
+        let transparencyScale = reduceTransparency ? 0.72 : 1.0
         context.fill(
-            halo,
+            wash,
             with: .radialGradient(
                 Gradient(colors: [
-                    accent.opacity(0.38 * Double(opacityScale)),
-                    Color.ppPremiumAccent.opacity(0.18 * Double(opacityScale)),
+                    accent.opacity(
+                        (isDark ? 0.145 : 0.095)
+                            * Double(transparencyScale)
+                    ),
+                    Color.ppQuickActionAnimals.opacity(
+                        (isDark ? 0.075 : 0.050)
+                            * Double(transparencyScale)
+                    ),
+                    Color.ppSoftRose.opacity(
+                        (isDark ? 0.030 : 0.045)
+                            * Double(transparencyScale)
+                    ),
                     .clear,
                 ]),
                 center: center,
-                startRadius: 0.0,
-                endRadius: haloDiameter * 0.5
+                startRadius: 0,
+                endRadius: max(radii.width, radii.height) * breath
             )
         )
+    }
 
-        let coreDiameter = max(3.5, basis * 0.075)
-        let coreRect = CGRect(
-            x: center.x - (coreDiameter * 0.5),
-            y: center.y - (coreDiameter * 0.5),
-            width: coreDiameter,
-            height: coreDiameter
+    /// The signature visual is one cohesive paw impression: a central care pad
+    /// and four attached toe pads. Every part breathes together, so it reads as
+    /// a calm companion mark rather than a particle system.
+    private func drawCompanionImprint(
+        in context: inout GraphicsContext,
+        anchor: CGPoint,
+        basis: CGFloat,
+        scale: CGFloat,
+        rotation: CGFloat,
+        theta: CGFloat,
+        response: CGFloat
+    ) {
+        let mainCenter = rotatedPoint(
+            around: anchor,
+            x: 0,
+            y: basis * 0.22 * scale,
+            angle: rotation
         )
-        var core = Path()
-        core.addEllipse(in: coreRect)
+        let mainWidth = basis * 1.02 * scale
+        let mainHeight = basis * 0.82 * scale
+        let mainPad = companionPadPath(
+            center: mainCenter,
+            width: mainWidth,
+            height: mainHeight,
+            rotation: rotation
+        )
+        let toePads = companionToePads(
+            anchor: anchor,
+            basis: basis,
+            scale: scale,
+            rotation: rotation,
+            theta: theta,
+            response: response
+        )
+        let shadowOffset = CGSize(
+            width: (isRightToLeft ? 1 : -1) * basis * 0.018,
+            height: basis * 0.032
+        )
+        let transparencyScale = reduceTransparency ? 0.80 : 1.0
+        let shadowOpacity = (isDark ? 0.075 : 0.030)
+            * Double(transparencyScale)
+        let outlineOpacity = (isDark ? 0.16 : 0.30)
+            * Double(transparencyScale)
+        let startPoint = CGPoint(
+            x: anchor.x + (isRightToLeft ? basis * 0.50 : -basis * 0.50),
+            y: anchor.y - (basis * 0.62)
+        )
+        let endPoint = CGPoint(
+            x: anchor.x + (isRightToLeft ? -basis * 0.42 : basis * 0.42),
+            y: anchor.y + (basis * 0.58)
+        )
+
         context.fill(
-            core,
-            with: .radialGradient(
-                Gradient(colors: [
-                    Color.white.opacity(isDark ? 0.72 : 0.92),
-                    Color.ppPremiumAccent.opacity(0.76),
-                    accent.opacity(0.58),
-                ]),
-                center: CGPoint(
-                    x: coreRect.midX - (coreDiameter * 0.16),
-                    y: coreRect.midY - (coreDiameter * 0.16)
+            mainPad.applying(
+                CGAffineTransform(
+                    translationX: shadowOffset.width,
+                    y: shadowOffset.height
+                )
+            ),
+            with: .color(Color.ppTextPrimary.opacity(shadowOpacity))
+        )
+        for toe in toePads {
+            context.fill(
+                ellipsePath(
+                    center: CGPoint(
+                        x: toe.center.x + shadowOffset.width,
+                        y: toe.center.y + shadowOffset.height
+                    ),
+                    size: toe.size
                 ),
-                startRadius: 0.0,
-                endRadius: coreDiameter * 0.62
+                with: .color(Color.ppTextPrimary.opacity(shadowOpacity))
+            )
+        }
+
+        let imprintGradient = Gradient(colors: [
+            Color.white.opacity(
+                (isDark ? 0.10 : 0.44) * Double(transparencyScale)
+            ),
+            accent.opacity(
+                (isDark ? 0.28 : 0.18) * Double(transparencyScale)
+            ),
+            Color.ppQuickActionAnimals.opacity(
+                (isDark ? 0.14 : 0.085) * Double(transparencyScale)
+            ),
+        ])
+        context.fill(
+            mainPad,
+            with: .linearGradient(
+                imprintGradient,
+                startPoint: startPoint,
+                endPoint: endPoint
+            )
+        )
+        context.stroke(
+            mainPad,
+            with: .color(Color.white.opacity(outlineOpacity)),
+            lineWidth: increasedContrast ? 1.0 : 0.7
+        )
+
+        for toe in toePads {
+            let path = ellipsePath(center: toe.center, size: toe.size)
+            context.fill(
+                path,
+                with: .linearGradient(
+                    imprintGradient,
+                    startPoint: CGPoint(
+                        x: toe.center.x - (toe.size.width * 0.34),
+                        y: toe.center.y - (toe.size.height * 0.42)
+                    ),
+                    endPoint: CGPoint(
+                        x: toe.center.x + (toe.size.width * 0.36),
+                        y: toe.center.y + (toe.size.height * 0.44)
+                    )
+                )
+            )
+            context.stroke(
+                path,
+                with: .color(Color.white.opacity(outlineOpacity * 0.88)),
+                lineWidth: increasedContrast ? 0.9 : 0.6
+            )
+        }
+
+        context.stroke(
+            companionSheenPath(
+                center: mainCenter,
+                width: mainWidth,
+                height: mainHeight,
+                rotation: rotation
+            ),
+            with: .linearGradient(
+                Gradient(colors: [
+                    Color.white.opacity(
+                        (isDark ? 0.16 : 0.48) * Double(transparencyScale)
+                    ),
+                    Color.white.opacity(0),
+                ]),
+                startPoint: startPoint,
+                endPoint: endPoint
+            ),
+            style: StrokeStyle(
+                lineWidth: max(0.8, basis * 0.012),
+                lineCap: .round,
+                lineJoin: .round
             )
         )
     }
@@ -831,118 +687,195 @@ private struct PPWaveCardHabitatField: View {
         return isRightToLeft ? 1.0 - trailingFraction : trailingFraction
     }
 
-    private func bloomBasis(in size: CGSize) -> CGFloat {
+    private func imprintBasis(in size: CGSize) -> CGFloat {
         let minimumDimension = min(size.width, size.height)
         switch shape {
         case .rounded:
-            return max(8.0, min(size.height * 0.42, size.width * 0.22))
+            return max(8.0, min(size.height * 0.40, size.width * 0.19))
         case .capsule:
-            return max(7.0, minimumDimension * 0.34)
+            return max(7.0, min(minimumDimension * 0.36, size.width * 0.18))
         case .circle:
-            return max(7.0, minimumDimension * 0.25)
+            return max(7.0, minimumDimension * 0.27)
         }
     }
 
-    private func auraRadii(
+    private func companionWashRadii(
         in size: CGSize,
         basis: CGFloat
     ) -> CGSize {
         switch shape {
         case .rounded:
             return CGSize(
-                width: min(size.width * 0.46, basis * 1.95),
-                height: min(size.height * 0.70, basis * 1.35)
+                width: min(size.width * 0.27, basis * 1.55),
+                height: min(size.height * 0.48, basis * 1.22)
             )
         case .capsule:
             return CGSize(
-                width: min(size.width * 0.30, basis * 2.05),
-                height: min(size.height * 0.46, basis * 1.20)
+                width: min(size.width * 0.22, basis * 1.75),
+                height: min(size.height * 0.46, basis * 1.15)
             )
         case .circle:
-            let radius = min(min(size.width, size.height) * 0.42, basis * 1.62)
+            let radius = min(minimumDimension(of: size) * 0.40, basis * 1.55)
             return CGSize(width: radius, height: radius)
         }
     }
 
-    private func companionOrbitRadius(
-        in size: CGSize,
-        basis: CGFloat
-    ) -> CGFloat {
-        switch shape {
-        case .rounded:
-            return min(size.height * 0.32, basis * 0.92)
-        case .capsule:
-            return min(size.height * 0.30, basis * 0.86)
-        case .circle:
-            return min(min(size.width, size.height) * 0.29, basis * 1.10)
-        }
+    private func minimumDimension(of size: CGSize) -> CGFloat {
+        min(size.width, size.height)
     }
 
-    private func bloomPetalPath(
-        root: CGPoint,
-        angle: CGFloat,
-        length: CGFloat,
+    private func rotatedPoint(
+        around origin: CGPoint,
+        x: CGFloat,
+        y: CGFloat,
+        angle: CGFloat
+    ) -> CGPoint {
+        let cosine = cos(angle)
+        let sine = sin(angle)
+        return CGPoint(
+            x: origin.x + (x * cosine) - (y * sine),
+            y: origin.y + (x * sine) + (y * cosine)
+        )
+    }
+
+    /// A hand-shaped metacarpal pad with a shallow upper cleft and two soft
+    /// lower lobes. It avoids an SF Symbol silhouette while remaining legible
+    /// from compact circles through full-width cards.
+    private func companionPadPath(
+        center: CGPoint,
         width: CGFloat,
-        curl: CGFloat
+        height: CGFloat,
+        rotation: CGFloat
     ) -> Path {
-        let forward = CGVector(dx: cos(angle), dy: sin(angle))
-        let normal = CGVector(dx: -forward.dy, dy: forward.dx)
-        let leftShoulderProgress: CGFloat = isRightToLeft ? 0.36 : 0.38
-        let rightShoulderProgress: CGFloat = isRightToLeft ? 0.38 : 0.36
-        let tip = CGPoint(
-            x: root.x + (forward.dx * length) + (normal.dx * curl),
-            y: root.y + (forward.dy * length) + (normal.dy * curl)
-        )
-        let leftShoulder = CGPoint(
-            x: root.x
-                + (forward.dx * length * leftShoulderProgress)
-                + (normal.dx * width),
-            y: root.y
-                + (forward.dy * length * leftShoulderProgress)
-                + (normal.dy * width)
-        )
-        let rightShoulder = CGPoint(
-            x: root.x
-                + (forward.dx * length * rightShoulderProgress)
-                - (normal.dx * width),
-            y: root.y
-                + (forward.dy * length * rightShoulderProgress)
-                - (normal.dy * width)
-        )
-        let leftTipControl = CGPoint(
-            x: tip.x - (forward.dx * length * 0.18) + (normal.dx * width * 0.34),
-            y: tip.y - (forward.dy * length * 0.18) + (normal.dy * width * 0.34)
-        )
-        let rightTipControl = CGPoint(
-            x: tip.x - (forward.dx * length * 0.18) - (normal.dx * width * 0.34),
-            y: tip.y - (forward.dy * length * 0.18) - (normal.dy * width * 0.34)
-        )
+        let halfWidth = width * 0.5
+        let halfHeight = height * 0.5
+
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            rotatedPoint(
+                around: center,
+                x: x * halfWidth,
+                y: y * halfHeight,
+                angle: rotation
+            )
+        }
 
         var path = Path()
-        path.move(to: root)
+        path.move(to: point(0.0, -0.78))
         path.addCurve(
-            to: tip,
-            control1: leftShoulder,
-            control2: leftTipControl
+            to: point(0.94, -0.08),
+            control1: point(0.30, -0.98),
+            control2: point(0.90, -0.74)
         )
         path.addCurve(
-            to: root,
-            control1: rightTipControl,
-            control2: rightShoulder
+            to: point(0.42, 0.88),
+            control1: point(1.00, 0.36),
+            control2: point(0.74, 0.82)
+        )
+        path.addCurve(
+            to: point(0.0, 0.70),
+            control1: point(0.26, 1.02),
+            control2: point(0.10, 0.76)
+        )
+        path.addCurve(
+            to: point(-0.42, 0.88),
+            control1: point(-0.10, 0.76),
+            control2: point(-0.26, 1.02)
+        )
+        path.addCurve(
+            to: point(-0.94, -0.08),
+            control1: point(-0.74, 0.82),
+            control2: point(-1.00, 0.36)
+        )
+        path.addCurve(
+            to: point(0.0, -0.78),
+            control1: point(-0.90, -0.74),
+            control2: point(-0.30, -0.98)
         )
         path.closeSubpath()
         return path
     }
 
-    private func interpolatedAngle(
-        from start: CGFloat,
-        to end: CGFloat,
-        amount: CGFloat
-    ) -> CGFloat {
-        var delta = (end - start).truncatingRemainder(dividingBy: .pi * 2.0)
-        if delta > .pi { delta -= .pi * 2.0 }
-        if delta < -.pi { delta += .pi * 2.0 }
-        return start + (delta * min(max(amount, 0.0), 1.0))
+    private func companionToePads(
+        anchor: CGPoint,
+        basis: CGFloat,
+        scale: CGFloat,
+        rotation: CGFloat,
+        theta: CGFloat,
+        response: CGFloat
+    ) -> [(center: CGPoint, size: CGSize)] {
+        let sharedLift = (
+            (sin(theta) * basis * 0.006)
+                - (response * basis * 0.010)
+        ) * scale
+        let inwardNuzzle = 1.0 - (response * 0.018)
+        let geometry: [(
+            x: CGFloat,
+            y: CGFloat,
+            width: CGFloat,
+            height: CGFloat
+        )] = [
+            (-0.44, -0.33, 0.26, 0.36),
+            (-0.16, -0.40, 0.29, 0.42),
+            (0.16, -0.40, 0.29, 0.42),
+            (0.44, -0.33, 0.26, 0.36),
+        ]
+
+        return geometry.map { toe in
+            let center = rotatedPoint(
+                around: anchor,
+                x: toe.x * basis * scale * inwardNuzzle,
+                y: (toe.y * basis * scale) + sharedLift,
+                angle: rotation
+            )
+            return (
+                center: center,
+                size: CGSize(
+                    width: toe.width * basis * scale,
+                    height: toe.height * basis * scale
+                )
+            )
+        }
+    }
+
+    private func ellipsePath(center: CGPoint, size: CGSize) -> Path {
+        var path = Path()
+        path.addEllipse(
+            in: CGRect(
+                x: center.x - (size.width * 0.5),
+                y: center.y - (size.height * 0.5),
+                width: size.width,
+                height: size.height
+            )
+        )
+        return path
+    }
+
+    private func companionSheenPath(
+        center: CGPoint,
+        width: CGFloat,
+        height: CGFloat,
+        rotation: CGFloat
+    ) -> Path {
+        let halfWidth = width * 0.5
+        let halfHeight = height * 0.5
+
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            rotatedPoint(
+                around: center,
+                x: x * halfWidth,
+                y: y * halfHeight,
+                angle: rotation
+            )
+        }
+
+        var path = Path()
+        path.move(to: point(-0.56, -0.12))
+        path.addCurve(
+            to: point(0.34, -0.58),
+            control1: point(-0.42, -0.60),
+            control2: point(0.02, -0.78)
+        )
+        return path
     }
 }
 

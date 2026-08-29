@@ -157,6 +157,15 @@ private enum PPCommandDeckMetrics {
     static let createIconPointSize: CGFloat = 21
 
     static var tileHeight: CGFloat { deckHeight - 10 }
+    static var createTopInset: CGFloat {
+        (deckHeight - createDiameter) * 0.5
+    }
+
+    /// The deck already contributes horizontal padding, so the create slot
+    /// supplies only the remainder needed to match the circle's top inset.
+    static var createTrailingSlotPadding: CGFloat {
+        max(0, createTopInset - deckHorizontalPadding)
+    }
 }
 
 // MARK: - Public Command Deck
@@ -367,7 +376,15 @@ public struct PPCommandDeckTabBar: View {
                 radius: 12,
                 y: 5
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity,
+                alignment: .trailing
+            )
+            .padding(
+                .trailing,
+                PPCommandDeckMetrics.createTrailingSlotPadding
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(PPCommandDeckPressStyle(pressedScale: 0.93))

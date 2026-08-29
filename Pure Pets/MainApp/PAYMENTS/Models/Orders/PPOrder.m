@@ -505,6 +505,8 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
 - (NSString *)customerVisibleStatusKey
 {
     NSString *delivery = [self effectiveDeliveryStatus];
+    NSString *rawDelivery = PPOrderNormalizedStatusString(self.deliveryStatus);
+    NSString *explicitDelivery = PPOrderNormalizedDeliveryStatusString(self.deliveryStatus);
     NSString *raw = PPOrderNormalizedStatusString(self.rawStatus);
 
     if ([delivery isEqualToString:@"delivery_cancelled"] ||
@@ -563,7 +565,20 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
         PPOrderStatusContainsToken(raw, @"waiting")) {
         return @"pending";
     }
-    return @"preparing_for_shipment";
+    if ([explicitDelivery isEqualToString:@"preparing_for_shipment"] ||
+        PPOrderStatusContainsToken(rawDelivery, @"processing") ||
+        PPOrderStatusContainsToken(rawDelivery, @"preparing") ||
+        PPOrderStatusContainsToken(raw, @"processing") ||
+        PPOrderStatusContainsToken(raw, @"preparing") ||
+        PPOrderStatusContainsToken(raw, @"confirmed") ||
+        self.fulfillmentVersion != 1 &&
+        PPOrderStatusExplicitlyIndicatesCapturedPayment(raw)) {
+        return @"preparing_for_shipment";
+    }
+    if (rawDelivery.length == 0 && raw.length == 0) {
+        return @"preparing_for_shipment";
+    }
+    return @"unknown";
 }
 
 + (NSDate *)parseDateFromValue:(id)value

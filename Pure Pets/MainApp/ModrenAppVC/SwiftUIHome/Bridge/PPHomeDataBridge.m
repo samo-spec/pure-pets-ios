@@ -35,6 +35,44 @@ static NSError *PPHomeMissingSignalCategoryError(void) {
     }];
 }
 
+/// Home category portraits are allowed to resolve only from the canonical
+/// token-protected Pure Pets MainCategories folder. The token itself remains
+/// Firestore-owned; it is never duplicated or guessed in the client.
+static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
+    if (![rawURL isKindOfClass:NSString.class]) {
+        return @"";
+    }
+    NSString *trimmed =
+        [rawURL stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        return @"";
+    }
+
+    NSURLComponents *components = [NSURLComponents componentsWithString:trimmed];
+    NSString *encodedPath = components.percentEncodedPath.lowercaseString;
+    NSString *requiredPrefix =
+        @"/v0/b/pure-pets-49199.firebasestorage.app/o/appdata%2fmaincategories%2f";
+    if (![components.scheme.lowercaseString isEqualToString:@"https"] ||
+        ![components.host.lowercaseString isEqualToString:@"firebasestorage.googleapis.com"] ||
+        ![encodedPath hasPrefix:requiredPrefix] ||
+        encodedPath.length <= requiredPrefix.length) {
+        return @"";
+    }
+
+    BOOL hasMediaQuery = NO;
+    BOOL hasDownloadToken = NO;
+    for (NSURLQueryItem *item in components.queryItems) {
+        NSString *name = item.name.lowercaseString;
+        if ([name isEqualToString:@"alt"] &&
+            [item.value.lowercaseString isEqualToString:@"media"]) {
+            hasMediaQuery = YES;
+        } else if ([name isEqualToString:@"token"] && item.value.length > 0) {
+            hasDownloadToken = YES;
+        }
+    }
+    return hasMediaQuery && hasDownloadToken ? trimmed : @"";
+}
+
 @interface PPHomeHeroAnimationView ()
 
 @property (nonatomic, strong) LOTAnimationView *animationView;
@@ -730,6 +768,13 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
                 return;
             }
             if (error) {
+                if ([error.domain isEqualToString:PPHomePromoCarouselErrorDomain] &&
+                    error.code == PPHomePromoCarouselErrorCooldown) {
+                    // Another lifecycle caller already owns the in-flight or
+                    // failed attempt. Cooldown callbacks are terminal but do
+                    // not emit duplicate source=1 errors or clear prior cards.
+                    return;
+                }
                 [self publishError:error source:PPHomeBridgeSourcePromotions];
                 return;
             }
@@ -2107,11 +2152,16 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
     }
     UIImage *localImage = model.KindImageFile ?: model.image;
     UIColor *accent = model.kindColor ?: UIColor.ppPrimary;
+    NSString *canonicalImageURL =
+        PPHomeCanonicalMainCategoryImageURL(model.KindImageUrl);
+    NSString *canonicalHeroImageURL =
+        PPHomeCanonicalMainCategoryImageURL(model.HeroImageUrl);
     NSMutableDictionary<NSString *, id> *presentation = [@{
         @"id" : model.documentID ?: @"",
         @"numericID" : @(model.ID),
         @"title" : localizedName,
-        @"imageURL" : model.KindImageUrl ?: @"",
+        @"imageURL" : canonicalImageURL,
+        @"heroImageURL" : canonicalHeroImageURL,
         @"accent" : accent,
         @"colorHex" : model.PetColor ?: @"",
     } mutableCopy];

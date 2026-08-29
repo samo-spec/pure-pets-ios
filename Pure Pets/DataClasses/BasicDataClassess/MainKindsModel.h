@@ -43,6 +43,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot;
 - (instancetype)initWithId:(NSString *)mainKindID dictionary:(NSDictionary *)dictionary;
 @property (nonatomic, strong, nullable) NSString *KindImageUrl;
+/// Optional hero-specific artwork. Legacy documents fall back to
+/// `KindImageUrl` at the Home presentation boundary.
+@property (nonatomic, strong, nullable) NSString *HeroImageUrl;
 @property (nonatomic, strong, nullable) NSString *KindIconName;
 @property (nonatomic, strong, nullable) NSString *PetColor;
 @property (nonatomic, strong) UIImage *KindImageFile;

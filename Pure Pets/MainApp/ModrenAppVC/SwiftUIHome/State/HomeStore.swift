@@ -148,6 +148,7 @@ final class HomeStore: ObservableObject {
         initial.languageCode = Language.currentLanguageCode() ?? "ar"
         initial.isRightToLeft = Language.isRTL()
         initial.cartCount = PPHomeDataBridge.currentCartItemCount()
+        initial.isUserLoggedIn = UserManager.shared().isUserLoggedIn()
         initial.bottomContentClearance = router.bottomContentClearance()
         self.state = initial
 
@@ -448,18 +449,11 @@ final class HomeStore: ObservableObject {
         )
 
         let applySelection = {
+            // Pet context and marketplace browsing scope are independent.
+            // Switching the active Home pet must not overwrite the category
+            // the user is currently browsing or its persisted selection.
             self.state.selectedPetID = pet.id
             UserDefaults.standard.set(pet.id, forKey: Self.selectedPetKey)
-            if pet.categoryID > 0,
-               self.state.categories.contains(where: {
-                   HomeModelAdapter.mainKindID($0.raw) == pet.categoryID
-               }) {
-                self.state.selectedMainKindID = pet.categoryID
-                UserDefaults.standard.set(
-                    pet.categoryID,
-                    forKey: Self.selectedMainKindKey
-                )
-            }
             self.rebuildState()
         }
 
@@ -1084,6 +1078,7 @@ final class HomeStore: ObservableObject {
                 $0.subtitle,
                 $0.imageURL ?? "",
                 $0.accentHex,
+                String($0.usesHeroImageURL),
             ].joined(separator: "|")
         }.joined(separator: "^")
     }
@@ -1206,6 +1201,7 @@ final class HomeStore: ObservableObject {
     private func rebuildState() {
         let previousHeroIDs = state.heroPages.map(\.id)
         let previousPromotionIDs = state.promotionPages.map(\.id)
+        state.isUserLoggedIn = UserManager.shared().isUserLoggedIn()
         state.categories = HomeModelAdapter.categories(from: mainKinds)
         state.pets = HomeModelAdapter.pets(from: petProfiles)
 
@@ -1231,15 +1227,10 @@ final class HomeStore: ObservableObject {
 
         if let savedMainKindID {
             state.selectedMainKindID = savedMainKindID
-        } else if persistedCategory?.intValue == -1 {
-            state.selectedMainKindID = nil
-        } else if let petCategoryID = selectedPet?.categoryID,
-                  petCategoryID > 0,
-                  state.categories.contains(where: {
-                      HomeModelAdapter.mainKindID($0.raw) == petCategoryID
-                  }) {
-            state.selectedMainKindID = petCategoryID
         } else {
+            // Browsing scope is owned only by its explicit persisted/default
+            // selection. A default or active pet never silently changes it.
+            // The persisted -1 sentinel and an absent value both mean All.
             state.selectedMainKindID = nil
         }
         synchronizeMarketplaceSignals(to: state.selectedMainKindID)
@@ -1425,44 +1416,46 @@ final class HomeStore: ObservableObject {
         let marketplaceAccessibilityLabel: String
 
         if let categoryName, !categoryName.isEmpty {
-            let containsLatin = categoryName.range(of: "[a-zA-Z]", options: .regularExpression) != nil
-            let isolatedCategoryName = containsLatin
-                ? "\u{2068}\(categoryName)\u{2069}"
-                : categoryName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let forms = categoryCopyForms(
+                title: categoryName,
+                categoryID: state.selectedMainKindID
+            )
+            let definiteName = isolatedCategoryCopyValue(forms.definite)
+            let dativeName = isolatedCategoryCopyValue(forms.dative)
             marketplaceEyebrow = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_eyebrow_format",
                     fallback: "Marketplace | %@ picks"
                 ),
-                isolatedCategoryName
+                definiteName
             )
             marketplaceTitle = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_title_format",
                     fallback: "Curated for %@"
                 ),
-                isolatedCategoryName
+                Language.isRTL() ? definiteName : dativeName
             )
             marketplaceSubtitle = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_subtitle_format",
                     fallback: "Products, services, and listings for %@ from trusted providers."
                 ),
-                isolatedCategoryName
+                dativeName
             )
             marketplacePrimaryTitle = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_cta_format",
                     fallback: "Explore %@"
                 ),
-                isolatedCategoryName
+                definiteName
             )
             marketplaceAccessibilityLabel = String(
                 format: HomeModelAdapter.localized(
                     "home_marketplace_hero_category_accessibility_label_format",
                     fallback: "%@. Products, services, and listings from trusted providers."
                 ),
-                isolatedCategoryName
+                definiteName
             )
         } else {
             marketplaceEyebrow = HomeModelAdapter.localized(
@@ -1512,11 +1505,15 @@ final class HomeStore: ObservableObject {
                 "home_pulse_find_services",
                 fallback: "Find services"
             ),
-            imageURL: selectedCategory?.imageURL,
+            // Hero-specific artwork wins inside the living blob. Existing
+            // MainKinds documents remain compatible through the category image.
+            imageURL: selectedCategory?.heroImageURL
+                ?? selectedCategory?.imageURL,
             localImage: selectedCategory?.localImage,
             accentHex: normalizedHex(selectedCategoryHex, fallback: "CB2654"),
             action: .openMarketplace(selectedMainKind),
-            accessibilityLabel: marketplaceAccessibilityLabel
+            accessibilityLabel: marketplaceAccessibilityLabel,
+            usesHeroImageURL: selectedCategory?.heroImageURL != nil
         )
     }
 
@@ -1574,7 +1571,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Food & essentials"
                 ),
                 systemImage: "bag.fill",
-                accent: UIColor(red: 0.86, green: 0.23, blue: 0.37, alpha: 1.0),
+                accent: .ppQuickActionShopping,
                 destination: .shop
             ),
             HomePriorityAction(
@@ -1602,7 +1599,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Listings & adoption"
                 ),
                 systemImage: "heart.fill",
-                accent: UIColor(red: 0.74, green: 0.31, blue: 0.52, alpha: 1.0),
+                accent: .ppQuickActionAnimals,
                 destination: .advertisements
             ),
             HomePriorityAction(
@@ -1616,7 +1613,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Clinics & care"
                 ),
                 systemImage: "cross.case.fill",
-                accent: UIColor(red: 0.31, green: 0.53, blue: 0.70, alpha: 1.0),
+                accent: .ppQuickActionCommunity,
                 destination: .veterinary
             ),
             HomePriorityAction(
@@ -1630,7 +1627,7 @@ final class HomeStore: ObservableObject {
                     fallback: "Pet medicines"
                 ),
                 systemImage: "pills.fill",
-                accent: UIColor(red: 0.22, green: 0.65, blue: 0.58, alpha: 1.0),
+                accent: .ppQuickActionServices,
                 destination: .pharmacy
             ),
             HomePriorityAction(
@@ -2103,6 +2100,81 @@ final class HomeStore: ObservableObject {
         }
     }
 
+    private struct HomeCategoryCopyForms {
+        let raw: String
+        let definite: String
+        let dative: String
+    }
+
+    /// Arabic category grammar is presentation metadata keyed by the stable
+    /// backend numeric ID. It never changes category identity or backend data,
+    /// and unknown future categories safely keep their localized server title.
+    private func categoryCopyForms(
+        title: String,
+        categoryID: Int?
+    ) -> HomeCategoryCopyForms {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard Language.isRTL() else {
+            return HomeCategoryCopyForms(
+                raw: trimmed,
+                definite: trimmed,
+                dative: trimmed
+            )
+        }
+
+        if let categoryID,
+           [1, 2, 3, 4, 5, 6, 7, 10, 11].contains(categoryID) {
+            return HomeCategoryCopyForms(
+                raw: trimmed,
+                definite: HomeModelAdapter.localized(
+                    "home_species_\(categoryID)_definite",
+                    fallback: trimmed
+                ),
+                dative: HomeModelAdapter.localized(
+                    "home_species_\(categoryID)_dative",
+                    fallback: trimmed
+                )
+            )
+        }
+
+        // Unknown future categories still receive safe Arabic morphology. If
+        // the server title already carries the definite article, reuse it and
+        // remove only that article before applying the dative form.
+        let hasDefiniteArticle = trimmed.hasPrefix("ال")
+        let root = hasDefiniteArticle
+            ? String(trimmed.dropFirst(2))
+            : trimmed
+        let definite = hasDefiniteArticle
+            ? trimmed
+            : String(
+                format: HomeModelAdapter.localized(
+                    "home_species_unknown_definite_format",
+                    fallback: "%@"
+                ),
+                root
+            )
+        let dative = String(
+            format: HomeModelAdapter.localized(
+                "home_species_unknown_dative_format",
+                fallback: "%@"
+            ),
+            root
+        )
+        return HomeCategoryCopyForms(
+            raw: trimmed,
+            definite: definite,
+            dative: dative
+        )
+    }
+
+    private func isolatedCategoryCopyValue(_ value: String) -> String {
+        let containsLatin = value.range(
+            of: "[a-zA-Z]",
+            options: .regularExpression
+        ) != nil
+        return containsLatin ? "\u{2068}\(value)\u{2069}" : value
+    }
+
     private func categorySectionCopy(
         for kind: HomeMarketplaceFeedKind,
         title categoryTitle: String
@@ -2130,10 +2202,22 @@ final class HomeStore: ObservableObject {
             titleFallback = "Services for %@"
         }
 
+        let forms = categoryCopyForms(
+            title: categoryTitle,
+            categoryID: state.selectedMainKindID
+        )
+        let value: String
+        switch kind {
+        case .recommendations, .advertisements, .nearbyAdvertisements:
+            value = forms.definite
+        case .accessorySuggestions, .accessories, .food, .services:
+            value = forms.dative
+        }
+
         return formattedSectionCopy(
             titleKey: titleKey,
             titleFallback: titleFallback,
-            value: categoryTitle,
+            value: isolatedCategoryCopyValue(value),
             subtitleKey: "home_pulse_section_selected_category_subtitle",
             subtitleFallback: "Matched to the category you selected"
         )

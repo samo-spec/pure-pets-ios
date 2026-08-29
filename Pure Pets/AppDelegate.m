@@ -203,20 +203,13 @@ static BOOL PPAppDelegateTargetsUserApp(NSDictionary *userInfo) {
         ) lowercaseString] copy];
     }
     if (targetApp.length > 0) {
-        return [targetApp isEqualToString:kPPNotificationV2UserAppID] ||
-               [targetApp isEqualToString:@"user"] ||
-               [targetApp isEqualToString:@"all"] ||
-               [targetApp isEqualToString:@"consumer"];
+        return [targetApp isEqualToString:kPPNotificationV2UserAppID];
     }
 
     id rawTargets = safePayload[@"targetApps"] ?: meta[@"targetApps"];
     if ([rawTargets isKindOfClass:NSString.class]) {
-        NSString *rawString = [(NSString *)rawTargets lowercaseString];
-        if ([rawString containsString:kPPNotificationV2UserAppID] ||
-            [rawString containsString:@"user"] ||
-            [rawString containsString:@"all"]) {
-            return YES;
-        }
+        NSString *rawString = [[(NSString *)rawTargets stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString];
+        if ([rawString isEqualToString:kPPNotificationV2UserAppID]) return YES;
         NSData *data = [((NSString *)rawTargets) dataUsingEncoding:NSUTF8StringEncoding];
         if (data) {
             id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
@@ -228,16 +221,12 @@ static BOOL PPAppDelegateTargetsUserApp(NSDictionary *userInfo) {
     if ([rawTargets isKindOfClass:NSArray.class]) {
         for (id rawTarget in (NSArray *)rawTargets) {
             NSString *targetStr = [[PPAppDelegateScalarString(rawTarget) lowercaseString] copy];
-            if ([targetStr isEqualToString:kPPNotificationV2UserAppID] ||
-                [targetStr isEqualToString:@"user"] ||
-                [targetStr isEqualToString:@"all"] ||
-                [targetStr isEqualToString:@"consumer"]) {
+            if ([targetStr isEqualToString:kPPNotificationV2UserAppID]) {
                 return YES;
             }
         }
-        return NO;
     }
-    return YES;
+    return NO;
 }
 
 static BOOL PPAppDelegateIsTargetedAwayFromUserApp(NSDictionary *userInfo) {
@@ -295,11 +284,7 @@ static BOOL PPAppDelegateIsOrderLifecycleNotification(NSDictionary *userInfo) {
 static BOOL PPAppDelegateHasNotificationV2Marker(NSDictionary *userInfo) {
     NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
     NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
-    return safePayload[@"schemaVersion"] != nil || meta[@"schemaVersion"] != nil ||
-        safePayload[@"notificationId"] != nil || meta[@"notificationId"] != nil ||
-        safePayload[@"targetApp"] != nil || meta[@"targetApp"] != nil ||
-        safePayload[@"targetApps"] != nil || meta[@"targetApps"] != nil ||
-        safePayload[@"eventType"] != nil || meta[@"eventType"] != nil;
+    return safePayload[@"schemaVersion"] != nil || meta[@"schemaVersion"] != nil;
 }
 
 static BOOL PPAppDelegateIsProviderOnlyNotificationPayload(NSDictionary *userInfo) {
@@ -528,6 +513,11 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
         return NO;
     }
     if (PPAppDelegateIsTargetedAwayFromUserApp(safePayload)) {
+        return NO;
+    }
+    if (PPAppDelegateHasNotificationV2Marker(safePayload) &&
+        (!PPAppDelegateHasExactNotificationV2Schema(safePayload) ||
+         !PPAppDelegateTargetsUserApp(safePayload))) {
         return NO;
     }
     return YES;

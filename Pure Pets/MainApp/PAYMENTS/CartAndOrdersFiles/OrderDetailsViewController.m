@@ -138,6 +138,7 @@ static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
     if ([normalized isEqualToString:@"pending"]) return kLang(@"order_placed_title");
+    if ([normalized isEqualToString:@"preparing_for_shipment"]) return kLang(@"Preparing for Shipment");
     if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
     if ([normalized isEqualToString:@"delivery_partner_assigned"]) return kLang(@"Delivery Partner Assigned");
     if ([normalized isEqualToString:@"on_the_way"]) return kLang(@"On the Way");
@@ -147,13 +148,14 @@ static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
     if ([normalized isEqualToString:@"delivery_failed"]) return kLang(@"Delivery Failed");
     if ([normalized isEqualToString:@"returned_to_store"]) return kLang(@"Returned to Store");
     if ([normalized isEqualToString:@"delivery_delayed"]) return kLang(@"Delivery Delayed");
-    return kLang(@"Preparing for Shipment");
+    return kLang(@"Unknown");
 }
 
 static NSString *PPOrderCustomerVisibleStatusHint(NSString *statusKey)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
     if ([normalized isEqualToString:@"pending"]) return kLang(@"order_delivery_hint_waiting_acceptance");
+    if ([normalized isEqualToString:@"preparing_for_shipment"]) return kLang(@"order_delivery_hint_preparing");
     if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"order_delivery_hint_ready");
     if ([normalized isEqualToString:@"delivery_partner_assigned"]) return kLang(@"order_delivery_hint_assigned");
     if ([normalized isEqualToString:@"on_the_way"]) return kLang(@"order_delivery_hint_on_the_way");
@@ -163,7 +165,7 @@ static NSString *PPOrderCustomerVisibleStatusHint(NSString *statusKey)
     if ([normalized isEqualToString:@"delivery_failed"]) return kLang(@"order_delivery_hint_failed");
     if ([normalized isEqualToString:@"returned_to_store"]) return kLang(@"order_delivery_hint_returned");
     if ([normalized isEqualToString:@"delivery_delayed"]) return kLang(@"order_delivery_hint_delayed");
-    return kLang(@"order_delivery_hint_preparing");
+    return @"";
 }
 
 static BOOL PPOrderTimelineUsesDeliveryPresentation(NSString *statusKey)

@@ -21,6 +21,9 @@ enum HomeModelAdapter {
             let title = presentation["title"] as? String ?? ""
             let rawImageURL = presentation["imageURL"] as? String ?? ""
             let imageURL = rawImageURL.isEmpty ? nil : rawImageURL
+            let rawHeroImageURL =
+                presentation["heroImageURL"] as? String ?? ""
+            let heroImageURL = rawHeroImageURL.isEmpty ? nil : rawHeroImageURL
             let localImage = presentation["localImage"] as? UIImage
             let accent = presentation["accent"] as? UIColor ?? .ppPrimary
 
@@ -30,6 +33,7 @@ enum HomeModelAdapter {
                     ? localized("home_pulse_category_fallback", fallback: "Pets")
                     : title,
                 imageURL: imageURL,
+                heroImageURL: heroImageURL,
                 localImage: localImage,
                 accent: accent,
                 raw: model

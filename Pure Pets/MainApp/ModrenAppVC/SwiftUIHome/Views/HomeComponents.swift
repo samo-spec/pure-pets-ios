@@ -83,6 +83,72 @@ enum HomeVisualTokens {
     }
 }
 
+/// One Home-owned optical treatment for species artwork across UIKit and
+/// SwiftUI. Every image still uses aspect-fit; these profiles only normalize
+/// the transparent canvas and baseline for known silhouette families. Unknown
+/// server categories receive a conservative fallback instead of title-based
+/// or localization-dependent guessing.
+struct HomeSpeciesArtworkTreatment: Equatable {
+    let scale: CGFloat
+    let horizontalOffsetRatio: CGFloat
+    let baselineOffsetRatio: CGFloat
+
+    static func resolved(for categoryID: Int) -> Self {
+        switch categoryID {
+        case 1, 11: // Birds and falcons: broad winged silhouettes.
+            return Self(
+                scale: 1.02,
+                horizontalOffsetRatio: 0,
+                baselineOffsetRatio: 0.025
+            )
+        case 5, 6: // Cats and dogs: compact quadrupeds.
+            return Self(
+                scale: 0.98,
+                horizontalOffsetRatio: 0,
+                baselineOffsetRatio: 0.04
+            )
+        case 2, 3, 4, 10: // Tall/long-bodied grazing animals.
+            return Self(
+                scale: 0.90,
+                horizontalOffsetRatio: 0,
+                baselineOffsetRatio: 0.05
+            )
+        case 7: // Fish: wide, low silhouette.
+            return Self(
+                scale: 1.04,
+                horizontalOffsetRatio: 0,
+                baselineOffsetRatio: 0.03
+            )
+        default:
+            return Self(
+                scale: 0.96,
+                horizontalOffsetRatio: 0,
+                baselineOffsetRatio: 0.035
+            )
+        }
+    }
+
+    func frame(in canvas: CGRect) -> CGRect {
+        let width = canvas.width * scale
+        let height = canvas.height * scale
+        return CGRect(
+            x: canvas.midX - (width / 2)
+                + (canvas.width * horizontalOffsetRatio),
+            y: canvas.midY - (height / 2)
+                + (canvas.height * baselineOffsetRatio),
+            width: width,
+            height: height
+        ).integral
+    }
+
+    func offset(for side: CGFloat) -> CGSize {
+        CGSize(
+            width: side * horizontalOffsetRatio,
+            height: side * baselineOffsetRatio
+        )
+    }
+}
+
 /// The only accent families used by Home navigation and supporting surfaces.
 enum HomeSemanticTone {
     static let brand = Color.ppPrimary
@@ -958,14 +1024,38 @@ private struct HomePetIdentityPill: View {
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(alignment: .center, spacing: PPSpace.sm + 2) {
+            HStack(alignment: .center, spacing: PPSpace.base) {
                 portrait
-                nameAndMetadata
+
+                VStack(alignment: .leading, spacing: PPSpace.xxs + 1) {
+                    Text(displayName)
+                        .font(HomeFont.headline())
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                        .minimumScaleFactor(0.82)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let petContext {
+                        Text(petContext)
+                            .font(HomeFont.footnote())
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(
+                                dynamicTypeSize.isAccessibilitySize ? 3 : 2
+                            )
+                            .minimumScaleFactor(0.82)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    statusRow
+                        .padding(.top, PPSpace.xxs)
+                }
+                .layoutPriority(1)
+
                 Spacer(minLength: 0)
-                selectionIndicator
             }
-            .padding(.leading, PPSpace.sm + 2)
-            .padding(.trailing, PPSpace.md)
+            .padding(.horizontal, PPSpace.base)
             .padding(.vertical, PPSpace.sm + 2)
             .frame(
                 minWidth: minimumWidth,
@@ -1004,7 +1094,7 @@ private struct HomePetIdentityPill: View {
         .accessibilityHint(
             HomeModelAdapter.localized(
                 "home_pulse_pet_context_subtitle",
-                fallback: "Home priorities follow the selected pet"
+                fallback: "Choose which pet context to view"
             )
         )
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -1012,60 +1102,43 @@ private struct HomePetIdentityPill: View {
     }
 
     @ViewBuilder
-    private var nameAndMetadata: some View {
-        VStack(alignment: .leading, spacing: 3) {
+    private var statusRow: some View {
+        if selected || pet.isDefault {
             HStack(spacing: PPSpace.xs) {
-                Text(displayName)
-                    .font(HomeFont.headline())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
-                    .minimumScaleFactor(0.82)
+                if selected {
+                    statusTag(
+                        HomeModelAdapter.localized(
+                            "home_pulse_pet_selected_status",
+                            fallback: "Selected"
+                        ),
+                        color: Color.ppPrimary
+                    )
+                }
 
                 if pet.isDefault {
-                    defaultTag
+                    statusTag(
+                        HomeModelAdapter.localized(
+                            "Default",
+                            fallback: "Default"
+                        ),
+                        color: selected
+                            ? Color.ppPrimary
+                            : Color.ppTextTertiary
+                    )
                 }
             }
-
-            if let petContext {
-                Text(petContext)
-                    .font(HomeFont.footnote())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(
-                        dynamicTypeSize.isAccessibilitySize ? 3 : 1
-                    )
-                    .minimumScaleFactor(0.82)
-            }
         }
-        .layoutPriority(1)
     }
 
-    private var defaultTag: some View {
-        let tagColor = selected ? Color.ppPrimary : Color.ppTextTertiary
-        let tagBg = (selected ? Color.ppPrimary : Color.ppBorder).opacity(0.12)
-        return Text(HomeModelAdapter.localized("default", fallback: "Default"))
+    private func statusTag(_ title: String, color: Color) -> some View {
+        Text(title)
             .font(HomeFont.bold(10))
-            .foregroundStyle(tagColor)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1.5)
-            .background(tagBg, in: Capsule())
-    }
-
-    private var selectionIndicator: some View {
-        let shadowColor = Color.ppPrimary.opacity(colorScheme == .dark ? 0.40 : 0.25)
-        return ZStack {
-            Circle()
-                .fill(Color.ppPrimary)
-                .frame(width: 22, height: 22)
-            Image(systemName: "checkmark")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white)
-        }
-        .shadow(color: shadowColor, radius: 4, x: 0, y: 2)
-        .scaleEffect(selected ? 1 : 0.001)
-        .opacity(selected ? 1 : 0)
-        .animation(selectionAnimation, value: selected)
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, PPSpace.sm)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12), in: Capsule())
     }
 
     private var portrait: some View {
@@ -1157,17 +1230,21 @@ private struct HomePetIdentityPill: View {
     }
 
     private var accessibilityLabel: String {
-        let label = [displayName, petContext]
-            .compactMap { $0 }
+        let statuses = [
+            selected
+                ? HomeModelAdapter.localized(
+                    "home_pulse_pet_selected_status",
+                    fallback: "Selected"
+                )
+                : nil,
+            pet.isDefault
+                ? HomeModelAdapter.localized("Default", fallback: "Default")
+                : nil,
+        ]
+        .compactMap { $0 }
+
+        return ([displayName, petContext].compactMap { $0 } + statuses)
             .joined(separator: ", ")
-        guard selected else { return label }
-        return String(
-            format: HomeModelAdapter.localized(
-                "home_pulse_pet_selected_a11y",
-                fallback: "%@ selected"
-            ),
-            label
-        )
     }
 
     private var surfaceBackground: some ShapeStyle {
@@ -1190,23 +1267,23 @@ private struct HomePetIdentityPill: View {
     }
 
     private var portraitDiameter: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 66 : 58
+        dynamicTypeSize.isAccessibilitySize ? 74 : 64
     }
 
     private var portraitImageDiameter: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 58 : 50
+        dynamicTypeSize.isAccessibilitySize ? 66 : 56
     }
 
     private var minimumWidth: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 232 : 188
+        dynamicTypeSize.isAccessibilitySize ? 320 : 276
     }
 
     private var maximumWidth: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 340 : 286
+        dynamicTypeSize.isAccessibilitySize ? 392 : 352
     }
 
     private var minimumHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 108 : 86
+        dynamicTypeSize.isAccessibilitySize ? 136 : 108
     }
 
     private var selectionAnimation: Animation {
@@ -5319,7 +5396,8 @@ struct HomeStatusBanner: View {
                 ),
                 action: retry
             )
-        } else if case .partial = state.phase {
+        } else if state.isUserLoggedIn,
+                  case .partial = state.phase {
             banner(
                 symbol: "exclamationmark.circle",
                 title: HomeModelAdapter.localized(

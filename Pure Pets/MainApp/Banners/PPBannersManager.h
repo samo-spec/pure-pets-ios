@@ -14,6 +14,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class MainBannerModel;
 
+FOUNDATION_EXPORT NSString * const PPHomePromoCarouselErrorDomain;
+typedef NS_ENUM(NSInteger, PPHomePromoCarouselErrorCode) {
+    PPHomePromoCarouselErrorCooldown = 1001,
+};
+
 @interface PPHomePromoCarouselCard : NSObject
 
 @property (nonatomic, copy) NSString *cardID;

@@ -40,6 +40,7 @@ static NSString * const kOrderHistoryFilterShipped = @"shipped";
 static NSString * const kOrderHistoryFilterDelivered = @"delivered";
 static NSString * const kOrderHistoryFilterCancelled = @"cancelled";
 static NSString * const kOrderHistoryFilterFailed = @"failed";
+static NSString * const kOrderHistoryFilterUnknown = @"unknown";
 
 static NSString *PPOrderHistoryTrimmedString(id value)
 {
@@ -1481,7 +1482,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         item.progressStage = [self pp_progressStageForFilterKey:item.filterKey];
         item.isActive = ![item.filterKey isEqualToString:kOrderHistoryFilterDelivered] &&
             ![item.filterKey isEqualToString:kOrderHistoryFilterCancelled] &&
-            ![item.filterKey isEqualToString:kOrderHistoryFilterFailed];
+            ![item.filterKey isEqualToString:kOrderHistoryFilterFailed] &&
+            ![item.filterKey isEqualToString:kOrderHistoryFilterUnknown];
 
         NSString *imageURL = [self firstEmbeddedImageURLForOrder:order];
         NSString *firstItemID = [self firstItemIDForOrder:order];
@@ -1539,7 +1541,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     if ([filterKey isEqualToString:kOrderHistoryFilterProcessing]) return 2;
     if ([filterKey isEqualToString:kOrderHistoryFilterPaid]) return 1;
     if ([filterKey isEqualToString:kOrderHistoryFilterCancelled] ||
-        [filterKey isEqualToString:kOrderHistoryFilterFailed]) return 0;
+        [filterKey isEqualToString:kOrderHistoryFilterFailed] ||
+        [filterKey isEqualToString:kOrderHistoryFilterUnknown]) return 0;
     return 1;
 }
 
@@ -2432,8 +2435,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 {
     // The model intentionally falls back to a preparation delivery state. Preserve a
     // genuine customer-visible pending phase so the filter agrees with the row copy.
-    if ([[self customerStatusKeyForOrder:order] isEqualToString:@"pending"]) {
+    NSString *customerStatusKey = [self customerStatusKeyForOrder:order];
+    if ([customerStatusKey isEqualToString:@"pending"]) {
         return kOrderHistoryFilterPending;
+    }
+    if ([customerStatusKey isEqualToString:@"unknown"]) {
+        return kOrderHistoryFilterUnknown;
     }
     return PPOrderHistoryCanonicalFilterKeyForStatus([self normalizedStatusKeyForOrder:order]);
 }
@@ -2451,6 +2458,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 {
     NSString *key = PPOrderHistoryNormalizedStatus(statusKey);
     if ([key isEqualToString:@"pending"]) return kLang(@"order_placed_title") ?: kLang(@"Pending");
+    if ([key isEqualToString:@"preparing_for_shipment"]) return kLang(@"Preparing for Shipment");
     if ([key isEqualToString:@"ready_for_delivery"] ||
         [key isEqualToString:@"ready_to_ship"] ||
         [key isEqualToString:@"delivery_requested"] ||
@@ -2474,7 +2482,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     if ([key isEqualToString:@"returned_to_store"] ||
         [key isEqualToString:@"returned"]) return kLang(@"Returned to Store");
     if ([key isEqualToString:@"delivery_delayed"]) return kLang(@"Delivery Delayed");
-    return kLang(@"Preparing for Shipment");
+    return kLang(@"Unknown");
 }
 
 - (NSString *)displayTitleForStatusFilterKey:(NSString *)filterKey
@@ -2700,7 +2708,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         NSString *statusKey = [self canonicalStatusFilterKeyForOrder:order];
         BOOL isActive = ![statusKey isEqualToString:kOrderHistoryFilterDelivered] &&
         ![statusKey isEqualToString:kOrderHistoryFilterCancelled] &&
-        ![statusKey isEqualToString:kOrderHistoryFilterFailed];
+        ![statusKey isEqualToString:kOrderHistoryFilterFailed] &&
+        ![statusKey isEqualToString:kOrderHistoryFilterUnknown];
         if (isActive) {
             count += 1;
         }

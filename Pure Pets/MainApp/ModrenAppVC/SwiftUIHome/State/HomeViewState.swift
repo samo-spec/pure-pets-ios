@@ -148,6 +148,7 @@ struct HomeHeroPage: Identifiable {
     let action: HomeHeroAction
     let accessibilityLabel: String?
     let autoScrollInterval: TimeInterval
+    let usesHeroImageURL: Bool
 
     init(
         id: String,
@@ -162,7 +163,8 @@ struct HomeHeroPage: Identifiable {
         accentHex: String,
         action: HomeHeroAction,
         accessibilityLabel: String? = nil,
-        autoScrollInterval: TimeInterval = 4.8
+        autoScrollInterval: TimeInterval = 4.8,
+        usesHeroImageURL: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -177,6 +179,7 @@ struct HomeHeroPage: Identifiable {
         self.action = action
         self.accessibilityLabel = accessibilityLabel
         self.autoScrollInterval = autoScrollInterval
+        self.usesHeroImageURL = usesHeroImageURL
     }
 }
 
@@ -195,6 +198,7 @@ struct HomeCategoryModel: Identifiable {
     let id: String
     let title: String
     let imageURL: String?
+    let heroImageURL: String?
     let localImage: UIImage?
     let accent: UIColor
     let raw: NSObject
@@ -346,6 +350,7 @@ struct HomeViewState {
     var languageCode: String
     var isRightToLeft: Bool
     var cartCount: Int
+    var isUserLoggedIn: Bool
     var selectedMainKindID: Int?
     var marketplaceSignals: HomeMarketplaceSignals
     var selectedPetID: String?
@@ -369,6 +374,7 @@ struct HomeViewState {
         languageCode: "ar",
         isRightToLeft: true,
         cartCount: 0,
+        isUserLoggedIn: false,
         selectedMainKindID: nil,
         marketplaceSignals: HomeMarketplaceSignals(),
         selectedPetID: nil,

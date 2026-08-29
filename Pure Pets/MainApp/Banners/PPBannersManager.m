@@ -10,6 +10,8 @@
 #import "MainBannerModel.h"
 #import "Language.h"
 #import "PPFirebaseSessionBridge.h"
+#import <FirebaseAuth/FirebaseAuth.h>
+@import FirebaseAuth;
 
 static NSString * const kCachedBannerGroupsKey = @"cachedBannerGroups";
 @interface PPBannersManager ()
@@ -22,7 +24,30 @@ static NSString * const kCachedBannerGroupsKey = @"cachedBannerGroups";
 
 static NSString * const kPPHomePromoCarouselEndpoint =
     @"https://us-central1-pure-pets-49199.cloudfunctions.net/getMobileContentSurface/marketplace.promoRail";
-static NSString * const kPPHomePromoCarouselCacheKey = @"cachedHomePromoCarouselCards";
+NSString * const PPHomePromoCarouselErrorDomain = @"PPHomePromoCarousel";
+static NSString * const kPPHomePromoCarouselCacheKeyPrefix = @"cachedHomePromoCarouselCards.v2";
+static NSString * const kPPHomePromoCarouselSuccessKeyPrefix = @"cachedHomePromoCarouselSuccessAt.v2";
+static NSTimeInterval const kPPHomePromoCarouselFreshInterval = 900.0;
+static NSTimeInterval const kPPHomePromoCarouselFailureCooldown = 30.0;
+
+static NSString *PPHomePromoIdentityKey(void) {
+    NSString *uid = [FIRAuth auth].currentUser.uid;
+    return uid.length > 0 ? uid : @"";
+}
+
+static NSString * _Nullable PPHomePromoScopedDefaultsKey(NSString *prefix,
+                                                          NSString *identityKey) {
+    if (prefix.length == 0 || identityKey.length == 0) {
+        return nil;
+    }
+    return [NSString stringWithFormat:@"%@.%@", prefix, identityKey];
+}
+
+static NSError *PPHomePromoCooldownError(void) {
+    return [NSError errorWithDomain:PPHomePromoCarouselErrorDomain
+                               code:PPHomePromoCarouselErrorCooldown
+                           userInfo:nil];
+}
 
 static NSString *PPHomePromoSafeString(id value) {
     if ([value isKindOfClass:NSString.class]) {
@@ -451,9 +476,21 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
 @interface PPHomePromoCarouselManager ()
 @property (nonatomic, strong, nullable) NSURLSessionDataTask *contentTask;
 @property (nonatomic, assign) NSUInteger requestGeneration;
+@property (nonatomic, assign) BOOL requestInFlight;
+@property (nonatomic, assign) NSTimeInterval retryNotBefore;
+@property (nonatomic, assign) NSTimeInterval lastSuccessfulFetchAt;
+@property (nonatomic, copy) NSString *identityKey;
+@property (nonatomic, strong) NSMutableArray *pendingCompletions;
 @property (nonatomic, copy, nullable) NSString *etag;
 @property (nonatomic, copy, readwrite) NSArray<PPHomePromoCarouselCard *> *cards;
 
+- (void)synchronizeIdentityContext;
+- (void)recordSuccessfulFetch;
+- (void)recordFailedFetch;
+- (void)enqueueCompletion:(void (^)(NSArray<PPHomePromoCarouselCard *> * _Nullable cards,
+                                    NSError * _Nullable error))completion;
+- (void)completePendingWithCards:(NSArray<PPHomePromoCarouselCard *> * _Nullable)cards
+                           error:(NSError * _Nullable)error;
 - (NSArray<PPHomePromoCarouselCard *> *)cardsFromRemotePayload:(NSDictionary *)payload;
 - (void)fetchRemoteCardsWithCompletion:(void (^)(NSArray<PPHomePromoCarouselCard *> * _Nullable cards,
                                                  NSError * _Nullable error))completion;
@@ -476,7 +513,12 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
     self = [super init];
     if (self) {
         _cards = @[];
+        _identityKey = @"";
+        _pendingCompletions = [NSMutableArray array];
         _requestGeneration = 0;
+        _requestInFlight = NO;
+        _retryNotBefore = 0.0;
+        _lastSuccessfulFetchAt = 0.0;
     }
     return self;
 }
@@ -489,9 +531,90 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
     return nil;
 }
 
+- (void)synchronizeIdentityContext
+{
+    NSString *currentIdentityKey = PPHomePromoIdentityKey();
+    if ([self.identityKey isEqualToString:currentIdentityKey]) {
+        return;
+    }
+
+    self.requestGeneration += 1;
+    [self.contentTask cancel];
+    self.contentTask = nil;
+    self.requestInFlight = NO;
+    [self.pendingCompletions removeAllObjects];
+    self.retryNotBefore = 0.0;
+    self.etag = nil;
+    self.cards = @[];
+    self.identityKey = currentIdentityKey;
+
+    NSString *successKey = PPHomePromoScopedDefaultsKey(
+        kPPHomePromoCarouselSuccessKeyPrefix,
+        self.identityKey);
+    self.lastSuccessfulFetchAt = successKey.length > 0
+        ? [[NSUserDefaults standardUserDefaults] doubleForKey:successKey]
+        : 0.0;
+}
+
+- (void)recordSuccessfulFetch
+{
+    self.lastSuccessfulFetchAt = NSDate.date.timeIntervalSince1970;
+    self.retryNotBefore = 0.0;
+    NSString *successKey = PPHomePromoScopedDefaultsKey(
+        kPPHomePromoCarouselSuccessKeyPrefix,
+        self.identityKey);
+    if (successKey.length > 0) {
+        [[NSUserDefaults standardUserDefaults] setDouble:self.lastSuccessfulFetchAt
+                                                  forKey:successKey];
+    }
+}
+
+- (void)recordFailedFetch
+{
+    self.retryNotBefore = NSDate.date.timeIntervalSince1970 +
+        kPPHomePromoCarouselFailureCooldown;
+}
+
+- (void)enqueueCompletion:(void (^)(NSArray<PPHomePromoCarouselCard *> * _Nullable cards,
+                                    NSError * _Nullable error))completion
+{
+    if (completion) {
+        [self.pendingCompletions addObject:[completion copy]];
+    }
+}
+
+- (void)completePendingWithCards:(NSArray<PPHomePromoCarouselCard *> * _Nullable)cards
+                           error:(NSError * _Nullable)error
+{
+    NSArray *pending = self.pendingCompletions.copy;
+    [self.pendingCompletions removeAllObjects];
+    BOOL didDeliverOwningError = NO;
+    for (id candidate in pending) {
+        void (^completion)(NSArray<PPHomePromoCarouselCard *> * _Nullable,
+                           NSError * _Nullable) = candidate;
+        if (!completion) {
+            continue;
+        }
+        if (error && didDeliverOwningError) {
+            completion(nil, PPHomePromoCooldownError());
+        } else {
+            completion(cards, error);
+            didDeliverOwningError = error != nil;
+        }
+    }
+}
+
 - (NSArray<PPHomePromoCarouselCard *> *)loadCardsFromCache
 {
-    NSArray *raw = [[NSUserDefaults standardUserDefaults] objectForKey:kPPHomePromoCarouselCacheKey];
+    [self synchronizeIdentityContext];
+    NSString *cacheKey = PPHomePromoScopedDefaultsKey(
+        kPPHomePromoCarouselCacheKeyPrefix,
+        self.identityKey);
+    if (cacheKey.length == 0) {
+        return @[];
+    }
+
+    NSArray *raw = [[NSUserDefaults standardUserDefaults] objectForKey:cacheKey];
     if (![raw isKindOfClass:NSArray.class]) return @[];
 
     NSMutableArray<PPHomePromoCarouselCard *> *out = [NSMutableArray arrayWithCapacity:raw.count];
@@ -505,12 +628,18 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
 
 - (void)saveCardsToCache
 {
+    NSString *cacheKey = PPHomePromoScopedDefaultsKey(
+        kPPHomePromoCarouselCacheKeyPrefix,
+        self.identityKey);
+    if (cacheKey.length == 0) {
+        return;
+    }
+
     NSMutableArray *arr = [NSMutableArray arrayWithCapacity:self.cards.count];
     for (PPHomePromoCarouselCard *card in self.cards) {
         [arr addObject:[card toDictionary]];
     }
-    [[NSUserDefaults standardUserDefaults] setObject:arr forKey:kPPHomePromoCarouselCacheKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
+    [[NSUserDefaults standardUserDefaults] setObject:arr forKey:cacheKey];
 }
 
 - (NSArray<PPHomePromoCarouselCard *> *)sortedVisibleCardsFromArray:(NSArray<PPHomePromoCarouselCard *> *)input
@@ -589,6 +718,10 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
             if (!self || generation != self.requestGeneration) {
                 return;
             }
+            if (![PPHomePromoIdentityKey() isEqualToString:self.identityKey]) {
+                [self synchronizeIdentityContext];
+                return;
+            }
             if (authError) {
                 if (completion) {
                     completion(nil, authError);
@@ -605,6 +738,10 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
                 __strong typeof(weakSelf) taskSelf = weakSelf;
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (!taskSelf || generation != taskSelf.requestGeneration) {
+                        return;
+                    }
+                    if (![PPHomePromoIdentityKey() isEqualToString:taskSelf.identityKey]) {
+                        [taskSelf synchronizeIdentityContext];
                         return;
                     }
                     taskSelf.contentTask = nil;
@@ -686,15 +823,48 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
 - (void)startListeningWithCompletion:(void (^)(NSArray<PPHomePromoCarouselCard *> * _Nullable cards,
                                                NSError * _Nullable error))completion
 {
-    [self stopListening];
+    // This API is a one-shot HTTP refresh, not a Firestore listener. Home can
+    // request it from several lifecycle paths, so automatic refreshes share
+    // one identity-scoped in-flight/freshness/backoff owner. Manual
+    // fetchOnceWithCompletion: remains the explicit retry path.
+    [self synchronizeIdentityContext];
     self.cards = [self loadCardsFromCache];
     NSArray<PPHomePromoCarouselCard *> *cachedCards = self.cards;
+
+    NSTimeInterval now = NSDate.date.timeIntervalSince1970;
+    BOOL hasFreshProjection = self.lastSuccessfulFetchAt > 0.0 &&
+        now - self.lastSuccessfulFetchAt < kPPHomePromoCarouselFreshInterval;
+    if (hasFreshProjection) {
+        if (cachedCards.count == 0 && completion) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(@[], nil);
+            });
+        }
+        return;
+    }
+
+    if (self.retryNotBefore > now) {
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(nil, PPHomePromoCooldownError());
+            });
+        }
+        return;
+    }
+
     if (cachedCards.count > 0 && completion) {
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(cachedCards, nil);
         });
     }
 
+    [self enqueueCompletion:completion];
+    if (self.requestInFlight) {
+        return;
+    }
+
+    self.requestInFlight = YES;
+    self.requestGeneration += 1;
     __weak typeof(self) weakSelf = self;
     [self fetchRemoteCardsWithCompletion:^(NSArray<PPHomePromoCarouselCard *> * _Nullable cards,
                                            NSError * _Nullable error) {
@@ -702,26 +872,33 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
         if (!self) {
             return;
         }
+        self.requestInFlight = NO;
         if (cards) {
             self.cards = cards;
+            [self recordSuccessfulFetch];
             [self saveCardsToCache];
-            if (completion) {
-                completion(self.cards, nil);
-            }
-        } else if (self.cards.count == 0 && completion) {
-            // A cached surface is usable offline. Only surface an error when
-            // there is no content that can be shown at all.
-            completion(nil, error);
+            [self completePendingWithCards:self.cards error:nil];
+            return;
         }
+
+        [self recordFailedFetch];
+        NSLog(@"[HomePromotions] request failed domain=%@ code=%ld; automatic refreshes paused for 30 seconds.",
+              error.domain ?: @"unknown",
+              (long)error.code);
+        [self completePendingWithCards:nil error:error];
     }];
 }
 
 - (void)fetchOnceWithCompletion:(void (^)(NSArray<PPHomePromoCarouselCard *> * _Nullable cards,
                                           NSError * _Nullable error))completion
 {
+    [self synchronizeIdentityContext];
+    [self enqueueCompletion:completion];
     [self.contentTask cancel];
     self.contentTask = nil;
     self.requestGeneration += 1;
+    self.requestInFlight = YES;
+    self.retryNotBefore = 0.0;
 
     __weak typeof(self) weakSelf = self;
     [self fetchRemoteCardsWithCompletion:^(NSArray<PPHomePromoCarouselCard *> * _Nullable cards,
@@ -730,13 +907,15 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
         if (!self) {
             return;
         }
+        self.requestInFlight = NO;
         if (cards) {
             self.cards = cards;
+            [self recordSuccessfulFetch];
             [self saveCardsToCache];
+        } else {
+            [self recordFailedFetch];
         }
-        if (completion) {
-            completion(cards, error);
-        }
+        [self completePendingWithCards:cards error:error];
     }];
 }
 
@@ -745,6 +924,8 @@ static PPHomePromoCarouselCard *PPHomePromoCardFromRemoteDictionary(NSDictionary
     self.requestGeneration += 1;
     [self.contentTask cancel];
     self.contentTask = nil;
+    self.requestInFlight = NO;
+    [self.pendingCompletions removeAllObjects];
 }
 
 @end

@@ -9,6 +9,15 @@
 #import "MainKindsModel.h"
 static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCategoriesSubCollection";
 
+static NSString *PPMainKindOptionalString(id value) {
+    if (![value isKindOfClass:NSString.class]) {
+        return nil;
+    }
+    NSString *trimmed =
+        [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    return trimmed.length > 0 ? trimmed : nil;
+}
+
 @implementation PPAccessoryCategoryModel
 
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot mainKindID:(NSInteger)mainKindID {
@@ -178,6 +187,7 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
         self.KindIconName = dictionary[@"KindIconName"];
         self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
         self.KindImageUrl = dictionary[@"KindImageUrl"];
+        self.HeroImageUrl = PPMainKindOptionalString(dictionary[@"HeroImageUrl"]);
         self.SubKindsArray = [[NSMutableArray<SubKindModel *> alloc] init];
         NSMutableDictionary *dic =dictionary[@"SubKindsArray"];
 
@@ -204,6 +214,7 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
         self.PetColor = snapshot.data[@"PetColor"];
         self.KindImageNamed = snapshot.data[@"KindImageNamed"];
         self.KindImageUrl = snapshot.data[@"KindImageUrl"];
+        self.HeroImageUrl = PPMainKindOptionalString(snapshot.data[@"HeroImageUrl"]);
         self.KindIconName = snapshot.data[@"KindIconName"];
         self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
         //NSLog(@"[ImageLoader] KindImageUrl %@", self.KindImageUrl);
@@ -240,6 +251,7 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
         self.KindImageNamed = data[@"KindImageNamed"];
         self.KindIconName = data[@"KindIconName"];
         self.KindImageUrl = data[@"KindImageUrl"];
+        self.HeroImageUrl = PPMainKindOptionalString(data[@"HeroImageUrl"]);
         self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
         //NSLog(@"[ImageLoader] KindImageUrl %@", self.KindImageUrl);
 
@@ -290,6 +302,7 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
     dict[@"PetColor"] = self.PetColor ?: @"";
     dict[@"documentID"] = self.documentID ?: @"";
     dict[@"KindImageUrl"] = self.KindImageUrl ?: @"";
+    dict[@"HeroImageUrl"] = self.HeroImageUrl ?: @"";
     dict[@"LightenAmount"] = @(self.LightenAmount);
     dict[@"professionalAngle"] = @(self.professionalAngle);
     dict[@"is_visible_in_user_app"] = @(self.isVisibleInUserApp);

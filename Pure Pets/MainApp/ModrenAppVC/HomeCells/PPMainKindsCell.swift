@@ -154,21 +154,29 @@ public final class PPMainKindsCell: UICollectionViewCell {
         setLayoutRect(geometry.semiCirclePlateFrame, on: semiCirclePlateView)
         groundShadowView.frame = geometry.groundShadowFrame
         portraitGroupView.frame = artworkGroupView.bounds
+        let artworkCanvas = geometry.primaryArtworkFrame
+        let resolvedArtworkFrame: CGRect
         if content?.isAll ?? false {
-            let reducedWidth = (geometry.primaryArtworkFrame.width * 0.60).rounded()
-            let reducedHeight = (geometry.primaryArtworkFrame.height * 0.60).rounded()
-            artworkView.frame = CGRect(
-                x: (geometry.primaryArtworkFrame.minX + (geometry.primaryArtworkFrame.width - reducedWidth) / 2).rounded(),
-                y: (geometry.primaryArtworkFrame.minY + (geometry.primaryArtworkFrame.height - reducedHeight) / 2).rounded(),
+            let reducedWidth = (artworkCanvas.width * 0.60).rounded()
+            let reducedHeight = (artworkCanvas.height * 0.60).rounded()
+            resolvedArtworkFrame = CGRect(
+                x: (artworkCanvas.minX
+                    + (artworkCanvas.width - reducedWidth) / 2).rounded(),
+                y: (artworkCanvas.minY
+                    + (artworkCanvas.height - reducedHeight) / 2).rounded(),
                 width: reducedWidth,
                 height: reducedHeight
             ).integral
         } else {
-            artworkView.frame = geometry.primaryArtworkFrame
+            let treatment = HomeSpeciesArtworkTreatment.resolved(
+                for: content?.numericID ?? 0
+            )
+            resolvedArtworkFrame = treatment.frame(in: artworkCanvas)
         }
+        artworkView.frame = resolvedArtworkFrame
         applySymbolConfiguration(
             to: artworkView,
-            frame: geometry.primaryArtworkFrame,
+            frame: resolvedArtworkFrame,
             isAll: content?.isAll ?? false
         )
         let haloSide = max(geometry.primaryArtworkFrame.width, geometry.primaryArtworkFrame.height) * 1.40
@@ -819,13 +827,19 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let kindColor = resolvedKindColor
         let accent = resolvedAccent.resolvedColor(with: traitCollection)
         let surface = UIColor.ppSurfaceRaised.resolvedColor(with: traitCollection)
+        let appForeground = UIColor.ppForeground.resolvedColor(with: traitCollection)
         let highContrast = traitCollection.accessibilityContrast == .high
         let darkMode = traitCollection.userInterfaceStyle == .dark
         let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        canvasView.backgroundColor = surface
+        // Category colour stays in the existing atmosphere, border, indicator,
+        // and artwork signals. The selected card's base follows the app's
+        // foreground semantic token instead of blending category colour into it.
+        canvasView.backgroundColor = isKindSelected
+            ? appForeground
+            : surface
         artworkView.tintColor = resolvedArtworkTint
         for (index, previewView) in previewImageViews.enumerated() {
             guard let previewContent = previewContents[index] else { continue }
@@ -841,8 +855,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         artworkHaloView.layer.borderWidth = 0
         artworkHaloView.layer.shadowOpacity = 0
         artworkHaloLayer.colors = [
-            kindColor.withAlphaComponent(darkMode ? 0.35 : 0.22).cgColor,
-            kindColor.withAlphaComponent(darkMode ? 0.10 : 0.05).cgColor,
+            kindColor.withAlphaComponent(darkMode ? 0.27 : 0.16).cgColor,
+            kindColor.withAlphaComponent(darkMode ? 0.07 : 0.035).cgColor,
             UIColor.clear.cgColor
         ]
         artworkHaloLayer.locations = [0, 0.50, 1.0]
@@ -850,18 +864,18 @@ public final class PPMainKindsCell: UICollectionViewCell {
             darkMode ? 0.09 : 0.05
         )
         tapHaloView.layer.borderColor = kindColor.withAlphaComponent(
-            highContrast ? 0.65 : 0.22
+            highContrast ? 0.65 : 0.16
         ).cgColor
         tapHaloView.layer.shadowColor = kindColor.cgColor
         tapEchoView.layer.borderColor = kindColor.withAlphaComponent(
-            highContrast ? 0.75 : 0.28
+            highContrast ? 0.75 : 0.20
         ).cgColor
         tapEchoView.layer.shadowColor = kindColor.cgColor
 
         if reduceTransparency {
             atmosphereView.backgroundColor = kindColor.ppMainKindMixed(
                 with: surface,
-                amountOfSelf: highContrast ? 0.18 : 0.11
+                amountOfSelf: highContrast ? 0.18 : 0.08
             )
             baseFieldLayer.isHidden = true
             livingLightLayer.isHidden = true
@@ -870,14 +884,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
             baseFieldLayer.isHidden = false
             livingLightLayer.isHidden = false
             baseFieldLayer.colors = [
-                accent.withAlphaComponent(highContrast ? 0.24 : (darkMode ? 0.17 : 0.12)).cgColor,
-                accent.withAlphaComponent(darkMode ? 0.08 : 0.045).cgColor,
+                accent.withAlphaComponent(highContrast ? 0.24 : (darkMode ? 0.12 : 0.08)).cgColor,
+                accent.withAlphaComponent(darkMode ? 0.055 : 0.03).cgColor,
                 surface.withAlphaComponent(0).cgColor
             ]
             baseFieldLayer.locations = [0, 0.54, 1]
             livingLightLayer.colors = [
-                kindColor.withAlphaComponent(highContrast ? 0.30 : (darkMode ? 0.24 : 0.18)).cgColor,
-                kindColor.withAlphaComponent(darkMode ? 0.12 : 0.075).cgColor,
+                kindColor.withAlphaComponent(highContrast ? 0.30 : (darkMode ? 0.17 : 0.12)).cgColor,
+                kindColor.withAlphaComponent(darkMode ? 0.08 : 0.05).cgColor,
                 UIColor.clear.cgColor
             ]
             livingLightLayer.locations = [0, 0.38, 1]
@@ -924,14 +938,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         if isKindSelected {
             return PPMainKindsVisualStyle(
-                borderColor: accent.withAlphaComponent(highContrast ? 1 : 0.45),
+                borderColor: accent.withAlphaComponent(highContrast ? 1 : 0.30),
                 borderWidth: highContrast ? 2 : 1,
                 atmosphereAlpha: 1,
                 livingLightAlpha: 1,
-                indicatorAlpha: highContrast ? 0.72 : 0.46,
+                indicatorAlpha: highContrast ? 1 : 0.92,
                 indicatorTransform: .identity,
                 titleColor: text,
-                artworkTransform: CGAffineTransform(translationX: 0, y: 8).scaledBy(x: 1.2, y: 1.2),
+                artworkTransform: PPMainKindsMetrics.artworkPresentationTransform,
                 artworkHaloAlpha: 1,
                 artworkHaloTransform: CGAffineTransform(scaleX: 1.05, y: 1.05),
                 semiCirclePlateAlpha: 0,
@@ -952,13 +966,17 @@ public final class PPMainKindsCell: UICollectionViewCell {
             indicatorAlpha: 0,
             indicatorTransform: CGAffineTransform(scaleX: 0.72, y: 0.66),
             titleColor: text,
-            artworkTransform: .identity,
+            // Identical pose to the selected style: the portrait is laid out at
+            // one position and one size across the whole rail.
+            artworkTransform: PPMainKindsMetrics.artworkPresentationTransform,
             artworkHaloAlpha: 0,
             artworkHaloTransform: CGAffineTransform(scaleX: 0.75, y: 0.75),
             semiCirclePlateAlpha: 0,
             semiCirclePlateTransform: CGAffineTransform(scaleX: 0.65, y: 0.65).translatedBy(x: 0, y: -4),
             surfaceTransform: .identity,
-            groundAlpha: highContrast ? 0 : 1,
+            // The idle card carries no grounding line: the portrait stands on
+            // the habitat field alone.
+            groundAlpha: 0,
             shadowOpacity: highContrast ? 0 : (darkMode ? 0.06 : 0.02),
             shadowRadius: darkMode ? 4 : 5,
             shadowOffset: CGSize(width: 0, height: darkMode ? 2 : 2)
@@ -1215,17 +1233,17 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
         if enteringSelection {
             atmosphereView.alpha = restored ? 0.76 : 0.52
-            groundShadowView.alpha = restored ? 0.82 : 0.58
+            groundShadowView.alpha = 0
             semiCirclePlateView.alpha = 0
             semiCirclePlateView.transform = CGAffineTransform(scaleX: 0.65, y: 0.65).translatedBy(x: 0, y: -4)
             selectionIndicatorView.transform = CGAffineTransform(
                 scaleX: restored ? 0.96 : 0.86,
                 y: restored ? 0.99 : 0.80
             )
-            artworkGroupView.transform = CGAffineTransform(
-                translationX: 0,
-                y: restored ? -1 : 1
-            )
+            // The portrait holds its single shared pose through the whole
+            // selection transition; only the card's own signals animate.
+            artworkGroupView.transform =
+                PPMainKindsMetrics.artworkPresentationTransform
         }
 
         motionGeneration &+= 1
@@ -1370,7 +1388,7 @@ private struct PPMainKindsContent {
 // MARK: - Adaptive geometry
 
 private enum PPMainKindsMetrics {
-    static let cardRadius: CGFloat = PPCorner.card
+    static let cardRadius: CGFloat = PPCorner.card + PPSpace.xs
     static let cardInset: CGFloat = PPSpace.sm
     static let artworkTopInset: CGFloat = PPSpace.sm + 2
     static let titleBottomInset: CGFloat = 6
@@ -1378,10 +1396,30 @@ private enum PPMainKindsMetrics {
     static let sidePortraitAlpha: CGFloat = 0.86
 
     /// The selected category keeps its border and lifted artwork as its two
-    /// state signals. This underscored accent is intentionally quiet.
-    static let indicatorWidth: CGFloat = 24
+    /// state signals. The underscore reads as a deliberate, legible marker
+    /// rather than a hairline.
+    static let indicatorWidth: CGFloat = 34
     static let indicatorHeight: CGFloat = 2
     static let indicatorTitleSpacing: CGFloat = 4
+
+    /// The category portrait holds one single pose in every state: same size,
+    /// same position, selected or not. Selection is signalled by the card
+    /// border, atmosphere, and the bottom indicator — never by moving or
+    /// resizing the artwork.
+    static let artworkPresentationScale: CGFloat = 1.2
+
+    /// Vertical placement of the portrait inside its group, shared by both
+    /// states so the image never shifts when a card becomes selected.
+    static let artworkVerticalOffset: CGFloat = 8
+
+    /// The one pose every card's artwork uses.
+    static let artworkPresentationTransform = CGAffineTransform(
+        translationX: 0,
+        y: artworkVerticalOffset
+    ).scaledBy(
+        x: artworkPresentationScale,
+        y: artworkPresentationScale
+    )
 
     static let pressScale: CGFloat = 0.974
     static let pressDuration: TimeInterval = 0.10

@@ -1674,6 +1674,14 @@ struct PPHomeHeroFluidWaveShape: Shape {
 /// Next-Gen V6 Single Living Blob Edge Shape
 /// A single, continuous closed path whose geometry deforms organically
 /// like a floating soap-bubble membrane / soft sea-wave deformation.
+///
+/// Seamless-loop contract: every phase term is an *integer* multiple of
+/// `phase`, and every angular term is an integer multiple of `angle`. The
+/// membrane is therefore exactly 2π-periodic in both dimensions, so the
+/// perimeter closes on itself at every frame and the animation's end state is
+/// identical to its start state — the loop restart is invisible. Introducing a
+/// fractional phase coefficient (for example `phase * 0.7`) breaks this and
+/// produces a visible hitch every cycle.
 struct PPHomeHeroLivingBlobShape: Shape {
     var phase: CGFloat
 
@@ -1686,29 +1694,61 @@ struct PPHomeHeroLivingBlobShape: Shape {
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let rx = rect.width * 0.47
         let ry = rect.height * 0.47
-        let steps = 144
+        let steps = 240
 
-        var path = Path()
-        for i in 0...steps {
+        // Sampled perimeter points, then joined with Catmull-Rom style smoothing
+        // so the membrane reads as one continuous curve instead of a polygon.
+        var points = [CGPoint]()
+        points.reserveCapacity(steps)
+        for i in 0..<steps {
             let angle = (CGFloat(i) / CGFloat(steps)) * 2 * .pi
 
-            // 2-3 broad, ultra-smooth harmonic wave lobes (C1/C2 continuous)
-            // Soft traveling wave along perimeter: 3 lobes primary + 2 lobes secondary
+            // Three counter-travelling harmonic lobes. The differing integer
+            // speeds (1x, 2x, 3x) keep the deformation organic while staying
+            // exactly periodic across one full phase revolution.
             let w1 = sin((angle * 3.0) + phase) * 2.5
-            let w2 = cos((angle * 2.0) - (phase * 0.7)) * 1.3
-            let totalWave = w1 + w2
+            let w2 = cos((angle * 2.0) - (phase * 2.0)) * 1.3
+            let w3 = sin((angle * 5.0) + (phase * 3.0)) * 0.55
+            let totalWave = w1 + w2 + w3
 
             let currentRx = max(4.0, rx + totalWave)
             let currentRy = max(4.0, ry + totalWave)
 
-            let x = center.x + currentRx * cos(angle)
-            let y = center.y + currentRy * sin(angle)
+            points.append(
+                CGPoint(
+                    x: center.x + currentRx * cos(angle),
+                    y: center.y + currentRy * sin(angle)
+                )
+            )
+        }
 
-            if i == 0 {
-                path.move(to: CGPoint(x: x, y: y))
-            } else {
-                path.addLine(to: CGPoint(x: x, y: y))
-            }
+        return Self.closedSmoothPath(through: points)
+    }
+
+    /// Joins a closed ring of samples with quadratic segments through segment
+    /// midpoints. The first and last segments wrap through the same shared
+    /// midpoint, so the start and end of the perimeter meet with matching
+    /// tangents — no seam, no corner.
+    private static func closedSmoothPath(through points: [CGPoint]) -> Path {
+        var path = Path()
+        guard points.count > 2 else {
+            guard let first = points.first else { return path }
+            path.move(to: first)
+            points.dropFirst().forEach { path.addLine(to: $0) }
+            path.closeSubpath()
+            return path
+        }
+
+        func midpoint(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+            CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
+        }
+
+        let count = points.count
+        path.move(to: midpoint(points[count - 1], points[0]))
+        for index in 0..<count {
+            let current = points[index]
+            let next = points[(index + 1) % count]
+            path.addQuadCurve(to: midpoint(current, next), control: current)
         }
         path.closeSubpath()
         return path
@@ -1734,7 +1774,9 @@ struct PPHomeHeroFeedingRisingBubble: View {
 
     var body: some View {
         let currentY = startY + (endY - startY) * riseProgress
-        let currentX = startX + sin(riseProgress * .pi * 2.5) * swayWidth
+        // A whole number of sway cycles returns the bubble to its starting
+        // lateral offset, so the rise loop restarts without a sideways jump.
+        let currentX = startX + sin(riseProgress * .pi * 2.0) * swayWidth
         let scale: CGFloat = riseProgress < 0.20
             ? (0.4 + (riseProgress / 0.20) * 0.6)
             : (riseProgress > 0.75 ? (1.0 - ((riseProgress - 0.75) / 0.25) * 0.35) : 1.0)
@@ -1791,8 +1833,10 @@ struct PPHomeHeroFeedingRisingBubble: View {
             y: 1.5
         )
         .onAppear {
+            // Linear travel keeps the cycle's exit velocity identical to its
+            // entry velocity, so the repeating rise has no visible restart.
             withAnimation(
-                .easeInOut(duration: duration)
+                .linear(duration: duration)
                     .repeatForever(autoreverses: false)
                     .delay(delay)
             ) {
@@ -2071,8 +2115,21 @@ struct PPHomeHeroLivingBlobView: View {
     let fillGradient: LinearGradient
     let accent: Color
     let isDark: Bool
+    let contentOverlay: AnyView?
 
     @State private var phase: CGFloat = 0
+
+    init(
+        fillGradient: LinearGradient,
+        accent: Color,
+        isDark: Bool,
+        contentOverlay: AnyView? = nil
+    ) {
+        self.fillGradient = fillGradient
+        self.accent = accent
+        self.isDark = isDark
+        self.contentOverlay = contentOverlay
+    }
 
     var body: some View {
         let shape = PPHomeHeroLivingBlobShape(phase: phase)
@@ -2087,6 +2144,13 @@ struct PPHomeHeroLivingBlobView: View {
                 isDark: isDark
             )
             .clipShape(shape)
+
+            // Hero V2 can mount category artwork inside this exact animated
+            // membrane. Keeping the mask here guarantees that the fill,
+            // artwork, and perimeter stroke always share one deforming path.
+            if let contentOverlay {
+                contentOverlay.clipShape(shape)
+            }
 
             // ONE stroke of THAT EXACT SAME PATH with subtle traveling specular sheen
             shape.stroke(
@@ -4645,8 +4709,8 @@ private struct HomeBuildPetProfileFeaturedCard: View {
     private var subtitleColor: Color {
         Color.homeTextPrimary.opacity(
             contrast == .increased
-                ? 0.92
-                : (colorScheme == .dark ? 0.84 : 0.76)
+                ? 0.96
+                : (colorScheme == .dark ? 0.90 : 0.84)
         )
     }
 
@@ -4855,116 +4919,126 @@ struct PPHomeExploreMoreRow: View {
                 title: PPHomeZoneCopy.exploreMoreTitle
             )
 
-            LazyVGrid(
-                columns: columns,
-                alignment: .leading,
-                spacing: HomeVisualTokens.destinationTileSpacing
-            ) {
-                ForEach(entries) { entry in
-                    let tone = destinationTone(for: entry)
-                    Button(action: entry.action) {
-                        HStack(
-                            alignment: .center,
-                            spacing: HomeVisualTokens.destinationTileSpacing
-                        ) {
-                            Image(systemName: entry.symbol)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(tone)
-                                .frame(
-                                    width: HomeVisualTokens
-                                        .destinationIconContainerSize,
-                                    height: HomeVisualTokens
-                                        .destinationIconContainerSize
-                                )
-                                .background(
-                                    tone.opacity(
-                                        contrast == .increased ? 0.18 : 0.10
-                                    ),
-                                    in: RoundedRectangle(
-                                        cornerRadius: HomeVisualTokens
-                                            .iconContainerCorner,
-                                        style: .continuous
-                                    )
-                                )
-                                .accessibilityHidden(true)
-
-                            Text(entry.title)
-                                .font(HomeFont.bold(15))
-                                .foregroundStyle(Color.homeTextPrimary)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(
-                                    maxWidth: .infinity,
-                                    alignment: .leading
-                                )
-
-                            Image(systemName: "chevron.forward")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(
-                                    Color.homeTextSecondary.opacity(
-                                        contrast == .increased ? 0.82 : 0.52
-                                    )
-                                )
-                                .flipsForRightToLeftLayoutDirection(true)
-                                .frame(width: 20, height: 20)
-                                .accessibilityHidden(true)
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(
+                        alignment: .leading,
+                        spacing: HomeVisualTokens.destinationTileSpacing
+                    ) {
+                        ForEach(entries) { entry in
+                            destinationButton(entry)
                         }
-                        .padding(
-                            .horizontal,
-                            HomeVisualTokens.destinationTileContentInset
-                        )
-                        .frame(
-                            maxWidth: .infinity,
-                            minHeight: HomeVisualTokens.destinationTileHeight,
-                            alignment: .leading
-                        )
-                        .background(
-                            Color.homeSurface,
-                            in: destinationTileShape
-                        )
-                        .overlay {
-                            destinationTileShape.stroke(
-                                HomeVisualTokens.cardBorder(
-                                    colorScheme: colorScheme,
-                                    contrast: contrast
-                                ),
-                                lineWidth: HomeVisualTokens.cardBorderWidth(
-                                    contrast: contrast
-                                )
-                            )
-                        }
-                        .shadow(
-                            color: contrast == .increased
-                                ? .clear
-                                : PPShadow.subtle.color,
-                            radius: contrast == .increased
-                                ? 0
-                                : PPShadow.subtle.radius,
-                            x: PPShadow.subtle.x,
-                            y: contrast == .increased ? 0 : PPShadow.subtle.y
-                        )
-                        .contentShape(destinationTileShape)
                     }
-                    .buttonStyle(
-                        PPHomeSurfacePressStyle(reduceMotion: reduceMotion)
-                    )
-                    .accessibilityLabel(entry.title)
+                } else {
+                    VStack(
+                        alignment: .leading,
+                        spacing: HomeVisualTokens.destinationTileSpacing
+                    ) {
+                        ForEach(rowStartIndices, id: \.self) { index in
+                            if index + 1 < entries.count {
+                                HStack(
+                                    spacing: HomeVisualTokens.destinationTileSpacing
+                                ) {
+                                    destinationButton(entries[index])
+                                    destinationButton(entries[index + 1])
+                                }
+                            } else {
+                                // iOS 15-compatible full-width orphan: no
+                                // invisible second grid cell or empty column.
+                                destinationButton(entries[index])
+                            }
+                        }
+                    }
                 }
             }
         }
         .accessibilityElement(children: .contain)
     }
 
-    private var columns: [GridItem] {
-        let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
-        return Array(
-            repeating: GridItem(
-                .flexible(),
+    private var rowStartIndices: [Int] {
+        Array(stride(from: 0, to: entries.count, by: 2))
+    }
+
+    private func destinationButton(_ entry: Entry) -> some View {
+        let tone = destinationTone(for: entry)
+        return Button(action: entry.action) {
+            HStack(
+                alignment: .center,
                 spacing: HomeVisualTokens.destinationTileSpacing
-            ),
-            count: count
-        )
+            ) {
+                Image(systemName: entry.symbol)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(tone)
+                    .frame(
+                        width: HomeVisualTokens.destinationIconContainerSize,
+                        height: HomeVisualTokens.destinationIconContainerSize
+                    )
+                    .background(
+                        tone.opacity(
+                            contrast == .increased ? 0.18 : 0.10
+                        ),
+                        in: RoundedRectangle(
+                            cornerRadius: HomeVisualTokens.iconContainerCorner,
+                            style: .continuous
+                        )
+                    )
+                    .accessibilityHidden(true)
+
+                Text(entry.title)
+                    .font(HomeFont.bold(15))
+                    .foregroundStyle(Color.homeTextPrimary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(
+                        Color.homeTextSecondary.opacity(
+                            contrast == .increased ? 0.90 : 0.60
+                        )
+                    )
+                    .flipsForRightToLeftLayoutDirection(true)
+                    .frame(width: 20, height: 20)
+                    .accessibilityHidden(true)
+            }
+            .padding(
+                .horizontal,
+                HomeVisualTokens.destinationTileContentInset
+            )
+            .frame(
+                maxWidth: .infinity,
+                minHeight: HomeVisualTokens.destinationTileHeight,
+                alignment: .leading
+            )
+            .background(Color.homeSurface, in: destinationTileShape)
+            .overlay {
+                destinationTileShape.stroke(
+                    HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: contrast
+                    ),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(
+                        contrast: contrast
+                    )
+                )
+            }
+            .shadow(
+                color: contrast == .increased
+                    ? .clear
+                    : PPShadow.subtle.color,
+                radius: contrast == .increased
+                    ? 0
+                    : PPShadow.subtle.radius,
+                x: PPShadow.subtle.x,
+                y: contrast == .increased ? 0 : PPShadow.subtle.y
+            )
+            .contentShape(destinationTileShape)
+        }
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel(entry.title)
     }
 
     private var destinationTileShape: RoundedRectangle {

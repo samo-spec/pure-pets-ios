@@ -180,6 +180,7 @@ static NSString *PPMissionOrderStatusTitle(NSString *statusKey)
 {
     NSString *key = PPMissionNormalizedKey(statusKey);
     if ([key isEqualToString:@"pending"]) return kLang(@"order_placed_title");
+    if ([key isEqualToString:@"preparing_for_shipment"]) return kLang(@"Preparing for Shipment");
     if ([key isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
     if ([key isEqualToString:@"delivery_partner_assigned"]) return kLang(@"Delivery Partner Assigned");
     if ([key isEqualToString:@"on_the_way"]) return kLang(@"On the Way");
@@ -189,13 +190,14 @@ static NSString *PPMissionOrderStatusTitle(NSString *statusKey)
     if ([key isEqualToString:@"delivery_failed"]) return kLang(@"Delivery Failed");
     if ([key isEqualToString:@"returned_to_store"]) return kLang(@"Returned to Store");
     if ([key isEqualToString:@"delivery_delayed"]) return kLang(@"Delivery Delayed");
-    return kLang(@"Preparing for Shipment");
+    return kLang(@"Unknown");
 }
 
 static NSString *PPMissionOrderStatusHint(NSString *statusKey)
 {
     NSString *key = PPMissionNormalizedKey(statusKey);
     if ([key isEqualToString:@"pending"]) return kLang(@"order_delivery_hint_waiting_acceptance");
+    if ([key isEqualToString:@"preparing_for_shipment"]) return kLang(@"order_delivery_hint_preparing");
     if ([key isEqualToString:@"ready_for_delivery"]) return kLang(@"order_delivery_hint_ready");
     if ([key isEqualToString:@"delivery_partner_assigned"]) return kLang(@"order_delivery_hint_assigned");
     if ([key isEqualToString:@"on_the_way"]) return kLang(@"order_delivery_hint_on_the_way");
@@ -205,7 +207,7 @@ static NSString *PPMissionOrderStatusHint(NSString *statusKey)
     if ([key isEqualToString:@"delivery_failed"]) return kLang(@"order_delivery_hint_failed");
     if ([key isEqualToString:@"returned_to_store"]) return kLang(@"order_delivery_hint_returned");
     if ([key isEqualToString:@"delivery_delayed"]) return kLang(@"order_delivery_hint_delayed");
-    return kLang(@"order_delivery_hint_preparing");
+    return @"";
 }
 
 static NSString *PPMissionStatusSymbol(NSString *statusKey)
@@ -237,6 +239,7 @@ static double PPMissionStatusProgress(NSString *statusKey)
     NSUInteger index = [steps indexOfObject:key];
     if (index == NSNotFound) {
         if (PPMissionMatches(key, @[@"delivery_cancelled", @"delivery_failed", @"returned_to_store"])) return 0.08;
+        if (key.length == 0 || [key isEqualToString:@"unknown"]) return 0.0;
         return 0.24;
     }
     return (double)(index + 1) / (double)steps.count;

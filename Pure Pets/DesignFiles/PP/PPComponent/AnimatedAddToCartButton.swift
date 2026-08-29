@@ -73,6 +73,7 @@ public struct AnimatedAddToCartButton: View {
         fileprivate let isEnabled: Bool
         fileprivate let canRemove: Bool
         fileprivate let controlHeight: CGFloat
+        fileprivate let minimumHitHeight: CGFloat
         fileprivate let onIncrement: @MainActor () -> Void
         fileprivate let onDecrement: @MainActor () -> Void
         fileprivate let onRemove: @MainActor () -> Void
@@ -92,6 +93,7 @@ public struct AnimatedAddToCartButton: View {
             isEnabled: Bool = true,
             canRemove: Bool = true,
             controlHeight: CGFloat = 44,
+            minimumHitHeight: CGFloat? = nil,
             onIncrement: @escaping @MainActor () -> Void,
             onDecrement: @escaping @MainActor () -> Void,
             onRemove: @escaping @MainActor () -> Void
@@ -114,7 +116,12 @@ public struct AnimatedAddToCartButton: View {
                 removeAccessibilityIdentifier
             self.isEnabled = isEnabled
             self.canRemove = canRemove
-            self.controlHeight = max(36, controlHeight)
+            let safeControlHeight = max(36, controlHeight)
+            self.controlHeight = safeControlHeight
+            self.minimumHitHeight = max(
+                safeControlHeight,
+                minimumHitHeight ?? safeControlHeight
+            )
             self.onIncrement = onIncrement
             self.onDecrement = onDecrement
             self.onRemove = onRemove
@@ -391,6 +398,10 @@ public struct AnimatedAddToCartButton: View {
             .contentShape(buttonShape)
         }
         .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
+        .frame(
+            minHeight: signature ? signatureHitHeight : nil
+        )
+        .contentShape(Rectangle())
         .modifier(
             CartFailureShakeEffect(
                 progress: failureShakeProgress,
@@ -499,6 +510,15 @@ public struct AnimatedAddToCartButton: View {
         return max(preferredHeight, accessibilityMinimum)
     }
 
+    private var signatureHitHeight: CGFloat {
+        let preferredHeight = quantityMode?.minimumHitHeight
+            ?? signatureControlHeight
+        let accessibilityMinimum: CGFloat = dynamicTypeSize.isAccessibilitySize
+            ? 52
+            : 44
+        return max(preferredHeight, accessibilityMinimum)
+    }
+
     private var quantityActionSize: CGFloat {
         signatureControlHeight
     }
@@ -581,63 +601,69 @@ public struct AnimatedAddToCartButton: View {
                 }
             }
             .padding(.horizontal, 3)
-            .frame(maxWidth: .infinity, minHeight: signatureControlHeight)
+            .frame(maxWidth: .infinity, minHeight: signatureHitHeight)
             .background {
-                if presentationStyle == .commerceHolder {
-                    shape.fill(Color.ppSecondarySurface)
-                } else {
-                    ZStack {
-                        shape.fill(Color.ppForeground)
-                        shape.fill(
-                            LinearGradient(
-                                colors: [
-                                    tint.opacity(
-                                        colorScheme == .dark ? 0.18 : 0.10
-                                    ),
-                                    tint.opacity(
-                                        colorScheme == .dark ? 0.08 : 0.035
-                                    ),
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    }
-                }
-            }
-            .overlay {
-                if presentationStyle == .commerceHolder {
-                    shape.strokeBorder(
-                        Color.ppSurfaceBorder.opacity(
-                            colorScheme == .dark ? 0.90 : 0.78
-                        ),
-                        lineWidth: 1
-                    )
-                } else {
-                    ZStack {
-                        shape.strokeBorder(
-                            tint.opacity(
-                                colorScheme == .dark ? 0.38 : 0.24
-                            ),
-                            lineWidth: 1.25
-                        )
-
-                        shape
-                            .strokeBorder(
+                Group {
+                    if presentationStyle == .commerceHolder {
+                        shape.fill(Color.ppSecondarySurface)
+                    } else {
+                        ZStack {
+                            shape.fill(Color.ppForeground)
+                            shape.fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(
-                                            colorScheme == .dark ? 0.10 : 0.72
+                                        tint.opacity(
+                                            colorScheme == .dark ? 0.18 : 0.10
                                         ),
-                                        Color.clear,
+                                        tint.opacity(
+                                            colorScheme == .dark ? 0.08 : 0.035
+                                        ),
                                     ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 0.75
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
+                        }
                     }
                 }
+                .frame(height: signatureControlHeight)
+            }
+            .overlay {
+                Group {
+                    if presentationStyle == .commerceHolder {
+                        shape.strokeBorder(
+                            Color.ppSurfaceBorder.opacity(
+                                colorScheme == .dark ? 0.90 : 0.78
+                            ),
+                            lineWidth: 1
+                        )
+                    } else {
+                        ZStack {
+                            shape.strokeBorder(
+                                tint.opacity(
+                                    colorScheme == .dark ? 0.38 : 0.24
+                                ),
+                                lineWidth: 1.25
+                            )
+
+                            shape
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(
+                                                colorScheme == .dark ? 0.10 : 0.72
+                                            ),
+                                            Color.clear,
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 0.75
+                                )
+                        }
+                    }
+                }
+                .frame(height: signatureControlHeight)
             }
             .shadow(
                 color: presentationStyle == .commerceHolder
@@ -750,6 +776,11 @@ public struct AnimatedAddToCartButton: View {
                 reduceMotion: reduceMotion
             )
         )
+        .frame(
+            minWidth: signatureHitHeight,
+            minHeight: signatureHitHeight
+        )
+        .contentShape(Rectangle())
         .disabled(!isActionEnabled)
         .opacity(isActionEnabled ? 1 : 0.38)
         .animation(quantitySymbolAnimation, value: symbol)
@@ -791,7 +822,7 @@ public struct AnimatedAddToCartButton: View {
                 quantityStatusLabel(mode: mode)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: quantityActionSize)
+        .frame(maxWidth: .infinity, minHeight: signatureHitHeight)
         .contentShape(Rectangle())
         .anchorPreference(
             key: AddToCartFlightAnchorPreferenceKey.self,

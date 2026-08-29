@@ -3212,6 +3212,7 @@ private struct PPUniversalCardRenderer: View {
                 isEnabled: !store.model.isSkeleton,
                 canRemove: true,
                 controlHeight: homeCartActionHeight,
+                minimumHitHeight: HomeVisualTokens.minimumTouchTarget,
                 onIncrement: {
                     PPUniversalHaptics.light()
                     store.changeQuantity(by: 1)
@@ -3230,6 +3231,13 @@ private struct PPUniversalCardRenderer: View {
             return try await store.addFirstQuantityFromAnimatedControl()
         }
         .id(store.model.id)
+        // Keep the compact 42pt visual control, but give the composed Home
+        // action an independent HIG-sized interaction frame.
+        .frame(
+            maxWidth: .infinity,
+            minHeight: HomeVisualTokens.minimumTouchTarget
+        )
+        .contentShape(Rectangle())
     }
 
     private var standardPrimaryAction: some View {
@@ -3907,7 +3915,10 @@ private struct PPUniversalCardRenderer: View {
             : 0
         let actionHeight: CGFloat = accessibility
             ? 52
-            : homeCartActionHeight
+            : max(
+                HomeVisualTokens.minimumTouchTarget,
+                homeCartActionHeight
+            )
         let metadataHeight: CGFloat = accessibility ? 36 : 28
         let titleToPriceSpacing: CGFloat = accessibility
             ? 8

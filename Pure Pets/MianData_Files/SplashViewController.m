@@ -546,7 +546,6 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 @property (nonatomic, assign) BOOL didShowMainVC;
 @property (nonatomic, assign) BOOL didStartInitialDataLoad;
 @property (nonatomic, assign) BOOL didLoadMainKinds;
-@property (nonatomic, assign) BOOL didLoadBanners;
 @property (nonatomic, assign) BOOL didUseFallbackLaunch;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, assign) PPSplashLoadingPhase currentLoadingPhase;
@@ -1054,19 +1053,15 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         return;
     }
 
-    NSInteger completedTasks = (self.didLoadMainKinds ? 1 : 0) + (self.didLoadBanners ? 1 : 0);
     PPSplashLoadingPhase phase = PPSplashLoadingPhaseBootstrapping;
     NSString *detail = nil;
 
-    if (completedTasks <= 0) {
+    if (!self.didStartInitialDataLoad) {
         phase = PPSplashLoadingPhaseBootstrapping;
         detail = kLang(@"splash_loading_boot");
     } else if (!self.didLoadMainKinds) {
         phase = PPSplashLoadingPhasePreparingContent;
         detail = kLang(@"splash_loading_categories");
-    } else if (!self.didLoadBanners) {
-        phase = PPSplashLoadingPhaseFinalizing;
-        detail = kLang(@"splash_loading_highlights");
     } else {
         phase = PPSplashLoadingPhaseReady;
         detail = kLang(@"splash_loading_ready");
@@ -1136,8 +1131,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         self.loadingStatusLabel.alpha = 1.0;
     }
 
-    NSInteger completedTasks = (self.didLoadMainKinds ? 1 : 0) + (self.didLoadBanners ? 1 : 0);
-    NSInteger activeSteps = MIN(1 + completedTasks, 3);
+    NSInteger activeSteps = self.didLoadMainKinds ? 2 : 1;
     if (isReady && !self.didUseFallbackLaunch) {
         activeSteps = 3;
     }
@@ -1583,7 +1577,9 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 
     self.didStartInitialDataLoad = YES;
     self.didLoadMainKinds = NO;
-    self.didLoadBanners = NO;
+    // Home offers are owned by the authenticated Campaign Action Rail V2
+    // projection and load after session restoration. They are intentionally
+    // outside the Splash completion model.
     self.launchBeganAt = [NSDate date];
     [self pp_scheduleLaunchTimeout];
     [self pp_refreshLoadingProgressPresentation];
@@ -1609,45 +1605,14 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         });
     }];
 
-    __block BOOL didLeaveBannerGroup = NO;
-    dispatch_group_enter(group);
-
-    if (PPBannersManager.sharedManager.bannerGroups.count > 0) {
-        NSLog(@"[PPBannersManager] ✅ LOADED BEFORE");
-
-        didLeaveBannerGroup = YES;
-        self.didLoadBanners = YES;
-        [self pp_refreshLoadingProgressPresentation];
-        dispatch_group_leave(group);
-    } else {
-        [[PPBannersManager sharedManager] fetchBannersOnceWithCompletion:^(NSArray<MainBannerModel *> * _Nullable bannerGroups, NSError * _Nullable error) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (didLeaveBannerGroup) {
-                    return;
-                }
-                didLeaveBannerGroup = YES;
-
-                BOOL didSucceed = error == nil;
-                if (!didSucceed) {
-                    NSLog(@"[Splash] ⚠️ Error fetching banners: %@", error.localizedDescription);
-                } else {
-                    NSLog(@"[Splash] ✅ Banners fetched: %lu items", (unsigned long)bannerGroups.count);
-                }
-
-                self.didLoadBanners = didSucceed;
-                [self pp_refreshLoadingProgressPresentation];
-                dispatch_group_leave(group);
-            });
-        }];
-    }
+    NSLog(@"[Splash] ℹ️ Home offers deferred to Campaign Action Rail V2 after session restoration.");
 
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        NSLog(@"[Splash] 🎬 Startup callbacks terminal (MainKinds=%@, Banners=%@)",
-              self.didLoadMainKinds ? @"✅" : @"❌",
-              self.didLoadBanners ? @"✅" : @"❌");
+        NSLog(@"[Splash] 🎬 Startup callback terminal (MainKinds=%@, HomeOffers=deferred)",
+              self.didLoadMainKinds ? @"✅" : @"❌");
 
-        // Preserve the legacy navigation contract: terminal callbacks still
-        // fail open. Presentation truthfully distinguishes complete from partial.
+        // Preserve the navigation contract: the terminal category callback
+        // still fails open, while authenticated Home offers load after handoff.
         [self pp_completeLaunchIfNeededForced:NO];
     });
 }
@@ -1659,7 +1624,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     }
 
     self.didShowMainVC = YES;
-    BOOL didCompleteAllLaunchData = self.didLoadMainKinds && self.didLoadBanners;
+    BOOL didCompleteAllLaunchData = self.didLoadMainKinds;
     self.didUseFallbackLaunch = forced || !didCompleteAllLaunchData;
     [self pp_cancelLaunchTimeout];
 
