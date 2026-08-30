@@ -957,9 +957,14 @@ struct HomeView: View {
             return HomeVisualTokens.routineRowSpacing
         }
         switch module.kind {
-        case .discoveryRail: return HomeVisualTokens.compactRowSpacing
-        case .marketingStage: return HomeVisualTokens.mediaRowSpacing
-        default: return HomeVisualTokens.routineRowSpacing
+        case .discoveryRail:
+            return HomeVisualTokens.compactRowSpacing
+        case .marketingStage:
+            return PPHomeHeroFlags.UseHeroV2
+                ? HomeVisualTokens.compactRowSpacing
+                : HomeVisualTokens.mediaRowSpacing
+        default:
+            return HomeVisualTokens.routineRowSpacing
         }
     }
 

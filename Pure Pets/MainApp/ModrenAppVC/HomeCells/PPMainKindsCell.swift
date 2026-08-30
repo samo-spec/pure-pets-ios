@@ -179,6 +179,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             frame: resolvedArtworkFrame,
             isAll: content?.isAll ?? false
         )
+        updateAllSelectionArtworkTransform()
         let haloSide = max(geometry.primaryArtworkFrame.width, geometry.primaryArtworkFrame.height) * 1.40
         artworkHaloView.bounds = CGRect(x: 0, y: 0, width: haloSide, height: haloSide)
         artworkHaloView.center = CGPoint(
@@ -1018,6 +1019,38 @@ public final class PPMainKindsCell: UICollectionViewCell {
             let placeholder = resolvedPlaceholder(for: content)
             artworkView.image = placeholder.image?.withRenderingMode(.alwaysTemplate)
         }
+        updateAllSelectionArtworkTransform()
+    }
+
+    /// Keeps the All scope's selected image lift independent from the shared
+    /// artwork pose. Every other category and every unselected state explicitly
+    /// resolve to identity, which also prevents transform leakage during reuse.
+    private func updateAllSelectionArtworkTransform() {
+        guard content?.isAll == true, isKindSelected else {
+            artworkView.transform = .identity
+            return
+        }
+
+        let bounds = artworkView.bounds
+        let renderedHeight: CGFloat
+        if let imageSize = artworkView.image?.size,
+           imageSize.width > 0,
+           imageSize.height > 0,
+           bounds.width > 0,
+           bounds.height > 0 {
+            let aspectFitScale = min(
+                bounds.width / imageSize.width,
+                bounds.height / imageSize.height
+            )
+            renderedHeight = imageSize.height * aspectFitScale
+        } else {
+            renderedHeight = bounds.height
+        }
+
+        artworkView.transform = CGAffineTransform(
+            translationX: 0,
+            y: -(renderedHeight * 0.20)
+        )
     }
 
     // MARK: Interaction and finite motion

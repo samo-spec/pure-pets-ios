@@ -1422,12 +1422,9 @@ final class HomeStore: ObservableObject {
             )
             let definiteName = isolatedCategoryCopyValue(forms.definite)
             let dativeName = isolatedCategoryCopyValue(forms.dative)
-            marketplaceEyebrow = String(
-                format: HomeModelAdapter.localized(
-                    "home_marketplace_hero_category_eyebrow_format",
-                    fallback: "Marketplace | %@ picks"
-                ),
-                definiteName
+            marketplaceEyebrow = HomeModelAdapter.localized(
+                "home_marketplace_hero_eyebrow",
+                fallback: "Marketplace"
             )
             marketplaceTitle = String(
                 format: HomeModelAdapter.localized(
@@ -1494,6 +1491,11 @@ final class HomeStore: ObservableObject {
             .joined(separator: ", ")
         }
 
+        let allKindsDefaultHeroImageURL = "https://firebasestorage.googleapis.com/v0/b/pure-pets-49199.firebasestorage.app/o/AppData%2FMainCategories%2FallkindsHeroImage.png?alt=media&token=91308ed0-acbb-465e-b53a-14432f5073e0"
+        let resolvedHeroImageURL = selectedCategory?.heroImageURL
+            ?? selectedCategory?.imageURL
+            ?? allKindsDefaultHeroImageURL
+
         return HomeHeroPage(
             id: HomeHeroPresentationMode.marketplaceHeroID,
             kind: .marketplace,
@@ -1507,13 +1509,12 @@ final class HomeStore: ObservableObject {
             ),
             // Hero-specific artwork wins inside the living blob. Existing
             // MainKinds documents remain compatible through the category image.
-            imageURL: selectedCategory?.heroImageURL
-                ?? selectedCategory?.imageURL,
+            imageURL: resolvedHeroImageURL,
             localImage: selectedCategory?.localImage,
             accentHex: normalizedHex(selectedCategoryHex, fallback: "CB2654"),
             action: .openMarketplace(selectedMainKind),
             accessibilityLabel: marketplaceAccessibilityLabel,
-            usesHeroImageURL: selectedCategory?.heroImageURL != nil
+            usesHeroImageURL: selectedCategory?.heroImageURL != nil || selectedCategory == nil
         )
     }
 

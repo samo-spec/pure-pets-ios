@@ -637,6 +637,7 @@ struct HomeHeroV2View: View {
                 remoteImageURL: remoteURL
             )
         case .marketplace:
+            let allKindsHeroImageURL = "https://firebasestorage.googleapis.com/v0/b/pure-pets-49199.firebasestorage.app/o/AppData%2FMainCategories%2FallkindsHeroImage.png?alt=media&token=91308ed0-acbb-465e-b53a-14432f5073e0"
             let selectedCategoryID: Int?
             if case let .openMarketplace(mainKind) = page.action,
                let mainKind {
@@ -644,26 +645,32 @@ struct HomeHeroV2View: View {
             } else {
                 selectedCategoryID = nil
             }
+            let resolvedImageURL = normalizedHeroImageURL(page.imageURL)
+                ?? (selectedCategoryID == nil ? allKindsHeroImageURL : nil)
             let hasSelectedCategory = selectedCategoryID != nil
             let hasPageArtwork = page.localImage != nil
-                || normalizedHeroImageURL(page.imageURL) != nil
+                || resolvedImageURL != nil
             if homeHeroV2ShowsSelectedMainKindArtwork
                 && (hasSelectedCategory || hasPageArtwork) {
                 let categoryImage = page.localImage
-                let fallbackImage = categoryImage ?? UIImage(named: "pawprint4")
+                let fallbackImage = categoryImage
                 return HomeHeroV2ArtworkAsset(
-                    imageName: fallbackImage == nil ? "pawprint4" : nil,
+                    imageName: nil,
                     localImage: fallbackImage,
                     // Match `PPMainKindsCell`: show the resolved local artwork
                     // first, then let the shared image loader replace it with
                     // the category's current remote image when available.
-                    remoteImageURL: normalizedHeroImageURL(page.imageURL),
+                    remoteImageURL: resolvedImageURL,
                     usesCategoryArtworkTreatment: true,
-                    extendsFromTopAnchor: page.usesHeroImageURL,
+                    extendsFromTopAnchor: page.usesHeroImageURL || selectedCategoryID == nil,
                     categoryID: selectedCategoryID
                 )
             }
-            return HomeHeroV2ArtworkAsset(animationName: "Shop2.json")
+            // Preserve the Lottie file reference (`Shop2.json`) and temporarily hide it for "All Categories".
+            return HomeHeroV2ArtworkAsset(
+                animationName: "Shop2.json",
+                isHidden: true
+            )
         case .petOnboarding:
             return HomeHeroV2ArtworkAsset(
                 animationName:
@@ -695,6 +702,7 @@ struct HomeHeroV2ArtworkAsset {
     var extendsFromTopAnchor: Bool
     var categoryID: Int?
     var loadsFromFirebase: Bool
+    var isHidden: Bool
 
     init(
         animationName: String? = nil,
@@ -704,7 +712,8 @@ struct HomeHeroV2ArtworkAsset {
         usesCategoryArtworkTreatment: Bool = false,
         extendsFromTopAnchor: Bool = false,
         categoryID: Int? = nil,
-        loadsFromFirebase: Bool = false
+        loadsFromFirebase: Bool = false,
+        isHidden: Bool = false
     ) {
         self.animationName = animationName
         self.imageName = imageName
@@ -714,6 +723,7 @@ struct HomeHeroV2ArtworkAsset {
         self.extendsFromTopAnchor = extendsFromTopAnchor
         self.categoryID = categoryID
         self.loadsFromFirebase = loadsFromFirebase
+        self.isHidden = isHidden
     }
 }
 
@@ -855,7 +865,9 @@ private struct HomeHeroV2Artwork: View {
 
     @ViewBuilder
     private var content: some View {
-        if let remoteImageURL = asset.remoteImageURL,
+        if asset.isHidden {
+            Color.clear
+        } else if let remoteImageURL = asset.remoteImageURL,
            asset.usesCategoryArtworkTreatment {
             HomeHeroV2MainKindArtwork(
                 urlString: remoteImageURL,

@@ -619,27 +619,30 @@ struct HomeHeroView: View {
                 loadsFromFirebase: false
             )
         case .marketplace:
+            let allKindsHeroImageURL = "https://firebasestorage.googleapis.com/v0/b/pure-pets-49199.firebasestorage.app/o/AppData%2FMainCategories%2FallkindsHeroImage.png?alt=media&token=91308ed0-acbb-465e-b53a-14432f5073e0"
             let hasSelectedCategory: Bool
             if case let .openMarketplace(mainKind) = page.action {
                 hasSelectedCategory = mainKind != nil
             } else {
                 hasSelectedCategory = false
             }
+            let resolvedImageURL = normalizedHeroImageURL(page.imageURL)
+                ?? (hasSelectedCategory ? nil : allKindsHeroImageURL)
             let hasPageArtwork = page.localImage != nil
-            || normalizedHeroImageURL(page.imageURL) != nil
+                || resolvedImageURL != nil
             if homeHeroShowsSelectedMainKindArtwork
                 && (hasSelectedCategory || hasPageArtwork) {
                 let categoryImage = page.localImage
-                let fallbackImage = categoryImage ?? UIImage(named: "pawprint4")
+                let fallbackImage = categoryImage
                 return HomeHeroArtworkAsset(
                     animationName: nil,
-                    imageName: fallbackImage == nil ? "pawprint4" : nil,
+                    imageName: nil,
                     localImage: fallbackImage,
                     // The category rail and the selected Hero must present the
                     // same pet identity. Prefer its resolved local artwork;
                     // use the remote source only when no local artwork exists.
                     remoteImageURL: categoryImage == nil
-                    ? normalizedHeroImageURL(page.imageURL)
+                    ? resolvedImageURL
                     : nil,
                     usesCategoryArtworkTreatment: true,
                     loadsFromFirebase: false

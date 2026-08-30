@@ -101,13 +101,25 @@ struct HomeSpeciesArtworkTreatment: Equatable {
                 horizontalOffsetRatio: 0,
                 baselineOffsetRatio: 0.025
             )
-        case 5, 6: // Cats and dogs: compact quadrupeds.
+        case 5: // Cat is the optical reference for Home artwork.
             return Self(
                 scale: 0.98,
                 horizontalOffsetRatio: 0,
                 baselineOffsetRatio: 0.04
             )
-        case 2, 3, 4, 10: // Tall/long-bodied grazing animals.
+        case 6: // Dog needs a modest lift in perceived visual weight.
+            return Self(
+                scale: 1.05,
+                horizontalOffsetRatio: 0,
+                baselineOffsetRatio: 0.035
+            )
+        case 3: // Horse art carries more intrinsic whitespace; enlarge and recenter it.
+            return Self(
+                scale: 1.14,
+                horizontalOffsetRatio: 0,
+                baselineOffsetRatio: 0.02
+            )
+        case 2, 4, 10: // Other tall/long-bodied grazing animals.
             return Self(
                 scale: 0.90,
                 horizontalOffsetRatio: 0,
