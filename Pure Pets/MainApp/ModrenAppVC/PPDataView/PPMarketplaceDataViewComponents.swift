@@ -954,7 +954,7 @@ struct PPMarketplaceCurrentDock: View {
                         }
                         .foregroundStyle(
                             selected
-                                ? store.accentPalette.onAccent
+                                ? .white
                                 : Color.ppMarketplaceTextSecondary
                         )
                         .padding(.horizontal, PPSpace.base)
@@ -1375,7 +1375,7 @@ struct PPMarketplaceUniversalCard: View {
         palette.primary = category.fill
         palette.primaryDarker = category.darker
         palette.primaryShiner = category.brighter
-        palette.onPrimary = category.onAccent
+        palette.onPrimary = .white
         palette.accent = category.fill
         return palette
     }

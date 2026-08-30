@@ -67,7 +67,7 @@ struct PPMarketplaceAccentPalette {
             uiColor: Self.blended(resolved, toward: .white, amount: 0.14)
         )
         soft = Color(uiColor: resolved).opacity(0.10)
-        onAccent = Color(uiColor: Self.contrastingForeground(for: resolved))
+        onAccent = .white
     }
 
     private static func blended(

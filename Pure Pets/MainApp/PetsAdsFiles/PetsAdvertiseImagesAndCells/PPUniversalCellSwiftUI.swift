@@ -3068,9 +3068,10 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var detailsActionForeground: Color {
-        store.context.isServiceLike
-            ? store.palette.onPrimary
-            : store.palette.primary
+        if isAdAction || store.context.isServiceLike || store.context == .adopt {
+            return .white
+        }
+        return store.palette.primary
     }
 
     private var detailsActionCircleSize: CGFloat {
@@ -4089,7 +4090,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var primaryActionForeground: Color {
         if isAdAction {
-            return store.palette.onPrimary
+            return .white
         }
         if store.model.usesQuantityControl &&
             store.quantity > 0 &&

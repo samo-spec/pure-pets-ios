@@ -36,6 +36,11 @@ private enum HomeHeroV2Metrics {
     /// leading/trailing edge while keeping the artwork fully inside the arc.
     static let blobInkRatio: CGFloat = 0.94
     static let plateInk: CGFloat = 226
+    /// The living plate reads as a lens rather than a ball: its height is 15%
+    /// shorter than its width. Only the membrane, halo, and their shared centre
+    /// change — `plateInk` and `artworkSide` stay exactly as they were, so the
+    /// category portrait keeps its established size and position.
+    static let plateHeightRatio: CGFloat = 0.85
     static let artworkSide: CGFloat = 170
     static let artworkVerticalShift: CGFloat = 5
     /// Hero-specific category artwork grows downward while its established top
@@ -297,7 +302,13 @@ struct HomeHeroV2View: View {
     ) -> some View {
         let blobAccent = accent.opacity(HomeHeroV2Metrics.blobAccentOpacity)
         let artworkAsset = heroArtworkAsset(for: page)
+        // The All-categories scope presents the composite all-kinds artwork,
+        // which is a full illustration rather than a single portrait. Masking it
+        // into the membrane cropped its edges, so that one scope renders the
+        // hero image whole while every selected category keeps the mask.
         let clipsArtworkToBlob = artworkAsset.usesCategoryArtworkTreatment
+            && !artworkAsset.presentsAllCategoriesScope
+        let plateHeight = plateFrame * HomeHeroV2Metrics.plateHeightRatio
         let clippedArtwork = clipsArtworkToBlob
             ? AnyView(
                 artworkStage(
@@ -310,7 +321,7 @@ struct HomeHeroV2View: View {
             : nil
 
         return ZStack {
-            Circle()
+            Ellipse()
                 .fill(
                     RadialGradient(
                         colors: [
@@ -322,7 +333,10 @@ struct HomeHeroV2View: View {
                         endRadius: plateFrame * 0.54
                     )
                 )
-                .frame(width: plateFrame + PPSpace.lg, height: plateFrame + PPSpace.lg)
+                .frame(
+                    width: plateFrame + PPSpace.lg,
+                    height: plateHeight + PPSpace.lg
+                )
 
             PPHomeHeroLivingBlobView(
                 fillGradient: plateGradient(accent: accent),
@@ -330,7 +344,7 @@ struct HomeHeroV2View: View {
                 isDark: colorScheme == .dark,
                 contentOverlay: clippedArtwork
             )
-            .frame(width: plateFrame, height: plateFrame)
+            .frame(width: plateFrame, height: plateHeight)
             .shadow(
                 color: accent.opacity(
                     contrast == .increased
@@ -388,8 +402,12 @@ struct HomeHeroV2View: View {
         .frame(width: plateFrame, height: plateFrame)
     }
 
-    /// Reference plate is a pale, cool, low-saturation wash. Built from shipped
-    /// palette tokens so it stays correct in dark mode and increased contrast.
+    /// Reference plate is a low-saturation wash of the live category identity,
+    /// so switching species visibly re-tints the membrane instead of leaving one
+    /// fixed lilac plate behind every category. Built from shipped palette
+    /// tokens plus the resolved accent so it stays correct in dark mode, and the
+    /// increased-contrast/reduced-transparency path keeps its flat opaque
+    /// surface rather than adding tint behind the portrait.
     private func plateGradient(accent: Color) -> LinearGradient {
         if contrast == .increased || reduceTransparency {
             return LinearGradient(
@@ -403,8 +421,8 @@ struct HomeHeroV2View: View {
             return LinearGradient(
                 colors: [
                     Color.ppSurfaceRaised,
-                    accent.opacity(0.12),
-                    Color.homeBrand.opacity(0.10),
+                    accent.opacity(0.26),
+                    accent.opacity(0.14),
                 ],
                 startPoint: .top,
                 endPoint: .bottomTrailing
@@ -413,8 +431,8 @@ struct HomeHeroV2View: View {
 
         return LinearGradient(
             colors: [
-                Color.ppQuietLilac,
-                Color.ppQuietLilac.opacity(0.62),
+                accent.opacity(0.26),
+                accent.opacity(0.13),
                 Color.ppSurfaceRaised,
             ],
             startPoint: .top,
@@ -703,6 +721,13 @@ struct HomeHeroV2ArtworkAsset {
     var categoryID: Int?
     var loadsFromFirebase: Bool
     var isHidden: Bool
+
+    /// True only for the marketplace All-categories scope: category artwork is
+    /// resolved but no single `categoryID` is selected. That artwork is a
+    /// composite illustration, so the hero presents it unmasked.
+    var presentsAllCategoriesScope: Bool {
+        usesCategoryArtworkTreatment && categoryID == nil
+    }
 
     init(
         animationName: String? = nil,
@@ -1002,11 +1027,14 @@ private struct HomeHeroV2Skeleton: View {
 
                 Spacer(minLength: 0)
 
-                Circle()
+                // Matches the live plate's lens proportion so the loading state
+                // does not settle into a shorter shape once content arrives.
+                Ellipse()
                     .fill(Color.ppSecondarySurface)
                     .frame(
                         width: HomeHeroV2Metrics.skeletonPlateInk,
                         height: HomeHeroV2Metrics.skeletonPlateInk
+                            * HomeHeroV2Metrics.plateHeightRatio
                     )
         }
         .padding(HomeHeroV2Metrics.cardContentInset)

@@ -410,7 +410,7 @@ static NSString *PPMainKindOptionalString(id value) {
     else if(self.ID == 4)    return [UIColor colorWithHexString:@"#A49179"];
     else if(self.ID == 5)    return [UIColor colorWithRed:0.25 green:0.55 blue:0.95 alpha:1.0]; // Cat Blue
     else if(self.ID == 6)    return [UIColor colorWithRed:0.95 green:0.55 blue:0.25 alpha:1.0]; //[UIColor colorWithHexString:@"#BFA779"];
-    else if(self.ID == 7)    return [UIColor colorWithHexString:@"#A4491F"]; //76D6FF
+    else if(self.ID == 7)    return [UIColor colorWithHexString:@"#0077BE"]; // Sea Blue
     else if(self.ID == 8)    return [UIColor colorWithHexString:@"#D7606E"];
     else if(self.ID == 9)    return [UIColor colorWithHexString:@"#D7606E"];
     else if(self.ID == 10)    return [UIColor colorWithHexString:@"#B49F80"];
