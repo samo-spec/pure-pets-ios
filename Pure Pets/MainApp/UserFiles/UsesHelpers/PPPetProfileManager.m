@@ -18,6 +18,9 @@
 static NSString *const kPPPetProfilesCollection = @"petProfiles";
 static NSString *const kPPPetRemindersCollection = @"petReminders";
 
+NSNotificationName const PPPetProfileManagerDidChangeNotification =
+    @"PPPetProfileManagerDidChangeNotification";
+
 @implementation PPPetProfileManager
 
 // MARK: - Singleton
@@ -177,7 +180,17 @@ static NSString *const kPPPetRemindersCollection = @"petReminders";
                           @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp] }
            forDocument:userRef
                 merge:YES];
-        [batch commitWithCompletion:completion];
+        [batch commitWithCompletion:^(NSError * _Nullable error) {
+            if (!error) {
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:PPPetProfileManagerDidChangeNotification
+                                  object:self
+                                userInfo:@{ @"defaultPetProfileID": petID }];
+            }
+            if (completion) {
+                completion(error);
+            }
+        }];
     }];
 }
 

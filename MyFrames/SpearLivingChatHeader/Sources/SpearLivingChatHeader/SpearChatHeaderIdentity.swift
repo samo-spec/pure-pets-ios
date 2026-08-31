@@ -47,7 +47,7 @@ public struct SpearDefaultAvatarContent: View {
 
 // MARK: - Identity Button
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearIdentityButton<AvatarContent: View>: View {
   let model: SpearChatHeaderModel
   let avatarContent: AvatarContent

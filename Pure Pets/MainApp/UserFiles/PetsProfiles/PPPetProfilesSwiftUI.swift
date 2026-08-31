@@ -560,7 +560,6 @@ private struct PPPetProfilesCarePassport: View {
                     .font(PPPetProfileFont.caption())
                     .foregroundStyle(Color.ppPrimary)
                     .textCase(.uppercase)
-                    .tracking(0.7)
                 Text(PPPetLang("pet_profiles_title"))
                     .font(PPPetProfileFont.footnote())
                     .foregroundStyle(Color.ppTextSecondary)

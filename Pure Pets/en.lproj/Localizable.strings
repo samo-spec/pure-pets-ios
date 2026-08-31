@@ -892,6 +892,7 @@
 "PostalCode" = "Postal Code";
 "PostalCodeRequired" = "Postal Code is required";
 "DefaultShippingAddress" = "Default Shipping Address";
+"DefaultShippingAddressSubtitle" = "Use this address automatically when checkout opens.";
 "AddressHeroEyebrow" = "Delivery destination";
 "AddressHeroMetaFallback" = "Delivery details ready";
 "MapLocation" = "Map Location";

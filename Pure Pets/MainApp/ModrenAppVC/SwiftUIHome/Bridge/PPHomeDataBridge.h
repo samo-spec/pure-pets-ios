@@ -118,6 +118,12 @@ typedef void (^PPHomeExactCountCompletion)(NSInteger count,
                                 completion:(void (^)(NSArray<PetAccessory *> *accessories))completion
     NS_SWIFT_NAME(fetchAccessories(mainCategoryID:completion:));
 
+/// Reads the visible public advertisements for exactly one MainKind. Home uses
+/// this for a selected category instead of filtering a capped global feed.
+- (void)fetchAdvertisementsForMainCategoryID:(NSInteger)mainCategoryID
+                                   completion:(void (^)(NSArray<PetAd *> *advertisements))completion
+    NS_SWIFT_NAME(fetchAdvertisements(mainCategoryID:completion:));
+
 /// Uncapped, read-only public counts for the marketplace hero. A positive
 /// category ID is required; errors remain distinct from a valid zero.
 - (void)fetchMarketplaceItemCountForMainCategoryID:(NSInteger)mainCategoryID

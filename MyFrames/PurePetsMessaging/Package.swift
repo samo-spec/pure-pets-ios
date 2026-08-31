@@ -39,7 +39,7 @@ let package = Package(
   name: "PurePetsMessaging",
   defaultLocalization: "en",
   platforms: [
-    .iOS(.v17)
+    .iOS(.v15)
   ],
   products: products,
   targets: targets

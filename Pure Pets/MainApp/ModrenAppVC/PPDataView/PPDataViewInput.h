@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// Missing values intentionally resolve to `NO`, keeping the Pure Pets brand
 /// color as the default for both new and existing installs.
 FOUNDATION_EXPORT NSString * const PPMarketplaceUsesMainKindAccentColorsPreferenceKey;
+FOUNDATION_EXPORT NSString * const PPMarketplaceAccentColorPreferenceDidChangeNotification;
 
 @interface PPDataViewInput : NSObject
 

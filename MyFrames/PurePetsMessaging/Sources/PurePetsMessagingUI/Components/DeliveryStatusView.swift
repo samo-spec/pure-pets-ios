@@ -66,15 +66,23 @@ struct DeliveryStatusView: View {
       .accessibilityLabel(localized("chat_status_sending"))
   }
 
+  @ViewBuilder
   private func checkGlyph(for state: OutgoingDeliveryState) -> some View {
     let isRead = { if case .read = state { return true } else { return false } }()
-    return Image(systemName: checkSymbol(for: state))
-      .font(.system(size: 11.5, weight: .bold))
-      .foregroundStyle(isRead ? PurePetsMessagingTheme.signal : Color.secondary)
-      .contentTransition(
-        reduceMotion ? .identity : .symbolEffect(.replace.downUp)
-      )
-      .accessibilityLabel(localized(checkAccessibilityKey(for: state)))
+    if #available(iOS 17.0, *) {
+      Image(systemName: checkSymbol(for: state))
+        .font(.system(size: 11.5, weight: .bold))
+        .foregroundStyle(isRead ? PurePetsMessagingTheme.signal : Color.secondary)
+        .contentTransition(
+          reduceMotion ? .identity : .symbolEffect(.replace.downUp)
+        )
+        .accessibilityLabel(localized(checkAccessibilityKey(for: state)))
+    } else {
+      Image(systemName: checkSymbol(for: state))
+        .font(.system(size: 11.5, weight: .bold))
+        .foregroundStyle(isRead ? PurePetsMessagingTheme.signal : Color.secondary)
+        .accessibilityLabel(localized(checkAccessibilityKey(for: state)))
+    }
   }
 
   private var failedGlyph: some View {

@@ -242,7 +242,6 @@ private struct PPPetIdentityHeader: View {
                         .font(PPPetProfileFont.caption())
                         .foregroundStyle(Color.ppPrimary)
                         .textCase(.uppercase)
-                        .tracking(0.7)
 
                     Text(identityTitle)
                         .font(PPPetProfileFont.largeTitle())
@@ -987,7 +986,7 @@ struct PPPetProfileEditorScreen: View {
                         .padding(.top, 14)
                         .padding(.bottom, 30)
                     }
-                    .scrollDismissesKeyboard(.interactively)
+                    .scrollDismissesKeyboardCompat()
                     .onChange(of: focusedField) { field in
                         guard let field else { return }
                         proxy.scrollTo(field, anchor: .center)
@@ -1257,7 +1256,7 @@ struct PPPetVaccinationEditorScreen: View {
                         .padding(.top, 14)
                         .padding(.bottom, 36)
                     }
-                    .scrollDismissesKeyboard(.interactively)
+                    .scrollDismissesKeyboardCompat()
                     .onChange(of: focusedField) { field in
                         guard let field else { return }
                         proxy.scrollTo(field, anchor: .center)

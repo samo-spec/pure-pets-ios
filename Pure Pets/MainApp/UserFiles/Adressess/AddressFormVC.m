@@ -1593,17 +1593,32 @@ shouldChangeCharactersInRange:(NSRange)range
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
 
+    NSString *title = kLang(@"DeleteAddress") ?: @"Delete address";
+    UIFont *buttonFont = PPAddressScaledFont([GM boldFontWithSize:PPFontHeadline] ?: [UIFont systemFontOfSize:PPFontHeadline weight:UIFontWeightSemibold], UIFontTextStyleHeadline);
+
     UIButtonConfiguration *configuration = [UIButtonConfiguration tintedButtonConfiguration];
-    configuration.title = kLang(@"DeleteAddress") ?: @"Delete address";
+    configuration.attributedTitle = [[NSAttributedString alloc] initWithString:title
+                                                                    attributes:@{
+        NSFontAttributeName: buttonFont,
+        NSForegroundColorAttributeName: UIColor.systemRedColor
+    }];
+    configuration.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> *(NSDictionary<NSAttributedStringKey, id> *incomingAttributes) {
+        NSMutableDictionary *attributes = [incomingAttributes mutableCopy] ?: [NSMutableDictionary dictionary];
+        attributes[NSFontAttributeName] = buttonFont;
+        attributes[NSForegroundColorAttributeName] = UIColor.systemRedColor;
+        return attributes;
+    };
     configuration.image = [UIImage systemImageNamed:@"trash"];
     configuration.imagePadding = PPSpaceSM;
     configuration.baseForegroundColor = UIColor.systemRedColor;
     configuration.baseBackgroundColor = [UIColor.systemRedColor colorWithAlphaComponent:0.10];
     configuration.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMD, PPSpaceLG, PPSpaceMD, PPSpaceLG);
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+
     UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
     deleteButton.translatesAutoresizingMaskIntoConstraints = NO;
     deleteButton.configuration = configuration;
-    deleteButton.accessibilityLabel = kLang(@"DeleteAddress") ?: @"Delete address";
+    deleteButton.accessibilityLabel = title;
     deleteButton.accessibilityHint = kLang(@"DangerZoneSubtitle") ?: @"Remove this saved address permanently.";
     deleteButton.accessibilityTraits = UIAccessibilityTraitButton;
     [deleteButton addTarget:self action:@selector(showDeleteConfirmation) forControlEvents:UIControlEventTouchUpInside];

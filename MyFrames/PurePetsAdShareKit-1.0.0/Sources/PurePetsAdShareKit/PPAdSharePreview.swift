@@ -36,32 +36,35 @@
     }()
   }
 
-  #Preview("Fancy share labels") {
-    VStack(spacing: 18) {
-      PPFancyShareLabel(
-        copy: .english,
-        brandColor: PPAdShareConfiguration.purePets.brandColor,
-        isPreparing: false
-      )
+  @available(iOS 17.0, *)
+  struct PPAdSharePreview_Previews: PreviewProvider {
+    static var previews: some View {
+      VStack(spacing: 18) {
+        PPFancyShareLabel(
+          copy: .english,
+          brandColor: PPAdShareConfiguration.purePets.brandColor,
+          isPreparing: false
+        )
 
-      PPFancyShareLabel(
-        copy: .arabic,
-        brandColor: PPAdShareConfiguration.purePets.brandColor,
-        isPreparing: true
-      )
-      .environment(\.layoutDirection, .rightToLeft)
-    }
-    .padding()
-  }
+        PPFancyShareLabel(
+          copy: .arabic,
+          brandColor: PPAdShareConfiguration.purePets.brandColor,
+          isPreparing: true
+        )
+        .environment(\.layoutDirection, .rightToLeft)
+      }
+      .padding()
+      .previewDisplayName("Fancy share labels")
 
-  #Preview("Export card") {
-    ScrollView([.horizontal, .vertical]) {
-      PPAdShareCard(
-        payload: PPAdSharePreviewFixture.payload,
-        listingImage: PPAdSharePreviewFixture.image
-      )
-      .scaleEffect(0.32, anchor: .topLeading)
-      .frame(width: 346, height: 432, alignment: .topLeading)
+      ScrollView([.horizontal, .vertical]) {
+        PPAdShareCard(
+          payload: PPAdSharePreviewFixture.payload,
+          listingImage: PPAdSharePreviewFixture.image
+        )
+        .scaleEffect(0.32, anchor: .topLeading)
+        .frame(width: 346, height: 432, alignment: .topLeading)
+      }
+      .previewDisplayName("Export card")
     }
   }
 #endif

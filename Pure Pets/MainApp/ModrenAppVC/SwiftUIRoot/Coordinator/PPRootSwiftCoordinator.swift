@@ -154,6 +154,10 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
         !store.usesLegacyBar
     }
 
+    @objc public func setCustomAccentColor(_ color: UIColor?) {
+        store.setCustomAccentColor(color)
+    }
+
     @objc public func bottomNavigationAnchorView() -> UIView? {
         guard store.shouldShowDock,
               let anchor = commandDeckAnchorView,

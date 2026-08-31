@@ -209,18 +209,22 @@ public struct SmartMessageCell: View {
       actionMenu
     }
     .accessibilityHint(localized("chat_message_actions_hint"))
-    .accessibilityAction(named: localized("reply")) {
+    .accessibilityAction(named: Text(localized("reply"))) {
       actions.onReply()
     }
-    .accessibilityActions {
+    .accessibilityAction(named: Text(localized("copy"))) {
       if message.payload.canCopy {
-        Button(localized("copy"), action: actions.onCopy)
+        actions.onCopy()
       }
+    }
+    .accessibilityAction(named: Text(localized("chat_forward"))) {
       if message.payload.canForward && actions.canForward {
-        Button(localized("chat_forward"), action: actions.onForward)
+        actions.onForward()
       }
+    }
+    .accessibilityAction(named: Text(localized("chat_unsend"))) {
       if actions.canDelete {
-        Button(localized("chat_unsend"), role: .destructive, action: actions.onDelete)
+        actions.onDelete()
       }
     }
     .frame(
@@ -273,16 +277,26 @@ public struct SmartMessageCell: View {
   @ViewBuilder
   private var messageBody: some View {
     if case .text(let payload) = message.payload, showsDeliveryMetadata {
-      ViewThatFits(in: .horizontal) {
-        HStack(alignment: .lastTextBaseline, spacing: 8) {
-          TextMessageView(payload: payload)
-            .fixedSize(horizontal: true, vertical: false)
+      if #available(iOS 16.0, *) {
+        ViewThatFits(in: .horizontal) {
+          HStack(alignment: .lastTextBaseline, spacing: 8) {
+            TextMessageView(payload: payload)
+              .fixedSize(horizontal: true, vertical: false)
 
-          deliveryMetadata
-            .fixedSize(horizontal: true, vertical: true)
+            deliveryMetadata
+              .fixedSize(horizontal: true, vertical: true)
+          }
+          .environment(\.layoutDirection, resolvedPayloadDirection)
+
+          VStack(alignment: .leading, spacing: 5) {
+            TextMessageView(payload: payload)
+
+            deliveryMetadata
+              .frame(maxWidth: .infinity, alignment: .trailing)
+          }
+          .environment(\.layoutDirection, resolvedPayloadDirection)
         }
-        .environment(\.layoutDirection, resolvedPayloadDirection)
-
+      } else {
         VStack(alignment: .leading, spacing: 5) {
           TextMessageView(payload: payload)
 

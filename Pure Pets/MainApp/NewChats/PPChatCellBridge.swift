@@ -168,33 +168,53 @@ final class PPChatCellBridge: NSObject {
         let languageCode = Language.currentLanguageCode() ?? "en"
         let locale = Locale(identifier: languageCode)
 
-        cell.contentConfiguration = UIHostingConfiguration {
-            PPChatCellHost(
-                contentStore: contentStore,
-                style: Self.liveStyle,
-                copy: .localized(languageCode: languageCode),
-                timestampFormatter: PPChatTimestampFormatter(locale: locale),
-                expansionStore: expansionStore,
-                onOpenChat: { onOpenChat(contentStore.sourceThread) },
-                sendQuickReply: { message, conversationID in
-                    try await Self.sendQuickReplyBridge(
-                        message: message,
-                        conversationID: conversationID,
-                        receiverID: snapshot.participantID
-                    )
-                }
-            )
-            // Keep SwiftUI state scoped to one immutable conversation ID even
-            // when UIKit reconfigures a reusable hosting cell.
-            .id(conversationID)
-            .environment(\.locale, locale)
-            .environment(
-                \.layoutDirection,
-                languageCode == "ar" ? .rightToLeft : .leftToRight
-            )
+        let rootView = PPChatCellHost(
+            contentStore: contentStore,
+            style: Self.liveStyle,
+            copy: .localized(languageCode: languageCode),
+            timestampFormatter: PPChatTimestampFormatter(locale: locale),
+            expansionStore: expansionStore,
+            onOpenChat: { onOpenChat(contentStore.sourceThread) },
+            sendQuickReply: { message, conversationID in
+                try await Self.sendQuickReplyBridge(
+                    message: message,
+                    conversationID: conversationID,
+                    receiverID: snapshot.participantID
+                )
+            }
+        )
+        // Keep SwiftUI state scoped to one immutable conversation ID even
+        // when UIKit reconfigures a reusable hosting cell.
+        .id(conversationID)
+        .environment(\.locale, locale)
+        .environment(
+            \.layoutDirection,
+            languageCode == "ar" ? .rightToLeft : .leftToRight
+        )
+
+        if #available(iOS 16.0, *) {
+            cell.contentConfiguration = UIHostingConfiguration {
+                rootView
+            }
+            .margins(.all, 0)
+            .minSize(width: 0, height: 76)
+        } else {
+            let hostingTag = 948271
+            if let hostingView = cell.contentView.viewWithTag(hostingTag) {
+                hostingView.removeFromSuperview()
+            }
+            let host = UIHostingController(rootView: rootView)
+            host.view.tag = hostingTag
+            host.view.backgroundColor = .clear
+            host.view.translatesAutoresizingMaskIntoConstraints = false
+            cell.contentView.addSubview(host.view)
+            NSLayoutConstraint.activate([
+                host.view.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
+                host.view.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor),
+                host.view.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
+                host.view.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
+            ])
         }
-        .margins(.all, 0)
-        .minSize(width: 0, height: 76)
 
         cell.backgroundColor = .clear
         cell.selectionStyle = .none

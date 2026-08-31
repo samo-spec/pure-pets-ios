@@ -14,6 +14,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// Posted only after a pet-profile mutation has committed successfully. Home
+/// listens through its bridge and refreshes its profile-derived context.
+FOUNDATION_EXPORT NSNotificationName const PPPetProfileManagerDidChangeNotification;
+
 @interface PPPetProfileManager : NSObject
 
 /// Shared singleton instance.

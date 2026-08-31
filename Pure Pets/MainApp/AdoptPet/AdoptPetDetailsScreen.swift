@@ -462,7 +462,6 @@ struct AdoptPetDetailsScreen: View {
     private var adoptionEyebrow: some View {
         Text(PPAdoptLang("adopt_detail_eyebrow"))
             .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-            .tracking(0.45)
             .foregroundStyle(Color.ppAccentText)
     }
 

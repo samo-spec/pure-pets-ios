@@ -15,28 +15,50 @@
 typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     PPSplashLoadingPhaseBootstrapping = 0,
     PPSplashLoadingPhasePreparingContent,
-    PPSplashLoadingPhaseFinalizing,
     PPSplashLoadingPhaseReady
 };
 
-static NSString * const PPSplashAtmosphereDriftAnimationKey =
-    @"pp.splash.atmosphere.drift";
-
 #pragma mark - Living Mark
 
-/// The launch progress is carried by the Pure Pets mark itself. Three quiet
-/// contours map to the three visible launch phases and resolve around the logo,
-/// keeping progress honest without introducing a second, generic loading UI.
+/// One optical size owns the approved brand mark. `LaunchScreen.storyboard`
+/// pins the identical constant at the identical center offset, so the
+/// static-to-live handoff still never scales or moves the identity.
+static const CGFloat PPSplashBrandMarkOpticalSide = 92.0;
+
+/// The living carrier is sized by these adaptive sides. Halo, blob silhouette,
+/// liquid border, and readiness cradle are all normalized against the value, so
+/// one constant scales the entire carrier without disturbing the mark.
+static const CGFloat PPSplashCarrierSideRegular = 184.0;
+static const CGFloat PPSplashCarrierSideCompact = 176.0;
+static const CGFloat PPSplashCarrierSideCompactAccessibility = 172.0;
+
+/// The specular arc rides just inside the liquid border. Shrinking the side of
+/// the shared geometry keeps the arc concentric with the morphing silhouette
+/// without a layer transform that `settleForSnapshot` would have to restore.
+static const CGFloat PPSplashLiquidHighlightInsetRatio = 0.972;
+
+/// The static LaunchScreen hands one immutable identity anchor to UIKit. The
+/// approved mark never moves or redraws. UIKit adds a soft organic carrier that
+/// gently changes silhouette around the mark, plus three logical readiness
+/// strokes beneath it. The identity stays fixed and progress stays truthful.
+///
+/// The carrier edge is a liquid membrane rather than a flat outline. Three
+/// layers share the one morphing silhouette: a soft surface-tension rim, a
+/// semantically directional sheen that varies the rim's apparent density, and
+/// one specular arc just inside the edge.
 @interface PPSplashLivingMarkView : UIView
 @property (nonatomic, strong) CAGradientLayer *haloLayer;
-@property (nonatomic, strong) CALayer *pedestalLayer;
+@property (nonatomic, strong) CAShapeLayer *blobLayer;
+@property (nonatomic, strong) CAShapeLayer *liquidRimLayer;
+@property (nonatomic, strong) CAGradientLayer *liquidSheenLayer;
+@property (nonatomic, strong) CAShapeLayer *liquidSheenMaskLayer;
+@property (nonatomic, strong) CAShapeLayer *liquidHighlightLayer;
+@property (nonatomic, strong) NSArray<UIBezierPath *> *blobPaths;
+@property (nonatomic, strong) NSArray<UIBezierPath *> *liquidHighlightPaths;
 @property (nonatomic, strong) NSArray<CAShapeLayer *> *trackLayers;
 @property (nonatomic, strong) NSArray<CAShapeLayer *> *progressLayers;
 @property (nonatomic, strong) UIView *logoWrapperView;
 @property (nonatomic, strong) UIImageView *logoImageView;
-@property (nonatomic, strong) CALayer *markSheenContainerLayer;
-@property (nonatomic, strong) CAGradientLayer *markSheenLayer;
-@property (nonatomic, strong) CALayer *markSheenMaskLayer;
 @property (nonatomic, assign) NSInteger activeStepCount;
 @property (nonatomic, assign, getter=isReady) BOOL ready;
 @property (nonatomic, assign) BOOL usesFallback;
@@ -44,11 +66,66 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 - (void)setActiveStepCount:(NSInteger)activeStepCount animated:(BOOL)animated;
 - (void)setReady:(BOOL)ready usesFallback:(BOOL)usesFallback animated:(BOOL)animated;
 - (void)playEntrance;
+- (void)resumeLivingMotionIfAllowed;
 - (void)stopMotion;
 - (void)settleForSnapshot;
 - (void)pp_applyTheme;
 - (void)pp_commonInit;
 @end
+
+static CGPoint PPSplashLogicalPoint(CGFloat x,
+                                    CGFloat y,
+                                    CGFloat side,
+                                    BOOL rightToLeft)
+{
+    CGFloat logicalX = rightToLeft ? (1.0 - x) : x;
+    return CGPointMake(logicalX * side, y * side);
+}
+
+typedef struct {
+    CGPoint top;
+    CGPoint right;
+    CGPoint bottom;
+    CGPoint left;
+    CGPoint topRightControl1;
+    CGPoint topRightControl2;
+    CGPoint rightBottomControl1;
+    CGPoint rightBottomControl2;
+    CGPoint bottomLeftControl1;
+    CGPoint bottomLeftControl2;
+    CGPoint leftTopControl1;
+    CGPoint leftTopControl2;
+} PPSplashBlobGeometry;
+
+static CGPoint PPSplashBlobPoint(CGPoint normalizedPoint,
+                                 CGPoint center,
+                                 CGFloat side)
+{
+    return CGPointMake(center.x + normalizedPoint.x * side,
+                       center.y + normalizedPoint.y * side);
+}
+
+static UIBezierPath *PPSplashBlobPath(CGFloat side,
+                                      CGPoint center,
+                                      PPSplashBlobGeometry geometry)
+{
+    UIBezierPath *path = [UIBezierPath bezierPath];
+    [path moveToPoint:PPSplashBlobPoint(geometry.top, center, side)];
+    [path addCurveToPoint:PPSplashBlobPoint(geometry.right, center, side)
+            controlPoint1:PPSplashBlobPoint(geometry.topRightControl1, center, side)
+            controlPoint2:PPSplashBlobPoint(geometry.topRightControl2, center, side)];
+    [path addCurveToPoint:PPSplashBlobPoint(geometry.bottom, center, side)
+            controlPoint1:PPSplashBlobPoint(geometry.rightBottomControl1, center, side)
+            controlPoint2:PPSplashBlobPoint(geometry.rightBottomControl2, center, side)];
+    [path addCurveToPoint:PPSplashBlobPoint(geometry.left, center, side)
+            controlPoint1:PPSplashBlobPoint(geometry.bottomLeftControl1, center, side)
+            controlPoint2:PPSplashBlobPoint(geometry.bottomLeftControl2, center, side)];
+    [path addCurveToPoint:PPSplashBlobPoint(geometry.top, center, side)
+            controlPoint1:PPSplashBlobPoint(geometry.leftTopControl1, center, side)
+            controlPoint2:PPSplashBlobPoint(geometry.leftTopControl2, center, side)];
+    [path closePath];
+    return path;
+}
 
 @implementation PPSplashLivingMarkView
 
@@ -88,15 +165,46 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     [self.layer addSublayer:haloLayer];
     self.haloLayer = haloLayer;
 
-    // A quiet, borderless raised surface separates the identity from the
-    // atmospheric field. It remains inset from the progress contour so the
-    // loading state stays crisp and visually independent.
-    CALayer *pedestalLayer = [CALayer layer];
-    pedestalLayer.borderWidth = 0.0;
-    pedestalLayer.masksToBounds = NO;
-    pedestalLayer.opacity = 0.0f;
-    [self.layer addSublayer:pedestalLayer];
-    self.pedestalLayer = pedestalLayer;
+    CAShapeLayer *blobLayer = [CAShapeLayer layer];
+    blobLayer.masksToBounds = NO;
+    blobLayer.opacity = 0.0f;
+    [self.layer addSublayer:blobLayer];
+    self.blobLayer = blobLayer;
+
+    // Liquid border, drawn as three cooperating passes over one silhouette.
+    // The rim carries surface tension, the masked sheen makes that rim read as
+    // a varying-density liquid edge, and the arc adds a single specular
+    // reflection. None of them redraw or overlap the approved mark.
+    CAShapeLayer *liquidRimLayer = [CAShapeLayer layer];
+    liquidRimLayer.fillColor = UIColor.clearColor.CGColor;
+    liquidRimLayer.lineJoin = kCALineJoinRound;
+    liquidRimLayer.lineCap = kCALineCapRound;
+    liquidRimLayer.opacity = 0.0f;
+    [self.layer addSublayer:liquidRimLayer];
+    self.liquidRimLayer = liquidRimLayer;
+
+    // The mask strokes the same silhouette, so the gradient is only visible
+    // along the border band instead of flooding the carrier interior.
+    CAShapeLayer *liquidSheenMaskLayer = [CAShapeLayer layer];
+    liquidSheenMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    liquidSheenMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    liquidSheenMaskLayer.lineJoin = kCALineJoinRound;
+    liquidSheenMaskLayer.lineCap = kCALineCapRound;
+    self.liquidSheenMaskLayer = liquidSheenMaskLayer;
+
+    CAGradientLayer *liquidSheenLayer = [CAGradientLayer layer];
+    liquidSheenLayer.locations = @[@0.0, @0.46, @1.0];
+    liquidSheenLayer.opacity = 0.0f;
+    liquidSheenLayer.mask = liquidSheenMaskLayer;
+    [self.layer addSublayer:liquidSheenLayer];
+    self.liquidSheenLayer = liquidSheenLayer;
+
+    CAShapeLayer *liquidHighlightLayer = [CAShapeLayer layer];
+    liquidHighlightLayer.fillColor = UIColor.clearColor.CGColor;
+    liquidHighlightLayer.lineCap = kCALineCapRound;
+    liquidHighlightLayer.opacity = 0.0f;
+    [self.layer addSublayer:liquidHighlightLayer];
+    self.liquidHighlightLayer = liquidHighlightLayer;
 
     NSMutableArray<CAShapeLayer *> *trackLayers = [NSMutableArray arrayWithCapacity:3];
     NSMutableArray<CAShapeLayer *> *progressLayers = [NSMutableArray arrayWithCapacity:3];
@@ -140,24 +248,9 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     logoImageView.contentMode = UIViewContentModeScaleAspectFit;
     logoImageView.userInteractionEnabled = NO;
     logoImageView.accessibilityElementsHidden = YES;
+    logoImageView.accessibilityIgnoresInvertColors = YES;
     [logoWrapperView addSubview:logoImageView];
     self.logoImageView = logoImageView;
-
-    CAGradientLayer *markSheenLayer = [CAGradientLayer layer];
-    markSheenLayer.startPoint = CGPointMake(0.0, 0.5);
-    markSheenLayer.endPoint = CGPointMake(1.0, 0.5);
-    markSheenLayer.locations = @[@0.42, @0.50, @0.58];
-    markSheenLayer.opacity = 0.0f;
-    CALayer *markSheenContainerLayer = [CALayer layer];
-    CALayer *markSheenMaskLayer = [CALayer layer];
-    markSheenMaskLayer.contents = (__bridge id)brandImage.CGImage;
-    markSheenMaskLayer.contentsGravity = kCAGravityResizeAspect;
-    markSheenContainerLayer.mask = markSheenMaskLayer;
-    [markSheenContainerLayer addSublayer:markSheenLayer];
-    [logoWrapperView.layer addSublayer:markSheenContainerLayer];
-    self.markSheenContainerLayer = markSheenContainerLayer;
-    self.markSheenLayer = markSheenLayer;
-    self.markSheenMaskLayer = markSheenMaskLayer;
 
     _activeStepCount = 0;
     [self setActiveStepCount:1 animated:NO];
@@ -169,58 +262,128 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     [super layoutSubviews];
 
     CGFloat side = MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds));
-    CGPoint center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
-    self.haloLayer.frame = CGRectInset(self.bounds, -side * 0.08, -side * 0.08);
+    CGFloat originX = CGRectGetMidX(self.bounds) - side * 0.5;
+    CGFloat originY = CGRectGetMidY(self.bounds) - side * 0.5;
+    CGRect squareBounds = CGRectMake(0.0, 0.0, side, side);
+    CGPoint center = CGPointMake(side * 0.5, side * 0.5);
+    BOOL rightToLeft =
+        self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+
+    self.haloLayer.frame = CGRectOffset(squareBounds, originX, originY);
     self.haloLayer.cornerRadius = CGRectGetWidth(self.haloLayer.bounds) * 0.5;
 
-    // Keep the raised surface comfortably inside the contour's inner edge.
-    // At the default 232pt mark field this creates a ~153pt pedestal with a
-    // 12–13pt optical inset from the widest progress stroke.
-    CGFloat pedestalDiameter = side * 0.66;
-    self.pedestalLayer.frame = CGRectMake(center.x - pedestalDiameter * 0.5,
-                                          center.y - pedestalDiameter * 0.5,
-                                          pedestalDiameter,
-                                          pedestalDiameter);
-    self.pedestalLayer.cornerRadius = pedestalDiameter * 0.5;
-    self.pedestalLayer.shadowPath =
-        [UIBezierPath bezierPathWithOvalInRect:self.pedestalLayer.bounds].CGPath;
+    // These silhouettes share the same cubic topology, so Core Animation can
+    // interpolate them without scaling or moving the approved logo. Changes
+    // stay deliberately small: the carrier feels alive, never gelatinous.
+    PPSplashBlobGeometry settledGeometry = {
+        {-0.045, -0.350}, {0.355, -0.035}, {0.035, 0.345}, {-0.350, 0.045},
+        {0.160, -0.360}, {0.350, -0.230},
+        {0.370, 0.170}, {0.230, 0.340},
+        {-0.170, 0.360}, {-0.340, 0.230},
+        {-0.370, -0.160}, {-0.220, -0.340}
+    };
+    PPSplashBlobGeometry inhaleGeometry = {
+        {0.010, -0.330}, {0.370, 0.015}, {-0.020, 0.360}, {-0.335, -0.015},
+        {0.190, -0.335}, {0.360, -0.200},
+        {0.380, 0.210}, {0.190, 0.360},
+        {-0.190, 0.365}, {-0.340, 0.190},
+        {-0.335, -0.180}, {-0.180, -0.340}
+    };
+    PPSplashBlobGeometry exhaleGeometry = {
+        {-0.030, -0.370}, {0.335, -0.055}, {0.055, 0.325}, {-0.370, 0.025},
+        {0.160, -0.375}, {0.340, -0.220},
+        {0.345, 0.150}, {0.210, 0.315},
+        {-0.170, 0.340}, {-0.370, 0.230},
+        {-0.380, -0.190}, {-0.230, -0.370}
+    };
+    BOOL wasMorphing = [self.blobLayer animationForKey:@"pp.blob.breathe"] != nil;
+    [self.blobLayer removeAnimationForKey:@"pp.blob.breathe"];
+    [self.liquidRimLayer removeAnimationForKey:@"pp.blob.breathe"];
+    [self.liquidSheenMaskLayer removeAnimationForKey:@"pp.blob.breathe"];
+    [self.liquidHighlightLayer removeAnimationForKey:@"pp.blob.breathe"];
+    [self.liquidHighlightLayer removeAnimationForKey:@"pp.liquid.highlight.drift"];
+    self.blobPaths = @[
+        PPSplashBlobPath(side, center, settledGeometry),
+        PPSplashBlobPath(side, center, inhaleGeometry),
+        PPSplashBlobPath(side, center, exhaleGeometry)
+    ];
+    // The specular arc uses the same three silhouettes at a slightly smaller
+    // side, so it stays concentric with the rim through the whole morph.
+    CGFloat highlightSide = side * PPSplashLiquidHighlightInsetRatio;
+    self.liquidHighlightPaths = @[
+        PPSplashBlobPath(highlightSide, center, settledGeometry),
+        PPSplashBlobPath(highlightSide, center, inhaleGeometry),
+        PPSplashBlobPath(highlightSide, center, exhaleGeometry)
+    ];
 
-    // Keep the brand identity aspect-fitted and centered at the same optical
-    // size used by LaunchScreen (112.5pt at the default 232pt mark field).
-    CGFloat visualMarkSize = side * 0.485;
-    self.logoWrapperView.frame = CGRectMake(center.x - visualMarkSize * 0.5,
-                                            center.y - visualMarkSize * 0.5,
+    UIBezierPath *settledPath = self.blobPaths.firstObject;
+    self.blobLayer.frame = CGRectMake(originX, originY, side, side);
+    self.blobLayer.path = settledPath.CGPath;
+    self.blobLayer.shadowPath = nil;
+    self.liquidRimLayer.frame = self.blobLayer.frame;
+    self.liquidRimLayer.path = settledPath.CGPath;
+
+    self.liquidSheenLayer.frame = self.blobLayer.frame;
+    self.liquidSheenMaskLayer.frame = CGRectMake(0.0, 0.0, side, side);
+    self.liquidSheenMaskLayer.path = settledPath.CGPath;
+    // Light arrives from the semantic leading side, so the liquid edge reads
+    // the same way in Arabic and English without mirroring the mark itself.
+    self.liquidSheenLayer.startPoint = CGPointMake(rightToLeft ? 0.82 : 0.18, 0.0);
+    self.liquidSheenLayer.endPoint = CGPointMake(rightToLeft ? 0.18 : 0.82, 1.0);
+
+    self.liquidHighlightLayer.frame = self.blobLayer.frame;
+    self.liquidHighlightLayer.path = self.liquidHighlightPaths.firstObject.CGPath;
+    // The silhouette is authored clockwise from its top point, so the upper
+    // leading quadrant is the closing segment in LTR and the opening one in RTL.
+    self.liquidHighlightLayer.strokeStart = rightToLeft ? 0.035 : 0.775;
+    self.liquidHighlightLayer.strokeEnd = rightToLeft ? 0.225 : 0.965;
+
+    // Keep the brand identity aspect-fitted and centered at the exact optical
+    // size LaunchScreen pins. The field assembles around the mark; the mark
+    // itself never shifts during the static-to-live handoff.
+    CGFloat visualMarkSize = PPSplashBrandMarkOpticalSide;
+    self.logoWrapperView.frame = CGRectMake(originX + center.x - visualMarkSize * 0.5,
+                                            originY + center.y - visualMarkSize * 0.5,
                                             visualMarkSize,
                                             visualMarkSize);
     self.logoImageView.frame = self.logoWrapperView.bounds;
-    self.markSheenContainerLayer.frame = self.logoWrapperView.bounds;
-    self.markSheenLayer.frame = CGRectMake(-CGRectGetWidth(self.logoWrapperView.bounds),
-                                           0.0,
-                                           CGRectGetWidth(self.logoWrapperView.bounds) * 3.0,
-                                           CGRectGetHeight(self.logoWrapperView.bounds));
-    self.markSheenMaskLayer.frame = self.logoWrapperView.bounds;
 
-    CGFloat radius = side * 0.385;
-    CGFloat gap = (CGFloat)(M_PI * 14.0 / 180.0);
-    CGFloat segmentSpan = ((CGFloat)(M_PI * 2.0) - gap * 3.0) / 3.0;
-    CGFloat firstStart = (CGFloat)-M_PI_2;
+    // Three small strokes form a supportive cradle beneath the mark with breathing vertical space below the center plate.
+    // Their logical order mirrors for Arabic while the approved logo never mirrors.
+    UIBezierPath *firstPath = [UIBezierPath bezierPath];
+    [firstPath moveToPoint:PPSplashLogicalPoint(0.205, 0.865, side, rightToLeft)];
+    [firstPath addCurveToPoint:PPSplashLogicalPoint(0.365, 0.910, side, rightToLeft)
+                  controlPoint1:PPSplashLogicalPoint(0.255, 0.875, side, rightToLeft)
+                  controlPoint2:PPSplashLogicalPoint(0.315, 0.905, side, rightToLeft)];
+
+    UIBezierPath *secondPath = [UIBezierPath bezierPath];
+    [secondPath moveToPoint:PPSplashLogicalPoint(0.420, 0.925, side, rightToLeft)];
+    [secondPath addCurveToPoint:PPSplashLogicalPoint(0.580, 0.925, side, rightToLeft)
+                   controlPoint1:PPSplashLogicalPoint(0.470, 0.940, side, rightToLeft)
+                   controlPoint2:PPSplashLogicalPoint(0.530, 0.940, side, rightToLeft)];
+
+    UIBezierPath *thirdPath = [UIBezierPath bezierPath];
+    [thirdPath moveToPoint:PPSplashLogicalPoint(0.635, 0.910, side, rightToLeft)];
+    [thirdPath addCurveToPoint:PPSplashLogicalPoint(0.795, 0.865, side, rightToLeft)
+                  controlPoint1:PPSplashLogicalPoint(0.685, 0.905, side, rightToLeft)
+                  controlPoint2:PPSplashLogicalPoint(0.745, 0.875, side, rightToLeft)];
+    NSArray<UIBezierPath *> *paths = @[firstPath, secondPath, thirdPath];
+
     [self.trackLayers enumerateObjectsUsingBlock:^(CAShapeLayer *trackLayer,
                                                     NSUInteger index,
                                                     BOOL *stop) {
-        CGFloat start = firstStart + (segmentSpan + gap) * (CGFloat)index;
-        CGFloat end = start + segmentSpan;
-        UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:center
-                                                            radius:radius
-                                                        startAngle:start
-                                                          endAngle:end
-                                                         clockwise:YES];
-        trackLayer.frame = self.bounds;
-        trackLayer.path = path.CGPath;
+        trackLayer.frame = CGRectMake(originX, originY, side, side);
+        trackLayer.path = paths[index].CGPath;
 
         CAShapeLayer *progressLayer = self.progressLayers[index];
-        progressLayer.frame = self.bounds;
-        progressLayer.path = path.CGPath;
+        progressLayer.frame = trackLayer.frame;
+        progressLayer.path = paths[index].CGPath;
+
     }];
+
+    if (wasMorphing) {
+        [self resumeLivingMotionIfAllowed];
+    }
 }
 
 - (void)setActiveStepCount:(NSInteger)activeStepCount animated:(BOOL)animated
@@ -246,7 +409,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
             CABasicAnimation *draw = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
             draw.fromValue = @(fromValue);
             draw.toValue = @(target);
-            draw.duration = 0.42;
+            draw.duration = 0.22;
             draw.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
                                                                                   :1.0
                                                                                   :0.32
@@ -255,7 +418,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         }
     }];
     [CATransaction commit];
-
+    [self pp_applyTheme];
 }
 
 - (void)setReady:(BOOL)ready usesFallback:(BOOL)usesFallback animated:(BOOL)animated
@@ -271,38 +434,26 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 
     CALayer *presentationLayer = self.haloLayer.presentationLayer;
     CGFloat visibleOpacity = presentationLayer ? presentationLayer.opacity : self.haloLayer.opacity;
-    CATransform3D visibleTransform = presentationLayer
-        ? presentationLayer.transform
-        : self.haloLayer.transform;
     [self.haloLayer removeAnimationForKey:@"pp.halo.entrance"];
     [self.haloLayer removeAnimationForKey:@"pp.halo.resolve"];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.haloLayer.opacity = 1.0f;
-    self.haloLayer.transform = CATransform3DIdentity;
+    self.haloLayer.opacity = 0.74f;
     [CATransaction commit];
 
-    BOOL needsResolution = visibleOpacity < 0.995 ||
-        !CATransform3DEqualToTransform(visibleTransform, CATransform3DIdentity);
-    if (!animated || UIAccessibilityIsReduceMotionEnabled() || !needsResolution) {
+    if (!animated || UIAccessibilityIsReduceMotionEnabled() || visibleOpacity >= 0.735) {
         return;
     }
 
     CABasicAnimation *resolveOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
     resolveOpacity.fromValue = @(visibleOpacity);
-    resolveOpacity.toValue = @1.0;
-    CABasicAnimation *resolveTransform = [CABasicAnimation animationWithKeyPath:@"transform"];
-    resolveTransform.fromValue = [NSValue valueWithCATransform3D:visibleTransform];
-    resolveTransform.toValue = [NSValue valueWithCATransform3D:CATransform3DIdentity];
-    CAAnimationGroup *resolve = [CAAnimationGroup animation];
-    resolve.animations = @[resolveOpacity, resolveTransform];
-    resolve.duration = 0.28;
-    resolve.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
-                                                                              :1.0
-                                                                              :0.32
-                                                                              :1.0];
-    [self.haloLayer addAnimation:resolve forKey:@"pp.halo.resolve"];
-
+    resolveOpacity.toValue = @0.74;
+    resolveOpacity.duration = 0.20;
+    resolveOpacity.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                                     :1.0
+                                                                                     :0.32
+                                                                                     :1.0];
+    [self.haloLayer addAnimation:resolveOpacity forKey:@"pp.halo.resolve"];
 }
 
 - (void)playEntrance
@@ -314,9 +465,11 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     [self layoutIfNeeded];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.haloLayer.opacity = 1.0f;
-        self.pedestalLayer.opacity = 1.0f;
-        self.pedestalLayer.transform = CATransform3DIdentity;
+        self.haloLayer.opacity = self.isReady ? 0.74f : 0.56f;
+        self.blobLayer.opacity = 1.0f;
+        self.liquidRimLayer.opacity = 1.0f;
+        self.liquidSheenLayer.opacity = 1.0f;
+        self.liquidHighlightLayer.opacity = 1.0f;
         self.logoWrapperView.alpha = 1.0;
         self.logoWrapperView.transform = CGAffineTransformIdentity;
         for (CAShapeLayer *trackLayer in self.trackLayers) {
@@ -328,83 +481,62 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         return;
     }
 
-    self.haloLayer.opacity = 1.0f;
-    CAAnimationGroup *haloReveal = [CAAnimationGroup animation];
+    self.haloLayer.opacity = self.isReady ? 0.74f : 0.56f;
     CABasicAnimation *haloOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
     haloOpacity.fromValue = @0.0;
-    haloOpacity.toValue = @1.0;
-    CABasicAnimation *haloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    haloScale.fromValue = @0.94;
-    haloScale.toValue = @1.0;
-    haloReveal.animations = @[haloOpacity, haloScale];
-    haloReveal.duration = 0.62;
-    haloReveal.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
-                                                                               :1.0
-                                                                               :0.32
-                                                                               :1.0];
-    [self.haloLayer addAnimation:haloReveal forKey:@"pp.halo.entrance"];
+    haloOpacity.toValue = @(self.haloLayer.opacity);
+    haloOpacity.duration = 0.22;
+    haloOpacity.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+                                                                                  :1.0
+                                                                                  :0.32
+                                                                                  :1.0];
+    [self.haloLayer addAnimation:haloOpacity forKey:@"pp.halo.entrance"];
+
+    // Re-read the system setting before the remaining authored phases so a
+    // setting change at the launch boundary settles every owned layer.
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self settleForSnapshot];
+        return;
+    }
 
     CFTimeInterval now = CACurrentMediaTime();
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.pedestalLayer.opacity = 1.0f;
-    self.pedestalLayer.transform = CATransform3DIdentity;
+    self.blobLayer.opacity = 1.0f;
+    self.liquidRimLayer.opacity = 1.0f;
+    self.liquidSheenLayer.opacity = 1.0f;
+    self.liquidHighlightLayer.opacity = 1.0f;
     [CATransaction commit];
-    CABasicAnimation *pedestalReveal = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    pedestalReveal.fromValue = @0.0;
-    pedestalReveal.toValue = @1.0;
-    pedestalReveal.beginTime = now + 0.04;
-    pedestalReveal.duration = 0.48;
-    pedestalReveal.fillMode = kCAFillModeBackwards;
-    pedestalReveal.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
-                                                                                   :1.0
-                                                                                   :0.32
-                                                                                   :1.0];
-    [self.pedestalLayer addAnimation:pedestalReveal forKey:@"pp.pedestal.entrance"];
-
-    self.logoWrapperView.transform = CGAffineTransformMakeScale(0.86, 0.86);
-    self.logoWrapperView.alpha = 0.0;
-    __weak typeof(self) weakLivingMark = self;
-    [UIView animateWithDuration:0.66
-                          delay:0.04
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.2
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        weakLivingMark.logoWrapperView.alpha = 1.0;
-        weakLivingMark.logoWrapperView.transform = CGAffineTransformIdentity;
-    } completion:^(BOOL finished) {
-        if (finished && !UIAccessibilityIsReduceMotionEnabled()) {
-            [weakLivingMark pp_startMarkBreathingLoop];
-        }
-    }];
-
-    CAKeyframeAnimation *sheenOpacity = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
-    sheenOpacity.values = @[@0.0, @0.18, @0.18, @0.0];
-    sheenOpacity.keyTimes = @[@0.0, @0.24, @0.76, @1.0];
-    CABasicAnimation *sheenTravel = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    sheenTravel.fromValue = @(-CGRectGetWidth(self.logoWrapperView.bounds));
-    sheenTravel.toValue = @(CGRectGetWidth(self.logoWrapperView.bounds));
-    CAAnimationGroup *sheenGroup = [CAAnimationGroup animation];
-    sheenGroup.animations = @[sheenOpacity, sheenTravel];
-    sheenGroup.beginTime = now + 0.10;
-    sheenGroup.duration = 0.58;
-    sheenGroup.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
+    CABasicAnimation *blobOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    blobOpacity.fromValue = @0.0;
+    blobOpacity.toValue = @1.0;
+    blobOpacity.duration = 0.20;
+    blobOpacity.fillMode = kCAFillModeBackwards;
+    blobOpacity.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
                                                                                 :1.0
                                                                                 :0.32
                                                                                 :1.0];
-    [self.markSheenLayer addAnimation:sheenGroup forKey:@"pp.mark.sheen"];
+    [self.blobLayer addAnimation:blobOpacity forKey:@"pp.blob.entrance"];
+    [self.liquidRimLayer addAnimation:blobOpacity forKey:@"pp.liquid.rim.entrance"];
+    [self.liquidSheenLayer addAnimation:blobOpacity forKey:@"pp.liquid.sheen.entrance"];
+    [self.liquidHighlightLayer addAnimation:blobOpacity forKey:@"pp.liquid.highlight.entrance"];
 
     [self.trackLayers enumerateObjectsUsingBlock:^(CAShapeLayer *trackLayer,
                                                     NSUInteger index,
                                                     BOOL *stop) {
+        if (UIAccessibilityIsReduceMotionEnabled()) {
+            trackLayer.opacity = 1.0f;
+            self.progressLayers[index].opacity = 1.0f;
+            return;
+        }
+
         trackLayer.opacity = 1.0f;
         CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
         fade.fromValue = @0.0;
         fade.toValue = @1.0;
-        fade.beginTime = now + 0.12 + (CFTimeInterval)index * 0.045;
-        fade.duration = 0.34;
+        fade.beginTime = now + 0.025 + (CFTimeInterval)index * 0.02;
+        fade.duration = 0.16;
         fade.fillMode = kCAFillModeBackwards;
         fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
         [trackLayer addAnimation:fade forKey:@"pp.track.entrance"];
@@ -415,8 +547,8 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
             CABasicAnimation *draw = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
             draw.fromValue = @0.0;
             draw.toValue = @(progressLayer.strokeEnd);
-            draw.beginTime = now + 0.16 + (CFTimeInterval)index * 0.055;
-            draw.duration = 0.46;
+            draw.beginTime = now + 0.04 + (CFTimeInterval)index * 0.02;
+            draw.duration = 0.22;
             draw.fillMode = kCAFillModeBackwards;
             draw.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.23
                                                                                   :1.0
@@ -426,29 +558,95 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         }
     }];
 
+    [self resumeLivingMotionIfAllowed];
 }
 
-- (void)pp_startMarkBreathingLoop
+- (void)resumeLivingMotionIfAllowed
 {
-    if (UIAccessibilityIsReduceMotionEnabled() || NSProcessInfo.processInfo.isLowPowerModeEnabled) {
+    if (!self.didPlayEntrance || UIAccessibilityIsReduceMotionEnabled() || !self.window ||
+        UIApplication.sharedApplication.applicationState != UIApplicationStateActive ||
+        self.blobPaths.count < 3 || self.liquidHighlightPaths.count < 3 ||
+        [self.blobLayer animationForKey:@"pp.blob.breathe"]) {
         return;
     }
-    CABasicAnimation *breathe = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    breathe.fromValue = @1.0;
-    breathe.toValue = @1.024;
-    breathe.duration = 0.82;
-    breathe.autoreverses = YES;
-    breathe.repeatCount = HUGE_VALF;
-    breathe.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.logoWrapperView.layer addAnimation:breathe forKey:@"pp.mark.breathe"];
+
+    NSProcessInfo *processInfo = NSProcessInfo.processInfo;
+    if (processInfo.isLowPowerModeEnabled) {
+        return;
+    }
+    if (@available(iOS 11.0, *)) {
+        if (processInfo.thermalState >= NSProcessInfoThermalStateSerious) {
+            return;
+        }
+    }
+
+    CFTimeInterval breatheBeginTime = CACurrentMediaTime() + 0.04;
+    // Every liquid layer shares one authored cadence, so the fill, rim, sheen
+    // band, and specular arc deform as a single membrane instead of drifting
+    // out of phase with each other.
+    CAKeyframeAnimation *(^morphAnimation)(NSArray<UIBezierPath *> *) =
+        ^CAKeyframeAnimation *(NSArray<UIBezierPath *> *paths) {
+            NSMutableArray *pathValues = [NSMutableArray arrayWithCapacity:paths.count + 1];
+            for (UIBezierPath *path in paths) {
+                [pathValues addObject:(__bridge id)path.CGPath];
+            }
+            [pathValues addObject:(__bridge id)paths.firstObject.CGPath];
+
+            CAKeyframeAnimation *breathe = [CAKeyframeAnimation animationWithKeyPath:@"path"];
+            breathe.values = pathValues.copy;
+            breathe.keyTimes = @[@0.0, @0.34, @0.68, @1.0];
+            breathe.timingFunctions = @[
+                [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+                [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+                [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]
+            ];
+            breathe.duration = 3.2;
+            // Two finite breaths cover the six-second launch timeout without
+            // leaving an ambient loop alive if navigation is delayed by the OS.
+            breathe.repeatCount = 1.0f;
+            breathe.beginTime = breatheBeginTime;
+            breathe.fillMode = kCAFillModeBackwards;
+            breathe.removedOnCompletion = YES;
+            return breathe;
+        };
+
+    CAKeyframeAnimation *breathe = morphAnimation(self.blobPaths);
+    [self.blobLayer addAnimation:breathe forKey:@"pp.blob.breathe"];
+    [self.liquidRimLayer addAnimation:breathe forKey:@"pp.blob.breathe"];
+    [self.liquidSheenMaskLayer addAnimation:breathe forKey:@"pp.blob.breathe"];
+    [self.liquidHighlightLayer addAnimation:morphAnimation(self.liquidHighlightPaths)
+                                     forKey:@"pp.blob.breathe"];
+
+    // The reflection slides a short distance along the same edge, the way light
+    // travels across a moving liquid surface. It is finite and never restarts on
+    // its own, so the launch surface still owns no ambient timeline.
+    CGFloat highlightStart = self.liquidHighlightLayer.strokeStart;
+    CGFloat highlightEnd = self.liquidHighlightLayer.strokeEnd;
+    CAKeyframeAnimation *drift = [CAKeyframeAnimation animationWithKeyPath:@"strokeStart"];
+    drift.values = @[@(highlightStart), @(highlightStart + 0.028), @(highlightStart)];
+    drift.keyTimes = @[@0.0, @0.5, @1.0];
+    drift.duration = 3.2;
+    drift.repeatCount = 1.0f;
+    drift.beginTime = breatheBeginTime;
+    drift.fillMode = kCAFillModeBackwards;
+    drift.removedOnCompletion = YES;
+    drift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.liquidHighlightLayer addAnimation:drift forKey:@"pp.liquid.highlight.drift"];
+
+    CAKeyframeAnimation *driftEnd = [drift copy];
+    driftEnd.keyPath = @"strokeEnd";
+    driftEnd.values = @[@(highlightEnd), @(highlightEnd + 0.020), @(highlightEnd)];
+    [self.liquidHighlightLayer addAnimation:driftEnd forKey:@"pp.liquid.highlight.drift.end"];
 }
 
 - (void)stopMotion
 {
     [self.haloLayer removeAllAnimations];
-    [self.pedestalLayer removeAllAnimations];
-    [self.logoWrapperView.layer removeAllAnimations];
-    [self.markSheenLayer removeAllAnimations];
+    [self.blobLayer removeAllAnimations];
+    [self.liquidRimLayer removeAllAnimations];
+    [self.liquidSheenLayer removeAllAnimations];
+    [self.liquidSheenMaskLayer removeAllAnimations];
+    [self.liquidHighlightLayer removeAllAnimations];
     for (CAShapeLayer *layer in self.trackLayers) {
         [layer removeAllAnimations];
     }
@@ -462,12 +660,21 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     [self stopMotion];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.haloLayer.opacity = 1.0f;
+    self.haloLayer.opacity = self.isReady ? 0.74f : 0.56f;
     self.haloLayer.transform = CATransform3DIdentity;
-    self.pedestalLayer.opacity = 1.0f;
-    self.pedestalLayer.transform = CATransform3DIdentity;
-    self.markSheenLayer.opacity = 0.0f;
-    self.markSheenLayer.transform = CATransform3DIdentity;
+    UIBezierPath *settledPath = self.blobPaths.firstObject;
+    self.blobLayer.opacity = 1.0f;
+    self.blobLayer.transform = CATransform3DIdentity;
+    self.blobLayer.path = settledPath.CGPath;
+    self.liquidRimLayer.opacity = 1.0f;
+    self.liquidRimLayer.transform = CATransform3DIdentity;
+    self.liquidRimLayer.path = settledPath.CGPath;
+    self.liquidSheenLayer.opacity = 1.0f;
+    self.liquidSheenLayer.transform = CATransform3DIdentity;
+    self.liquidSheenMaskLayer.path = settledPath.CGPath;
+    self.liquidHighlightLayer.opacity = 1.0f;
+    self.liquidHighlightLayer.transform = CATransform3DIdentity;
+    self.liquidHighlightLayer.path = self.liquidHighlightPaths.firstObject.CGPath;
     self.logoWrapperView.alpha = 1.0;
     self.logoWrapperView.transform = CGAffineTransformIdentity;
     [self.trackLayers enumerateObjectsUsingBlock:^(CAShapeLayer *trackLayer,
@@ -479,6 +686,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         progressLayer.strokeEnd = ((NSInteger)index < self.activeStepCount) ? 1.0 : 0.0;
     }];
     [CATransaction commit];
+    [self pp_applyTheme];
 }
 
 - (void)pp_applyTheme
@@ -486,55 +694,71 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     BOOL usesIncreasedContrast =
         self.traitCollection.accessibilityContrast == UIAccessibilityContrastHigh;
-    UIColor *brandColor = [(AppPrimaryClr ?: UIColor.systemPinkColor)
+    UIColor *brandColor = [[UIColor ppPrimary]
         resolvedColorWithTraitCollection:self.traitCollection];
-    UIColor *secondaryColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor)
+    UIColor *secondaryColor = [[UIColor ppTextSecondary]
         resolvedColorWithTraitCollection:self.traitCollection];
-    UIColor *pedestalColor = [(AppForgroundColr ?: UIColor.systemBackgroundColor)
+    UIColor *surfaceColor = [[UIColor ppSurface]
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *softRoseColor = [[UIColor ppSoftRose]
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *premiumColor = [[UIColor ppPremiumAccent]
         resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *progressColor = self.usesFallback
-        ? [(AppInfoClr ?: brandColor) resolvedColorWithTraitCollection:self.traitCollection]
+        ? [[UIColor ppCareAccent] resolvedColorWithTraitCollection:self.traitCollection]
         : brandColor;
+    UIColor *appForegroundColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
+        AppForgroundColr ?: [UIColor whiteColor];
+    UIColor *plateColor = [appForegroundColor colorWithAlphaComponent:0.7];
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
 
     CGFloat centerAlpha = usesIncreasedContrast
-        ? (isDark ? 0.28 : 0.22)
-        : (isDark ? 0.22 : 0.16);
+        ? (isDark ? 0.22 : 0.16)
+        : (isDark ? 0.16 : 0.10);
     self.haloLayer.colors = @[
         (id)[brandColor colorWithAlphaComponent:centerAlpha].CGColor,
         (id)[brandColor colorWithAlphaComponent:centerAlpha * 0.36].CGColor,
         (id)UIColor.clearColor.CGColor
     ];
 
-    self.pedestalLayer.backgroundColor = pedestalColor.CGColor;
-    self.pedestalLayer.borderWidth = 0.0;
-    self.pedestalLayer.shadowColor = UIColor.blackColor.CGColor;
-    self.pedestalLayer.shadowOpacity = usesIncreasedContrast
-        ? (isDark ? 0.44f : 0.16f)
-        : (isDark ? 0.34f : 0.10f);
-    self.pedestalLayer.shadowRadius = usesIncreasedContrast ? 18.0 : 22.0;
-    self.pedestalLayer.shadowOffset = CGSizeMake(0.0, isDark ? 9.0 : 8.0);
+    self.blobLayer.fillColor = plateColor.CGColor;
+    self.blobLayer.shadowOpacity = 0.0f;
+
+    // Liquid border using appforground color with 0.7 alpha and 0.75 width
+    CGFloat rimWidth = 0.75;
+    self.liquidRimLayer.strokeColor = plateColor.CGColor;
+    self.liquidRimLayer.lineWidth = rimWidth;
+
+    // A slightly wider mask lets the sheen soften the rim's outer boundary
+    self.liquidSheenMaskLayer.lineWidth = rimWidth + 0.3;
+    self.liquidSheenLayer.colors = @[
+        (id)plateColor.CGColor,
+        (id)UIColor.clearColor.CGColor,
+        (id)plateColor.CGColor
+    ];
+
+    self.liquidHighlightLayer.strokeColor = plateColor.CGColor;
+    self.liquidHighlightLayer.lineWidth = 0.75;
 
     UIColor *trackColor = [secondaryColor colorWithAlphaComponent:
-        usesIncreasedContrast ? (isDark ? 0.72 : 0.90) : (isDark ? 0.52 : 0.76)];
-    CGFloat sheenAlpha = isDark ? 0.34 : 0.58;
-    self.markSheenLayer.colors = @[
-        (id)UIColor.clearColor.CGColor,
-        (id)[UIColor.whiteColor colorWithAlphaComponent:sheenAlpha].CGColor,
-        (id)UIColor.clearColor.CGColor
-    ];
-    CGFloat trackWidth = usesIncreasedContrast ? 3.0 : 2.0;
+        usesIncreasedContrast ? (isDark ? 0.68 : 0.82) : (isDark ? 0.34 : 0.28)];
+    CGFloat trackWidth = usesIncreasedContrast ? 3.0 : 2.25;
     CGFloat progressWidth = usesIncreasedContrast ? 5.5 : 4.5;
     for (CAShapeLayer *trackLayer in self.trackLayers) {
         trackLayer.strokeColor = trackColor.CGColor;
         trackLayer.lineWidth = trackWidth;
     }
-    for (CAShapeLayer *progressLayer in self.progressLayers) {
-        progressLayer.strokeColor = progressColor.CGColor;
+    [self.progressLayers enumerateObjectsUsingBlock:^(CAShapeLayer *progressLayer,
+                                                       NSUInteger index,
+                                                       BOOL *stop) {
+        UIColor *segmentColor = index == 2 && self.isReady && !self.usesFallback
+            ? premiumColor
+            : progressColor;
+        progressLayer.strokeColor = segmentColor.CGColor;
         progressLayer.lineWidth = progressWidth;
-    }
+    }];
     [CATransaction commit];
 }
 
@@ -548,6 +772,8 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 @property (nonatomic, assign) BOOL didLoadMainKinds;
 @property (nonatomic, assign) BOOL didUseFallbackLaunch;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
+@property (nonatomic, assign) BOOL viewIsVisible;
+@property (nonatomic, assign) CGSize lastAdaptiveLayoutSize;
 @property (nonatomic, assign) PPSplashLoadingPhase currentLoadingPhase;
 @property (nonatomic, copy, nullable) NSString *currentLoadingDetail;
 @property (nonatomic, strong, nullable) NSDate *launchBeganAt;
@@ -557,15 +783,19 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 @property (nonatomic, strong) PPSplashLivingMarkView *livingMarkView;
 @property (nonatomic, strong) NSLayoutConstraint *livingMarkWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *livingMarkHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *livingMarkCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *identityBottomConstraint;
 @property (nonatomic, strong) UILabel *brandLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UIView *statusGroupView;
+@property (nonatomic, strong) UIStackView *statusTextStackView;
+@property (nonatomic, strong) NSLayoutConstraint *statusTopConstraint;
 @property (nonatomic, strong) UILabel *loadingTitleLabel;
 @property (nonatomic, strong) UILabel *loadingStatusLabel;
 @property (nonatomic, strong) UILabel *footerLabel;
-@property (nonatomic, strong, nullable) UIViewPropertyAnimator *contentEntranceAnimator;
-@property (nonatomic, strong, nullable) UIViewPropertyAnimator *statusEntranceAnimator;
-@property (nonatomic, strong, nullable) UIViewPropertyAnimator *statusTextAnimator;
+@property (nonatomic, strong, nullable) id<UIViewAnimating> contentEntranceAnimator;
+@property (nonatomic, strong, nullable) id<UIViewAnimating> statusEntranceAnimator;
+@property (nonatomic, strong, nullable) id<UIViewAnimating> statusTextAnimator;
 - (void)pp_buildSplashInterface;
 - (void)pp_applySplashTheme;
 - (void)pp_applySplashCopy;
@@ -580,6 +810,9 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 - (void)pp_completeLaunchIfNeededForced:(BOOL)forced;
 - (void)pp_prepareSplashForSnapshot;
 - (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification;
+- (void)pp_processEnvironmentDidChange:(NSNotification *)notification;
+- (void)pp_applicationDidEnterBackground:(NSNotification *)notification;
+- (void)pp_applicationDidBecomeActive:(NSNotification *)notification;
 - (nullable UIWindow *)pp_transitionWindow;
 - (void)pp_swapRootViewController:(UIViewController *)rootViewController
                           onWindow:(UIWindow *)window;
@@ -603,6 +836,24 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
                                              selector:@selector(pp_reduceMotionStatusDidChange:)
                                                  name:UIAccessibilityReduceMotionStatusDidChangeNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_applicationDidEnterBackground:)
+                                                 name:UIApplicationDidEnterBackgroundNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_applicationDidBecomeActive:)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_processEnvironmentDidChange:)
+                                                 name:NSProcessInfoPowerStateDidChangeNotification
+                                               object:nil];
+    if (@available(iOS 11.0, *)) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pp_processEnvironmentDidChange:)
+                                                     name:NSProcessInfoThermalStateDidChangeNotification
+                                                   object:nil];
+    }
 
     [PPHUD dismiss];
 }
@@ -625,9 +876,22 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     }
 }
 
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+
+    if (!CGSizeEqualToSize(self.lastAdaptiveLayoutSize, self.view.bounds.size)) {
+        self.lastAdaptiveLayoutSize = self.view.bounds.size;
+        [self pp_applyContentSizeLayout];
+    }
+}
+
 - (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification
 {
     if (!UIAccessibilityIsReduceMotionEnabled()) {
+        if (self.viewIsVisible && !self.didShowMainVC) {
+            [self.livingMarkView resumeLivingMotionIfAllowed];
+        }
         return;
     }
 
@@ -650,6 +914,51 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     self.loadingTitleLabel.alpha = 1.0;
     self.loadingStatusLabel.alpha = 1.0;
     self.footerLabel.alpha = 1.0;
+}
+
+- (void)pp_applicationDidEnterBackground:(NSNotification *)notification
+{
+    if (!self.viewIsVisible) {
+        return;
+    }
+
+    [self pp_stopSplashAtmosphereMotion];
+    [self.livingMarkView settleForSnapshot];
+    [self.contentEntranceAnimator stopAnimation:YES];
+    [self.statusEntranceAnimator stopAnimation:YES];
+    [self.statusTextAnimator stopAnimation:YES];
+    self.contentEntranceAnimator = nil;
+    self.statusEntranceAnimator = nil;
+    self.statusTextAnimator = nil;
+}
+
+- (void)pp_processEnvironmentDidChange:(NSNotification *)notification
+{
+    if (!self.viewIsVisible || self.didShowMainVC) {
+        return;
+    }
+
+    NSProcessInfo *processInfo = NSProcessInfo.processInfo;
+    BOOL underThermalPressure = NO;
+    if (@available(iOS 11.0, *)) {
+        underThermalPressure = processInfo.thermalState >= NSProcessInfoThermalStateSerious;
+    }
+    if (processInfo.isLowPowerModeEnabled || underThermalPressure) {
+        [self.livingMarkView settleForSnapshot];
+    } else {
+        [self.livingMarkView resumeLivingMotionIfAllowed];
+    }
+}
+
+- (void)pp_applicationDidBecomeActive:(NSNotification *)notification
+{
+    if (!self.viewIsVisible || self.didShowMainVC) {
+        return;
+    }
+
+    [self pp_startSplashAtmosphereMotion];
+    [self.livingMarkView settleForSnapshot];
+    [self.livingMarkView resumeLivingMotionIfAllowed];
 }
 
 #pragma mark - Interface
@@ -680,7 +989,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     // card radius. A sub-point explicit value keeps the full-screen field square.
     ambientBackgroundView.overrideCornerRadius = 0.51;
     ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleBBBaseBackground;
-    ambientBackgroundView.accentColorOverride = [UIColor ppPremiumAccent];
+    ambientBackgroundView.accentColorOverride = [UIColor ppSoftRose];
     ambientBackgroundView.overrideSurfaceColor = [UIColor ppElevatedSurface];
     // Begin on the exact solid LaunchScreen canvas. The authored atmosphere
     // arrives only after UIKit owns the frame, avoiding a launch-boundary flash.
@@ -691,35 +1000,37 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     UIStackView *contentStackView = [[UIStackView alloc] init];
     contentStackView.translatesAutoresizingMaskIntoConstraints = NO;
     contentStackView.axis = UILayoutConstraintAxisVertical;
-    contentStackView.alignment = UIStackViewAlignmentCenter;
+    contentStackView.alignment = UIStackViewAlignmentFill;
     contentStackView.distribution = UIStackViewDistributionFill;
-    contentStackView.spacing = 0.0;
+    contentStackView.spacing = PPSpaceXS;
     contentStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     [self.view addSubview:contentStackView];
     self.contentStackView = contentStackView;
 
     PPSplashLivingMarkView *livingMarkView = [[PPSplashLivingMarkView alloc] init];
     livingMarkView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.livingMarkWidthConstraint = [livingMarkView.widthAnchor constraintEqualToConstant:232.0];
-    self.livingMarkHeightConstraint = [livingMarkView.heightAnchor constraintEqualToConstant:232.0];
+    livingMarkView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.livingMarkWidthConstraint =
+        [livingMarkView.widthAnchor constraintEqualToConstant:PPSplashCarrierSideRegular];
+    self.livingMarkHeightConstraint =
+        [livingMarkView.heightAnchor constraintEqualToConstant:PPSplashCarrierSideRegular];
     self.livingMarkWidthConstraint.active = YES;
     self.livingMarkHeightConstraint.active = YES;
-    [contentStackView addArrangedSubview:livingMarkView];
+    [self.view addSubview:livingMarkView];
     self.livingMarkView = livingMarkView;
 
     UILabel *brandLabel = [[UILabel alloc] init];
     brandLabel.translatesAutoresizingMaskIntoConstraints = NO;
     brandLabel.textAlignment = NSTextAlignmentCenter;
-    brandLabel.numberOfLines = 1;
-    UIFont *brandBaseFont = [GM boldFontWithSize:PPFontLargeTitle] ?:
-        [UIFont systemFontOfSize:34.0 weight:UIFontWeightBlack];
-    brandLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleLargeTitle]
+    brandLabel.numberOfLines = 2;
+    UIFont *brandBaseFont = [GM boldFontWithSize:PPFontTitle1] ?:
+        [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
+    brandLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle1]
         scaledFontForFont:brandBaseFont
-        maximumPointSize:50.0];
+        maximumPointSize:40.0];
     brandLabel.adjustsFontForContentSizeCategory = YES;
     brandLabel.accessibilityTraits = UIAccessibilityTraitHeader;
     brandLabel.alpha = 0.0;
-    brandLabel.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceSM);
     [contentStackView addArrangedSubview:brandLabel];
     self.brandLabel = brandLabel;
 
@@ -727,15 +1038,14 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     subtitleLabel.numberOfLines = 0;
-    UIFont *subtitleBaseFont = [GM MidFontWithSize:PPFontHeadline] ?:
-        [UIFont systemFontOfSize:17.0 weight:UIFontWeightMedium];
-    subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+    UIFont *subtitleBaseFont = [GM MidFontWithSize:PPFontSubheadline] ?:
+        [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
         scaledFontForFont:subtitleBaseFont
-        maximumPointSize:27.0];
+        maximumPointSize:24.0];
     subtitleLabel.adjustsFontForContentSizeCategory = YES;
     subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     subtitleLabel.alpha = 0.0;
-    subtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceSM);
     [contentStackView addArrangedSubview:subtitleLabel];
     self.subtitleLabel = subtitleLabel;
 
@@ -745,8 +1055,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     statusGroupView.isAccessibilityElement = YES;
     statusGroupView.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
     statusGroupView.alpha = 0.0;
-    statusGroupView.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceSM);
-    [contentStackView addArrangedSubview:statusGroupView];
+    [self.view addSubview:statusGroupView];
     self.statusGroupView = statusGroupView;
 
     UIStackView *statusTextStack = [[UIStackView alloc] init];
@@ -754,17 +1063,18 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     statusTextStack.axis = UILayoutConstraintAxisVertical;
     statusTextStack.alignment = UIStackViewAlignmentFill;
     statusTextStack.distribution = UIStackViewDistributionFill;
-    statusTextStack.spacing = PPSpaceXXS;
+    statusTextStack.spacing = PPSpaceXS;
     statusTextStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     [statusGroupView addSubview:statusTextStack];
+    self.statusTextStackView = statusTextStack;
 
     UILabel *loadingTitleLabel = [[UILabel alloc] init];
     loadingTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    UIFont *loadingTitleBaseFont = [GM boldFontWithSize:PPFontSubheadline] ?:
-        [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
-    loadingTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+    UIFont *loadingTitleBaseFont = [GM boldFontWithSize:PPFontHeadline] ?:
+        [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    loadingTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
         scaledFontForFont:loadingTitleBaseFont
-        maximumPointSize:24.0];
+        maximumPointSize:30.0];
     loadingTitleLabel.adjustsFontForContentSizeCategory = YES;
     loadingTitleLabel.textAlignment = NSTextAlignmentCenter;
     loadingTitleLabel.numberOfLines = 0;
@@ -774,11 +1084,11 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 
     UILabel *loadingStatusLabel = [[UILabel alloc] init];
     loadingStatusLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    UIFont *loadingStatusBaseFont = [GM MidFontWithSize:PPFontFootnote] ?:
-        [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    loadingStatusLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+    UIFont *loadingStatusBaseFont = [GM MidFontWithSize:PPFontSubheadline] ?:
+        [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    loadingStatusLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
         scaledFontForFont:loadingStatusBaseFont
-        maximumPointSize:21.0];
+        maximumPointSize:24.0];
     loadingStatusLabel.adjustsFontForContentSizeCategory = YES;
     loadingStatusLabel.textAlignment = NSTextAlignmentCenter;
     loadingStatusLabel.numberOfLines = 0;
@@ -801,23 +1111,34 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     [self.view addSubview:footerLabel];
     self.footerLabel = footerLabel;
 
+    UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
     NSLayoutConstraint *contentFluidWidth =
-        [contentStackView.widthAnchor constraintEqualToAnchor:self.view.widthAnchor constant:-48.0];
+        [contentStackView.widthAnchor constraintEqualToAnchor:safeArea.widthAnchor constant:-64.0];
     contentFluidWidth.priority = UILayoutPriorityRequired - 1.0;
     NSLayoutConstraint *contentMaximumWidth =
-        [contentStackView.widthAnchor constraintLessThanOrEqualToConstant:430.0];
-    NSLayoutConstraint *contentPreferredWidth =
-        [contentStackView.widthAnchor constraintEqualToConstant:430.0];
-    contentPreferredWidth.priority = UILayoutPriorityRequired - 2.0;
-    // Match the static LaunchScreen's optical mark anchor exactly at default
-    // content size. The surrounding safety constraints are allowed to override
-    // this preference on compact or large-accessibility layouts.
-    NSLayoutConstraint *markContinuityPosition =
+        [contentStackView.widthAnchor constraintLessThanOrEqualToConstant:340.0];
+    self.identityBottomConstraint =
+        [contentStackView.bottomAnchor constraintEqualToAnchor:livingMarkView.topAnchor
+                                                       constant:-PPSpaceMD];
+    self.identityBottomConstraint.priority = UILayoutPriorityRequired - 1.0;
+
+    // Match the static LaunchScreen's exact logo anchor. Collision constraints
+    // may override this preference only when accessibility content cannot fit.
+    self.livingMarkCenterYConstraint =
         [livingMarkView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor
                                                      constant:-110.0];
-    markContinuityPosition.priority = UILayoutPriorityDefaultHigh;
+    self.livingMarkCenterYConstraint.priority = UILayoutPriorityDefaultHigh;
 
-    UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+    NSLayoutConstraint *statusFluidWidth =
+        [statusGroupView.widthAnchor constraintEqualToAnchor:safeArea.widthAnchor constant:-72.0];
+    statusFluidWidth.priority = UILayoutPriorityRequired - 1.0;
+    NSLayoutConstraint *statusMaximumWidth =
+        [statusGroupView.widthAnchor constraintLessThanOrEqualToConstant:340.0];
+    self.statusTopConstraint =
+        [statusGroupView.topAnchor constraintEqualToAnchor:livingMarkView.bottomAnchor
+                                                   constant:PPSpaceSM];
+    self.statusTopConstraint.priority = UILayoutPriorityRequired - 1.0;
+
     [NSLayoutConstraint activateConstraints:@[
         [ambientBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [ambientBackgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -829,18 +1150,25 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
                                                                     constant:PPSpaceXL],
         [contentStackView.trailingAnchor constraintLessThanOrEqualToAnchor:safeArea.trailingAnchor
                                                                    constant:-PPSpaceXL],
-        [contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:safeArea.topAnchor
-                                                                 constant:PPSpaceBase],
-        [contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:footerLabel.topAnchor
-                                                                 constant:-PPSpaceXXL],
         contentFluidWidth,
         contentMaximumWidth,
-        contentPreferredWidth,
-        markContinuityPosition,
+        [contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:safeArea.topAnchor
+                                                                 constant:PPSpaceBase],
+        self.identityBottomConstraint,
 
-        [brandLabel.widthAnchor constraintEqualToAnchor:contentStackView.widthAnchor],
-        [subtitleLabel.widthAnchor constraintEqualToAnchor:contentStackView.widthAnchor],
-        [statusGroupView.widthAnchor constraintEqualToAnchor:contentStackView.widthAnchor],
+        [livingMarkView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        self.livingMarkCenterYConstraint,
+
+        [statusGroupView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [statusGroupView.leadingAnchor constraintGreaterThanOrEqualToAnchor:safeArea.leadingAnchor
+                                                                    constant:PPSpaceXL],
+        [statusGroupView.trailingAnchor constraintLessThanOrEqualToAnchor:safeArea.trailingAnchor
+                                                                   constant:-PPSpaceXL],
+        self.statusTopConstraint,
+        [statusGroupView.bottomAnchor constraintLessThanOrEqualToAnchor:footerLabel.topAnchor
+                                                                 constant:-PPSpaceLG],
+        statusFluidWidth,
+        statusMaximumWidth,
 
         [statusTextStack.leadingAnchor constraintEqualToAnchor:statusGroupView.leadingAnchor],
         [statusTextStack.trailingAnchor constraintEqualToAnchor:statusGroupView.trailingAnchor],
@@ -852,10 +1180,6 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         [footerLabel.bottomAnchor constraintEqualToAnchor:safeArea.bottomAnchor constant:-PPSpaceMD]
     ]];
 
-    [contentStackView setCustomSpacing:PPSpaceXL afterView:livingMarkView];
-    [contentStackView setCustomSpacing:PPSpaceSM afterView:brandLabel];
-    [contentStackView setCustomSpacing:PPSpaceXXL afterView:subtitleLabel];
-
     self.view.accessibilityElements = @[brandLabel, subtitleLabel, statusGroupView];
     [self pp_applyContentSizeLayout];
 }
@@ -864,21 +1188,22 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 {
     UIColor *canvasColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
         AppForgroundColr ?: UIColor.systemBackgroundColor;
-    UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *secondaryTextColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    UIColor *titleColor = [[UIColor ppTextPrimary]
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *secondaryTextColor = [[UIColor ppTextSecondary]
+        resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *primaryColor = [[UIColor ppPrimary]
+        resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *elevatedSurface = [[UIColor ppElevatedSurface]
         resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *homeSoftRose = [[UIColor ppSoftRose]
         resolvedColorWithTraitCollection:self.traitCollection];
-    UIColor *premiumGold = [[UIColor ppPremiumAccent]
-        resolvedColorWithTraitCollection:self.traitCollection];
-    // Blend premium gold accent into elevated surface mist for splash identity
-    UIColor *goldMist = [PPColorUtils blendColor:premiumGold
-                                       withColor:homeSoftRose
-                                          factor:0.58];
+    UIColor *identityMist = [PPColorUtils blendColor:homeSoftRose
+                                           withColor:primaryColor
+                                              factor:0.16];
 
     self.view.backgroundColor = canvasColor;
-    self.ambientBackgroundView.accentColorOverride = goldMist;
+    self.ambientBackgroundView.accentColorOverride = identityMist;
     self.ambientBackgroundView.overrideSurfaceColor = elevatedSurface;
     [self.ambientBackgroundView reapplyPalette];
     [self.livingMarkView pp_applyTheme];
@@ -907,80 +1232,37 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 {
     BOOL usesAccessibilitySizes =
         UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
-    CGFloat markDimension = usesAccessibilitySizes ? 188.0 : 232.0;
+    CGFloat viewHeight = CGRectGetHeight(self.view.bounds);
+    BOOL usesCompactHeight = viewHeight > 0.0 && viewHeight < 720.0;
+    CGFloat markDimension = usesCompactHeight ? PPSplashCarrierSideCompact
+                                              : PPSplashCarrierSideRegular;
+    if (usesAccessibilitySizes && usesCompactHeight) {
+        markDimension = PPSplashCarrierSideCompactAccessibility;
+    }
     self.livingMarkWidthConstraint.constant = markDimension;
     self.livingMarkHeightConstraint.constant = markDimension;
-    self.brandLabel.numberOfLines = usesAccessibilitySizes ? 2 : 1;
+    self.identityBottomConstraint.constant = usesCompactHeight ? -PPSpaceSM : -PPSpaceMD;
+    self.statusTopConstraint.constant = usesCompactHeight ? PPSpaceXS : PPSpaceSM;
+    self.brandLabel.numberOfLines = 2;
     self.footerLabel.numberOfLines = usesAccessibilitySizes ? 2 : 1;
-
-    [self.contentStackView setCustomSpacing:usesAccessibilitySizes ? PPSpaceBase : PPSpaceXL
-                                  afterView:self.livingMarkView];
-    [self.contentStackView setCustomSpacing:usesAccessibilitySizes ? PPSpaceXS : PPSpaceSM
-                                  afterView:self.brandLabel];
-    [self.contentStackView setCustomSpacing:usesAccessibilitySizes ? PPSpaceXL : PPSpaceXXL
-                                  afterView:self.subtitleLabel];
-    [self.view setNeedsLayout];
+    self.contentStackView.spacing = usesAccessibilitySizes ? PPSpaceXXS : PPSpaceXS;
+    self.statusTextStackView.spacing = usesAccessibilitySizes ? PPSpaceXXS : PPSpaceXS;
 }
 
 #pragma mark - Motion and Progress
 
 - (void)pp_startSplashAtmosphereMotion
 {
-    // The shared field owns adaptive aurora motion and automatically reduces
-    // itself for accessibility, Low Power Mode, thermal pressure, and inactive
-    // application state. Shimmer and touch parallax remain explicitly disabled.
-    [self.ambientBackgroundView startAnimations];
-    [self.ambientBackgroundView.layer
-        removeAnimationForKey:PPSplashAtmosphereDriftAnimationKey];
-
-    if (UIAccessibilityIsReduceMotionEnabled() ||
-        NSProcessInfo.processInfo.isLowPowerModeEnabled) {
-        self.ambientBackgroundView.transform = CGAffineTransformIdentity;
-        return;
-    }
-
-    CGFloat readingDirection =
-        self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft
-            ? -1.0
-            : 1.0;
-    CGAffineTransform openingTransform = CGAffineTransformMakeScale(1.045, 1.045);
-    openingTransform = CGAffineTransformTranslate(openingTransform,
-                                                  readingDirection * 6.0,
-                                                  -6.0);
-    CGAffineTransform passingTransform = CGAffineTransformMakeScale(1.022, 1.022);
-    passingTransform = CGAffineTransformTranslate(passingTransform,
-                                                  readingDirection * -3.0,
-                                                  2.5);
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.ambientBackgroundView.layer.transform = CATransform3DIdentity;
-    [CATransaction commit];
-
-    CAKeyframeAnimation *fieldSettle =
-        [CAKeyframeAnimation animationWithKeyPath:@"transform"];
-    fieldSettle.values = @[
-        [NSValue valueWithCATransform3D:CATransform3DMakeAffineTransform(openingTransform)],
-        [NSValue valueWithCATransform3D:CATransform3DMakeAffineTransform(passingTransform)],
-        [NSValue valueWithCATransform3D:CATransform3DIdentity]
-    ];
-    fieldSettle.keyTimes = @[@0.0, @0.58, @1.0];
-    fieldSettle.calculationMode = kCAAnimationCubic;
-    fieldSettle.timingFunctions = @[
-        [CAMediaTimingFunction functionWithControlPoints:0.20 :0.0 :0.0 :1.0],
-        [CAMediaTimingFunction functionWithControlPoints:0.23 :1.0 :0.32 :1.0]
-    ];
-    fieldSettle.duration = 1.80;
-    fieldSettle.fillMode = kCAFillModeBackwards;
-    [self.ambientBackgroundView.layer addAnimation:fieldSettle
-                                            forKey:PPSplashAtmosphereDriftAnimationKey];
+    // PPBackgroundView can own an infinite ambient timeline. Launch opts out:
+    // the field is a static token-driven atmosphere and all visible motion is
+    // finite, causal, and owned by the readiness signature below.
+    [self.ambientBackgroundView stopAnimations];
+    self.ambientBackgroundView.transform = CGAffineTransformIdentity;
 }
 
 - (void)pp_stopSplashAtmosphereMotion
 {
     [self.ambientBackgroundView stopAnimations];
-    [self.ambientBackgroundView.layer
-        removeAnimationForKey:PPSplashAtmosphereDriftAnimationKey];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.ambientBackgroundView.layer.transform = CATransform3DIdentity;
@@ -999,11 +1281,8 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.ambientBackgroundView.alpha = 1.0;
         self.brandLabel.alpha = 1.0;
-        self.brandLabel.transform = CGAffineTransformIdentity;
         self.subtitleLabel.alpha = 1.0;
-        self.subtitleLabel.transform = CGAffineTransformIdentity;
         self.statusGroupView.alpha = 1.0;
-        self.statusGroupView.transform = CGAffineTransformIdentity;
         self.footerLabel.alpha = 1.0;
         return;
     }
@@ -1013,7 +1292,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         [[UICubicTimingParameters alloc] initWithControlPoint1:CGPointMake(0.23, 1.0)
                                                  controlPoint2:CGPointMake(0.32, 1.0)];
     UIViewPropertyAnimator *copyAnimator =
-        [[UIViewPropertyAnimator alloc] initWithDuration:0.44
+        [[UIViewPropertyAnimator alloc] initWithDuration:0.22
                                         timingParameters:entranceTiming];
     [copyAnimator addAnimations:^{
         __strong typeof(weakSelf) self = weakSelf;
@@ -1022,15 +1301,13 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         }
         self.ambientBackgroundView.alpha = 1.0;
         self.brandLabel.alpha = 1.0;
-        self.brandLabel.transform = CGAffineTransformIdentity;
         self.subtitleLabel.alpha = 1.0;
-        self.subtitleLabel.transform = CGAffineTransformIdentity;
     }];
     self.contentEntranceAnimator = copyAnimator;
-    [copyAnimator startAnimationAfterDelay:0.08];
+    [copyAnimator startAnimationAfterDelay:0.02];
 
     UIViewPropertyAnimator *statusAnimator =
-        [[UIViewPropertyAnimator alloc] initWithDuration:0.34
+        [[UIViewPropertyAnimator alloc] initWithDuration:0.18
                                         timingParameters:entranceTiming];
     [statusAnimator addAnimations:^{
         __strong typeof(weakSelf) self = weakSelf;
@@ -1038,11 +1315,10 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
             return;
         }
         self.statusGroupView.alpha = 1.0;
-        self.statusGroupView.transform = CGAffineTransformIdentity;
         self.footerLabel.alpha = 1.0;
     }];
     self.statusEntranceAnimator = statusAnimator;
-    [statusAnimator startAnimationAfterDelay:0.16];
+    [statusAnimator startAnimationAfterDelay:0.04];
 }
 
 - (void)pp_refreshLoadingProgressPresentation
@@ -1131,16 +1407,16 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
         self.loadingStatusLabel.alpha = 1.0;
     }
 
-    NSInteger activeSteps = self.didLoadMainKinds ? 2 : 1;
-    if (isReady && !self.didUseFallbackLaunch) {
-        activeSteps = 3;
-    }
+    // The three visible steps map one-to-one to the controller's actual state:
+    // UIKit bootstrap, content preparation, and a terminal ready/fallback handoff.
+    NSInteger activeSteps = MIN(MAX((NSInteger)phase + 1, 1), 3);
 
     BOOL shouldAnimate = self.view.window != nil && self.didAnimateEntrance;
     [self.livingMarkView setActiveStepCount:activeSteps animated:shouldAnimate];
     [self.livingMarkView setReady:isReady
                     usesFallback:self.didUseFallbackLaunch
                          animated:shouldAnimate && previousPhase != phase];
+    [self pp_applySplashTheme];
 
     self.statusGroupView.accessibilityLabel =
         [NSString localizedStringWithFormat:kLang(@"splash_loading_accessibility_format"),
@@ -1535,6 +1811,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    self.viewIsVisible = NO;
     [self pp_stopSplashAtmosphereMotion];
     [self.livingMarkView stopMotion];
     [self.contentEntranceAnimator stopAnimation:YES];
@@ -1561,6 +1838,7 @@ static NSString * const PPSplashAtmosphereDriftAnimationKey =
     [super viewDidAppear:animated];
     NSLog(@"[Splash] viewDidAppear - start data loading");
 
+    self.viewIsVisible = YES;
     [self pp_startSplashAtmosphereMotion];
     [self pp_beginSplashAnimationsIfNeeded];
     [self startInitialDataLoad];

@@ -120,9 +120,13 @@ struct PPMarketplaceIdentityHeaderV3: View {
             if dynamicTypeSize.isAccessibilitySize {
                 stackedIdentity
             } else {
-                ViewThatFits(in: .horizontal) {
+                if #available(iOS 16.0, *) {
+                    ViewThatFits(in: .horizontal) {
+                        inlineIdentity
+                        stackedIdentity
+                    }
+                } else {
                     inlineIdentity
-                    stackedIdentity
                 }
             }
         }
@@ -523,7 +527,7 @@ struct PPMarketplaceCommandDockV3: View {
         } primaryAction: {
             store.beginCategoryEditing()
         }
-        .menuOrder(.fixed)
+        .menuOrderFixedCompat()
         .buttonStyle(.plain)
         .disabled(store.isReplacingContext)
         .ppMarketplaceCommandDockV3Surface(
@@ -616,7 +620,7 @@ struct PPMarketplaceCommandDockV3: View {
         } primaryAction: {
             store.beginCategoryEditing()
         }
-        .menuOrder(.fixed)
+        .menuOrderFixedCompat()
         .buttonStyle(.plain)
         .accessibilityLabel(
             PPMarketplaceText.formatted(
@@ -646,7 +650,7 @@ struct PPMarketplaceCommandDockV3: View {
         } primaryAction: {
             store.beginCategoryEditing()
         }
-        .menuOrder(.fixed)
+        .menuOrderFixedCompat()
         .buttonStyle(.plain)
         .accessibilityLabel(
             PPMarketplaceText.formatted(
@@ -742,14 +746,19 @@ struct PPMarketplaceCommandDockV3: View {
                     .foregroundStyle(Color.ppPrimary)
                     .accessibilityHidden(true)
 
-                ViewThatFits(in: .horizontal) {
+                if #available(iOS 16.0, *) {
+                    ViewThatFits(in: .horizontal) {
+                        searchLabel(contextualSearchTitle)
+                        searchLabel(PPMarketplaceText.localized("search"))
+                        Color.clear
+                            .frame(width: 0, height: 1)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
                     searchLabel(contextualSearchTitle)
-                    searchLabel(PPMarketplaceText.localized("search"))
-                    Color.clear
-                        .frame(width: 0, height: 1)
-                        .accessibilityHidden(true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? PPSpace.sm : PPSpace.base)
             .frame(
@@ -808,7 +817,7 @@ struct PPMarketplaceCommandDockV3: View {
         } primaryAction: {
             store.beginFilterEditing()
         }
-        .menuOrder(.fixed)
+        .menuOrderFixedCompat()
         .buttonStyle(.plain)
         .disabled(store.isReplacingContext)
         .ppMarketplaceCommandDockV3Surface(
@@ -912,7 +921,7 @@ struct PPMarketplaceCommandDockV3: View {
             .onAppear {
                 revealCurrentSection(using: proxy)
             }
-            .onChange(of: store.currentSection.rawValue) { _, _ in
+            .onChange(of: store.currentSection.rawValue) { _ in
                 revealCurrentSection(using: proxy)
             }
         }
@@ -1322,5 +1331,14 @@ private extension View {
                 interactive: interactive
             )
         )
+    }
+
+    @ViewBuilder
+    func menuOrderFixedCompat() -> some View {
+        if #available(iOS 16.0, *) {
+            self.menuOrder(.fixed)
+        } else {
+            self
+        }
     }
 }

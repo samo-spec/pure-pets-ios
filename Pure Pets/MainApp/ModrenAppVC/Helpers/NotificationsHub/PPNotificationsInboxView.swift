@@ -41,7 +41,7 @@ struct PPNotificationsInboxView: View {
             .padding(.horizontal, PPSpace.screenMargin)
             .padding(.bottom, max(PPHubMetrics.listBaseBottomInset, bottomClearance))
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicatorsHiddenCompat()
         .refreshable {
             await store.refresh()
         }
@@ -249,5 +249,16 @@ private struct PPNotificationsInboxStateView: View {
 
     private var showsRetry: Bool {
         state == .error
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func scrollIndicatorsHiddenCompat() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollIndicators(.hidden)
+        } else {
+            self
+        }
     }
 }

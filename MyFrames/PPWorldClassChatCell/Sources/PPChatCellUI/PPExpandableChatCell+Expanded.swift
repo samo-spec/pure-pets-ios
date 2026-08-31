@@ -54,18 +54,29 @@ extension PPExpandableChatCell {
         }
     }
 
+    @ViewBuilder
     var expandedToolbar: some View {
-        ViewThatFits(in: .horizontal) {
+        if #available(iOS 16.0, *) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    presenceLabel
+
+                    Spacer(minLength: 8)
+
+                    openFullChatButton
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    presenceLabel
+                    openFullChatButton
+                }
+            }
+        } else {
             HStack(spacing: 10) {
                 presenceLabel
 
                 Spacer(minLength: 8)
 
-                openFullChatButton
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                presenceLabel
                 openFullChatButton
             }
         }
@@ -265,27 +276,37 @@ extension PPExpandableChatCell {
 
     var composer: some View {
         HStack(alignment: .center, spacing: 8) {
-            Image(systemName: composerFocused ? "pencil.line" : "text.bubble")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(composerFocused ? style.brand : Color.secondary)
-                .frame(width: 20)
-                .contentTransition(.symbolEffect(.replace))
-                .accessibilityHidden(true)
-                .animation(feedbackAnimation, value: composerFocused)
+            composerIcon
 
-            TextField(copy.replyPlaceholder, text: $replyState.draft, axis: .vertical)
-                .focused($composerFocused)
-                .font(Font.ppBeirutiRegular(size: 16, relativeTo: .body))
-                .lineLimit(1...3)
-                .frame(maxHeight: .infinity, alignment: .center)
-                .submitLabel(.send)
-                .textInputAutocapitalization(.sentences)
-                .disableAutocorrection(false)
-                .onSubmit(sendDraft)
-                .onChange(of: replyState.draft) { value in
-                    normalizeDraft(value)
-                }
-                .accessibilityIdentifier("pp.chat.reply.input.\(thread.id.rawValue)")
+            if #available(iOS 16.0, *) {
+                TextField(copy.replyPlaceholder, text: $replyState.draft, axis: .vertical)
+                    .focused($composerFocused)
+                    .font(Font.ppBeirutiRegular(size: 16, relativeTo: .body))
+                    .lineLimit(1...3)
+                    .frame(maxHeight: .infinity, alignment: .center)
+                    .submitLabel(.send)
+                    .textInputAutocapitalization(.sentences)
+                    .disableAutocorrection(false)
+                    .onSubmit(sendDraft)
+                    .onChange(of: replyState.draft) { value in
+                        normalizeDraft(value)
+                    }
+                    .accessibilityIdentifier("pp.chat.reply.input.\(thread.id.rawValue)")
+            } else {
+                TextField(copy.replyPlaceholder, text: $replyState.draft)
+                    .focused($composerFocused)
+                    .font(Font.ppBeirutiRegular(size: 16, relativeTo: .body))
+                    .lineLimit(3)
+                    .frame(maxHeight: .infinity, alignment: .center)
+                    .submitLabel(.send)
+                    .autocapitalization(.sentences)
+                    .disableAutocorrection(false)
+                    .onSubmit(sendDraft)
+                    .onChange(of: replyState.draft) { value in
+                        normalizeDraft(value)
+                    }
+                    .accessibilityIdentifier("pp.chat.reply.input.\(thread.id.rawValue)")
+            }
 
             if replyState.draft.count >= 200 {
                 Text("\(replyState.draft.count)/240")
@@ -348,6 +369,26 @@ extension PPExpandableChatCell {
     }
 
     @ViewBuilder
+    private var composerIcon: some View {
+        if #available(iOS 17.0, *) {
+            Image(systemName: composerFocused ? "pencil.line" : "text.bubble")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(composerFocused ? style.brand : Color.secondary)
+                .frame(width: 20)
+                .contentTransition(.symbolEffect(.replace))
+                .accessibilityHidden(true)
+                .animation(feedbackAnimation, value: composerFocused)
+        } else {
+            Image(systemName: composerFocused ? "pencil.line" : "text.bubble")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(composerFocused ? style.brand : Color.secondary)
+                .frame(width: 20)
+                .accessibilityHidden(true)
+                .animation(feedbackAnimation, value: composerFocused)
+        }
+    }
+
+    @ViewBuilder
     var sendButtonSymbol: some View {
         ZStack {
             switch replyState.phase {
@@ -394,18 +435,26 @@ extension PPExpandableChatCell {
                 .transition(.opacity)
 
         case let .failed(_, failure):
-            ViewThatFits(in: .horizontal) {
+            if #available(iOS 16.0, *) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 8) {
+                        failureLabel(failure)
+                        retryButton
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        failureLabel(failure)
+                        retryButton
+                    }
+                }
+                .transition(.opacity)
+            } else {
                 HStack(alignment: .center, spacing: 8) {
                     failureLabel(failure)
                     retryButton
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    failureLabel(failure)
-                    retryButton
-                }
+                .transition(.opacity)
             }
-            .transition(.opacity)
         }
     }
 

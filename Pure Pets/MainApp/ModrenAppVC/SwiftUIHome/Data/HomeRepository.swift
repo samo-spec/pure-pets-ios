@@ -137,6 +137,16 @@ final class HomeRepository {
         )
     }
 
+    func loadAdvertisements(
+        mainCategoryID: Int,
+        completion: @escaping ([PetAd]) -> Void
+    ) {
+        bridge.fetchAdvertisements(
+            mainCategoryID: mainCategoryID,
+            completion: completion
+        )
+    }
+
     func loadMarketplaceSignal(
         _ kind: HomeMarketplaceSignalKind,
         mainCategoryID: Int?,

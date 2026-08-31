@@ -1,9 +1,9 @@
 import AVFoundation
-import Observation
+import Combine
+import SwiftUI
 
 @MainActor
-@Observable
-public final class ConversationAudioCoordinator {
+public final class ConversationAudioCoordinator: ObservableObject {
   public enum PlaybackState: Equatable {
     case idle
     case loading(MessageID)
@@ -12,8 +12,8 @@ public final class ConversationAudioCoordinator {
     case failed(MessageID)
   }
 
-  public private(set) var state: PlaybackState = .idle
-  public private(set) var progressByMessageID: [MessageID: Double] = [:]
+  @Published public private(set) var state: PlaybackState = .idle
+  @Published public private(set) var progressByMessageID: [MessageID: Double] = [:]
 
   private var player: AVPlayer?
   private var timeObserver: Any?

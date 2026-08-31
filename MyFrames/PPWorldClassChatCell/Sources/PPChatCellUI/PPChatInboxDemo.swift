@@ -18,47 +18,62 @@ public struct PPChatInboxDemo: View {
     }
 
     public var body: some View {
-        NavigationStack(path: $path) {
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach(threads) { thread in
-                        PPExpandableChatCell(
-                            thread: thread,
-                            isExpanded: expansionBinding(for: thread.id),
-                            onOpenChat: { conversationID in
-                                path.append(.conversation(conversationID))
-                            },
-                            onOptimisticReply: { _, _ in
-                                // The cell renders the pending reply immediately.
-                                // Your production store can enqueue an outbox event here.
-                            },
-                            onReplyCommitted: applyCommittedReply,
-                            onReplyFailed: { _, _ in
-                                // Product analytics or retry queue hook.
-                            },
-                            sendQuickReply: Self.simulateSend
-                        )
+        if #available(iOS 16.0, *) {
+            NavigationStack(path: $path) {
+                inboxContent
+                    .navigationDestination(for: PPChatDemoRoute.self) { route in
+                        destination(for: route)
                     }
-                }
-                .padding(16)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Chats")
-            .navigationDestination(for: PPChatDemoRoute.self) { route in
-                switch route {
-                case let .conversation(conversationID):
-                    if let thread = threads.first(where: { $0.id == conversationID }) {
-                        PPChatDemoConversationView(thread: thread)
-                    } else {
-                        VStack(spacing: 12) {
-                            Image(systemName: "bubble.left.and.exclamationmark.bubble.right")
-                                .font(.largeTitle)
-                            Text("Conversation unavailable")
-                                .font(Font.ppBeirutiSemiBold(size: 16, relativeTo: .headline))
-                        }
-                        .foregroundStyle(Color.secondary)
-                    }
+        } else {
+            NavigationView {
+                inboxContent
+            }
+        }
+    }
+
+    private var inboxContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                ForEach(threads) { thread in
+                    PPExpandableChatCell(
+                        thread: thread,
+                        isExpanded: expansionBinding(for: thread.id),
+                        onOpenChat: { conversationID in
+                            path.append(.conversation(conversationID))
+                        },
+                        onOptimisticReply: { _, _ in
+                            // The cell renders the pending reply immediately.
+                            // Your production store can enqueue an outbox event here.
+                        },
+                        onReplyCommitted: applyCommittedReply,
+                        onReplyFailed: { _, _ in
+                            // Product analytics or retry queue hook.
+                        },
+                        sendQuickReply: Self.simulateSend
+                    )
                 }
+            }
+            .padding(16)
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle("Chats")
+    }
+
+    @ViewBuilder
+    private func destination(for route: PPChatDemoRoute) -> some View {
+        switch route {
+        case let .conversation(conversationID):
+            if let thread = threads.first(where: { $0.id == conversationID }) {
+                PPChatDemoConversationView(thread: thread)
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "bubble.left.and.exclamationmark.bubble.right")
+                        .font(.largeTitle)
+                    Text("Conversation unavailable")
+                        .font(Font.ppBeirutiSemiBold(size: 16, relativeTo: .headline))
+                }
+                .foregroundStyle(Color.secondary)
             }
         }
     }

@@ -850,7 +850,7 @@ private struct PPHomeStageArtwork: View {
                 contrast == .increased
                     ? Color.ppTextPrimary.opacity(0.62)
                     : Color.white.opacity(colorScheme == .dark ? 0.12 : 0.55),
-                lineWidth: contrast == .increased ? 1.5 : 1
+                lineWidth: contrast == .increased ? 1.5 : 0.75
             )
             .scaleEffect(plateFramePresented ? 1 : 0.985)
             .opacity(plateFramePresented ? 1 : 0.30)

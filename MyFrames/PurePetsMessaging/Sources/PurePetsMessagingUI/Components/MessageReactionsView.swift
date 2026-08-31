@@ -16,12 +16,18 @@ struct MessageReactionsView: View {
           reactionButtons
         }
       } else {
-        ViewThatFits(in: .horizontal) {
-          HStack(spacing: 5) {
-            reactionButtons
-          }
+        if #available(iOS 16.0, *) {
+          ViewThatFits(in: .horizontal) {
+            HStack(spacing: 5) {
+              reactionButtons
+            }
 
-          VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 5) {
+              reactionButtons
+            }
+          }
+        } else {
+          HStack(spacing: 5) {
             reactionButtons
           }
         }

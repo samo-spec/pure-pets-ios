@@ -915,6 +915,7 @@
 "PostalCode" = "الرمز البريدي";
 "PostalCodeRequired" = "الرمز البريدي مطلوب";
 "DefaultShippingAddress" = "العنوان الافتراضي للشحن";
+"DefaultShippingAddressSubtitle" = "استخدم هذا العنوان تلقائياً عند الدفع";
 "AddressHeroEyebrow" = "وجهة التوصيل";
 "AddressHeroMetaFallback" = "جاهز لتفاصيل التوصيل";
 "MapLocation" = "اختر من الخريطة";

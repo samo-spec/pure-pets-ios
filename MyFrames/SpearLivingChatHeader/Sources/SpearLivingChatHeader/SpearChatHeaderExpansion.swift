@@ -5,7 +5,7 @@ import SwiftUI
 /// Inline identity utility rail. It deliberately avoids nesting another card
 /// under the navigation header: trust, metrics, and actions remain part of the
 /// same conversation hierarchy.
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearIdentityExpansion: View {
   let trust: SpearTrustState
   let metrics: [SpearIdentityMetric]
@@ -36,8 +36,6 @@ internal struct SpearIdentityExpansion: View {
           .frame(maxWidth: .infinity)
       }
       .frame(maxHeight: SpearHeaderLayout.accessibilityExpansionMaximumHeight)
-      .scrollIndicators(.visible)
-      .scrollBounceBehavior(.basedOnSize)
     } else {
       contentStack
     }
@@ -79,9 +77,13 @@ internal struct SpearIdentityExpansion: View {
     if dynamicTypeSize.isAccessibilitySize {
       verticalMetrics
     } else {
-      ViewThatFits(in: .horizontal) {
-        horizontalMetrics.frame(minWidth: 300)
-        verticalMetrics
+      if #available(iOS 16.0, *) {
+        ViewThatFits(in: .horizontal) {
+          horizontalMetrics.frame(minWidth: 300)
+          verticalMetrics
+        }
+      } else {
+        horizontalMetrics
       }
     }
   }
@@ -120,9 +122,13 @@ internal struct SpearIdentityExpansion: View {
       if dynamicTypeSize.isAccessibilitySize {
         verticalActions
       } else {
-        ViewThatFits(in: .horizontal) {
-          horizontalActions.frame(minWidth: 270)
-          verticalActions
+        if #available(iOS 16.0, *) {
+          ViewThatFits(in: .horizontal) {
+            horizontalActions.frame(minWidth: 270)
+            verticalActions
+          }
+        } else {
+          horizontalActions
         }
       }
     }
@@ -226,10 +232,16 @@ internal struct SpearMetricView: View {
 
   var body: some View {
     VStack(spacing: 3) {
-      Text(metric.value)
-        .font(Font.ppBeirutiBold(size: 14, relativeTo: .subheadline))
-        .foregroundStyle(.primary)
-        .contentTransition(.numericText())
+      if #available(iOS 16.0, *) {
+        Text(metric.value)
+          .font(Font.ppBeirutiBold(size: 14, relativeTo: .subheadline))
+          .foregroundStyle(.primary)
+          .contentTransition(.numericText())
+      } else {
+        Text(metric.value)
+          .font(Font.ppBeirutiBold(size: 14, relativeTo: .subheadline))
+          .foregroundStyle(.primary)
+      }
 
       Text(metric.label)
         .font(Font.ppBeirutiRegular(size: 11, relativeTo: .caption2))

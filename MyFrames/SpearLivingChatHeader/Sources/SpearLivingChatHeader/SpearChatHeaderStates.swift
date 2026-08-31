@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Loading State (Seamless Skeleton)
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearHeaderLoadingRow: View {
   let copy: SpearChatHeaderCopy
   let actions: SpearChatHeaderActions
@@ -99,7 +99,7 @@ internal struct SpearHeaderLoadingRow: View {
 
 // MARK: - Unavailable State
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearHeaderUnavailableRow: View {
   let title: String
   let retryTitle: String?
@@ -114,9 +114,13 @@ internal struct SpearHeaderUnavailableRow: View {
       if dynamicTypeSize.isAccessibilitySize {
         compactLayout
       } else {
-        ViewThatFits(in: .horizontal) {
-          regularLayout.frame(minWidth: 340)
-          compactLayout
+        if #available(iOS 16.0, *) {
+          ViewThatFits(in: .horizontal) {
+            regularLayout.frame(minWidth: 340)
+            compactLayout
+          }
+        } else {
+          regularLayout
         }
       }
     }

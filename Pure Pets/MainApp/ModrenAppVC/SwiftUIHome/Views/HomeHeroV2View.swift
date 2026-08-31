@@ -41,15 +41,14 @@ private enum HomeHeroV2Metrics {
     /// change — `plateInk` and `artworkSide` stay exactly as they were, so the
     /// category portrait keeps its established size and position.
     static let plateHeightRatio: CGFloat = 0.85
-    static let artworkSide: CGFloat = 170
-    static let artworkVerticalShift: CGFloat = 5
+    static let artworkSide: CGFloat = 180
+    static let artworkVerticalShift: CGFloat = 3
     /// Hero-specific category artwork grows downward while its established top
     /// edge, plate frame, and living-blob geometry remain unchanged.
-    static let heroImageScale: CGFloat = 1.20
-    /// Lets the living liquid plate emerge from the semantic trailing edge while
-    /// retaining most of its body onscreen, so it never reads as disconnected.
-    static let plateHorizontalOverflow: CGFloat = PPSpace.xxl + PPSpace.xl
-    static let maximumPlateOverflowRatio: CGFloat = 0.25
+    static let heroImageScale: CGFloat = 1.18
+    /// Visual plate touches and sticks to the screen edge.
+    static let plateHorizontalOverflow: CGFloat = 24
+    static let maximumPlateOverflowRatio: CGFloat = 0.10
     static let skeletonPlateInk: CGFloat = 156
     /// Keeps the V2 liquid form branded without letting the primary hue compete
     /// with the category portrait or the full-strength primary CTA.
@@ -227,22 +226,35 @@ struct HomeHeroV2View: View {
                 - HomeHeroV2Metrics.gripEdgeInset
                 - (HomeHeroV2Metrics.gripWidth / 2)
 
+            let artworkSide = min(HomeHeroV2Metrics.artworkSide, plateInk - PPSpace.base)
             ZStack(alignment: .topLeading) {
+                // Living blob plate
                 plateStage(
                     page,
                     accent: accent,
                     plateFrame: plateFrame,
                     plateInk: plateInk,
-                    artworkSide: min(
-                        HomeHeroV2Metrics.artworkSide,
-                        plateInk - PPSpace.base
-                    )
+                    artworkSide: artworkSide
                 )
                 .position(x: plateCenterX, y: height / 2)
+                .zIndex(0)
+
+                // Category image in front of the living blob on hero card
+                artworkStage(
+                    asset: heroArtworkAsset(for: page),
+                    accent: accent,
+                    plateFrame: plateFrame,
+                    artworkSide: artworkSide
+                )
+                .position(x: plateCenterX, y: height / 2)
+                .zIndex(1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
                 heroCopy(page, accent: accent)
                     .frame(width: copyWidth, alignment: .leading)
                     .position(x: copyCenterX, y: height / 2)
+                    .zIndex(2)
 
                 if allowsPaging {
                     HomeHeroV2SwipeGrip(
@@ -251,6 +263,7 @@ struct HomeHeroV2View: View {
                             || contrast == .increased
                     )
                     .position(x: gripCenterX, y: height / 2)
+                    .zIndex(3)
                 }
             }
             .frame(width: width, height: height, alignment: .topLeading)
@@ -264,6 +277,8 @@ struct HomeHeroV2View: View {
         accent: Color
     ) -> some View {
         let plateInk = HomeHeroV2Metrics.accessibilityPlateHeight
+        let plateFrame = plateInk / HomeHeroV2Metrics.blobInkRatio
+        let artworkSide = plateInk - PPSpace.xl
 
         return VStack(alignment: .leading, spacing: PPSpace.base) {
             heroCopy(page, accent: accent)
@@ -274,13 +289,23 @@ struct HomeHeroV2View: View {
                         - HomeHeroV2Metrics.cardContentInset
                 )
 
-            plateStage(
-                page,
-                accent: accent,
-                plateFrame: plateInk / HomeHeroV2Metrics.blobInkRatio,
-                plateInk: plateInk,
-                artworkSide: plateInk - PPSpace.xl
-            )
+            ZStack {
+                plateStage(
+                    page,
+                    accent: accent,
+                    plateFrame: plateFrame,
+                    plateInk: plateInk,
+                    artworkSide: artworkSide
+                )
+                artworkStage(
+                    asset: heroArtworkAsset(for: page),
+                    accent: accent,
+                    plateFrame: plateFrame,
+                    artworkSide: artworkSide
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(HomeHeroV2Metrics.cardContentInset)
@@ -301,24 +326,7 @@ struct HomeHeroV2View: View {
         artworkSide: CGFloat
     ) -> some View {
         let blobAccent = accent.opacity(HomeHeroV2Metrics.blobAccentOpacity)
-        let artworkAsset = heroArtworkAsset(for: page)
-        // The All-categories scope presents the composite all-kinds artwork,
-        // which is a full illustration rather than a single portrait. Masking it
-        // into the membrane cropped its edges, so that one scope renders the
-        // hero image whole while every selected category keeps the mask.
-        let clipsArtworkToBlob = artworkAsset.usesCategoryArtworkTreatment
-            && !artworkAsset.presentsAllCategoriesScope
         let plateHeight = plateFrame * HomeHeroV2Metrics.plateHeightRatio
-        let clippedArtwork = clipsArtworkToBlob
-            ? AnyView(
-                artworkStage(
-                    asset: artworkAsset,
-                    accent: accent,
-                    plateFrame: plateFrame,
-                    artworkSide: artworkSide
-                )
-            )
-            : nil
 
         return ZStack {
             Ellipse()
@@ -342,7 +350,7 @@ struct HomeHeroV2View: View {
                 fillGradient: plateGradient(accent: accent),
                 accent: blobAccent,
                 isDark: colorScheme == .dark,
-                contentOverlay: clippedArtwork
+                contentOverlay: nil
             )
             .frame(width: plateFrame, height: plateHeight)
             .shadow(
@@ -354,15 +362,6 @@ struct HomeHeroV2View: View {
                 radius: 16,
                 y: 8
             )
-
-            if !clipsArtworkToBlob {
-                artworkStage(
-                    asset: artworkAsset,
-                    accent: accent,
-                    plateFrame: plateFrame,
-                    artworkSide: artworkSide
-                )
-            }
         }
         .frame(width: plateFrame, height: plateFrame)
         .allowsHitTesting(false)
@@ -378,7 +377,8 @@ struct HomeHeroV2View: View {
         plateFrame: CGFloat,
         artworkSide: CGFloat
     ) -> some View {
-        ZStack {
+        let plateHeight = plateFrame * HomeHeroV2Metrics.plateHeightRatio
+        return ZStack(alignment: .trailing) {
             Ellipse()
                 .fill(accent.opacity(colorScheme == .dark ? 0.13 : 0.05))
                 .frame(width: artworkSide * 0.70, height: 12)
@@ -395,11 +395,10 @@ struct HomeHeroV2View: View {
                 asset.extendsFromTopAnchor
                     ? HomeHeroV2Metrics.heroImageScale
                     : 1,
-                anchor: .top
+                anchor: .trailing
             )
-            .offset(y: HomeHeroV2Metrics.artworkVerticalShift)
         }
-        .frame(width: plateFrame, height: plateFrame)
+        .frame(width: plateFrame, height: plateHeight, alignment: .trailing)
     }
 
     /// Reference plate is a low-saturation wash of the live category identity,
@@ -848,6 +847,7 @@ private struct HomeHeroV2Artwork: View {
     let side: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.scenePhase) private var scenePhase
     @State private var presented = false
 
@@ -855,7 +855,14 @@ private struct HomeHeroV2Artwork: View {
         content
             .frame(width: side, height: side)
             .scaleEffect(speciesScale)
-            .offset(speciesOffset)
+            .offset(
+                x: layoutDirection == .leftToRight ? -speciesOffset.width : speciesOffset.width,
+                y: speciesOffset.height
+            )
+            .scaleEffect(
+                x: layoutDirection == .leftToRight ? -1 : 1,
+                y: 1
+            )
             .scaleEffect(presented ? 1 : 0.96)
             .opacity(presented ? 1 : 0)
             .animation(

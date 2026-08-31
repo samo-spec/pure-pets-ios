@@ -3206,6 +3206,9 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
     [self.prefs setBool:usesMainKindColors
                  forKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
+    [NSNotificationCenter.defaultCenter
+        postNotificationName:PPMarketplaceAccentColorPreferenceDidChangeNotification
+                      object:nil];
     [self pp_emitSettingsSelectionHaptic];
     [self pp_buildSections];
     [self.tableView reloadData];

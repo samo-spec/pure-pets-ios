@@ -2769,6 +2769,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self pp_updateRootTabSelectionMarkerAnimated:NO];
 }
 
+- (void)pp_setCustomAccentColor:(nullable UIColor *)accentColor
+{
+    [self.swiftCoordinator setCustomAccentColor:accentColor];
+
+    UIColor *selectedAccentColor = accentColor ?: (AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.42 blue:0.52 alpha:1.0]);
+    self.tabBar.tintColor = selectedAccentColor;
+    if (self.rootTabSelectionMarker) {
+        self.rootTabSelectionMarker.backgroundColor = selectedAccentColor;
+    }
+}
+
 - (void)pp_setupRootTabSelectionMarkerIfNeeded
 {
     if (self.rootTabSelectionMarker.superview == self.tabBar) {

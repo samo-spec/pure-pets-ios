@@ -798,14 +798,18 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
         controller.modalPresentationStyle = .pageSheet
 
         if let sheet = controller.sheetPresentationController {
-            let actionDetent = UISheetPresentationController.Detent.custom {
-                context in
-                min(
-                    context.maximumDetentValue,
-                    max(390, context.maximumDetentValue * 0.62)
-                )
+            if #available(iOS 16.0, *) {
+                let actionDetent = UISheetPresentationController.Detent.custom {
+                    context in
+                    min(
+                        context.maximumDetentValue,
+                        max(390, context.maximumDetentValue * 0.62)
+                    )
+                }
+                sheet.detents = [actionDetent]
+            } else {
+                sheet.detents = [.medium()]
             }
-            sheet.detents = [actionDetent]
             sheet.prefersGrabberVisible = false
             sheet.prefersScrollingExpandsWhenScrolledToEdge = false
             sheet.preferredCornerRadius = 32
@@ -2552,10 +2556,10 @@ private struct PPMessagingConversationActionsSheet: View {
                     .padding(.top, 16)
                     .padding(.bottom, 28)
                 }
-                .scrollIndicators(.hidden)
+                .messagingScrollIndicatorsHidden()
             }
         }
-        .presentationBackground(.clear)
+        .messagingPresentationBackgroundClear()
         .accessibilityIdentifier("pp.messaging.conversation-actions")
     }
 
@@ -4220,7 +4224,7 @@ private struct PPMessagingLoadingState: View {
                 .frame(minHeight: ppMessagingVisibleHeight(in: proxy))
                 .accessibilityElement(children: .combine)
             }
-            .scrollIndicators(.hidden)
+            .messagingScrollIndicatorsHidden()
         }
     }
 
@@ -4240,7 +4244,7 @@ private struct PPMessagingEmptyState: View {
                     .frame(minHeight: ppMessagingVisibleHeight(in: proxy))
             }
             .background(Color.clear)
-            .scrollIndicators(.hidden)
+            .messagingScrollIndicatorsHidden()
         }
     }
 
@@ -4357,7 +4361,7 @@ private struct PPMessagingOfflineState: View {
                 .frame(minHeight: ppMessagingVisibleHeight(in: proxy))
                 .accessibilityElement(children: .contain)
             }
-            .scrollIndicators(.hidden)
+            .messagingScrollIndicatorsHidden()
         }
     }
 
@@ -5584,5 +5588,25 @@ private extension UIColor {
             brightness: max(brightness - amount, 0),
             alpha: alpha
         )
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func messagingScrollIndicatorsHidden() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollIndicators(.hidden)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func messagingPresentationBackgroundClear() -> some View {
+        if #available(iOS 16.4, *) {
+            self.presentationBackground(.clear)
+        } else {
+            self
+        }
     }
 }

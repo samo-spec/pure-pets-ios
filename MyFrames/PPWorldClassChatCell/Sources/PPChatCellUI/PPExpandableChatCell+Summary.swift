@@ -85,18 +85,29 @@ extension PPExpandableChatCell {
         .padding(.vertical, 6)
     }
 
+    @ViewBuilder
     var identityRow: some View {
-        ViewThatFits(in: .horizontal) {
+        if #available(iOS 16.0, *) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    displayName
+
+                    Spacer(minLength: 8)
+
+                    timestamp
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    displayName
+                    timestamp
+                }
+            }
+        } else {
             HStack(spacing: 6) {
                 displayName
 
                 Spacer(minLength: 8)
 
-                timestamp
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                displayName
                 timestamp
             }
         }

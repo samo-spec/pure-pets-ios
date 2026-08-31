@@ -204,7 +204,6 @@ struct PPNotificationsHubView: View {
                         .foregroundStyle(Color.ppTextPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                        .contentTransition(.opacity)
                         .accessibilityAddTraits(.isHeader)
                         .padding(.top, PPSpace.xxs)
 
@@ -213,7 +212,6 @@ struct PPNotificationsHubView: View {
                         .foregroundStyle(Color.ppTextSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
-                        .contentTransition(.opacity)
                         .padding(.top, PPSpace.xs)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -345,8 +343,10 @@ final class PPNotificationsHubViewController: UIViewController {
 
         applyNavigationItems()
 
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (controller: Self, _) in
-            controller.view.backgroundColor = .ppBackground
+        if #available(iOS 17.0, *) {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (controller: Self, _) in
+                controller.view.backgroundColor = .ppBackground
+            }
         }
     }
 

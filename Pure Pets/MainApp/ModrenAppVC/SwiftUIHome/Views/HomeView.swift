@@ -205,6 +205,7 @@ struct HomeView: View {
                 HomeCommandBar(
                     state: store.state,
                     searchProminence: plan.searchProminence,
+                    customAccent: activeHomeAccent,
                     searchAction: store.router.openSearch,
                     cartAction: store.router.openCart,
                     locationAction: store.locationTapped,
@@ -1011,6 +1012,24 @@ struct HomeView: View {
                 return false
             }
         }
+    }
+
+    private var isCategoryAccentEnabled: Bool {
+        UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+    }
+
+    private var activeHomeAccent: Color? {
+        guard isCategoryAccentEnabled else { return nil }
+        guard let selectedID = store.state.selectedMainKindID,
+              let category = store.state.categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedID
+              })
+        else {
+            return nil
+        }
+        return Color(uiColor: category.accent)
     }
 
     private var selectedMainKindAccent: Color {
@@ -1893,7 +1912,7 @@ private enum HomeSectionReloadMotion {
     static let minimumTraceScale: CGFloat = 0.02
 }
 
-private extension View {
+extension View {
     func homeEntrance(
         isVisible: Bool,
         delay: Double,

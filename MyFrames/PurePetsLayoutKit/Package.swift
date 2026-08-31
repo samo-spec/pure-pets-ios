@@ -5,7 +5,7 @@ let package = Package(
     name: "PurePetsLayoutKit",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v15)
     ],
     products: [
         .library(name: "PurePetsLayoutKit", targets: ["PurePetsLayoutKit"])

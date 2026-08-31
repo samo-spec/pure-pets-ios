@@ -3,7 +3,7 @@ import SwiftUI
 struct VoiceMessageView: View {
   let messageID: MessageID
   let payload: VoicePayload
-  let audioCoordinator: ConversationAudioCoordinator
+  @ObservedObject var audioCoordinator: ConversationAudioCoordinator
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.locale) private var locale
@@ -57,13 +57,20 @@ struct VoiceMessageView: View {
         Circle()
           .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
 
-        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-          .font(.system(size: 14.5, weight: .bold))
-          .foregroundStyle(PurePetsMessagingTheme.signalForeground)
-          .contentTransition(
-            reduceMotion ? .identity : .symbolEffect(.replace.offUp)
-          )
-          .offset(x: isPlaying ? 0 : 0.75)
+        if #available(iOS 17.0, *) {
+          Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+            .font(.system(size: 14.5, weight: .bold))
+            .foregroundStyle(PurePetsMessagingTheme.signalForeground)
+            .contentTransition(
+              reduceMotion ? .identity : .symbolEffect(.replace.offUp)
+            )
+            .offset(x: isPlaying ? 0 : 0.75)
+        } else {
+          Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+            .font(.system(size: 14.5, weight: .bold))
+            .foregroundStyle(PurePetsMessagingTheme.signalForeground)
+            .offset(x: isPlaying ? 0 : 0.75)
+        }
       }
       .frame(width: 44, height: 44)
     }

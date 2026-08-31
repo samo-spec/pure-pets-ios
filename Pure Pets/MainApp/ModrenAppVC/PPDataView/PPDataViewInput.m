@@ -10,6 +10,8 @@
 
 NSString * const PPMarketplaceUsesMainKindAccentColorsPreferenceKey =
     @"pp.marketplace.usesMainKindAccentColors";
+NSString * const PPMarketplaceAccentColorPreferenceDidChangeNotification =
+    @"PPMarketplaceAccentColorPreferenceDidChangeNotification";
 
 @implementation PPDataViewInput
 

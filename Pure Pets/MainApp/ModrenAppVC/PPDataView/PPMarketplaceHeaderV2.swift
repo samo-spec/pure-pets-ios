@@ -194,8 +194,30 @@ struct PPMarketplaceHeaderV2: View {
     /// a three-item `HStack`, so the title sat visibly off-centre (measured ~38pt
     /// in the shipped build). Reserving the same width on both sides centres the
     /// title mathematically, whatever the control count.
+    @ViewBuilder
     private var identityRow: some View {
-        ViewThatFits(in: .horizontal) {
+        if #available(iOS 16.0, *) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: PPSpace.sm) {
+                    backControl(size: resolvedExpandedControlSize, compact: false)
+                        .frame(width: identitySlotWidth, alignment: .leading)
+
+                    contextControl(compact: false, alignment: .center)
+
+                    cartControl(size: resolvedExpandedControlSize, compact: false)
+                        .frame(width: identitySlotWidth, alignment: .trailing)
+                }
+
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    HStack(spacing: PPSpace.sm) {
+                        backControl(size: resolvedExpandedControlSize, compact: false)
+                        Spacer()
+                        cartControl(size: resolvedExpandedControlSize, compact: false)
+                    }
+                    contextControl(compact: false, alignment: .leading)
+                }
+            }
+        } else {
             HStack(alignment: .center, spacing: PPSpace.sm) {
                 backControl(size: resolvedExpandedControlSize, compact: false)
                     .frame(width: identitySlotWidth, alignment: .leading)
@@ -205,18 +227,9 @@ struct PPMarketplaceHeaderV2: View {
                 cartControl(size: resolvedExpandedControlSize, compact: false)
                     .frame(width: identitySlotWidth, alignment: .trailing)
             }
-
-            VStack(alignment: .leading, spacing: PPSpace.md) {
-                HStack(spacing: PPSpace.sm) {
-                    backControl(size: resolvedExpandedControlSize, compact: false)
-                    Spacer(minLength: 0)
-                    cartControl(size: resolvedExpandedControlSize, compact: false)
-                }
-                contextControl(compact: false, alignment: .leading)
-            }
         }
-        .padding(.horizontal, horizontalInset)
     }
+    .padding(.horizontal, horizontalInset)
 
     // MARK: Compact state
 
@@ -294,35 +307,49 @@ struct PPMarketplaceHeaderV2: View {
     /// continuous capsule that owns search, species, breed and filters together,
     /// and it is present in **both** dock states, so no capability appears or
     /// disappears with scroll position.
+    @ViewBuilder
     private func commandCapsule(isCompact: Bool) -> some View {
         let height = resolvedCommandHeight(isCompact: isCompact)
 
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: 0) {
-                searchControl(isCompact: isCompact, showsPlaceholder: !isCompact)
-                capsuleDivider(height: height * 0.52)
-                taxonomyChip(kind: .species, isCompact: isCompact)
-                taxonomyChip(kind: .breed, isCompact: isCompact)
-                capsuleDivider(height: height * 0.52)
-                filterControl(isCompact: isCompact, height: height)
-            }
+        Group {
+            if #available(iOS 16.0, *) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 0) {
+                        searchControl(isCompact: isCompact, showsPlaceholder: !isCompact)
+                        capsuleDivider(height: height * 0.52)
+                        taxonomyChip(kind: .species, isCompact: isCompact)
+                        taxonomyChip(kind: .breed, isCompact: isCompact)
+                        capsuleDivider(height: height * 0.52)
+                        filterControl(isCompact: isCompact, height: height)
+                    }
 
-            // Narrow / large-text fallback keeps the old dock's stacked
-            // reading order inside the same single capsule.
-            VStack(spacing: PPSpace.xs) {
+                    // Narrow / large-text fallback keeps the old dock's stacked
+                    // reading order inside the same single capsule.
+                    VStack(spacing: PPSpace.xs) {
+                        HStack(spacing: 0) {
+                            searchControl(isCompact: isCompact, showsPlaceholder: true)
+                            capsuleDivider(height: height * 0.52)
+                            filterControl(isCompact: isCompact, height: height)
+                        }
+                        Divider()
+                            .overlay(Color.ppSeparator.opacity(0.4))
+                        HStack(spacing: 0) {
+                            taxonomyChip(kind: .species, isCompact: isCompact)
+                            taxonomyChip(kind: .breed, isCompact: isCompact)
+                        }
+                    }
+                    .padding(.vertical, PPSpace.xs)
+                }
+            } else {
                 HStack(spacing: 0) {
-                    searchControl(isCompact: isCompact, showsPlaceholder: true)
+                    searchControl(isCompact: isCompact, showsPlaceholder: !isCompact)
+                    capsuleDivider(height: height * 0.52)
+                    taxonomyChip(kind: .species, isCompact: isCompact)
+                    taxonomyChip(kind: .breed, isCompact: isCompact)
                     capsuleDivider(height: height * 0.52)
                     filterControl(isCompact: isCompact, height: height)
                 }
-                Divider()
-                    .overlay(Color.ppSeparator.opacity(0.4))
-                HStack(spacing: 0) {
-                    taxonomyChip(kind: .species, isCompact: isCompact)
-                    taxonomyChip(kind: .breed, isCompact: isCompact)
-                }
             }
-            .padding(.vertical, PPSpace.xs)
         }
         .frame(minHeight: height)
         .ppMarketplaceHeaderV2Glass(
@@ -785,7 +812,7 @@ struct PPMarketplaceHeaderV2: View {
             .onAppear {
                 revealCurrentSection(using: proxy, animated: false)
             }
-            .onChange(of: store.currentSection.rawValue) { _, _ in
+            .onChange(of: store.currentSection.rawValue) { _ in
                 revealCurrentSection(
                     using: proxy,
                     animated: !interactionMotionIsDisabled

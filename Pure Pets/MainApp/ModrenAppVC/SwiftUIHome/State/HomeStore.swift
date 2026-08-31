@@ -81,6 +81,9 @@ final class HomeStore: ObservableObject {
     private var categoryAccessories: [Int: [PetAccessory]] = [:]
     private var categoryAccessoryRequests = Set<Int>()
     private var staleCategoryAccessoryIDs = Set<Int>()
+    private var categoryAdvertisements: [Int: [PetAd]] = [:]
+    private var categoryAdvertisementRequests = Set<Int>()
+    private var staleCategoryAdvertisementIDs = Set<Int>()
     private var marketplaceSignalRequestGenerations:
         [HomeMarketplaceSignalKind: Int] = [:]
     private var showingRecentNearbyFallback = false
@@ -190,6 +193,7 @@ final class HomeStore: ObservableObject {
         if value {
             state.bottomContentClearance = router.bottomContentClearance()
             repository.refresh()
+            broadcastActiveAccentColorIfNeeded()
         }
         restartHeroRotation()
         restartPromotionRotation()
@@ -419,22 +423,49 @@ final class HomeStore: ObservableObject {
     }
 
     func selectCategory(_ category: HomeCategoryModel?) {
-        guard let category else {
+        let candidateSectionIDs = sectionIDsAffected(
+            by: PPHomeBridgeSource.mainKinds.rawValue
+        )
+        let previousFingerprints = sectionPresentationFingerprints(
+            for: candidateSectionIDs
+        )
+
+        // A direct MainKinds tap is newer than any launch/deep-link context.
+        // Its selection is persisted before rebuilding so it remains the sole
+        // marketplace scope through future Home refreshes.
+        initialMainKindID = nil
+        if let category {
+            let identifier = HomeModelAdapter.mainKindID(category.raw)
+            guard identifier > 0 else { return }
+            state.selectedMainKindID = identifier
+            UserDefaults.standard.set(
+                identifier,
+                forKey: Self.selectedMainKindKey
+            )
+            rebuildState()
+            queueOrPublishSectionDataReload(
+                changedSectionIDs(
+                    in: candidateSectionIDs,
+                    comparedWith: previousFingerprints
+                )
+            )
+            UISelectionFeedbackGenerator().selectionChanged()
+            router.openCategory(category)
+        } else {
+            // The explicit All selection is distinct from an unset scope. Its
+            // sentinel must prevent a default pet from silently re-scoping Home.
             state.selectedMainKindID = nil
             UserDefaults.standard.set(-1, forKey: Self.selectedMainKindKey)
             rebuildState()
+            queueOrPublishSectionDataReload(
+                changedSectionIDs(
+                    in: candidateSectionIDs,
+                    comparedWith: previousFingerprints
+                )
+            )
             UISelectionFeedbackGenerator().selectionChanged()
             router.openAllCategories()
-            return
         }
-
-        let identifier = HomeModelAdapter.mainKindID(category.raw)
-        guard identifier > 0 else { return }
-        state.selectedMainKindID = identifier
-        UserDefaults.standard.set(identifier, forKey: Self.selectedMainKindKey)
-        rebuildState()
-        UISelectionFeedbackGenerator().selectionChanged()
-        router.openCategory(category)
     }
 
     func selectPet(_ pet: HomePetModel) {
@@ -449,11 +480,18 @@ final class HomeStore: ObservableObject {
         )
 
         let applySelection = {
-            // Pet context and marketplace browsing scope are independent.
-            // Switching the active Home pet must not overwrite the category
-            // the user is currently browsing or its persisted selection.
+            // A Home pet tap is an explicit context action. It owns the same
+            // MainKind scope as the rail, so Cats immediately drives only Cats
+            // marketplace sections and ads until the user taps another context.
+            self.initialMainKindID = nil
             self.state.selectedPetID = pet.id
             UserDefaults.standard.set(pet.id, forKey: Self.selectedPetKey)
+            let categoryID = self.validCategoryID(for: pet)
+            self.state.selectedMainKindID = categoryID
+            UserDefaults.standard.set(
+                categoryID ?? -1,
+                forKey: Self.selectedMainKindKey
+            )
             self.rebuildState()
         }
 
@@ -601,11 +639,53 @@ final class HomeStore: ObservableObject {
         return state.pets.first(where: \.isDefault) ?? state.pets.first
     }
 
+    /// A pet's profile category can only scope Home when it still exists in the
+    /// current visible MainKinds set. This prevents stale/deleted taxonomy IDs
+    /// from leaking a prior category's content into a newly selected pet.
+    private func validCategoryID(for pet: HomePetModel?) -> Int? {
+        guard let pet,
+              pet.categoryID > 0,
+              state.categories.contains(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == pet.categoryID
+              })
+        else {
+            return nil
+        }
+        return pet.categoryID
+    }
+
     /// Read-only presentation seam for surfaces that decorate the existing
     /// My Pet action. Selection precedence remains centralized above so the UI
     /// and `editSelectedPet()` can never disagree about which pet is active.
     var selectedPriorityPet: HomePetModel? {
         selectedPet
+    }
+
+    var resolvedCategoryAccentColor: UIColor? {
+        let usesCategoryColors = UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+        guard usesCategoryColors else { return nil }
+        guard let selectedID = state.selectedMainKindID,
+              let category = state.categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedID
+              }) else {
+            return nil
+        }
+        return category.accent
+    }
+
+    func broadcastActiveAccentColorIfNeeded() {
+        let color = resolvedCategoryAccentColor
+        var userInfo: [AnyHashable: Any] = [:]
+        if let color {
+            userInfo["accentColor"] = color
+        }
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PPHomeCategoryAccentColorDidChangeNotification"),
+            object: nil,
+            userInfo: userInfo
+        )
     }
 
     private var selectedMainKind: NSObject? {
@@ -654,6 +734,11 @@ final class HomeStore: ObservableObject {
             markLoaded(PPHomeBridgeSource.food.rawValue)
         case let .advertisements(models):
             advertisements = models
+            // A generic latest-feed refresh does not prove that every cached
+            // category result is current. Revalidate the active category only.
+            staleCategoryAdvertisementIDs.formUnion(
+                categoryAdvertisements.keys
+            )
             markLoaded(PPHomeBridgeSource.advertisements.rawValue)
         case let .nearbyAdvertisements(models, fallback):
             nearbyAdvertisements = models
@@ -790,12 +875,15 @@ final class HomeStore: ObservableObject {
         for source: Int,
         changedSectionIDs: Set<Int>
     ) {
-        if refreshCompletionPending,
-           source == PPHomeBridgeSource.accessories.rawValue,
-           hasPendingSelectedCategoryAccessoryRequest {
-            // The visible marketplace shelves are category-scoped. Keep the
-            // accessories source pending until that authoritative request
-            // settles instead of completing on the generic inventory fetch.
+        let waitsForScopedCategoryData =
+            (source == PPHomeBridgeSource.accessories.rawValue &&
+                hasPendingSelectedCategoryAccessoryRequest) ||
+            (source == PPHomeBridgeSource.advertisements.rawValue &&
+                hasPendingSelectedCategoryAdvertisementRequest)
+        if refreshCompletionPending && waitsForScopedCategoryData {
+            // The visible marketplace shelves are category-scoped. Keep their
+            // generic source pending until the authoritative category request
+            // settles instead of briefly publishing global inventory or ads.
             refreshUpdatedSectionIDs.formUnion(changedSectionIDs)
             return
         }
@@ -899,6 +987,13 @@ final class HomeStore: ObservableObject {
             return false
         }
         return categoryAccessoryRequests.contains(selectedMainKindID)
+    }
+
+    private var hasPendingSelectedCategoryAdvertisementRequest: Bool {
+        guard let selectedMainKindID = state.selectedMainKindID else {
+            return false
+        }
+        return categoryAdvertisementRequests.contains(selectedMainKindID)
     }
 
     private func sourceRawValue(for event: HomeRepositoryEvent) -> Int? {
@@ -1198,6 +1293,48 @@ final class HomeStore: ObservableObject {
         }
     }
 
+    private func requestCategoryAdvertisementsIfNeeded(for categoryID: Int?) {
+        guard let categoryID,
+              categoryID > 0,
+              categoryAdvertisements[categoryID] == nil ||
+                staleCategoryAdvertisementIDs.contains(categoryID),
+              categoryAdvertisementRequests.insert(categoryID).inserted
+        else {
+            return
+        }
+
+        repository.loadAdvertisements(mainCategoryID: categoryID) { [weak self] items in
+            guard let self else { return }
+            let affectedSectionIDs: Set<Int> = [
+                HomeLegacySectionID.suggestions.rawValue,
+                HomeLegacySectionID.suggestionAds.rawValue,
+            ]
+            let previousFingerprints = self.sectionPresentationFingerprints(
+                for: affectedSectionIDs
+            )
+            self.categoryAdvertisementRequests.remove(categoryID)
+            self.categoryAdvertisements[categoryID] = items
+            self.staleCategoryAdvertisementIDs.remove(categoryID)
+            guard self.state.selectedMainKindID == categoryID else { return }
+            self.rebuildState()
+            let changedSectionIDs = self.changedSectionIDs(
+                in: affectedSectionIDs,
+                comparedWith: previousFingerprints
+            )
+            if self.refreshCompletionPending,
+               self.refreshPendingSources.contains(
+                PPHomeBridgeSource.advertisements.rawValue
+               ) {
+                self.publishOrQueueSectionReloads(
+                    for: PPHomeBridgeSource.advertisements.rawValue,
+                    changedSectionIDs: changedSectionIDs
+                )
+            } else {
+                self.queueOrPublishSectionDataReload(changedSectionIDs)
+            }
+        }
+    }
+
     private func rebuildState() {
         let previousHeroIDs = state.heroPages.map(\.id)
         let previousPromotionIDs = state.promotionPages.map(\.id)
@@ -1208,8 +1345,9 @@ final class HomeStore: ObservableObject {
         let persistedCategory = UserDefaults.standard.object(
             forKey: Self.selectedMainKindKey
         ) as? NSNumber
+        let persistedCategoryID = persistedCategory?.intValue
         let savedMainKindID = HomeModelAdapter.selectedCategoryID(
-            persistedID: persistedCategory?.intValue,
+            persistedID: persistedCategoryID,
             initialID: initialMainKindID,
             categories: state.categories
         )
@@ -1227,14 +1365,19 @@ final class HomeStore: ObservableObject {
 
         if let savedMainKindID {
             state.selectedMainKindID = savedMainKindID
-        } else {
-            // Browsing scope is owned only by its explicit persisted/default
-            // selection. A default or active pet never silently changes it.
-            // The persisted -1 sentinel and an absent value both mean All.
+        } else if persistedCategoryID == -1 {
+            // A user explicitly selected All; do not turn a default-pet refresh
+            // into an unexpected category change.
             state.selectedMainKindID = nil
+        } else {
+            // With no explicit rail/pet scope, Home follows the active pet
+            // (normally the current default) so its cards begin in that pet's
+            // category rather than an unrelated global feed.
+            state.selectedMainKindID = validCategoryID(for: selectedPet)
         }
         synchronizeMarketplaceSignals(to: state.selectedMainKindID)
         requestCategoryAccessoriesIfNeeded(for: state.selectedMainKindID)
+        requestCategoryAdvertisementsIfNeeded(for: state.selectedMainKindID)
 
         state.heroPages = buildContextHeroPages()
         state.promotionPages = buildPromotionHeroPages()
@@ -1266,6 +1409,7 @@ final class HomeStore: ObservableObject {
         if previousPromotionIDs != state.promotionPages.map(\.id) {
             restartPromotionRotation()
         }
+        broadcastActiveAccentColorIfNeeded()
     }
 
     private func synchronizeMarketplaceSignals(to categoryID: Int?) {
@@ -1651,60 +1795,51 @@ final class HomeStore: ObservableObject {
     private func buildSections() -> [HomeSectionModel] {
         let selectedCategoryID = state.selectedMainKindID
         let audience = marketplaceAudience(for: selectedCategoryID)
-        let categoryAccessoryItems = selectedCategoryID.flatMap {
-            categoryAccessories[$0]
-        } ?? []
-        let accessoryCandidates = categoryAccessoryItems.isEmpty
-            ? accessories
-            : categoryAccessoryItems
+        let relevantAccessories: [PetAccessory]
+        let relevantFood: [PetAccessory]
+        let relevantAds: [PetAd]
+        let relevantNearbyAds: [PetAd]
+        let relevantServices: [ServiceModel]
 
-        let relevantAccessories = accessoryCandidates.filter {
-            selectedCategoryID != nil &&
-            integerValue($0, key: "petMainCategoryID") == selectedCategoryID
+        if let selectedCategoryID {
+            // Category context is strict. A missing or still-loading category
+            // result is represented by an empty shelf, never substituted with
+            // a capped global feed from another species.
+            relevantAccessories = (categoryAccessories[selectedCategoryID] ?? [])
+                .filter {
+                    integerValue($0, key: "petMainCategoryID") == selectedCategoryID
+                }
+            relevantFood = food.filter {
+                integerValue($0, key: "petMainCategoryID") == selectedCategoryID
+            }
+            relevantAds = (categoryAdvertisements[selectedCategoryID] ?? [])
+                .filter {
+                    integerValue($0, key: "category") == selectedCategoryID
+                }
+            relevantNearbyAds = nearbyAdvertisements.filter {
+                integerValue($0, key: "category") == selectedCategoryID
+            }
+            relevantServices = services.filter {
+                integerValue($0, key: "petMainKindID") == selectedCategoryID
+            }
+        } else {
+            relevantAccessories = accessories
+            relevantFood = food
+            relevantAds = advertisements
+            relevantNearbyAds = nearbyAdvertisements
+            relevantServices = services
         }
-        let relevantFood = food.filter {
-            selectedCategoryID != nil &&
-            integerValue($0, key: "petMainCategoryID") == selectedCategoryID
-        }
-        let relevantAds = advertisements.filter {
-            selectedCategoryID != nil &&
-            integerValue($0, key: "category") == selectedCategoryID
-        }
-        let relevantNearbyAds = nearbyAdvertisements.filter {
-            selectedCategoryID != nil &&
-            integerValue($0, key: "category") == selectedCategoryID
-        }
-        let relevantServices = services.filter {
-            selectedCategoryID != nil &&
-            integerValue($0, key: "petMainKindID") == selectedCategoryID
-        }
-        let prioritizedAccessories = relevantAccessories.isEmpty
-            ? accessories
-            : relevantAccessories
-        let prioritizedFood = relevantFood.isEmpty ? food : relevantFood
-        let prioritizedAds = relevantAds.isEmpty
-            ? advertisements
-            : relevantAds
-        let prioritizedNearbyAds = relevantNearbyAds.isEmpty
-            ? nearbyAdvertisements
-            : relevantNearbyAds
-        let prioritizedServices = relevantServices.isEmpty
-            ? services
-            : relevantServices
 
-        let usesContextualRecommendations =
-            !relevantAccessories.isEmpty ||
-            !relevantAds.isEmpty ||
-            !relevantServices.isEmpty
-        let recommendationAccessories = usesContextualRecommendations
-            ? relevantAccessories
-            : accessories
-        let recommendationAds = usesContextualRecommendations
-            ? relevantAds
-            : advertisements
-        let recommendationServices = usesContextualRecommendations
-            ? relevantServices
-            : services
+        let prioritizedAccessories = relevantAccessories
+        let prioritizedFood = relevantFood
+        let prioritizedAds = relevantAds
+        let prioritizedNearbyAds = relevantNearbyAds
+        let prioritizedServices = relevantServices
+
+        let usesContextualRecommendations = selectedCategoryID != nil
+        let recommendationAccessories = relevantAccessories
+        let recommendationAds = relevantAds
+        let recommendationServices = relevantServices
 
         let suggestionAccessoryCards = HomeModelAdapter.cards(
             from: Array(prioritizedAccessories.prefix(8)),
@@ -2547,6 +2682,20 @@ final class HomeStore: ObservableObject {
                 }
             )
         }
+
+        observers.append(
+            center.addObserver(
+                forName: Notification.Name("PPMarketplaceAccentColorPreferenceDidChangeNotification"),
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.rebuildState()
+                    self.broadcastActiveAccentColorIfNeeded()
+                }
+            }
+        )
 
         observers.append(
             center.addObserver(

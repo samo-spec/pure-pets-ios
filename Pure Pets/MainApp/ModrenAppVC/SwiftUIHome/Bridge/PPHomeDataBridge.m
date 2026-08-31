@@ -670,6 +670,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
 
     NSArray<NSString *> *refreshNotifications = @[
         PPMainKindsUpdatedNotification,
+        PPPetProfileManagerDidChangeNotification,
         @"PPAdDidFinishUploadNotification",
         @"PPUserManagerDidSyncCurrentUserNotification",
         @"PPUserManagerDidUpdateUserAccessNotification",
@@ -1851,6 +1852,40 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
             }
         });
     }];
+}
+
+- (void)fetchAdvertisementsForMainCategoryID:(NSInteger)mainCategoryID
+                                   completion:(void (^)(NSArray<PetAd *> *advertisements))completion
+{
+    if (mainCategoryID <= 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) {
+                completion(@[]);
+            }
+        });
+        return;
+    }
+
+    [[PetAdManager sharedManager]
+        fetchPublicVisibleAdsForCategoryID:mainCategoryID
+        completion:^(NSArray<PetAd *> *ads, NSError *error) {
+            NSArray<PetAd *> *visible = error
+                ? @[]
+                : [(ads ?: @[]) filteredArrayUsingPredicate:
+                    [NSPredicate predicateWithBlock:^BOOL(PetAd *ad,
+                                                         __unused NSDictionary *bindings) {
+                        return [ad isKindOfClass:PetAd.class] &&
+                               ad.visibility == PetAdVisibilityPublic &&
+                               !ad.isDeleted &&
+                               !ad.isBlocked &&
+                               !ad.isSold;
+                    }]];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) {
+                    completion(visible ?: @[]);
+                }
+            });
+        }];
 }
 
 - (void)fetchMarketplaceItemCountForMainCategoryID:(NSInteger)mainCategoryID

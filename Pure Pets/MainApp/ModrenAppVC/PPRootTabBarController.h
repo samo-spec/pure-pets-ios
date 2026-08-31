@@ -44,6 +44,8 @@ typedef void (^PPCartFloatingBarOpenHandler)(void);
 /// remains host-owned; prefill values are advisory and never publish directly.
 - (void)pp_openListingDraftWithPrefill:(NSDictionary<NSString *, NSString *> *)prefill
     NS_SWIFT_NAME(pp_openListingDraft(prefill:));
+
+- (void)pp_setCustomAccentColor:(nullable UIColor *)accentColor;
 @end
 
 

@@ -4,7 +4,7 @@ import SwiftUI
 
 /// A bounded semantic surface beneath the fixed identity row. Context and
 /// identity utilities use the same treatment while retaining independent state.
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearHeaderDeck<Content: View>: View {
   let brandColor: Color
   let mainBackgroundColor: Color

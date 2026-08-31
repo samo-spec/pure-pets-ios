@@ -3,7 +3,7 @@ import UIKit
 
 // MARK: - Avatar and Presence
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearAvatarFrame<Content: View>: View {
   let trust: SpearTrustState
   let presence: SpearPresence
@@ -50,7 +50,7 @@ internal struct SpearAvatarFrame<Content: View>: View {
 
 // MARK: - Presence Line (atmospheric text color)
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearPresenceLine: View {
   let presence: SpearPresence
   let call: SpearCallControl
@@ -78,12 +78,20 @@ internal struct SpearPresenceLine: View {
 
   private var lineContent: some View {
     HStack(spacing: 5) {
-      Text(displayText)
-        .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
-        .foregroundStyle(semanticColor)
-        .lineLimit(2)
-        .multilineTextAlignment(.leading)
-        .contentTransition(.interpolate)
+      if #available(iOS 16.0, *) {
+        Text(displayText)
+          .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
+          .foregroundStyle(semanticColor)
+          .lineLimit(2)
+          .multilineTextAlignment(.leading)
+          .contentTransition(.interpolate)
+      } else {
+        Text(displayText)
+          .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
+          .foregroundStyle(semanticColor)
+          .lineLimit(2)
+          .multilineTextAlignment(.leading)
+      }
 
       if motionMode == .typing {
         SpearTypingDots()
@@ -130,20 +138,24 @@ internal struct SpearPresenceLine: View {
 
 // MARK: - Typing Dots
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearTypingDots: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
-    if reduceMotion || scenePhase != .active {
-      dots(activeIndex: nil)
-    } else {
-      PhaseAnimator([0, 1, 2]) { activeIndex in
-        dots(activeIndex: activeIndex)
-      } animation: { _ in
-        SpearHeaderMotion.liveIndicator
+    if #available(iOS 17.0, *) {
+      if reduceMotion || scenePhase != .active {
+        dots(activeIndex: nil)
+      } else {
+        PhaseAnimator([0, 1, 2]) { activeIndex in
+          dots(activeIndex: activeIndex)
+        } animation: { _ in
+          SpearHeaderMotion.liveIndicator
+        }
       }
+    } else {
+      dots(activeIndex: nil)
     }
   }
 
@@ -151,7 +163,7 @@ internal struct SpearTypingDots: View {
     HStack(spacing: 2.5) {
       ForEach([0, 1, 2], id: \.self) { index in
         Circle()
-          .fill(.secondary)
+          .fill(Color.secondary)
           .frame(width: 4, height: 4)
           .offset(y: activeIndex == index ? -3 : 0)
           .opacity(activeIndex == nil || activeIndex == index ? 1 : 0.3)
@@ -164,20 +176,24 @@ internal struct SpearTypingDots: View {
 
 // MARK: - Call Waveform
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearCallWaveform: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
-    if reduceMotion || scenePhase != .active {
-      bars(phase: 0)
-    } else {
-      PhaseAnimator([0, 1, 2, 3]) { phase in
-        bars(phase: phase)
-      } animation: { _ in
-        SpearHeaderMotion.liveIndicator
+    if #available(iOS 17.0, *) {
+      if reduceMotion || scenePhase != .active {
+        bars(phase: 0)
+      } else {
+        PhaseAnimator([0, 1, 2, 3]) { phase in
+          bars(phase: phase)
+        } animation: { _ in
+          SpearHeaderMotion.liveIndicator
+        }
       }
+    } else {
+      bars(phase: 0)
     }
   }
 

@@ -24,15 +24,30 @@ struct MessageBubbleShape: Shape {
       bottomLeading = joinsNext ? joined : terminal
     }
 
-    return UnevenRoundedRectangle(
-      cornerRadii: RectangleCornerRadii(
-        topLeading: topLeading,
-        bottomLeading: bottomLeading,
-        bottomTrailing: bottomTrailing,
-        topTrailing: topTrailing
-      ),
-      style: .continuous
-    )
-    .path(in: rect)
+    var path = Path()
+    let minX = rect.minX
+    let minY = rect.minY
+    let maxX = rect.maxX
+    let maxY = rect.maxY
+
+    path.move(to: CGPoint(x: minX + topLeading, y: minY))
+    path.addLine(to: CGPoint(x: maxX - topTrailing, y: minY))
+    if topTrailing > 0 {
+      path.addArc(center: CGPoint(x: maxX - topTrailing, y: minY + topTrailing), radius: topTrailing, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+    }
+    path.addLine(to: CGPoint(x: maxX, y: maxY - bottomTrailing))
+    if bottomTrailing > 0 {
+      path.addArc(center: CGPoint(x: maxX - bottomTrailing, y: maxY - bottomTrailing), radius: bottomTrailing, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+    }
+    path.addLine(to: CGPoint(x: minX + bottomLeading, y: maxY))
+    if bottomLeading > 0 {
+      path.addArc(center: CGPoint(x: minX + bottomLeading, y: maxY - bottomLeading), radius: bottomLeading, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+    }
+    path.addLine(to: CGPoint(x: minX, y: minY + topLeading))
+    if topLeading > 0 {
+      path.addArc(center: CGPoint(x: minX + topLeading, y: minY + topLeading), radius: topLeading, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+    }
+    path.closeSubpath()
+    return path
   }
 }

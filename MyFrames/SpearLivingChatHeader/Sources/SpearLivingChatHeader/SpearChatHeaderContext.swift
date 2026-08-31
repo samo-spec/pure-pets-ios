@@ -6,7 +6,7 @@ import UIKit
 /// Context rail that continues the identity header instead of introducing a
 /// second card. The media/symbol is the visual anchor; metadata and the action
 /// share one reading line beneath a quiet separator.
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearContextRail: View {
   let context: SpearConversationContext
   let brandColor: Color
@@ -39,10 +39,14 @@ internal struct SpearContextRail: View {
           if dynamicTypeSize.isAccessibilitySize {
             verticalLayout
           } else {
-            ViewThatFits(in: .horizontal) {
+            if #available(iOS 16.0, *) {
+              ViewThatFits(in: .horizontal) {
+                horizontalLayout
+                  .frame(minWidth: 340)
+                verticalLayout
+              }
+            } else {
               horizontalLayout
-                .frame(minWidth: 340)
-              verticalLayout
             }
           }
         }

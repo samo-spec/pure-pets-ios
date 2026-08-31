@@ -176,10 +176,16 @@ struct PPMarketplaceHero: View {
         }
         .frame(maxWidth: .infinity)
         .clipShape(
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+            PPMarketplaceHeroDeckShape(
+                topRadius: PPMarketplaceHeroDeckShape.deckTopRadius,
+                bottomRadius: PPCorner.hero
+            )
         )
         .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+            PPMarketplaceHeroDeckShape(
+                topRadius: PPMarketplaceHeroDeckShape.deckTopRadius,
+                bottomRadius: PPCorner.hero
+            )
                 .strokeBorder(heroBorder, lineWidth: heroBorderWidth)
         }
         .shadow(
@@ -458,8 +464,10 @@ struct PPMarketplaceHero: View {
     }
 
     private var heroCommandSurface: Color {
+        // Stronger foreground presence across the whole top deck: the command
+        // surfaces read fully solid in light mode and near-solid in dark mode.
         Color.ppMarketplaceSurface.opacity(
-            colorScheme == .dark ? 0.92 : 0.97
+            colorScheme == .dark ? 0.98 : 1.0
         )
     }
 
@@ -476,14 +484,15 @@ struct PPMarketplaceHero: View {
     }
 
     private var heroSurface: some View {
-        RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+        PPMarketplaceHeroDeckShape(
+            topRadius: PPMarketplaceHeroDeckShape.deckTopRadius,
+            bottomRadius: PPCorner.hero
+        )
             .fill(
                 LinearGradient(
                     colors: [
                         Color.ppMarketplaceSurface,
-                        Color(uiColor: store.accentColor).opacity(
-                            heroSurfaceAccentOpacity
-                        )
+                        heroSurfaceTrailingColor
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -492,9 +501,15 @@ struct PPMarketplaceHero: View {
     }
 
     private var heroBorder: Color {
-        contrast == .increased
-            ? Color.ppMarketplaceTextPrimary
-            : Color(uiColor: store.accentColor).opacity(heroBorderOpacity)
+        if contrast == .increased {
+            return Color.ppMarketplaceTextPrimary
+        }
+        if store.usesBrandAccent {
+            return Color.ppMarketplaceSeparator.opacity(
+                colorScheme == .dark ? 0.82 : 0.62
+            )
+        }
+        return Color(uiColor: store.accentColor).opacity(heroBorderOpacity)
     }
 
     private var heroBorderWidth: CGFloat {
@@ -510,25 +525,27 @@ struct PPMarketplaceHero: View {
     }
 
     private var heroFlowOpacity: Double {
-        guard store.usesBrandAccent else { return 0.18 }
-        return colorScheme == .dark ? 0.11 : 0.08
+        store.usesBrandAccent ? 0 : 0.18
     }
 
     private var heroFlowTailOpacity: Double {
-        store.usesBrandAccent ? 0.01 : 0.02
+        store.usesBrandAccent ? 0 : 0.02
     }
 
-    private var heroSurfaceAccentOpacity: Double {
+    /// Brand pink remains available to actions and glyphs, but the decorative
+    /// card backdrop only adopts a verified MainKind accent. The accent tint is
+    /// composited over an opaque surface base so the whole deck foreground reads
+    /// solid rather than letting the canvas bleed through.
+    private var heroSurfaceTrailingColor: Color {
         if store.usesBrandAccent {
-            return colorScheme == .dark ? 0.055 : 0.025
+            return Color.ppMarketplaceSurface
         }
-        return colorScheme == .dark ? 0.10 : 0.055
+        return Color(uiColor: store.accentColor).opacity(
+            colorScheme == .dark ? 0.14 : 0.08
+        )
     }
 
     private var heroBorderOpacity: Double {
-        if store.usesBrandAccent {
-            return colorScheme == .dark ? 0.15 : 0.09
-        }
         return colorScheme == .dark ? 0.22 : 0.14
     }
 
@@ -607,6 +624,71 @@ private struct PPMarketplaceCurrentFlowShape: Shape {
             path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
             path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
         }
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Rounded-rectangle deck shape with independent top/bottom corner radii, so
+/// the marketplace top hero can carry slightly tighter top corners while
+/// keeping its established bottom radius. iOS 15-safe (predates
+/// `UnevenRoundedRectangle`), mirroring the existing header-dock shape pattern.
+@available(iOS 15.0, *)
+private struct PPMarketplaceHeroDeckShape: InsettableShape {
+    /// Top corners are pulled in a touch from `PPCorner.hero` (34) so the deck
+    /// reads a little crisper at its shoulders without losing its soft base.
+    static let deckTopRadius: CGFloat = PPCorner.hero - 8
+
+    var topRadius: CGFloat
+    var bottomRadius: CGFloat
+    var inset: CGFloat = 0
+
+    func inset(by amount: CGFloat) -> PPMarketplaceHeroDeckShape {
+        var copy = self
+        copy.inset += amount
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let r = rect.insetBy(dx: inset, dy: inset)
+        // Clamp radii so they never exceed half the smaller dimension.
+        let maxRadius = min(r.width, r.height) / 2
+        let top = max(0, min(topRadius, maxRadius))
+        let bottom = max(0, min(bottomRadius, maxRadius))
+
+        var path = Path()
+        path.move(to: CGPoint(x: r.minX, y: r.minY + top))
+        path.addArc(
+            center: CGPoint(x: r.minX + top, y: r.minY + top),
+            radius: top,
+            startAngle: .degrees(180),
+            endAngle: .degrees(270),
+            clockwise: false
+        )
+        path.addLine(to: CGPoint(x: r.maxX - top, y: r.minY))
+        path.addArc(
+            center: CGPoint(x: r.maxX - top, y: r.minY + top),
+            radius: top,
+            startAngle: .degrees(270),
+            endAngle: .degrees(0),
+            clockwise: false
+        )
+        path.addLine(to: CGPoint(x: r.maxX, y: r.maxY - bottom))
+        path.addArc(
+            center: CGPoint(x: r.maxX - bottom, y: r.maxY - bottom),
+            radius: bottom,
+            startAngle: .degrees(0),
+            endAngle: .degrees(90),
+            clockwise: false
+        )
+        path.addLine(to: CGPoint(x: r.minX + bottom, y: r.maxY))
+        path.addArc(
+            center: CGPoint(x: r.minX + bottom, y: r.maxY - bottom),
+            radius: bottom,
+            startAngle: .degrees(90),
+            endAngle: .degrees(180),
+            clockwise: false
+        )
         path.closeSubpath()
         return path
     }

@@ -246,10 +246,23 @@ struct HomeCommandBar: View {
     /// Resolved by `PPHomePresentationResolver`. `spotlight` gives search its own
     /// full-width lane in the command surface instead of a separate Home row.
     var searchProminence: PPHomeSearchProminence = .compact
+    var customAccent: Color? = nil
     let searchAction: () -> Void
     let cartAction: () -> Void
     let locationAction: () -> Void
     var novaAction: (() -> Void)?
+
+    private var resolvedAccentText: Color {
+        customAccent ?? Color.ppAccentText
+    }
+
+    private var resolvedAccentBrand: Color {
+        customAccent ?? Color.homeBrand
+    }
+
+    private var resolvedCartBadgeColor: Color {
+        customAccent ?? Color.ppPrimary
+    }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -363,7 +376,7 @@ struct HomeCommandBar: View {
                             weight: HomeVisualTokens.commandIconWeight
                         )
                     )
-                    .foregroundStyle(Color.ppAccentText)
+                    .foregroundStyle(resolvedAccentText)
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 1) {
@@ -418,10 +431,10 @@ struct HomeCommandBar: View {
                         weight: HomeVisualTokens.commandIconWeight
                     )
                 )
-                .foregroundStyle(Color.ppAccentText)
+                .foregroundStyle(resolvedAccentText)
                 .frame(width: 28, height: 28)
                 .background(
-                    Color.ppAccentText.opacity(
+                    resolvedAccentText.opacity(
                         contrast == .increased
                             ? 0.24
                             : HomeVisualTokens.reducedPaleTintOpacity(
@@ -495,7 +508,7 @@ struct HomeCommandBar: View {
                             weight: HomeVisualTokens.commandIconWeight
                         )
                     )
-                    .foregroundStyle(Color.ppAccentText)
+                    .foregroundStyle(resolvedAccentText)
                     .frame(width: 30, height: 30)
                     .background(searchKeyTint, in: Circle())
                     .accessibilityHidden(true)
@@ -555,7 +568,7 @@ struct HomeCommandBar: View {
     }
 
     private var commandBorder: Color {
-        Color.homeBrand.opacity(
+        resolvedAccentBrand.opacity(
             contrast == .increased
                 ? 0.5
                 : (colorScheme == .dark ? 0.22 : 0.10)
@@ -565,7 +578,7 @@ struct HomeCommandBar: View {
     /// The soft accent seat for the search glyph: the capsule's purpose reads
     /// before the first suggestion word, in light, dark, and Increased Contrast.
     private var searchKeyTint: Color {
-        Color.ppAccentText.opacity(
+        resolvedAccentText.opacity(
             contrast == .increased
                 ? 0.26
                 : HomeVisualTokens.reducedPaleTintOpacity(
@@ -805,7 +818,7 @@ struct HomeAnimatedSearchSuggestionView: View {
                         .foregroundStyle(Color.white)
                         .padding(.horizontal, state.cartCount > 9 ? 5 : 0)
                         .frame(minWidth: 20, minHeight: 20)
-                        .background(Color.ppPrimary, in: Capsule())
+                        .background(resolvedCartBadgeColor, in: Capsule())
                         .overlay {
                             Capsule().stroke(Color.homeSurface, lineWidth: 2)
                         }
@@ -1072,7 +1085,8 @@ private struct HomePetIdentityPill: View {
             .frame(
                 minWidth: minimumWidth,
                 maxWidth: maximumWidth,
-                minHeight: minimumHeight,
+                minHeight: cardHeight,
+                maxHeight: cardHeight,
                 alignment: .leading
             )
             .background {
@@ -1090,9 +1104,7 @@ private struct HomePetIdentityPill: View {
                 }
             }
             .shadow(
-                color: selected
-                    ? Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.07)
-                    : Color.black.opacity(colorScheme == .dark ? 0.12 : 0.03),
+                color: cardShadowColor,
                 radius: selected ? 8 : 4,
                 x: 0,
                 y: selected ? 3 : 2
@@ -1294,8 +1306,19 @@ private struct HomePetIdentityPill: View {
         dynamicTypeSize.isAccessibilitySize ? 392 : 352
     }
 
-    private var minimumHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 136 : 108
+    /// Fixed card height. Decreased from the previous flexible 108/136 minimum
+    /// so every pet card in the rail is the same, tighter height regardless of
+    /// its copy. The 64/74pt portrait plus vertical padding fits comfortably;
+    /// the name/context text already scale via minimumScaleFactor + lineLimit.
+    private var cardHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 120 : 92
+    }
+
+    private var cardShadowColor: Color {
+        if selected {
+            return Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.07)
+        }
+        return Color.black.opacity(colorScheme == .dark ? 0.12 : 0.03)
     }
 
     private var selectionAnimation: Animation {
@@ -6923,7 +6946,7 @@ private struct HomePureLensOpticalChamber: View {
         .task(id: motionLoopID) {
             await runContinuousFocusCycle()
         }
-        .onChange(of: scenePhase) { _, newPhase in
+        .onChange(of: scenePhase) { newPhase in
             if newPhase != .active {
                 settleFocusWithoutAnimation()
             }

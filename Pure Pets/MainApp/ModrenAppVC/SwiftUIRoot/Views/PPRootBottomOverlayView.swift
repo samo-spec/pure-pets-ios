@@ -140,6 +140,10 @@ private struct PPRootCommandDeck: View {
     @ObservedObject var store: PPRootStore
 
     var body: some View {
+        let deckTheme = PPCommandDeckTheme(
+            accent: store.customAccentColor ?? .ppPrimary,
+            createTint: store.customAccentColor ?? .ppPrimary
+        )
         PPCommandDeckTabBar(
             selection: Binding(
                 get: { store.selectedTab.ppCommandDeckTab },
@@ -147,6 +151,7 @@ private struct PPRootCommandDeck: View {
             ),
             unreadChats: store.unreadChatsCount,
             sessionState: store.sessionState,
+            theme: deckTheme,
             copy: PPCommandDeckCopy(
                 navigationLabel: LocalizedStringKey(
                     localized("a11y_command_deck_navigation")

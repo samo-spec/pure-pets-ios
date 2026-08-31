@@ -3,7 +3,7 @@ import UIKit
 
 // MARK: - Presence Badge
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearPresenceBadge: View {
   let presence: SpearPresence
   let callIsActive: Bool
@@ -32,7 +32,7 @@ internal struct SpearPresenceBadge: View {
 
 // MARK: - Online Badge
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearOnlineBadge: View {
   let isAnimated: Bool
   @State private var pulseExpanded = false
@@ -54,13 +54,13 @@ internal struct SpearOnlineBadge: View {
     .onAppear {
       startPulseIfNeeded()
     }
-    .onChange(of: isAnimated) { _, enabled in
+    .onChange(of: isAnimated) { enabled in
       pulseExpanded = false
       if enabled {
         startPulseIfNeeded()
       }
     }
-    .onChange(of: scenePhase) { _, phase in
+    .onChange(of: scenePhase) { phase in
       // Returning from the background renders current truth without replaying
       // the online-entry acknowledgement.
       pulseExpanded = phase == .active

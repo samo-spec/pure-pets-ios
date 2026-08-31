@@ -6,7 +6,7 @@ import UIKit
 /// A living chat header that dissolves into the message surface.
 /// The app's semantic main background owns the large color field; brand color
 /// remains a quiet signal rather than becoming another painted surface.
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 public struct SpearChatHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.colorScheme) private var colorScheme
@@ -117,7 +117,7 @@ public struct SpearChatHeader<AvatarContent: View>: View {
 
 // MARK: - Default Avatar Convenience
 
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 extension SpearChatHeader where AvatarContent == SpearDefaultAvatarContent {
   public init(
     state: SpearChatHeaderLoadState,

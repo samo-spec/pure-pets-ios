@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The ready state of the living chat header. Uses atmospheric presence
 /// indicators and seamless expansion instead of compartmentalized sections.
-@available(iOS 17.0, *)
+@available(iOS 15.0, *)
 internal struct SpearReadyHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -26,7 +26,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       topSection
       subordinateContent
     }
-    .sensoryFeedback(.selection, trigger: isExpanded)
+    .spearSensoryFeedback(trigger: isExpanded)
   }
 
   // MARK: - Top Section
@@ -36,9 +36,13 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     if dynamicTypeSize.isAccessibilitySize {
       compactLayout
     } else {
-      ViewThatFits(in: .horizontal) {
-        regularLayout.frame(minWidth: 350)
-        compactLayout
+      if #available(iOS 16.0, *) {
+        ViewThatFits(in: .horizontal) {
+          regularLayout.frame(minWidth: 350)
+          compactLayout
+        }
+      } else {
+        regularLayout
       }
     }
   }
@@ -276,6 +280,17 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       withAnimation(nextValue ? SpearHeaderMotion.deck : SpearHeaderMotion.exit) {
         isExpanded = nextValue
       }
+    }
+  }
+}
+
+private extension View {
+  @ViewBuilder
+  func spearSensoryFeedback(trigger: Bool) -> some View {
+    if #available(iOS 17.0, *) {
+      self.sensoryFeedback(.selection, trigger: trigger)
+    } else {
+      self
     }
   }
 }

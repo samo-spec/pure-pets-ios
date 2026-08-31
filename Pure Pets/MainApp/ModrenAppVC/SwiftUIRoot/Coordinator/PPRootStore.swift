@@ -26,6 +26,8 @@ public final class PPRootStore: ObservableObject {
     @Published public private(set) var usesLegacyBar: Bool = true
     @Published public private(set) var bottomOverlayHeight: CGFloat = 0.0
     @Published public private(set) var activeSafeAreaBottom: CGFloat = 0.0
+    @Published public private(set) var customAccentColor: Color? = nil
+    @Published public private(set) var customAccentUIColor: UIColor? = nil
     /// Published so the hosted SwiftUI command deck invalidates immediately
     /// when the app's custom Language bundle changes at runtime.
     @Published public private(set) var languageCode: String =
@@ -305,6 +307,12 @@ public final class PPRootStore: ObservableObject {
               let topVC = handler.topVisibleViewController() else { return }
         handler.applyBottomSurface(for: topVC, animated: true)
     }
+
+    public func setCustomAccentColor(_ color: UIColor?) {
+        guard customAccentUIColor != color else { return }
+        customAccentUIColor = color
+        customAccentColor = color.map { Color(uiColor: $0) }
+    }
     
     // MARK: - Private Helpers & Observers
     
@@ -421,10 +429,37 @@ public final class PPRootStore: ObservableObject {
                 self?.setExternallyHidden(true)
             }
         }
+
+        let homeAccentToken = center.addObserver(
+            forName: NSNotification.Name("PPHomeCategoryAccentColorDidChangeNotification"),
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            Task { @MainActor in
+                let color = note.userInfo?["accentColor"] as? UIColor
+                self?.setCustomAccentColor(color)
+            }
+        }
+
+        let marketplaceAccentToken = center.addObserver(
+            forName: NSNotification.Name("PPMarketplaceAccentColorPreferenceDidChangeNotification"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                let usesCategoryColors = UserDefaults.standard.bool(
+                    forKey: "pp.marketplace.usesMainKindAccentColors"
+                )
+                if !usesCategoryColors {
+                    self?.setCustomAccentColor(nil)
+                }
+            }
+        }
         
         notificationTokens.append(contentsOf: [
             unreadToken, blockedToken, accessToken,
-            novaVisibilityToken, showTabBarToken, hideTabBarToken
+            novaVisibilityToken, showTabBarToken, hideTabBarToken,
+            homeAccentToken, marketplaceAccentToken
         ])
         notificationTokens.append(contentsOf: languageTokens)
     }
