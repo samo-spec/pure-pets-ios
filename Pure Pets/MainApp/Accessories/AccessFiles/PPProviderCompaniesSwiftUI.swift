@@ -39,7 +39,7 @@ final class PPProviderCompaniesStore: ObservableObject {
             switch self {
             case .recommended: return "sparkles"
             case .featured: return "checkmark.seal.fill"
-            case .topSellers: return "chart.bar.fill"
+            case .topSellers: return "chart.line.uptrend.xyaxis"
             case .newest: return "clock.fill"
             }
         }
@@ -201,6 +201,8 @@ final class PPProviderCompaniesStore: ObservableObject {
     }
 }
 
+// MARK: - Screen View
+
 struct PPProviderCompaniesScreen: View {
     @ObservedObject var store: PPProviderCompaniesStore
     let onOpenStorefront: (PPProviderStorefrontProviderRecord) -> Void
@@ -208,17 +210,19 @@ struct PPProviderCompaniesScreen: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 0) {
             discoveryHeader
             ScrollView {
                 VStack(alignment: .leading, spacing: PPSpace.lg) {
-                    hero
+                    discoveryFilterPills
                     content
                 }
                 .padding(.horizontal, PPSpace.base)
-                .padding(.vertical, PPSpace.lg)
+                .padding(.top, PPSpace.md)
+                .padding(.bottom, PPSpace.xl)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -241,50 +245,66 @@ struct PPProviderCompaniesScreen: View {
                         onDismiss()
                     } label: {
                         Image(systemName: "chevron.backward")
-                            .font(.system(size: 16, weight: .semibold))
-                            .frame(width: 44, height: 44)
+                            .font(.system(size: 16, weight: .bold))
+                            .frame(width: 42, height: 42)
                             .foregroundStyle(Color.ppTextPrimary)
                             .background(Color.ppSurface, in: Circle())
+                            .overlay {
+                                Circle().stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 0.8)
+                            }
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(PPProviderStorefrontL10n.text("Back"))
                 }
 
                 VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                    Text(store.categoryTitle)
-                        .font(.custom("Beiruti-Bold", size: 24, relativeTo: .title2))
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(store.categoryTitle)
+                            .font(.custom("Beiruti-Bold", size: 24, relativeTo: .title2))
+                            .foregroundStyle(Color.ppTextPrimary)
+                            .lineLimit(1)
+
+                        Image(systemName: store.isPharmacy ? "cross.case.fill" : "storefront.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Color.ppPrimary)
+                    }
+
                     Text(store.categorySupportText)
-                        .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
+                        .font(.custom("Beiruti-Regular", size: 13.5, relativeTo: .subheadline))
                         .foregroundStyle(Color.ppTextSecondary)
                         .lineLimit(1)
                 }
+
                 Spacer(minLength: PPSpace.sm)
+
                 layoutToggle
-                discoveryMenu
             }
 
+            // Search Bar with Frosted Glass Morph
             HStack(spacing: PPSpace.sm) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Color.ppTextSecondary)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.ppPrimary)
                     .accessibilityHidden(true)
+
                 TextField(
                     PPProviderStorefrontL10n.text("provider_companies_search_placeholder"),
                     text: $store.searchQuery
                 )
-                .font(.custom("Beiruti-Regular", size: 15, relativeTo: .body))
+                .font(.custom("Beiruti-Medium", size: 15, relativeTo: .body))
                 .foregroundStyle(Color.ppTextPrimary)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
                 .accessibilityLabel(
                     PPProviderStorefrontL10n.text("provider_companies_search_placeholder")
                 )
+
                 if !store.searchQuery.isEmpty {
                     Button {
                         store.searchQuery = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
                             .foregroundStyle(Color.ppTextSecondary)
                     }
                     .buttonStyle(.plain)
@@ -294,22 +314,61 @@ struct PPProviderCompaniesScreen: View {
                 }
             }
             .padding(.horizontal, PPSpace.base)
-            .frame(minHeight: 48)
+            .frame(minHeight: 46)
             .background(Color.ppSurface, in: Capsule(style: .continuous))
             .overlay {
                 Capsule(style: .continuous)
                     .stroke(
-                        Color.ppSurfaceBorder.opacity(
-                            contrast == .increased ? 1 : 0.72
-                        ),
-                        lineWidth: contrast == .increased ? 1.2 : 0.8
+                        Color.ppPrimary.opacity(store.searchQuery.isEmpty ? 0.16 : 0.44),
+                        lineWidth: contrast == .increased ? 1.4 : 0.9
                     )
             }
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.20 : 0.04), radius: 8, y: 3)
         }
         .padding(.horizontal, PPSpace.base)
         .padding(.top, PPSpace.base)
-        .padding(.bottom, PPSpace.sm)
+        .padding(.bottom, PPSpace.xs)
         .background(Color.ppBackground)
+    }
+
+    private var discoveryFilterPills: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: PPSpace.sm) {
+                ForEach(PPProviderCompaniesStore.DiscoveryMode.allCases) { mode in
+                    let isSelected = store.discoveryMode == mode
+                    Button {
+                        if !reduceMotion {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                        store.discoveryMode = mode
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: mode.symbolName)
+                                .font(.system(size: 11, weight: .bold))
+                            Text(PPProviderStorefrontL10n.text(mode.titleKey))
+                                .font(.custom("Beiruti-Bold", size: 13, relativeTo: .caption))
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
+                        .foregroundStyle(isSelected ? Color.white : Color.ppTextPrimary)
+                        .background(
+                            isSelected ? Color.ppPrimary : Color.ppSurface,
+                            in: Capsule(style: .continuous)
+                        )
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .stroke(
+                                    isSelected ? Color.clear : Color.ppSurfaceBorder.opacity(0.8),
+                                    lineWidth: 0.8
+                                )
+                        }
+                        .shadow(color: isSelected ? Color.ppPrimary.opacity(0.24) : Color.clear, radius: 6, y: 2)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, PPSpace.xxs)
+        }
     }
 
     private var layoutToggle: some View {
@@ -325,12 +384,15 @@ struct PPProviderCompaniesScreen: View {
                     : "rectangle.grid.1x2.fill"
             )
             .font(.system(size: 14, weight: .semibold))
-            .frame(width: 44, height: 44)
+            .frame(width: 42, height: 42)
             .foregroundStyle(store.prefersCompactLayout ? Color.ppPrimary : Color.ppTextSecondary)
             .background(
-                store.prefersCompactLayout ? Color.ppPrimary.opacity(0.12) : Color.ppSurface,
+                store.prefersCompactLayout ? Color.ppPrimary.opacity(0.14) : Color.ppSurface,
                 in: Circle()
             )
+            .overlay {
+                Circle().stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 0.8)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
@@ -340,62 +402,6 @@ struct PPProviderCompaniesScreen: View {
                     : "provider_companies_layout_toggle_list"
             )
         )
-        .accessibilityHint(PPProviderStorefrontL10n.text("provider_companies_layout_toggle_hint"))
-    }
-
-    private var discoveryMenu: some View {
-        Menu {
-            ForEach(PPProviderCompaniesStore.DiscoveryMode.allCases) { mode in
-                Button {
-                    store.discoveryMode = mode
-                } label: {
-                    Label(
-                        PPProviderStorefrontL10n.text(mode.titleKey),
-                        systemImage: mode.symbolName
-                    )
-                }
-            }
-        } label: {
-            Image(systemName: "line.3.horizontal.decrease.circle")
-                .font(.system(size: 18, weight: .semibold))
-                .frame(width: 44, height: 44)
-                .foregroundStyle(Color.ppTextSecondary)
-                .background(Color.ppSurface, in: Circle())
-        }
-        .accessibilityLabel(PPProviderStorefrontL10n.text("provider_companies_discovery_title"))
-    }
-
-    private var hero: some View {
-        HStack(alignment: .top, spacing: PPSpace.base) {
-            Image(systemName: store.isPharmacy ? "cross.case.fill" : "storefront.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Color.ppPrimary)
-                .frame(width: 48, height: 48)
-                .background(Color.ppPrimary.opacity(0.12), in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                Text(
-                    PPProviderStorefrontL10n.text(
-                        store.isPharmacy
-                            ? "provider_companies_hero_support_pharmacy"
-                            : "provider_companies_hero_support_marketplace_short"
-                    )
-                )
-                    .font(.custom("Beiruti-Bold", size: 16, relativeTo: .headline))
-                    .foregroundStyle(Color.ppTextPrimary)
-                Text(PPProviderStorefrontL10n.text(store.discoveryMode.titleKey))
-                    .font(.custom("Beiruti-Regular", size: 13, relativeTo: .subheadline))
-                    .foregroundStyle(Color.ppTextSecondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(PPSpace.base)
-        .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .stroke(Color.ppSurfaceBorder.opacity(0.66), lineWidth: 0.8)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -451,14 +457,18 @@ struct PPProviderCompaniesScreen: View {
                     retry: nil
                 )
             } else {
-                LazyVStack(spacing: PPSpace.base) {
+                LazyVStack(spacing: PPSpace.md) {
                     ForEach(store.visibleRecords, id: \.ownerID) { record in
                         PPProviderCompanySwiftUICard(
                             record: record,
                             isCompact: store.prefersCompactLayout,
                             isFavorite: store.isFavorite(record.ownerID),
-                            onFavorite: { store.toggleFavorite(for: record.ownerID) },
-                            onOpen: { onOpenStorefront(record) }
+                            onFavorite: {
+                                store.toggleFavorite(for: record.ownerID)
+                            },
+                            onOpen: {
+                                onOpenStorefront(record)
+                            }
                         )
                     }
                 }
@@ -466,6 +476,8 @@ struct PPProviderCompaniesScreen: View {
         }
     }
 }
+
+// MARK: - State View
 
 private struct PPProviderCompaniesStateView: View {
     let symbol: String
@@ -475,29 +487,38 @@ private struct PPProviderCompaniesStateView: View {
     let retry: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: PPSpace.base) {
-            Group {
+        VStack(spacing: PPSpace.md) {
+            ZStack {
+                Circle()
+                    .fill(Color.ppPrimary.opacity(0.12))
+                    .frame(width: 68, height: 68)
+
                 if isLoading {
                     ProgressView()
                         .tint(Color.ppPrimary)
+                        .scaleEffect(1.2)
                 } else {
                     Image(systemName: symbol)
-                        .font(.system(size: 34, weight: .regular))
+                        .font(.system(size: 28, weight: .semibold))
                         .foregroundStyle(Color.ppPrimary)
                 }
             }
-            .frame(width: 56, height: 56)
-            .background(Color.ppPrimary.opacity(0.10), in: Circle())
-            Text(title)
-                .font(.custom("Beiruti-Bold", size: 19, relativeTo: .headline))
-                .foregroundStyle(Color.ppTextPrimary)
-                .multilineTextAlignment(.center)
-            Text(subtitle)
-                .font(.custom("Beiruti-Regular", size: 14, relativeTo: .body))
-                .foregroundStyle(Color.ppTextSecondary)
-                .multilineTextAlignment(.center)
-            if let retry {
+
+            VStack(spacing: PPSpace.xxs) {
+                Text(title)
+                    .font(.custom("Beiruti-Bold", size: 18, relativeTo: .headline))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .multilineTextAlignment(.center)
+
+                Text(subtitle)
+                    .font(.custom("Beiruti-Regular", size: 14, relativeTo: .body))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            if let retry = retry {
                 Button(PPProviderStorefrontL10n.text("provider_retry"), action: retry)
+                    .font(.custom("Beiruti-Bold", size: 14, relativeTo: .headline))
                     .buttonStyle(.borderedProminent)
                     .tint(Color.ppPrimary)
             }
@@ -505,9 +526,15 @@ private struct PPProviderCompaniesStateView: View {
         .padding(PPSpace.xl)
         .frame(maxWidth: .infinity)
         .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 0.8)
+        }
         .accessibilityElement(children: .combine)
     }
 }
+
+// MARK: - Reimagined Flagship Provider Card
 
 private struct PPProviderCompanySwiftUICard: View {
     let record: PPProviderStorefrontProviderRecord
@@ -517,6 +544,7 @@ private struct PPProviderCompanySwiftUICard: View {
     let onOpen: () -> Void
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -529,8 +557,13 @@ private struct PPProviderCompanySwiftUICard: View {
                 showcaseCard
             }
         }
-        .contentShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
-        .onTapGesture(perform: onOpen)
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .onTapGesture {
+            if !reduceMotion {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+            onOpen()
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityAction {
             onOpen()
@@ -545,28 +578,26 @@ private struct PPProviderCompanySwiftUICard: View {
         .accessibilityIdentifier("providerCompanyCard_\(record.ownerID)")
     }
 
+    // MARK: Showcase Flagship Card
     private var showcaseCard: some View {
-        let shape = RoundedRectangle(
-            cornerRadius: PPCorner.card,
-            style: .continuous
-        )
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
         return VStack(spacing: 0) {
+            // 1. Cinematic Media Chamber
             showcaseCover
 
-            showcaseIdentity
-                .padding(.horizontal, PPSpace.base)
-                .padding(.top, PPSpace.base)
-                .padding(.bottom, PPSpace.md)
+            // 2. Profile Details & Overlapping Avatar
+            VStack(alignment: .leading, spacing: 0) {
+                showcaseIdentity
+                    .padding(.horizontal, PPSpace.base)
+                    .padding(.top, 10)
+                    .padding(.bottom, PPSpace.md)
 
-            Divider()
-                .overlay(Color.ppSeparator)
-                .padding(.horizontal, PPSpace.base)
-
-            showcaseMetricLedger
-                .padding(.horizontal, PPSpace.base)
-                .padding(.vertical, PPSpace.md)
-                .background(Color.ppWarmPorcelain.opacity(reduceTransparency ? 1 : 0.74))
+                // 3. Floating Glass Bento Metric Ledger
+                showcaseMetricLedger
+                    .padding(.horizontal, PPSpace.md)
+                    .padding(.bottom, PPSpace.md)
+            }
         }
         .frame(maxWidth: .infinity)
         .background(Color.ppSurface, in: shape)
@@ -574,31 +605,10 @@ private struct PPProviderCompanySwiftUICard: View {
         .overlay {
             shape.stroke(cardBorderColor, lineWidth: cardBorderWidth)
         }
-        .shadow(color: cardShadowColor, radius: 18, y: 8)
+        .shadow(color: cardShadowColor, radius: 18, y: 7)
     }
 
-    private var compactCard: some View {
-        let shape = RoundedRectangle(
-            cornerRadius: PPCorner.card,
-            style: .continuous
-        )
-
-        return Group {
-            if usesAccessibilityLayout {
-                compactAccessibilityContent
-            } else {
-                compactHorizontalContent
-            }
-        }
-        .padding(PPSpace.base)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ppSurface, in: shape)
-        .overlay {
-            shape.stroke(cardBorderColor, lineWidth: cardBorderWidth)
-        }
-        .shadow(color: cardShadowColor.opacity(0.72), radius: 12, y: 5)
-    }
-
+    // MARK: Cover Chamber
     private var showcaseCover: some View {
         ZStack {
             mediaFallback
@@ -607,13 +617,17 @@ private struct PPProviderCompanySwiftUICard: View {
                 providerRemoteImage(urlString: record.coverURLString)
             }
         }
-        .frame(height: usesAccessibilityLayout ? 154 : 180)
+        .frame(height: usesAccessibilityLayout ? 160 : 190)
         .frame(maxWidth: .infinity)
         .clipped()
         .overlay {
             LinearGradient(
-                colors: [Color.clear, Color.black.opacity(0.18)],
-                startPoint: .center,
+                colors: [
+                    Color.black.opacity(0.18),
+                    Color.clear,
+                    Color.black.opacity(0.48)
+                ],
+                startPoint: .top,
                 endPoint: .bottom
             )
             .allowsHitTesting(false)
@@ -621,267 +635,226 @@ private struct PPProviderCompanySwiftUICard: View {
         }
         .overlay(alignment: .topLeading) {
             providerCategoryBadge
-                .padding(PPSpace.md)
+                .padding(14)
         }
         .overlay(alignment: .topTrailing) {
             favoriteButton(isOverlayed: true)
+                .padding(14)
+        }
+        .overlay(alignment: .bottomLeading) {
+            if record.active {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color.ppSuccess)
+                        .frame(width: 7, height: 7)
+                    Text(PPProviderStorefrontL10n.text("provider_company_status_active"))
+                        .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+                        .foregroundStyle(Color.white)
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(Color.white.opacity(0.24), lineWidth: 0.6)
+                }
                 .padding(PPSpace.md)
+            }
         }
     }
 
+    // MARK: Category Pill
     private var providerCategoryBadge: some View {
-        Label(categoryTitle, systemImage: storefrontSymbol)
-            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-            .foregroundStyle(Color.ppTextPrimary)
-            .padding(.horizontal, PPSpace.md)
-            .frame(minHeight: 32)
-            .background(
-                Color.ppSurface.opacity(reduceTransparency ? 1 : 0.94),
-                in: Capsule(style: .continuous)
-            )
-            .overlay {
-                Capsule(style: .continuous)
-                    .stroke(cardBorderColor, lineWidth: contrast == .increased ? 1.2 : 0.6)
-            }
+        HStack(spacing: 5) {
+            Image(systemName: storefrontSymbol)
+                .font(.system(size: 11, weight: .bold))
+            Text(categoryTitle)
+                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+        }
+        .foregroundStyle(Color.white)
+        .padding(.horizontal, 12)
+        .frame(height: 30)
+        .background(
+            Color.black.opacity(0.45),
+            in: Capsule(style: .continuous)
+        )
+        .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+        .overlay {
+            Capsule(style: .continuous)
+                .stroke(Color.white.opacity(0.32), lineWidth: 0.8)
+        }
     }
 
+    // MARK: Identity Block
     @ViewBuilder
     private var showcaseIdentity: some View {
-        if usesAccessibilityLayout {
-            VStack(alignment: .leading, spacing: PPSpace.md) {
-                providerAvatar(size: 64)
-                providerIdentity(
-                    showsCategory: true,
-                    nameLineLimit: 3,
-                    summaryLineLimit: 5
-                )
+        HStack(alignment: .top, spacing: 14) {
+            providerAvatar(size: 64)
+                .offset(y: -24)
+                .padding(.bottom, -24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .center, spacing: 5) {
+                    Text(record.displayName)
+                        .font(.custom("Beiruti-Bold", size: 20, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .lineLimit(1)
+
+                    if record.verified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color.ppSuccess)
+                    }
+                }
+
+                Text(providerSummaryText)
+                    .font(.custom("Beiruti-Regular", size: 13.5, relativeTo: .body))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-        } else {
-            HStack(alignment: .top, spacing: PPSpace.md) {
-                providerAvatar(size: 62)
-                providerIdentity(
-                    showsCategory: false,
-                    nameLineLimit: 2,
-                    summaryLineLimit: 2
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private var compactHorizontalContent: some View {
-        HStack(alignment: .center, spacing: PPSpace.md) {
-            compactStorefrontArtwork(width: 82, height: 82)
+    // MARK: Reimagined Floating Bento Metric Ledger
+    @ViewBuilder
+    private var showcaseMetricLedger: some View {
+        HStack(spacing: PPSpace.sm) {
+            // Inventory Count Pill
+            HStack(spacing: 6) {
+                Image(systemName: isMedicineProvider ? "cross.vial.fill" : "shippingbox.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(isMedicineProvider ? Color.ppPrimary : Color.ppAccent)
 
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                providerIdentity(
-                    showsCategory: true,
-                    nameLineLimit: 2,
-                    summaryLineLimit: 2
-                )
-                compactFacts
+                Text(itemCountText)
+                    .font(.custom("Beiruti-Bold", size: 13, relativeTo: .caption))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 36)
+            .background(
+                (isMedicineProvider ? Color.ppPrimary : Color.ppAccent).opacity(0.10),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+
+            // Rating Pill
+            HStack(spacing: 5) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.ppPremiumAccent)
+
+                Text(ratingText)
+                    .font(.custom("Beiruti-Bold", size: 13, relativeTo: .caption))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 36)
+            .background(
+                Color.ppPremiumAccent.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+
+            // City Pill
+            if !record.cityText.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.ppTextSecondary)
+
+                    Text(record.cityText)
+                        .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .frame(height: 36)
+            }
+
+            Spacer(minLength: 0)
+
+            // Quick Storefront Arrow
+            Image(systemName: "chevron.forward")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Color.ppTextSecondary.opacity(0.8))
+                .frame(width: 32, height: 32)
+                .background(Color.ppSecondarySurface, in: Circle())
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, PPSpace.xs)
+        .frame(maxWidth: .infinity)
+        .background(
+            Color.ppSecondarySurface.opacity(reduceTransparency ? 1 : 0.85),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.ppSurfaceBorder.opacity(0.7), lineWidth: 0.6)
+        }
+    }
+
+    // MARK: Compact Card
+    private var compactCard: some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+
+        return HStack(alignment: .center, spacing: PPSpace.md) {
+            compactStorefrontArtwork(width: 78, height: 78)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .center, spacing: 4) {
+                    Text(record.displayName)
+                        .font(.custom("Beiruti-Bold", size: 16, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .lineLimit(1)
+
+                    if record.verified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Color.ppSuccess)
+                    }
+                }
+
+                Text(providerSummaryText)
+                    .font(.custom("Beiruti-Regular", size: 12.5, relativeTo: .caption))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(1)
+
+                HStack(spacing: PPSpace.sm) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isMedicineProvider ? "cross.case.fill" : "shippingbox.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.ppPrimary)
+                        Text(itemCountText)
+                            .font(.custom("Beiruti-Bold", size: 11.5, relativeTo: .caption))
+                            .foregroundStyle(Color.ppPrimary)
+                    }
+
+                    HStack(spacing: 3) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.ppPremiumAccent)
+                        Text(ratingText)
+                            .font(.custom("Beiruti-Bold", size: 11.5, relativeTo: .caption))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             favoriteButton(isOverlayed: false)
         }
-    }
-
-    private var compactAccessibilityContent: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(alignment: .top, spacing: PPSpace.md) {
-                compactStorefrontArtwork(width: 96, height: 82)
-                Spacer(minLength: PPSpace.sm)
-                favoriteButton(isOverlayed: false)
-            }
-
-            providerIdentity(
-                showsCategory: true,
-                nameLineLimit: 4,
-                summaryLineLimit: 6
-            )
-
-            Divider()
-                .overlay(Color.ppSeparator)
-
-            compactFacts
-        }
-    }
-
-    private func providerIdentity(
-        showsCategory: Bool,
-        nameLineLimit: Int,
-        summaryLineLimit: Int
-    ) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            if showsCategory {
-                Text(categoryTitle)
-                    .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                    .foregroundStyle(Color.ppPrimary)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
-                Text(record.displayName)
-                    .font(.custom("Beiruti-Bold", size: 19, relativeTo: .headline))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .lineLimit(nameLineLimit)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(1)
-
-                if record.verified {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.ppSuccess)
-                        .accessibilityHidden(true)
-                }
-            }
-
-            if record.active {
-                HStack(spacing: PPSpace.xs) {
-                    Circle()
-                        .fill(Color.ppSuccess)
-                        .frame(width: 7, height: 7)
-                        .accessibilityHidden(true)
-                    Text(PPProviderStorefrontL10n.text("provider_company_status_active"))
-                }
-                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                .foregroundStyle(Color.ppSuccess)
-            }
-
-            Text(providerSummaryText)
-                .font(.custom("Beiruti-Regular", size: 14, relativeTo: .body))
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(summaryLineLimit)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    @ViewBuilder
-    private var showcaseMetricLedger: some View {
-        if usesAccessibilityLayout {
-            VStack(alignment: .leading, spacing: PPSpace.md) {
-                ledgerMetric(
-                    symbol: "shippingbox.fill",
-                    text: itemCountText,
-                    tint: Color.ppPrimary
-                )
-                if !record.cityText.isEmpty {
-                    ledgerMetric(
-                        symbol: "mappin.and.ellipse",
-                        text: record.cityText,
-                        tint: Color.ppTextSecondary
-                    )
-                }
-                ledgerMetric(
-                    symbol: "star.fill",
-                    text: ratingText,
-                    tint: Color.ppPremiumAccent
-                )
-            }
-        } else {
-            HStack(spacing: 0) {
-                ledgerMetric(
-                    symbol: "shippingbox.fill",
-                    text: itemCountText,
-                    tint: Color.ppPrimary
-                )
-
-                if !record.cityText.isEmpty {
-                    ledgerDivider
-                    ledgerMetric(
-                        symbol: "mappin.and.ellipse",
-                        text: record.cityText,
-                        tint: Color.ppTextSecondary
-                    )
-                }
-
-                ledgerDivider
-                ledgerMetric(
-                    symbol: "star.fill",
-                    text: ratingText,
-                    tint: Color.ppPremiumAccent
-                )
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var compactFacts: some View {
-        if usesAccessibilityLayout {
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                compactFact(symbol: "shippingbox.fill", text: itemCountText)
-                if !record.cityText.isEmpty {
-                    compactFact(symbol: "mappin.and.ellipse", text: record.cityText)
-                }
-                compactFact(symbol: "star.fill", text: ratingText, tint: Color.ppPremiumAccent)
-            }
-        } else {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                HStack(spacing: PPSpace.md) {
-                    compactFact(symbol: "shippingbox.fill", text: itemCountText)
-                    compactFact(
-                        symbol: "star.fill",
-                        text: ratingText,
-                        tint: Color.ppPremiumAccent
-                    )
-                }
-                if !record.cityText.isEmpty {
-                    compactFact(symbol: "mappin.and.ellipse", text: record.cityText)
-                }
-            }
-            .lineLimit(1)
-        }
-    }
-
-    private func ledgerMetric(
-        symbol: String,
-        text: String,
-        tint: Color
-    ) -> some View {
-        HStack(spacing: PPSpace.sm) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 30, height: 30)
-                .background(tint.opacity(0.11), in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous))
-
-            Text(text)
-                .font(.custom("Beiruti-Bold", size: 13, relativeTo: .caption))
-                .foregroundStyle(Color.ppTextPrimary)
-                .lineLimit(usesAccessibilityLayout ? 3 : 1)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        .padding(PPSpace.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var ledgerDivider: some View {
-        Divider()
-            .overlay(Color.ppSeparator)
-            .frame(height: 34)
-            .padding(.horizontal, PPSpace.sm)
-    }
-
-    private func compactFact(
-        symbol: String,
-        text: String,
-        tint: Color = Color.ppTextSecondary
-    ) -> some View {
-        HStack(spacing: PPSpace.xs) {
-            Image(systemName: symbol)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(tint)
-                .accessibilityHidden(true)
-            Text(text)
-                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(usesAccessibilityLayout ? 3 : 1)
+        .background(Color.ppSurface, in: shape)
+        .overlay {
+            shape.stroke(cardBorderColor, lineWidth: cardBorderWidth)
         }
+        .shadow(color: cardShadowColor.opacity(0.6), radius: 10, y: 4)
     }
 
-    private func compactStorefrontArtwork(
-        width: CGFloat,
-        height: CGFloat
-    ) -> some View {
+    private func compactStorefrontArtwork(width: CGFloat, height: CGFloat) -> some View {
         ZStack {
             mediaFallback
 
@@ -893,32 +866,26 @@ private struct PPProviderCompanySwiftUICard: View {
             }
         }
         .frame(width: width, height: height)
-        .clipShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .stroke(cardBorderColor, lineWidth: contrast == .increased ? 1.2 : 0.8)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(cardBorderColor, lineWidth: 0.8)
         }
-        .overlay(alignment: .bottomTrailing) {
-            if hasCoverImage && hasAvatarImage {
-                providerAvatar(size: 34)
-                    .padding(PPSpace.xs)
-            }
-        }
-        .accessibilityHidden(true)
     }
 
+    // MARK: Avatar
     private func providerAvatar(size: CGFloat) -> some View {
         ZStack {
             Circle()
-                .fill(Color.ppSoftRose)
+                .fill(Color.ppSecondarySurface)
 
             if providerInitial.isEmpty {
                 Image(systemName: storefrontSymbol)
-                    .font(.system(size: size * 0.30, weight: .semibold))
+                    .font(.system(size: size * 0.32, weight: .semibold))
                     .foregroundStyle(Color.ppPrimary)
             } else {
                 Text(providerInitial)
-                    .font(.custom("Beiruti-Bold", size: size * 0.38, relativeTo: .headline))
+                    .font(.custom("Beiruti-Bold", size: size * 0.40, relativeTo: .headline))
                     .foregroundStyle(Color.ppPrimary)
             }
 
@@ -933,79 +900,64 @@ private struct PPProviderCompanySwiftUICard: View {
         .clipShape(Circle())
         .overlay {
             Circle()
-                .stroke(
-                    contrast == .increased
-                        ? Color.ppTextPrimary.opacity(0.48)
-                        : Color.ppSurface,
-                    lineWidth: contrast == .increased ? 2 : 3
-                )
+                .stroke(Color.ppSurface, lineWidth: 3.5)
         }
-        .accessibilityHidden(true)
+        .shadow(color: Color.black.opacity(0.14), radius: 6, y: 3)
     }
 
-    private func providerRemoteImage(
-        urlString: String,
-        displaySize: CGSize? = nil
-    ) -> some View {
+    private func providerRemoteImage(urlString: String, displaySize: CGSize? = nil) -> some View {
         AppRemoteImage(
             urlString: urlString,
             displaySize: displaySize,
             contentMode: .fill,
             showsRetryAction: false,
-            placeholder: {
-                Color.clear
-            },
-            failurePlaceholder: {
-                Color.clear
-            }
+            placeholder: { Color.clear },
+            failurePlaceholder: { Color.clear }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
-        .accessibilityHidden(true)
     }
 
     private var mediaFallback: some View {
         ZStack {
             Color.ppSecondarySurface
             Image(systemName: storefrontSymbol)
-                .font(.system(size: usesAccessibilityLayout ? 34 : 30, weight: .semibold))
-                .foregroundStyle(Color.ppPrimary.opacity(0.74))
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary.opacity(0.6))
         }
-        .accessibilityHidden(true)
     }
 
+    // MARK: Favorite Button
     private func favoriteButton(isOverlayed: Bool) -> some View {
-        let foreground: Color = {
-            if isOverlayed { return Color.white }
-            return isFavorite ? Color.ppPrimary : Color.ppTextSecondary
-        }()
-        let background: Color = {
-            if isOverlayed {
-                return Color.black.opacity(
-                    reduceTransparency || contrast == .increased ? 0.84 : 0.70
-                )
-            }
-            return isFavorite ? Color.ppPrimary.opacity(0.12) : Color.ppSecondarySurface
-        }()
+        let foreground: Color = isOverlayed
+            ? (isFavorite ? Color.red : Color.white)
+            : (isFavorite ? Color.red : Color.ppTextSecondary)
 
-        return Button(action: onFavorite) {
+        let background: Color = isOverlayed
+            ? Color.black.opacity(0.40)
+            : (isFavorite ? Color.red.opacity(0.12) : Color.ppSecondarySurface)
+
+        return Button {
+            if !reduceMotion {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
+            onFavorite()
+        } label: {
             Image(systemName: isFavorite ? "heart.fill" : "heart")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(foreground)
-                .frame(width: 44, height: 44)
+                .frame(width: 38, height: 38)
                 .background(background, in: Circle())
+                .background(.ultraThinMaterial, in: Circle())
                 .overlay {
                     Circle().stroke(
-                        isOverlayed
-                            ? Color.white.opacity(0.34)
-                            : cardBorderColor,
-                        lineWidth: contrast == .increased ? 1.2 : 0.8
+                        isOverlayed ? Color.white.opacity(0.30) : cardBorderColor,
+                        lineWidth: 0.8
                     )
                 }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(PPProviderStorefrontL10n.text("favorite"))
-        .accessibilityAddTraits(isFavorite ? .isSelected : [])
     }
 
     private var usesAccessibilityLayout: Bool {
@@ -1065,11 +1017,11 @@ private struct PPProviderCompanySwiftUICard: View {
 
     private var cardShadowColor: Color {
         guard contrast != .increased else { return .clear }
-        return Color.black.opacity(colorScheme == .dark ? 0.20 : 0.07)
+        return Color.black.opacity(colorScheme == .dark ? 0.24 : 0.08)
     }
 
     private var categoryTitle: String {
-        return PPProviderStorefrontL10n.text(
+        PPProviderStorefrontL10n.text(
             isMedicineProvider
                 ? "provider_pharmacies_title"
                 : "provider_marketplace_title"
@@ -1077,7 +1029,7 @@ private struct PPProviderCompanySwiftUICard: View {
     }
 
     private var itemCountText: String {
-        return PPProviderStorefrontL10n.format(
+        PPProviderStorefrontL10n.format(
             isMedicineProvider
                 ? "provider_storefront_items_count_pharmacy_format"
                 : "provider_storefront_items_count_marketplace_format",
@@ -1141,6 +1093,8 @@ private struct PPProviderCompanySwiftUICard: View {
         )
     }
 }
+
+// MARK: - View Controller Wrapper
 
 @MainActor
 @objc(ProviderCompaniesListVC)

@@ -2124,6 +2124,10 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
             __strong typeof(weakSelf) self = weakSelf;
             [self pp_callVet:vet];
         };
+        cell.onWhatsAppTap = ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            [self pp_openWhatsAppForVet:vet];
+        };
     }
     return cell;
 }
@@ -2149,7 +2153,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         }
         return CGSizeMake(available, 420.0);
     }
-    return CGSizeMake(available, 206.0);
+    return CGSizeMake(available, 208.0);
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
@@ -2545,6 +2549,35 @@ presentingViewController:self
     }
 
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"telprompt:%@", clean]];
+    if (!url) {
+        return;
+    }
+    UIApplication *application = UIApplication.sharedApplication;
+    if ([application canOpenURL:url]) {
+        [application openURL:url options:@{} completionHandler:nil];
+    }
+}
+
+- (void)pp_openWhatsAppForVet:(VetModel *)vet
+{
+    NSString *rawPhone = vet.whatsapp.length > 0 ? vet.whatsapp : vet.phone;
+    if (rawPhone.length == 0) {
+        return;
+    }
+
+    NSMutableString *clean = [NSMutableString string];
+    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"0123456789"];
+    for (NSUInteger idx = 0; idx < rawPhone.length; idx++) {
+        unichar ch = [rawPhone characterAtIndex:idx];
+        if ([allowed characterIsMember:ch]) {
+            [clean appendFormat:@"%C", ch];
+        }
+    }
+    if (clean.length == 0) {
+        return;
+    }
+
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://wa.me/%@", clean]];
     if (!url) {
         return;
     }

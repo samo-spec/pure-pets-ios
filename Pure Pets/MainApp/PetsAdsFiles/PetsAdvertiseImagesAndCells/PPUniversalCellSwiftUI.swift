@@ -2541,16 +2541,17 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, store.model.subtitle == nil ? 4 : 2)
             }
 
+            if hasBottomBadges {
+                bottomBadgesRow
+                    .padding(.top, 6)
+            }
+
             Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
 
             if store.model.usesQuantityControl || store.context.isAdvertisement || store.context.isServiceLike {
                 if !store.isNearbyAdsSection && !store.isContextFocused {
                     bottomCTA
-                }
-
-                if hasBottomBadges {
-                    bottomBadgesRow
-                        .padding(.top, 9)
+                        .padding(.bottom, 2)
                 }
             } else {
                 detailsFooter
@@ -2569,14 +2570,15 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, store.model.subtitle == nil ? 5 : 3)
             }
 
-            if showsBottomCTA && !store.isContextFocused {
-                bottomCTA
-                    .padding(.top, hasPrice ? 8 : 10)
-            }
-
             if hasBottomBadges {
                 bottomBadgesRow
-                    .padding(.top, showsBottomCTA && !store.isContextFocused ? 8 : 10)
+                    .padding(.top, 6)
+            }
+
+            if showsBottomCTA && !store.isContextFocused {
+                bottomCTA
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .bottomLeading)
@@ -2594,6 +2596,11 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, store.model.subtitle == nil ? 7 : 5)
             }
 
+            if hasBottomBadges {
+                bottomBadgesRow
+                    .padding(.top, 6)
+            }
+
             Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 12 : 8)
 
             if store.model.usesQuantityControl ||
@@ -2601,11 +2608,7 @@ private struct PPUniversalCardRenderer: View {
                 store.context.isServiceLike {
                 if !store.isNearbyAdsSection && !store.isContextFocused {
                     bottomCTA
-                }
-
-                if hasBottomBadges {
-                    bottomBadgesRow
-                        .padding(.top, 10)
+                        .padding(.bottom, 2)
                 }
             } else {
                 detailsFooter

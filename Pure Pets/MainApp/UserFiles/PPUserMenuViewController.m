@@ -1934,7 +1934,8 @@ static CGFloat PPUserMenuQuickAccessHeightForItemCount(NSInteger itemCount, UITr
         }
         case PPUserMenuActionSettings: {
             SettingVC *vc = [SettingVC new];
-            [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyleProfile];
+            vc.hidesBottomBarWhenPushed = YES;
+            [self.navigationController pushViewController:vc animated:YES];
             break;
         }
         case PPUserMenuActionSupport: {

@@ -3008,9 +3008,9 @@ static char kUIViewTapActionKey;
     }
 
     [actions addObject:[PPActionButton settingsActionWithHandler:^(UIAction *action) {
-         SettingVC *vc =
-        (SettingVC *)[SettingVC new];
-        [PPFunc presentSheetFrom:weakSuperVC sheetVC:vc detentStyle:PPSheetDetentStyle70];
+        SettingVC *vc = [SettingVC new];
+        vc.hidesBottomBarWhenPushed = YES;
+        [weakSuperVC.navigationController pushViewController:vc animated:YES];
     }]];
 
     [actions addObject:[PPActionButton supportActionWithHandler:^(UIAction *action) {
@@ -3208,10 +3208,9 @@ static char kUIViewTapActionKey;
         [PPActionButton settingsActionWithHandler:^(UIAction *action) {
             __strong typeof(weakSelf) vc = weakSelf;
             if (!vc) return;
-            UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
-            SettingVC *VC =   [SettingVC new];
-            //VC.delegate = vc;
-            [PPFunc presentSheetFrom:vc sheetVC:VC detentStyle:PPSheetDetentStyle70];
+            SettingVC *VC = [SettingVC new];
+            VC.hidesBottomBarWhenPushed = YES;
+            [vc.navigationController pushViewController:VC animated:YES];
         }],
         [PPActionButton supportActionWithHandler:^(UIAction *action) {
             CompanyLocationVC *vc = [[CompanyLocationVC alloc] init];

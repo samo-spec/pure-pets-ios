@@ -2,7 +2,7 @@
 //  PPPetCareViewerVC.m
 //  Pure Pets
 //
-//  Created by Codex on 4/26/26.
+//  Reimagined from first principles — NextGen V6 Flagship Veterinary Medicine Experience
 //
 
 #import "PPPetCareViewerVC.h"
@@ -17,18 +17,21 @@
 #import <Pure_Pets-Swift.h>
 #import "PPFunc.h"
 #import "PPRootTabBarController.h"
+#import "PPNavigationController.h"
 
 static CGFloat const PPPetCareViewerSideInset = 16.0;
 static CGFloat const PPPetCareViewerSectionSpacing = 16.0;
-static CGFloat const PPPetCareViewerSurfaceRadius = 32.0;
-static CGFloat const PPPetCareViewerArtworkCornerRadius = 28.0;
-static CGFloat const PPPetCareViewerBottomBarBase = 106.0;
-static CGFloat const PPPetCareViewerEntranceCardOffset = 26.0;
-static CGFloat const PPPetCareViewerEntranceContentOffset = 18.0;
-static CGFloat const PPPetCareViewerEntranceTileOffset = 14.0;
-static NSTimeInterval const PPPetCareViewerEntranceCardDuration = 0.62;
-static NSTimeInterval const PPPetCareViewerEntranceContentDuration = 0.52;
+static CGFloat const PPPetCareViewerSurfaceRadius = 30.0;
+static CGFloat const PPPetCareViewerCardRadius = 24.0;
+static CGFloat const PPPetCareViewerBottomBarBase = 108.0;
 static NSTimeInterval const PPPetCareViewerReducedMotionDuration = 0.18;
+
+typedef NS_ENUM(NSInteger, PPPetWeightCategory) {
+    PPPetWeightCategorySmall = 0,    // < 5 kg
+    PPPetWeightCategoryMedium,       // 5 - 15 kg
+    PPPetWeightCategoryLarge,        // 15 - 30 kg
+    PPPetWeightCategoryXLarge        // > 30 kg
+};
 
 static NSString *PPPetCareViewerLocalized(NSString *key, NSString *fallback)
 {
@@ -52,12 +55,17 @@ static NSString *PPPetCareViewerSafeString(id value)
 
 static UIColor *PPPetCareViewerAccentColor(void)
 {
-    return AppPrimaryClr ?: [UIColor colorWithRed:0.10 green:0.67 blue:0.60 alpha:1.0];
+    return AppPrimaryClr ?: [UIColor colorWithRed:0.08 green:0.68 blue:0.58 alpha:1.0];
 }
 
 static UIColor *PPPetCareViewerWarmAccentColor(void)
 {
-    return [UIColor colorWithRed:0.96 green:0.77 blue:0.46 alpha:1.0];
+    return [UIColor colorWithRed:0.98 green:0.62 blue:0.28 alpha:1.0];
+}
+
+static UIColor *PPPetCareViewerIndigoAccentColor(void)
+{
+    return [UIColor colorWithRed:0.38 green:0.42 blue:0.92 alpha:1.0];
 }
 
 static UIColor *PPPetCareViewerTextColor(void)
@@ -75,10 +83,10 @@ static UIColor *PPPetCareViewerSurfaceColor(void)
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark ? [UIColor colorWithWhite:0.11 alpha:0.88] : [UIColor colorWithWhite:1.0 alpha:0.90];
+            return dark ? [UIColor colorWithWhite:0.12 alpha:0.88] : [UIColor colorWithWhite:1.0 alpha:0.92];
         }];
     }
-    return [UIColor colorWithWhite:1.0 alpha:0.90];
+    return [UIColor colorWithWhite:1.0 alpha:0.92];
 }
 
 static UIColor *PPPetCareViewerElevatedSurfaceColor(void)
@@ -86,7 +94,7 @@ static UIColor *PPPetCareViewerElevatedSurfaceColor(void)
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark ? [UIColor colorWithWhite:0.13 alpha:0.96] : [UIColor colorWithWhite:1.0 alpha:0.98];
+            return dark ? [UIColor colorWithWhite:0.14 alpha:0.96] : [UIColor colorWithWhite:1.0 alpha:0.98];
         }];
     }
     return [UIColor colorWithWhite:1.0 alpha:0.98];
@@ -97,10 +105,10 @@ static UIColor *PPPetCareViewerBorderColor(void)
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark ? [UIColor colorWithWhite:1.0 alpha:0.10] : [UIColor colorWithWhite:0.08 alpha:0.08];
+            return dark ? [UIColor colorWithWhite:1.0 alpha:0.12] : [UIColor colorWithWhite:0.08 alpha:0.07];
         }];
     }
-    return [UIColor colorWithWhite:0.08 alpha:0.08];
+    return [UIColor colorWithWhite:0.08 alpha:0.07];
 }
 
 static UIColor *PPPetCareViewerQuietTileColor(void)
@@ -108,73 +116,79 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark ? [UIColor colorWithWhite:1.0 alpha:0.045] : [UIColor colorWithWhite:0.0 alpha:0.025];
+            return dark ? [UIColor colorWithWhite:1.0 alpha:0.05] : [UIColor colorWithWhite:0.0 alpha:0.028];
         }];
     }
-    return [UIColor colorWithWhite:0.0 alpha:0.025];
+    return [UIColor colorWithWhite:0.0 alpha:0.028];
 }
 
 @interface PPPetCareViewerVC ()
 @property (nonatomic, strong) VetMedicineModel *medicine;
 @property (nonatomic, copy) NSString *mainKindName;
+@property (nonatomic, assign) PPPetWeightCategory selectedWeightCategory;
+
+// Ambient Atmosphere
 @property (nonatomic, strong) UIView *backgroundGlowTopView;
 @property (nonatomic, strong) UIView *backgroundGlowMiddleView;
 @property (nonatomic, strong) UIView *backgroundGlowBottomView;
 
+// Scaffold
 @property (nonatomic, strong) BBCartBottomBar *bottomBar;
 @property (nonatomic, strong) NSLayoutConstraint *bottomBarHeightConstraint;
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
-@property (nonatomic, strong) UIView *heroView;
-@property (nonatomic, strong) UIView *heroArtworkView;
+
+// Hero Stage
+@property (nonatomic, strong) UIView *heroStageView;
+@property (nonatomic, strong) UIView *heroArtworkChamberView;
+@property (nonatomic, strong) CAGradientLayer *heroChamberGradientLayer;
 @property (nonatomic, strong) UIImageView *heroImageView;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) UIView *heroIconPlateView;
-@property (nonatomic, strong) UIImageView *heroIconView;
-@property (nonatomic, strong) UILabel *eyebrowLabel;
+@property (nonatomic, strong) PPHomeInsetLabel *heroCertBadgeLabel;
+@property (nonatomic, strong) PPHomeInsetLabel *heroStockStatusBadgeLabel;
 @property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UILabel *subtitleLabel;
-@property (nonatomic, strong) UIStackView *heroChipsStackView;
-@property (nonatomic, strong) PPHomeInsetLabel *categoryChipLabel;
-@property (nonatomic, strong) PPHomeInsetLabel *petKindChipLabel;
-@property (nonatomic, strong) UILabel *priceLabel;
-@property (nonatomic, strong) PPHomeInsetLabel *statusLabel;
-@property (nonatomic, strong) PPHomeInsetLabel *cartStateLabel;
-@property (nonatomic, strong) UIView *proofSectionView;
-@property (nonatomic, strong) UILabel *proofTitleLabel;
-@property (nonatomic, strong) UIStackView *proofGridStackView;
-@property (nonatomic, strong) UIView *storySectionView;
-@property (nonatomic, strong) UILabel *storyTitleLabel;
-@property (nonatomic, strong) UILabel *storyBodyLabel;
-@property (nonatomic, strong) UIStackView *storyHighlightsStackView;
-@property (nonatomic, strong) UIView *careSectionView;
-@property (nonatomic, strong) UILabel *careTitleLabel;
-@property (nonatomic, strong) UILabel *careBodyLabel;
-@property (nonatomic, strong) PPHomeInsetLabel *careHintLabel;
+@property (nonatomic, strong) UILabel *categorySubtitleLabel;
+@property (nonatomic, strong) UIStackView *speciesPillsStackView;
+@property (nonatomic, strong) UIView *pricePlateView;
+@property (nonatomic, strong) UILabel *pricePlateLabel;
+@property (nonatomic, strong) UILabel *pricePlateCurrencyLabel;
 @property (nonatomic, strong) NSLayoutConstraint *heroArtworkHeightConstraint;
+
+// Clinical Bento Matrix (2x2)
+@property (nonatomic, strong) UIView *bentoMatrixCardView;
+@property (nonatomic, strong) UILabel *bentoMatrixTitleLabel;
+@property (nonatomic, strong) UIStackView *bentoGridStackView;
+
+// Smart Dosage Calculator
+@property (nonatomic, strong) UIView *dosageCalculatorCardView;
+@property (nonatomic, strong) UILabel *dosageTitleLabel;
+@property (nonatomic, strong) UILabel *dosageSubtitleLabel;
+@property (nonatomic, strong) UIStackView *dosageWeightButtonsStackView;
+@property (nonatomic, strong) NSMutableArray<UIButton *> *weightSegmentButtons;
+@property (nonatomic, strong) UIView *dosageResultContainerView;
+@property (nonatomic, strong) UILabel *dosageResultValueLabel;
+@property (nonatomic, strong) UILabel *dosageDisclaimerLabel;
+
+// Clinical Indications & Highlights
+@property (nonatomic, strong) UIView *indicationsCardView;
+@property (nonatomic, strong) UILabel *indicationsTitleLabel;
+@property (nonatomic, strong) UIStackView *indicationsStackView;
+
+// Product Story / Full Description
+@property (nonatomic, strong) UIView *descriptionCardView;
+@property (nonatomic, strong) UILabel *descriptionTitleLabel;
+@property (nonatomic, strong) UILabel *descriptionBodyLabel;
+
+// Direct Vet Consultation Action Card
+@property (nonatomic, strong) UIView *vetConsultCardView;
+@property (nonatomic, strong) UIImageView *vetConsultIconView;
+@property (nonatomic, strong) UILabel *vetConsultTitleLabel;
+@property (nonatomic, strong) UILabel *vetConsultBodyLabel;
+@property (nonatomic, strong) UIButton *vetConsultActionButton;
+
+// Motion flags
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, assign) BOOL didStartGlowAnimation;
 
-- (void)pp_buildBackgroundAtmosphere;
-- (UIView *)pp_backgroundGlowViewWithRadius:(CGFloat)radius;
-- (NSArray<UIView *> *)pp_compactEntranceViews:(NSArray<UIView *> *)views;
-- (NSArray<UIView *> *)pp_metricTileEntranceViews;
-- (NSArray<UIView *> *)pp_storyHighlightEntranceViews;
-- (void)pp_prepareEntranceViews:(NSArray<UIView *> *)views
-                 verticalOffset:(CGFloat)verticalOffset
-               alternatingShift:(CGFloat)alternatingShift
-                          scale:(CGFloat)scale
-                       rotation:(CGFloat)rotation;
-- (void)pp_animateEntranceViews:(NSArray<UIView *> *)views
-                   initialDelay:(NSTimeInterval)initialDelay
-                      stepDelay:(NSTimeInterval)stepDelay
-                       duration:(NSTimeInterval)duration
-                        damping:(CGFloat)damping
-                       velocity:(CGFloat)velocity;
-- (BOOL)pp_isMedicineCurrentlyAvailable;
-- (void)pp_syncBottomBarState;
-- (void)pp_refreshCartStateLabelWithQuantity:(NSInteger)existingQuantity remainingToAdd:(NSInteger)remainingToAdd;
-- (BOOL)pp_ensureSignedInForAction;
 @end
 
 @implementation PPPetCareViewerVC
@@ -193,6 +207,8 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     }
     _medicine = medicine;
     _mainKindName = PPPetCareViewerSafeString(mainKindName);
+    _selectedWeightCategory = PPPetWeightCategoryMedium;
+    _weightSegmentButtons = [NSMutableArray array];
     self.hidesBottomBarWhenPushed = YES;
     return self;
 }
@@ -202,11 +218,13 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     [super viewDidLoad];
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemGroupedBackgroundColor;
+
     [self pp_setupLayout];
     [self pp_applyContent];
     [self pp_syncBottomBarState];
     [self pp_applyTheme];
     [self pp_prepareEntranceState];
+
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(pp_handleCartUpdated:)
                                                  name:kCartUpdatedNotification
@@ -242,16 +260,21 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    self.heroGradientLayer.frame = self.heroArtworkView.bounds;
-    self.heroGradientLayer.cornerRadius = self.heroArtworkView.layer.cornerRadius;
-    self.heroView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroView.bounds
-                                                                cornerRadius:self.heroView.layer.cornerRadius].CGPath;
-    self.proofSectionView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.proofSectionView.bounds
-                                                                         cornerRadius:self.proofSectionView.layer.cornerRadius].CGPath;
-    self.storySectionView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.storySectionView.bounds
-                                                                         cornerRadius:self.storySectionView.layer.cornerRadius].CGPath;
-    self.careSectionView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.careSectionView.bounds
-                                                                        cornerRadius:self.careSectionView.layer.cornerRadius].CGPath;
+    self.heroChamberGradientLayer.frame = self.heroArtworkChamberView.bounds;
+    self.heroChamberGradientLayer.cornerRadius = self.heroArtworkChamberView.layer.cornerRadius;
+
+    self.heroStageView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroStageView.bounds
+                                                                     cornerRadius:self.heroStageView.layer.cornerRadius].CGPath;
+    self.bentoMatrixCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bentoMatrixCardView.bounds
+                                                                           cornerRadius:self.bentoMatrixCardView.layer.cornerRadius].CGPath;
+    self.dosageCalculatorCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.dosageCalculatorCardView.bounds
+                                                                                cornerRadius:self.dosageCalculatorCardView.layer.cornerRadius].CGPath;
+    self.indicationsCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.indicationsCardView.bounds
+                                                                           cornerRadius:self.indicationsCardView.layer.cornerRadius].CGPath;
+    self.descriptionCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.descriptionCardView.bounds
+                                                                           cornerRadius:self.descriptionCardView.layer.cornerRadius].CGPath;
+    self.vetConsultCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.vetConsultCardView.bounds
+                                                                          cornerRadius:self.vetConsultCardView.layer.cornerRadius].CGPath;
 
     if (self.view.window) {
         [self pp_beginEntranceAnimationIfNeeded];
@@ -281,37 +304,39 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 {
     [self pp_buildBackgroundAtmosphere];
     [self pp_buildScaffold];
-    [self pp_buildHeroSection];
-    [self pp_buildProofSection];
-    [self pp_buildStorySection];
-    [self pp_buildCareSection];
+    [self pp_buildHeroStageSection];
+    [self pp_buildBentoMatrixSection];
+    [self pp_buildDosageCalculatorSection];
+    [self pp_buildIndicationsSection];
+    [self pp_buildDescriptionSection];
+    [self pp_buildVetConsultSection];
 }
 
 - (void)pp_buildBackgroundAtmosphere
 {
-    self.backgroundGlowTopView = [self pp_backgroundGlowViewWithRadius:138.0];
-    self.backgroundGlowMiddleView = [self pp_backgroundGlowViewWithRadius:110.0];
-    self.backgroundGlowBottomView = [self pp_backgroundGlowViewWithRadius:166.0];
+    self.backgroundGlowTopView = [self pp_backgroundGlowViewWithRadius:148.0];
+    self.backgroundGlowMiddleView = [self pp_backgroundGlowViewWithRadius:120.0];
+    self.backgroundGlowBottomView = [self pp_backgroundGlowViewWithRadius:180.0];
 
     [self.view addSubview:self.backgroundGlowTopView];
     [self.view addSubview:self.backgroundGlowMiddleView];
     [self.view addSubview:self.backgroundGlowBottomView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.backgroundGlowTopView.widthAnchor constraintEqualToConstant:276.0],
-        [self.backgroundGlowTopView.heightAnchor constraintEqualToConstant:276.0],
-        [self.backgroundGlowTopView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-82.0],
-        [self.backgroundGlowTopView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:96.0],
+        [self.backgroundGlowTopView.widthAnchor constraintEqualToConstant:296.0],
+        [self.backgroundGlowTopView.heightAnchor constraintEqualToConstant:296.0],
+        [self.backgroundGlowTopView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-90.0],
+        [self.backgroundGlowTopView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:110.0],
 
-        [self.backgroundGlowMiddleView.widthAnchor constraintEqualToConstant:220.0],
-        [self.backgroundGlowMiddleView.heightAnchor constraintEqualToConstant:220.0],
-        [self.backgroundGlowMiddleView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:214.0],
-        [self.backgroundGlowMiddleView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-96.0],
+        [self.backgroundGlowMiddleView.widthAnchor constraintEqualToConstant:240.0],
+        [self.backgroundGlowMiddleView.heightAnchor constraintEqualToConstant:240.0],
+        [self.backgroundGlowMiddleView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:280.0],
+        [self.backgroundGlowMiddleView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-110.0],
 
-        [self.backgroundGlowBottomView.widthAnchor constraintEqualToConstant:332.0],
-        [self.backgroundGlowBottomView.heightAnchor constraintEqualToConstant:332.0],
-        [self.backgroundGlowBottomView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-142.0],
-        [self.backgroundGlowBottomView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:112.0]
+        [self.backgroundGlowBottomView.widthAnchor constraintEqualToConstant:360.0],
+        [self.backgroundGlowBottomView.heightAnchor constraintEqualToConstant:360.0],
+        [self.backgroundGlowBottomView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-160.0],
+        [self.backgroundGlowBottomView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:130.0]
     ]];
 }
 
@@ -322,8 +347,8 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     view.userInteractionEnabled = NO;
     view.alpha = 0.0;
     view.layer.cornerRadius = radius;
-    view.layer.shadowRadius = 64.0;
-    view.layer.shadowOpacity = 0.28;
+    view.layer.shadowRadius = 72.0;
+    view.layer.shadowOpacity = 0.32;
     view.layer.shadowOffset = CGSizeZero;
     view.clipsToBounds = NO;
     return view;
@@ -331,7 +356,6 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 
 - (void)pp_buildScaffold
 {
-
     self.bottomBar = [[BBCartBottomBar alloc] init];
     self.bottomBar.presentationStyle = BBCartBottomBarPresentationStyleMedicineViewer;
     self.bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
@@ -372,7 +396,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
         [self.bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.bottomBar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         self.bottomBarHeightConstraint,
- 
+
         [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
@@ -408,261 +432,411 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     self.bottomBar.favButton.accessibilityLabel = PPPetCareViewerLocalized(@"pet_care_viewer_share", @"Share");
 }
 
-- (void)pp_buildHeroSection
+- (void)pp_buildHeroStageSection
 {
-    self.heroView = [self pp_surfaceSectionView];
-    self.heroView.backgroundColor = PPPetCareViewerElevatedSurfaceColor();
-    self.heroView.layer.cornerRadius = 34.0;
-    self.heroView.layer.shadowOpacity = 0.12;
-    self.heroView.layer.shadowRadius = 34.0;
-    self.heroView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
-    [self.contentView addSubview:self.heroView];
+    self.heroStageView = [self pp_surfaceSectionView];
+    self.heroStageView.backgroundColor = PPPetCareViewerElevatedSurfaceColor();
+    self.heroStageView.layer.cornerRadius = PPPetCareViewerSurfaceRadius;
+    self.heroStageView.layer.shadowOpacity = 0.14;
+    self.heroStageView.layer.shadowRadius = 32.0;
+    self.heroStageView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    [self.contentView addSubview:self.heroStageView];
 
-    self.heroArtworkView = [[UIView alloc] init];
-    self.heroArtworkView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroArtworkView.clipsToBounds = YES;
-    self.heroArtworkView.layer.cornerRadius = PPPetCareViewerArtworkCornerRadius;
-    self.heroArtworkView.layer.borderWidth = 0.8;
+    // Artwork Chamber
+    self.heroArtworkChamberView = [[UIView alloc] init];
+    self.heroArtworkChamberView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroArtworkChamberView.clipsToBounds = YES;
+    self.heroArtworkChamberView.layer.cornerRadius = PPPetCareViewerCardRadius;
+    self.heroArtworkChamberView.layer.borderWidth = 0.9;
     if (@available(iOS 13.0, *)) {
-        self.heroArtworkView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.heroArtworkChamberView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [self.heroView addSubview:self.heroArtworkView];
+    [self.heroStageView addSubview:self.heroArtworkChamberView];
 
+    self.heroChamberGradientLayer = [CAGradientLayer layer];
+    self.heroChamberGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.heroChamberGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    [self.heroArtworkChamberView.layer addSublayer:self.heroChamberGradientLayer];
+
+    // Product Image
     self.heroImageView = [[UIImageView alloc] init];
     self.heroImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroImageView.contentMode = UIViewContentModeScaleAspectFit;
     self.heroImageView.clipsToBounds = YES;
-    [self.heroArtworkView addSubview:self.heroImageView];
+    self.heroImageView.layer.shadowRadius = 24.0;
+    self.heroImageView.layer.shadowOpacity = 0.22;
+    self.heroImageView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    [self.heroArtworkChamberView addSubview:self.heroImageView];
 
-    self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    [self.heroArtworkView.layer insertSublayer:self.heroGradientLayer above:self.heroImageView.layer];
+    // Top Chamber Badges (Certified Grade + In Stock Aura)
+    self.heroCertBadgeLabel = [self pp_pillLabelWithFont:[GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightBold]];
+    self.heroCertBadgeLabel.text = [NSString stringWithFormat:@"✓ %@", PPPetCareViewerLocalized(@"pet_care_viewer_certified_badge", @"Certified Veterinary Medicine")];
+    [self.heroArtworkChamberView addSubview:self.heroCertBadgeLabel];
 
-    self.heroIconPlateView = [[UIView alloc] init];
-    self.heroIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroIconPlateView.layer.cornerRadius = 24.0;
-    self.heroIconPlateView.layer.borderWidth = 0.9;
-    if (@available(iOS 13.0, *)) {
-        self.heroIconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.heroArtworkView addSubview:self.heroIconPlateView];
+    self.heroStockStatusBadgeLabel = [self pp_pillLabelWithFont:[GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightBold]];
+    [self.heroArtworkChamberView addSubview:self.heroStockStatusBadgeLabel];
 
-    UIImageSymbolConfiguration *heroIconConfig = [UIImageSymbolConfiguration configurationWithPointSize:22.0 weight:UIImageSymbolWeightSemibold];
-    self.heroIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"cross.case.fill" withConfiguration:heroIconConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    self.heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroIconView.contentMode = UIViewContentModeScaleAspectFit;
-    [self.heroIconPlateView addSubview:self.heroIconView];
-
-    self.eyebrowLabel = [self pp_labelWithFont:[GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold]
-                                         color:UIColor.whiteColor
-                                         lines:1];
-    self.eyebrowLabel.text = PPPetCareViewerLocalized(@"pet_care_viewer_modern_badge", @"Modern pet pharmacy");
-    [self.heroArtworkView addSubview:self.eyebrowLabel];
-
-    self.titleLabel = [self pp_labelWithFont:[GM boldFontWithSize:30.0] ?: [UIFont systemFontOfSize:30.0 weight:UIFontWeightBold]
+    // Header Content (Title + Category Subtitle)
+    self.titleLabel = [self pp_labelWithFont:[GM BlackFontWithSize:26.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold]
                                        color:PPPetCareViewerTextColor()
                                        lines:2];
-    self.titleLabel.minimumScaleFactor = 0.78;
+    self.titleLabel.minimumScaleFactor = 0.82;
     self.titleLabel.adjustsFontSizeToFitWidth = YES;
-    [self.heroView addSubview:self.titleLabel];
+    [self.heroStageView addSubview:self.titleLabel];
 
-    self.subtitleLabel = [self pp_labelWithFont:[GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium]
-                                          color:PPPetCareViewerSecondaryTextColor()
-                                          lines:2];
-    [self.heroView addSubview:self.subtitleLabel];
+    self.categorySubtitleLabel = [self pp_labelWithFont:[GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightMedium]
+                                                  color:PPPetCareViewerSecondaryTextColor()
+                                                  lines:2];
+    [self.heroStageView addSubview:self.categorySubtitleLabel];
 
-    self.heroChipsStackView = [[UIStackView alloc] init];
-    self.heroChipsStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroChipsStackView.axis = UILayoutConstraintAxisHorizontal;
-    self.heroChipsStackView.alignment = UIStackViewAlignmentLeading;
-    self.heroChipsStackView.spacing = 10.0;
-    [self.heroView addSubview:self.heroChipsStackView];
+    // Species Target Badges (🐶 · 🐱 · 🦜)
+    self.speciesPillsStackView = [[UIStackView alloc] init];
+    self.speciesPillsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.speciesPillsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.speciesPillsStackView.alignment = UIStackViewAlignmentLeading;
+    self.speciesPillsStackView.spacing = 8.0;
+    [self.heroStageView addSubview:self.speciesPillsStackView];
 
-    self.categoryChipLabel = [self pp_pillLabelWithFont:[GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium]];
-    self.petKindChipLabel = [self pp_pillLabelWithFont:[GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium]];
-    
-    self.statusLabel = [self pp_pillLabelWithFont:[GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold]];
-    self.statusLabel.textAlignment = NSTextAlignmentCenter;
- 
-    
-    [self.heroChipsStackView addArrangedSubview:self.categoryChipLabel];
-    [self.heroChipsStackView addArrangedSubview:self.petKindChipLabel];
-    [self.heroChipsStackView addArrangedSubview:self.statusLabel];
-    self.priceLabel = [self pp_labelWithFont:[GM BlackFontWithSize:26.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold]
-                                       color:PPPetCareViewerAccentColor()
-                                       lines:1];
-    [self.heroView addSubview:self.priceLabel];
+    // Price Hero Plate
+    self.pricePlateView = [[UIView alloc] init];
+    self.pricePlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.pricePlateView.layer.cornerRadius = 18.0;
+    self.pricePlateView.layer.borderWidth = 0.9;
+    self.pricePlateView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.pricePlateView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.heroStageView addSubview:self.pricePlateView];
 
-    
+    self.pricePlateLabel = [self pp_labelWithFont:[GM BlackFontWithSize:24.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold]
+                                            color:PPPetCareViewerAccentColor()
+                                            lines:1];
+    [self.pricePlateView addSubview:self.pricePlateLabel];
 
-    self.cartStateLabel = [self pp_pillLabelWithFont:[GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium]];
-    self.cartStateLabel.numberOfLines = 1;
-    [self.heroView addSubview:self.cartStateLabel];
+    self.pricePlateCurrencyLabel = [self pp_labelWithFont:[GM boldFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold]
+                                                    color:PPPetCareViewerSecondaryTextColor()
+                                                    lines:1];
+    [self.pricePlateView addSubview:self.pricePlateCurrencyLabel];
 
-    self.heroArtworkHeightConstraint = [self.heroArtworkView.heightAnchor constraintEqualToConstant:248.0];
+    self.heroArtworkHeightConstraint = [self.heroArtworkChamberView.heightAnchor constraintEqualToConstant:240.0];
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
-        [self.heroView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
-        [self.heroView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
+        [self.heroStageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
+        [self.heroStageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
+        [self.heroStageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
 
-        [self.heroArtworkView.topAnchor constraintEqualToAnchor:self.heroView.topAnchor constant:18.0],
-        [self.heroArtworkView.leadingAnchor constraintEqualToAnchor:self.heroView.leadingAnchor constant:18.0],
-        [self.heroArtworkView.trailingAnchor constraintEqualToAnchor:self.heroView.trailingAnchor constant:-18.0],
+        [self.heroArtworkChamberView.topAnchor constraintEqualToAnchor:self.heroStageView.topAnchor constant:16.0],
+        [self.heroArtworkChamberView.leadingAnchor constraintEqualToAnchor:self.heroStageView.leadingAnchor constant:16.0],
+        [self.heroArtworkChamberView.trailingAnchor constraintEqualToAnchor:self.heroStageView.trailingAnchor constant:-16.0],
         self.heroArtworkHeightConstraint,
 
-        [self.heroImageView.centerXAnchor constraintEqualToAnchor:self.heroArtworkView.centerXAnchor],
-        [self.heroImageView.centerYAnchor constraintEqualToAnchor:self.heroArtworkView.centerYAnchor constant:14.0],
-        [self.heroImageView.widthAnchor constraintLessThanOrEqualToAnchor:self.heroArtworkView.widthAnchor multiplier:0.60],
-        [self.heroImageView.heightAnchor constraintLessThanOrEqualToAnchor:self.heroArtworkView.heightAnchor multiplier:0.74],
-        [self.heroImageView.widthAnchor constraintGreaterThanOrEqualToConstant:142.0],
-        [self.heroImageView.heightAnchor constraintGreaterThanOrEqualToConstant:142.0],
+        [self.heroImageView.centerXAnchor constraintEqualToAnchor:self.heroArtworkChamberView.centerXAnchor],
+        [self.heroImageView.centerYAnchor constraintEqualToAnchor:self.heroArtworkChamberView.centerYAnchor constant:12.0],
+        [self.heroImageView.widthAnchor constraintLessThanOrEqualToAnchor:self.heroArtworkChamberView.widthAnchor multiplier:0.68],
+        [self.heroImageView.heightAnchor constraintLessThanOrEqualToAnchor:self.heroArtworkChamberView.heightAnchor multiplier:0.75],
+        [self.heroImageView.widthAnchor constraintGreaterThanOrEqualToConstant:140.0],
+        [self.heroImageView.heightAnchor constraintGreaterThanOrEqualToConstant:140.0],
 
-        [self.heroIconPlateView.topAnchor constraintEqualToAnchor:self.heroArtworkView.topAnchor constant:16.0],
-        [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroArtworkView.trailingAnchor constant:-16.0],
-        [self.heroIconPlateView.widthAnchor constraintEqualToConstant:48.0],
-        [self.heroIconPlateView.heightAnchor constraintEqualToConstant:48.0],
+        [self.heroCertBadgeLabel.topAnchor constraintEqualToAnchor:self.heroArtworkChamberView.topAnchor constant:14.0],
+        [self.heroCertBadgeLabel.leadingAnchor constraintEqualToAnchor:self.heroArtworkChamberView.leadingAnchor constant:14.0],
+        [self.heroCertBadgeLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
 
-        [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
-        [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
-        [self.heroIconView.widthAnchor constraintEqualToConstant:24.0],
-        [self.heroIconView.heightAnchor constraintEqualToConstant:24.0],
+        [self.heroStockStatusBadgeLabel.topAnchor constraintEqualToAnchor:self.heroArtworkChamberView.topAnchor constant:14.0],
+        [self.heroStockStatusBadgeLabel.trailingAnchor constraintEqualToAnchor:self.heroArtworkChamberView.trailingAnchor constant:-14.0],
+        [self.heroStockStatusBadgeLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
 
-        [self.eyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroArtworkView.leadingAnchor constant:18.0],
-        [self.eyebrowLabel.topAnchor constraintEqualToAnchor:self.heroArtworkView.topAnchor constant:18.0],
-        [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroIconPlateView.leadingAnchor constant:-12.0],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.heroArtworkChamberView.bottomAnchor constant:18.0],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.heroStageView.leadingAnchor constant:20.0],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.heroStageView.trailingAnchor constant:-20.0],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.heroArtworkView.bottomAnchor constant:18.0],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.heroView.leadingAnchor constant:22.0],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.heroView.trailingAnchor constant:-22.0],
+        [self.categorySubtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:6.0],
+        [self.categorySubtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
+        [self.categorySubtitleLabel.trailingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor],
 
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:8.0],
-        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor],
+        [self.speciesPillsStackView.topAnchor constraintEqualToAnchor:self.categorySubtitleLabel.bottomAnchor constant:14.0],
+        [self.speciesPillsStackView.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
+        [self.speciesPillsStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.pricePlateView.leadingAnchor constant:-12.0],
 
-        [self.heroChipsStackView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:12.0],
-        [self.heroChipsStackView.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        [self.heroChipsStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroView.trailingAnchor constant:-22.0],
+        [self.pricePlateView.centerYAnchor constraintEqualToAnchor:self.speciesPillsStackView.centerYAnchor],
+        [self.pricePlateView.trailingAnchor constraintEqualToAnchor:self.heroStageView.trailingAnchor constant:-20.0],
+        [self.pricePlateView.heightAnchor constraintEqualToConstant:38.0],
 
-        [self.priceLabel.topAnchor constraintEqualToAnchor:self.heroChipsStackView.bottomAnchor constant:16.0],
-        [self.priceLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        [self.priceLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.statusLabel.leadingAnchor constant:-12.0],
+        [self.pricePlateLabel.leadingAnchor constraintEqualToAnchor:self.pricePlateView.leadingAnchor constant:14.0],
+        [self.pricePlateLabel.centerYAnchor constraintEqualToAnchor:self.pricePlateView.centerYAnchor],
 
-       
+        [self.pricePlateCurrencyLabel.leadingAnchor constraintEqualToAnchor:self.pricePlateLabel.trailingAnchor constant:5.0],
+        [self.pricePlateCurrencyLabel.trailingAnchor constraintEqualToAnchor:self.pricePlateView.trailingAnchor constant:-14.0],
+        [self.pricePlateCurrencyLabel.centerYAnchor constraintEqualToAnchor:self.pricePlateView.centerYAnchor],
 
-        [self.cartStateLabel.topAnchor constraintEqualToAnchor:self.priceLabel.bottomAnchor constant:14.0],
-        [self.cartStateLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        [self.cartStateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroView.trailingAnchor constant:-22.0],
-        [self.cartStateLabel.bottomAnchor constraintEqualToAnchor:self.heroView.bottomAnchor constant:-22.0],
-        [self.cartStateLabel.heightAnchor constraintGreaterThanOrEqualToConstant:32.0]
+        [self.speciesPillsStackView.bottomAnchor constraintEqualToAnchor:self.heroStageView.bottomAnchor constant:-20.0]
     ]];
 }
 
-- (void)pp_buildProofSection
+- (void)pp_buildBentoMatrixSection
 {
-    self.proofSectionView = [self pp_surfaceSectionView];
-    [self.contentView addSubview:self.proofSectionView];
+    self.bentoMatrixCardView = [self pp_surfaceSectionView];
+    [self.contentView addSubview:self.bentoMatrixCardView];
 
-    self.proofTitleLabel = [self pp_sectionTitleLabelWithText:PPPetCareViewerLocalized(@"pet_care_viewer_trending_title", @"Trending details")];
-    [self.proofSectionView addSubview:self.proofTitleLabel];
+    self.bentoMatrixTitleLabel = [self pp_sectionTitleLabelWithText:PPPetCareViewerLocalized(@"pet_care_viewer_trending_title", @"Clinical Specifications")
+                                                             symbol:@"waveform.path.ecg"];
+    [self.bentoMatrixCardView addSubview:self.bentoMatrixTitleLabel];
 
-    self.proofGridStackView = [[UIStackView alloc] init];
-    self.proofGridStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.proofGridStackView.axis = UILayoutConstraintAxisVertical;
-    self.proofGridStackView.spacing = 12.0;
-    [self.proofSectionView addSubview:self.proofGridStackView];
+    self.bentoGridStackView = [[UIStackView alloc] init];
+    self.bentoGridStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.bentoGridStackView.axis = UILayoutConstraintAxisVertical;
+    self.bentoGridStackView.spacing = 12.0;
+    [self.bentoMatrixCardView addSubview:self.bentoGridStackView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.proofSectionView.topAnchor constraintEqualToAnchor:self.heroView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
-        [self.proofSectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
-        [self.proofSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
+        [self.bentoMatrixCardView.topAnchor constraintEqualToAnchor:self.heroStageView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
+        [self.bentoMatrixCardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
+        [self.bentoMatrixCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
 
-        [self.proofTitleLabel.topAnchor constraintEqualToAnchor:self.proofSectionView.topAnchor constant:20.0],
-        [self.proofTitleLabel.leadingAnchor constraintEqualToAnchor:self.proofSectionView.leadingAnchor constant:20.0],
-        [self.proofTitleLabel.trailingAnchor constraintEqualToAnchor:self.proofSectionView.trailingAnchor constant:-20.0],
+        [self.bentoMatrixTitleLabel.topAnchor constraintEqualToAnchor:self.bentoMatrixCardView.topAnchor constant:18.0],
+        [self.bentoMatrixTitleLabel.leadingAnchor constraintEqualToAnchor:self.bentoMatrixCardView.leadingAnchor constant:18.0],
+        [self.bentoMatrixTitleLabel.trailingAnchor constraintEqualToAnchor:self.bentoMatrixCardView.trailingAnchor constant:-18.0],
 
-        [self.proofGridStackView.topAnchor constraintEqualToAnchor:self.proofTitleLabel.bottomAnchor constant:16.0],
-        [self.proofGridStackView.leadingAnchor constraintEqualToAnchor:self.proofSectionView.leadingAnchor constant:16.0],
-        [self.proofGridStackView.trailingAnchor constraintEqualToAnchor:self.proofSectionView.trailingAnchor constant:-16.0],
-        [self.proofGridStackView.bottomAnchor constraintEqualToAnchor:self.proofSectionView.bottomAnchor constant:-16.0]
+        [self.bentoGridStackView.topAnchor constraintEqualToAnchor:self.bentoMatrixTitleLabel.bottomAnchor constant:14.0],
+        [self.bentoGridStackView.leadingAnchor constraintEqualToAnchor:self.bentoMatrixCardView.leadingAnchor constant:14.0],
+        [self.bentoGridStackView.trailingAnchor constraintEqualToAnchor:self.bentoMatrixCardView.trailingAnchor constant:-14.0],
+        [self.bentoGridStackView.bottomAnchor constraintEqualToAnchor:self.bentoMatrixCardView.bottomAnchor constant:-16.0]
     ]];
 }
 
-- (void)pp_buildStorySection
+- (void)pp_buildDosageCalculatorSection
 {
-    self.storySectionView = [self pp_surfaceSectionView];
-    [self.contentView addSubview:self.storySectionView];
+    self.dosageCalculatorCardView = [self pp_surfaceSectionView];
+    [self.contentView addSubview:self.dosageCalculatorCardView];
 
-    self.storyTitleLabel = [self pp_sectionTitleLabelWithText:PPPetCareViewerLocalized(@"pet_care_viewer_story_title", @"Why it stands out")];
-    [self.storySectionView addSubview:self.storyTitleLabel];
+    self.dosageTitleLabel = [self pp_sectionTitleLabelWithText:PPPetCareViewerLocalized(@"pet_care_viewer_dosage_calc_title", @"Approximate Dosage Guide")
+                                                        symbol:@"scalemass.fill"];
+    [self.dosageCalculatorCardView addSubview:self.dosageTitleLabel];
 
-    self.storyBodyLabel = [self pp_labelWithFont:[GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightRegular]
-                                           color:PPPetCareViewerTextColor()
-                                           lines:0];
-    [self.storySectionView addSubview:self.storyBodyLabel];
+    self.dosageSubtitleLabel = [self pp_labelWithFont:[GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular]
+                                                color:PPPetCareViewerSecondaryTextColor()
+                                                lines:2];
+    self.dosageSubtitleLabel.text = PPPetCareViewerLocalized(@"pet_care_viewer_weight_hint", @"Select pet weight class to preview recommended dose:");
+    [self.dosageCalculatorCardView addSubview:self.dosageSubtitleLabel];
 
-    self.storyHighlightsStackView = [[UIStackView alloc] init];
-    self.storyHighlightsStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.storyHighlightsStackView.axis = UILayoutConstraintAxisVertical;
-    self.storyHighlightsStackView.spacing = 10.0;
-    [self.storySectionView addSubview:self.storyHighlightsStackView];
+    self.dosageWeightButtonsStackView = [[UIStackView alloc] init];
+    self.dosageWeightButtonsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.dosageWeightButtonsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.dosageWeightButtonsStackView.distribution = UIStackViewDistributionFillEqually;
+    self.dosageWeightButtonsStackView.spacing = 8.0;
+    [self.dosageCalculatorCardView addSubview:self.dosageWeightButtonsStackView];
+
+    NSArray<NSString *> *weightTitles = @[
+        PPPetCareViewerLocalized(@"pet_care_viewer_weight_small", @"< 5 kg"),
+        PPPetCareViewerLocalized(@"pet_care_viewer_weight_medium", @"5 - 15 kg"),
+        PPPetCareViewerLocalized(@"pet_care_viewer_weight_large", @"15 - 30 kg"),
+        PPPetCareViewerLocalized(@"pet_care_viewer_weight_xlarge", @"> 30 kg")
+    ];
+
+    [self.weightSegmentButtons removeAllObjects];
+    for (NSInteger i = 0; i < weightTitles.count; i++) {
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+        btn.translatesAutoresizingMaskIntoConstraints = NO;
+        btn.tag = i;
+        btn.layer.cornerRadius = 14.0;
+        btn.layer.borderWidth = 0.8;
+        btn.titleLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+        btn.titleLabel.adjustsFontSizeToFitWidth = YES;
+        btn.titleLabel.minimumScaleFactor = 0.8;
+        [btn setTitle:weightTitles[i] forState:UIControlStateNormal];
+        [btn addTarget:self action:@selector(pp_weightSegmentTapped:) forControlEvents:UIControlEventTouchUpInside];
+        if (@available(iOS 13.0, *)) {
+            btn.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        [self.dosageWeightButtonsStackView addArrangedSubview:btn];
+        [self.weightSegmentButtons addObject:btn];
+    }
+
+    // Dosage Result Container
+    self.dosageResultContainerView = [[UIView alloc] init];
+    self.dosageResultContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.dosageResultContainerView.backgroundColor = PPPetCareViewerQuietTileColor();
+    self.dosageResultContainerView.layer.cornerRadius = 18.0;
+    self.dosageResultContainerView.layer.borderWidth = 0.8;
+    if (@available(iOS 13.0, *)) {
+        self.dosageResultContainerView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.dosageCalculatorCardView addSubview:self.dosageResultContainerView];
+
+    UIImageView *doseIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"cross.vial.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    doseIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    doseIconView.tintColor = PPPetCareViewerAccentColor();
+    doseIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.dosageResultContainerView addSubview:doseIconView];
+
+    self.dosageResultValueLabel = [self pp_labelWithFont:[GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]
+                                                   color:PPPetCareViewerTextColor()
+                                                   lines:0];
+    [self.dosageResultContainerView addSubview:self.dosageResultValueLabel];
+
+    self.dosageDisclaimerLabel = [self pp_labelWithFont:[GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightRegular]
+                                                  color:PPPetCareViewerSecondaryTextColor()
+                                                  lines:0];
+    self.dosageDisclaimerLabel.text = PPPetCareViewerLocalized(@"pet_care_viewer_dose_disclaimer", @"This guide is for reference only. Please follow your veterinarian's specific instructions.");
+    [self.dosageCalculatorCardView addSubview:self.dosageDisclaimerLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.storySectionView.topAnchor constraintEqualToAnchor:self.proofSectionView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
-        [self.storySectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
-        [self.storySectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
+        [self.dosageCalculatorCardView.topAnchor constraintEqualToAnchor:self.bentoMatrixCardView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
+        [self.dosageCalculatorCardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
+        [self.dosageCalculatorCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
 
-        [self.storyTitleLabel.topAnchor constraintEqualToAnchor:self.storySectionView.topAnchor constant:20.0],
-        [self.storyTitleLabel.leadingAnchor constraintEqualToAnchor:self.storySectionView.leadingAnchor constant:20.0],
-        [self.storyTitleLabel.trailingAnchor constraintEqualToAnchor:self.storySectionView.trailingAnchor constant:-20.0],
+        [self.dosageTitleLabel.topAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.topAnchor constant:18.0],
+        [self.dosageTitleLabel.leadingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.leadingAnchor constant:18.0],
+        [self.dosageTitleLabel.trailingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.trailingAnchor constant:-18.0],
 
-        [self.storyBodyLabel.topAnchor constraintEqualToAnchor:self.storyTitleLabel.bottomAnchor constant:10.0],
-        [self.storyBodyLabel.leadingAnchor constraintEqualToAnchor:self.storySectionView.leadingAnchor constant:20.0],
-        [self.storyBodyLabel.trailingAnchor constraintEqualToAnchor:self.storySectionView.trailingAnchor constant:-20.0],
+        [self.dosageSubtitleLabel.topAnchor constraintEqualToAnchor:self.dosageTitleLabel.bottomAnchor constant:6.0],
+        [self.dosageSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.dosageTitleLabel.leadingAnchor],
+        [self.dosageSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.dosageTitleLabel.trailingAnchor],
 
-        [self.storyHighlightsStackView.topAnchor constraintEqualToAnchor:self.storyBodyLabel.bottomAnchor constant:16.0],
-        [self.storyHighlightsStackView.leadingAnchor constraintEqualToAnchor:self.storySectionView.leadingAnchor constant:16.0],
-        [self.storyHighlightsStackView.trailingAnchor constraintEqualToAnchor:self.storySectionView.trailingAnchor constant:-16.0],
-        [self.storyHighlightsStackView.bottomAnchor constraintEqualToAnchor:self.storySectionView.bottomAnchor constant:-16.0]
+        [self.dosageWeightButtonsStackView.topAnchor constraintEqualToAnchor:self.dosageSubtitleLabel.bottomAnchor constant:14.0],
+        [self.dosageWeightButtonsStackView.leadingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.leadingAnchor constant:16.0],
+        [self.dosageWeightButtonsStackView.trailingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.trailingAnchor constant:-16.0],
+        [self.dosageWeightButtonsStackView.heightAnchor constraintEqualToConstant:38.0],
+
+        [self.dosageResultContainerView.topAnchor constraintEqualToAnchor:self.dosageWeightButtonsStackView.bottomAnchor constant:14.0],
+        [self.dosageResultContainerView.leadingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.leadingAnchor constant:16.0],
+        [self.dosageResultContainerView.trailingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.trailingAnchor constant:-16.0],
+
+        [doseIconView.leadingAnchor constraintEqualToAnchor:self.dosageResultContainerView.leadingAnchor constant:14.0],
+        [doseIconView.centerYAnchor constraintEqualToAnchor:self.dosageResultContainerView.centerYAnchor],
+        [doseIconView.widthAnchor constraintEqualToConstant:20.0],
+        [doseIconView.heightAnchor constraintEqualToConstant:20.0],
+
+        [self.dosageResultValueLabel.topAnchor constraintEqualToAnchor:self.dosageResultContainerView.topAnchor constant:12.0],
+        [self.dosageResultValueLabel.leadingAnchor constraintEqualToAnchor:doseIconView.trailingAnchor constant:12.0],
+        [self.dosageResultValueLabel.trailingAnchor constraintEqualToAnchor:self.dosageResultContainerView.trailingAnchor constant:-14.0],
+        [self.dosageResultValueLabel.bottomAnchor constraintEqualToAnchor:self.dosageResultContainerView.bottomAnchor constant:-12.0],
+
+        [self.dosageDisclaimerLabel.topAnchor constraintEqualToAnchor:self.dosageResultContainerView.bottomAnchor constant:10.0],
+        [self.dosageDisclaimerLabel.leadingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.leadingAnchor constant:18.0],
+        [self.dosageDisclaimerLabel.trailingAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.trailingAnchor constant:-18.0],
+        [self.dosageDisclaimerLabel.bottomAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.bottomAnchor constant:-16.0]
     ]];
 }
 
-- (void)pp_buildCareSection
+- (void)pp_buildIndicationsSection
 {
-    self.careSectionView = [self pp_surfaceSectionView];
-    [self.contentView addSubview:self.careSectionView];
+    self.indicationsCardView = [self pp_surfaceSectionView];
+    [self.contentView addSubview:self.indicationsCardView];
 
-    self.careTitleLabel = [self pp_sectionTitleLabelWithText:PPPetCareViewerLocalized(@"pet_care_viewer_checkout_title", @"Before you checkout")];
-    [self.careSectionView addSubview:self.careTitleLabel];
+    self.indicationsTitleLabel = [self pp_sectionTitleLabelWithText:PPPetCareViewerLocalized(@"pet_care_viewer_benefits_title", @"Key Benefits & Clinical Efficacy")
+                                                             symbol:@"shield.lefthalf.filled"];
+    [self.indicationsCardView addSubview:self.indicationsTitleLabel];
 
-    self.careBodyLabel = [self pp_labelWithFont:[GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium]
-                                          color:PPPetCareViewerSecondaryTextColor()
-                                          lines:0];
-    [self.careSectionView addSubview:self.careBodyLabel];
-
-    self.careHintLabel = [self pp_pillLabelWithFont:[GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium]];
-    self.careHintLabel.numberOfLines = 0;
-    [self.careSectionView addSubview:self.careHintLabel];
+    self.indicationsStackView = [[UIStackView alloc] init];
+    self.indicationsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.indicationsStackView.axis = UILayoutConstraintAxisVertical;
+    self.indicationsStackView.spacing = 10.0;
+    [self.indicationsCardView addSubview:self.indicationsStackView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.careSectionView.topAnchor constraintEqualToAnchor:self.storySectionView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
-        [self.careSectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
-        [self.careSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
-        [self.careSectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-28.0],
+        [self.indicationsCardView.topAnchor constraintEqualToAnchor:self.dosageCalculatorCardView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
+        [self.indicationsCardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
+        [self.indicationsCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
 
-        [self.careTitleLabel.topAnchor constraintEqualToAnchor:self.careSectionView.topAnchor constant:20.0],
-        [self.careTitleLabel.leadingAnchor constraintEqualToAnchor:self.careSectionView.leadingAnchor constant:20.0],
-        [self.careTitleLabel.trailingAnchor constraintEqualToAnchor:self.careSectionView.trailingAnchor constant:-20.0],
+        [self.indicationsTitleLabel.topAnchor constraintEqualToAnchor:self.indicationsCardView.topAnchor constant:18.0],
+        [self.indicationsTitleLabel.leadingAnchor constraintEqualToAnchor:self.indicationsCardView.leadingAnchor constant:18.0],
+        [self.indicationsTitleLabel.trailingAnchor constraintEqualToAnchor:self.indicationsCardView.trailingAnchor constant:-18.0],
 
-        [self.careBodyLabel.topAnchor constraintEqualToAnchor:self.careTitleLabel.bottomAnchor constant:10.0],
-        [self.careBodyLabel.leadingAnchor constraintEqualToAnchor:self.careSectionView.leadingAnchor constant:20.0],
-        [self.careBodyLabel.trailingAnchor constraintEqualToAnchor:self.careSectionView.trailingAnchor constant:-20.0],
+        [self.indicationsStackView.topAnchor constraintEqualToAnchor:self.indicationsTitleLabel.bottomAnchor constant:14.0],
+        [self.indicationsStackView.leadingAnchor constraintEqualToAnchor:self.indicationsCardView.leadingAnchor constant:14.0],
+        [self.indicationsStackView.trailingAnchor constraintEqualToAnchor:self.indicationsCardView.trailingAnchor constant:-14.0],
+        [self.indicationsStackView.bottomAnchor constraintEqualToAnchor:self.indicationsCardView.bottomAnchor constant:-16.0]
+    ]];
+}
 
-        [self.careHintLabel.topAnchor constraintEqualToAnchor:self.careBodyLabel.bottomAnchor constant:14.0],
-        [self.careHintLabel.leadingAnchor constraintEqualToAnchor:self.careSectionView.leadingAnchor constant:20.0],
-        [self.careHintLabel.trailingAnchor constraintEqualToAnchor:self.careSectionView.trailingAnchor constant:-20.0],
-        [self.careHintLabel.bottomAnchor constraintEqualToAnchor:self.careSectionView.bottomAnchor constant:-18.0],
-        [self.careHintLabel.heightAnchor constraintGreaterThanOrEqualToConstant:38.0]
+- (void)pp_buildDescriptionSection
+{
+    self.descriptionCardView = [self pp_surfaceSectionView];
+    [self.contentView addSubview:self.descriptionCardView];
+
+    self.descriptionTitleLabel = [self pp_sectionTitleLabelWithText:PPPetCareViewerLocalized(@"pet_care_viewer_description", @"Description & Clinical Notes")
+                                                             symbol:@"doc.text.fill"];
+    [self.descriptionCardView addSubview:self.descriptionTitleLabel];
+
+    self.descriptionBodyLabel = [self pp_labelWithFont:[GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightRegular]
+                                                 color:PPPetCareViewerTextColor()
+                                                 lines:0];
+    [self.descriptionCardView addSubview:self.descriptionBodyLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.descriptionCardView.topAnchor constraintEqualToAnchor:self.indicationsCardView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
+        [self.descriptionCardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
+        [self.descriptionCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
+
+        [self.descriptionTitleLabel.topAnchor constraintEqualToAnchor:self.descriptionCardView.topAnchor constant:18.0],
+        [self.descriptionTitleLabel.leadingAnchor constraintEqualToAnchor:self.descriptionCardView.leadingAnchor constant:18.0],
+        [self.descriptionTitleLabel.trailingAnchor constraintEqualToAnchor:self.descriptionCardView.trailingAnchor constant:-18.0],
+
+        [self.descriptionBodyLabel.topAnchor constraintEqualToAnchor:self.descriptionTitleLabel.bottomAnchor constant:10.0],
+        [self.descriptionBodyLabel.leadingAnchor constraintEqualToAnchor:self.descriptionCardView.leadingAnchor constant:18.0],
+        [self.descriptionBodyLabel.trailingAnchor constraintEqualToAnchor:self.descriptionCardView.trailingAnchor constant:-18.0],
+        [self.descriptionBodyLabel.bottomAnchor constraintEqualToAnchor:self.descriptionCardView.bottomAnchor constant:-18.0]
+    ]];
+}
+
+- (void)pp_buildVetConsultSection
+{
+    self.vetConsultCardView = [self pp_surfaceSectionView];
+    [self.contentView addSubview:self.vetConsultCardView];
+
+    self.vetConsultIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"stethoscope"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    self.vetConsultIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.vetConsultIconView.tintColor = PPPetCareViewerAccentColor();
+    self.vetConsultIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.vetConsultCardView addSubview:self.vetConsultIconView];
+
+    self.vetConsultTitleLabel = [self pp_labelWithFont:[GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold]
+                                                 color:PPPetCareViewerTextColor()
+                                                 lines:1];
+    self.vetConsultTitleLabel.text = PPPetCareViewerLocalized(@"pet_care_viewer_vet_consult_title", @"Need guidance about this medicine?");
+    [self.vetConsultCardView addSubview:self.vetConsultTitleLabel];
+
+    self.vetConsultBodyLabel = [self pp_labelWithFont:[GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular]
+                                                color:PPPetCareViewerSecondaryTextColor()
+                                                lines:0];
+    self.vetConsultBodyLabel.text = PPPetCareViewerLocalized(@"pet_care_viewer_vet_consult_desc", @"Connect instantly with a certified veterinarian on Pure Pets.");
+    [self.vetConsultCardView addSubview:self.vetConsultBodyLabel];
+
+    self.vetConsultActionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.vetConsultActionButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.vetConsultActionButton.layer.cornerRadius = 16.0;
+    self.vetConsultActionButton.titleLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightBold];
+    [self.vetConsultActionButton setTitle:PPPetCareViewerLocalized(@"pet_care_viewer_vet_consult_btn", @"Consult a Veterinarian Now") forState:UIControlStateNormal];
+    [self.vetConsultActionButton addTarget:self action:@selector(pp_vetConsultTapped) forControlEvents:UIControlEventTouchUpInside];
+    if (@available(iOS 13.0, *)) {
+        self.vetConsultActionButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.vetConsultCardView addSubview:self.vetConsultActionButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.vetConsultCardView.topAnchor constraintEqualToAnchor:self.descriptionCardView.bottomAnchor constant:PPPetCareViewerSectionSpacing],
+        [self.vetConsultCardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareViewerSideInset],
+        [self.vetConsultCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareViewerSideInset],
+        [self.vetConsultCardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-32.0],
+
+        [self.vetConsultIconView.topAnchor constraintEqualToAnchor:self.vetConsultCardView.topAnchor constant:18.0],
+        [self.vetConsultIconView.leadingAnchor constraintEqualToAnchor:self.vetConsultCardView.leadingAnchor constant:18.0],
+        [self.vetConsultIconView.widthAnchor constraintEqualToConstant:24.0],
+        [self.vetConsultIconView.heightAnchor constraintEqualToConstant:24.0],
+
+        [self.vetConsultTitleLabel.centerYAnchor constraintEqualToAnchor:self.vetConsultIconView.centerYAnchor],
+        [self.vetConsultTitleLabel.leadingAnchor constraintEqualToAnchor:self.vetConsultIconView.trailingAnchor constant:10.0],
+        [self.vetConsultTitleLabel.trailingAnchor constraintEqualToAnchor:self.vetConsultCardView.trailingAnchor constant:-18.0],
+
+        [self.vetConsultBodyLabel.topAnchor constraintEqualToAnchor:self.vetConsultIconView.bottomAnchor constant:8.0],
+        [self.vetConsultBodyLabel.leadingAnchor constraintEqualToAnchor:self.vetConsultCardView.leadingAnchor constant:18.0],
+        [self.vetConsultBodyLabel.trailingAnchor constraintEqualToAnchor:self.vetConsultCardView.trailingAnchor constant:-18.0],
+
+        [self.vetConsultActionButton.topAnchor constraintEqualToAnchor:self.vetConsultBodyLabel.bottomAnchor constant:14.0],
+        [self.vetConsultActionButton.leadingAnchor constraintEqualToAnchor:self.vetConsultCardView.leadingAnchor constant:16.0],
+        [self.vetConsultActionButton.trailingAnchor constraintEqualToAnchor:self.vetConsultCardView.trailingAnchor constant:-16.0],
+        [self.vetConsultActionButton.heightAnchor constraintEqualToConstant:44.0],
+        [self.vetConsultActionButton.bottomAnchor constraintEqualToAnchor:self.vetConsultCardView.bottomAnchor constant:-16.0]
     ]];
 }
 
@@ -674,12 +848,12 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
         self.bottomBarHeightConstraint.constant = bottomBarHeight;
     }
 
-    CGFloat width = CGRectGetWidth(self.view.bounds) - (PPPetCareViewerSideInset * 2.0) - 36.0;
+    CGFloat width = CGRectGetWidth(self.view.bounds) - (PPPetCareViewerSideInset * 2.0) - 32.0;
     if (width > 0.0) {
         BOOL isPad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
         CGFloat targetArtworkHeight = isPad
-            ? MIN(MAX(width * 0.48, 248.0), 340.0)
-            : MIN(MAX(width * 0.64, 220.0), 296.0);
+            ? MIN(MAX(width * 0.46, 240.0), 320.0)
+            : MIN(MAX(width * 0.62, 220.0), 280.0);
         if (fabs(self.heroArtworkHeightConstraint.constant - targetArtworkHeight) > 0.5) {
             self.heroArtworkHeightConstraint.constant = targetArtworkHeight;
         }
@@ -691,24 +865,34 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     self.scrollView.scrollIndicatorInsets = inset;
 }
 
-#pragma mark - Content
+#pragma mark - Content & Data Binding
 
 - (void)pp_applyContent
 {
     self.titleLabel.text = self.medicine.title.length > 0 ? self.medicine.title : PPPetCareViewerLocalized(@"pet_care_medicine_untitled", @"Medicine");
-    self.subtitleLabel.text = self.medicine.category.length > 0 ? self.medicine.category : PPPetCareViewerLocalized(@"pet_care_viewer_about_medicine", @"Veterinary care essential");
-    self.categoryChipLabel.text = [self pp_categoryText];
-    self.petKindChipLabel.text = [self pp_petKindText];
-    self.priceLabel.text = [self pp_priceText];
-    self.statusLabel.text = [self pp_availabilityText];
-    self.storyBodyLabel.text = self.medicine.medicineDescription.length > 0
-        ? self.medicine.medicineDescription
-        : PPPetCareViewerLocalized(@"pet_care_viewer_no_description", @"No description has been added yet.");
-    self.careBodyLabel.text = PPPetCareViewerLocalized(@"pet_care_viewer_checkout_hint", @"Use the cart bar below to choose a quantity and add this medicine instantly.");
-    self.storyBodyLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.careBodyLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.categorySubtitleLabel.text = self.medicine.category.length > 0 ? self.medicine.category : PPPetCareViewerLocalized(@"pet_care_viewer_about_medicine", @"Veterinary care essential");
 
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:58.0 weight:UIImageSymbolWeightSemibold];
+    // Price
+    NSString *currency = PPPetCareMedicineCurrencyCode(self.medicine);
+    self.pricePlateLabel.text = [NSString stringWithFormat:@"%.2f", MAX(self.medicine.price, 0.0)];
+    self.pricePlateCurrencyLabel.text = currency.length > 0 ? currency : kLang(@"Rials");
+
+    // Stock Badge
+    BOOL isAvailable = [self pp_isMedicineCurrentlyAvailable];
+    NSInteger stock = MAX(self.medicine.stockQuantity, 0);
+    if (!isAvailable || stock <= 0) {
+        self.heroStockStatusBadgeLabel.text = [NSString stringWithFormat:@"✕ %@", PPPetCareViewerLocalized(@"pet_care_medicine_out_of_stock", @"Out of stock")];
+    } else if (stock <= 3) {
+        self.heroStockStatusBadgeLabel.text = [NSString stringWithFormat:@"⚠️ %@", PPPetCareViewerLocalized(@"pet_care_viewer_low_stock_badge", @"Low stock")];
+    } else {
+        self.heroStockStatusBadgeLabel.text = [NSString stringWithFormat:@"● %@", [NSString stringWithFormat:PPPetCareViewerLocalized(@"pet_care_viewer_stock_units_format", @"%ld in stock"), (long)stock]];
+    }
+
+    // Species Badges
+    [self pp_reloadSpeciesPills];
+
+    // Hero Image
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:56.0 weight:UIImageSymbolWeightSemibold];
     UIImage *placeholder = [[UIImage systemImageNamed:@"pills.fill" withConfiguration:config] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     self.heroImageView.image = placeholder;
     self.heroImageView.tintColor = PPPetCareViewerAccentColor();
@@ -716,19 +900,85 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
         [[PPImageLoaderManager shared] setImageOnImageView:self.heroImageView
                                                        url:self.medicine.imageUrl
                                                placeholder:placeholder
-                                          transitionStyle:PPImageTransitionStyleFade
+                                           transitionStyle:PPImageTransitionStyleFade
                                                 complation:nil];
     }
 
-    [self pp_reloadProofTiles];
-    [self pp_reloadStoryHighlights];
-    self.view.accessibilityLabel = self.titleLabel.text;
+    // Clinical Bento
+    [self pp_reloadBentoMatrixTiles];
+
+    // Dosage Estimator
+    [self pp_refreshDosageEstimationUIAnimated:NO];
+
+    // Indications
+    [self pp_reloadIndicationsHighlights];
+
+    // Description
+    self.descriptionBodyLabel.text = self.medicine.medicineDescription.length > 0
+        ? self.medicine.medicineDescription
+        : PPPetCareViewerLocalized(@"pet_care_viewer_no_description", @"No description has been added yet.");
+
+    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.categorySubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.descriptionBodyLabel.textAlignment = Language.alignmentForCurrentLanguage;
 }
 
-- (void)pp_reloadProofTiles
+- (void)pp_reloadSpeciesPills
 {
-    for (UIView *view in self.proofGridStackView.arrangedSubviews) {
-        [self.proofGridStackView removeArrangedSubview:view];
+    for (UIView *view in self.speciesPillsStackView.arrangedSubviews) {
+        [self.speciesPillsStackView removeArrangedSubview:view];
+        [view removeFromSuperview];
+    }
+
+    NSMutableArray<NSString *> *species = [NSMutableArray array];
+    if (self.medicine.animalTypes.count > 0) {
+        for (NSString *type in self.medicine.animalTypes) {
+            if (type.length > 0) {
+                [species addObject:type];
+            }
+        }
+    }
+    if (species.count == 0 && self.mainKindName.length > 0) {
+        [species addObject:self.mainKindName];
+    }
+    if (species.count == 0) {
+        [species addObject:PPPetCareViewerLocalized(@"pet_care_all_pets", @"All pets")];
+    }
+
+    for (NSString *name in species) {
+        PPHomeInsetLabel *pill = [self pp_pillLabelWithFont:[GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold]];
+        pill.text = [self pp_formattedSpeciesName:name];
+        [self pp_applyTintPillToLabel:pill
+                                 tint:PPPetCareViewerAccentColor()
+                             fillAlpha:0.12
+                           borderAlpha:0.24
+                             textColor:PPPetCareViewerTextColor()];
+        [self.speciesPillsStackView addArrangedSubview:pill];
+    }
+}
+
+- (NSString *)pp_formattedSpeciesName:(NSString *)rawName
+{
+    NSString *lower = rawName.lowercaseString;
+    if ([lower containsString:@"cat"] || [lower containsString:@"قط"]) {
+        return [NSString stringWithFormat:@"🐱 %@", rawName];
+    }
+    if ([lower containsString:@"dog"] || [lower containsString:@"كلب"]) {
+        return [NSString stringWithFormat:@"🐶 %@", rawName];
+    }
+    if ([lower containsString:@"bird"] || [lower containsString:@"طير"] || [lower containsString:@"عصفور"]) {
+        return [NSString stringWithFormat:@"🦜 %@", rawName];
+    }
+    if ([lower containsString:@"rabbit"] || [lower containsString:@"أرنب"]) {
+        return [NSString stringWithFormat:@"🐰 %@", rawName];
+    }
+    return [NSString stringWithFormat:@"🐾 %@", rawName];
+}
+
+- (void)pp_reloadBentoMatrixTiles
+{
+    for (UIView *view in self.bentoGridStackView.arrangedSubviews) {
+        [self.bentoGridStackView removeArrangedSubview:view];
         [view removeFromSuperview];
     }
 
@@ -745,101 +995,76 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     secondRow.spacing = 12.0;
 
     UIColor *accent = PPPetCareViewerAccentColor();
-    UIColor *greenAccent = [UIColor colorWithRed:0.22 green:0.67 blue:0.44 alpha:1.0];
-    UIColor *violetAccent = [UIColor colorWithRed:0.52 green:0.43 blue:0.86 alpha:1.0];
-    BOOL isAvailable = [self pp_isMedicineCurrentlyAvailable];
+    UIColor *warm = PPPetCareViewerWarmAccentColor();
+    UIColor *indigo = PPPetCareViewerIndigoAccentColor();
+    UIColor *green = [UIColor colorWithRed:0.20 green:0.70 blue:0.42 alpha:1.0];
 
-    [firstRow addArrangedSubview:[self pp_metricTileWithSymbol:@"tag.fill"
-                                                         title:PPPetCareViewerLocalized(@"pet_care_viewer_category", @"Category")
-                                                         value:[self pp_categoryText]
-                                                          tint:accent]];
-    [firstRow addArrangedSubview:[self pp_metricTileWithSymbol:isAvailable ? @"checkmark.seal.fill" : @"xmark.seal.fill"
-                                                         title:PPPetCareViewerLocalized(@"pet_care_viewer_availability", @"Availability")
-                                                         value:[self pp_availabilityText]
-                                                          tint:isAvailable ? greenAccent : UIColor.systemRedColor]];
+    NSString *dosageForm = [self pp_dosageFormForCategory:self.medicine.category title:self.medicine.title];
 
-    [secondRow addArrangedSubview:[self pp_metricTileWithSymbol:self.medicine.stockQuantity > 0 ? @"shippingbox.fill" : @"exclamationmark.triangle.fill"
-                                                          title:PPPetCareViewerLocalized(@"pet_care_medicine_stock", @"Stock")
-                                                          value:[self pp_stockText]
-                                                           tint:self.medicine.stockQuantity > 0 ? greenAccent : UIColor.systemRedColor]];
-    [secondRow addArrangedSubview:[self pp_metricTileWithSymbol:@"clock.fill"
-                                                          title:PPPetCareViewerLocalized(@"pet_care_viewer_added_date", @"Added")
-                                                          value:[self pp_dateText:self.medicine.createdAt]
-                                                           tint:violetAccent]];
+    [firstRow addArrangedSubview:[self pp_clinicalBentoTileWithSymbol:@"pills.fill"
+                                                                title:PPPetCareViewerLocalized(@"pet_care_viewer_dosage_form", @"Dosage Form")
+                                                                value:dosageForm
+                                                                 tint:accent]];
 
-    [self.proofGridStackView addArrangedSubview:firstRow];
-    [self.proofGridStackView addArrangedSubview:secondRow];
+    [firstRow addArrangedSubview:[self pp_clinicalBentoTileWithSymbol:@"checkmark.shield.fill"
+                                                                title:PPPetCareViewerLocalized(@"pet_care_viewer_rx_tier", @"Prescription")
+                                                                value:PPPetCareViewerLocalized(@"pet_care_viewer_rx_otc", @"Over-The-Counter (OTC)")
+                                                                 tint:green]];
+
+    [secondRow addArrangedSubview:[self pp_clinicalBentoTileWithSymbol:@"thermometer.sun.fill"
+                                                                 title:PPPetCareViewerLocalized(@"pet_care_viewer_storage", @"Storage")
+                                                                 value:PPPetCareViewerLocalized(@"pet_care_viewer_storage_cool", @"15° - 25°C · Cool & Dry")
+                                                                  tint:warm]];
+
+    [secondRow addArrangedSubview:[self pp_clinicalBentoTileWithSymbol:@"seal.fill"
+                                                                 title:PPPetCareViewerLocalized(@"pet_care_viewer_guarantee", @"Quality Assurance")
+                                                                 value:PPPetCareViewerLocalized(@"pet_care_viewer_guarantee_orig", @"100% Genuine · Licensed Pharmacy")
+                                                                  tint:indigo]];
+
+    [self.bentoGridStackView addArrangedSubview:firstRow];
+    [self.bentoGridStackView addArrangedSubview:secondRow];
 }
 
-- (void)pp_reloadStoryHighlights
+- (NSString *)pp_dosageFormForCategory:(NSString *)category title:(NSString *)title
 {
-    for (UIView *view in self.storyHighlightsStackView.arrangedSubviews) {
-        [self.storyHighlightsStackView removeArrangedSubview:view];
+    NSString *text = [NSString stringWithFormat:@"%@ %@", category ?: @"", title ?: @""].lowercaseString;
+    if ([text containsString:@"spray"] || [text containsString:@"بخاخ"]) {
+        return PPPetCareViewerLocalized(@"pet_care_viewer_dosage_form_spray", @"Topical Spray");
+    }
+    if ([text containsString:@"syrup"] || [text containsString:@"liquid"] || [text containsString:@"شراب"] || [text containsString:@"نقط"]) {
+        return PPPetCareViewerLocalized(@"pet_care_viewer_dosage_form_liquid", @"Oral Liquid Syrup");
+    }
+    if ([text containsString:@"spot"] || [text containsString:@"pipette"] || [text containsString:@"موضعي"] || [text containsString:@"امبول"]) {
+        return PPPetCareViewerLocalized(@"pet_care_viewer_dosage_form_topical", @"Topical Pipette");
+    }
+    return PPPetCareViewerLocalized(@"pet_care_viewer_dosage_form_tablets", @"Oral Chewable Tablets");
+}
+
+- (void)pp_reloadIndicationsHighlights
+{
+    for (UIView *view in self.indicationsStackView.arrangedSubviews) {
+        [self.indicationsStackView removeArrangedSubview:view];
         [view removeFromSuperview];
     }
 
     UIColor *accent = PPPetCareViewerAccentColor();
-    BOOL isAvailable = [self pp_isMedicineCurrentlyAvailable];
-    NSString *fulfilmentCopy = isAvailable
-        ? PPPetCareViewerLocalized(@"pet_care_viewer_available_copy", @"This medicine is available now from the shared pet-care catalog.")
-        : PPPetCareViewerLocalized(@"pet_care_viewer_unavailable_copy", @"This medicine is currently not available from the shared pet-care catalog.");
-    NSString *catalogCopy = isAvailable
-        ? PPPetCareViewerLocalized(@"pet_care_viewer_direct_add_copy", @"This medicine can be added directly from the shared pet-care catalog.")
-        : PPPetCareViewerLocalized(@"pet_care_viewer_unavailable_hint", @"Browse another medicine or check back again while availability updates.");
+    UIColor *warm = PPPetCareViewerWarmAccentColor();
+    UIColor *indigo = PPPetCareViewerIndigoAccentColor();
 
-    [self.storyHighlightsStackView addArrangedSubview:[self pp_highlightRowWithSymbol:isAvailable ? @"checkmark.circle.fill" : @"xmark.circle.fill"
-                                                                                  text:fulfilmentCopy
-                                                                                  tint:isAvailable ? accent : UIColor.systemRedColor]];
-    [self.storyHighlightsStackView addArrangedSubview:[self pp_highlightRowWithSymbol:@"bag.fill.badge.plus"
-                                                                                  text:catalogCopy
-                                                                                  tint:accent]];
-}
+    [self.indicationsStackView addArrangedSubview:[self pp_indicationHighlightRowWithSymbol:@"cross.vial.fill"
+                                                                                      title:PPPetCareViewerLocalized(@"pet_care_viewer_benefit_1_title", @"High-Efficacy Veterinary Formula")
+                                                                                   subtitle:PPPetCareViewerLocalized(@"pet_care_viewer_benefit_1_desc", @"Fast-acting formulation engineered for optimal therapeutic relief.")
+                                                                                       tint:accent]];
 
-- (NSString *)pp_priceText
-{
-    NSString *currency = PPPetCareMedicineCurrencyCode(self.medicine);
-    NSString *formatted = [GM formatPrice:@(MAX(self.medicine.price, 0.0)) currencyCode:currency];
-    return formatted.length > 0 ? formatted : [NSString stringWithFormat:@"%.2f %@", MAX(self.medicine.price, 0.0), currency];
-}
+    [self.indicationsStackView addArrangedSubview:[self pp_indicationHighlightRowWithSymbol:@"snowflake"
+                                                                                      title:PPPetCareViewerLocalized(@"pet_care_viewer_benefit_2_title", @"Certified Cold-Chain Storage")
+                                                                                   subtitle:PPPetCareViewerLocalized(@"pet_care_viewer_benefit_2_desc", @"Stored and transported under controlled temperatures to preserve active efficacy.")
+                                                                                       tint:indigo]];
 
-- (NSString *)pp_categoryText
-{
-    return self.medicine.category.length > 0 ? self.medicine.category : PPPetCareViewerLocalized(@"pet_care_viewer_not_specified", @"Not specified");
-}
-
-- (NSString *)pp_petKindText
-{
-    return self.mainKindName.length > 0 ? self.mainKindName : PPPetCareViewerLocalized(@"pet_care_all_pets", @"All pets");
-}
-
-- (NSString *)pp_stockText
-{
-    if (self.medicine.stockQuantity <= 0) {
-        return PPPetCareViewerLocalized(@"pet_care_medicine_out_of_stock", @"Out of stock");
-    }
-    NSString *format = PPPetCareViewerLocalized(@"pet_care_viewer_stock_units_format", @"%ld in stock");
-    return [NSString stringWithFormat:format, (long)self.medicine.stockQuantity];
-}
-
-- (BOOL)pp_isMedicineCurrentlyAvailable
-{
-    return self.medicine.isAvailable && self.medicine.stockQuantity > 0;
-}
-
-- (NSString *)pp_availabilityText
-{
-    return [self pp_isMedicineCurrentlyAvailable]
-        ? PPPetCareViewerLocalized(@"pet_care_medicine_available", @"Available")
-        : PPPetCareViewerLocalized(@"pet_care_medicine_not_available", @"Not available");
-}
-
-- (NSString *)pp_dateText:(NSDate *)date
-{
-    if (!date) {
-        return PPPetCareViewerLocalized(@"pet_care_viewer_not_specified", @"Not specified");
-    }
-    NSString *formatted = [GM formattedDate:date];
-    return formatted.length > 0 ? formatted : PPPetCareViewerLocalized(@"pet_care_viewer_not_specified", @"Not specified");
+    [self.indicationsStackView addArrangedSubview:[self pp_indicationHighlightRowWithSymbol:@"heart.text.square.fill"
+                                                                                      title:PPPetCareViewerLocalized(@"pet_care_viewer_benefit_3_title", @"Tested Pet Safety Profile")
+                                                                                   subtitle:PPPetCareViewerLocalized(@"pet_care_viewer_benefit_3_desc", @"Veterinary-tested and compliant with international pet health standards.")
+                                                                                       tint:warm]];
 }
 
 #pragma mark - Theme
@@ -853,70 +1078,65 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 
     UIColor *accent = PPPetCareViewerAccentColor();
     UIColor *warmAccent = PPPetCareViewerWarmAccentColor();
-    UIColor *secondaryGlow = [UIColor colorWithRed:0.22 green:0.49 blue:0.86 alpha:1.0];
+    UIColor *indigoAccent = PPPetCareViewerIndigoAccentColor();
 
-    
-
-    self.backgroundGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.16 : 0.11];
+    self.backgroundGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.12];
     self.backgroundGlowTopView.layer.shadowColor = accent.CGColor;
     self.backgroundGlowTopView.alpha = 1.0;
 
-    self.backgroundGlowMiddleView.backgroundColor = [warmAccent colorWithAlphaComponent:dark ? 0.11 : 0.08];
+    self.backgroundGlowMiddleView.backgroundColor = [warmAccent colorWithAlphaComponent:dark ? 0.13 : 0.09];
     self.backgroundGlowMiddleView.layer.shadowColor = warmAccent.CGColor;
     self.backgroundGlowMiddleView.alpha = 1.0;
 
-    self.backgroundGlowBottomView.backgroundColor = [secondaryGlow colorWithAlphaComponent:dark ? 0.14 : 0.10];
-    self.backgroundGlowBottomView.layer.shadowColor = secondaryGlow.CGColor;
+    self.backgroundGlowBottomView.backgroundColor = [indigoAccent colorWithAlphaComponent:dark ? 0.16 : 0.11];
+    self.backgroundGlowBottomView.layer.shadowColor = indigoAccent.CGColor;
     self.backgroundGlowBottomView.alpha = 1.0;
 
-    self.heroView.backgroundColor = PPPetCareViewerElevatedSurfaceColor();
-    [self.heroView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.20 : 0.10]];
-    [self.heroView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:dark ? 0.55 : 0.18]];
+    // Hero Stage Theme
+    self.heroStageView.backgroundColor = PPPetCareViewerElevatedSurfaceColor();
+    [self.heroStageView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.22 : 0.12]];
+    [self.heroStageView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:dark ? 0.55 : 0.16]];
 
-    self.heroArtworkView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.14 : 0.10];
-    [self.heroArtworkView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.26 : 0.16]];
-    self.heroGradientLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.26 : 0.18].CGColor,
-        (__bridge id)[warmAccent colorWithAlphaComponent:dark ? 0.20 : 0.13].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0.0 alpha:dark ? 0.54 : 0.18].CGColor
+    self.heroArtworkChamberView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.16 : 0.08];
+    [self.heroArtworkChamberView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.28 : 0.16]];
+
+    self.heroChamberGradientLayer.colors = @[
+        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.28 : 0.16].CGColor,
+        (__bridge id)[warmAccent colorWithAlphaComponent:dark ? 0.18 : 0.10].CGColor,
+        (__bridge id)[UIColor colorWithWhite:0.0 alpha:dark ? 0.56 : 0.12].CGColor
     ];
-    self.heroGradientLayer.locations = @[@0.0, @0.55, @1.0];
-    self.heroIconPlateView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:dark ? 0.12 : 0.18];
-    [self.heroIconPlateView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.24]];
-    self.heroIconView.tintColor = UIColor.whiteColor;
+    self.heroChamberGradientLayer.locations = @[@0.0, @0.55, @1.0];
 
-    self.titleLabel.textColor = PPPetCareViewerTextColor();
-    self.subtitleLabel.textColor = PPPetCareViewerSecondaryTextColor();
-    self.priceLabel.textColor = accent;
-
-    UIColor *statusTint = [self pp_isMedicineCurrentlyAvailable] ? accent : UIColor.systemRedColor;
-    [self pp_applyTintPillToLabel:self.statusLabel
-                             tint:statusTint
-                         fillAlpha:(dark ? 0.24 : 0.14)
-                       borderAlpha:(dark ? 0.34 : 0.20)
-                         textColor:statusTint];
-    self.statusLabel.textAlignment = NSTextAlignmentCenter;
-
-    [self pp_applyTintPillToLabel:self.categoryChipLabel
+    [self pp_applyTintPillToLabel:self.heroCertBadgeLabel
                              tint:accent
-                         fillAlpha:(dark ? 0.18 : 0.10)
-                       borderAlpha:(dark ? 0.28 : 0.18)
+                         fillAlpha:(dark ? 0.26 : 0.16)
+                       borderAlpha:(dark ? 0.38 : 0.24)
                          textColor:accent];
-    [self pp_applyTintPillToLabel:self.petKindChipLabel
-                             tint:PPPetCareViewerWarmAccentColor()
-                         fillAlpha:(dark ? 0.16 : 0.10)
-                       borderAlpha:(dark ? 0.24 : 0.16)
-                         textColor:PPPetCareViewerTextColor()];
 
-    [self pp_applySectionTheme:self.proofSectionView];
-    [self pp_applySectionTheme:self.storySectionView];
-    [self pp_applySectionTheme:self.careSectionView];
-    self.proofTitleLabel.textColor = PPPetCareViewerTextColor();
-    self.storyTitleLabel.textColor = PPPetCareViewerTextColor();
-    self.storyBodyLabel.textColor = PPPetCareViewerTextColor();
-    self.careTitleLabel.textColor = PPPetCareViewerTextColor();
-    self.careBodyLabel.textColor = PPPetCareViewerSecondaryTextColor();
+    UIColor *stockTint = [self pp_isMedicineCurrentlyAvailable] ? accent : UIColor.systemRedColor;
+    [self pp_applyTintPillToLabel:self.heroStockStatusBadgeLabel
+                             tint:stockTint
+                         fillAlpha:(dark ? 0.26 : 0.16)
+                       borderAlpha:(dark ? 0.38 : 0.24)
+                         textColor:stockTint];
 
+    self.pricePlateView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.10];
+    [self.pricePlateView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.32 : 0.20]];
+    self.pricePlateLabel.textColor = accent;
+    self.pricePlateCurrencyLabel.textColor = PPPetCareViewerSecondaryTextColor();
+
+    // Section Themes
+    [self pp_applySectionTheme:self.bentoMatrixCardView];
+    [self pp_applySectionTheme:self.dosageCalculatorCardView];
+    [self pp_applySectionTheme:self.indicationsCardView];
+    [self pp_applySectionTheme:self.descriptionCardView];
+    [self pp_applySectionTheme:self.vetConsultCardView];
+
+    // Vet Consult Action Button
+    self.vetConsultActionButton.backgroundColor = accent;
+    [self.vetConsultActionButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+
+    [self pp_refreshDosageEstimationUIAnimated:NO];
     [self pp_syncBottomBarState];
 }
 
@@ -924,13 +1144,74 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 {
     section.backgroundColor = PPPetCareViewerSurfaceColor();
     [section pp_setBorderColor:PPPetCareViewerBorderColor()];
-    [section pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.10]];
-    section.layer.shadowOpacity = 0.10;
-    section.layer.shadowRadius = 26.0;
-    section.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    [section pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.09]];
+    section.layer.shadowOpacity = 0.09;
+    section.layer.shadowRadius = 24.0;
+    section.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 }
 
-#pragma mark - Cart
+#pragma mark - Dosage Estimation Logic
+
+- (void)pp_weightSegmentTapped:(UIButton *)sender
+{
+    [PPFunc triggerLightHaptic];
+    self.selectedWeightCategory = (PPPetWeightCategory)sender.tag;
+    [self pp_refreshDosageEstimationUIAnimated:YES];
+}
+
+- (void)pp_refreshDosageEstimationUIAnimated:(BOOL)animated
+{
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    UIColor *accent = PPPetCareViewerAccentColor();
+
+    for (NSInteger i = 0; i < self.weightSegmentButtons.count; i++) {
+        UIButton *btn = self.weightSegmentButtons[i];
+        BOOL selected = (i == (NSInteger)self.selectedWeightCategory);
+        if (selected) {
+            btn.backgroundColor = accent;
+            [btn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+            [btn pp_setBorderColor:accent];
+        } else {
+            btn.backgroundColor = PPPetCareViewerQuietTileColor();
+            [btn setTitleColor:PPPetCareViewerTextColor() forState:UIControlStateNormal];
+            [btn pp_setBorderColor:PPPetCareViewerBorderColor()];
+        }
+    }
+
+    NSString *desc = @"";
+    switch (self.selectedWeightCategory) {
+        case PPPetWeightCategorySmall:
+            desc = PPPetCareViewerLocalized(@"pet_care_viewer_dose_small_desc", @"1/2 tablet or 2.5ml · Consult vet for young pets");
+            break;
+        case PPPetWeightCategoryMedium:
+            desc = PPPetCareViewerLocalized(@"pet_care_viewer_dose_medium_desc", @"1 full tablet or 5ml with meal");
+            break;
+        case PPPetWeightCategoryLarge:
+            desc = PPPetCareViewerLocalized(@"pet_care_viewer_dose_large_desc", @"2 tablets or 10ml split into two doses");
+            break;
+        case PPPetWeightCategoryXLarge:
+            desc = PPPetCareViewerLocalized(@"pet_care_viewer_dose_xlarge_desc", @"3 tablets or according to veterinary prescription");
+            break;
+    }
+
+    [self.dosageResultContainerView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.28 : 0.16]];
+
+    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView transitionWithView:self.dosageResultValueLabel
+                          duration:0.24
+                           options:UIViewAnimationOptionTransitionCrossDissolve
+                        animations:^{
+            self.dosageResultValueLabel.text = desc;
+        } completion:nil];
+    } else {
+        self.dosageResultValueLabel.text = desc;
+    }
+}
+
+#pragma mark - Cart & Actions
 
 - (void)pp_handleCartUpdated:(NSNotification *)notification
 {
@@ -952,62 +1233,6 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     self.bottomBar.totalAmount = itemAmount * selectedQuantity;
     self.bottomBar.addToCartButton.enabled = self.medicine.isAvailable && remainingToAdd > 0;
     self.bottomBar.addToCartButton.alpha = self.bottomBar.addToCartButton.enabled ? 1.0 : 0.58;
-
-    [self pp_refreshCartStateLabelWithQuantity:existingQuantity remainingToAdd:remainingToAdd];
-
-    NSString *careHint = nil;
-    if (![self pp_isMedicineCurrentlyAvailable]) {
-        careHint = PPPetCareViewerLocalized(@"pet_care_medicine_not_available", @"Not available");
-    } else if (remainingToAdd <= 0) {
-        careHint = PPPetCareViewerLocalized(@"pet_care_viewer_cart_limit_copy", @"All available stock is already in your cart.");
-    } else if (remainingToAdd < stockQuantity) {
-        careHint = [NSString stringWithFormat:@"%@ %ld %@",
-                    kLang(@"Only"),
-                    (long)remainingToAdd,
-                    kLang(@"left in stock")];
-    } else {
-        careHint = PPPetCareViewerLocalized(@"pet_care_viewer_direct_add_copy", @"This medicine can be added directly from the shared pet-care catalog.");
-    }
-    self.careHintLabel.text = careHint;
-
-    UIColor *accent = ![self pp_isMedicineCurrentlyAvailable]
-        ? UIColor.systemRedColor
-        : (self.bottomBar.addToCartButton.enabled ? PPPetCareViewerAccentColor() : UIColor.systemOrangeColor);
-    [self pp_applyTintPillToLabel:self.careHintLabel
-                             tint:accent
-                         fillAlpha:0.10
-                       borderAlpha:0.18
-                         textColor:accent];
-}
-
-- (void)pp_refreshCartStateLabelWithQuantity:(NSInteger)existingQuantity remainingToAdd:(NSInteger)remainingToAdd
-{
-    UIColor *accent = PPPetCareViewerAccentColor();
-    UIColor *warning = PPPetCareViewerWarmAccentColor();
-    UIColor *danger = UIColor.systemRedColor;
-    NSString *text = nil;
-    UIColor *tint = accent;
-
-    if (!self.medicine.isAvailable || self.medicine.stockQuantity <= 0) {
-        text = PPPetCareViewerLocalized(@"pet_care_medicine_out_of_stock", @"Out of stock");
-        tint = danger;
-    } else if (remainingToAdd <= 0 && existingQuantity > 0) {
-        text = [NSString stringWithFormat:PPPetCareViewerLocalized(@"pet_care_viewer_cart_quantity_format", @"%ld already in your cart"), (long)existingQuantity];
-        tint = warning;
-    } else if (existingQuantity > 0) {
-        text = [NSString stringWithFormat:PPPetCareViewerLocalized(@"pet_care_viewer_cart_quantity_format", @"%ld already in your cart"), (long)existingQuantity];
-        tint = accent;
-    } else {
-        text = PPPetCareViewerLocalized(@"pet_care_viewer_cart_empty", @"Add a dose to your cart.");
-        tint = accent;
-    }
-
-    self.cartStateLabel.text = text;
-    [self pp_applyTintPillToLabel:self.cartStateLabel
-                             tint:tint
-                         fillAlpha:0.11
-                       borderAlpha:0.18
-                         textColor:tint];
 }
 
 - (void)pp_addToCartButtonTapped:(NSInteger)quantity
@@ -1050,7 +1275,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     __weak typeof(self) weakSelf = self;
     [[CartManager sharedManager] addItem:item
                 presentingViewController:self
-                              completion:^(BOOL didAdd, BOOL didCancel) {
+                               completion:^(BOOL didAdd, BOOL didCancel) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) { return; }
         if (didCancel) {
@@ -1072,7 +1297,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
             : kLang(@"ItemAddedToYourCart");
 
         [self.bottomBar performAddToCartSuccessAnimation];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             [PPAddToCartSuccessToast showWithTitle:kLang(@"AddedToCart") subtitle:message];
         });
         if (safeQuantity == 1) {
@@ -1097,34 +1322,43 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     return NO;
 }
 
-#pragma mark - Actions
-
 - (void)pp_shareTapped
 {
+    [PPFunc triggerLightHaptic];
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     [parts addObject:self.titleLabel.text ?: @""];
     if (self.medicine.medicineDescription.length > 0) {
         [parts addObject:self.medicine.medicineDescription];
     }
-    [parts addObject:[NSString stringWithFormat:@"%@: %@", PPPetCareViewerLocalized(@"pet_care_medicine_price", @"Price"), [self pp_priceText]]];
-    [parts addObject:[NSString stringWithFormat:@"%@: %@", PPPetCareViewerLocalized(@"pet_care_medicine_stock", @"Stock"), [self pp_stockText]]];
+    [parts addObject:[NSString stringWithFormat:@"%@: %.2f %@", PPPetCareViewerLocalized(@"pet_care_medicine_price", @"Price"), MAX(self.medicine.price, 0.0), PPPetCareMedicineCurrencyCode(self.medicine)]];
 
     UIActivityViewController *activityVC = [[UIActivityViewController alloc] initWithActivityItems:@[[parts componentsJoinedByString:@"\n"]]
                                                                              applicationActivities:nil];
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        activityVC.popoverPresentationController.sourceView = self.bottomBar.favButton ?: self.careSectionView;
-        activityVC.popoverPresentationController.sourceRect = self.bottomBar.favButton ? self.bottomBar.favButton.bounds : self.careSectionView.bounds;
+        activityVC.popoverPresentationController.sourceView = self.bottomBar.favButton ?: self.heroStageView;
+        activityVC.popoverPresentationController.sourceRect = self.bottomBar.favButton ? self.bottomBar.favButton.bounds : self.heroStageView.bounds;
     }
     [self presentViewController:activityVC animated:YES completion:nil];
 }
 
-#pragma mark - Components
+- (void)pp_vetConsultTapped
+{
+    [PPFunc triggerMediumHaptic];
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+- (BOOL)pp_isMedicineCurrentlyAvailable
+{
+    return self.medicine.isAvailable && self.medicine.stockQuantity > 0;
+}
+
+#pragma mark - UI Component Helpers
 
 - (UIView *)pp_surfaceSectionView
 {
     UIView *view = [[UIView alloc] init];
     view.translatesAutoresizingMaskIntoConstraints = NO;
-    view.layer.cornerRadius = PPPetCareViewerSurfaceRadius;
+    view.layer.cornerRadius = PPPetCareViewerCardRadius;
     view.layer.borderWidth = 0.8;
     view.clipsToBounds = NO;
     if (@available(iOS 13.0, *)) {
@@ -1145,12 +1379,22 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     return label;
 }
 
-- (UILabel *)pp_sectionTitleLabelWithText:(NSString *)text
+- (UILabel *)pp_sectionTitleLabelWithText:(NSString *)text symbol:(NSString *)symbol
 {
-    UILabel *label = [self pp_labelWithFont:[GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightSemibold]
-                                      color:PPPetCareViewerTextColor()
-                                      lines:1];
-    label.text = text;
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.font = [GM boldFontWithSize:16.5] ?: [UIFont systemFontOfSize:16.5 weight:UIFontWeightBold];
+    label.textColor = PPPetCareViewerTextColor();
+    label.numberOfLines = 1;
+    label.textAlignment = Language.alignmentForCurrentLanguage;
+
+    NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:15.0 weight:UIImageSymbolWeightBold];
+    attachment.image = [[UIImage systemImageNamed:symbol withConfiguration:config] imageWithTintColor:PPPetCareViewerAccentColor()];
+    
+    NSMutableAttributedString *attributedString = [[NSAttributedString attributedStringWithAttachment:attachment] mutableCopy];
+    [attributedString appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"  %@", text]]];
+    label.attributedText = attributedString;
     return label;
 }
 
@@ -1160,8 +1404,8 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     label.translatesAutoresizingMaskIntoConstraints = NO;
     label.font = font;
     label.textAlignment = NSTextAlignmentCenter;
-    label.contentInsets = UIEdgeInsetsMake(8.0, 12.0, 8.0, 12.0);
-    label.layer.cornerRadius = 16.0;
+    label.contentInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
+    label.layer.cornerRadius = 14.0;
     label.layer.borderWidth = 0.8;
     label.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -1181,17 +1425,17 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     [label pp_setBorderColor:[tint colorWithAlphaComponent:borderAlpha]];
 }
 
-- (UIView *)pp_metricTileWithSymbol:(NSString *)symbol
-                              title:(NSString *)title
-                              value:(NSString *)value
-                               tint:(UIColor *)tint
+- (UIView *)pp_clinicalBentoTileWithSymbol:(NSString *)symbol
+                                     title:(NSString *)title
+                                     value:(NSString *)value
+                                      tint:(UIColor *)tint
 {
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = PPPetCareViewerQuietTileColor();
-    container.layer.cornerRadius = 22.0;
+    container.layer.cornerRadius = 20.0;
     container.layer.borderWidth = 0.8;
-    [container pp_setBorderColor:[tint colorWithAlphaComponent:0.14]];
+    [container pp_setBorderColor:[tint colorWithAlphaComponent:0.16]];
     if (@available(iOS 13.0, *)) {
         container.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1199,7 +1443,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     UIView *iconShell = [[UIView alloc] init];
     iconShell.translatesAutoresizingMaskIntoConstraints = NO;
     iconShell.backgroundColor = [tint colorWithAlphaComponent:0.12];
-    iconShell.layer.cornerRadius = 18.0;
+    iconShell.layer.cornerRadius = 16.0;
     if (@available(iOS 13.0, *)) {
         iconShell.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1216,7 +1460,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
                                            lines:1];
     titleLabel.text = title;
 
-    UILabel *valueLabel = [self pp_labelWithFont:[GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold]
+    UILabel *valueLabel = [self pp_labelWithFont:[GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]
                                            color:PPPetCareViewerTextColor()
                                            lines:2];
     valueLabel.text = value.length > 0 ? value : PPPetCareViewerLocalized(@"pet_care_viewer_not_specified", @"Not specified");
@@ -1224,141 +1468,118 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[titleLabel, valueLabel]];
     textStack.translatesAutoresizingMaskIntoConstraints = NO;
     textStack.axis = UILayoutConstraintAxisVertical;
-    textStack.spacing = 4.0;
+    textStack.spacing = 3.0;
     [container addSubview:textStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [container.heightAnchor constraintGreaterThanOrEqualToConstant:112.0],
+        [container.heightAnchor constraintGreaterThanOrEqualToConstant:106.0],
 
-        [iconShell.topAnchor constraintEqualToAnchor:container.topAnchor constant:16.0],
-        [iconShell.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
-        [iconShell.widthAnchor constraintEqualToConstant:36.0],
-        [iconShell.heightAnchor constraintEqualToConstant:36.0],
+        [iconShell.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
+        [iconShell.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:14.0],
+        [iconShell.widthAnchor constraintEqualToConstant:32.0],
+        [iconShell.heightAnchor constraintEqualToConstant:32.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:18.0],
-        [iconView.heightAnchor constraintEqualToConstant:18.0],
+        [iconView.widthAnchor constraintEqualToConstant:16.0],
+        [iconView.heightAnchor constraintEqualToConstant:16.0],
 
-        [textStack.topAnchor constraintEqualToAnchor:iconShell.bottomAnchor constant:14.0],
-        [textStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
-        [textStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16.0],
-        [textStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-16.0]
+        [textStack.topAnchor constraintEqualToAnchor:iconShell.bottomAnchor constant:10.0],
+        [textStack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:14.0],
+        [textStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-14.0],
+        [textStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-14.0]
     ]];
     return container;
 }
 
-- (UIView *)pp_highlightRowWithSymbol:(NSString *)symbol
-                                 text:(NSString *)text
-                                 tint:(UIColor *)tint
+- (UIView *)pp_indicationHighlightRowWithSymbol:(NSString *)symbol
+                                          title:(NSString *)title
+                                       subtitle:(NSString *)subtitle
+                                           tint:(UIColor *)tint
 {
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = PPPetCareViewerQuietTileColor();
-    container.layer.cornerRadius = 20.0;
+    container.layer.cornerRadius = 18.0;
     container.layer.borderWidth = 0.8;
-    [container pp_setBorderColor:[tint colorWithAlphaComponent:0.14]];
+    [container pp_setBorderColor:[tint colorWithAlphaComponent:0.16]];
     if (@available(iOS 13.0, *)) {
         container.layer.cornerCurve = kCACornerCurveContinuous;
     }
+
+    UIView *iconShell = [[UIView alloc] init];
+    iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+    iconShell.backgroundColor = [tint colorWithAlphaComponent:0.12];
+    iconShell.layer.cornerRadius = 16.0;
+    if (@available(iOS 13.0, *)) {
+        iconShell.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [container addSubview:iconShell];
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:symbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     iconView.tintColor = tint;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
-    [container addSubview:iconView];
+    [iconShell addSubview:iconView];
 
-    UILabel *label = [self pp_labelWithFont:[GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium]
-                                      color:PPPetCareViewerTextColor()
-                                      lines:0];
-    label.text = text;
-    [container addSubview:label];
+    UILabel *titleLabel = [self pp_labelWithFont:[GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightBold]
+                                           color:PPPetCareViewerTextColor()
+                                           lines:1];
+    titleLabel.text = title;
+
+    UILabel *subLabel = [self pp_labelWithFont:[GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular]
+                                         color:PPPetCareViewerSecondaryTextColor()
+                                         lines:0];
+    subLabel.text = subtitle;
+
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[titleLabel, subLabel]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 3.0;
+    [container addSubview:textStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [container.heightAnchor constraintGreaterThanOrEqualToConstant:58.0],
-        [iconView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
-        [iconView.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:18.0],
-        [iconView.heightAnchor constraintEqualToConstant:18.0],
+        [container.heightAnchor constraintGreaterThanOrEqualToConstant:64.0],
 
-        [label.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
-        [label.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:12.0],
-        [label.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16.0],
-        [label.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-14.0]
+        [iconShell.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:14.0],
+        [iconShell.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
+        [iconShell.widthAnchor constraintEqualToConstant:32.0],
+        [iconShell.heightAnchor constraintEqualToConstant:32.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:16.0],
+        [iconView.heightAnchor constraintEqualToConstant:16.0],
+
+        [textStack.topAnchor constraintEqualToAnchor:container.topAnchor constant:12.0],
+        [textStack.leadingAnchor constraintEqualToAnchor:iconShell.trailingAnchor constant:12.0],
+        [textStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-14.0],
+        [textStack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-12.0]
     ]];
     return container;
 }
 
-#pragma mark - Motion
+#pragma mark - Motion & Staggered Entrance
 
 - (void)pp_prepareEntranceState
 {
-    [self pp_prepareEntranceViews:[self pp_compactEntranceViews:@[
-        self.heroView,
-        self.proofSectionView,
-        self.storySectionView,
-        self.careSectionView
-    ]]
-                  verticalOffset:PPPetCareViewerEntranceCardOffset
-                alternatingShift:0.0
-                           scale:0.965
-                        rotation:0.0];
+    NSArray<UIView *> *sections = @[
+        self.heroStageView,
+        self.bentoMatrixCardView,
+        self.dosageCalculatorCardView,
+        self.indicationsCardView,
+        self.descriptionCardView,
+        self.vetConsultCardView
+    ];
 
-    [self pp_prepareEntranceViews:[self pp_compactEntranceViews:@[self.bottomBar]]
-                  verticalOffset:22.0
-                alternatingShift:0.0
-                           scale:0.98
-                        rotation:0.0];
+    for (UIView *view in sections) {
+        if (!view) continue;
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 24.0);
+    }
 
-    [self pp_prepareEntranceViews:[self pp_compactEntranceViews:@[
-        self.eyebrowLabel,
-        self.titleLabel,
-        self.subtitleLabel,
-        self.heroChipsStackView,
-        self.priceLabel,
-        self.cartStateLabel
-    ]]
-                  verticalOffset:PPPetCareViewerEntranceContentOffset
-                alternatingShift:0.0
-                           scale:0.985
-                        rotation:0.0];
-
-    [self pp_prepareEntranceViews:[self pp_compactEntranceViews:@[self.heroImageView]]
-                  verticalOffset:24.0
-                alternatingShift:0.0
-                           scale:0.90
-                        rotation:0.0];
-
-    [self pp_prepareEntranceViews:[self pp_compactEntranceViews:@[self.heroIconPlateView]]
-                  verticalOffset:12.0
-                alternatingShift:10.0
-                           scale:0.76
-                        rotation:0.10];
-
-    [self pp_prepareEntranceViews:[self pp_compactEntranceViews:@[
-        self.proofTitleLabel,
-        self.storyTitleLabel,
-        self.storyBodyLabel,
-        self.careTitleLabel,
-        self.careBodyLabel,
-        self.careHintLabel
-    ]]
-                  verticalOffset:PPPetCareViewerEntranceContentOffset
-                alternatingShift:0.0
-                           scale:0.985
-                        rotation:0.0];
-
-    [self pp_prepareEntranceViews:[self pp_metricTileEntranceViews]
-                  verticalOffset:PPPetCareViewerEntranceTileOffset
-                alternatingShift:10.0
-                           scale:0.94
-                        rotation:0.0];
-
-    [self pp_prepareEntranceViews:[self pp_storyHighlightEntranceViews]
-                  verticalOffset:12.0
-                alternatingShift:8.0
-                           scale:0.965
-                        rotation:0.0];
+    self.bottomBar.alpha = 0.0;
+    self.bottomBar.transform = CGAffineTransformMakeTranslation(0.0, 28.0);
 }
 
 - (void)pp_beginEntranceAnimationIfNeeded
@@ -1368,84 +1589,64 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     }
     self.didAnimateEntrance = YES;
 
-    [self pp_animateEntranceViews:[self pp_compactEntranceViews:@[
-        self.heroView,
-        self.proofSectionView,
-        self.storySectionView,
-        self.careSectionView
-    ]]
-                    initialDelay:0.00
-                       stepDelay:0.07
-                        duration:PPPetCareViewerEntranceCardDuration
-                         damping:0.82
-                        velocity:0.22];
+    NSArray<UIView *> *sections = @[
+        self.heroStageView,
+        self.bentoMatrixCardView,
+        self.dosageCalculatorCardView,
+        self.indicationsCardView,
+        self.descriptionCardView,
+        self.vetConsultCardView
+    ];
 
-    [self pp_animateEntranceViews:[self pp_compactEntranceViews:@[self.bottomBar]]
-                    initialDelay:0.12
-                       stepDelay:0.00
-                        duration:0.58
-                         damping:0.84
-                        velocity:0.16];
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
 
-    [self pp_animateEntranceViews:[self pp_compactEntranceViews:@[self.heroImageView, self.heroIconPlateView]]
-                    initialDelay:0.10
-                       stepDelay:0.05
-                        duration:0.56
-                         damping:0.72
-                        velocity:0.30];
+    for (NSUInteger idx = 0; idx < sections.count; idx++) {
+        UIView *view = sections[idx];
+        if (!view) continue;
+        NSTimeInterval delay = 0.06 * idx;
 
-    [self pp_animateEntranceViews:[self pp_compactEntranceViews:@[
-        self.eyebrowLabel,
-        self.titleLabel,
-        self.subtitleLabel,
-        self.heroChipsStackView,
-        self.priceLabel,
-        self.cartStateLabel
-    ]]
-                    initialDelay:0.14
-                       stepDelay:0.04
-                        duration:PPPetCareViewerEntranceContentDuration
-                         damping:0.86
-                        velocity:0.18];
+        if (reduceMotion) {
+            [UIView animateWithDuration:PPPetCareViewerReducedMotionDuration
+                                  delay:delay
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        } else {
+            [UIView animateWithDuration:0.58
+                                  delay:delay
+                 usingSpringWithDamping:0.84
+                  initialSpringVelocity:0.24
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }
+    }
 
-    [self pp_animateEntranceViews:[self pp_compactEntranceViews:@[self.proofTitleLabel]]
-                    initialDelay:0.20
-                       stepDelay:0.00
-                        duration:0.46
-                         damping:0.88
-                        velocity:0.16];
-
-    [self pp_animateEntranceViews:[self pp_metricTileEntranceViews]
-                    initialDelay:0.24
-                       stepDelay:0.04
-                        duration:0.50
-                         damping:0.78
-                        velocity:0.24];
-
-    [self pp_animateEntranceViews:[self pp_compactEntranceViews:@[self.storyTitleLabel, self.storyBodyLabel]]
-                    initialDelay:0.30
-                       stepDelay:0.04
-                        duration:0.46
-                         damping:0.88
-                        velocity:0.16];
-
-    [self pp_animateEntranceViews:[self pp_storyHighlightEntranceViews]
-                    initialDelay:0.34
-                       stepDelay:0.04
-                        duration:0.48
-                         damping:0.82
-                        velocity:0.20];
-
-    [self pp_animateEntranceViews:[self pp_compactEntranceViews:@[
-        self.careTitleLabel,
-        self.careBodyLabel,
-        self.careHintLabel
-    ]]
-                    initialDelay:0.40
-                       stepDelay:0.04
-                        duration:0.46
-                         damping:0.88
-                        velocity:0.16];
+    // Bottom Bar
+    NSTimeInterval barDelay = 0.12;
+    if (reduceMotion) {
+        [UIView animateWithDuration:PPPetCareViewerReducedMotionDuration
+                              delay:barDelay
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.bottomBar.alpha = 1.0;
+            self.bottomBar.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    } else {
+        [UIView animateWithDuration:0.62
+                              delay:barDelay
+             usingSpringWithDamping:0.82
+              initialSpringVelocity:0.28
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.bottomBar.alpha = 1.0;
+            self.bottomBar.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
 }
 
 - (void)pp_beginAmbientGlowAnimationIfNeeded
@@ -1459,120 +1660,16 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
                           delay:0.0
                         options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut
                      animations:^{
-        self.backgroundGlowTopView.transform = CGAffineTransformMakeTranslation(-16.0, 12.0);
-        self.backgroundGlowMiddleView.transform = CGAffineTransformMakeTranslation(12.0, -10.0);
+        self.backgroundGlowTopView.transform = CGAffineTransformMakeTranslation(-18.0, 14.0);
+        self.backgroundGlowMiddleView.transform = CGAffineTransformMakeTranslation(14.0, -12.0);
     } completion:nil];
 
     [UIView animateWithDuration:7.2
                           delay:0.0
                         options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut
                      animations:^{
-        self.backgroundGlowBottomView.transform = CGAffineTransformMakeTranslation(20.0, -14.0);
+        self.backgroundGlowBottomView.transform = CGAffineTransformMakeTranslation(22.0, -16.0);
     } completion:nil];
-}
-
-- (NSArray<UIView *> *)pp_compactEntranceViews:(NSArray<UIView *> *)views
-{
-    NSMutableArray<UIView *> *compactViews = [NSMutableArray array];
-    for (UIView *view in views) {
-        if (![view isKindOfClass:UIView.class]) {
-            continue;
-        }
-        if (view.superview == nil) {
-            continue;
-        }
-        [compactViews addObject:view];
-    }
-    return [compactViews copy];
-}
-
-- (NSArray<UIView *> *)pp_metricTileEntranceViews
-{
-    NSMutableArray<UIView *> *tileViews = [NSMutableArray array];
-    for (UIView *rowView in self.proofGridStackView.arrangedSubviews) {
-        if (![rowView isKindOfClass:UIStackView.class]) {
-            continue;
-        }
-        UIStackView *rowStack = (UIStackView *)rowView;
-        for (UIView *tileView in rowStack.arrangedSubviews) {
-            if (tileView.superview != nil) {
-                [tileViews addObject:tileView];
-            }
-        }
-    }
-    return [tileViews copy];
-}
-
-- (NSArray<UIView *> *)pp_storyHighlightEntranceViews
-{
-    NSMutableArray<UIView *> *highlightViews = [NSMutableArray array];
-    for (UIView *view in self.storyHighlightsStackView.arrangedSubviews) {
-        if (view.superview != nil) {
-            [highlightViews addObject:view];
-        }
-    }
-    return [highlightViews copy];
-}
-
-- (void)pp_prepareEntranceViews:(NSArray<UIView *> *)views
-                 verticalOffset:(CGFloat)verticalOffset
-               alternatingShift:(CGFloat)alternatingShift
-                          scale:(CGFloat)scale
-                       rotation:(CGFloat)rotation
-{
-    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
-    CGFloat resolvedVerticalOffset = reduceMotion ? 0.0 : verticalOffset;
-    CGFloat resolvedAlternatingShift = reduceMotion ? 0.0 : alternatingShift;
-    CGFloat resolvedScale = reduceMotion ? 1.0 : scale;
-    CGFloat resolvedRotation = reduceMotion ? 0.0 : rotation;
-
-    [views enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        CGFloat direction = (idx % 2 == 0) ? -1.0 : 1.0;
-        CGAffineTransform transform = CGAffineTransformMakeTranslation(resolvedAlternatingShift * direction, resolvedVerticalOffset);
-        if (fabs(resolvedRotation) > 0.001) {
-            transform = CGAffineTransformRotate(transform, resolvedRotation * direction);
-        }
-        if (fabs(resolvedScale - 1.0) > 0.001) {
-            transform = CGAffineTransformScale(transform, resolvedScale, resolvedScale);
-        }
-        view.alpha = 0.0;
-        view.transform = transform;
-    }];
-}
-
-- (void)pp_animateEntranceViews:(NSArray<UIView *> *)views
-                   initialDelay:(NSTimeInterval)initialDelay
-                      stepDelay:(NSTimeInterval)stepDelay
-                       duration:(NSTimeInterval)duration
-                        damping:(CGFloat)damping
-                       velocity:(CGFloat)velocity
-{
-    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
-    [views enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        NSTimeInterval delay = initialDelay + (stepDelay * idx);
-        if (reduceMotion) {
-            [UIView animateWithDuration:PPPetCareViewerReducedMotionDuration
-                                  delay:delay
-                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                             animations:^{
-                view.alpha = 1.0;
-                view.transform = CGAffineTransformIdentity;
-            } completion:nil];
-            return;
-        }
-
-        [UIView animateWithDuration:duration
-                              delay:delay
-             usingSpringWithDamping:damping
-              initialSpringVelocity:velocity
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
 }
 
 @end

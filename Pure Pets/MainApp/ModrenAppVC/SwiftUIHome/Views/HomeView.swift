@@ -221,7 +221,7 @@ struct HomeView: View {
                             .accessibilityHidden(true)
 
                         content
-                            .padding(.top, HomeVisualTokens.compactRowSpacing)
+                            .padding(.top, 0)
                             .padding(.bottom, bottomPadding)
                     }
                 }
@@ -282,12 +282,14 @@ struct HomeView: View {
     @ViewBuilder
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HomeStatusBanner(
-                state: store.state,
-                retry: store.retryAll
-            )
-            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
-            .padding(.vertical, PPSpace.sm)
+            if store.state.connectivity == .offline || (store.state.isUserLoggedIn && store.state.phase == .partial) {
+                HomeStatusBanner(
+                    state: store.state,
+                    retry: store.retryAll
+                )
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                .padding(.vertical, PPSpace.sm)
+            }
 
             switch store.state.phase {
             case .coldLoading, .warmLoading:
@@ -962,7 +964,7 @@ struct HomeView: View {
             return HomeVisualTokens.compactRowSpacing
         case .marketingStage:
             return PPHomeHeroFlags.UseHeroV2
-                ? HomeVisualTokens.compactRowSpacing
+                ? PPSpace.xxs
                 : HomeVisualTokens.mediaRowSpacing
         default:
             return HomeVisualTokens.routineRowSpacing
@@ -977,13 +979,20 @@ struct HomeView: View {
         for row: HomeRenderRow,
         after previousRow: HomeRenderRow?
     ) -> CGFloat {
+        guard let previousRow else {
+            return 0
+        }
+        if case let .module(prevModule) = previousRow.content,
+           case .marketingStage = prevModule.kind,
+           PPHomeHeroFlags.UseHeroV2 {
+            // Tighter space directly beneath Hero V2
+            return PPSpace.xs
+        }
         guard hasStandaloneSectionHeader(row) else {
             return verticalPadding(for: row)
         }
 
-        let precedingBottom = previousRow.map {
-            verticalPadding(for: $0)
-        } ?? 0
+        let precedingBottom = verticalPadding(for: previousRow)
         return max(
             0,
             PPHomeSectionHeaderMetrics.sectionTopSpacing - precedingBottom

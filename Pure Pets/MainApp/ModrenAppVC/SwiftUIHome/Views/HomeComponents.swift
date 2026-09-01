@@ -3571,7 +3571,7 @@ private struct HomeMainKindHabitatGeometry {
         discDiameter = diameter.rounded()
         // The "all" affordance is a system glyph, not species artwork, so it
         // sits smaller inside the same disc.
-        artworkSide = (discDiameter * (isAllOption ? 0.255 : 0.70) * 0.85).rounded()
+        artworkSide = (discDiameter * (isAllOption ? 0.23 : 0.60) * 0.85).rounded()
         titleLineLimit = isAccessibilitySize ? 3 : 2
     }
 }
@@ -3837,6 +3837,7 @@ private struct HomeMainKindDisc: View {
     @Environment(\.homeMainKindPressed) private var pressed
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -4055,9 +4056,17 @@ private struct HomeMainKindDisc: View {
                     placeholderArtwork
                 }
                 .frame(width: artworkSide, height: artworkSide)
+                .scaleEffect(
+                    x: layoutDirection == .rightToLeft ? -1 : 1,
+                    y: 1
+                )
             } else {
                 placeholderArtwork
                     .frame(width: artworkSide, height: artworkSide)
+                    .scaleEffect(
+                        x: layoutDirection == .rightToLeft ? -1 : 1,
+                        y: 1
+                    )
             }
         }
         .offset(y: selected ? 8 : 0)

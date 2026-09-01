@@ -227,8 +227,9 @@ struct HomeHeroV2View: View {
                 - (HomeHeroV2Metrics.gripWidth / 2)
 
             let artworkSide = min(HomeHeroV2Metrics.artworkSide, plateInk - PPSpace.base)
+            let blobCenterX = plateCenterX + 80
             ZStack(alignment: .topLeading) {
-                // Living blob plate
+                // Living blob plate shifted trailing by +80
                 plateStage(
                     page,
                     accent: accent,
@@ -236,10 +237,10 @@ struct HomeHeroV2View: View {
                     plateInk: plateInk,
                     artworkSide: artworkSide
                 )
-                .position(x: plateCenterX, y: height / 2)
+                .position(x: blobCenterX, y: height / 2)
                 .zIndex(0)
 
-                // Category image in front of the living blob on hero card
+                // Category image in front of the living blob on hero card (preserved position)
                 artworkStage(
                     asset: heroArtworkAsset(for: page),
                     accent: accent,

@@ -847,6 +847,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 @property (nonatomic, strong) UILabel *actionLabel;
 @property (nonatomic, strong) UIView *statusDot;
 @property (nonatomic, strong) UIActivityIndicatorView *spinner;
+@property (nonatomic, strong) UIImageView *chevronView;
 @property (nonatomic, copy, nullable) dispatch_block_t onActivate;
 - (void)configureWithTitle:(NSString *)title
                     action:(nullable NSString *)action
@@ -898,8 +899,8 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     UILabel *eyebrow = [UILabel new];
     eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrow.text = PPSettingsLocalizedString(@"settings_location_eyebrow", @"SMART LOCATION");
-    eyebrow.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
-                    scaledFontForFont:([GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold])];
+    eyebrow.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2]
+                    scaledFontForFont:([GM boldFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11 weight:UIFontWeightBold])];
     eyebrow.adjustsFontForContentSizeCategory = YES;
     eyebrow.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
     eyebrow.textAlignment = [Language alignmentForCurrentLanguage];
@@ -947,9 +948,11 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     UIImageView *chevron = [UIImageView new];
     chevron.translatesAutoresizingMaskIntoConstraints = NO;
     chevron.contentMode = UIViewContentModeScaleAspectFit;
-    chevron.image = [[UIImage systemImageNamed:@"chevron.forward"] imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
-                                                                         renderingMode:UIImageRenderingModeAlwaysOriginal];
+    NSString *chevronName = Language.isRTL ? @"chevron.backward" : @"chevron.forward";
+    chevron.image = [[UIImage systemImageNamed:chevronName] imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                                                                 renderingMode:UIImageRenderingModeAlwaysOriginal];
     [card addSubview:chevron];
+    self.chevronView = chevron;
 
     [NSLayoutConstraint activateConstraints:@[
         [card.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
@@ -1024,6 +1027,9 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self.accessibilityHint = accessibilityHint ?: action;
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    NSString *chevronName = Language.isRTL ? @"chevron.backward" : @"chevron.forward";
+    self.chevronView.image = [[UIImage systemImageNamed:chevronName] imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                                                                 renderingMode:UIImageRenderingModeAlwaysOriginal];
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
         [UIView transitionWithView:self.titleLabelV6 duration:PPAnimDurationNormal options:UIViewAnimationOptionTransitionCrossDissolve animations:^{} completion:nil];
     }
@@ -1273,16 +1279,116 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 
 @end
 
+#pragma mark - PPSettingsChoiceButton
+
+@interface PPSettingsChoiceButton : UIControl
+@property (nonatomic, strong) UIImageView *iconView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, assign) BOOL isChosen;
+@property (nonatomic, assign) NSInteger optionIndex;
+- (void)configureWithTitle:(NSString *)title iconName:(nullable NSString *)iconName isChosen:(BOOL)isChosen;
+@end
+
+@implementation PPSettingsChoiceButton
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.translatesAutoresizingMaskIntoConstraints = NO;
+        PPApplyContinuousCorners(self, 14.0);
+        self.clipsToBounds = YES;
+        self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+        UIImageView *icon = [UIImageView new];
+        icon.translatesAutoresizingMaskIntoConstraints = NO;
+        icon.contentMode = UIViewContentModeScaleAspectFit;
+        [self addSubview:icon];
+        self.iconView = icon;
+
+        UILabel *title = [UILabel new];
+        title.translatesAutoresizingMaskIntoConstraints = NO;
+        title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+                      scaledFontForFont:([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold])];
+        title.adjustsFontForContentSizeCategory = YES;
+        title.textAlignment = NSTextAlignmentCenter;
+        title.numberOfLines = 1;
+        [self addSubview:title];
+        self.titleLabel = title;
+
+        [NSLayoutConstraint activateConstraints:@[
+            [icon.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+            [icon.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10.0],
+            [icon.widthAnchor constraintEqualToConstant:17.0],
+            [icon.heightAnchor constraintEqualToConstant:17.0],
+
+            [title.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+            [title.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:5.0],
+            [title.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10.0],
+            
+            [self.heightAnchor constraintGreaterThanOrEqualToConstant:46.0]
+        ]];
+    }
+    return self;
+}
+
+- (void)configureWithTitle:(NSString *)title iconName:(NSString *)iconName isChosen:(BOOL)isChosen
+{
+    self.isChosen = isChosen;
+    self.titleLabel.text = title ?: @"";
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightSemibold];
+    UIImage *img = [UIImage systemImageNamed:(iconName ?: @"circle.fill") withConfiguration:config];
+    
+    if (isChosen) {
+        self.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+        self.layer.borderWidth = 0.0;
+        self.titleLabel.textColor = UIColor.whiteColor;
+        self.iconView.image = [img imageWithTintColor:UIColor.whiteColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.layer.shadowColor = (AppPrimaryClr ?: UIColor.systemPinkColor).CGColor;
+        self.layer.shadowOpacity = 0.22;
+        self.layer.shadowRadius = 8.0;
+        self.layer.shadowOffset = CGSizeMake(0, 3);
+    } else {
+        self.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [[UIColor whiteColor] colorWithAlphaComponent:0.06]
+                : [[UIColor blackColor] colorWithAlphaComponent:0.04];
+        }];
+        self.layer.borderWidth = 1.0;
+        [self pp_setBorderColor:PPSettingsV6HairlineColor()];
+        self.titleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+        self.iconView.image = [img imageWithTintColor:(AppSecondaryTextClr ?: UIColor.secondaryLabelColor)
+                                        renderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.layer.shadowOpacity = 0.0;
+    }
+}
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    [super setHighlighted:highlighted];
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    [UIView animateWithDuration:0.12 animations:^{
+        self.transform = highlighted ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
+        self.alpha = highlighted ? 0.85 : 1.0;
+    }];
+}
+
+@end
+
+#pragma mark - PPSettingsV6ChoiceCell
+
 @interface PPSettingsV6ChoiceCell : UITableViewCell
 @property (nonatomic, strong) UIView *surfaceView;
 @property (nonatomic, strong) UIImageView *iconViewV6;
 @property (nonatomic, strong) UILabel *titleLabelV6;
-@property (nonatomic, strong) UISegmentedControl *control;
+@property (nonatomic, strong) UIStackView *stackView;
+@property (nonatomic, strong) NSMutableArray<PPSettingsChoiceButton *> *cardButtons;
 @property (nonatomic, strong) UIView *separatorViewV6;
 @property (nonatomic, copy, nullable) void (^onChoice)(NSInteger index);
 - (void)configureTitle:(NSString *)title
                   icon:(NSString *)iconName
                 titles:(NSArray<NSString *> *)titles
+                 icons:(nullable NSArray<NSString *> *)icons
          selectedIndex:(NSInteger)selectedIndex
                  first:(BOOL)first
                   last:(BOOL)last
@@ -1300,6 +1406,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self.contentView.backgroundColor = UIColor.clearColor;
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.cardButtons = [NSMutableArray array];
 
     UIView *surface = [UIView new];
     surface.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1329,18 +1436,15 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     [surface addSubview:title];
     self.titleLabelV6 = title;
 
-    UISegmentedControl *control = [[UISegmentedControl alloc] initWithItems:@[]];
-    control.translatesAutoresizingMaskIntoConstraints = NO;
-    control.selectedSegmentTintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    control.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [control setTitleTextAttributes:@{NSFontAttributeName: ([GM boldFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold])}
-                           forState:UIControlStateNormal];
-    [control setTitleTextAttributes:@{NSForegroundColorAttributeName: UIColor.whiteColor,
-                                      NSFontAttributeName: ([GM boldFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold])}
-                           forState:UIControlStateSelected];
-    [control addTarget:self action:@selector(pp_v6ChoiceChanged:) forControlEvents:UIControlEventValueChanged];
-    [surface addSubview:control];
-    self.control = control;
+    UIStackView *stack = [UIStackView new];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.spacing = 8.0;
+    stack.distribution = UIStackViewDistributionFillEqually;
+    stack.alignment = UIStackViewAlignmentFill;
+    stack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [surface addSubview:stack];
+    self.stackView = stack;
 
     UIView *separator = [UIView new];
     separator.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1367,11 +1471,11 @@ static UIColor *PPSettingsV6BrandWashColor(void)
         [title.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
         [title.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
 
-        [control.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
-        [control.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
-        [control.topAnchor constraintEqualToAnchor:iconShell.bottomAnchor constant:PPSpaceMD],
-        [control.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
-        [control.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-PPSpaceBase],
+        [stack.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [stack.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [stack.topAnchor constraintEqualToAnchor:iconShell.bottomAnchor constant:PPSpaceMD],
+        [stack.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
+        [stack.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-PPSpaceBase],
 
         [separator.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
         [separator.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
@@ -1386,22 +1490,36 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 {
     [super prepareForReuse];
     self.onChoice = nil;
+    for (UIView *subview in self.stackView.arrangedSubviews) {
+        [self.stackView removeArrangedSubview:subview];
+        [subview removeFromSuperview];
+    }
+    [self.cardButtons removeAllObjects];
 }
 
-- (void)configureTitle:(NSString *)title icon:(NSString *)iconName titles:(NSArray<NSString *> *)titles selectedIndex:(NSInteger)selectedIndex first:(BOOL)first last:(BOOL)last onChoice:(void (^)(NSInteger))onChoice
+- (void)configureTitle:(NSString *)title icon:(NSString *)iconName titles:(NSArray<NSString *> *)titles icons:(NSArray<NSString *> *)icons selectedIndex:(NSInteger)selectedIndex first:(BOOL)first last:(BOOL)last onChoice:(void (^)(NSInteger))onChoice
 {
     self.titleLabelV6.text = title ?: @"";
     self.titleLabelV6.textAlignment = [Language alignmentForCurrentLanguage];
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.control.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.stackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.onChoice = onChoice;
 
-    [self.control removeAllSegments];
-    [titles enumerateObjectsUsingBlock:^(NSString * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        [self.control insertSegmentWithTitle:obj atIndex:idx animated:NO];
-    }];
-    if (selectedIndex >= 0 && selectedIndex < (NSInteger)titles.count) {
-        self.control.selectedSegmentIndex = selectedIndex;
+    for (UIView *subview in self.stackView.arrangedSubviews) {
+        [self.stackView removeArrangedSubview:subview];
+        [subview removeFromSuperview];
+    }
+    [self.cardButtons removeAllObjects];
+
+    for (NSInteger i = 0; i < (NSInteger)titles.count; i++) {
+        NSString *itemTitle = titles[i];
+        NSString *itemIcon = (i < (NSInteger)icons.count) ? icons[i] : nil;
+        PPSettingsChoiceButton *btn = [PPSettingsChoiceButton new];
+        btn.optionIndex = i;
+        [btn configureWithTitle:itemTitle iconName:itemIcon isChosen:(i == selectedIndex)];
+        [btn addTarget:self action:@selector(pp_cardButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.stackView addArrangedSubview:btn];
+        [self.cardButtons addObject:btn];
     }
 
     UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold];
@@ -1420,9 +1538,492 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self.separatorViewV6.hidden = last;
 }
 
-- (void)pp_v6ChoiceChanged:(UISegmentedControl *)sender
+- (void)pp_cardButtonTapped:(PPSettingsChoiceButton *)sender
 {
-    if (self.onChoice) self.onChoice(sender.selectedSegmentIndex);
+    if (self.onChoice) self.onChoice(sender.optionIndex);
+}
+
+@end
+
+#pragma mark - PPSettingsActionModal
+
+@interface PPSettingsActionModalOption : NSObject
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy, nullable) NSString *subtitle;
+@property (nonatomic, copy, nullable) NSString *iconName;
+@property (nonatomic, strong, nullable) UIColor *iconTint;
+@property (nonatomic, copy, nullable) NSArray<UIColor *> *swatches;
+@property (nonatomic, assign) BOOL isSelected;
+@property (nonatomic, assign) BOOL isDestructive;
+@property (nonatomic, copy, nullable) dispatch_block_t actionBlock;
+@end
+
+@implementation PPSettingsActionModalOption
+@end
+
+@interface PPSettingsActionModalVC : UIViewController
+@property (nonatomic, copy) NSString *headerIconName;
+@property (nonatomic, strong, nullable) UIColor *headerIconTint;
+@property (nonatomic, copy) NSString *modalTitle;
+@property (nonatomic, copy, nullable) NSString *modalSubtitle;
+@property (nonatomic, copy) NSArray<PPSettingsActionModalOption *> *options;
+@property (nonatomic, copy, nullable) NSString *cancelTitle;
+@property (nonatomic, strong) UIView *dimmedBackgroundView;
+@property (nonatomic, strong) UIView *cardView;
+@property (nonatomic, strong) NSLayoutConstraint *cardBottomConstraint;
+
++ (void)presentIn:(UIViewController *)parent
+            title:(NSString *)title
+         subtitle:(nullable NSString *)subtitle
+         iconName:(nullable NSString *)iconName
+         iconTint:(nullable UIColor *)iconTint
+          options:(NSArray<PPSettingsActionModalOption *> *)options;
+@end
+
+@implementation PPSettingsActionModalVC
+
++ (void)presentIn:(UIViewController *)parent
+            title:(NSString *)title
+         subtitle:(NSString *)subtitle
+         iconName:(NSString *)iconName
+         iconTint:(UIColor *)iconTint
+          options:(NSArray<PPSettingsActionModalOption *> *)options
+{
+    PPSettingsActionModalVC *vc = [PPSettingsActionModalVC new];
+    vc.modalTitle = title;
+    vc.modalSubtitle = subtitle;
+    vc.headerIconName = iconName;
+    vc.headerIconTint = iconTint ?: AppPrimaryClr;
+    vc.options = options;
+    vc.modalPresentationStyle = UIModalPresentationOverFullScreen;
+    vc.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
+    [parent presentViewController:vc animated:NO completion:nil];
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    self.view.backgroundColor = UIColor.clearColor;
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIView *dimmed = [UIView new];
+    dimmed.translatesAutoresizingMaskIntoConstraints = NO;
+    dimmed.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.45];
+    dimmed.alpha = 0.0;
+    UITapGestureRecognizer *dismissTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissModalAnimated)];
+    [dimmed addGestureRecognizer:dismissTap];
+    [self.view addSubview:dimmed];
+    self.dimmedBackgroundView = dimmed;
+
+    UIView *card = [UIView new];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    card.layer.borderWidth = 1.0;
+    [card pp_setBorderColor:PPSettingsV6HairlineColor()];
+    card.layer.cornerRadius = 32.0;
+    if (@available(iOS 13.0, *)) card.layer.cornerCurve = kCACornerCurveContinuous;
+    if (@available(iOS 11.0, *)) {
+        card.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
+    }
+    card.layer.shadowColor = [UIColor blackColor].CGColor;
+    card.layer.shadowOpacity = 0.16;
+    card.layer.shadowRadius = 24.0;
+    card.layer.shadowOffset = CGSizeMake(0, -6);
+    card.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view addSubview:card];
+    self.cardView = card;
+
+    // Grabber pill
+    UIView *grabber = [UIView new];
+    grabber.translatesAutoresizingMaskIntoConstraints = NO;
+    grabber.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.20];
+    PPApplyContinuousCorners(grabber, 2.5);
+    [card addSubview:grabber];
+
+    // Icon Shell
+    UIView *iconShell = [UIView new];
+    iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+    iconShell.backgroundColor = [(self.headerIconTint ?: AppPrimaryClr) colorWithAlphaComponent:0.12];
+    PPApplyContinuousCorners(iconShell, 24.0);
+    [card addSubview:iconShell];
+
+    UIImageView *headerIcon = [UIImageView new];
+    headerIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    headerIcon.contentMode = UIViewContentModeScaleAspectFit;
+    UIImageSymbolConfiguration *symConf = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightSemibold];
+    headerIcon.image = [[UIImage systemImageNamed:(self.headerIconName ?: @"slider.horizontal.3") withConfiguration:symConf]
+                        imageWithTintColor:(self.headerIconTint ?: AppPrimaryClr) renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [iconShell addSubview:headerIcon];
+
+    // Title
+    UILabel *titleLabel = [UILabel new];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+                       scaledFontForFont:([GM boldFontWithSize:20.0] ?: [UIFont systemFontOfSize:20 weight:UIFontWeightBold])];
+    titleLabel.adjustsFontForContentSizeCategory = YES;
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.numberOfLines = 2;
+    titleLabel.text = self.modalTitle ?: @"";
+    [card addSubview:titleLabel];
+
+    // Subtitle
+    UILabel *subtitleLabel = [UILabel new];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                          scaledFontForFont:([GM fontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightRegular])];
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    subtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    subtitleLabel.numberOfLines = 3;
+    subtitleLabel.text = self.modalSubtitle ?: @"";
+    [card addSubview:subtitleLabel];
+
+    // Options Stack
+    UIStackView *optionsStack = [UIStackView new];
+    optionsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    optionsStack.axis = UILayoutConstraintAxisVertical;
+    optionsStack.spacing = 10.0;
+    optionsStack.distribution = UIStackViewDistributionFill;
+    optionsStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [card addSubview:optionsStack];
+
+    for (NSInteger i = 0; i < (NSInteger)self.options.count; i++) {
+        PPSettingsActionModalOption *option = self.options[i];
+        UIView *optionCard = [self pp_buildOptionCardForOption:option index:i];
+        [optionsStack addArrangedSubview:optionCard];
+    }
+
+    // Cancel Button
+    UIButton *cancelBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    cancelBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    [cancelBtn setTitle:(self.cancelTitle ?: (kLang(@"cancel") ?: @"إلغاء")) forState:UIControlStateNormal];
+    cancelBtn.titleLabel.font = [GM boldFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
+    [cancelBtn setTitleColor:(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) forState:UIControlStateNormal];
+    cancelBtn.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [[UIColor whiteColor] colorWithAlphaComponent:0.08]
+            : [[UIColor blackColor] colorWithAlphaComponent:0.05];
+    }];
+    PPApplyContinuousCorners(cancelBtn, 16.0);
+    [cancelBtn addTarget:self action:@selector(pp_dismissModalAnimated) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:cancelBtn];
+
+    self.cardBottomConstraint = [card.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:600.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [dimmed.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [dimmed.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [dimmed.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [dimmed.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [card.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [card.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        self.cardBottomConstraint,
+
+        [grabber.topAnchor constraintEqualToAnchor:card.topAnchor constant:10.0],
+        [grabber.centerXAnchor constraintEqualToAnchor:card.centerXAnchor],
+        [grabber.widthAnchor constraintEqualToConstant:38.0],
+        [grabber.heightAnchor constraintEqualToConstant:5.0],
+
+        [iconShell.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:14.0],
+        [iconShell.centerXAnchor constraintEqualToAnchor:card.centerXAnchor],
+        [iconShell.widthAnchor constraintEqualToConstant:48.0],
+        [iconShell.heightAnchor constraintEqualToConstant:48.0],
+        [headerIcon.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
+        [headerIcon.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+        [headerIcon.widthAnchor constraintEqualToConstant:24.0],
+        [headerIcon.heightAnchor constraintEqualToConstant:24.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:iconShell.bottomAnchor constant:12.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-24.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-24.0],
+
+        [optionsStack.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:16.0],
+        [optionsStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:PPScreenMargin],
+        [optionsStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-PPScreenMargin],
+
+        [cancelBtn.topAnchor constraintEqualToAnchor:optionsStack.bottomAnchor constant:14.0],
+        [cancelBtn.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:PPScreenMargin],
+        [cancelBtn.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-PPScreenMargin],
+        [cancelBtn.heightAnchor constraintEqualToConstant:50.0],
+        [cancelBtn.bottomAnchor constraintEqualToAnchor:card.safeAreaLayoutGuide.bottomAnchor constant:-14.0]
+    ]];
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    self.cardBottomConstraint.constant = 0.0;
+    [UIView animateWithDuration:0.38
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.25
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        [self.view layoutIfNeeded];
+        self.dimmedBackgroundView.alpha = 1.0;
+    } completion:nil];
+}
+
+- (UIView *)pp_buildOptionCardForOption:(PPSettingsActionModalOption *)option index:(NSInteger)index
+{
+    UIView *card = [UIView new];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.tag = index;
+    card.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    PPApplyContinuousCorners(card, 18.0);
+    card.layer.borderWidth = option.isSelected ? 1.8 : 1.0;
+    
+    UIColor *borderClr = option.isSelected
+        ? (option.isDestructive ? UIColor.systemRedColor : (AppPrimaryClr ?: UIColor.systemPinkColor))
+        : PPSettingsV6HairlineColor();
+    [card pp_setBorderColor:borderClr];
+
+    card.backgroundColor = option.isSelected
+        ? [(option.isDestructive ? UIColor.systemRedColor : (AppPrimaryClr ?: UIColor.systemPinkColor)) colorWithAlphaComponent:0.08]
+        : [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [[UIColor whiteColor] colorWithAlphaComponent:0.05]
+                : [[UIColor blackColor] colorWithAlphaComponent:0.03];
+        }];
+
+    // Leading Container (Swatches or Icon Shell)
+    UIView *leadingContainer = [UIView new];
+    leadingContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    leadingContainer.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [card addSubview:leadingContainer];
+
+    if (option.swatches.count > 1) {
+        UIView *iconShell = [UIView new];
+        iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+        iconShell.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [[UIColor whiteColor] colorWithAlphaComponent:0.08]
+                : [[UIColor blackColor] colorWithAlphaComponent:0.04];
+        }];
+        PPApplyContinuousCorners(iconShell, 14.0);
+        [leadingContainer addSubview:iconShell];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [iconShell.leadingAnchor constraintEqualToAnchor:leadingContainer.leadingAnchor],
+            [iconShell.trailingAnchor constraintEqualToAnchor:leadingContainer.trailingAnchor],
+            [iconShell.topAnchor constraintEqualToAnchor:leadingContainer.topAnchor],
+            [iconShell.bottomAnchor constraintEqualToAnchor:leadingContainer.bottomAnchor]
+        ]];
+
+        UIStackView *gridStack = [UIStackView new];
+        gridStack.translatesAutoresizingMaskIntoConstraints = NO;
+        gridStack.axis = UILayoutConstraintAxisVertical;
+        gridStack.spacing = 3.5;
+        gridStack.alignment = UIStackViewAlignmentCenter;
+        gridStack.distribution = UIStackViewDistributionEqualSpacing;
+        [iconShell addSubview:gridStack];
+
+        UIStackView *row1 = [UIStackView new];
+        row1.translatesAutoresizingMaskIntoConstraints = NO;
+        row1.axis = UILayoutConstraintAxisHorizontal;
+        row1.spacing = 3.5;
+        row1.alignment = UIStackViewAlignmentCenter;
+        [gridStack addArrangedSubview:row1];
+
+        UIStackView *row2 = [UIStackView new];
+        row2.translatesAutoresizingMaskIntoConstraints = NO;
+        row2.axis = UILayoutConstraintAxisHorizontal;
+        row2.spacing = 3.5;
+        row2.alignment = UIStackViewAlignmentCenter;
+        [gridStack addArrangedSubview:row2];
+
+        NSInteger total = option.swatches.count;
+        for (NSInteger sIdx = 0; sIdx < total; sIdx++) {
+            UIColor *color = option.swatches[sIdx];
+            UIView *dot = [UIView new];
+            dot.translatesAutoresizingMaskIntoConstraints = NO;
+            dot.backgroundColor = color;
+            dot.layer.cornerRadius = 5.5;
+            dot.clipsToBounds = YES;
+            dot.layer.borderWidth = 1.0;
+            [dot pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.6]];
+            
+            [NSLayoutConstraint activateConstraints:@[
+                [dot.widthAnchor constraintEqualToConstant:11.5],
+                [dot.heightAnchor constraintEqualToConstant:11.5]
+            ]];
+            
+            if (sIdx < 2) {
+                [row1 addArrangedSubview:dot];
+            } else {
+                [row2 addArrangedSubview:dot];
+            }
+        }
+
+        [NSLayoutConstraint activateConstraints:@[
+            [gridStack.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+            [gridStack.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor]
+        ]];
+    } else if (option.swatches.count == 1) {
+        UIView *iconShell = [UIView new];
+        iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+        UIColor *tint = option.swatches.firstObject;
+        iconShell.backgroundColor = [tint colorWithAlphaComponent:0.14];
+        PPApplyContinuousCorners(iconShell, 14.0);
+        [leadingContainer addSubview:iconShell];
+
+        UIView *dot = [UIView new];
+        dot.translatesAutoresizingMaskIntoConstraints = NO;
+        dot.backgroundColor = tint;
+        dot.layer.cornerRadius = 10.0;
+        dot.clipsToBounds = YES;
+        dot.layer.borderWidth = 1.5;
+        [dot pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.7]];
+        [iconShell addSubview:dot];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [iconShell.leadingAnchor constraintEqualToAnchor:leadingContainer.leadingAnchor],
+            [iconShell.trailingAnchor constraintEqualToAnchor:leadingContainer.trailingAnchor],
+            [iconShell.topAnchor constraintEqualToAnchor:leadingContainer.topAnchor],
+            [iconShell.bottomAnchor constraintEqualToAnchor:leadingContainer.bottomAnchor],
+
+            [dot.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
+            [dot.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+            [dot.widthAnchor constraintEqualToConstant:20.0],
+            [dot.heightAnchor constraintEqualToConstant:20.0]
+        ]];
+    } else {
+        UIView *iconShell = [UIView new];
+        iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+        UIColor *tint = option.isDestructive ? UIColor.systemRedColor : (option.iconTint ?: AppPrimaryClr);
+        iconShell.backgroundColor = [tint colorWithAlphaComponent:0.12];
+        PPApplyContinuousCorners(iconShell, 14.0);
+        [leadingContainer addSubview:iconShell];
+
+        UIImageView *icon = [UIImageView new];
+        icon.translatesAutoresizingMaskIntoConstraints = NO;
+        icon.contentMode = UIViewContentModeScaleAspectFit;
+        UIImageSymbolConfiguration *sym = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold];
+        icon.image = [[UIImage systemImageNamed:(option.iconName ?: @"circle.fill") withConfiguration:sym]
+                      imageWithTintColor:tint renderingMode:UIImageRenderingModeAlwaysOriginal];
+        [iconShell addSubview:icon];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [iconShell.leadingAnchor constraintEqualToAnchor:leadingContainer.leadingAnchor],
+            [iconShell.trailingAnchor constraintEqualToAnchor:leadingContainer.trailingAnchor],
+            [iconShell.topAnchor constraintEqualToAnchor:leadingContainer.topAnchor],
+            [iconShell.bottomAnchor constraintEqualToAnchor:leadingContainer.bottomAnchor],
+            [icon.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
+            [icon.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+            [icon.widthAnchor constraintEqualToConstant:20.0],
+            [icon.heightAnchor constraintEqualToConstant:20.0]
+        ]];
+    }
+
+    // Trailing Checkmark / Radio
+    UIImageView *checkIcon = [UIImageView new];
+    checkIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    checkIcon.contentMode = UIViewContentModeScaleAspectFit;
+    UIImageSymbolConfiguration *chkConf = [UIImageSymbolConfiguration configurationWithPointSize:19 weight:UIImageSymbolWeightSemibold];
+    if (option.isSelected) {
+        UIColor *tint = option.isDestructive ? UIColor.systemRedColor : (AppPrimaryClr ?: UIColor.systemPinkColor);
+        checkIcon.image = [[UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:chkConf]
+                           imageWithTintColor:tint renderingMode:UIImageRenderingModeAlwaysOriginal];
+    } else {
+        checkIcon.image = [[UIImage systemImageNamed:@"circle" withConfiguration:chkConf]
+                           imageWithTintColor:(AppTertiaryTextClr ?: UIColor.tertiaryLabelColor) renderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
+    [card addSubview:checkIcon];
+
+    // Title & Subtitle Labels
+    UILabel *titleLbl = [UILabel new];
+    titleLbl.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLbl.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+                     scaledFontForFont:([GM boldFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightBold])];
+    titleLbl.adjustsFontForContentSizeCategory = YES;
+    titleLbl.textColor = option.isDestructive ? UIColor.systemRedColor : (AppPrimaryTextClr ?: UIColor.labelColor);
+    titleLbl.textAlignment = [Language alignmentForCurrentLanguage];
+    titleLbl.text = option.title ?: @"";
+    [card addSubview:titleLbl];
+
+    UILabel *subLbl = [UILabel new];
+    subLbl.translatesAutoresizingMaskIntoConstraints = NO;
+    subLbl.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+                   scaledFontForFont:([GM fontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5])];
+    subLbl.adjustsFontForContentSizeCategory = YES;
+    subLbl.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    subLbl.textAlignment = [Language alignmentForCurrentLanguage];
+    subLbl.numberOfLines = 2;
+    subLbl.text = option.subtitle ?: @"";
+    [card addSubview:subLbl];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [leadingContainer.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:14.0],
+        [leadingContainer.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
+        [leadingContainer.widthAnchor constraintEqualToConstant:40.0],
+        [leadingContainer.heightAnchor constraintEqualToConstant:40.0],
+
+        [checkIcon.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-16.0],
+        [checkIcon.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
+        [checkIcon.widthAnchor constraintEqualToConstant:22.0],
+        [checkIcon.heightAnchor constraintEqualToConstant:22.0],
+
+        [titleLbl.leadingAnchor constraintEqualToAnchor:leadingContainer.trailingAnchor constant:12.0],
+        [titleLbl.trailingAnchor constraintLessThanOrEqualToAnchor:checkIcon.leadingAnchor constant:-10.0],
+        [titleLbl.topAnchor constraintEqualToAnchor:card.topAnchor constant:14.0],
+
+        [subLbl.leadingAnchor constraintEqualToAnchor:titleLbl.leadingAnchor],
+        [subLbl.trailingAnchor constraintLessThanOrEqualToAnchor:checkIcon.leadingAnchor constant:-10.0],
+        [subLbl.topAnchor constraintEqualToAnchor:titleLbl.bottomAnchor constant:3.0],
+        [subLbl.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-14.0],
+
+        [card.heightAnchor constraintGreaterThanOrEqualToConstant:68.0]
+    ]];
+
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_optionCardTapped:)];
+    [card addGestureRecognizer:tap];
+    card.userInteractionEnabled = YES;
+
+    return card;
+}
+
+- (void)pp_optionCardTapped:(UITapGestureRecognizer *)sender
+{
+    NSInteger index = sender.view.tag;
+    if (index < 0 || index >= (NSInteger)self.options.count) return;
+
+    UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+    [haptic impactOccurred];
+
+    PPSettingsActionModalOption *option = self.options[index];
+    [UIView animateWithDuration:0.10 animations:^{
+        sender.view.transform = CGAffineTransformMakeScale(0.97, 0.97);
+        sender.view.alpha = 0.85;
+    } completion:^(BOOL finished) {
+        [self pp_dismissModalWithCompletion:^{
+            if (option.actionBlock) option.actionBlock();
+        }];
+    }];
+}
+
+- (void)pp_dismissModalAnimated
+{
+    [self pp_dismissModalWithCompletion:nil];
+}
+
+- (void)pp_dismissModalWithCompletion:(dispatch_block_t)completion
+{
+    self.cardBottomConstraint.constant = 600.0;
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn
+                     animations:^{
+        [self.view layoutIfNeeded];
+        self.dimmedBackgroundView.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        [self dismissViewControllerAnimated:NO completion:completion];
+    }];
 }
 
 @end
@@ -1462,14 +2063,38 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 #pragma mark - Lifecycle
 
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    self.hidesBottomBarWhenPushed = YES;
     self.prefs = [NSUserDefaults standardUserDefaults];
     self.alertAppear = NO;
     self.view.backgroundColor = AppBackgroundClr;
     self.navigationItem.title = @"";
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
+
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
+                      button:nil
+                       title:nil
+                    showBack:YES];
 
     [self pp_setupTableView];
     [self pp_configureSettingsLocationStateMachine];
@@ -1478,15 +2103,31 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
- }
+}
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
+    }
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
+                      button:nil
+                       title:nil
+                    showBack:YES];
     [self pp_configureSettingsLocationStateMachine];
     [self pp_buildSections];
     [self.tableView reloadData];
     [self pp_refreshNotificationStatusAsync];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
+    }
 }
 
 - (void)dealloc
@@ -2271,7 +2912,8 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 {
     UIImageView *chevron = [[UIImageView alloc] initWithFrame:CGRectZero];
     UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:13 weight:UIImageSymbolWeightSemibold];
-    chevron.image = [[UIImage systemImageNamed:@"chevron.forward" withConfiguration:config]
+    NSString *chevronName = Language.isRTL ? @"chevron.backward" : @"chevron.forward";
+    chevron.image = [[UIImage systemImageNamed:chevronName withConfiguration:config]
                      imageWithTintColor:(AppTertiaryTextClr ?: UIColor.tertiaryLabelColor)
                      renderingMode:UIImageRenderingModeAlwaysOriginal];
     chevron.contentMode = UIViewContentModeScaleAspectFit;
@@ -2354,9 +2996,15 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
             kLang(@"DarkMode") ?: @"Dark",
             kLang(@"SystemMode") ?: @"System"
         ];
+        NSArray *icons = @[
+            @"sun.max.fill",
+            @"moon.fill",
+            @"circle.lefthalf.filled"
+        ];
         [cell configureTitle:row.title
                         icon:(row.iconName ?: @"circle.lefthalf.filled")
                       titles:titles
+                       icons:icons
                selectedIndex:row.themeIndex
                        first:first
                         last:last
@@ -2367,6 +3015,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         [cell configureTitle:row.title
                         icon:(row.iconName ?: @"globe")
                       titles:@[@"العربية", @"English"]
+                       icons:@[@"globe.central.south.asia.fill", @"globe.americas.fill"]
                selectedIndex:row.languageIndex
                        first:first
                         last:last
@@ -2377,6 +3026,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         [cell configureTitle:row.title
                         icon:(row.iconName ?: @"slider.horizontal.3")
                       titles:(row.segmentTitles ?: @[])
+                       icons:nil
                selectedIndex:row.segmentIndex
                        first:first
                         last:last
@@ -3032,35 +3682,45 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     if (self.alertAppear) return;
     self.alertAppear = YES;
 
-    NSString *title = kLang(@"Language Setup");
-    NSString *changeTitle = ([Language languageVal] == 0) ? kLang(@"Switch to Arabic") : kLang(@"Switch to English");
-    NSString *cancelTitle = kLang(@"cancel");
-
+    BOOL isCurrentlyArabic = (Language.isRTL || [Language languageVal] == 0);
     __weak typeof(self) weakSelf = self;
-    [PPAlertHelper showConfirmationIn:(viewController ?: AppMgr.topViewController)
-                                title:title
-                             subtitle:changeTitle
-                        confirmButton:changeTitle
-                         cancelButton:cancelTitle
-                                 icon:PPSYSImage(@"globe.central.south.asia.fill")
-                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        if (!didConfirm) { strongSelf.alertAppear = NO; return; }
 
-        NSInteger newLangVal = ([Language languageVal] == 0) ? 1 : 0;
-        [Language userSelectedLanguage:LanguageCode[newLangVal]];
-        
-        
-        strongSelf.alertAppear = NO;
-    }
-                           cancelBlock:^{
+    PPSettingsActionModalOption *arabicOpt = [PPSettingsActionModalOption new];
+    arabicOpt.title = @"العربية (RTL)";
+    arabicOpt.subtitle = PPSettingsLocalizedString(@"settings_lang_ar_desc", @"تطبيق الواجهة العربية وتخطيط الاتجاه من اليمين لليسار");
+    arabicOpt.iconName = @"globe.central.south.asia.fill";
+    arabicOpt.iconTint = AppPrimaryClr ?: UIColor.systemPinkColor;
+    arabicOpt.isSelected = isCurrentlyArabic;
+    arabicOpt.actionBlock = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        [strongSelf pp_buildSections];
-        [strongSelf.tableView reloadData];
         strongSelf.alertAppear = NO;
-    }];
+        if (!isCurrentlyArabic) {
+            [Language userSelectedLanguage:@"ar"];
+        }
+    };
+
+    PPSettingsActionModalOption *englishOpt = [PPSettingsActionModalOption new];
+    englishOpt.title = @"English (LTR)";
+    englishOpt.subtitle = PPSettingsLocalizedString(@"settings_lang_en_desc", @"Apply English interface with Left-to-Right layout direction");
+    englishOpt.iconName = @"globe.americas.fill";
+    englishOpt.iconTint = AppPrimaryClr ?: UIColor.systemPinkColor;
+    englishOpt.isSelected = !isCurrentlyArabic;
+    englishOpt.actionBlock = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.alertAppear = NO;
+        if (isCurrentlyArabic) {
+            [Language userSelectedLanguage:@"en"];
+        }
+    };
+
+    [PPSettingsActionModalVC presentIn:(viewController ?: self)
+                                title:kLang(@"Language Setup") ?: @"Language Setup"
+                             subtitle:PPSettingsLocalizedString(@"settings_language_switch_subtitle", @"Changing language updates all app interfaces and layout direction.")
+                             iconName:@"globe"
+                             iconTint:AppPrimaryClr ?: UIColor.systemPinkColor
+                              options:@[arabicOpt, englishOpt]];
 }
 
 #pragma mark - Notifications
@@ -3144,56 +3804,44 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_presentMarketplaceAccentOptions
 {
-    BOOL usesMainKindColors =
-        [self.prefs boolForKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
-    NSString *brandTitle =
-        PPSettingsLocalizedString(@"settings_marketplace_accent_brand",
-                                  @"Pure Pets brand color");
-    NSString *mainKindTitle =
-        PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind",
-                                  @"Pet category colors");
-    NSString *currentTitle = usesMainKindColors ? mainKindTitle : brandTitle;
-    NSString *messageFormat =
-        PPSettingsLocalizedString(@"settings_marketplace_accent_message_format",
-                                  @"Currently using %@. Choose how marketplace accents should appear.");
-
-    UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:
-            PPSettingsLocalizedString(@"settings_marketplace_accent_title",
-                                      @"Marketplace accent color")
-                                         message:[NSString stringWithFormat:messageFormat, currentTitle]
-                                  preferredStyle:UIAlertControllerStyleActionSheet];
+    BOOL usesMainKindColors = [self.prefs boolForKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
     __weak typeof(self) weakSelf = self;
-    UIAlertAction *brandAction =
-        [UIAlertAction actionWithTitle:brandTitle
-                                 style:UIAlertActionStyleDefault
-                               handler:^(__unused UIAlertAction *action) {
-        [weakSelf pp_applyMarketplaceUsesMainKindColors:NO];
-    }];
-    UIAlertAction *mainKindAction =
-        [UIAlertAction actionWithTitle:mainKindTitle
-                                 style:UIAlertActionStyleDefault
-                               handler:^(__unused UIAlertAction *action) {
-        [weakSelf pp_applyMarketplaceUsesMainKindColors:YES];
-    }];
-    [alert addAction:brandAction];
-    [alert addAction:mainKindAction];
-    [alert addAction:
-        [UIAlertAction actionWithTitle:(kLang(@"cancel") ?: @"Cancel")
-                                 style:UIAlertActionStyleCancel
-                               handler:nil]];
-    alert.preferredAction = usesMainKindColors ? mainKindAction : brandAction;
 
-    UIPopoverPresentationController *popover = alert.popoverPresentationController;
-    if (popover) {
-        popover.sourceView = self.view;
-        popover.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
-                                        CGRectGetMidY(self.view.bounds),
-                                        1.0,
-                                        1.0);
-        popover.permittedArrowDirections = 0;
-    }
-    [self presentViewController:alert animated:YES completion:nil];
+    PPSettingsActionModalOption *mainKindOpt = [PPSettingsActionModalOption new];
+    mainKindOpt.title = PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind", @"Pet category colors");
+    mainKindOpt.subtitle = PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind_desc", @"Dynamic color highlights for dogs, cats, birds, and small pets");
+    mainKindOpt.iconName = @"paintpalette.fill";
+    mainKindOpt.iconTint = UIColor.systemBlueColor;
+    mainKindOpt.swatches = @[
+        [UIColor systemBlueColor],
+        [UIColor systemOrangeColor],
+        [UIColor systemGreenColor],
+        [UIColor systemPurpleColor]
+    ];
+    mainKindOpt.isSelected = usesMainKindColors;
+    mainKindOpt.actionBlock = ^{
+        [weakSelf pp_applyMarketplaceUsesMainKindColors:YES];
+    };
+
+    PPSettingsActionModalOption *brandOpt = [PPSettingsActionModalOption new];
+    brandOpt.title = PPSettingsLocalizedString(@"settings_marketplace_accent_brand", @"Pure Pets brand color");
+    brandOpt.subtitle = PPSettingsLocalizedString(@"settings_marketplace_accent_brand_desc", @"Signature Pure Pets luxury brand accent across the marketplace");
+    brandOpt.iconName = @"app.badge.fill";
+    brandOpt.iconTint = AppPrimaryClr ?: UIColor.systemPinkColor;
+    brandOpt.swatches = @[
+        AppPrimaryClr ?: UIColor.systemPinkColor
+    ];
+    brandOpt.isSelected = !usesMainKindColors;
+    brandOpt.actionBlock = ^{
+        [weakSelf pp_applyMarketplaceUsesMainKindColors:NO];
+    };
+
+    [PPSettingsActionModalVC presentIn:self
+                                title:PPSettingsLocalizedString(@"settings_marketplace_accent_title", @"Marketplace accent color")
+                             subtitle:PPSettingsLocalizedString(@"settings_marketplace_accent_subtitle", @"Choose how category accents and highlights appear across the marketplace.")
+                             iconName:@"paintpalette.fill"
+                             iconTint:AppPrimaryClr ?: UIColor.systemPinkColor
+                              options:@[mainKindOpt, brandOpt]];
 }
 
 - (void)pp_applyMarketplaceUsesMainKindColors:(BOOL)usesMainKindColors
@@ -3234,39 +3882,43 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"kmessagesSetPalce")
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    NSInteger savedPrivacy = [self.prefs integerForKey:kSettingsMessagesPrivacyKey];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"everyone") ?: @"Everyone")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction *a) {
+
+    PPSettingsActionModalOption *everyoneOpt = [PPSettingsActionModalOption new];
+    everyoneOpt.title = kLang(@"everyone") ?: @"Everyone";
+    everyoneOpt.subtitle = PPSettingsLocalizedString(@"settings_messages_everyone_desc", @"Allow all verified buyers, sellers, and vets to start a chat with you");
+    everyoneOpt.iconName = @"person.2.fill";
+    everyoneOpt.iconTint = AppPrimaryClr ?: UIColor.systemPinkColor;
+    everyoneOpt.isSelected = (savedPrivacy == 0);
+    everyoneOpt.actionBlock = ^{
         [weakSelf.prefs setInteger:0 forKey:kSettingsMessagesPrivacyKey];
-        [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+        [weakSelf pp_buildSections];
+        [weakSelf.tableView reloadData];
         [PPHUD showSuccess:PPSettingsLocalizedString(@"settings_messages_everyone_success",
                                                      @"Conversations from everyone enabled")];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"noOne") ?: @"No one")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction *a) {
+    };
+
+    PPSettingsActionModalOption *noOneOpt = [PPSettingsActionModalOption new];
+    noOneOpt.title = kLang(@"noOne") ?: @"No one";
+    noOneOpt.subtitle = PPSettingsLocalizedString(@"settings_messages_no_one_desc", @"Disable incoming new chat requests from other members");
+    noOneOpt.iconName = @"lock.shield.fill";
+    noOneOpt.iconTint = UIColor.systemRedColor;
+    noOneOpt.isSelected = (savedPrivacy == 1);
+    noOneOpt.actionBlock = ^{
         [weakSelf.prefs setInteger:1 forKey:kSettingsMessagesPrivacyKey];
-        [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+        [weakSelf pp_buildSections];
+        [weakSelf.tableView reloadData];
         [PPHUD showSuccess:PPSettingsLocalizedString(@"settings_messages_no_one_success",
                                                      @"Conversations disabled")];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel") style:UIAlertActionStyleCancel handler:nil]];
+    };
 
-    UIPopoverPresentationController *popover = alert.popoverPresentationController;
-    if (popover) {
-        popover.sourceView = self.view;
-        popover.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
-                                        CGRectGetMidY(self.view.bounds),
-                                        1.0,
-                                        1.0);
-        popover.permittedArrowDirections = 0;
-    }
-
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPSettingsActionModalVC presentIn:self
+                                title:kLang(@"kmessagesSetPalce") ?: @"Messages Privacy"
+                             subtitle:PPSettingsLocalizedString(@"settings_messages_privacy_subtitle", @"Control who can initiate direct conversations with you.")
+                             iconName:@"message.fill"
+                             iconTint:AppPrimaryClr ?: UIColor.systemPinkColor
+                              options:@[everyoneOpt, noOneOpt]];
 }
 
 #pragma mark - Cache
@@ -3282,19 +3934,30 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_clearCache
 {
     __weak typeof(self) weakSelf = self;
-    [GM showDeleteConfirmationFrom:self
-                             title:(kLang(@"ClearCache") ?: @"Clear Cache")
-                           message:(kLang(@"ClearCacheMessage") ?: @"This will clear all cached images and data.")
-                        completion:^(BOOL confirmed) {
-        if (!confirmed) return;
+    NSString *cacheSize = [self pp_formattedCacheSize];
+
+    PPSettingsActionModalOption *clearOpt = [PPSettingsActionModalOption new];
+    clearOpt.title = kLang(@"ClearCache") ?: @"Clear Cache";
+    clearOpt.subtitle = [NSString stringWithFormat:@"%@ (%@)", kLang(@"ClearCacheMessage") ?: @"Free up device storage", cacheSize];
+    clearOpt.iconName = @"trash.fill";
+    clearOpt.iconTint = AppPrimaryClr ?: UIColor.systemPinkColor;
+    clearOpt.actionBlock = ^{
         [[SDImageCache sharedImageCache] clearMemory];
         [[SDImageCache sharedImageCache] clearDiskOnCompletion:^{
             dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+                [weakSelf pp_buildSections];
+                [weakSelf.tableView reloadData];
                 [PPHUD showSuccess:(kLang(@"CacheCleared") ?: @"Cache cleared")];
             });
         }];
-    }];
+    };
+
+    [PPSettingsActionModalVC presentIn:self
+                                title:kLang(@"ClearCache") ?: @"Clear Cache"
+                             subtitle:[NSString stringWithFormat:@"%@: %@", PPSettingsLocalizedString(@"current_cache_size", @"Current Cache Size"), cacheSize]
+                             iconName:@"internaldrive.fill"
+                             iconTint:AppPrimaryClr ?: UIColor.systemPinkColor
+                              options:@[clearOpt]];
 }
 
 #pragma mark - Legal
@@ -3314,30 +3977,23 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_confirmDeleteAccount
 {
-    NSString *title = PPSettingsLocalizedString(@"delete_account", @"Delete Account");
-    NSString *message = PPSettingsLocalizedString(@"delete_account_warning", @"This will permanently delete your account and remove access to your Pure Pets data. This action cannot be undone.");
-
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                  message:message
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"Delete") ?: @"Delete")
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(UIAlertAction *action) {
+    PPSettingsActionModalOption *deleteOpt = [PPSettingsActionModalOption new];
+    deleteOpt.title = PPSettingsLocalizedString(@"delete_account", @"Delete Account");
+    deleteOpt.subtitle = PPSettingsLocalizedString(@"settings_delete_confirm_desc", @"Permanently delete your account, listings, and messages. This action cannot be undone.");
+    deleteOpt.iconName = @"trash.fill";
+    deleteOpt.iconTint = UIColor.systemRedColor;
+    deleteOpt.isDestructive = YES;
+    deleteOpt.actionBlock = ^{
         [weakSelf pp_executeAccountDeletion];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel") ?: @"Cancel"
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
+    };
 
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-        alert.popoverPresentationController.sourceView = self.view;
-        alert.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
-                                                                     CGRectGetMidY(self.view.bounds), 0, 0);
-        alert.popoverPresentationController.permittedArrowDirections = 0;
-    }
-
-    [self presentViewController:alert animated:YES completion:nil];
+    [PPSettingsActionModalVC presentIn:self
+                                title:PPSettingsLocalizedString(@"delete_account", @"Delete Account")
+                             subtitle:PPSettingsLocalizedString(@"delete_account_warning", @"This will permanently delete your account and remove access to your Pure Pets data.")
+                             iconName:@"exclamationmark.triangle.fill"
+                             iconTint:UIColor.systemRedColor
+                              options:@[deleteOpt]];
 }
 
 - (void)pp_executeAccountDeletion
@@ -3439,18 +4095,22 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_confirmLogout
 {
     __weak typeof(self) weakSelf = self;
-    [PPAlertHelper showConfirmationIn:self
+    PPSettingsActionModalOption *logoutOpt = [PPSettingsActionModalOption new];
+    logoutOpt.title = PPSettingsLocalizedString(@"Logout", @"Logout");
+    logoutOpt.subtitle = PPSettingsLocalizedString(@"LogoutConfirmSubtitle", @"Sign out from this device. Your saved data remains secure.");
+    logoutOpt.iconName = @"rectangle.portrait.and.arrow.right";
+    logoutOpt.iconTint = UIColor.systemOrangeColor;
+    logoutOpt.isDestructive = YES;
+    logoutOpt.actionBlock = ^{
+        [weakSelf pp_performLogout];
+    };
+
+    [PPSettingsActionModalVC presentIn:self
                                 title:PPSettingsLocalizedString(@"Logout", @"Logout")
                              subtitle:PPSettingsLocalizedString(@"LogoutMessage", @"Are you sure you want to log out?")
-                        confirmButton:PPSettingsLocalizedString(@"Logout", @"Logout")
-                         cancelButton:PPSettingsLocalizedString(@"cancel", @"Cancel")
-                                 icon:PPSYSImage(@"rectangle.portrait.and.arrow.right")
-                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
-        if (!didConfirm) return;
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        [strongSelf pp_performLogout];
-    } cancelBlock:^{}];
+                             iconName:@"rectangle.portrait.and.arrow.right"
+                             iconTint:UIColor.systemOrangeColor
+                              options:@[logoutOpt]];
 }
 
 - (void)pp_performLogout

@@ -553,6 +553,7 @@ private struct PPSellerProfileScreen: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.layoutDirection) private var layoutDirection
 
     private let columns = [
         GridItem(.flexible(), spacing: PPSpace.md),
@@ -560,13 +561,16 @@ private struct PPSellerProfileScreen: View {
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PPSpace.xl) {
-                hero
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: PPSpace.lg) {
+                topNavigationBar
+                heroCard
+                assuranceBanner
                 productsSection
             }
             .padding(.horizontal, PPSpace.base)
-            .padding(.bottom, max(PPSpace.xxxl, store.bottomClearance))
+            .padding(.top, PPSpace.xs)
+            .padding(.bottom, max(PPSpace.xxxl, store.bottomClearance + PPSpace.xl))
         }
         .background(Color.ppBackground.ignoresSafeArea())
         .sheet(isPresented: $store.showsRatingSheet) {
@@ -575,154 +579,337 @@ private struct PPSellerProfileScreen: View {
         .accessibilityIdentifier("sellerProfileSwiftUIScreen")
     }
 
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: PPSpace.lg) {
-            HStack {
-                circularAction(
-                    symbol: "chevron.backward",
-                    labelKey: "Back",
-                    action: onBack
-                )
-                Spacer(minLength: 0)
-                Button(action: onCart) {
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: "cart.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .frame(width: 44, height: 44)
-                        if store.cartCount > 0 {
-                            Text("\(store.cartCount)")
-                                .font(.custom("Beiruti-Bold", size: 11, relativeTo: .caption2))
-                                .foregroundStyle(Color.white)
-                                .frame(minWidth: 18, minHeight: 18)
-                                .background(Color.ppPrimary, in: Capsule(style: .continuous))
-                                .offset(x: 4, y: -4)
+    // MARK: - Top Navigation Bar
+    private var topNavigationBar: some View {
+        HStack(spacing: PPSpace.md) {
+            Button(action: {
+                PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+                onBack()
+            }) {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.ppSurface, in: Circle())
+                    .overlay(Circle().stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 1.0))
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(PPProviderStorefrontL10n.text("Back"))
+
+            Spacer(minLength: 0)
+
+            // Centered Category Pill
+            HStack(spacing: 5) {
+                Image(systemName: store.isPharmacyStorefront ? "cross.case.fill" : "storefront.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.ppPrimary)
+                Text(store.categoryTitle)
+                    .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+                    .foregroundStyle(Color.ppTextPrimary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.ppSurface, in: Capsule(style: .continuous))
+            .overlay(Capsule(style: .continuous).stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 1.0))
+            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+
+            Spacer(minLength: 0)
+
+            // Cart Action
+            Button(action: {
+                PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+                onCart()
+            }) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(Color.ppSurface, in: Circle())
+                        .overlay(Circle().stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 1.0))
+                        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+
+                    if store.cartCount > 0 {
+                        Text("\(store.cartCount)")
+                            .font(.custom("Beiruti-Bold", size: 11, relativeTo: .caption2))
+                            .foregroundStyle(Color.white)
+                            .frame(minWidth: 18, minHeight: 18)
+                            .background(Color.ppPrimary, in: Capsule(style: .continuous))
+                            .overlay(Capsule(style: .continuous).stroke(Color.ppSurface, lineWidth: 1.5))
+                            .offset(x: 3, y: -3)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(PPProviderStorefrontL10n.text("Cart"))
+            .accessibilityHint(PPProviderStorefrontL10n.text("a11y_btn_cart_hint"))
+        }
+        .padding(.vertical, PPSpace.xs)
+    }
+
+    // MARK: - Hero Card
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            // Identity Row: Avatar + Details
+            HStack(alignment: .center, spacing: PPSpace.base) {
+                // Avatar with Squircle & Verified Seal
+                ZStack(alignment: .bottomTrailing) {
+                    AppRemoteImage(
+                        urlString: store.sellerAvatarURL,
+                        displaySize: CGSize(width: 82, height: 82),
+                        contentMode: .fill,
+                        showsRetryAction: false,
+                        placeholder: {
+                            Color.ppSecondarySurface
+                        },
+                        failurePlaceholder: {
+                            Color.ppSecondarySurface
+                        }
+                    )
+                    .frame(width: 82, height: 82)
+                    .clipped()
+                    .background(Color.ppSecondarySurface)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.ppSurfaceBorder.opacity(0.9), lineWidth: 1.2)
+                    }
+                    .shadow(color: Color.black.opacity(0.06), radius: 10, y: 4)
+
+                    if store.sellerIsVerified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(Color.ppSuccess)
+                            .background(Color.ppSurface, in: Circle())
+                            .overlay(Circle().stroke(Color.ppSurface, lineWidth: 2))
+                            .offset(x: 4, y: 4)
+                            .shadow(color: Color.ppSuccess.opacity(0.3), radius: 4, y: 2)
+                    }
+                }
+
+                // Info Stack with enhanced breathing room
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Text(store.categoryTitle)
+                            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+                            .foregroundStyle(Color.ppPrimary)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 3.5)
+                            .background(Color.ppPrimary.opacity(0.09), in: Capsule(style: .continuous))
+
+                        if store.sellerIsVerified {
+                            Text(store.statusText)
+                                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+                                .foregroundStyle(Color.ppSuccess)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 3.5)
+                                .background(Color.ppSuccess.opacity(0.09), in: Capsule(style: .continuous))
                         }
                     }
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.ppTextPrimary)
-                .background(Color.ppSurface, in: Circle())
-                .accessibilityLabel(PPProviderStorefrontL10n.text("Cart"))
-                .accessibilityHint(PPProviderStorefrontL10n.text("a11y_btn_cart_hint"))
-            }
+                    .padding(.top, 2)
+                    .padding(.bottom, 2)
 
-            HStack(alignment: .top, spacing: PPSpace.base) {
-                AppRemoteImage(
-                    urlString: store.sellerAvatarURL,
-                    displaySize: CGSize(width: 76, height: 76),
-                    contentMode: .fill,
-                    showsRetryAction: false,
-                    placeholder: {
-                        Color.clear
-                    },
-                    failurePlaceholder: {
-                        Color.clear
-                    }
-                )
-                .frame(width: 76, height: 76)
-                .clipped()
-                .background(Color.ppSecondarySurface)
-                .clipShape(Circle())
-                .overlay {
-                    Circle().stroke(Color.ppSurfaceBorder, lineWidth: contrast == .increased ? 1.4 : 1)
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    if !store.statusText.isEmpty {
-                        Image(systemName: store.sellerIsVerified ? "checkmark.seal.fill" : "circle.fill")
-                            .font(.system(size: store.sellerIsVerified ? 18 : 10, weight: .bold))
-                            .foregroundStyle(store.sellerIsVerified ? Color.ppSuccess : Color.ppPrimary)
-                            .padding(PPSpace.xxs)
-                            .background(Color.ppSurface, in: Circle())
-                            .accessibilityHidden(true)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                    Text(store.categoryTitle)
-                        .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                        .foregroundStyle(Color.ppPrimary)
                     Text(store.sellerDisplayName)
-                        .font(.custom("Beiruti-Bold", size: 25, relativeTo: .title2))
+                        .font(.custom("Beiruti-Bold", size: 23, relativeTo: .title2))
                         .foregroundStyle(Color.ppTextPrimary)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.78)
+                        .minimumScaleFactor(0.8)
+
                     Text(store.sellerAbout.isEmpty ? store.categorySupportText : store.sellerAbout)
-                        .font(.custom("Beiruti-Regular", size: 14, relativeTo: .body))
+                        .font(.custom("Beiruti-Regular", size: 13.5, relativeTo: .body))
                         .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(3)
-                    if !store.statusText.isEmpty {
-                        Text(store.statusText)
-                            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                            .foregroundStyle(Color.ppSuccess)
-                    }
+                        .lineLimit(2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Text(store.storefrontDescription)
-                .font(.custom("Beiruti-Regular", size: 14, relativeTo: .body))
-                .foregroundStyle(Color.ppTextSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
+            // Bento Metrics Horizon
             HStack(spacing: PPSpace.sm) {
-                Button(action: onMessage) {
-                    Label(
-                        PPProviderStorefrontL10n.text("message"),
-                        systemImage: "message.fill"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 46)
+                // Metric 1: Rating
+                HStack(spacing: 6) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color.ppPremiumAccent)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(store.ratingText)
+                            .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
+                            .foregroundStyle(Color.ppTextPrimary)
+                        Text(store.reviewCount > 0 ? "\(store.reviewCount) " + PPProviderStorefrontL10n.text("ratings_word") : PPProviderStorefrontL10n.text("provider_rating_new"))
+                            .font(.custom("Beiruti-Regular", size: 11, relativeTo: .caption2))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
                 }
-                .buttonStyle(PPSellerProfileActionButtonStyle(prominent: true))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.ppSecondarySurface.opacity(0.6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                // Metric 2: Products Count
+                HStack(spacing: 6) {
+                    Image(systemName: "shippingbox.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color.ppPrimary)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("\(store.items.count)")
+                            .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
+                            .foregroundStyle(Color.ppTextPrimary)
+                        Text(PPProviderStorefrontL10n.text("products_count_word"))
+                            .font(.custom("Beiruti-Regular", size: 11, relativeTo: .caption2))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.ppSecondarySurface.opacity(0.6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                // Metric 3: Pure Pets Guarantee
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color.ppSuccess)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(PPProviderStorefrontL10n.text("verified_guarantee_title"))
+                            .font(.custom("Beiruti-Bold", size: 13, relativeTo: .subheadline))
+                            .foregroundStyle(Color.ppTextPrimary)
+                        Text(PPProviderStorefrontL10n.text("pure_pets_assurance"))
+                            .font(.custom("Beiruti-Regular", size: 11, relativeTo: .caption2))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.ppSecondarySurface.opacity(0.6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            // Action Buttons
+            HStack(spacing: PPSpace.sm) {
+                // Direct Message Button
+                Button(action: {
+                    PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+                    onMessage()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 15, weight: .bold))
+                        Text(PPProviderStorefrontL10n.text("message"))
+                            .font(.custom("Beiruti-Bold", size: 15, relativeTo: .headline))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .foregroundStyle(Color.white)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.ppPrimary, Color.ppPrimary.opacity(0.90)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
+                    .shadow(color: Color.ppPrimary.opacity(0.25), radius: 8, y: 3)
+                }
+                .buttonStyle(PPSellerProfileScaleButtonStyle())
                 .disabled(store.seller == nil)
 
+                // Rate Action Button
                 if store.shouldShowRateAction {
-                    Button(action: onRate) {
-                        Label(store.rateActionTitle, systemImage: store.rateActionSymbol)
-                            .frame(maxWidth: .infinity, minHeight: 46)
+                    Button(action: {
+                        PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+                        onRate()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: store.rateActionSymbol)
+                                .font(.system(size: 14, weight: .bold))
+                            Text(store.rateActionTitle)
+                                .font(.custom("Beiruti-Bold", size: 14, relativeTo: .headline))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .foregroundStyle(store.canRateProvider ? Color.ppPremiumAccent : Color.ppTextSecondary)
+                        .background(
+                            (store.canRateProvider ? Color.ppPremiumAccent.opacity(0.12) : Color.ppSecondarySurface.opacity(0.8)),
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(store.canRateProvider ? Color.ppPremiumAccent.opacity(0.3) : Color.ppSurfaceBorder, lineWidth: 1.0)
+                        )
                     }
-                    .buttonStyle(PPSellerProfileActionButtonStyle(prominent: false))
+                    .buttonStyle(PPSellerProfileScaleButtonStyle())
                     .disabled(store.rateActionDisabled)
                 }
             }
-            .accessibilityElement(children: .contain)
-
-            HStack(spacing: PPSpace.sm) {
-                sellerMetric(
-                    symbol: "star.fill",
-                    text: store.ratingText,
-                    tint: Color.ppPremiumAccent
+        }
+        .padding(PPSpace.base)
+        .background(
+            ZStack {
+                Color.ppSurface
+                RadialGradient(
+                    colors: [Color.ppPrimary.opacity(0.05), Color.clear],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: 280
                 )
-                if store.reviewCount > 0 {
-                    sellerMetric(
-                        symbol: "text.bubble.fill",
-                        text: "\(store.reviewCount)",
-                        tint: Color.ppTextSecondary
-                    )
-                }
-                Spacer(minLength: 0)
             }
-        }
-        .padding(PPSpace.lg)
-        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
-                .stroke(Color.ppSurfaceBorder.opacity(contrast == .increased ? 1 : 0.78), lineWidth: contrast == .increased ? 1.2 : 0.8)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.ppSurfaceBorder.opacity(contrast == .increased ? 1.0 : 0.8), lineWidth: 1.0)
         }
-        .shadow(color: Color.ppPrimary.opacity(reduceMotion ? 0.04 : 0.10), radius: 22, y: 10)
-        .padding(.top, PPSpace.sm)
+        .shadow(color: Color.black.opacity(0.04), radius: 16, y: 6)
     }
 
+    // MARK: - Storefront Assurance Banner
+    private var assuranceBanner: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "shield.lefthalf.filled.badge.checkmark")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary)
+
+            Text(store.storefrontDescription)
+                .font(.custom("Beiruti-Regular", size: 13, relativeTo: .body))
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.ppSurface.opacity(0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.ppSurfaceBorder.opacity(0.6), lineWidth: 0.8)
+        )
+    }
+
+    // MARK: - Products Section
     private var productsSection: some View {
-        VStack(alignment: .leading, spacing: PPSpace.base) {
-            Text(store.itemsTitle)
-                .font(.custom("Beiruti-Bold", size: 22, relativeTo: .title3))
-                .foregroundStyle(Color.ppTextPrimary)
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            HStack(alignment: .center) {
+                Text(store.itemsTitle)
+                    .font(.custom("Beiruti-Bold", size: 21, relativeTo: .title3))
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                if !store.items.isEmpty {
+                    Text("(\(store.items.count))")
+                        .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
+                        .foregroundStyle(Color.ppPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.ppPrimary.opacity(0.10), in: Capsule(style: .continuous))
+                }
+
+                Spacer(minLength: 0)
+            }
 
             switch store.itemsPhase {
             case .loading:
                 ProgressView()
                     .tint(Color.ppPrimary)
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                    .frame(maxWidth: .infinity, minHeight: 140)
                     .accessibilityLabel(PPProviderStorefrontL10n.text("provider_companies_loading_title"))
             case .failed:
                 PPSellerProfileItemsState(
@@ -764,35 +951,6 @@ private struct PPSellerProfileScreen: View {
         }
     }
 
-    private func circularAction(
-        symbol: String,
-        labelKey: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 44, height: 44)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(Color.ppTextPrimary)
-        .background(Color.ppSurface, in: Circle())
-        .accessibilityLabel(PPProviderStorefrontL10n.text(labelKey))
-    }
-
-    private func sellerMetric(symbol: String, text: String, tint: Color) -> some View {
-        HStack(spacing: PPSpace.xxs) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-            Text(text)
-                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, PPSpace.sm)
-        .frame(minHeight: 30)
-        .background(tint.opacity(0.10), in: Capsule(style: .continuous))
-    }
-
     private func delegateItemTap(_ item: PetAccessory) {
         let model = PPUniversalCellViewModel(model: item, context: item.isFood ? .forFood : .forMarket)
         delegate?.ppUniversalCell_tapCard?(model)
@@ -804,26 +962,13 @@ private struct PPSellerProfileScreen: View {
     }
 }
 
-private struct PPSellerProfileActionButtonStyle: ButtonStyle {
-    let prominent: Bool
-
+// MARK: - Scale Button Style
+private struct PPSellerProfileScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.custom("Beiruti-Bold", size: 14, relativeTo: .headline))
-            .foregroundStyle(prominent ? Color.white : Color.ppPrimary)
-            .background(
-                prominent ? Color.ppPrimary : Color.ppPrimary.opacity(0.10),
-                in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                    .stroke(
-                        prominent ? Color.clear : Color.ppPrimary.opacity(0.20),
-                        lineWidth: 0.8
-                    )
-            }
-            .opacity(configuration.isPressed ? 0.78 : 1)
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .opacity(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
@@ -936,6 +1081,17 @@ private struct PPSellerProfileRatingSheet: View {
     @ObservedObject var store: PPSellerProfileStore
     @Environment(\.dismiss) private var dismiss
 
+    private var ratingDescriptor: String {
+        switch store.selectedRating {
+        case 1: return PPProviderStorefrontL10n.text("rating_score_1_desc")
+        case 2: return PPProviderStorefrontL10n.text("rating_score_2_desc")
+        case 3: return PPProviderStorefrontL10n.text("rating_score_3_desc")
+        case 4: return PPProviderStorefrontL10n.text("rating_score_4_desc")
+        case 5: return PPProviderStorefrontL10n.text("rating_score_5_desc")
+        default: return PPProviderStorefrontL10n.text("provider_rating_sheet_subtitle")
+        }
+    }
+
     var body: some View {
         if #available(iOS 16.0, *) {
             NavigationStack {
@@ -952,27 +1108,49 @@ private struct PPSellerProfileRatingSheet: View {
     }
 
     private var ratingForm: some View {
-        VStack(alignment: .leading, spacing: PPSpace.lg) {
+        VStack(alignment: .center, spacing: PPSpace.base) {
+            // Header icon badge
+            ZStack {
+                Circle()
+                    .fill(Color.ppPremiumAccent.opacity(0.12))
+                    .frame(width: 60, height: 60)
+                Image(systemName: "star.circle.fill")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(Color.ppPremiumAccent)
+            }
+            .padding(.top, PPSpace.xs)
+
             Text(
                 PPProviderStorefrontL10n.format(
                     "provider_rating_sheet_title_format",
                     store.sellerDisplayName
                 )
             )
-                .font(.custom("Beiruti-Bold", size: 23, relativeTo: .title2))
-                .foregroundStyle(Color.ppTextPrimary)
-            Text(PPProviderStorefrontL10n.text("provider_rating_sheet_subtitle"))
+            .font(.custom("Beiruti-Bold", size: 22, relativeTo: .title2))
+            .foregroundStyle(Color.ppTextPrimary)
+            .multilineTextAlignment(.center)
+
+            Text(ratingDescriptor)
                 .font(.custom("Beiruti-Regular", size: 14, relativeTo: .body))
-                .foregroundStyle(Color.ppTextSecondary)
-            HStack(spacing: PPSpace.sm) {
+                .foregroundStyle(store.selectedRating > 0 ? Color.ppPremiumAccent : Color.ppTextSecondary)
+                .multilineTextAlignment(.center)
+                .animation(.easeInOut(duration: 0.2), value: store.selectedRating)
+
+            // 5 Bouncy Interactive Stars
+            HStack(spacing: 12) {
                 ForEach(1...5, id: \.self) { value in
                     Button {
-                        store.selectedRating = value
+                        let impact = UIImpactFeedbackGenerator(style: .medium)
+                        impact.impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            store.selectedRating = value
+                        }
                     } label: {
                         Image(systemName: value <= store.selectedRating ? "star.fill" : "star")
-                            .font(.system(size: 26, weight: .semibold))
+                            .font(.system(size: 32, weight: .bold))
                             .foregroundStyle(Color.ppPremiumAccent)
-                            .frame(minWidth: 44, minHeight: 44)
+                            .scaleEffect(value <= store.selectedRating ? 1.12 : 1.0)
+                            .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(
@@ -983,13 +1161,23 @@ private struct PPSellerProfileRatingSheet: View {
                     )
                 }
             }
+            .padding(.vertical, PPSpace.xs)
+
+            // Review comment field
             TextEditor(text: $store.reviewComment)
                 .font(.custom("Beiruti-Regular", size: 15, relativeTo: .body))
-                .frame(minHeight: 150)
+                .frame(minHeight: 110)
                 .padding(PPSpace.sm)
-                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.ppSurfaceBorder, lineWidth: 1.0)
+                )
                 .accessibilityLabel(PPProviderStorefrontL10n.text("provider_rating_action"))
+
             Spacer(minLength: 0)
+
+            // Submit Button
             Button {
                 store.submitRating()
             } label: {
@@ -998,14 +1186,26 @@ private struct PPSellerProfileRatingSheet: View {
                         ProgressView().tint(Color.white)
                     } else {
                         Text(PPProviderStorefrontL10n.text("provider_rating_submit"))
+                            .font(.custom("Beiruti-Bold", size: 16, relativeTo: .headline))
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 52)
+                .foregroundStyle(Color.white)
+                .background(
+                    LinearGradient(
+                        colors: [Color.ppPrimary, Color.ppPrimary.opacity(0.88)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .shadow(color: Color.ppPrimary.opacity(0.25), radius: 8, y: 3)
             }
-            .buttonStyle(PPSellerProfileActionButtonStyle(prominent: true))
+            .buttonStyle(PPSellerProfileScaleButtonStyle())
             .disabled(store.selectedRating == 0 || store.isSubmittingProviderReview)
+            .opacity((store.selectedRating == 0 || store.isSubmittingProviderReview) ? 0.6 : 1.0)
         }
-        .padding(PPSpace.lg)
+        .padding(PPSpace.base)
         .background(Color.ppBackground)
         .navigationTitle(PPProviderStorefrontL10n.text("provider_rating_action"))
         .navigationBarTitleDisplayMode(.inline)
@@ -1014,6 +1214,8 @@ private struct PPSellerProfileRatingSheet: View {
                 Button(PPProviderStorefrontL10n.text("cancel")) {
                     dismiss()
                 }
+                .font(.custom("Beiruti-Bold", size: 15, relativeTo: .body))
+                .foregroundStyle(Color.ppTextSecondary)
             }
         }
     }

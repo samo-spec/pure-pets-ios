@@ -1026,8 +1026,11 @@ public final class PPMainKindsCell: UICollectionViewCell {
     /// artwork pose. Every other category and every unselected state explicitly
     /// resolve to identity, which also prevents transform leakage during reuse.
     private func updateAllSelectionArtworkTransform() {
+        let isRTL = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft || Language.isRTL()
+        let rtlScaleTransform = isRTL ? CGAffineTransform(scaleX: -1, y: 1) : .identity
+
         guard content?.isAll == true, isKindSelected else {
-            artworkView.transform = .identity
+            artworkView.transform = (content?.isAll == true) ? .identity : rtlScaleTransform
             return
         }
 
@@ -1547,8 +1550,8 @@ private struct PPMainKindsGeometry {
         let artworkSideInset = max(PPSpace.sm + 2, groupWidth * 0.13)
         let availableArtworkHeight = max(1, groupHeight)
         let availableArtworkWidth = max(1, groupWidth - (artworkSideInset * 2))
-        let scaledArtworkWidth = (availableArtworkWidth * 0.85).rounded()
-        let scaledArtworkHeight = (availableArtworkHeight * 0.85).rounded()
+        let scaledArtworkWidth = (availableArtworkWidth * 0.75).rounded()
+        let scaledArtworkHeight = (availableArtworkHeight * 0.75).rounded()
         let artworkSide = min(scaledArtworkWidth, scaledArtworkHeight)
         primaryArtworkFrame = CGRect(
             x: (groupWidth - artworkSide) / 2,
