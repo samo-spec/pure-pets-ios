@@ -38,10 +38,6 @@ typedef void (^ChMessageObservationCompletion)(NSArray<ChatMessageModel *> *mess
          completion:(void (^)(NSError * _Nullable error))completion;
 
 
-- (void)uploadVideoThumbnail:(UIImage *)image
-                     message:(ChatMessageModel *)msg
-                  completion:(void (^)(NSString *thumbURL))completion;
-
 - (void)sendImageMessage:(UIImage *)image
                  message:(ChatMessageModel *)msg
                 inThread:(NSString *)threadID
@@ -59,9 +55,6 @@ typedef void (^ChMessageObservationCompletion)(NSArray<ChatMessageModel *> *mess
                                                               completion:(void (^)(BOOL isTyping))completion;
 @property (nonatomic, weak) id<ChManagerDelegate> delegate;
 + (instancetype)sharedManager;
-- (void)uploadVideoThumbnail:(UIImage *)image
-                   messageID:(NSString *)msgID
-                  completion:(void (^)(NSString *thumbURL))completion;
 @property (nonatomic, strong) NSString *AccessToken;
 // Observe all chat threads for a user
  
@@ -69,6 +62,10 @@ typedef void (^ChMessageObservationCompletion)(NSArray<ChatMessageModel *> *mess
 - (void)stopListening;
 
 - (void)createOrGetChatThreadWithUser:(UserModel *)otherUser
+                           completion:(void (^)(ChatThreadModel * _Nullable thread, NSError * _Nullable error))completion;
+- (void)createOrGetChatThreadWithUser:(UserModel *)otherUser
+                          contextType:(nullable NSString *)contextType
+                            contextID:(nullable NSString *)contextID
                            completion:(void (^)(ChatThreadModel * _Nullable thread, NSError * _Nullable error))completion;
 - (void)startListeningForOtherUserTypingInThread:(NSString *)threadID
                                       otherUser:(NSString *)otherUserID
@@ -101,12 +98,6 @@ typedef void (^ChMessageObservationCompletion)(NSArray<ChatMessageModel *> *mess
 - (void)checkUserAvailabilityForUser:(NSString *)toUserID
                           completion:(void (^)(BOOL available, NSString * _Nullable reason))completion;
 - (void)openSupportChatFromController:(UIViewController *)controller;
-- (void)sendChatPushToUserID:(NSString *)toUserID
-                       title:(NSString *)title
-                        body:(NSString *)body
-                    threadID:(NSString *)threadID
-                    senderID:(NSString *)senderID;
-
 // In ChManager.h or .m
 - (void)startListeningForThreadMessages:(NSArray<ChatThreadModel *> *)threads;
 

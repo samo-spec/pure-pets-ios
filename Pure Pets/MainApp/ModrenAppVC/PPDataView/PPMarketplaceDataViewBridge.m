@@ -1773,8 +1773,13 @@ static NSString *PPMarketplaceTrimmedString(id value)
                 [PPHUD showError:kLang(@"bb_dataview_full_details_contact_unavailable")];
                 return;
             }
+            PetAd *petAd = [universalModel.ModelObject isKindOfClass:PetAd.class]
+                ? (PetAd *)universalModel.ModelObject
+                : nil;
             [[ChManager sharedManager]
                 createOrGetChatThreadWithUser:user
+                contextType:(petAd.adID.length > 0 ? @"pet_ad" : nil)
+                contextID:(petAd.adID.length > 0 ? petAd.adID : nil)
                 completion:^(ChatThreadModel * _Nullable thread, NSError * _Nullable chatError) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (chatError || !thread) {
@@ -1783,6 +1788,7 @@ static NSString *PPMarketplaceTrimmedString(id value)
                         return;
                     }
                     [PPOverlayCoordinator pp_openChatThread:thread
+                                               petAdContext:petAd
                                                      fromVC:self.presentingViewController];
                 });
             }];

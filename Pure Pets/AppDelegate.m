@@ -174,6 +174,14 @@ static BOOL PPAppDelegateIsChatNotificationPayload(NSDictionary *userInfo) {
            threadID.length > 0;
 }
 
+static NSString *PPAppDelegateChatThreadIDFromPayload(NSDictionary *userInfo) {
+    NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
+    NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
+    NSArray<NSString *> *keys = @[@"conversationId", @"conversationID", @"threadID", @"threadId", @"chatId", @"chatID"];
+    NSString *threadID = PPAppDelegateFirstScalarForKeys(safePayload, keys);
+    return threadID.length > 0 ? threadID : PPAppDelegateFirstScalarForKeys(meta, keys);
+}
+
 static NSString *PPAppDelegateNotificationIDFromPayload(NSDictionary *userInfo) {
     NSDictionary *safePayload = PPAppDelegateSafeDictionary(userInfo);
     NSDictionary *meta = PPAppDelegateSafeDictionary(safePayload[@"meta"]);
@@ -853,6 +861,9 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     self.notificationV2AuthHandle = [[FIRAuth auth] addAuthStateDidChangeListener:^(FIRAuth * _Nonnull auth, FIRUser * _Nullable user) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf || user.uid.length == 0) {
+            if (user.uid.length == 0) {
+                [PPMessagingContextCacheBridge clear];
+            }
             return;
         }
         [strongSelf pp_syncMessagingTokenIfAvailable];
@@ -1466,10 +1477,14 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
              type ?: @"", status ?: @"", paymentStatus ?: @"", orderId.length > 0);
     }
     if (!completionHandler) return;
-    if (PPAppDelegateIsChatNotificationPayload(userInfo) &&
-        !PPAppDelegateChatAlertsAllowed()) {
-        completionHandler(0);
-        return;
+    if (PPAppDelegateIsChatNotificationPayload(userInfo)) {
+        NSString *threadID = PPAppDelegateChatThreadIDFromPayload(userInfo);
+        BOOL isActiveConversation = threadID.length > 0 &&
+            [[ChManager sharedManager].activeThreadID isEqualToString:threadID];
+        if (!PPAppDelegateChatAlertsAllowed() || isActiveConversation) {
+            completionHandler(0);
+            return;
+        }
     }
     if (@available(iOS 14.0, *)) {
         completionHandler(UNNotificationPresentationOptionBanner |

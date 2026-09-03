@@ -917,8 +917,13 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
                     )];
                 return;
             }
+            PetAd *petAd = [universalModel.ModelObject isKindOfClass:PetAd.class]
+                ? (PetAd *)universalModel.ModelObject
+                : nil;
             [ChManager.sharedManager
                 createOrGetChatThreadWithUser:user
+                                  contextType:(petAd.adID.length > 0 ? @"pet_ad" : nil)
+                                    contextID:(petAd.adID.length > 0 ? petAd.adID : nil)
                                     completion:
                 ^(ChatThreadModel *thread, NSError *chatError) {
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -930,7 +935,8 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
                     }
                     [PPOverlayCoordinator
                         pp_openChatThread:thread
-                                  fromVC:self];
+                             petAdContext:petAd
+                                   fromVC:self];
                 });
             }];
         });

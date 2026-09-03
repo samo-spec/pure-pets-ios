@@ -5921,8 +5921,747 @@ private extension View {
 /// footer-button composition: one `Button`, the same `action`, the same
 /// readiness handshake with `HomePureLensMotionGate`, and the same accessibility
 /// element and `home.pureLens.open` identifier.
+// MARK: - Pure Lens Presentation Flag
+
+/// Presentation flag for the Home Pure Lens section card composition.
+///
+/// `UseLensCardV2 == true` renders `HomePureLensSectionV2`: an unmistakably original,
+/// category-defining, flagship-grade Living Neural Optical Chamber.
+///
+/// `UseLensCardV2 == false` preserves `HomePureLensSectionV1` (the existing optical
+/// reticle and focus deck layout). Both branches preserve the exact same action,
+/// motion gate readiness handshake, accessibility labels and traits, and identifier.
+public enum PPHomePureLensFlags {
+    public static var UseLensCardV2: Bool = true
+}
+
 @available(iOS 16.0, *)
 struct HomePureLensSection: View {
+    let motionReady: Bool
+    let motionAlreadyPlayed: Bool
+    let onMotionSettled: () -> Void
+    let action: () -> Void
+
+    var body: some View {
+        if PPHomePureLensFlags.UseLensCardV2 {
+            HomePureLensSectionV2(
+                motionReady: motionReady,
+                motionAlreadyPlayed: motionAlreadyPlayed,
+                onMotionSettled: onMotionSettled,
+                action: action
+            )
+        } else {
+            HomePureLensSectionV1(
+                motionReady: motionReady,
+                motionAlreadyPlayed: motionAlreadyPlayed,
+                onMotionSettled: onMotionSettled,
+                action: action
+            )
+        }
+    }
+}
+
+// MARK: - Home Pure Lens Section V2 (Living Neural Optical Chamber)
+
+private enum HomePureLensV2Metrics {
+    static let maximumCardWidth: CGFloat = 820
+    static let apertureSize: CGFloat = 106
+    static let accessibilityApertureSize: CGFloat = 118
+    static let cornerRadius: CGFloat = 18
+    static let laserBeamHeight: CGFloat = 2.0
+}
+
+@available(iOS 16.0, *)
+struct HomePureLensSectionV2: View {
+    let motionReady: Bool
+    let motionAlreadyPlayed: Bool
+    let onMotionSettled: () -> Void
+    let action: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.scenePhase) private var scenePhase
+
+    @FocusState private var isFocused: Bool
+    @State private var readinessResolved = false
+    @State private var didReportMotionSettled = false
+    // `HomePureLensV2ButtonStyle` injects this value directly into this
+    // button's configuration label, so the chamber and launch affordance stay
+    // synchronized with the actual press lifecycle.
+    @Environment(\.homePureLensIsPressed) private var isPressed
+    @State private var laserOffset: CGFloat = -42.0
+    @State private var laserOpacity: Double = 0.8
+    @State private var ambientBreath: CGFloat = 1.0
+    @State private var reticleAngle: Double = 0.0
+
+    var body: some View {
+        Button(action: performAction) {
+            VStack(spacing: 6) {
+                telemetryHeader
+
+                if usesAccessibilityLayout {
+                    stackedApertureLayout
+                } else {
+                    compactApertureLayout
+                }
+
+                shutterLauncherDeck
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(cardSurface)
+            .clipShape(cardShape)
+            .overlay(cardBorder)
+            .contentShape(cardShape)
+            .shadow(
+                color: contrast == .increased || colorScheme == .dark
+                    ? .clear
+                    : Color.black.opacity(colorScheme == .dark ? 0.35 : 0.06),
+                radius: 12,
+                x: 0,
+                y: 5
+            )
+        }
+        .buttonStyle(HomePureLensV2ButtonStyle())
+        .frame(maxWidth: HomePureLensV2Metrics.maximumCardWidth)
+        .focused($isFocused)
+        .hoverEffect(.highlight)
+        .task(id: HomePureLensMotionTaskID(
+            motionReady: motionReady,
+            reduceMotion: reduceMotion,
+            motionAlreadyPlayed: motionAlreadyPlayed,
+            sceneIsActive: scenePhase == .active
+        )) {
+            await runReadinessResolve()
+        }
+        .onAppear {
+            startAmbientMotion()
+        }
+        .onDisappear {
+            settleReadinessWithoutAnimation()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(HomeModelAdapter.localized(
+            "pure_lens_account_a11y",
+            fallback: "Pure Lens. Camera, recognition, and marketplace discovery."
+        ))
+        .accessibilityHint(HomeModelAdapter.localized(
+            "pure_lens_account_hint",
+            fallback: "Opens the animal discovery camera"
+        ))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("home.pureLens.open")
+    }
+
+    // MARK: - Subviews
+
+    private var telemetryHeader: some View {
+        HStack(alignment: .center) {
+            // Live AI Beacon
+            HStack(spacing: 5) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.35))
+                        .frame(width: 12, height: 12)
+                        .scaleEffect(reduceMotion ? 1.0 : ambientBreath)
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: Color.green.opacity(0.7), radius: 2)
+                }
+
+                Text(HomeModelAdapter.localized(
+                    "pure_lens_account_live_vision",
+                    fallback: "LIVE AI VISION"
+                ))
+                    .font(HomeFont.bold(11))
+                    .foregroundStyle(Color.green)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color.green.opacity(colorScheme == .dark ? 0.14 : 0.08), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.green.opacity(0.22), lineWidth: 0.75))
+
+            Spacer()
+        }
+    }
+
+    private var compactApertureLayout: some View {
+        HStack(alignment: .center, spacing: 12) {
+            // Copy + Multimodal Capabilities Column
+            VStack(alignment: .leading, spacing: 3) {
+                // Header group: Eyebrow + Title with reduced vertical space
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(HomeModelAdapter.localized(
+                        "pure_lens_account_section",
+                        fallback: Language.isRTL() ? "الاكتشاف البصري" : "Visual Discovery"
+                    ))
+                    .font(HomeFont.bold(11))
+                    .foregroundStyle(palette.signal)
+
+                    Text(HomeModelAdapter.localized(
+                        "pure_lens_account_title",
+                        fallback: Language.isRTL() ? "بيور لينس" : "Pure Lens"
+                    ))
+                    .font(HomeFont.bold(20))
+                    .foregroundStyle(palette.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                }
+
+                Text(HomeModelAdapter.localized(
+                    "home_pure_lens_subtitle",
+                    fallback: Language.isRTL()
+                        ? "تعرّف على الحيوان وسلالته، حلل جودة غذائه، واكتشف احتياجاته فوراً."
+                        : "Identify animal breeds, analyze dietary nutrition, and discover tailored products."
+                ))
+                .font(HomeFont.footnote())
+                .foregroundStyle(palette.secondaryText)
+                .lineSpacing(1.5)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+                // Inline capability strip seamlessly integrated under copy
+                capabilityStrip
+                    .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
+
+            // Neural Optical Aperture Chamber
+            HomePureLensV2Chamber(
+                readinessResolved: presentationReady,
+                laserOffset: laserOffset,
+                laserOpacity: laserOpacity,
+                reticleAngle: reticleAngle,
+                size: HomePureLensV2Metrics.apertureSize
+            )
+        }
+    }
+
+    private var stackedApertureLayout: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(HomeModelAdapter.localized(
+                        "pure_lens_account_section",
+                        fallback: Language.isRTL() ? "الاكتشاف البصري" : "Visual Discovery"
+                    ))
+                    .font(HomeFont.bold(11))
+                    .foregroundStyle(palette.signal)
+
+                    Text(HomeModelAdapter.localized(
+                        "pure_lens_account_title",
+                        fallback: Language.isRTL() ? "عدسة بيور الذكية" : "Pure Lens"
+                    ))
+                    .font(HomeFont.bold(20))
+                    .foregroundStyle(palette.primaryText)
+                }
+
+                Text(HomeModelAdapter.localized(
+                    "home_pure_lens_subtitle",
+                    fallback: Language.isRTL()
+                        ? "تعرّف على الحيوان وسلالته، حلل جودة غذائه، واكتشف احتياجاته فوراً."
+                        : "Identify animal breeds, analyze dietary nutrition, and discover tailored products."
+                ))
+                .font(HomeFont.footnote())
+                .foregroundStyle(palette.secondaryText)
+
+                capabilityStrip
+                    .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HomePureLensV2Chamber(
+                readinessResolved: presentationReady,
+                laserOffset: laserOffset,
+                laserOpacity: laserOpacity,
+                reticleAngle: reticleAngle,
+                size: HomePureLensV2Metrics.accessibilityApertureSize
+            )
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var capabilityStrip: some View {
+        HStack(spacing: 5) {
+            capabilityPill(
+                icon: "pawprint.fill",
+                title: HomeModelAdapter.localized(
+                    "pure_lens_account_capability_breeds",
+                    fallback: "Breeds"
+                ),
+                color: palette.signal
+            )
+            capabilityPill(
+                icon: "leaf.fill",
+                title: HomeModelAdapter.localized(
+                    "pure_lens_account_capability_diet",
+                    fallback: "Diet"
+                ),
+                color: Color.green
+            )
+            capabilityPill(
+                icon: "cross.case.fill",
+                title: HomeModelAdapter.localized(
+                    "pure_lens_account_capability_health",
+                    fallback: "Health"
+                ),
+                color: Color.teal
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func capabilityPill(icon: String, title: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(color)
+            Text(title)
+                .font(HomeFont.medium(11))
+                .foregroundStyle(palette.primaryText)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(color.opacity(colorScheme == .dark ? 0.12 : 0.07), in: Capsule())
+        .overlay(Capsule().strokeBorder(color.opacity(0.18), lineWidth: 0.75))
+    }
+
+    private var shutterLauncherDeck: some View {
+        HStack(spacing: 8) {
+            // Optical Shutter Iris
+            ZStack {
+                Circle()
+                    .fill(palette.signal.opacity(isPressed ? 0.25 : 0.12))
+                    .frame(width: 28, height: 28)
+
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(isPressed ? palette.signalPressed : palette.signal)
+                    .rotationEffect(.degrees(isPressed && !reduceMotion ? 45 : 0))
+            }
+
+            Text(HomeModelAdapter.localized(
+                "home_pure_lens_action",
+                fallback: Language.isRTL() ? "افتح العدسة للتعرف الذكي" : "Activate AI Visual Scanner"
+            ))
+            .font(HomeFont.bold(13))
+            .foregroundStyle(palette.primaryText)
+            .lineLimit(1)
+
+            Spacer()
+
+            // Directional Scan Pill
+            HStack(spacing: 3) {
+                Text(HomeModelAdapter.localized(
+                    "pure_lens_account_live_scan",
+                    fallback: "Live Scan"
+                ))
+                    .font(HomeFont.bold(11))
+                    .foregroundStyle(palette.signal)
+
+                Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(palette.signal)
+                    .offset(x: isPressed && !reduceMotion ? (Language.isRTL() ? -3 : 3) : 0)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(palette.signal.opacity(0.10), in: Capsule())
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                .fill(palette.shutterSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                .strokeBorder(palette.divider, lineWidth: 0.75)
+        )
+    }
+
+    private var cardSurface: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: HomePureLensV2Metrics.cornerRadius, style: .continuous)
+                .fill(palette.surfaceBase)
+
+            if !reduceTransparency {
+                let isRTL = layoutDirection == .rightToLeft
+                // Chamber is on physical left in RTL, right in LTR
+                let chamberSide = isRTL ? UnitPoint.topLeading : UnitPoint.topTrailing
+                // Strings are on physical right in RTL, left in LTR
+                let stringsSide = isRTL ? UnitPoint.bottomTrailing : UnitPoint.bottomLeading
+
+                RoundedRectangle(cornerRadius: HomePureLensV2Metrics.cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                palette.signal.opacity(colorScheme == .dark ? 0.20 : 0.09),
+                                colorScheme == .dark ? Color.clear : Color.white.opacity(0.80),
+                                colorScheme == .dark ? Color.clear : Color.white
+                            ],
+                            startPoint: chamberSide,
+                            endPoint: stringsSide
+                        )
+                    )
+            }
+        }
+    }
+
+    private var cardBorder: some View {
+        cardShape
+            .strokeBorder(
+                isFocused
+                    ? Color.ppPrimary
+                    : HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: contrast
+                    ),
+                lineWidth: isFocused
+                    ? (contrast == .increased ? 3 : 2.4)
+                    : HomeVisualTokens.cardBorderWidth(contrast: contrast)
+            )
+            .accessibilityHidden(true)
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: HomePureLensV2Metrics.cornerRadius,
+            style: .continuous
+        )
+    }
+
+    private var palette: HomePureLensV2Palette {
+        HomePureLensV2Palette(
+            colorScheme: colorScheme,
+            reduceTransparency: reduceTransparency
+        )
+    }
+
+    private var usesAccessibilityLayout: Bool {
+        switch dynamicTypeSize {
+        case .xxLarge,
+             .xxxLarge,
+             .accessibility1,
+             .accessibility2,
+             .accessibility3,
+             .accessibility4,
+             .accessibility5:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var presentationReady: Bool {
+        reduceMotion || motionAlreadyPlayed || readinessResolved
+    }
+
+    // MARK: - Actions & Motion Choreography
+
+    @MainActor
+    private func performAction() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        settleReadinessWithoutAnimation()
+        action()
+    }
+
+    @MainActor
+    private func settleReadinessWithoutAnimation() {
+        if !readinessResolved {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                readinessResolved = true
+            }
+        }
+        reportMotionSettledIfNeeded()
+    }
+
+    @MainActor
+    private func reportMotionSettledIfNeeded() {
+        guard !motionAlreadyPlayed, !didReportMotionSettled else { return }
+        didReportMotionSettled = true
+        onMotionSettled()
+    }
+
+    @MainActor
+    private func runReadinessResolve() async {
+        guard motionReady else { return }
+
+        if reduceMotion || motionAlreadyPlayed || scenePhase != .active {
+            settleReadinessWithoutAnimation()
+            return
+        }
+
+        guard !readinessResolved else {
+            reportMotionSettledIfNeeded()
+            return
+        }
+
+        withAnimation(.easeOut(duration: 0.22)) {
+            readinessResolved = true
+        }
+
+        do {
+            try await Task.sleep(nanoseconds: 220_000_000)
+        } catch {
+            return
+        }
+
+        guard !Task.isCancelled, scenePhase == .active else { return }
+        reportMotionSettledIfNeeded()
+    }
+
+    private func startAmbientMotion() {
+        guard !reduceMotion else { return }
+
+        // Subtle breathing animation
+        withAnimation(
+            .easeInOut(duration: 2.8)
+                .repeatForever(autoreverses: true)
+        ) {
+            ambientBreath = 1.08
+        }
+
+        // Slow laser scanning sweep
+        withAnimation(
+            .easeInOut(duration: 2.8)
+                .repeatForever(autoreverses: true)
+        ) {
+            laserOffset = 42.0
+            laserOpacity = 0.95
+        }
+
+        // Ambient reticle rotation
+        withAnimation(
+            .linear(duration: 24.0)
+                .repeatForever(autoreverses: false)
+        ) {
+            reticleAngle = 360.0
+        }
+    }
+}
+
+// MARK: - Living Neural Optical Chamber
+
+private struct HomePureLensV2Chamber: View {
+    let readinessResolved: Bool
+    let laserOffset: CGFloat
+    let laserOpacity: Double
+    let reticleAngle: Double
+    let size: CGFloat
+
+    @Environment(\.homePureLensIsPressed) private var isPressed
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        ZStack {
+            // Chamber Well Foundation
+            chamberShape
+                .fill(palette.chamberBackground)
+
+            // Dynamic Prismatic Core Glow
+            if !reduceTransparency {
+                chamberShape
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                palette.signal.opacity(colorScheme == .dark ? 0.38 : 0.22),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 2,
+                            endRadius: size * 0.48
+                        )
+                    )
+            }
+
+            // Concentric Coordinate Reticle Rings
+            Circle()
+                .stroke(
+                    palette.chamberContent.opacity(contrast == .increased ? 0.35 : 0.12),
+                    style: StrokeStyle(lineWidth: 1, dash: [3, 4])
+                )
+                .frame(width: size * 0.78, height: size * 0.78)
+                .rotationEffect(.degrees(reduceMotion ? 0 : reticleAngle))
+
+            Circle()
+                .stroke(
+                    palette.signal.opacity(0.24),
+                    lineWidth: 0.75
+                )
+                .frame(width: size * 0.52, height: size * 0.52)
+
+            // Holographic Animal Specimen Glyph
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: size * 0.28, weight: .bold))
+                .foregroundStyle(palette.chamberContent)
+                .scaleEffect(isPressed ? 0.92 : (readinessResolved ? 1.0 : 0.96))
+                .blur(radius: isPressed || !readinessResolved ? 0.8 : 0)
+                .shadow(color: palette.signal.opacity(0.4), radius: 6)
+
+            // Laser Scanning Beam
+            if !reduceMotion {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                palette.signal.opacity(laserOpacity),
+                                Color.clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: size * 0.85, height: HomePureLensV2Metrics.laserBeamHeight)
+                    .offset(y: laserOffset)
+                    .shadow(color: palette.signal, radius: 4)
+                    .allowsHitTesting(false)
+            }
+
+            // Precision Caliper Brackets
+            HomePureLensFocusCorners()
+                .stroke(
+                    palette.chamberContent.opacity(contrast == .increased ? 1.0 : 0.85),
+                    style: StrokeStyle(
+                        lineWidth: contrast == .increased ? 2.6 : 1.8,
+                        lineCap: .round,
+                        lineJoin: .round
+                    )
+                )
+                .padding(size * 0.14)
+                .scaleEffect(caliperScale)
+                .animation(.spring(response: 0.28, dampingFraction: 0.72), value: isPressed)
+
+            // Laser Lock Status Indicator (top-trailing)
+            Circle()
+                .fill(readinessResolved ? Color.green : palette.signal)
+                .frame(width: 8, height: 8)
+                .overlay(
+                    Circle().strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                )
+                .shadow(color: (readinessResolved ? Color.green : palette.signal).opacity(0.8), radius: 4)
+                .padding(size * 0.10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        }
+        .frame(width: size, height: size)
+        .clipShape(chamberShape)
+        .overlay(
+            chamberShape
+                .strokeBorder(
+                    palette.chamberContent.opacity(contrast == .increased ? 0.55 : 0.20),
+                    lineWidth: contrast == .increased ? 1.5 : 0.75
+                )
+        )
+    }
+
+    private var caliperScale: CGFloat {
+        if reduceMotion { return 1.0 }
+        if isPressed { return 0.92 }
+        return readinessResolved ? 1.0 : 1.06
+    }
+
+    private var chamberShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+    }
+
+    private var palette: HomePureLensV2Palette {
+        HomePureLensV2Palette(
+            colorScheme: colorScheme,
+            reduceTransparency: reduceTransparency
+        )
+    }
+}
+
+// MARK: - Palette & ButtonStyle
+
+private struct HomePureLensV2Palette {
+    let colorScheme: ColorScheme
+    let reduceTransparency: Bool
+
+    private var isDark: Bool {
+        colorScheme == .dark
+    }
+
+    var surfaceBase: Color {
+        isDark ? Color.ppSurfaceElevated : Color.ppSurfaceRaised
+    }
+
+    var primaryText: Color {
+        Color.ppTextPrimary
+    }
+
+    var secondaryText: Color {
+        Color.ppTextSecondary
+    }
+
+    var signal: Color {
+        Color.ppPrimary
+    }
+
+    var signalPressed: Color {
+        Color.ppPressedAction
+    }
+
+    var chamberBackground: Color {
+        isDark ? Color.black : Color.ppTextPrimary
+    }
+
+    var chamberContent: Color {
+        isDark ? Color.ppTextPrimary : Color.ppSurfaceRaised
+    }
+
+    var shutterSurface: Color {
+        if reduceTransparency {
+            return isDark ? Color.ppSurfaceElevated : Color.ppSurfaceRaised
+        }
+        return isDark ? Color.white.opacity(0.06) : Color.ppSurfaceRaised.opacity(0.85)
+    }
+
+    var chipSurface: Color {
+        isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
+    }
+
+    var divider: Color {
+        Color.ppSurfaceBorder
+    }
+}
+
+private struct HomePureLensV2ButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .environment(\.homePureLensIsPressed, configuration.isPressed)
+            .scaleEffect(
+                configuration.isPressed && !reduceMotion ? 0.985 : 1
+            )
+            .opacity(configuration.isPressed ? 0.96 : 1)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(response: 0.24, dampingFraction: 0.72),
+                value: configuration.isPressed
+            )
+    }
+}
+
+// MARK: - Home Pure Lens Section V1 (Preserved Layout)
+
+@available(iOS 16.0, *)
+struct HomePureLensSectionV1: View {
     let motionReady: Bool
     let motionAlreadyPlayed: Bool
     let onMotionSettled: () -> Void

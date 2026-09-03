@@ -8,6 +8,28 @@
 
 #import "ChatMessageModel.h"
 
+static ChatMessageStatus PPChatMessageStatusFromValue(id value)
+{
+    if ([value isKindOfClass:NSNumber.class]) {
+        NSInteger numeric = [(NSNumber *)value integerValue];
+        if (numeric >= ChatMessageStatusSending && numeric <= ChatMessageStatusRead) {
+            return (ChatMessageStatus)numeric;
+        }
+        return ChatMessageStatusSent;
+    }
+    if ([value isKindOfClass:NSString.class]) {
+        NSString *normalized = [(NSString *)value lowercaseString];
+        if ([normalized isEqualToString:@"read"]) return ChatMessageStatusRead;
+        if ([normalized isEqualToString:@"delivered"]) return ChatMessageStatusDelivered;
+        if ([normalized isEqualToString:@"sent"]) return ChatMessageStatusSent;
+        NSInteger numeric = normalized.integerValue;
+        if (numeric >= ChatMessageStatusSending && numeric <= ChatMessageStatusRead) {
+            return (ChatMessageStatus)numeric;
+        }
+    }
+    return ChatMessageStatusSent;
+}
+
 @implementation ChatMessageModel
 
 #pragma mark - NSSecureCoding
@@ -36,8 +58,10 @@
             _timestamp = [(FIRTimestamp *)ts dateValue];
         } else if ([ts isKindOfClass:[NSDate class]]) {
             _timestamp = ts;
+        } else if ([ts isKindOfClass:NSNumber.class] && [ts doubleValue] > 0) {
+            _timestamp = [NSDate dateWithTimeIntervalSince1970:[ts doubleValue]];
         } else {
-            _timestamp = [NSDate date];
+            _timestamp = [NSDate distantPast];
         }
 
         // DeliveredAt (Firestore-safe)
@@ -57,9 +81,7 @@
         }
 
         // Status
-        NSNumber *statusNumber = dict[@"status"];
-        _status = statusNumber ? (ChatMessageStatus)statusNumber.integerValue
-                               : ChatMessageStatusSent;
+        _status = PPChatMessageStatusFromValue(dict[@"status"]);
 
         // Type
         NSNumber *typeNumber = dict[@"type"];
@@ -251,7 +273,7 @@
         _text = [coder decodeObjectOfClass:NSString.class forKey:@"text"];
         _senderID = [coder decodeObjectOfClass:NSString.class forKey:@"senderID"];
         _receiverID = [coder decodeObjectOfClass:NSString.class forKey:@"receiverID"];
-        _timestamp = [coder decodeObjectOfClass:NSDate.class forKey:@"timestamp"];
+        _timestamp = [coder decodeObjectOfClass:NSDate.class forKey:@"timestamp"] ?: [NSDate distantPast];
         _deliveredAt = [coder decodeObjectOfClass:NSDate.class forKey:@"deliveredAt"];
         _readAt = [coder decodeObjectOfClass:NSDate.class forKey:@"readAt"];
         _status = [coder decodeIntegerForKey:@"status"];
@@ -359,9 +381,9 @@
     if (text) self.text = text;
 
     // Status
-    NSNumber *statusNumber = dict[@"status"];
-    if (statusNumber) {
-        self.status = (ChatMessageStatus)statusNumber.integerValue;
+    id statusValue = dict[@"status"];
+    if (statusValue) {
+        self.status = PPChatMessageStatusFromValue(statusValue);
     }
 
     // Delivered / Read timestamps

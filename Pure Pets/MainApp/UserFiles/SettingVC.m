@@ -236,6 +236,9 @@ typedef NS_ENUM(NSInteger, PPSettingsLocationState) {
     PPSettingsLocationStateDenied
 };
 
+typedef void (^PPSettingsCachePurgeCompletion)(BOOL didPurge);
+typedef void (^PPSettingsCachePurgeHandler)(PPSettingsCachePurgeCompletion completion);
+
 #pragma mark - PPSettingsRowModel
 
 typedef NS_ENUM(NSInteger, PPSettingsRowType) {
@@ -247,7 +250,9 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
     PPSettingsRowTypeDestructive,
     PPSettingsRowTypeVersion,
     PPSettingsRowTypeLanguage,
-    PPSettingsRowTypeThemePicker
+    PPSettingsRowTypeThemePicker,
+    PPSettingsRowTypeAccentStudio,
+    PPSettingsRowTypeStorageMeter
 };
 
 @interface PPSettingsRowModel : NSObject
@@ -272,6 +277,13 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 // Theme picker: 0=Light, 1=Dark, 2=System
 @property (nonatomic, assign) NSInteger themeIndex;
 @property (nonatomic, copy, nullable) void (^onThemeTap)(NSInteger index);
+// Accent Studio: BOOL usesMainKind
+@property (nonatomic, assign) BOOL usesMainKindAccent;
+@property (nonatomic, copy, nullable) void (^onAccentChange)(BOOL usesMainKind);
+// Storage Meter: cached disk usage and a completion-aware purge action.
+@property (nonatomic, copy, nullable) NSString *storageSizeString;
+@property (nonatomic, assign) CGFloat storageUsageFraction;
+@property (nonatomic, copy, nullable) PPSettingsCachePurgeHandler onPurgeCache;
 @end
 
 @implementation PPSettingsRowModel
@@ -729,8 +741,18 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 @interface PPSettingsV6HeroCell : UITableViewCell
 @property (nonatomic, strong) UIView *brandDot;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
+@property (nonatomic, strong) UIView *statusPill;
+@property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) UILabel *titleLabelV6;
 @property (nonatomic, strong) UILabel *subtitleLabelV6;
+@property (nonatomic, strong) UIView *identityCard;
+@property (nonatomic, strong) UIImageView *avatarImageView;
+@property (nonatomic, strong) UILabel *userNameLabel;
+@property (nonatomic, strong) UILabel *userMetaLabel;
+@property (nonatomic, strong) UIView *identityBadgeView;
+@property (nonatomic, strong) UILabel *identityBadgeLabel;
+@property (nonatomic, strong) UIImageView *identityBadgeIcon;
+@property (nonatomic, copy, nullable) dispatch_block_t onIdentityTap;
 - (void)configureWithRow:(PPSettingsRowModel *)row;
 - (void)runEntranceIfNeeded;
 @end
@@ -748,6 +770,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self.isAccessibilityElement = NO;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
+    // Brand Dot
     UIView *dot = [UIView new];
     dot.translatesAutoresizingMaskIntoConstraints = NO;
     dot.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
@@ -755,9 +778,10 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     [self.contentView addSubview:dot];
     self.brandDot = dot;
 
+    // Eyebrow Label
     UILabel *eyebrow = [UILabel new];
     eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrow.text = PPSettingsLocalizedString(@"settings_v6_eyebrow", @"PURE PETS");
+    eyebrow.text = PPSettingsLocalizedString(@"settings_studio_eyebrow", @"PURE PETS • STUDIO");
     eyebrow.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
                     scaledFontForFont:([GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold])];
     eyebrow.adjustsFontForContentSizeCategory = YES;
@@ -767,6 +791,33 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     [self.contentView addSubview:eyebrow];
     self.eyebrowLabel = eyebrow;
 
+    // Neutral local-app status. Connectivity is not inferred from a decorative indicator.
+    UIView *statusPill = [UIView new];
+    statusPill.translatesAutoresizingMaskIntoConstraints = NO;
+    statusPill.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.08];
+    statusPill.layer.borderWidth = 1.0;
+    [statusPill pp_setBorderColor:[(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.18]];
+    PPApplyContinuousCorners(statusPill, 11.0);
+    statusPill.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.contentView addSubview:statusPill];
+    self.statusPill = statusPill;
+
+    UIView *statusDot = [UIView new];
+    statusDot.translatesAutoresizingMaskIntoConstraints = NO;
+    statusDot.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    PPApplyContinuousCorners(statusDot, 3.0);
+    [statusPill addSubview:statusDot];
+
+    UILabel *statusLabel = [UILabel new];
+    statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    statusLabel.text = PPSettingsLocalizedString(@"settings_studio_app_status_ready", @"App ready");
+    statusLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightBold];
+    statusLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    statusLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    [statusPill addSubview:statusLabel];
+    self.statusLabel = statusLabel;
+
+    // Title Label
     UILabel *title = [UILabel new];
     title.translatesAutoresizingMaskIntoConstraints = NO;
     title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleLargeTitle]
@@ -779,6 +830,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     [self.contentView addSubview:title];
     self.titleLabelV6 = title;
 
+    // Subtitle Label
     UILabel *subtitle = [UILabel new];
     subtitle.translatesAutoresizingMaskIntoConstraints = NO;
     subtitle.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
@@ -791,24 +843,148 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     [self.contentView addSubview:subtitle];
     self.subtitleLabelV6 = subtitle;
 
+    // Identity Capsule Card
+    UIView *identityCard = [UIView new];
+    identityCard.translatesAutoresizingMaskIntoConstraints = NO;
+    identityCard.backgroundColor = PPSettingsV6SurfaceColor();
+    identityCard.layer.borderWidth = 1.0;
+    [identityCard pp_setBorderColor:PPSettingsHeroBorderColor()];
+    PPApplyContinuousCorners(identityCard, 20.0);
+    PPApplyCardShadow(identityCard);
+    identityCard.layer.shadowOpacity = 0.04;
+    identityCard.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.contentView addSubview:identityCard];
+    self.identityCard = identityCard;
+
+    UITapGestureRecognizer *identityTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_identityCardTapped)];
+    [identityCard addGestureRecognizer:identityTap];
+
+    // Avatar View
+    UIImageView *avatar = [UIImageView new];
+    avatar.translatesAutoresizingMaskIntoConstraints = NO;
+    avatar.contentMode = UIViewContentModeScaleAspectFill;
+    avatar.clipsToBounds = YES;
+    PPApplyContinuousCorners(avatar, 22.0);
+    avatar.backgroundColor = PPSettingsV6BrandWashColor();
+    [identityCard addSubview:avatar];
+    self.avatarImageView = avatar;
+
+    // User Name
+    UILabel *nameLabel = [UILabel new];
+    nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    nameLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+                      scaledFontForFont:([GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold])];
+    nameLabel.adjustsFontForContentSizeCategory = YES;
+    nameLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    nameLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    [identityCard addSubview:nameLabel];
+    self.userNameLabel = nameLabel;
+
+    // User Meta / Subtitle
+    UILabel *metaLabel = [UILabel new];
+    metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    metaLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+                      scaledFontForFont:([GM fontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5])];
+    metaLabel.adjustsFontForContentSizeCategory = YES;
+    metaLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    metaLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    metaLabel.numberOfLines = 1;
+    [identityCard addSubview:metaLabel];
+    self.userMetaLabel = metaLabel;
+
+    // Identity Badge / Action Pill
+    UIView *badgeView = [UIView new];
+    badgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeView.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+    PPApplyContinuousCorners(badgeView, 12.0);
+    badgeView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [identityCard addSubview:badgeView];
+    self.identityBadgeView = badgeView;
+
+    UIImageView *badgeIcon = [UIImageView new];
+    badgeIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeIcon.contentMode = UIViewContentModeScaleAspectFit;
+    [badgeView addSubview:badgeIcon];
+    self.identityBadgeIcon = badgeIcon;
+
+    UILabel *badgeLabel = [UILabel new];
+    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeLabel.font = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+    badgeLabel.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    badgeLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    [badgeView addSubview:badgeLabel];
+    self.identityBadgeLabel = badgeLabel;
+
     [NSLayoutConstraint activateConstraints:@[
+        // Brand Dot & Eyebrow
         [dot.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
-        [dot.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceXL],
+        [dot.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceLG],
         [dot.widthAnchor constraintEqualToConstant:8.0],
         [dot.heightAnchor constraintEqualToConstant:8.0],
 
         [eyebrow.leadingAnchor constraintEqualToAnchor:dot.trailingAnchor constant:PPSpaceSM],
         [eyebrow.centerYAnchor constraintEqualToAnchor:dot.centerYAnchor],
-        [eyebrow.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
 
+        // Status Pill
+        [statusPill.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [statusPill.centerYAnchor constraintEqualToAnchor:dot.centerYAnchor],
+        [statusPill.leadingAnchor constraintGreaterThanOrEqualToAnchor:eyebrow.trailingAnchor constant:PPSpaceMD],
+        [statusPill.heightAnchor constraintEqualToConstant:22.0],
+
+        [statusDot.leadingAnchor constraintEqualToAnchor:statusPill.leadingAnchor constant:8.0],
+        [statusDot.centerYAnchor constraintEqualToAnchor:statusPill.centerYAnchor],
+        [statusDot.widthAnchor constraintEqualToConstant:6.0],
+        [statusDot.heightAnchor constraintEqualToConstant:6.0],
+
+        [statusLabel.leadingAnchor constraintEqualToAnchor:statusDot.trailingAnchor constant:5.0],
+        [statusLabel.trailingAnchor constraintEqualToAnchor:statusPill.trailingAnchor constant:-8.0],
+        [statusLabel.centerYAnchor constraintEqualToAnchor:statusPill.centerYAnchor],
+
+        // Title
         [title.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
         [title.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
         [title.topAnchor constraintEqualToAnchor:dot.bottomAnchor constant:PPSpaceMD],
 
+        // Subtitle
         [subtitle.leadingAnchor constraintEqualToAnchor:title.leadingAnchor],
         [subtitle.trailingAnchor constraintEqualToAnchor:title.trailingAnchor],
-        [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:PPSpaceSM],
-        [subtitle.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceLG]
+        [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:PPSpaceXS],
+
+        // Identity Card
+        [identityCard.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [identityCard.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [identityCard.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:PPSpaceMD],
+        [identityCard.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM],
+
+        // Avatar
+        [avatar.leadingAnchor constraintEqualToAnchor:identityCard.leadingAnchor constant:14.0],
+        [avatar.centerYAnchor constraintEqualToAnchor:identityCard.centerYAnchor],
+        [avatar.widthAnchor constraintEqualToConstant:44.0],
+        [avatar.heightAnchor constraintEqualToConstant:44.0],
+
+        // Name & Meta
+        [nameLabel.leadingAnchor constraintEqualToAnchor:avatar.trailingAnchor constant:12.0],
+        [nameLabel.topAnchor constraintEqualToAnchor:identityCard.topAnchor constant:14.0],
+        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badgeView.leadingAnchor constant:-8.0],
+
+        [metaLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
+        [metaLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:2.0],
+        [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badgeView.leadingAnchor constant:-8.0],
+        [metaLabel.bottomAnchor constraintEqualToAnchor:identityCard.bottomAnchor constant:-14.0],
+
+        // Badge / Action Pill
+        [badgeView.trailingAnchor constraintEqualToAnchor:identityCard.trailingAnchor constant:-14.0],
+        [badgeView.centerYAnchor constraintEqualToAnchor:identityCard.centerYAnchor],
+        [badgeView.heightAnchor constraintEqualToConstant:28.0],
+
+        [badgeIcon.leadingAnchor constraintEqualToAnchor:badgeView.leadingAnchor constant:8.0],
+        [badgeIcon.centerYAnchor constraintEqualToAnchor:badgeView.centerYAnchor],
+        [badgeIcon.widthAnchor constraintEqualToConstant:14.0],
+        [badgeIcon.heightAnchor constraintEqualToConstant:14.0],
+
+        [badgeLabel.leadingAnchor constraintEqualToAnchor:badgeIcon.trailingAnchor constant:4.0],
+        [badgeLabel.trailingAnchor constraintEqualToAnchor:badgeView.trailingAnchor constant:-8.0],
+        [badgeLabel.centerYAnchor constraintEqualToAnchor:badgeView.centerYAnchor]
     ]];
 
     return self;
@@ -822,6 +998,49 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self.eyebrowLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.titleLabelV6.textAlignment = [Language alignmentForCurrentLanguage];
     self.subtitleLabelV6.textAlignment = [Language alignmentForCurrentLanguage];
+
+    // Configure Identity Capsule
+    UIImageSymbolConfiguration *symConfig = [UIImageSymbolConfiguration configurationWithPointSize:13 weight:UIImageSymbolWeightSemibold];
+    if (PPIsUserLoggedIn) {
+        UserModel *user = UserManager.sharedManager.currentUser;
+        NSString *name = user.UserName.length > 0 ? user.UserName : (user.FirstName.length > 0 ? [NSString stringWithFormat:@"%@ %@", user.FirstName, user.LastName ?: @""] : (kLang(@"Account") ?: @"Member"));
+        self.userNameLabel.text = name;
+        NSString *contact = user.MobileNo.length > 0 ? user.MobileNo : (user.UserEmail.length > 0 ? user.UserEmail : @"Pure Pets Verified");
+        self.userMetaLabel.text = contact;
+        self.identityBadgeLabel.text = kLang(@"Verified") ?: @"Verified";
+        self.identityBadgeIcon.image = [[UIImage systemImageNamed:@"checkmark.seal.fill" withConfiguration:symConfig]
+                                        imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                                        renderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.identityBadgeView.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+        self.identityBadgeLabel.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+        
+        UIImage *defaultAvatar = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+        if (user.UserImageUrl.absoluteString.length > 0) {
+            [GM setImageFromUrlString:user.UserImageUrl.absoluteString imageView:self.avatarImageView phImage:nil];
+        } else {
+            self.avatarImageView.image = defaultAvatar;
+            self.avatarImageView.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+        }
+    } else {
+        self.userNameLabel.text = PPSettingsLocalizedString(@"settings_studio_account_guest_title", @"Guest Profile");
+        self.userMetaLabel.text = PPSettingsLocalizedString(@"settings_studio_account_guest_desc", @"Sign in to sync your preferences");
+        self.identityBadgeLabel.text = PPSettingsLocalizedString(@"settings_studio_account_signin_cta", @"Sign In");
+        NSString *chevron = Language.isRTL ? @"chevron.left" : @"chevron.right";
+        self.identityBadgeIcon.image = [[UIImage systemImageNamed:chevron withConfiguration:symConfig]
+                                        imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                                        renderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.identityBadgeView.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.12];
+        self.identityBadgeLabel.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+        self.avatarImageView.image = [UIImage systemImageNamed:@"person.crop.circle.badge.plus"];
+        self.avatarImageView.tintColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    }
+}
+
+- (void)pp_identityCardTapped
+{
+    if (self.onIdentityTap) {
+        self.onIdentityTap();
+    }
 }
 
 - (void)runEntranceIfNeeded
@@ -841,12 +1060,21 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 
 @end
 
+#pragma mark - PPSettingsV6LocationCell (Geospatial Command Card)
+
 @interface PPSettingsV6LocationCell : UITableViewCell
 @property (nonatomic, strong) UIView *cardView;
+@property (nonatomic, strong) UIView *radarBeaconOuter;
+@property (nonatomic, strong) UIView *radarBeaconInner;
+@property (nonatomic, strong) UIImageView *radarIcon;
+@property (nonatomic, strong) UILabel *eyebrowLabel;
 @property (nonatomic, strong) UILabel *titleLabelV6;
-@property (nonatomic, strong) UILabel *actionLabel;
+@property (nonatomic, strong) UIView *coverageContainer;
 @property (nonatomic, strong) UIView *statusDot;
+@property (nonatomic, strong) UILabel *coverageLabel;
 @property (nonatomic, strong) UIActivityIndicatorView *spinner;
+@property (nonatomic, strong) UIView *actionPill;
+@property (nonatomic, strong) UILabel *actionLabel;
 @property (nonatomic, strong) UIImageView *chevronView;
 @property (nonatomic, copy, nullable) dispatch_block_t onActivate;
 - (void)configureWithTitle:(NSString *)title
@@ -870,32 +1098,46 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
+    // Card Surface
     UIView *card = [UIView new];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = PPSettingsV6SurfaceColor();
     card.layer.borderWidth = 1.0;
     [card pp_setBorderColor:PPSettingsHeroBorderColor()];
-    PPApplyContinuousCorners(card, 28.0);
+    PPApplyContinuousCorners(card, 24.0);
     PPApplyCardShadow(card);
-    card.layer.shadowOpacity = 0.045;
+    card.layer.shadowOpacity = 0.05;
+    card.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.contentView addSubview:card];
     self.cardView = card;
 
-    UIView *iconShell = [UIView new];
-    iconShell.translatesAutoresizingMaskIntoConstraints = NO;
-    iconShell.backgroundColor = PPSettingsV6BrandWashColor();
-    PPApplyContinuousCorners(iconShell, 24.0);
-    [card addSubview:iconShell];
+    // Radar Beacon Outer Halo
+    UIView *radarOuter = [UIView new];
+    radarOuter.translatesAutoresizingMaskIntoConstraints = NO;
+    radarOuter.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.09];
+    PPApplyContinuousCorners(radarOuter, 26.0);
+    [card addSubview:radarOuter];
+    self.radarBeaconOuter = radarOuter;
 
-    UIImageView *icon = [UIImageView new];
-    icon.translatesAutoresizingMaskIntoConstraints = NO;
-    icon.contentMode = UIViewContentModeScaleAspectFit;
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:21 weight:UIImageSymbolWeightSemibold];
-    icon.image = [[UIImage systemImageNamed:@"location.fill" withConfiguration:config]
-                  imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
-                  renderingMode:UIImageRenderingModeAlwaysOriginal];
-    [iconShell addSubview:icon];
+    // Radar Beacon Inner Core
+    UIView *radarInner = [UIView new];
+    radarInner.translatesAutoresizingMaskIntoConstraints = NO;
+    radarInner.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.18];
+    PPApplyContinuousCorners(radarInner, 19.0);
+    [radarOuter addSubview:radarInner];
+    self.radarBeaconInner = radarInner;
 
+    UIImageView *radarIcon = [UIImageView new];
+    radarIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    radarIcon.contentMode = UIViewContentModeScaleAspectFit;
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightBold];
+    radarIcon.image = [[UIImage systemImageNamed:@"location.fill" withConfiguration:config]
+                       imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                       renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [radarInner addSubview:radarIcon];
+    self.radarIcon = radarIcon;
+
+    // Eyebrow Label
     UILabel *eyebrow = [UILabel new];
     eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrow.text = PPSettingsLocalizedString(@"settings_location_eyebrow", @"SMART LOCATION");
@@ -905,22 +1147,32 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     eyebrow.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
     eyebrow.textAlignment = [Language alignmentForCurrentLanguage];
     [card addSubview:eyebrow];
+    self.eyebrowLabel = eyebrow;
 
+    // Detected City / Area Title
     UILabel *title = [UILabel new];
     title.translatesAutoresizingMaskIntoConstraints = NO;
     title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
-                  scaledFontForFont:([GM boldFontWithSize:PPFontTitle3] ?: [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold])];
+                  scaledFontForFont:([GM boldFontWithSize:PPFontTitle3] ?: [UIFont systemFontOfSize:20 weight:UIFontWeightBold])];
     title.adjustsFontForContentSizeCategory = YES;
     title.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     title.textAlignment = [Language alignmentForCurrentLanguage];
-    title.numberOfLines = 2;
+    title.numberOfLines = 1;
     [card addSubview:title];
     self.titleLabelV6 = title;
 
+    // Coverage Row Container
+    UIView *coverageContainer = [UIView new];
+    coverageContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    coverageContainer.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [card addSubview:coverageContainer];
+    self.coverageContainer = coverageContainer;
+
     UIView *status = [UIView new];
     status.translatesAutoresizingMaskIntoConstraints = NO;
-    PPApplyContinuousCorners(status, 4.0);
-    [card addSubview:status];
+    PPApplyContinuousCorners(status, 3.5);
+    status.backgroundColor = [UIColor colorWithRed:0.18 green:0.80 blue:0.44 alpha:1.0];
+    [coverageContainer addSubview:status];
     self.statusDot = status;
 
     UIActivityIndicatorView *spinner;
@@ -932,17 +1184,36 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     spinner.translatesAutoresizingMaskIntoConstraints = NO;
     spinner.color = AppPrimaryClr ?: UIColor.systemPinkColor;
     spinner.hidesWhenStopped = YES;
-    [card addSubview:spinner];
+    [coverageContainer addSubview:spinner];
     self.spinner = spinner;
+
+    UILabel *coverageLabel = [UILabel new];
+    coverageLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    coverageLabel.text = PPSettingsLocalizedString(@"settings_studio_coverage_full", @"Full marketplace & clinic coverage");
+    coverageLabel.font = [GM fontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0];
+    coverageLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    coverageLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    coverageLabel.numberOfLines = 1;
+    [coverageContainer addSubview:coverageLabel];
+    self.coverageLabel = coverageLabel;
+
+    // Action Pill (Trailing)
+    UIView *actionPill = [UIView new];
+    actionPill.translatesAutoresizingMaskIntoConstraints = NO;
+    actionPill.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.08];
+    actionPill.layer.borderWidth = 1.0;
+    [actionPill pp_setBorderColor:[(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.18]];
+    PPApplyContinuousCorners(actionPill, 14.0);
+    actionPill.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [card addSubview:actionPill];
+    self.actionPill = actionPill;
 
     UILabel *action = [UILabel new];
     action.translatesAutoresizingMaskIntoConstraints = NO;
-    action.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
-                   scaledFontForFont:([GM boldFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold])];
-    action.adjustsFontForContentSizeCategory = YES;
+    action.font = [GM boldFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightBold];
     action.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     action.textAlignment = [Language alignmentForCurrentLanguage];
-    [card addSubview:action];
+    [actionPill addSubview:action];
     self.actionLabel = action;
 
     UIImageView *chevron = [UIImageView new];
@@ -951,49 +1222,76 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     NSString *chevronName = Language.isRTL ? @"chevron.backward" : @"chevron.forward";
     chevron.image = [[UIImage systemImageNamed:chevronName] imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
                                                                  renderingMode:UIImageRenderingModeAlwaysOriginal];
-    [card addSubview:chevron];
+    [actionPill addSubview:chevron];
     self.chevronView = chevron;
+
+    UITapGestureRecognizer *cardTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_locationCardTapped)];
+    [card addGestureRecognizer:cardTap];
 
     [NSLayoutConstraint activateConstraints:@[
         [card.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
         [card.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
-        [card.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceSM],
-        [card.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceMD],
+        [card.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceXS],
+        [card.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM],
 
-        [iconShell.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:PPSpaceBase],
-        [iconShell.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
-        [iconShell.widthAnchor constraintEqualToConstant:48.0],
-        [iconShell.heightAnchor constraintEqualToConstant:48.0],
-        [icon.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
-        [icon.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
-        [icon.widthAnchor constraintEqualToConstant:24.0],
-        [icon.heightAnchor constraintEqualToConstant:24.0],
+        // Radar Shell (Leading)
+        [radarOuter.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:14.0],
+        [radarOuter.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
+        [radarOuter.widthAnchor constraintEqualToConstant:52.0],
+        [radarOuter.heightAnchor constraintEqualToConstant:52.0],
 
-        [eyebrow.leadingAnchor constraintEqualToAnchor:iconShell.trailingAnchor constant:PPSpaceMD],
-        [eyebrow.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-PPSpaceBase],
-        [eyebrow.topAnchor constraintEqualToAnchor:card.topAnchor constant:PPSpaceBase],
+        [radarInner.centerXAnchor constraintEqualToAnchor:radarOuter.centerXAnchor],
+        [radarInner.centerYAnchor constraintEqualToAnchor:radarOuter.centerYAnchor],
+        [radarInner.widthAnchor constraintEqualToConstant:38.0],
+        [radarInner.heightAnchor constraintEqualToConstant:38.0],
 
+        [radarIcon.centerXAnchor constraintEqualToAnchor:radarInner.centerXAnchor],
+        [radarIcon.centerYAnchor constraintEqualToAnchor:radarInner.centerYAnchor],
+        [radarIcon.widthAnchor constraintEqualToConstant:20.0],
+        [radarIcon.heightAnchor constraintEqualToConstant:20.0],
+
+        // Eyebrow
+        [eyebrow.leadingAnchor constraintEqualToAnchor:radarOuter.trailingAnchor constant:12.0],
+        [eyebrow.topAnchor constraintEqualToAnchor:card.topAnchor constant:14.0],
+        [eyebrow.trailingAnchor constraintLessThanOrEqualToAnchor:actionPill.leadingAnchor constant:-8.0],
+
+        // Detected Area Title
         [title.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
-        [title.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-PPSpaceBase],
-        [title.topAnchor constraintEqualToAnchor:eyebrow.bottomAnchor constant:PPSpaceXS],
+        [title.topAnchor constraintEqualToAnchor:eyebrow.bottomAnchor constant:2.0],
+        [title.trailingAnchor constraintLessThanOrEqualToAnchor:actionPill.leadingAnchor constant:-8.0],
 
-        [status.leadingAnchor constraintEqualToAnchor:title.leadingAnchor],
-        [status.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:PPSpaceMD],
-        [status.widthAnchor constraintEqualToConstant:8.0],
-        [status.heightAnchor constraintEqualToConstant:8.0],
-        [status.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-PPSpaceBase],
+        // Coverage Row
+        [coverageContainer.leadingAnchor constraintEqualToAnchor:title.leadingAnchor],
+        [coverageContainer.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:4.0],
+        [coverageContainer.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-14.0],
+        [coverageContainer.trailingAnchor constraintLessThanOrEqualToAnchor:actionPill.leadingAnchor constant:-8.0],
+        [coverageContainer.heightAnchor constraintEqualToConstant:18.0],
+
+        [status.leadingAnchor constraintEqualToAnchor:coverageContainer.leadingAnchor],
+        [status.centerYAnchor constraintEqualToAnchor:coverageContainer.centerYAnchor],
+        [status.widthAnchor constraintEqualToConstant:7.0],
+        [status.heightAnchor constraintEqualToConstant:7.0],
 
         [spinner.centerXAnchor constraintEqualToAnchor:status.centerXAnchor],
         [spinner.centerYAnchor constraintEqualToAnchor:status.centerYAnchor],
 
-        [action.leadingAnchor constraintEqualToAnchor:status.trailingAnchor constant:PPSpaceSM],
-        [action.centerYAnchor constraintEqualToAnchor:status.centerYAnchor],
-        [action.trailingAnchor constraintLessThanOrEqualToAnchor:chevron.leadingAnchor constant:-PPSpaceSM],
+        [coverageLabel.leadingAnchor constraintEqualToAnchor:status.trailingAnchor constant:6.0],
+        [coverageLabel.centerYAnchor constraintEqualToAnchor:coverageContainer.centerYAnchor],
+        [coverageLabel.trailingAnchor constraintEqualToAnchor:coverageContainer.trailingAnchor],
 
-        [chevron.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-PPSpaceBase],
-        [chevron.centerYAnchor constraintEqualToAnchor:action.centerYAnchor],
-        [chevron.widthAnchor constraintEqualToConstant:13.0],
-        [chevron.heightAnchor constraintEqualToConstant:18.0]
+        // Action Pill (Trailing)
+        [actionPill.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-14.0],
+        [actionPill.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
+        [actionPill.heightAnchor constraintEqualToConstant:32.0],
+
+        [action.leadingAnchor constraintEqualToAnchor:actionPill.leadingAnchor constant:10.0],
+        [action.centerYAnchor constraintEqualToAnchor:actionPill.centerYAnchor],
+
+        [chevron.leadingAnchor constraintEqualToAnchor:action.trailingAnchor constant:4.0],
+        [chevron.trailingAnchor constraintEqualToAnchor:actionPill.trailingAnchor constant:-10.0],
+        [chevron.centerYAnchor constraintEqualToAnchor:actionPill.centerYAnchor],
+        [chevron.widthAnchor constraintEqualToConstant:11.0],
+        [chevron.heightAnchor constraintEqualToConstant:14.0]
     ]];
 
     return self;
@@ -1016,10 +1314,18 @@ static UIColor *PPSettingsV6BrandWashColor(void)
                   animated:(BOOL)animated
 {
     self.titleLabelV6.text = title ?: @"";
-    self.actionLabel.text = action ?: @"";
-    self.statusDot.backgroundColor = statusColor ?: AppSecondaryTextClr;
+    self.actionLabel.text = action ?: (kLang(@"change") ?: @"Change");
+    self.statusDot.backgroundColor = statusColor ?: [UIColor colorWithRed:0.18 green:0.80 blue:0.44 alpha:1.0];
     self.statusDot.hidden = loading;
-    loading ? [self.spinner startAnimating] : [self.spinner stopAnimating];
+    
+    if (loading) {
+        [self.spinner startAnimating];
+        self.coverageLabel.text = PPSettingsLocalizedString(@"settings_studio_coverage_loading", @"Locating nearby zone...");
+    } else {
+        [self.spinner stopAnimating];
+        self.coverageLabel.text = PPSettingsLocalizedString(@"settings_studio_coverage_full", @"Full marketplace & clinic coverage");
+    }
+
     self.cardView.isAccessibilityElement = NO;
     self.isAccessibilityElement = YES;
     self.accessibilityLabel = title ?: @"";
@@ -1027,6 +1333,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self.accessibilityHint = accessibilityHint ?: action;
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
     NSString *chevronName = Language.isRTL ? @"chevron.backward" : @"chevron.forward";
     self.chevronView.image = [[UIImage systemImageNamed:chevronName] imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
                                                                  renderingMode:UIImageRenderingModeAlwaysOriginal];
@@ -1035,6 +1342,12 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     }
 }
 
+- (void)pp_locationCardTapped
+{
+    if (self.onActivate) {
+        self.onActivate();
+    }
+}
 
 - (BOOL)accessibilityActivate
 {
@@ -1052,11 +1365,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     void (^changes)(void) = ^{
         self.cardView.transform = highlighted ? CGAffineTransformMakeScale(0.985, 0.985) : CGAffineTransformIdentity;
     };
-    if (animated) {
-        [UIView animateWithDuration:PPAnimDurationFast animations:changes];
-    } else {
-        changes();
-    }
+    animated ? [UIView animateWithDuration:PPAnimDurationFast animations:changes] : changes();
 }
 
 - (void)runEntranceIfNeeded
@@ -1074,6 +1383,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 }
 
 @end
+
 
 @interface PPSettingsV6RowCell : UITableViewCell
 @property (nonatomic, strong) UIView *surfaceView;
@@ -1282,10 +1592,14 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 #pragma mark - PPSettingsChoiceButton
 
 @interface PPSettingsChoiceButton : UIControl
+@property (nonatomic, strong) UIView *miniPreviewView;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UIImageView *checkBadgeView;
 @property (nonatomic, assign) BOOL isChosen;
+@property (nonatomic, assign) BOOL isThemeStyle;
 @property (nonatomic, assign) NSInteger optionIndex;
+@property (nonatomic, strong) NSLayoutConstraint *minHeightConstraint;
 - (void)configureWithTitle:(NSString *)title iconName:(nullable NSString *)iconName isChosen:(BOOL)isChosen;
 @end
 
@@ -1296,37 +1610,66 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     self = [super initWithFrame:frame];
     if (self) {
         self.translatesAutoresizingMaskIntoConstraints = NO;
-        PPApplyContinuousCorners(self, 14.0);
+        PPApplyContinuousCorners(self, 16.0);
         self.clipsToBounds = YES;
         self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+        // Miniature preview canvas (used for Theme cards)
+        UIView *preview = [UIView new];
+        preview.translatesAutoresizingMaskIntoConstraints = NO;
+        PPApplyContinuousCorners(preview, 8.0);
+        preview.clipsToBounds = YES;
+        preview.userInteractionEnabled = NO;
+        [self addSubview:preview];
+        self.miniPreviewView = preview;
 
         UIImageView *icon = [UIImageView new];
         icon.translatesAutoresizingMaskIntoConstraints = NO;
         icon.contentMode = UIViewContentModeScaleAspectFit;
+        icon.userInteractionEnabled = NO;
         [self addSubview:icon];
         self.iconView = icon;
 
         UILabel *title = [UILabel new];
         title.translatesAutoresizingMaskIntoConstraints = NO;
         title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
-                      scaledFontForFont:([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold])];
+                      scaledFontForFont:([GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold])];
         title.adjustsFontForContentSizeCategory = YES;
         title.textAlignment = NSTextAlignmentCenter;
         title.numberOfLines = 1;
+        title.userInteractionEnabled = NO;
         [self addSubview:title];
         self.titleLabel = title;
 
-        [NSLayoutConstraint activateConstraints:@[
-            [icon.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-            [icon.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10.0],
-            [icon.widthAnchor constraintEqualToConstant:17.0],
-            [icon.heightAnchor constraintEqualToConstant:17.0],
+        UIImageView *check = [UIImageView new];
+        check.translatesAutoresizingMaskIntoConstraints = NO;
+        check.contentMode = UIViewContentModeScaleAspectFit;
+        check.userInteractionEnabled = NO;
+        [self addSubview:check];
+        self.checkBadgeView = check;
 
-            [title.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-            [title.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:5.0],
-            [title.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10.0],
-            
-            [self.heightAnchor constraintGreaterThanOrEqualToConstant:46.0]
+        self.minHeightConstraint = [self.heightAnchor constraintGreaterThanOrEqualToConstant:50.0];
+        self.minHeightConstraint.active = YES;
+
+        [NSLayoutConstraint activateConstraints:@[
+            [self.iconView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+            [self.iconView.topAnchor constraintEqualToAnchor:self.topAnchor constant:12.0],
+            [self.iconView.widthAnchor constraintEqualToConstant:22.0],
+            [self.iconView.heightAnchor constraintEqualToConstant:22.0],
+
+            [self.miniPreviewView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+            [self.miniPreviewView.topAnchor constraintEqualToAnchor:self.topAnchor constant:8.0],
+            [self.miniPreviewView.widthAnchor constraintEqualToConstant:40.0],
+            [self.miniPreviewView.heightAnchor constraintEqualToConstant:24.0],
+
+            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:6.0],
+            [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6.0],
+            [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-10.0],
+
+            [self.checkBadgeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6.0],
+            [self.checkBadgeView.topAnchor constraintEqualToAnchor:self.topAnchor constant:6.0],
+            [self.checkBadgeView.widthAnchor constraintEqualToConstant:14.0],
+            [self.checkBadgeView.heightAnchor constraintEqualToConstant:14.0]
         ]];
     }
     return self;
@@ -1336,30 +1679,100 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 {
     self.isChosen = isChosen;
     self.titleLabel.text = title ?: @"";
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightSemibold];
+
+    BOOL isTheme = ([iconName containsString:@"sun"] || [iconName containsString:@"moon"] || [iconName containsString:@"circle.lefthalf"]);
+    self.isThemeStyle = isTheme;
+
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
     UIImage *img = [UIImage systemImageNamed:(iconName ?: @"circle.fill") withConfiguration:config];
-    
+
+    if (isTheme) {
+        self.minHeightConstraint.constant = 78.0;
+        self.miniPreviewView.hidden = NO;
+        self.iconView.hidden = YES;
+
+        // Clean out previous miniature sublayers
+        for (UIView *v in self.miniPreviewView.subviews) [v removeFromSuperview];
+
+        if ([iconName containsString:@"sun"]) {
+            // Light Preview
+            self.miniPreviewView.backgroundColor = [UIColor colorWithRed:0.96 green:0.96 blue:0.97 alpha:1.0];
+            self.miniPreviewView.layer.borderWidth = 1.0;
+            self.miniPreviewView.layer.borderColor = [UIColor colorWithWhite:0.85 alpha:1.0].CGColor;
+            
+            UIView *sunHeader = [[UIView alloc] initWithFrame:CGRectMake(4.0, 3.0, 32.0, 5.0)];
+            sunHeader.backgroundColor = [UIColor colorWithRed:0.98 green:0.75 blue:0.18 alpha:0.9];
+            PPApplyContinuousCorners(sunHeader, 2.5);
+            [self.miniPreviewView addSubview:sunHeader];
+
+            UIView *cardBlock = [[UIView alloc] initWithFrame:CGRectMake(4.0, 11.0, 32.0, 9.0)];
+            cardBlock.backgroundColor = [UIColor whiteColor];
+            PPApplyContinuousCorners(cardBlock, 3.0);
+            [self.miniPreviewView addSubview:cardBlock];
+        } else if ([iconName containsString:@"moon"]) {
+            // Dark Preview
+            self.miniPreviewView.backgroundColor = [UIColor colorWithRed:0.11 green:0.12 blue:0.15 alpha:1.0];
+            self.miniPreviewView.layer.borderWidth = 1.0;
+            self.miniPreviewView.layer.borderColor = [UIColor colorWithWhite:0.25 alpha:1.0].CGColor;
+            
+            UIView *moonHeader = [[UIView alloc] initWithFrame:CGRectMake(4.0, 3.0, 32.0, 5.0)];
+            moonHeader.backgroundColor = [UIColor colorWithRed:0.35 green:0.55 blue:0.95 alpha:0.85];
+            PPApplyContinuousCorners(moonHeader, 2.5);
+            [self.miniPreviewView addSubview:moonHeader];
+
+            UIView *cardBlock = [[UIView alloc] initWithFrame:CGRectMake(4.0, 11.0, 32.0, 9.0)];
+            cardBlock.backgroundColor = [UIColor colorWithRed:0.18 green:0.19 blue:0.22 alpha:1.0];
+            PPApplyContinuousCorners(cardBlock, 3.0);
+            [self.miniPreviewView addSubview:cardBlock];
+        } else {
+            // System Split Preview
+            self.miniPreviewView.backgroundColor = [UIColor clearColor];
+            self.miniPreviewView.layer.borderWidth = 1.0;
+            self.miniPreviewView.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.4].CGColor;
+
+            UIView *leftHalf = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 20.0, 24.0)];
+            leftHalf.backgroundColor = [UIColor colorWithRed:0.95 green:0.95 blue:0.96 alpha:1.0];
+            [self.miniPreviewView addSubview:leftHalf];
+
+            UIView *rightHalf = [[UIView alloc] initWithFrame:CGRectMake(20.0, 0, 20.0, 24.0)];
+            rightHalf.backgroundColor = [UIColor colorWithRed:0.12 green:0.13 blue:0.16 alpha:1.0];
+            [self.miniPreviewView addSubview:rightHalf];
+        }
+    } else {
+        self.minHeightConstraint.constant = 52.0;
+        self.miniPreviewView.hidden = YES;
+        self.iconView.hidden = NO;
+        self.iconView.image = img;
+    }
+
     if (isChosen) {
-        self.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-        self.layer.borderWidth = 0.0;
-        self.titleLabel.textColor = UIColor.whiteColor;
-        self.iconView.image = [img imageWithTintColor:UIColor.whiteColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+        self.layer.borderWidth = 2.0;
+        [self pp_setBorderColor:(AppPrimaryClr ?: UIColor.systemPinkColor)];
+        self.titleLabel.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+        self.iconView.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
         self.layer.shadowColor = (AppPrimaryClr ?: UIColor.systemPinkColor).CGColor;
-        self.layer.shadowOpacity = 0.22;
-        self.layer.shadowRadius = 8.0;
-        self.layer.shadowOffset = CGSizeMake(0, 3);
+        self.layer.shadowOpacity = 0.14;
+        self.layer.shadowRadius = 6.0;
+        self.layer.shadowOffset = CGSizeMake(0, 2);
+
+        UIImageSymbolConfiguration *chkConfig = [UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightBold];
+        self.checkBadgeView.image = [[UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:chkConfig]
+                                     imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                                     renderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.checkBadgeView.hidden = NO;
     } else {
         self.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
             return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [[UIColor whiteColor] colorWithAlphaComponent:0.06]
-                : [[UIColor blackColor] colorWithAlphaComponent:0.04];
+                ? [[UIColor whiteColor] colorWithAlphaComponent:0.05]
+                : [[UIColor blackColor] colorWithAlphaComponent:0.03];
         }];
         self.layer.borderWidth = 1.0;
         [self pp_setBorderColor:PPSettingsV6HairlineColor()];
         self.titleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-        self.iconView.image = [img imageWithTintColor:(AppSecondaryTextClr ?: UIColor.secondaryLabelColor)
-                                        renderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.iconView.tintColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
         self.layer.shadowOpacity = 0.0;
+        self.checkBadgeView.hidden = YES;
     }
 }
 
@@ -1411,6 +1824,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     UIView *surface = [UIView new];
     surface.translatesAutoresizingMaskIntoConstraints = NO;
     surface.backgroundColor = PPSettingsV6SurfaceColor();
+    surface.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.contentView addSubview:surface];
     self.surfaceView = surface;
 
@@ -1439,7 +1853,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
     UIStackView *stack = [UIStackView new];
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     stack.axis = UILayoutConstraintAxisHorizontal;
-    stack.spacing = 8.0;
+    stack.spacing = 10.0;
     stack.distribution = UIStackViewDistributionFillEqually;
     stack.alignment = UIStackViewAlignmentFill;
     stack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -1474,7 +1888,6 @@ static UIColor *PPSettingsV6BrandWashColor(void)
         [stack.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
         [stack.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
         [stack.topAnchor constraintEqualToAnchor:iconShell.bottomAnchor constant:PPSpaceMD],
-        [stack.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
         [stack.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-PPSpaceBase],
 
         [separator.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
@@ -1544,6 +1957,632 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 }
 
 @end
+
+#pragma mark - PPSettingsV6AccentStudioCell (Chromatic Identity Studio)
+
+@interface PPSettingsV6AccentStudioCell : UITableViewCell
+@property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) UIView *iconShell;
+@property (nonatomic, strong) UIImageView *iconViewV6;
+@property (nonatomic, strong) UILabel *titleLabelV6;
+@property (nonatomic, strong) UILabel *subtitleLabelV6;
+@property (nonatomic, strong) UIControl *brandCard;
+@property (nonatomic, strong) UIControl *speciesCard;
+@property (nonatomic, strong) UIImageView *brandCheck;
+@property (nonatomic, strong) UIImageView *speciesCheck;
+@property (nonatomic, strong) UIView *separatorViewV6;
+@property (nonatomic, copy, nullable) void (^onAccentChoice)(BOOL usesMainKind);
+- (void)configureWithUsesMainKind:(BOOL)usesMainKind
+                            first:(BOOL)first
+                             last:(BOOL)last
+                         onChoice:(void (^)(BOOL usesMainKind))onChoice;
+@end
+
+@implementation PPSettingsV6AccentStudioCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (!self) return nil;
+
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIView *surface = [UIView new];
+    surface.translatesAutoresizingMaskIntoConstraints = NO;
+    surface.backgroundColor = PPSettingsV6SurfaceColor();
+    surface.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.contentView addSubview:surface];
+    self.surfaceView = surface;
+
+    UIView *iconShell = [UIView new];
+    iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+    iconShell.backgroundColor = PPSettingsV6BrandWashColor();
+    PPApplyContinuousCorners(iconShell, 12.0);
+    [surface addSubview:iconShell];
+    self.iconShell = iconShell;
+
+    UIImageView *icon = [UIImageView new];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold];
+    icon.image = [[UIImage systemImageNamed:@"paintpalette.fill" withConfiguration:config]
+                  imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                  renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [iconShell addSubview:icon];
+    self.iconViewV6 = icon;
+
+    UILabel *title = [UILabel new];
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+                  scaledFontForFont:([GM MidFontWithSize:PPFontBody] ?: [UIFont systemFontOfSize:17 weight:UIFontWeightMedium])];
+    title.adjustsFontForContentSizeCategory = YES;
+    title.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    title.textAlignment = [Language alignmentForCurrentLanguage];
+    title.text = PPSettingsLocalizedString(@"settings_marketplace_accent_title", @"Marketplace Accent Color");
+    [surface addSubview:title];
+    self.titleLabelV6 = title;
+
+    UILabel *subtitle = [UILabel new];
+    subtitle.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitle.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+                     scaledFontForFont:([GM fontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13])];
+    subtitle.adjustsFontForContentSizeCategory = YES;
+    subtitle.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    subtitle.textAlignment = [Language alignmentForCurrentLanguage];
+    subtitle.numberOfLines = 2;
+    subtitle.text = PPSettingsLocalizedString(@"settings_marketplace_accent_subtitle", @"Choose how category accents and highlights appear across the marketplace.");
+    [surface addSubview:subtitle];
+    self.subtitleLabelV6 = subtitle;
+
+    // Dual Cards Container
+    UIStackView *cardsStack = [UIStackView new];
+    cardsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    cardsStack.axis = UILayoutConstraintAxisHorizontal;
+    cardsStack.spacing = 10.0;
+    cardsStack.distribution = UIStackViewDistributionFillEqually;
+    cardsStack.alignment = UIStackViewAlignmentFill;
+    cardsStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [surface addSubview:cardsStack];
+
+    // 1. Brand Crimson Card
+    UIControl *brandCard = [UIControl new];
+    brandCard.translatesAutoresizingMaskIntoConstraints = NO;
+    PPApplyContinuousCorners(brandCard, 16.0);
+    brandCard.clipsToBounds = YES;
+    brandCard.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [cardsStack addArrangedSubview:brandCard];
+    self.brandCard = brandCard;
+
+    UIView *brandSwatch = [UIView new];
+    brandSwatch.translatesAutoresizingMaskIntoConstraints = NO;
+    brandSwatch.backgroundColor = AppPrimaryClr ?: [UIColor colorWithRed:0.90 green:0.0 blue:0.27 alpha:1.0];
+    PPApplyContinuousCorners(brandSwatch, 8.0);
+    [brandCard addSubview:brandSwatch];
+
+    UILabel *brandTitle = [UILabel new];
+    brandTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    brandTitle.text = PPSettingsLocalizedString(@"settings_marketplace_accent_brand", @"Pure Pets Brand");
+    brandTitle.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    brandTitle.textAlignment = [Language alignmentForCurrentLanguage];
+    [brandCard addSubview:brandTitle];
+
+    UILabel *brandDesc = [UILabel new];
+    brandDesc.translatesAutoresizingMaskIntoConstraints = NO;
+    brandDesc.text = PPSettingsLocalizedString(@"settings_marketplace_accent_brand_desc", @"Signature Pure Pets luxury brand accent across the marketplace");
+    brandDesc.font = [GM fontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0];
+    brandDesc.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    brandDesc.textAlignment = [Language alignmentForCurrentLanguage];
+    [brandCard addSubview:brandDesc];
+
+    UIImageView *brandCheck = [UIImageView new];
+    brandCheck.translatesAutoresizingMaskIntoConstraints = NO;
+    brandCheck.contentMode = UIViewContentModeScaleAspectFit;
+    [brandCard addSubview:brandCheck];
+    self.brandCheck = brandCheck;
+
+    // 2. Species Dynamic Palette Card
+    UIControl *speciesCard = [UIControl new];
+    speciesCard.translatesAutoresizingMaskIntoConstraints = NO;
+    PPApplyContinuousCorners(speciesCard, 16.0);
+    speciesCard.clipsToBounds = YES;
+    speciesCard.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [cardsStack addArrangedSubview:speciesCard];
+    self.speciesCard = speciesCard;
+
+    UIView *paletteContainer = [UIView new];
+    paletteContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    [speciesCard addSubview:paletteContainer];
+
+    NSArray<UIColor *> *paletteColors = @[
+        [UIColor colorWithRed:0.16 green:0.47 blue:1.0 alpha:1.0], // Dogs Azure
+        [UIColor colorWithRed:1.0 green:0.43 blue:0.0 alpha:1.0],  // Cats Orange
+        [UIColor colorWithRed:0.0 green:0.78 blue:0.33 alpha:1.0], // Birds Emerald
+        [UIColor colorWithRed:0.67 green:0.0 blue:1.0 alpha:1.0]   // Small Pets Violet
+    ];
+    for (int i = 0; i < 4; i++) {
+        UIView *dot = [[UIView alloc] initWithFrame:CGRectMake((i % 2) * 12.0, (i / 2) * 12.0, 9.0, 9.0)];
+        dot.backgroundColor = paletteColors[i];
+        PPApplyContinuousCorners(dot, 4.5);
+        [paletteContainer addSubview:dot];
+    }
+
+    UILabel *speciesTitle = [UILabel new];
+    speciesTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    speciesTitle.text = PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind", @"Pet Categories");
+    speciesTitle.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    speciesTitle.textAlignment = [Language alignmentForCurrentLanguage];
+    [speciesCard addSubview:speciesTitle];
+
+    UILabel *speciesDesc = [UILabel new];
+    speciesDesc.translatesAutoresizingMaskIntoConstraints = NO;
+    speciesDesc.text = PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind_desc", @"Dynamic color highlights for dogs, cats, birds, and small pets");
+    speciesDesc.font = [GM fontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0];
+    speciesDesc.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    speciesDesc.textAlignment = [Language alignmentForCurrentLanguage];
+    [speciesCard addSubview:speciesDesc];
+
+    UIImageView *speciesCheck = [UIImageView new];
+    speciesCheck.translatesAutoresizingMaskIntoConstraints = NO;
+    speciesCheck.contentMode = UIViewContentModeScaleAspectFit;
+    [speciesCard addSubview:speciesCheck];
+    self.speciesCheck = speciesCheck;
+
+    [brandCard addTarget:self action:@selector(pp_brandCardTapped) forControlEvents:UIControlEventTouchUpInside];
+    [speciesCard addTarget:self action:@selector(pp_speciesCardTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    UIView *separator = [UIView new];
+    separator.translatesAutoresizingMaskIntoConstraints = NO;
+    separator.backgroundColor = PPSettingsV6HairlineColor();
+    [surface addSubview:separator];
+    self.separatorViewV6 = separator;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [surface.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [surface.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [surface.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [surface.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+
+        [iconShell.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [iconShell.topAnchor constraintEqualToAnchor:surface.topAnchor constant:PPSpaceMD],
+        [iconShell.widthAnchor constraintEqualToConstant:36.0],
+        [iconShell.heightAnchor constraintEqualToConstant:36.0],
+        [icon.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
+        [icon.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+        [icon.widthAnchor constraintEqualToConstant:18.0],
+        [icon.heightAnchor constraintEqualToConstant:18.0],
+
+        [title.leadingAnchor constraintEqualToAnchor:iconShell.trailingAnchor constant:PPSpaceMD],
+        [title.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [title.topAnchor constraintEqualToAnchor:surface.topAnchor constant:PPSpaceMD],
+
+        [subtitle.leadingAnchor constraintEqualToAnchor:title.leadingAnchor],
+        [subtitle.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:2.0],
+
+        [cardsStack.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [cardsStack.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [cardsStack.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:PPSpaceMD],
+        [cardsStack.heightAnchor constraintEqualToConstant:74.0],
+        [cardsStack.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-PPSpaceBase],
+
+        // Brand Card Interior
+        [brandSwatch.leadingAnchor constraintEqualToAnchor:brandCard.leadingAnchor constant:12.0],
+        [brandSwatch.centerYAnchor constraintEqualToAnchor:brandCard.centerYAnchor],
+        [brandSwatch.widthAnchor constraintEqualToConstant:24.0],
+        [brandSwatch.heightAnchor constraintEqualToConstant:24.0],
+
+        [brandTitle.leadingAnchor constraintEqualToAnchor:brandSwatch.trailingAnchor constant:10.0],
+        [brandTitle.topAnchor constraintEqualToAnchor:brandCard.topAnchor constant:16.0],
+        [brandTitle.trailingAnchor constraintLessThanOrEqualToAnchor:brandCheck.leadingAnchor constant:-4.0],
+
+        [brandDesc.leadingAnchor constraintEqualToAnchor:brandTitle.leadingAnchor],
+        [brandDesc.topAnchor constraintEqualToAnchor:brandTitle.bottomAnchor constant:2.0],
+        [brandDesc.trailingAnchor constraintLessThanOrEqualToAnchor:brandCheck.leadingAnchor constant:-4.0],
+
+        [brandCheck.trailingAnchor constraintEqualToAnchor:brandCard.trailingAnchor constant:-8.0],
+        [brandCheck.topAnchor constraintEqualToAnchor:brandCard.topAnchor constant:8.0],
+        [brandCheck.widthAnchor constraintEqualToConstant:16.0],
+        [brandCheck.heightAnchor constraintEqualToConstant:16.0],
+
+        // Species Card Interior
+        [paletteContainer.leadingAnchor constraintEqualToAnchor:speciesCard.leadingAnchor constant:12.0],
+        [paletteContainer.centerYAnchor constraintEqualToAnchor:speciesCard.centerYAnchor],
+        [paletteContainer.widthAnchor constraintEqualToConstant:24.0],
+        [paletteContainer.heightAnchor constraintEqualToConstant:24.0],
+
+        [speciesTitle.leadingAnchor constraintEqualToAnchor:paletteContainer.trailingAnchor constant:10.0],
+        [speciesTitle.topAnchor constraintEqualToAnchor:speciesCard.topAnchor constant:16.0],
+        [speciesTitle.trailingAnchor constraintLessThanOrEqualToAnchor:speciesCheck.leadingAnchor constant:-4.0],
+
+        [speciesDesc.leadingAnchor constraintEqualToAnchor:speciesTitle.leadingAnchor],
+        [speciesDesc.topAnchor constraintEqualToAnchor:speciesTitle.bottomAnchor constant:2.0],
+        [speciesDesc.trailingAnchor constraintLessThanOrEqualToAnchor:speciesCheck.leadingAnchor constant:-4.0],
+
+        [speciesCheck.trailingAnchor constraintEqualToAnchor:speciesCard.trailingAnchor constant:-8.0],
+        [speciesCheck.topAnchor constraintEqualToAnchor:speciesCard.topAnchor constant:8.0],
+        [speciesCheck.widthAnchor constraintEqualToConstant:16.0],
+        [speciesCheck.heightAnchor constraintEqualToConstant:16.0],
+
+        [separator.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [separator.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [separator.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
+        [separator.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale]
+    ]];
+
+    return self;
+}
+
+- (void)configureWithUsesMainKind:(BOOL)usesMainKind first:(BOOL)first last:(BOOL)last onChoice:(void (^)(BOOL))onChoice
+{
+    self.onAccentChoice = onChoice;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIImageSymbolConfiguration *chkConfig = [UIImageSymbolConfiguration configurationWithPointSize:13 weight:UIImageSymbolWeightBold];
+    UIImage *chkImage = [[UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:chkConfig]
+                         imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                         renderingMode:UIImageRenderingModeAlwaysOriginal];
+
+    // Style Brand Card
+    if (!usesMainKind) {
+        self.brandCard.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+        self.brandCard.layer.borderWidth = 2.0;
+        [self.brandCard pp_setBorderColor:(AppPrimaryClr ?: UIColor.systemPinkColor)];
+        self.brandCheck.image = chkImage;
+        self.brandCheck.hidden = NO;
+    } else {
+        self.brandCard.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? [[UIColor whiteColor] colorWithAlphaComponent:0.05] : [[UIColor blackColor] colorWithAlphaComponent:0.03];
+        }];
+        self.brandCard.layer.borderWidth = 1.0;
+        [self.brandCard pp_setBorderColor:PPSettingsV6HairlineColor()];
+        self.brandCheck.hidden = YES;
+    }
+
+    // Style Species Card
+    if (usesMainKind) {
+        self.speciesCard.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+        self.speciesCard.layer.borderWidth = 2.0;
+        [self.speciesCard pp_setBorderColor:(AppPrimaryClr ?: UIColor.systemPinkColor)];
+        self.speciesCheck.image = chkImage;
+        self.speciesCheck.hidden = NO;
+    } else {
+        self.speciesCard.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? [[UIColor whiteColor] colorWithAlphaComponent:0.05] : [[UIColor blackColor] colorWithAlphaComponent:0.03];
+        }];
+        self.speciesCard.layer.borderWidth = 1.0;
+        [self.speciesCard pp_setBorderColor:PPSettingsV6HairlineColor()];
+        self.speciesCheck.hidden = YES;
+    }
+
+    self.surfaceView.layer.cornerRadius = (first || last) ? PPCornerCard : 0.0;
+    if (@available(iOS 13.0, *)) self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
+    if (@available(iOS 11.0, *)) {
+        CACornerMask mask = 0;
+        if (first) mask |= (kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner);
+        if (last) mask |= (kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner);
+        self.surfaceView.layer.maskedCorners = mask;
+    }
+    self.separatorViewV6.hidden = last;
+}
+
+- (void)pp_brandCardTapped
+{
+    if (self.onAccentChoice) self.onAccentChoice(NO);
+}
+
+- (void)pp_speciesCardTapped
+{
+    if (self.onAccentChoice) self.onAccentChoice(YES);
+}
+
+@end
+
+#pragma mark - PPSettingsV6StorageMeterCell (Storage & Health Meter)
+
+@interface PPSettingsV6StorageMeterCell : UITableViewCell
+@property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) UIView *iconShell;
+@property (nonatomic, strong) UIImageView *iconViewV6;
+@property (nonatomic, strong) UILabel *titleLabelV6;
+@property (nonatomic, strong) UIView *cacheBadgeView;
+@property (nonatomic, strong) UILabel *cacheBadgeLabel;
+@property (nonatomic, strong) UILabel *subtitleLabelV6;
+@property (nonatomic, strong) UIView *meterTrack;
+@property (nonatomic, strong) UIView *meterFill;
+@property (nonatomic, strong) NSLayoutConstraint *meterFillWidthConstraint;
+@property (nonatomic, strong) UIControl *purgeButton;
+@property (nonatomic, strong) UILabel *purgeButtonLabel;
+@property (nonatomic, strong) UIImageView *purgeButtonIcon;
+@property (nonatomic, strong) UIView *separatorViewV6;
+@property (nonatomic, assign) CGFloat storageUsageFraction;
+@property (nonatomic, copy, nullable) PPSettingsCachePurgeHandler onPurge;
+- (void)configureWithSizeString:(NSString *)sizeString
+                   usageFraction:(CGFloat)usageFraction
+                          first:(BOOL)first
+                           last:(BOOL)last
+                        onPurge:(PPSettingsCachePurgeHandler)onPurge;
+- (void)pp_applyStorageUsageFraction:(CGFloat)usageFraction animated:(BOOL)animated;
+@end
+
+@implementation PPSettingsV6StorageMeterCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (!self) return nil;
+
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIView *surface = [UIView new];
+    surface.translatesAutoresizingMaskIntoConstraints = NO;
+    surface.backgroundColor = PPSettingsV6SurfaceColor();
+    surface.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.contentView addSubview:surface];
+    self.surfaceView = surface;
+
+    UIView *iconShell = [UIView new];
+    iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+    iconShell.backgroundColor = PPSettingsV6BrandWashColor();
+    PPApplyContinuousCorners(iconShell, 12.0);
+    [surface addSubview:iconShell];
+    self.iconShell = iconShell;
+
+    UIImageView *icon = [UIImageView new];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold];
+    icon.image = [[UIImage systemImageNamed:@"internaldrive.fill" withConfiguration:config]
+                  imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                  renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [iconShell addSubview:icon];
+    self.iconViewV6 = icon;
+
+    UILabel *title = [UILabel new];
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+                  scaledFontForFont:([GM MidFontWithSize:PPFontBody] ?: [UIFont systemFontOfSize:17 weight:UIFontWeightMedium])];
+    title.adjustsFontForContentSizeCategory = YES;
+    title.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    title.textAlignment = [Language alignmentForCurrentLanguage];
+    title.text = PPSettingsLocalizedString(@"settings_studio_storage_title", @"Storage & Cache");
+    [surface addSubview:title];
+    self.titleLabelV6 = title;
+
+    // Badge View (Cache Size e.g. 24.5 MB)
+    UIView *badge = [UIView new];
+    badge.translatesAutoresizingMaskIntoConstraints = NO;
+    badge.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+    PPApplyContinuousCorners(badge, 10.0);
+    [surface addSubview:badge];
+    self.cacheBadgeView = badge;
+
+    UILabel *badgeLabel = [UILabel new];
+    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+    badgeLabel.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    badgeLabel.textAlignment = NSTextAlignmentCenter;
+    [badge addSubview:badgeLabel];
+    self.cacheBadgeLabel = badgeLabel;
+
+    UILabel *subtitle = [UILabel new];
+    subtitle.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitle.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+                     scaledFontForFont:([GM fontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13])];
+    subtitle.adjustsFontForContentSizeCategory = YES;
+    subtitle.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    subtitle.textAlignment = [Language alignmentForCurrentLanguage];
+    subtitle.numberOfLines = 2;
+    subtitle.text = PPSettingsLocalizedString(@"settings_studio_storage_subtitle", @"Manage cached assets to keep Pure Pets running at peak speed.");
+    [surface addSubview:subtitle];
+    self.subtitleLabelV6 = subtitle;
+
+    // Progress Track
+    UIView *track = [UIView new];
+    track.translatesAutoresizingMaskIntoConstraints = NO;
+    track.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? [[UIColor whiteColor] colorWithAlphaComponent:0.08] : [[UIColor blackColor] colorWithAlphaComponent:0.06];
+    }];
+    PPApplyContinuousCorners(track, 3.5);
+    track.clipsToBounds = YES;
+    [surface addSubview:track];
+    self.meterTrack = track;
+
+    UIView *fill = [UIView new];
+    fill.translatesAutoresizingMaskIntoConstraints = NO;
+    fill.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    PPApplyContinuousCorners(fill, 3.5);
+    [track addSubview:fill];
+    self.meterFill = fill;
+
+    // Purge Button
+    UIControl *purgeBtn = [UIControl new];
+    purgeBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    purgeBtn.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+    purgeBtn.layer.borderWidth = 1.0;
+    [purgeBtn pp_setBorderColor:[(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.25]];
+    PPApplyContinuousCorners(purgeBtn, 14.0);
+    purgeBtn.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [surface addSubview:purgeBtn];
+    self.purgeButton = purgeBtn;
+
+    UIImageView *trashIcon = [UIImageView new];
+    trashIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    trashIcon.contentMode = UIViewContentModeScaleAspectFit;
+    trashIcon.image = [[UIImage systemImageNamed:@"trash.fill" withConfiguration:config]
+                       imageWithTintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
+                       renderingMode:UIImageRenderingModeAlwaysOriginal];
+    [purgeBtn addSubview:trashIcon];
+    self.purgeButtonIcon = trashIcon;
+
+    UILabel *purgeLabel = [UILabel new];
+    purgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    purgeLabel.text = PPSettingsLocalizedString(@"settings_studio_clear_cache_cta", @"Purge Temporary Cache");
+    purgeLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightBold];
+    purgeLabel.textColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    purgeLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    [purgeBtn addSubview:purgeLabel];
+    self.purgeButtonLabel = purgeLabel;
+
+    [purgeBtn addTarget:self action:@selector(pp_purgeTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    UIView *separator = [UIView new];
+    separator.translatesAutoresizingMaskIntoConstraints = NO;
+    separator.backgroundColor = PPSettingsV6HairlineColor();
+    [surface addSubview:separator];
+    self.separatorViewV6 = separator;
+
+    self.meterFillWidthConstraint = [fill.widthAnchor constraintEqualToConstant:40.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [surface.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [surface.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [surface.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [surface.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+
+        [iconShell.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [iconShell.topAnchor constraintEqualToAnchor:surface.topAnchor constant:PPSpaceMD],
+        [iconShell.widthAnchor constraintEqualToConstant:36.0],
+        [iconShell.heightAnchor constraintEqualToConstant:36.0],
+        [icon.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
+        [icon.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+        [icon.widthAnchor constraintEqualToConstant:18.0],
+        [icon.heightAnchor constraintEqualToConstant:18.0],
+
+        [title.leadingAnchor constraintEqualToAnchor:iconShell.trailingAnchor constant:PPSpaceMD],
+        [title.trailingAnchor constraintLessThanOrEqualToAnchor:badge.leadingAnchor constant:-PPSpaceSM],
+        [title.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+
+        [badge.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [badge.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+        [badge.heightAnchor constraintEqualToConstant:24.0],
+        [badgeLabel.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:8.0],
+        [badgeLabel.trailingAnchor constraintEqualToAnchor:badge.trailingAnchor constant:-8.0],
+        [badgeLabel.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
+
+        [subtitle.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [subtitle.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [subtitle.topAnchor constraintEqualToAnchor:iconShell.bottomAnchor constant:PPSpaceSM],
+
+        [track.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [track.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [track.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:PPSpaceSM],
+        [track.heightAnchor constraintEqualToConstant:7.0],
+
+        [fill.leadingAnchor constraintEqualToAnchor:track.leadingAnchor],
+        [fill.topAnchor constraintEqualToAnchor:track.topAnchor],
+        [fill.bottomAnchor constraintEqualToAnchor:track.bottomAnchor],
+        self.meterFillWidthConstraint,
+
+        [purgeBtn.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [purgeBtn.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [purgeBtn.topAnchor constraintEqualToAnchor:track.bottomAnchor constant:PPSpaceMD],
+        [purgeBtn.heightAnchor constraintEqualToConstant:44.0],
+        [purgeBtn.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-PPSpaceBase],
+
+        [trashIcon.leadingAnchor constraintEqualToAnchor:purgeBtn.leadingAnchor constant:14.0],
+        [trashIcon.centerYAnchor constraintEqualToAnchor:purgeBtn.centerYAnchor],
+        [trashIcon.widthAnchor constraintEqualToConstant:16.0],
+        [trashIcon.heightAnchor constraintEqualToConstant:16.0],
+
+        [purgeLabel.leadingAnchor constraintEqualToAnchor:trashIcon.trailingAnchor constant:8.0],
+        [purgeLabel.trailingAnchor constraintEqualToAnchor:purgeBtn.trailingAnchor constant:-14.0],
+        [purgeLabel.centerYAnchor constraintEqualToAnchor:purgeBtn.centerYAnchor],
+
+        [separator.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceBase],
+        [separator.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceBase],
+        [separator.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
+        [separator.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale]
+    ]];
+
+    return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    [self pp_applyStorageUsageFraction:self.storageUsageFraction animated:NO];
+}
+
+- (void)pp_applyStorageUsageFraction:(CGFloat)usageFraction animated:(BOOL)animated
+{
+    self.storageUsageFraction = MIN(MAX(usageFraction, 0.0), 1.0);
+    CGFloat trackWidth = CGRectGetWidth(self.meterTrack.bounds);
+    if (trackWidth <= 0.0) {
+        self.meterFillWidthConstraint.constant = 0.0;
+        [self setNeedsLayout];
+        return;
+    }
+
+    CGFloat fillWidth = 0.0;
+    if (self.storageUsageFraction > 0.0) {
+        CGFloat minimumVisibleFillWidth = MIN(24.0, trackWidth);
+        fillWidth = MAX(minimumVisibleFillWidth, trackWidth * self.storageUsageFraction);
+    }
+    fillWidth = MIN(fillWidth, trackWidth);
+
+    void (^updates)(void) = ^{
+        self.meterFillWidthConstraint.constant = fillWidth;
+        [self.meterTrack layoutIfNeeded];
+    };
+    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:0.25
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:updates
+                         completion:nil];
+    } else {
+        updates();
+    }
+}
+
+- (void)configureWithSizeString:(NSString *)sizeString
+                   usageFraction:(CGFloat)usageFraction
+                          first:(BOOL)first
+                           last:(BOOL)last
+                        onPurge:(PPSettingsCachePurgeHandler)onPurge
+{
+    self.cacheBadgeLabel.text = sizeString ?: @"0 B";
+    self.onPurge = onPurge;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self pp_applyStorageUsageFraction:usageFraction animated:NO];
+
+    self.surfaceView.layer.cornerRadius = (first || last) ? PPCornerCard : 0.0;
+    if (@available(iOS 13.0, *)) self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
+    if (@available(iOS 11.0, *)) {
+        CACornerMask mask = 0;
+        if (first) mask |= (kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner);
+        if (last) mask |= (kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner);
+        self.surfaceView.layer.maskedCorners = mask;
+    }
+    self.separatorViewV6.hidden = last;
+}
+
+- (void)pp_purgeTapped
+{
+    PPSettingsCachePurgeHandler purgeHandler = self.onPurge;
+    if (!purgeHandler) {
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    purgeHandler(^(BOOL didPurge) {
+        if (!didPurge) {
+            return;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            [self pp_applyStorageUsageFraction:0.0 animated:YES];
+        });
+    });
+}
+
+@end
+
 
 #pragma mark - PPSettingsActionModal
 
@@ -2031,12 +3070,15 @@ static UIColor *PPSettingsV6BrandWashColor(void)
 
 #pragma mark - Cell IDs
 
-static NSString *const kSettingsCellID  = @"PPSettingsCell";
-static NSString *const kHeroCellID      = @"PPSettingsHeroCell";
-static NSString *const kLocationCellID  = @"PPSettingsLocationCell";
-static NSString *const kVersionCellID   = @"PPVersionCell";
-static NSString *const kLanguageCellID  = @"PPLanguageCell";
-static NSString *const kThemeCellID    = @"PPThemeCell";
+static NSString *const kSettingsCellID      = @"PPSettingsCell";
+static NSString *const kHeroCellID          = @"PPSettingsHeroCell";
+static NSString *const kLocationCellID      = @"PPSettingsLocationCell";
+static NSString *const kVersionCellID       = @"PPVersionCell";
+static NSString *const kLanguageCellID      = @"PPLanguageCell";
+static NSString *const kThemeCellID         = @"PPThemeCell";
+static NSString *const kAccentStudioCellID  = @"PPAccentStudioCell";
+static NSString *const kStorageMeterCellID  = @"PPStorageMeterCell";
+
 
 #pragma mark - SettingVC
 
@@ -2055,6 +3097,10 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 @property (nonatomic, assign) BOOL hasRequestedSettingsLocationAuthorization;
 @property (nonatomic, assign) BOOL isUsingManualSettingsLocationSelection;
 @property (nonatomic, assign) BOOL isPresentingSettingsLocationSheet;
+@property (nonatomic, copy) NSString *cachedStorageSizeString;
+@property (nonatomic, assign) CGFloat cachedStorageUsageFraction;
+@property (nonatomic, assign) BOOL isRefreshingStorageSize;
+@property (nonatomic, assign) NSUInteger storageSizeRefreshToken;
 - (void)pp_presentMarketplaceAccentOptions;
 - (void)pp_applyMarketplaceUsesMainKindColors:(BOOL)usesMainKindColors;
 @end
@@ -2087,6 +3133,8 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     self.hidesBottomBarWhenPushed = YES;
     self.prefs = [NSUserDefaults standardUserDefaults];
     self.alertAppear = NO;
+    self.cachedStorageSizeString = PPSettingsLocalizedString(@"settings_studio_storage_calculating", @"Calculating…");
+    self.cachedStorageUsageFraction = 0.0;
     self.view.backgroundColor = AppBackgroundClr;
     self.navigationItem.title = @"";
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
@@ -2164,6 +3212,9 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:kVersionCellID];
     [self.tableView registerClass:PPSettingsV6ChoiceCell.class forCellReuseIdentifier:kLanguageCellID];
     [self.tableView registerClass:PPSettingsV6ChoiceCell.class forCellReuseIdentifier:kThemeCellID];
+    [self.tableView registerClass:PPSettingsV6AccentStudioCell.class forCellReuseIdentifier:kAccentStudioCellID];
+    [self.tableView registerClass:PPSettingsV6StorageMeterCell.class forCellReuseIdentifier:kStorageMeterCellID];
+
 
     [self.view addSubview:self.tableView];
     [NSLayoutConstraint activateConstraints:@[
@@ -2224,12 +3275,16 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
     BOOL usesMainKindAccentColors = [self.prefs boolForKey:PPMarketplaceUsesMainKindAccentColorsPreferenceKey];
     PPSettingsRowModel *accentRow = [PPSettingsRowModel new];
-    accentRow.type = PPSettingsRowTypeNavigation;
+    accentRow.type = PPSettingsRowTypeAccentStudio;
     accentRow.title = PPSettingsLocalizedString(@"settings_marketplace_accent_title", @"Marketplace accent");
     accentRow.subtitle = usesMainKindAccentColors
         ? PPSettingsLocalizedString(@"settings_marketplace_accent_main_kind", @"Pet category colors")
         : PPSettingsLocalizedString(@"settings_marketplace_accent_brand", @"Pure Pets brand color");
     accentRow.iconName = @"paintpalette.fill";
+    accentRow.usesMainKindAccent = usesMainKindAccentColors;
+    accentRow.onAccentChange = ^(BOOL usesMainKind) {
+        [weakSelf pp_applyMarketplaceUsesMainKindColors:usesMainKind];
+    };
     accentRow.onTap = ^{ [weakSelf pp_presentMarketplaceAccentOptions]; };
 
     PPSettingsRowModel *languageRow = [PPSettingsRowModel new];
@@ -2277,15 +3332,26 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     privacy.rows = @[notificationsRow, messagesRow];
     [allSections addObject:privacy];
 
+    // Storage & Device Health Studio
+    PPSettingsSectionModel *storageSection = [PPSettingsSectionModel new];
+    storageSection.headerTitle = PPSettingsLocalizedString(@"settings_studio_storage_title", @"Storage & Cache");
+
+    PPSettingsRowModel *storageRow = [PPSettingsRowModel new];
+    storageRow.type = PPSettingsRowTypeStorageMeter;
+    storageRow.title = PPSettingsLocalizedString(@"settings_studio_storage_title", @"Storage & Cache");
+    storageRow.subtitle = PPSettingsLocalizedString(@"settings_studio_storage_subtitle", @"Manage cached assets to keep Pure Pets running at peak speed.");
+    storageRow.storageSizeString = self.cachedStorageSizeString ?: PPSettingsLocalizedString(@"settings_studio_storage_calculating", @"Calculating…");
+    storageRow.storageUsageFraction = self.cachedStorageUsageFraction;
+    storageRow.iconName = @"internaldrive.fill";
+    storageRow.onPurgeCache = ^(PPSettingsCachePurgeCompletion completion) {
+        [weakSelf pp_clearCacheWithCompletion:completion];
+    };
+
+    storageSection.rows = @[storageRow];
+    [allSections addObject:storageSection];
+
     PPSettingsSectionModel *dataLegal = [PPSettingsSectionModel new];
     dataLegal.headerTitle = PPSettingsLocalizedString(@"settings_data_legal_title", @"Data & Legal");
-
-    PPSettingsRowModel *cacheRow = [PPSettingsRowModel new];
-    cacheRow.type = PPSettingsRowTypeNavigation;
-    cacheRow.title = kLang(@"ClearCache") ?: @"Clear Cache";
-    cacheRow.subtitle = [self pp_formattedCacheSize];
-    cacheRow.iconName = @"internaldrive.fill";
-    cacheRow.onTap = ^{ [weakSelf pp_clearCache]; };
 
     PPSettingsRowModel *privacyPolicyRow = [PPSettingsRowModel new];
     privacyPolicyRow.type = PPSettingsRowTypeNavigation;
@@ -2299,8 +3365,9 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     termsRow.iconName = @"doc.text.fill";
     termsRow.onTap = ^{ [weakSelf pp_openLegalURL:kPPTermsOfServiceURL]; };
 
-    dataLegal.rows = @[cacheRow, privacyPolicyRow, termsRow];
+    dataLegal.rows = @[privacyPolicyRow, termsRow];
     [allSections addObject:dataLegal];
+
 
     if (PPIsUserLoggedIn) {
         PPSettingsSectionModel *account = [PPSettingsSectionModel new];
@@ -2334,6 +3401,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     [allSections addObject:versionSection];
 
     self.sections = [allSections copy];
+    [self pp_refreshStorageSizeAsync];
 }
 
 #pragma mark - Home Location Section
@@ -2926,7 +3994,53 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     if (![cell isKindOfClass:PPSettingsV6HeroCell.class]) {
         cell = [[PPSettingsV6HeroCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kHeroCellID];
     }
+    __weak typeof(self) weakSelf = self;
+    cell.onIdentityTap = ^{
+        if (PPIsUserLoggedIn) {
+            ProfileVC *profileVC = [ProfileVC new];
+            [weakSelf.navigationController pushViewController:profileVC animated:YES];
+        } else {
+            [UserManager showPromptOnTopController];
+        }
+    };
     [cell configureWithRow:row];
+    return cell;
+}
+
+- (UITableViewCell *)pp_v6AccentStudioCellForRow:(PPSettingsRowModel *)row
+                                       tableView:(UITableView *)tableView
+                                       indexPath:(NSIndexPath *)indexPath
+{
+    PPSettingsV6AccentStudioCell *cell = [tableView dequeueReusableCellWithIdentifier:kAccentStudioCellID];
+    if (![cell isKindOfClass:PPSettingsV6AccentStudioCell.class]) {
+        cell = [[PPSettingsV6AccentStudioCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kAccentStudioCellID];
+    }
+    BOOL first = NO, last = NO;
+    [self pp_v6GroupPositionForIndexPath:indexPath first:&first last:&last];
+    [cell configureWithUsesMainKind:row.usesMainKindAccent
+                              first:first
+                               last:last
+                           onChoice:^(BOOL usesMainKind) {
+        if (row.onAccentChange) row.onAccentChange(usesMainKind);
+    }];
+    return cell;
+}
+
+- (UITableViewCell *)pp_v6StorageMeterCellForRow:(PPSettingsRowModel *)row
+                                       tableView:(UITableView *)tableView
+                                       indexPath:(NSIndexPath *)indexPath
+{
+    PPSettingsV6StorageMeterCell *cell = [tableView dequeueReusableCellWithIdentifier:kStorageMeterCellID];
+    if (![cell isKindOfClass:PPSettingsV6StorageMeterCell.class]) {
+        cell = [[PPSettingsV6StorageMeterCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kStorageMeterCellID];
+    }
+    BOOL first = NO, last = NO;
+    [self pp_v6GroupPositionForIndexPath:indexPath first:&first last:&last];
+    [cell configureWithSizeString:row.storageSizeString
+                    usageFraction:row.storageUsageFraction
+                            first:first
+                             last:last
+                          onPurge:row.onPurgeCache];
     return cell;
 }
 
@@ -3072,6 +4186,10 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
             return [self pp_v6HeroCellForRow:row tableView:tableView];
         case PPSettingsRowTypeLocation:
             return [self pp_v6LocationCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeAccentStudio:
+            return [self pp_v6AccentStudioCellForRow:row tableView:tableView indexPath:indexPath];
+        case PPSettingsRowTypeStorageMeter:
+            return [self pp_v6StorageMeterCellForRow:row tableView:tableView indexPath:indexPath];
         case PPSettingsRowTypeVersion:
             return [self pp_v6VersionCellForRow:row tableView:tableView];
         case PPSettingsRowTypeThemePicker:
@@ -3085,6 +4203,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     }
     return [self pp_v6StandardCellForRow:row tableView:tableView indexPath:indexPath];
 }
+
 
 #pragma mark - Cell Builders
 
@@ -3475,13 +4594,44 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (indexPath.section >= (NSInteger)self.sections.count ||
+        indexPath.row >= (NSInteger)self.sections[indexPath.section].rows.count) {
+        return 60.0;
+    }
     PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
-    if (row.type == PPSettingsRowTypeHero) return 166.0;
-    if (row.type == PPSettingsRowTypeLocation) return 56.0;
-    if (row.type == PPSettingsRowTypeThemePicker) return 96.0;
-    if (row.type == PPSettingsRowTypeLanguage) return 60.0;
-    return 56.0;
+    if (row.type == PPSettingsRowTypeHero) return 220.0;
+    if (row.type == PPSettingsRowTypeLocation) return 84.0;
+    if (row.type == PPSettingsRowTypeThemePicker) return 132.0;
+    if (row.type == PPSettingsRowTypeAccentStudio) return 144.0;
+    if (row.type == PPSettingsRowTypeStorageMeter) return 144.0;
+    if (row.type == PPSettingsRowTypeLanguage) return 114.0;
+    return 60.0;
 }
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    // Fluid dynamic navigation bar adaptation
+    CGFloat offsetY = scrollView.contentOffset.y;
+    CGFloat threshold = 80.0;
+    CGFloat alpha = 0.0;
+    if (offsetY > threshold) {
+        alpha = MIN(1.0, (offsetY - threshold) / 36.0);
+    }
+    // Fade in title if present in navigation bar
+    for (UIView *subview in self.view.subviews) {
+        if ([subview isKindOfClass:NSClassFromString(@"PPNavBarView")] || [NSStringFromClass(subview.class) containsString:@"Nav"]) {
+            for (UIView *inner in subview.subviews) {
+                if ([inner isKindOfClass:UILabel.class]) {
+                    UILabel *lbl = (UILabel *)inner;
+                    if ([lbl.text isEqualToString:PPSettingsLocalizedString(@"settings_v6_title", @"Settings")]) {
+                        lbl.alpha = alpha;
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 #pragma mark - Control Actions
 
@@ -3923,18 +5073,70 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 #pragma mark - Cache
 
-- (NSString *)pp_formattedCacheSize
+- (NSString *)pp_formattedCacheSizeForByteCount:(NSUInteger)byteCount
 {
-    NSUInteger diskSize = [SDImageCache sharedImageCache].totalDiskSize;
     NSByteCountFormatter *formatter = [[NSByteCountFormatter alloc] init];
     formatter.countStyle = NSByteCountFormatterCountStyleFile;
-    return [formatter stringFromByteCount:(long long)diskSize];
+    return [formatter stringFromByteCount:(long long)byteCount];
 }
 
-- (void)pp_clearCache
+- (CGFloat)pp_storageUsageFractionForByteCount:(NSUInteger)byteCount
+{
+    NSUInteger configuredLimit = [SDImageCache sharedImageCache].config.maxDiskSize;
+    if (configuredLimit == 0) {
+        return 0.0;
+    }
+    return MIN(1.0, (CGFloat)byteCount / (CGFloat)configuredLimit);
+}
+
+- (void)pp_applyStorageSizeBytes:(NSUInteger)byteCount
+{
+    self.cachedStorageSizeString = [self pp_formattedCacheSizeForByteCount:byteCount];
+    self.cachedStorageUsageFraction = [self pp_storageUsageFractionForByteCount:byteCount];
+
+    NSIndexPath *indexPath = [self pp_indexPathForRowType:PPSettingsRowTypeStorageMeter];
+    if (!indexPath ||
+        indexPath.section >= (NSInteger)self.sections.count ||
+        indexPath.row >= (NSInteger)self.sections[indexPath.section].rows.count) {
+        return;
+    }
+
+    PPSettingsRowModel *storageRow = self.sections[indexPath.section].rows[indexPath.row];
+    storageRow.storageSizeString = self.cachedStorageSizeString;
+    storageRow.storageUsageFraction = self.cachedStorageUsageFraction;
+
+    if (self.tableView.window) {
+        [self.tableView reloadRowsAtIndexPaths:@[indexPath]
+                              withRowAnimation:UITableViewRowAnimationNone];
+    }
+}
+
+- (void)pp_refreshStorageSizeAsync
+{
+    if (self.isRefreshingStorageSize) {
+        return;
+    }
+
+    self.isRefreshingStorageSize = YES;
+    NSUInteger refreshToken = ++self.storageSizeRefreshToken;
+    __weak typeof(self) weakSelf = self;
+    [[SDImageCache sharedImageCache] calculateSizeWithCompletionBlock:^(NSUInteger fileCount, NSUInteger totalSize) {
+        (void)fileCount;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || refreshToken != self.storageSizeRefreshToken) {
+                return;
+            }
+            self.isRefreshingStorageSize = NO;
+            [self pp_applyStorageSizeBytes:totalSize];
+        });
+    }];
+}
+
+- (void)pp_clearCacheWithCompletion:(PPSettingsCachePurgeCompletion)completion
 {
     __weak typeof(self) weakSelf = self;
-    NSString *cacheSize = [self pp_formattedCacheSize];
+    NSString *cacheSize = self.cachedStorageSizeString ?: PPSettingsLocalizedString(@"settings_studio_storage_calculating", @"Calculating…");
 
     PPSettingsActionModalOption *clearOpt = [PPSettingsActionModalOption new];
     clearOpt.title = kLang(@"ClearCache") ?: @"Clear Cache";
@@ -3945,9 +5147,19 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         [[SDImageCache sharedImageCache] clearMemory];
         [[SDImageCache sharedImageCache] clearDiskOnCompletion:^{
             dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf pp_buildSections];
-                [weakSelf.tableView reloadData];
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) {
+                    return;
+                }
+                // The visual reset happens only after SDWebImage confirms the disk clear.
+                self.storageSizeRefreshToken += 1;
+                self.isRefreshingStorageSize = NO;
+                [self pp_applyStorageSizeBytes:0];
+                [self pp_refreshStorageSizeAsync];
                 [PPHUD showSuccess:(kLang(@"CacheCleared") ?: @"Cache cleared")];
+                if (completion) {
+                    completion(YES);
+                }
             });
         }];
     };

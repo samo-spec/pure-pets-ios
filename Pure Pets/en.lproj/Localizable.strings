@@ -2734,6 +2734,8 @@
 "notifications_inbox_delivery_request_closed_title" = "Delivery Request Closed";
 "notifications_inbox_delivery_request_closed_body" = "This delivery request is no longer available.";
 "notifications_inbox_new_order_title" = "New Order";
+"notifications_inbox_accessibility_new" = "New";
+"notifications_inbox_loading_title" = "Loading notifications";
 "notifications_inbox_new_order_title_format" = "New Order %@";
 "notifications_inbox_order_items_total_format" = "%@ item(s) • %@ %@";
 "pet_reminder_add" = "Add Reminder";
@@ -3251,6 +3253,11 @@
 "pp_app_check_unavailable" = "We could not verify this device right now. Please try again.";
 "pp_support_open_failed" = "Could not open support chat right now.";
 "pp_support_config_failed" = "Could not load support chat configuration.";
+"chat_invalid_message_parameters" = "This message could not be sent.";
+"chat_invalid_image_parameters" = "This image could not be sent.";
+"chat_image_encoding_failed" = "This image could not be prepared for sending.";
+"chat_invalid_video_parameters" = "This video could not be sent.";
+"chat_video_read_failed" = "This video could not be prepared for sending.";
 "pp_order_support_submit_failed" = "Could not send your support request. Please try again.";
 
 /* Chat send errors */
@@ -3706,6 +3713,11 @@
 "pure_lens_account_camera" = "Camera";
 "pure_lens_account_recognize" = "Recognize";
 "pure_lens_account_discover" = "Discover";
+"pure_lens_account_live_vision" = "LIVE AI VISION";
+"pure_lens_account_capability_breeds" = "Breeds";
+"pure_lens_account_capability_diet" = "Diet";
+"pure_lens_account_capability_health" = "Health";
+"pure_lens_account_live_scan" = "Live Scan";
 "pure_lens_account_a11y" = "Pure Lens. Camera, recognition, and marketplace discovery.";
 "pure_lens_account_hint" = "Opens the animal discovery camera";
 "user_menu_profile_subtitle" = "View and update your account details.";
@@ -4735,6 +4747,27 @@
 "current_cache_size" = "Current Cache Size";
 "LogoutConfirmSubtitle" = "Sign out from this device. Your saved data remains secure.";
 "LogoutMessage" = "Are you sure you want to log out?";
+"settings_studio_storage_title" = "Storage & Cache";
+"settings_studio_storage_subtitle" = "Manage cached assets to keep Pure Pets running at peak speed.";
+"settings_studio_clear_cache_cta" = "Purge Temporary Cache";
+"settings_studio_cache_freed" = "Cache purged successfully";
+"settings_studio_coverage_full" = "Full marketplace & clinic coverage";
+"settings_studio_coverage_denied" = "Location access disabled";
+"settings_studio_coverage_loading" = "Locating nearby zone...";
+"settings_studio_theme_light_desc" = "Crisp day atmosphere with clean contrast";
+"settings_studio_theme_dark_desc" = "Deep obsidian dark mode for nighttime";
+"settings_studio_theme_system_desc" = "Adapts automatically to iOS system schedule";
+"settings_studio_account_guest_title" = "Guest Profile";
+"settings_studio_account_guest_desc" = "Sign in to sync your preferences and favorites across devices";
+"settings_studio_account_signin_cta" = "Sign In";
+"settings_studio_notifications_enabled" = "Alerts Enabled";
+"settings_studio_notifications_disabled" = "Alerts Paused";
+"settings_studio_conversations_scope" = "Direct Messaging";
+"settings_studio_eyebrow" = "PURE PETS • STUDIO";
+"settings_studio_app_status_ready" = "App ready";
+"settings_studio_storage_calculating" = "Calculating…";
+"settings_studio_app_status_connected" = "Online & Fast";
+
 
 // Storefront Bento & Rating Sheet
 "ratings_word" = "reviews";
@@ -4764,3 +4797,19 @@
 "order_v6_action_replacement_sub" = "Exchange damaged items";
 "order_v6_action_refund_title" = "Request Refund";
 "order_v6_action_refund_sub" = "Refund to payment";
+
+// Selection Studio NextGen V6
+"selection_studio_search_placeholder" = "Search by name or description...";
+"selection_studio_search_users_placeholder" = "Search members or contacts...";
+"selection_studio_no_results_title" = "No Matching Results";
+"selection_studio_no_results_desc" = "Check your spelling or try another keyword.";
+"selection_studio_clear_search" = "Reset Search";
+"selection_studio_online_now" = "Active Now";
+"selection_studio_offline" = "Offline";
+"selection_studio_verified_badge" = "Verified";
+"selection_studio_quick_action" = "Quick Action";
+"selection_studio_action_count" = "%lu options";
+"selection_studio_action_count_single" = "1 option";
+"selection_studio_user_count" = "%lu users";
+"selection_studio_user_count_single" = "1 user";
+"selection_studio_close" = "Close";

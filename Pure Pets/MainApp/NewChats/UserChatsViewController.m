@@ -847,7 +847,7 @@ static const CGFloat PPChatInboxComposeButtonSize = 44.0;
     if (hasValidLast) return lastMessageAt;
     if (hasValidTs)   return timestamp;
 
-    return NSDate.date;
+    return NSDate.distantPast;
 }
 
 - (NSArray<ChatThreadModel *> *)pp_sortedVisibleThreads:(NSArray<ChatThreadModel *> *)threads {

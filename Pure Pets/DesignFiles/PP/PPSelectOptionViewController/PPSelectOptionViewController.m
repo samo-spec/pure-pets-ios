@@ -19,7 +19,7 @@
 
 #define LogCurrentFunc() DLog(@"[%s]", __FUNCTION__)
 
-static CGFloat const PPPremiumOptionPickerDefaultDetentFraction = 0.72;
+static CGFloat const PPPremiumOptionPickerDefaultDetentFraction = 0.82;
 static CGFloat const PPPremiumOptionPickerSideInset = 16.0;
 static CGFloat const PPPremiumOptionPickerExpandedHeroMinHeight = 176.0;
 static CGFloat const PPPremiumOptionPickerCompactHeroMinHeight = 136.0;
@@ -102,8 +102,19 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 @property (nonatomic, assign) CGFloat premiumHeroHeaderWidth;
 @property (nonatomic, strong) UIView *premiumBackgroundView;
 @property (nonatomic, strong) UIView *premiumGlowCircleView;
+@property (nonatomic, strong) UIView *emptyStateView;
+@property (nonatomic, strong) UITextField *headerSearchTextField;
+@property (nonatomic, strong) UIButton *headerClearButton;
+@property (nonatomic, strong) UILabel *premiumHeroCountLabel;
+@property (nonatomic, copy) NSString *premiumHeroSearchText;
 - (NSString *)pp_effectivePremiumHeroSubtitle;
+- (void)pp_dismissAction;
+- (void)pp_filterOptionsWithText:(NSString *)searchText;
+- (void)pp_updateEmptyStateVisibility;
+- (NSString *)pp_premiumHeroCountText;
+- (void)pp_updatePremiumHeroCountLabel;
 @end
+
 @implementation PPSelectOptionViewController
 
 #pragma mark - Init
@@ -122,6 +133,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         _preferredPremiumDetentFraction = PPPremiumOptionPickerDefaultDetentFraction;
         _usesCompactPremiumHero = YES;
         _useUsersOption = NO;
+        _premiumHeroSearchText = @"";
     }
     return self;
 }
@@ -157,6 +169,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         _preferredMainDetentHeight = 0.0;
         _preferredPremiumDetentFraction = PPPremiumOptionPickerDefaultDetentFraction;
         _usesCompactPremiumHero = YES;
+        _premiumHeroSearchText = @"";
     }
     return self;
 }
@@ -208,21 +221,20 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     [self pp_applyPremiumTableInsets];
     self.view.backgroundColor = premiumPicker ? [self pp_sheetBackgroundColor] : self.tableView.backgroundColor;
     
-    self.view.layer.cornerRadius = premiumPicker ? 42.0 : 25.0;
+    self.view.layer.cornerRadius = premiumPicker ? 36.0 : 25.0;
     self.view.layer.cornerCurve = kCACornerCurveContinuous;
+    self.view.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
+    self.view.clipsToBounds = YES;
     if (premiumPicker) {
         [self pp_configureNavigationAppearance];
+        [self pp_updatePremiumHeroHeaderIfNeeded];
+    } else if (self.showSearchBar) {
+        [self setupSearchView];
     }
+
     [self pp_configureSheetPresentationIfNeeded];
     if (premiumPicker) {
         [self pp_prepareEntranceStateIfNeeded];
-    }
-
-    // setup header search
-    if (self.showSearchBar) {
-        [self setupSearchView];
-    } else if (premiumPicker) {
-        [self pp_updatePremiumHeroHeaderIfNeeded];
     }
 
     // set initial filteredOptions if not set
@@ -235,14 +247,14 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     [super viewDidLayoutSubviews];
     if ([self pp_usesPremiumPickerPresentation]) {
         [self pp_updatePremiumHeroHeaderIfNeeded];
-        [self pp_layoutPremiumBackgroundGlow];
     }
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self pp_configureSheetPresentationIfNeeded];
     if ([self pp_usesPremiumPickerPresentation]) {
+        [self pp_configureNavigationAppearance];
+        [self pp_configureSheetPresentationIfNeeded];
         [self pp_prepareEntranceStateIfNeeded];
     } else {
         self.tableView.alpha = 1.0;
@@ -258,6 +270,14 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 }
 
 - (void)pp_configureNavigationAppearance {
+    if (self.presentationStyle != PPSelectOptionPresentationPush) {
+        self.navigationController.navigationBarHidden = YES;
+        self.navigationItem.title = nil;
+        self.navigationItem.leftBarButtonItem = nil;
+        self.navigationItem.rightBarButtonItem = nil;
+        return;
+    }
+    self.navigationController.navigationBarHidden = NO;
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     self.navigationController.navigationBar.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     self.navigationController.navigationBar.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -288,22 +308,21 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         if (!sheet) return;
 
         BOOL premiumPicker = [self pp_usesPremiumPickerPresentation];
-        sheet.prefersGrabberVisible = YES;
+        sheet.prefersGrabberVisible = NO; // Studio Header has its own grabber and frosted close button
         sheet.prefersScrollingExpandsWhenScrolledToEdge = premiumPicker;
-        sheet.preferredCornerRadius = premiumPicker ? 42.0 : 25.0;
+        sheet.preferredCornerRadius = premiumPicker ? 36.0 : 25.0;
 
-        if (self.presentationStyle == PPSelectOptionPresentationMain) {
+        BOOL isUserMode = self.useUsersOption || [self.allOptions.firstObject isKindOfClass:[UserModel class]];
+        BOOL needsSearch = self.showSearchBar || isUserMode || self.allOptions.count > 4;
+
+        if (self.presentationStyle == PPSelectOptionPresentationMain || (!needsSearch && self.allOptions.count <= 3)) {
             if (@available(iOS 16.0, *)) {
-                CGFloat preferredHeight = self.preferredMainDetentHeight;
-                CGFloat preferredFraction = [self pp_resolvedPremiumDetentFraction];
+                CGFloat calculatedHeight = 148.0 + (self.allOptions.count * 88.0) + 40.0;
+                CGFloat preferredHeight = self.preferredMainDetentHeight > 0.0 ? MIN(self.preferredMainDetentHeight, calculatedHeight) : calculatedHeight;
                 UISheetPresentationControllerDetent *compactDetent =
                 [UISheetPresentationControllerDetent customDetentWithIdentifier:@"pp.compact.option.sheet"
                                                                         resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext>  _Nonnull context) {
-                    if (preferredHeight > 0.0) {
-                        return MIN(preferredHeight, context.maximumDetentValue);
-                    }
-                    CGFloat fractionHeight = context.maximumDetentValue * preferredFraction;
-                    return MIN(MAX(fractionHeight, 420.0), context.maximumDetentValue);
+                    return MIN(preferredHeight, context.maximumDetentValue);
                 }];
                 sheet.detents = @[compactDetent];
                 sheet.selectedDetentIdentifier = compactDetent.identifier;
@@ -317,12 +336,12 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
                 [UISheetPresentationControllerDetent customDetentWithIdentifier:@"pp.premium.option.sheet"
                                                                         resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext>  _Nonnull context) {
                     CGFloat fractionHeight = context.maximumDetentValue * preferredFraction;
-                    return MIN(MAX(fractionHeight, 420.0), context.maximumDetentValue);
+                    return MIN(MAX(fractionHeight, 460.0), context.maximumDetentValue);
                 }];
                 sheet.detents = @[premiumDetent, [UISheetPresentationControllerDetent largeDetent]];
                 sheet.selectedDetentIdentifier = premiumDetent.identifier;
             } else {
-                sheet.detents = @[[UISheetPresentationControllerDetent mediumDetent]];
+                sheet.detents = @[[UISheetPresentationControllerDetent mediumDetent], [UISheetPresentationControllerDetent largeDetent]];
             }
         } else {
             sheet.detents = @[
@@ -335,9 +354,9 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 
 - (void)configurePremiumHeroWithEyebrow:(NSString *)eyebrow
                                   title:(NSString *)title
-                               subtitle:(NSString *)subtitle
-                             symbolName:(NSString *)symbolName
-                              badgeText:(NSString *)badgeText
+                                subtitle:(NSString *)subtitle
+                              symbolName:(NSString *)symbolName
+                               badgeText:(NSString *)badgeText
 {
     self.premiumHeroEyebrow = eyebrow;
     self.premiumHeroTitle = title;
@@ -360,9 +379,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 }
 
 - (BOOL)pp_usesPremiumPickerPresentation {
-    return self.presentationStyle != PPSelectOptionPresentationPush &&
-           !self.showSearchBar &&
-           [self pp_hasPremiumHeroHeader];
+    return self.presentationStyle != PPSelectOptionPresentationPush;
 }
 
 - (NSString *)pp_effectivePremiumHeroTitle {
@@ -374,6 +391,14 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     NSString *explicitSubtitle = PPSelectOptionTrimmedString(self.premiumHeroSubtitle);
     if (explicitSubtitle.length > 0) {
         return explicitSubtitle;
+    }
+
+    if (self.useUsersOption || [self.allOptions.firstObject isKindOfClass:[UserModel class]]) {
+        return kLang(@"selection_studio_user_subtitle") ?: @"اختر جهة الاتصال لبدء محادثة فورية جديدة.";
+    }
+
+    if ([self.allOptions.firstObject isKindOfClass:[OptionModel class]]) {
+        return (kLang(@"create_picker_subtitle") ?: @"اختر نوع النشر المناسب، وسنفتح النموذج الصحيح مباشرة.");
     }
 
     NSString *title = PPSelectOptionTrimmedString([self pp_effectivePremiumHeroTitle]);
@@ -418,6 +443,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
                                         @"Pick one option to continue.");
 }
 
+
 - (CGFloat)pp_resolvedPremiumDetentFraction {
     CGFloat fraction = self.preferredPremiumDetentFraction > 0.0
         ? self.preferredPremiumDetentFraction
@@ -425,13 +451,25 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     return MIN(MAX(fraction, 0.62), 0.86);
 }
 
+- (CGFloat)pp_effectiveHorizontalInset {
+    CGFloat margin = self.tableView.layoutMargins.left;
+    if (margin >= 16.0) {
+        return margin;
+    }
+    CGFloat width = CGRectGetWidth(self.view.bounds);
+    if (width <= 0.0) {
+        width = CGRectGetWidth(UIScreen.mainScreen.bounds);
+    }
+    return (width > 380.0) ? 20.0 : 16.0;
+}
+
 - (CGFloat)pp_premiumPickerSideInset {
-    return PPPremiumOptionPickerSideInset;
+    return [self pp_effectiveHorizontalInset];
 }
 
 - (void)pp_applyPremiumTableInsets {
     UIEdgeInsets inset = [self pp_usesPremiumPickerPresentation]
-        ? UIEdgeInsetsMake(PPPremiumOptionPickerTopBreath, 0.0, 22.0, 0.0)
+        ? UIEdgeInsetsMake(0.0, 0.0, 32.0, 0.0)
         : UIEdgeInsetsZero;
     self.tableView.contentInset = inset;
     self.tableView.scrollIndicatorInsets = inset;
@@ -458,6 +496,9 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     if (![self pp_usesPremiumPickerPresentation]) {
         self.tableView.tableHeaderView = nil;
         self.premiumHeroHeaderWidth = 0.0;
+        self.headerSearchTextField = nil;
+        self.headerClearButton = nil;
+        self.premiumHeroCountLabel = nil;
         [self pp_configurePremiumBackgroundIfNeeded];
         return;
     }
@@ -469,315 +510,438 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         width = CGRectGetWidth(UIScreen.mainScreen.bounds);
     }
     if (fabs(width - self.premiumHeroHeaderWidth) < 0.5 && self.tableView.tableHeaderView) {
+        [self pp_updatePremiumHeroCountLabel];
         return;
     }
 
+    NSString *retainedSearchText = self.headerSearchTextField.text ?: self.premiumHeroSearchText ?: @"";
+    self.premiumHeroSearchText = retainedSearchText;
+    BOOL restoreSearchFocus = self.headerSearchTextField.isFirstResponder;
+    self.headerSearchTextField = nil;
+    self.headerClearButton = nil;
+    self.premiumHeroCountLabel = nil;
     UIView *header = [self pp_makePremiumHeroHeaderWithWidth:width];
     self.tableView.tableHeaderView = header;
     self.premiumHeroHeaderWidth = width;
+    if (restoreSearchFocus && self.headerSearchTextField) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.headerSearchTextField becomeFirstResponder];
+        });
+    }
+}
+
+- (NSString *)pp_premiumHeroCountText {
+    NSString *countString = self.premiumHeroBadgeText;
+    if (countString.length > 0) {
+        return countString;
+    }
+
+    NSUInteger count = self.filteredOptions.count;
+    BOOL isUserMode = self.useUsersOption || [self.allOptions.firstObject isKindOfClass:[UserModel class]];
+    if (isUserMode) {
+        NSString *format = count == 1
+            ? (kLang(@"selection_studio_user_count_single") ?: @"مستخدم واحد")
+            : (kLang(@"selection_studio_user_count") ?: @"%lu مستخدم");
+        return [NSString stringWithFormat:format, (unsigned long)count];
+    }
+
+    NSString *format = count == 1
+        ? (kLang(@"selection_studio_action_count_single") ?: @"خيار واحد")
+        : (kLang(@"selection_studio_action_count") ?: @"%lu خيارات");
+    return [NSString stringWithFormat:format, (unsigned long)count];
+}
+
+- (void)pp_updatePremiumHeroCountLabel {
+    if (!self.premiumHeroCountLabel) {
+        return;
+    }
+    self.premiumHeroCountLabel.text = [self pp_premiumHeroCountText];
+    [self.premiumHeroCountLabel.superview setNeedsLayout];
 }
 
 - (UIView *)pp_makePremiumHeroHeaderWithWidth:(CGFloat)width {
     CGFloat safeWidth = MAX(width, 320.0);
     UIColor *accent = self.premiumHeroAccentColor ?: (AppPrimaryClr ?: UIColor.systemPinkColor);
     NSTextAlignment alignment = [Language alignmentForCurrentLanguage];
-    BOOL compactHero = self.usesCompactPremiumHero;
+    
     NSString *resolvedTitle = [self pp_effectivePremiumHeroTitle] ?: @"";
     NSString *resolvedSubtitle = [self pp_effectivePremiumHeroSubtitle] ?: @"";
-    BOOL hasEyebrow = self.premiumHeroEyebrow.length > 0;
-    BOOL hasSubtitle = resolvedSubtitle.length > 0;
-    BOOL hasBadge = self.premiumHeroBadgeText.length > 0;
-    BOOL hasExplicitSymbol = self.premiumHeroSymbolName.length > 0;
-    BOOL titleOnlyHero = compactHero && !hasEyebrow && !hasSubtitle && !hasBadge && !hasExplicitSymbol;
-    BOOL showsIcon = hasExplicitSymbol || !compactHero;
-    CGFloat sideInset = [self pp_premiumPickerSideInset];
-    CGFloat surfaceTopInset = compactHero ? 12.0 : 18.0;
-    CGFloat surfaceBottomInset = compactHero ? PPPremiumOptionPickerHeroToRowsBreath : 18.0;
-    CGFloat surfacePadding = compactHero ? 16.0 : 20.0;
-    CGFloat railTop = titleOnlyHero ? 14.0 : (compactHero ? 15.0 : 20.0);
-    CGFloat railWidth = compactHero ? 36.0 : 42.0;
-    CGFloat identitySpacing = compactHero ? 10.0 : 12.0;
-    CGFloat identityTop = titleOnlyHero ? 9.0 : (compactHero ? 10.0 : 14.0);
-    CGFloat iconPlateSize = compactHero ? 42.0 : 50.0;
-    CGFloat iconSize = compactHero ? 18.0 : 23.0;
-    CGFloat iconCorner = compactHero ? 21.0 : 25.0;
-    CGFloat minHeroHeight = titleOnlyHero
-        ? PPPremiumOptionPickerTitleOnlyHeroMinHeight
-        : (compactHero ? PPPremiumOptionPickerCompactHeroMinHeight : PPPremiumOptionPickerExpandedHeroMinHeight);
-
+    
+    BOOL isUserMode = self.useUsersOption || [self.allOptions.firstObject isKindOfClass:[UserModel class]];
+    BOOL needsSearch = self.showSearchBar || isUserMode || self.allOptions.count > 4;
+    
     UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, safeWidth, 1.0)];
     container.backgroundColor = UIColor.clearColor;
     container.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
-    PPPremiumOptionHeroSurfaceView *surface = [PPPremiumOptionHeroSurfaceView new];
-    surface.translatesAutoresizingMaskIntoConstraints = NO;
-    surface.backgroundColor =
-        [self pp_dynamicLightColor:[UIColor colorWithWhite:1.0 alpha:0.72]
-                         darkColor:[UIColor colorWithWhite:0.12 alpha:0.88]];
-    surface.layer.cornerRadius = compactHero ? 24.0 : 28.0;
-    surface.layer.cornerCurve = kCACornerCurveContinuous;
-    surface.layer.borderWidth = 0.75;
-    surface.layer.borderColor =
-        [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.055]
-                         darkColor:[UIColor colorWithWhite:1.0 alpha:0.10]].CGColor;
-    surface.layer.shadowColor = UIColor.blackColor.CGColor;
-    surface.layer.shadowOpacity = 0.035;
-    surface.layer.shadowRadius = 16.0;
-    surface.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    surface.isAccessibilityElement = NO;
-    [container addSubview:surface];
+    // 1. Sleek top grabber handle
+    UIView *grabber = [UIView new];
+    grabber.translatesAutoresizingMaskIntoConstraints = NO;
+    grabber.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.18];
+    grabber.layer.cornerRadius = 2.5;
+    grabber.layer.cornerCurve = kCACornerCurveContinuous;
+    [container addSubview:grabber];
 
-    BOOL darkHero = NO;
-    if (@available(iOS 13.0, *)) {
-        darkHero = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    // 2. Circular glass close button
+    UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    closeBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    closeBtn.backgroundColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.05]
+                                                darkColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
+    closeBtn.layer.cornerRadius = 16.0;
+    closeBtn.layer.cornerCurve = kCACornerCurveContinuous;
+    UIImageSymbolConfiguration *xConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightBold];
+    UIImage *xImg = [UIImage systemImageNamed:@"xmark" withConfiguration:xConfig];
+    [closeBtn setImage:[xImg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    closeBtn.tintColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    [closeBtn addTarget:self action:@selector(pp_dismissAction) forControlEvents:UIControlEventTouchUpInside];
+    [container addSubview:closeBtn];
+
+    // 3. Context Pill & Eyebrow Row
+    UIView *contextPill = [UIView new];
+    contextPill.translatesAutoresizingMaskIntoConstraints = NO;
+    contextPill.backgroundColor = [accent colorWithAlphaComponent:0.10];
+    contextPill.layer.cornerRadius = 12.0;
+    contextPill.layer.cornerCurve = kCACornerCurveContinuous;
+    [container addSubview:contextPill];
+
+    UIView *pulseDot = [UIView new];
+    pulseDot.translatesAutoresizingMaskIntoConstraints = NO;
+    pulseDot.backgroundColor = accent;
+    pulseDot.layer.cornerRadius = 3.5;
+    [contextPill addSubview:pulseDot];
+
+    UILabel *contextLabel = [UILabel new];
+    contextLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    contextLabel.font = [Styling fontBold:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+    contextLabel.textColor = accent;
+    contextLabel.textAlignment = alignment;
+    
+    NSString *contextText = self.premiumHeroEyebrow;
+    if (!contextText.length) {
+        if (isUserMode) contextText = kLang(@"messages") ?: @"صندوق التواصل";
+        else if ([self.allOptions.firstObject isKindOfClass:[OptionModel class]]) contextText = kLang(@"selection_studio_quick_action") ?: @"إجراء سريع";
+        else contextText = kLang(@"Select") ?: @"تحديد خيار";
     }
-    UIColor *foregroundWash = AppForgroundColr ?: UIColor.whiteColor;
-    CAGradientLayer *surfaceGradientLayer = surface.pp_materialGradientLayer;
-    surfaceGradientLayer.startPoint = CGPointMake(Language.isRTL ? 1.0 : 0.0, 0.0);
-    surfaceGradientLayer.endPoint = CGPointMake(Language.isRTL ? 0.0 : 1.0, 1.0);
-    surfaceGradientLayer.locations = @[@0.0, @0.46, @1.0];
-    surfaceGradientLayer.colors = @[
-        (id)[UIColor colorWithWhite:1.0 alpha:darkHero ? 0.045 : 0.34].CGColor,
-        (id)[foregroundWash colorWithAlphaComponent:darkHero ? 0.055 : 0.18].CGColor,
-        (id)[accent colorWithAlphaComponent:darkHero ? 0.032 : 0.024].CGColor
-    ];
+    contextLabel.text = contextText;
+    [contextPill addSubview:contextLabel];
 
-    UIView *rail = [UIView new];
-    rail.translatesAutoresizingMaskIntoConstraints = NO;
-    rail.backgroundColor = accent;
-    rail.layer.cornerRadius = 1.5;
-    rail.layer.cornerCurve = kCACornerCurveContinuous;
-    rail.isAccessibilityElement = NO;
-    [surface addSubview:rail];
+    // Telemetry Count Pill
+    UIView *countPill = [UIView new];
+    countPill.translatesAutoresizingMaskIntoConstraints = NO;
+    countPill.backgroundColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.04]
+                                                 darkColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    countPill.layer.cornerRadius = 12.0;
+    countPill.layer.cornerCurve = kCACornerCurveContinuous;
+    [container addSubview:countPill];
 
-    UIView *iconPlate = [UIView new];
-    iconPlate.translatesAutoresizingMaskIntoConstraints = NO;
-    iconPlate.backgroundColor = [accent colorWithAlphaComponent:0.10];
-    iconPlate.layer.cornerRadius = iconCorner;
-    iconPlate.layer.cornerCurve = kCACornerCurveContinuous;
-    iconPlate.layer.borderWidth = 0.75;
-    iconPlate.layer.borderColor = [accent colorWithAlphaComponent:0.15].CGColor;
-    iconPlate.isAccessibilityElement = NO;
+    UILabel *countLabel = [UILabel new];
+    countLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    countLabel.font = [Styling fontMedium:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
+    countLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    countLabel.textAlignment = NSTextAlignmentCenter;
+    
+    countLabel.text = [self pp_premiumHeroCountText];
+    [countPill addSubview:countLabel];
+    self.premiumHeroCountLabel = countLabel;
 
-    NSString *symbolName = hasExplicitSymbol ? self.premiumHeroSymbolName : @"plus.app.fill";
-    UIImageSymbolConfiguration *symbolConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:(compactHero ? 18.0 : 22.0)
-                                                        weight:UIImageSymbolWeightSemibold
-                                                         scale:UIImageSymbolScaleMedium];
-    UIImageView *iconView =
-        [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbolName
-                                                   withConfiguration:symbolConfiguration]];
-    if (!iconView.image) {
-        iconView.image = [UIImage systemImageNamed:@"plus.app.fill" withConfiguration:symbolConfiguration];
-    }
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = accent;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    iconView.isAccessibilityElement = NO;
-    [iconPlate addSubview:iconView];
-
-    UILabel *eyebrow = [UILabel new];
-    eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrow.font = [self pp_scaledFont:([Styling fontBold:(compactHero ? 11.0 : 12.0)] ?: [UIFont systemFontOfSize:(compactHero ? 11.0 : 12.0) weight:UIFontWeightBold])
-                             textStyle:UIFontTextStyleFootnote];
-    eyebrow.textColor = accent;
-    eyebrow.textAlignment = alignment;
-    eyebrow.numberOfLines = 1;
-    eyebrow.adjustsFontForContentSizeCategory = YES;
-    eyebrow.text = self.premiumHeroEyebrow ?: @"";
-    eyebrow.hidden = eyebrow.text.length == 0;
-
+    // 4. Hero Title
     UILabel *title = [UILabel new];
     title.translatesAutoresizingMaskIntoConstraints = NO;
-    CGFloat titlePointSize = titleOnlyHero ? 21.0 : (compactHero ? 19.0 : 24.0);
-    title.font = [self pp_scaledFont:([Styling fontBold:titlePointSize] ?: [UIFont systemFontOfSize:titlePointSize weight:UIFontWeightBold])
-                           textStyle:(compactHero ? UIFontTextStyleHeadline : UIFontTextStyleTitle2)];
+    title.font = [self pp_scaledFont:([Styling fontBold:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold])
+                           textStyle:UIFontTextStyleTitle2];
     title.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     title.textAlignment = alignment;
     title.numberOfLines = 2;
     title.adjustsFontForContentSizeCategory = YES;
     title.text = resolvedTitle;
-    title.accessibilityTraits = UIAccessibilityTraitHeader;
+    [container addSubview:title];
 
+    // 5. Hero Subtitle
     UILabel *subtitle = [UILabel new];
     subtitle.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitle.font = [self pp_scaledFont:([Styling fontRegular:(compactHero ? 13.0 : 14.0)] ?: [UIFont systemFontOfSize:(compactHero ? 13.0 : 14.0) weight:UIFontWeightRegular])
+    subtitle.font = [self pp_scaledFont:([Styling fontRegular:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightRegular])
                               textStyle:UIFontTextStyleSubheadline];
     subtitle.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
     subtitle.textAlignment = alignment;
     subtitle.numberOfLines = 2;
     subtitle.adjustsFontForContentSizeCategory = YES;
     subtitle.text = resolvedSubtitle;
-    subtitle.hidden = subtitle.text.length == 0;
+    [container addSubview:subtitle];
 
-    UIStackView *textStack =
-        [[UIStackView alloc] initWithArrangedSubviews:@[eyebrow, title, subtitle]];
-    textStack.translatesAutoresizingMaskIntoConstraints = NO;
-    textStack.axis = UILayoutConstraintAxisVertical;
-    textStack.alignment = UIStackViewAlignmentFill;
-    textStack.spacing = compactHero ? 3.0 : 4.0;
-    [textStack setCustomSpacing:(compactHero ? 4.0 : 6.0) afterView:eyebrow];
-    [textStack setCustomSpacing:(compactHero ? 5.0 : 7.0) afterView:title];
-
-    NSArray<UIView *> *identityViews = showsIcon ? @[iconPlate, textStack] : @[textStack];
-    UIStackView *identityRow =
-        [[UIStackView alloc] initWithArrangedSubviews:identityViews];
-    identityRow.translatesAutoresizingMaskIntoConstraints = NO;
-    identityRow.axis = UILayoutConstraintAxisHorizontal;
-    identityRow.alignment = UIStackViewAlignmentCenter;
-    identityRow.spacing = identitySpacing;
-    identityRow.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [surface addSubview:identityRow];
-
-    UILabel *badge = nil;
-    if (self.premiumHeroBadgeText.length > 0) {
-        badge = [UILabel new];
-        badge.translatesAutoresizingMaskIntoConstraints = NO;
-        badge.font = [self pp_scaledFont:([Styling fontBold:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold])
-                               textStyle:UIFontTextStyleFootnote];
-        badge.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-        badge.textAlignment = NSTextAlignmentCenter;
-        badge.numberOfLines = 1;
-        badge.adjustsFontForContentSizeCategory = YES;
-        badge.text = self.premiumHeroBadgeText;
-        badge.backgroundColor =
-            [self pp_dynamicLightColor:[UIColor colorWithWhite:1.0 alpha:0.62]
-                             darkColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
-        badge.layer.cornerRadius = 16.0;
-        badge.layer.cornerCurve = kCACornerCurveContinuous;
-        badge.layer.borderWidth = 0.75;
-        badge.layer.borderColor =
-            [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.05]
-                             darkColor:[UIColor colorWithWhite:1.0 alpha:0.08]].CGColor;
-        [surface addSubview:badge];
-    }
+    CGFloat sideInset = [self pp_effectiveHorizontalInset];
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
-        [surface.topAnchor constraintEqualToAnchor:container.topAnchor constant:surfaceTopInset],
-        [surface.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
-        [surface.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
-        [surface.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-surfaceBottomInset],
-        [surface.heightAnchor constraintGreaterThanOrEqualToConstant:(minHeroHeight - surfaceTopInset - surfaceBottomInset)],
+        [grabber.topAnchor constraintEqualToAnchor:container.topAnchor constant:8.0],
+        [grabber.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
+        [grabber.widthAnchor constraintEqualToConstant:36.0],
+        [grabber.heightAnchor constraintEqualToConstant:5.0],
 
-        [rail.topAnchor constraintEqualToAnchor:surface.topAnchor constant:railTop],
-        [rail.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:surfacePadding],
-        [rail.widthAnchor constraintEqualToConstant:railWidth],
-        [rail.heightAnchor constraintEqualToConstant:3.0],
+        [contextPill.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:12.0],
+        [contextPill.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
+        [contextPill.heightAnchor constraintEqualToConstant:26.0],
 
-        [identityRow.topAnchor constraintEqualToAnchor:rail.bottomAnchor constant:identityTop],
-        [identityRow.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:surfacePadding],
-        [identityRow.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-surfacePadding]
+        [pulseDot.leadingAnchor constraintEqualToAnchor:contextPill.leadingAnchor constant:8.0],
+        [pulseDot.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
+        [pulseDot.widthAnchor constraintEqualToConstant:7.0],
+        [pulseDot.heightAnchor constraintEqualToConstant:7.0],
+
+        [contextLabel.leadingAnchor constraintEqualToAnchor:pulseDot.trailingAnchor constant:5.0],
+        [contextLabel.trailingAnchor constraintEqualToAnchor:contextPill.trailingAnchor constant:-9.0],
+        [contextLabel.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
+
+        [countPill.leadingAnchor constraintEqualToAnchor:contextPill.trailingAnchor constant:8.0],
+        [countPill.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
+        [countPill.heightAnchor constraintEqualToConstant:26.0],
+        [countPill.trailingAnchor constraintLessThanOrEqualToAnchor:closeBtn.leadingAnchor constant:-8.0],
+
+        [countLabel.leadingAnchor constraintEqualToAnchor:countPill.leadingAnchor constant:9.0],
+        [countLabel.trailingAnchor constraintEqualToAnchor:countPill.trailingAnchor constant:-9.0],
+        [countLabel.centerYAnchor constraintEqualToAnchor:countPill.centerYAnchor],
+
+        [closeBtn.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
+        [closeBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
+        [closeBtn.widthAnchor constraintEqualToConstant:32.0],
+        [closeBtn.heightAnchor constraintEqualToConstant:32.0],
+
+        [title.topAnchor constraintEqualToAnchor:contextPill.bottomAnchor constant:12.0],
+        [title.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
+        [title.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
+
+        [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:4.0],
+        [subtitle.leadingAnchor constraintEqualToAnchor:title.leadingAnchor],
+        [subtitle.trailingAnchor constraintEqualToAnchor:title.trailingAnchor]
     ]];
 
-    if (showsIcon) {
-        [constraints addObjectsFromArray:@[
-            [iconPlate.widthAnchor constraintEqualToConstant:iconPlateSize],
-            [iconPlate.heightAnchor constraintEqualToConstant:iconPlateSize],
-            [iconView.centerXAnchor constraintEqualToAnchor:iconPlate.centerXAnchor],
-            [iconView.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
-            [iconView.widthAnchor constraintEqualToConstant:iconSize],
-            [iconView.heightAnchor constraintEqualToConstant:iconSize]
-        ]];
-    }
+    if (needsSearch) {
+        UIView *searchCapsule = [UIView new];
+        searchCapsule.translatesAutoresizingMaskIntoConstraints = NO;
+        searchCapsule.backgroundColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.045]
+                                                         darkColor:[UIColor colorWithWhite:1.0 alpha:0.085]];
+        searchCapsule.layer.cornerRadius = 14.0;
+        searchCapsule.layer.cornerCurve = kCACornerCurveContinuous;
+        searchCapsule.layer.borderWidth = 0.75;
+        searchCapsule.layer.borderColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.06]
+                                                           darkColor:[UIColor colorWithWhite:1.0 alpha:0.10]].CGColor;
+        [container addSubview:searchCapsule];
 
-    if (badge) {
+        UIImageSymbolConfiguration *magConfig = [UIImageSymbolConfiguration configurationWithPointSize:14.0 weight:UIImageSymbolWeightMedium];
+        UIImageView *magIcon = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:magConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+        magIcon.translatesAutoresizingMaskIntoConstraints = NO;
+        magIcon.tintColor = AppTertiaryTextClr ?: UIColor.tertiaryLabelColor;
+        [searchCapsule addSubview:magIcon];
+
+        UITextField *searchField = [UITextField new];
+        searchField.translatesAutoresizingMaskIntoConstraints = NO;
+        searchField.font = [Styling fontRegular:14.0] ?: [UIFont systemFontOfSize:14.0];
+        searchField.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+        searchField.tintColor = accent;
+        searchField.textAlignment = alignment;
+        searchField.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        searchField.placeholder = isUserMode ? (kLang(@"selection_studio_search_users_placeholder") ?: @"ابحث عن عضو أو جهة اتصال...") : (kLang(@"selection_studio_search_placeholder") ?: @"ابحث بالاسم أو الوصف...");
+        searchField.clearButtonMode = UITextFieldViewModeNever;
+        searchField.autocorrectionType = UITextAutocorrectionTypeNo;
+        searchField.returnKeyType = UIReturnKeyDone;
+        searchField.text = self.premiumHeroSearchText ?: @"";
+        [searchField addTarget:self action:@selector(pp_searchTextChanged:) forControlEvents:UIControlEventEditingChanged];
+        [searchCapsule addSubview:searchField];
+        self.headerSearchTextField = searchField;
+
+        UIButton *clearBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        clearBtn.translatesAutoresizingMaskIntoConstraints = NO;
+        UIImage *clearImg = [UIImage systemImageNamed:@"xmark.circle.fill" withConfiguration:magConfig];
+        [clearBtn setImage:[clearImg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+        clearBtn.tintColor = AppTertiaryTextClr ?: UIColor.tertiaryLabelColor;
+        clearBtn.hidden = searchField.text.length == 0;
+        [clearBtn addTarget:self action:@selector(pp_clearSearchFieldAction) forControlEvents:UIControlEventTouchUpInside];
+        [searchCapsule addSubview:clearBtn];
+        self.headerClearButton = clearBtn;
+
         [constraints addObjectsFromArray:@[
-            [badge.topAnchor constraintEqualToAnchor:identityRow.bottomAnchor constant:(compactHero ? 10.0 : 12.0)],
-            [badge.leadingAnchor constraintEqualToAnchor:identityRow.leadingAnchor],
-            [badge.heightAnchor constraintGreaterThanOrEqualToConstant:(compactHero ? 30.0 : 32.0)],
-            [badge.widthAnchor constraintGreaterThanOrEqualToConstant:76.0],
-            [badge.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-(compactHero ? 14.0 : 18.0)]
+            [searchCapsule.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:14.0],
+            [searchCapsule.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
+            [searchCapsule.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
+            [searchCapsule.heightAnchor constraintEqualToConstant:44.0],
+            [searchCapsule.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-12.0],
+
+            [magIcon.leadingAnchor constraintEqualToAnchor:searchCapsule.leadingAnchor constant:12.0],
+            [magIcon.centerYAnchor constraintEqualToAnchor:searchCapsule.centerYAnchor],
+            [magIcon.widthAnchor constraintEqualToConstant:18.0],
+            [magIcon.heightAnchor constraintEqualToConstant:18.0],
+
+            [clearBtn.trailingAnchor constraintEqualToAnchor:searchCapsule.trailingAnchor constant:-10.0],
+            [clearBtn.centerYAnchor constraintEqualToAnchor:searchCapsule.centerYAnchor],
+            [clearBtn.widthAnchor constraintEqualToConstant:24.0],
+            [clearBtn.heightAnchor constraintEqualToConstant:24.0],
+
+            [searchField.leadingAnchor constraintEqualToAnchor:magIcon.trailingAnchor constant:8.0],
+            [searchField.trailingAnchor constraintEqualToAnchor:clearBtn.leadingAnchor constant:-6.0],
+            [searchField.topAnchor constraintEqualToAnchor:searchCapsule.topAnchor],
+            [searchField.bottomAnchor constraintEqualToAnchor:searchCapsule.bottomAnchor]
         ]];
     } else {
-        [constraints addObject:
-            (titleOnlyHero
-                ? [identityRow.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-14.0]
-                : [identityRow.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-(compactHero ? 16.0 : 20.0)])];
+        [constraints addObject:[subtitle.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-14.0]];
     }
 
     [NSLayoutConstraint activateConstraints:constraints];
     [container setNeedsLayout];
     [container layoutIfNeeded];
-    CGSize fittingSize =
-        [container systemLayoutSizeFittingSize:CGSizeMake(safeWidth, UILayoutFittingCompressedSize.height)
-                 withHorizontalFittingPriority:UILayoutPriorityRequired
-                       verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    CGFloat resolvedHeight = ceil(MAX(minHeroHeight, fittingSize.height));
+    CGSize fittingSize = [container systemLayoutSizeFittingSize:CGSizeMake(safeWidth, UILayoutFittingCompressedSize.height)
+                                  withHorizontalFittingPriority:UILayoutPriorityRequired
+                                        verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGFloat resolvedHeight = ceil(fittingSize.height);
     container.frame = CGRectMake(0.0, 0.0, safeWidth, resolvedHeight);
     [container setNeedsLayout];
     [container layoutIfNeeded];
     return container;
 }
 
-- (void)pp_configurePremiumBackgroundIfNeeded {
-    if (![self pp_hasPremiumHeroHeader] || self.showSearchBar) {
-        if (self.tableView.backgroundView == self.premiumBackgroundView) {
-            self.tableView.backgroundView = nil;
-        }
-        self.premiumBackgroundView = nil;
-        self.premiumGlowCircleView = nil;
+- (void)pp_dismissAction {
+    if (@available(iOS 10.0, *)) {
+        UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [feedback impactOccurred];
+    }
+    if (self.presentationStyle == PPSelectOptionPresentationPush) {
+        [self.navigationController popViewControllerAnimated:YES];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+}
+
+- (void)pp_searchTextChanged:(UITextField *)sender {
+    NSString *query = sender.text ?: @"";
+    self.premiumHeroSearchText = query;
+    self.headerClearButton.hidden = query.length == 0;
+    [self pp_filterOptionsWithText:query];
+}
+
+- (void)pp_clearSearchFieldAction {
+    self.headerSearchTextField.text = @"";
+    self.premiumHeroSearchText = @"";
+    self.headerClearButton.hidden = YES;
+    [self pp_filterOptionsWithText:@""];
+    [self.headerSearchTextField resignFirstResponder];
+}
+
+- (void)pp_resetSearchAction {
+    [self pp_clearSearchFieldAction];
+}
+
+- (void)pp_filterOptionsWithText:(NSString *)searchText {
+    NSString *cleanText = [searchText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (cleanText.length == 0) {
+        self.filteredOptions = self.allOptions ?: @[];
+        [self reloadTableViewAnimated];
+        [self pp_updatePremiumHeroCountLabel];
+        [self pp_updateEmptyStateVisibility];
         return;
     }
 
-    UIColor *accent = self.premiumHeroAccentColor ?: (AppPrimaryClr ?: UIColor.systemPinkColor);
-    if (!self.premiumBackgroundView) {
-        UIView *background = [[UIView alloc] initWithFrame:self.tableView.bounds];
-        background.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        background.userInteractionEnabled = NO;
-        background.backgroundColor = [self pp_sheetBackgroundColor];
+    NSPredicate *p = [NSPredicate predicateWithBlock:^BOOL(id option, NSDictionary *bindings) {
+        if ([option isKindOfClass:[UserModel class]]) {
+            UserModel *u = (UserModel *)option;
+            NSString *fullName = [NSString stringWithFormat:@"%@ %@ %@ %@ %@", u.UserName ?: @"", u.FirstName ?: @"", u.LastName ?: @"", u.MobileNo ?: @"", u.UserEmail ?: @""];
+            return [fullName localizedCaseInsensitiveContainsString:cleanText];
+        }
+        if ([option isKindOfClass:[OptionModel class]]) {
+            OptionModel *op = (OptionModel *)option;
+            NSString *full = [NSString stringWithFormat:@"%@ %@ %@", op.title ?: @"", op.desc ?: @"", op.subtitle ?: @""];
+            return [full localizedCaseInsensitiveContainsString:cleanText];
+        }
+        NSString *display = [self displayTextForOption:option];
+        if (!display) return NO;
+        return [display localizedCaseInsensitiveContainsString:cleanText];
+    }];
 
-        UIView *glow = [[UIView alloc] initWithFrame:CGRectZero];
-        glow.userInteractionEnabled = NO;
-        glow.backgroundColor = [accent colorWithAlphaComponent:0.085];
-        glow.alpha = 0.72;
-        glow.layer.shadowColor = accent.CGColor;
-        glow.layer.shadowOpacity = 0.16;
-        glow.layer.shadowRadius = 38.0;
-        glow.layer.shadowOffset = CGSizeZero;
-        [background addSubview:glow];
+    self.filteredOptions = [self.allOptions filteredArrayUsingPredicate:p];
+    [self reloadTableViewAnimated];
+    [self pp_updatePremiumHeroCountLabel];
+    [self pp_updateEmptyStateVisibility];
+}
 
-        self.premiumBackgroundView = background;
-        self.premiumGlowCircleView = glow;
+- (void)pp_updateEmptyStateVisibility {
+    if (self.filteredOptions.count == 0 && self.allOptions.count > 0) {
+        if (!self.emptyStateView) {
+            UIView *empty = [UIView new];
+            empty.translatesAutoresizingMaskIntoConstraints = YES;
+            empty.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+            
+            UIView *iconPlate = [UIView new];
+            iconPlate.translatesAutoresizingMaskIntoConstraints = NO;
+            iconPlate.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.08];
+            iconPlate.layer.cornerRadius = 32.0;
+            [empty addSubview:iconPlate];
+            
+            UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:28 weight:UIImageSymbolWeightMedium];
+            UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:cfg]];
+            icon.translatesAutoresizingMaskIntoConstraints = NO;
+            icon.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+            [iconPlate addSubview:icon];
+            
+            UILabel *title = [UILabel new];
+            title.translatesAutoresizingMaskIntoConstraints = NO;
+            title.font = [Styling fontBold:17] ?: [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
+            title.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+            title.textAlignment = NSTextAlignmentCenter;
+            title.text = kLang(@"selection_studio_no_results_title") ?: @"لا توجد نتائج مطابقة";
+            [empty addSubview:title];
+            
+            UILabel *subtitle = [UILabel new];
+            subtitle.translatesAutoresizingMaskIntoConstraints = NO;
+            subtitle.font = [Styling fontRegular:13.5] ?: [UIFont systemFontOfSize:13.5];
+            subtitle.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+            subtitle.textAlignment = NSTextAlignmentCenter;
+            subtitle.numberOfLines = 2;
+            subtitle.text = kLang(@"selection_studio_no_results_desc") ?: @"تأكد من كتابة الكلمة بشكل صحيح أو جرّب بحثاً آخر.";
+            [empty addSubview:subtitle];
+            
+            UIButton *resetBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+            resetBtn.translatesAutoresizingMaskIntoConstraints = NO;
+            [resetBtn setTitle:(kLang(@"selection_studio_clear_search") ?: @"إعادة تعيين البحث") forState:UIControlStateNormal];
+            resetBtn.titleLabel.font = [Styling fontBold:14];
+            resetBtn.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+            [resetBtn addTarget:self action:@selector(pp_resetSearchAction) forControlEvents:UIControlEventTouchUpInside];
+            [empty addSubview:resetBtn];
+            
+            [NSLayoutConstraint activateConstraints:@[
+                [iconPlate.centerXAnchor constraintEqualToAnchor:empty.centerXAnchor],
+                [iconPlate.topAnchor constraintEqualToAnchor:empty.topAnchor constant:40.0],
+                [iconPlate.widthAnchor constraintEqualToConstant:64.0],
+                [iconPlate.heightAnchor constraintEqualToConstant:64.0],
+                [icon.centerXAnchor constraintEqualToAnchor:iconPlate.centerXAnchor],
+                [icon.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
+                
+                [title.topAnchor constraintEqualToAnchor:iconPlate.bottomAnchor constant:16.0],
+                [title.leadingAnchor constraintEqualToAnchor:empty.leadingAnchor constant:24.0],
+                [title.trailingAnchor constraintEqualToAnchor:empty.trailingAnchor constant:-24.0],
+                
+                [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:6.0],
+                [subtitle.leadingAnchor constraintEqualToAnchor:empty.leadingAnchor constant:24.0],
+                [subtitle.trailingAnchor constraintEqualToAnchor:empty.trailingAnchor constant:-24.0],
+                
+                [resetBtn.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:12.0],
+                [resetBtn.centerXAnchor constraintEqualToAnchor:empty.centerXAnchor],
+                [resetBtn.bottomAnchor constraintLessThanOrEqualToAnchor:empty.bottomAnchor constant:-20.0]
+            ]];
+            
+            self.emptyStateView = empty;
+        }
+        self.tableView.backgroundView = self.emptyStateView;
+    } else {
+        self.tableView.backgroundView = nil;
     }
+}
 
-    self.premiumBackgroundView.backgroundColor = [self pp_sheetBackgroundColor];
-    self.premiumGlowCircleView.backgroundColor = [accent colorWithAlphaComponent:0.085];
-    self.premiumGlowCircleView.layer.shadowColor = accent.CGColor;
-    self.tableView.backgroundView = self.premiumBackgroundView;
-    [self pp_layoutPremiumBackgroundGlow];
-    [self pp_startPremiumGlowAnimationIfNeeded];
+- (void)pp_configurePremiumBackgroundIfNeeded {
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.view.backgroundColor = [self pp_sheetBackgroundColor];
 }
 
 - (void)pp_layoutPremiumBackgroundGlow {
-    if (!self.premiumGlowCircleView || !self.premiumBackgroundView) return;
-    CGFloat width = CGRectGetWidth(self.tableView.bounds);
-    CGFloat height = CGRectGetHeight(self.tableView.bounds);
-    if (width <= 0.0 || height <= 0.0) return;
-
-    CGFloat diameter = MIN(MAX(width * 0.54, 178.0), 232.0);
-    CGFloat x = Language.isRTL ? -diameter * 0.28 : width - diameter * 0.72;
-    CGFloat y = MAX(156.0, height - diameter - 98.0);
-    self.premiumGlowCircleView.frame = CGRectMake(x, y, diameter, diameter);
-    self.premiumGlowCircleView.layer.cornerRadius = diameter / 2.0;
 }
 
 - (void)pp_startPremiumGlowAnimationIfNeeded {
-    if (!self.premiumGlowCircleView) return;
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self.premiumGlowCircleView.layer removeAnimationForKey:@"pp.premium.glow.breathe"];
-        return;
-    }
-    if ([self.premiumGlowCircleView.layer animationForKey:@"pp.premium.glow.breathe"]) return;
-
-    CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    pulse.fromValue = @0.96;
-    pulse.toValue = @1.035;
-    pulse.duration = 4.6;
-    pulse.autoreverses = YES;
-    pulse.repeatCount = HUGE_VALF;
-    pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.premiumGlowCircleView.layer addAnimation:pulse forKey:@"pp.premium.glow.breathe"];
 }
+
 
 - (void)pp_prepareEntranceStateIfNeeded {
     if (self.didRunEntrance || self.didPrepareEntrance) return;
@@ -1193,7 +1357,17 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 
     // --- Configure cell ---
     BOOL selected = [self pp_isOption:option selectedWithTitle:title];
-    if (imageURLString.length > 0) {
+    if ([option isKindOfClass:[UserModel class]]) {
+        [cell configureAsUserDossierWithUser:(UserModel *)option selected:selected];
+    } else if ([option isKindOfClass:[OptionModel class]] && (self.presentationStyle == PPSelectOptionPresentationMain || self.usesCompactOptionIcons || !self.showSearchBar)) {
+        OptionModel *op = (OptionModel *)option;
+        [cell configureAsActionPortalWithTitle:title
+                                      subtitle:(op.desc ?: subtitle)
+                                      actionID:op.optID
+                                    systemIcon:(op.systemImageName ?: op.imageName)
+                                   accentColor:self.premiumHeroAccentColor
+                                      selected:selected];
+    } else if (imageURLString.length > 0) {
         [cell configureWithTitle:title subtitle:subtitle imageUrl:imageURLString];
     } else if (imageNamed.length > 0) {
         if (premiumPicker) {
@@ -1214,6 +1388,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     } else {
         [cell configureWithTitle:title subtitle:subtitle image:image];
     }
+
     if (usesFlagImage) {
         cell.circleImageView.layer.cornerRadius = 0.0;
         cell.circleImageView.layer.masksToBounds = NO;
@@ -1301,6 +1476,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     if (searchText.length == 0) {
         self.filteredOptions = self.allOptions ?: @[];
         [self reloadTableViewAnimated];
+        [self pp_updatePremiumHeroCountLabel];
         return;
     }
 
@@ -1313,6 +1489,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     self.filteredOptions = [self.allOptions filteredArrayUsingPredicate:p];
     DLog(@"[PPSelectOption] search text='%@' results=%lu", searchText, (unsigned long)self.filteredOptions.count);
     [self reloadTableViewAnimated];
+    [self pp_updatePremiumHeroCountLabel];
 }
 
 - (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
@@ -1428,13 +1605,19 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 }
 
 - (UIColor *)pp_sheetSurfaceColor {
-    return [AppForgroundColr colorWithAlphaComponent:0.82] ?: UIColor.secondarySystemGroupedBackgroundColor;
+    return AppForgroundColr ?: UIColor.secondarySystemGroupedBackgroundColor;
 }
 
 - (UIColor *)pp_sheetBackgroundColor {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traits) {
+            return traits.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithRed:0.11 green:0.11 blue:0.13 alpha:1.0]
+                : [UIColor colorWithRed:0.96 green:0.96 blue:0.98 alpha:1.0];
+        }];
+    }
     UIColor *baseColor = AppBackgroundClr ?: UIColor.systemGroupedBackgroundColor;
-    UIColor *resolvedColor = PPBackgroundColorForIOS26(baseColor);
-    return [resolvedColor colorWithAlphaComponent:0.82];
+    return PPBackgroundColorForIOS26(baseColor) ?: baseColor;
 }
 
 - (void)updateRowValue:(id)value {

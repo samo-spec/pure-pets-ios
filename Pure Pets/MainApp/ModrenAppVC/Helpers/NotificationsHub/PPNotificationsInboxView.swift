@@ -34,7 +34,9 @@ struct PPNotificationsInboxView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityAddTraits(.isButton)
                     .accessibilityLabel(accessibilityLabel(for: item))
-                    .accessibilityValue(item.isRead ? "" : PPHubText("New"))
+                    .accessibilityValue(
+                        item.isRead ? "" : PPHubText("notifications_inbox_accessibility_new")
+                    )
                 }
             }
             .padding(.top, PPSpace.sm)
@@ -228,7 +230,7 @@ private struct PPNotificationsInboxStateView: View {
     private var titleText: String {
         switch state {
         case .loading:
-            return PPHubText("Loading")
+            return PPHubText("notifications_inbox_loading_title")
         case .error:
             return PPHubText("load_error_title")
         case .empty, .content:

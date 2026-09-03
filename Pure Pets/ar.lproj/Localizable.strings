@@ -2724,6 +2724,8 @@
 "notifications_inbox_delivery_request_closed_title" = "تم إغلاق طلب التوصيل";
 "notifications_inbox_delivery_request_closed_body" = "لم يعد طلب التوصيل هذا متاحًا.";
 "notifications_inbox_new_order_title" = "طلب جديد";
+"notifications_inbox_accessibility_new" = "جديد";
+"notifications_inbox_loading_title" = "جاري تحميل الإشعارات";
 "notifications_inbox_new_order_title_format" = "طلب جديد %@";
 "notifications_inbox_order_items_total_format" = "%@ عنصر • %@ %@";
 "pet_reminder_add" = "إضافة تذكير";
@@ -3229,6 +3231,11 @@
 "pp_app_check_unavailable" = "تعذر التحقق من هذا الجهاز حالياً. حاول مرة أخرى.";
 "pp_support_open_failed" = "تعذر فتح محادثة الدعم حالياً.";
 "pp_support_config_failed" = "تعذر تحميل إعدادات محادثة الدعم.";
+"chat_invalid_message_parameters" = "تعذر إرسال هذه الرسالة.";
+"chat_invalid_image_parameters" = "تعذر إرسال هذه الصورة.";
+"chat_image_encoding_failed" = "تعذر تجهيز هذه الصورة للإرسال.";
+"chat_invalid_video_parameters" = "تعذر إرسال هذا الفيديو.";
+"chat_video_read_failed" = "تعذر تجهيز هذا الفيديو للإرسال.";
 "pp_order_support_submit_failed" = "تعذر إرسال طلب الدعم. حاول مرة أخرى.";
 
 /* Chat send errors */
@@ -3684,6 +3691,11 @@
 "pure_lens_account_camera" = "كاميرا";
 "pure_lens_account_recognize" = "تعرّف";
 "pure_lens_account_discover" = "اكتشف";
+"pure_lens_account_live_vision" = "رؤية ذكية مباشرة";
+"pure_lens_account_capability_breeds" = "السلالات";
+"pure_lens_account_capability_diet" = "التغذية";
+"pure_lens_account_capability_health" = "الصحة";
+"pure_lens_account_live_scan" = "مسح مباشر";
 "pure_lens_account_a11y" = "بيور لينس. كاميرا وتعرّف واكتشاف في المتجر.";
 "pure_lens_account_hint" = "يفتح كاميرا اكتشاف الحيوانات";
 "user_menu_profile_subtitle" = "عرض وتحديث بيانات حسابك.";
@@ -4721,6 +4733,27 @@
 "current_cache_size" = "حجم التخزين المؤقت الحالي";
 "LogoutConfirmSubtitle" = "تسجيل الخروج من هذا الجهاز. تبقى بياناتك المحفوظة بأمان.";
 "LogoutMessage" = "هل أنت متأكد أنك تريد تسجيل الخروج؟";
+"settings_studio_storage_title" = "الذاكرة والتخزين";
+"settings_studio_storage_subtitle" = "تحكم في حجم الملفات المؤقتة لتسريع التطبيق.";
+"settings_studio_clear_cache_cta" = "تنظيف الذاكرة المؤقتة";
+"settings_studio_cache_freed" = "تم تنظيف الذاكرة المؤقتة بنجاح";
+"settings_studio_coverage_full" = "تغطية كاملة للمتجر والعيادات";
+"settings_studio_coverage_denied" = "خدمات الموقع غير مفعلة";
+"settings_studio_coverage_loading" = "جاري تحديد النطاق الأقرب...";
+"settings_studio_theme_light_desc" = "مظهر نهاري ناصع ومريح";
+"settings_studio_theme_dark_desc" = "مظهر ليلي عميق موفر للطاقة";
+"settings_studio_theme_system_desc" = "يتكيف تلقائيًا مع نظام iOS";
+"settings_studio_account_guest_title" = "حساب زائر";
+"settings_studio_account_guest_desc" = "سجّل الدخول لمزامنة إعداداتك ومفضلاتك عبر أجهزتك";
+"settings_studio_account_signin_cta" = "تسجيل الدخول";
+"settings_studio_notifications_enabled" = "التنبيهات مفعلة";
+"settings_studio_notifications_disabled" = "التنبيهات متوقفة";
+"settings_studio_conversations_scope" = "نطاق المحادثات";
+"settings_studio_eyebrow" = "بيور بتس • الاستوديو";
+"settings_studio_app_status_ready" = "التطبيق جاهز";
+"settings_studio_storage_calculating" = "جارٍ الحساب…";
+"settings_studio_app_status_connected" = "متصل وسريع";
+
 
 // Storefront Bento & Rating Sheet
 "ratings_word" = "تقييم";
@@ -4750,3 +4783,19 @@
 "order_v6_action_replacement_sub" = "استبدال منتجات تالفة";
 "order_v6_action_refund_title" = "طلب استرداد";
 "order_v6_action_refund_sub" = "استرجاع المبلغ المدفوع";
+
+// Selection Studio NextGen V6
+"selection_studio_search_placeholder" = "ابحث بالاسم أو الوصف...";
+"selection_studio_search_users_placeholder" = "ابحث عن عضو أو جهة اتصال...";
+"selection_studio_no_results_title" = "لا توجد نتائج مطابقة";
+"selection_studio_no_results_desc" = "تأكد من كتابة الاسم بشكل صحيح أو جرّب كلمة بحث أخرى.";
+"selection_studio_clear_search" = "إعادة تعيين البحث";
+"selection_studio_online_now" = "متصل الآن";
+"selection_studio_offline" = "غير متصل";
+"selection_studio_verified_badge" = "موثق";
+"selection_studio_quick_action" = "إجراء سريع";
+"selection_studio_action_count" = "%lu خيارات";
+"selection_studio_action_count_single" = "خيار واحد";
+"selection_studio_user_count" = "%lu مستخدم";
+"selection_studio_user_count_single" = "مستخدم واحد";
+"selection_studio_close" = "إغلاق";

@@ -106,11 +106,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (UIViewController *)topViewController;
 
-- (void)uploadAudioData:(NSData *)audioData
-              completion:(void (^)(NSString *downloadURL, NSError *error))completion;
-- (void)uploadMP3FromPath:(NSString *)filePath
-               completion:(void (^)(NSString *downloadURL,NSString *fileName, NSError *error))completion;
-
 - (void)setupAppConfiguration;
 @end
 

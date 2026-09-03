@@ -20,8 +20,6 @@ static NSString *PPCurrentChatIdentity(void) {
 
 static NSString * const PPSupportAvatarToken = @"purepets://support-logo";
 static NSString * const PPPurePetsOfficialSupportUserID = @"PUIDPOFFICILAL20262214";
-static NSString * const PPChatUnsentPreviewToken = @"__pp_message_unsent__";
-
 static NSString *PPChatTrimmedString(id value) {
     if (![value isKindOfClass:NSString.class]) {
         return @"";
@@ -96,10 +94,6 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         [dict[@"lastMessage"] isKindOfClass:NSString.class]
         ? dict[@"lastMessage"]
         : @"";
-    if ([_lastMessage isEqualToString:PPChatUnsentPreviewToken]) {
-        _lastMessage = kLang(@"chat_message_unsent");
-    }
-
     _lastSenderID =
         [dict[@"senderID"] isKindOfClass:NSString.class]
         ? dict[@"senderID"]
@@ -112,9 +106,9 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         _timestamp = ts;
     } else if ([ts isKindOfClass:NSNumber.class]) {
         double val = [ts doubleValue];
-        _timestamp = val > 0 ? [NSDate dateWithTimeIntervalSince1970:val] : [NSDate date];
+        _timestamp = val > 0 ? [NSDate dateWithTimeIntervalSince1970:val] : [NSDate distantPast];
     } else {
-        _timestamp = [NSDate date];
+        _timestamp = [NSDate distantPast];
     }
     
     _lastReadBy =
@@ -128,7 +122,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     } else if ([lastRead isKindOfClass:NSDate.class]) {
         _lastReadAt = lastRead;
     } else {
-        _lastReadAt = [NSDate date];
+        _lastReadAt = [NSDate distantPast];
     }
     
     id lastAt = dict[@"lastMessageAt"];
@@ -138,9 +132,9 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         _lastMessageAt = lastAt;
     } else if ([lastAt isKindOfClass:NSNumber.class]) {
         double val = [lastAt doubleValue];
-        _lastMessageAt = val > 0 ? [NSDate dateWithTimeIntervalSince1970:val] : [NSDate date];
+        _lastMessageAt = val > 0 ? [NSDate dateWithTimeIntervalSince1970:val] : [NSDate distantPast];
     } else {
-        _lastMessageAt = (_timestamp && ![_timestamp isEqual:[NSDate distantPast]]) ? _timestamp : [NSDate date];
+        _lastMessageAt = _timestamp ?: [NSDate distantPast];
     }
     
     
@@ -173,11 +167,21 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     _supportDisplayName = PPChatTrimmedString(dict[@"supportDisplayName"]);
     _supportStatus = PPChatTrimmedString(dict[@"supportStatus"]);
     _supportPhotoURLString = PPChatTrimmedString(dict[@"supportPhotoUrl"]);
-    _contextType = PPChatTrimmedString(dict[@"contextType"]);
-    _contextId = PPChatTrimmedString(dict[@"contextId"]);
+    NSString *rawContextType = PPChatTrimmedString(dict[@"contextType"] ?: dict[@"context_type"]);
+    NSString *rawContextId = PPChatTrimmedString(dict[@"contextId"] ?: dict[@"contextID"] ?: dict[@"context_id"]);
+    if (rawContextId.length == 0) {
+        rawContextId = PPChatTrimmedString(dict[@"petAdId"] ?: dict[@"adID"] ?: dict[@"adId"] ?: dict[@"listingId"] ?: dict[@"listingID"]);
+        if (rawContextId.length > 0 && rawContextType.length == 0) {
+            rawContextType = @"pet_ad";
+        }
+    }
+    _contextType = rawContextType;
+    _contextId = rawContextId;
     _contextSnapshot = [dict[@"contextSnapshot"] isKindOfClass:NSDictionary.class]
         ? [dict[@"contextSnapshot"] copy]
-        : @{};
+        : ([dict[@"context_snapshot"] isKindOfClass:NSDictionary.class]
+            ? [dict[@"context_snapshot"] copy]
+            : @{});
 
     // Derived fields
     _unreadCount = 0;
@@ -215,7 +219,6 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     [coder encodeObject:self.timestamp forKey:@"timestamp"];
     [coder encodeInteger:self.messagesCount forKey:@"messagesCount"];
     [coder encodeInteger:self.unreadCount forKey:@"unreadCount"];
-    [coder encodeObject:self.memberIDs forKey:@"members"];
     [coder encodeObject:self.lastMessageAt forKey:@"lastMessageAt"];
     [coder encodeObject:self.lastReadAt forKey:@"lastReadAt"];
     [coder encodeObject:self.lastReadBy forKey:@"lastReadBy"];
@@ -254,10 +257,12 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         [coder decodeObjectOfClass:NSString.class forKey:@"lastReadBy"] ?: @"";
     
     self.lastReadAt =
-        [coder decodeObjectOfClass:NSDate.class forKey:@"lastReadAt"] ?: [NSDate date];
+        [coder decodeObjectOfClass:NSDate.class forKey:@"lastReadAt"] ?: [NSDate distantPast];
 
     self.timestamp =
-        [coder decodeObjectOfClass:NSDate.class forKey:@"timestamp"] ?: [NSDate date];
+        [coder decodeObjectOfClass:NSDate.class forKey:@"timestamp"] ?: [NSDate distantPast];
+    self.lastMessageAt =
+        [coder decodeObjectOfClass:NSDate.class forKey:@"lastMessageAt"] ?: self.timestamp;
 
     self.messagesCount = [coder decodeIntegerForKey:@"messagesCount"];
     self.unreadCount = [coder decodeIntegerForKey:@"unreadCount"];

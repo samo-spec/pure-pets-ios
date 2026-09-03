@@ -40,6 +40,10 @@ final class PPNotificationsInboxStore: ObservableObject {
     private var refreshContinuations: [CheckedContinuation<Void, Never>] = []
     private var hasActivated = false
 
+    private var PPHubLocale: Locale {
+        Locale(identifier: Language.isRTL() ? "ar" : "en")
+    }
+
     private lazy var dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = PPHubLocale
@@ -310,7 +314,10 @@ final class PPNotificationsInboxStore: ObservableObject {
         let orderID = PPHubPayload.orderID(from: payload)
         let type = PPHubPayload.notificationType(payload, meta)
 
-        print("PPLAB NotificationsHub select start | type=\(type) orderId=\(orderID) threadID=\(threadID)")
+        print(
+            "PPLAB NotificationsHub select start | type=\(type) "
+                + "hasOrder=\(!orderID.isEmpty) hasThread=\(!threadID.isEmpty)"
+        )
 
         if !threadID.isEmpty || type == "chat" {
             guard let host = hostViewController else { return }

@@ -53,12 +53,35 @@ func PPHubText(_ key: String) -> String {
     Language.get(key, alter: nil) ?? key
 }
 
-var PPHubLocale: Locale {
-    Locale(identifier: Language.isRTL() ? "ar_QA" : "en_QA")
-}
+func PPHubFormat(_ key: String, _ arguments: String...) -> String {
+    var rendered = PPHubText(key)
+    let escapedPercent = "\u{F000}"
+    rendered = rendered.replacingOccurrences(of: "%%", with: escapedPercent)
 
-func PPHubFormat(_ key: String, _ arguments: CVarArg...) -> String {
-    String(format: PPHubText(key), locale: PPHubLocale, arguments: arguments)
+    var consumed = Set<Int>()
+    for (index, argument) in arguments.enumerated() {
+        let positionalToken = "%\(index + 1)$@"
+        if rendered.contains(positionalToken) {
+            rendered = rendered.replacingOccurrences(of: positionalToken, with: argument)
+            consumed.insert(index)
+        }
+    }
+
+    for (index, argument) in arguments.enumerated() where !consumed.contains(index) {
+        if let range = rendered.range(of: "%@") {
+            rendered.replaceSubrange(range, with: argument)
+            consumed.insert(index)
+        }
+    }
+
+    let omitted = arguments.enumerated()
+        .filter { !consumed.contains($0.offset) && !$0.element.isEmpty }
+        .map(\.element)
+    if !omitted.isEmpty {
+        rendered += (rendered.isEmpty ? "" : " ") + omitted.joined(separator: " ")
+    }
+
+    return rendered.replacingOccurrences(of: escapedPercent, with: "%")
 }
 
 // MARK: - Typography

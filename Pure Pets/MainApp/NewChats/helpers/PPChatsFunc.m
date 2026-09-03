@@ -351,8 +351,9 @@ bubble.layer.mask = mask;
 
     CGFloat tl = R, tr = R, bl = R, br = R;
 
-    BOOL usesLogicalTrailing = [self bubbleUsesTrailingAlignmentForIncoming:isIncoming];
-    BOOL bubbleOnPhysicalRight = Language.isRTL ? !usesLogicalTrailing : usesLogicalTrailing;
+    // The alignment helper already resolves to the physical edge: outgoing is
+    // right in LTR/left in RTL, and incoming is the inverse.
+    BOOL bubbleOnPhysicalRight = [self bubbleUsesTrailingAlignmentForIncoming:isIncoming];
 
     switch (position) {
 
@@ -510,6 +511,9 @@ bubble.layer.mask = mask;
 {
     if (!imageView) return;
     if (!message || isIncoming || message.isDeleted) {
+        [imageView.layer removeAllAnimations];
+        imageView.transform = CGAffineTransformIdentity;
+        imageView.alpha = 1.0;
         imageView.hidden = YES;
         imageView.image = nil;
         imageView.accessibilityLabel = nil;
@@ -548,8 +552,11 @@ bubble.layer.mask = mask;
     };
 
     if (!animated || !changed || UIAccessibilityIsReduceMotionEnabled()) {
+        [imageView.layer removeAllAnimations];
+        imageView.transform = CGAffineTransformIdentity;
         apply();
     } else {
+        [imageView.layer removeAllAnimations];
         imageView.transform = CGAffineTransformMakeScale(0.78, 0.78);
         [UIView transitionWithView:imageView
                           duration:0.18

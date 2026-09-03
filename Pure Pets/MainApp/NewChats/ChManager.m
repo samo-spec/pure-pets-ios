@@ -17,16 +17,13 @@ static NSString * const kFieldisOnline  = @"isOnline";
 static NSString * const kFieldLastSeen = @"lastSeen";
 static NSString * const kPPSupportAvatarToken = @"purepets://support-logo";
 @import FirebaseAuth;
-static NSString * const kPPConversationTypeProviderChat = @"provider_chat";
 static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
 static NSString * const kPPSupportOfficialActorKey = @"support:official";
-static NSInteger const kPPChatV2SchemaVersion = 2;
 static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
 static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
 @import Firebase;
 @import FirebaseFirestore;
 @import FirebaseStorage;
-@import FirebaseFirestore;
 @import FirebaseFunctions;
 #import "ChManager.h"
 #import "PPChatFeedbackManager.h"
@@ -65,7 +62,7 @@ static NSDate *PPThreadActivityDate(ChatThreadModel *thread) {
     if (hasValidLast) return lastMessageAt;
     if (hasValidTs)   return timestamp;
 
-    return [NSDate date];
+    return [NSDate distantPast];
 }
 
 static NSString *PPSupportTrimmedString(id value) {
@@ -101,25 +98,6 @@ static UserModel *PPSupportUserFromConfig(NSDictionary *config) {
 static NSString *PPSupportUserActorKey(NSString *uid) {
     NSString *safeUID = PPSupportTrimmedString(uid);
     return safeUID.length > 0 ? [NSString stringWithFormat:@"user:%@", safeUID] : @"";
-}
-
-static NSString *PPChatActorKey(NSString *uid, BOOL provider) {
-    NSString *safeUID = PPSupportTrimmedString(uid);
-    if (safeUID.length == 0) {
-        return @"";
-    }
-    return [NSString stringWithFormat:@"%@:%@", provider ? @"provider" : @"user", safeUID];
-}
-
-static NSArray<NSString *> *PPSupportUniqueStrings(NSArray<NSString *> *values) {
-    NSMutableOrderedSet<NSString *> *set = [NSMutableOrderedSet orderedSet];
-    for (NSString *value in values) {
-        NSString *safeValue = PPSupportTrimmedString(value);
-        if (safeValue.length > 0) {
-            [set addObject:safeValue];
-        }
-    }
-    return [set.array sortedArrayUsingSelector:@selector(compare:)] ?: @[];
 }
 
 static BOOL PPSupportArrayContainsString(id value, NSString *needle) {
@@ -158,37 +136,6 @@ static BOOL PPSupportThreadDataCanAcceptCustomerMessage(NSDictionary *data,
     BOOL hasSupportActor = PPSupportArrayContainsString(data[@"participantKeys"], kPPSupportOfficialActorKey);
 
     return hasCustomerUID && hasSupportUID && hasCustomerActor && hasSupportActor;
-}
-
-static NSDictionary *PPChatThreadV2Metadata(NSString *threadID,
-                                            NSString *currentUID,
-                                            NSString *otherUID,
-                                            BOOL providerChat) {
-    NSString *safeThreadID = PPSupportTrimmedString(threadID);
-    NSString *safeCurrentUID = PPSupportTrimmedString(currentUID);
-    NSString *safeOtherUID = PPSupportTrimmedString(otherUID);
-    NSString *currentActorKey = PPChatActorKey(safeCurrentUID, NO);
-    NSString *otherActorKey = PPChatActorKey(safeOtherUID, providerChat);
-    NSString *contextType = providerChat ? kPPConversationTypeProviderChat : @"direct_chat";
-
-    return @{
-        @"schemaVersion": @(kPPChatV2SchemaVersion),
-        @"conversationId": safeThreadID,
-        @"contextType": contextType,
-        @"contextId": safeThreadID,
-        @"threadId": safeThreadID,
-        @"threadID": safeThreadID,
-        @"participantKeys": PPSupportUniqueStrings(@[currentActorKey, otherActorKey]),
-        @"participantUids": PPSupportUniqueStrings(@[safeCurrentUID, safeOtherUID]),
-        @"customerActorKey": currentActorKey,
-        @"targetUid": safeOtherUID,
-        @"targetActorKey": otherActorKey,
-        @"targetApp": providerChat ? @"pro" : @"ios",
-        @"route": @"chat",
-        @"notificationType": @"chat",
-        @"updatedByActorKey": currentActorKey,
-        @"updatedByUid": safeCurrentUID
-    };
 }
 
 static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSString *message) {
@@ -236,6 +183,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *knownMessageIDsByThread;
 @property (nonatomic, assign) BOOL didFinishInitialMessageSync;
 @property (nonatomic, strong) NSMutableSet<NSString *> *initialSyncedThreads;
+@property (nonatomic, strong) NSCache<NSString *, NSNumber *> *supportThreadClassificationCache;
 //@property (nonatomic, strong) id<FIRListenerRegistration> globalDeliveryListener;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> globalIncomingListener;
 @property (nonatomic, copy, nullable) NSString *globalIncomingListenerUserID;
@@ -244,17 +192,16 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 @property (nonatomic, copy, nullable) NSString *lastDeliverySyncUserID;
 @property (nonatomic, strong, nullable) NSDate *lastDeliverySyncCompletedAt;
 
-- (void)sendChatPushToUserID:(NSString *)toUserID
-                       title:(NSString *)title
-                        body:(NSString *)body
-                    threadID:(NSString *)threadID
-                    senderID:(NSString *)senderID
-                   messageID:(nullable NSString *)messageID
-                  completion:(void (^ _Nullable)(BOOL didAcceptPush))completion;
+- (void)pp_invokeChatCallableNamed:(NSString *)callableName
+                           payload:(NSDictionary *)payload
+                        completion:(void (^)(NSDictionary * _Nullable data,
+                                             NSError * _Nullable error))completion;
+- (void)pp_invokeChatCommandForThreadID:(NSString *)threadID
+                                  action:(NSString *)action
+                                 payload:(nullable NSDictionary *)payload
+                              completion:(void (^)(NSDictionary * _Nullable data,
+                                                   NSError * _Nullable error))completion;
 
-- (void)pp_openSupportChatViaFirestoreFallbackWithSupportUser:(UserModel *)supportUser
-                                                   customerID:(NSString *)customerID
-                                                   completion:(void (^)(ChatThreadModel * _Nullable thread, NSError * _Nullable error))completion;
 - (void)pp_presentForegroundChatNotificationForThreadID:(NSString *)threadID
                                                 message:(ChatMessageModel *)message
                                          receiverUserID:(NSString *)receiverUserID;
@@ -276,6 +223,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             sharedInstance.knownMessageIDsByThread = [NSMutableDictionary dictionary];
         }        sharedInstance.didFinishInitialMessageSync = NO;
         sharedInstance.initialSyncedThreads = [NSMutableSet set];
+        sharedInstance.supportThreadClassificationCache = [NSCache new];
+        sharedInstance.supportThreadClassificationCache.countLimit = 200;
         
         sharedInstance.liveUnreadCounts = [NSMutableDictionary dictionary];
         sharedInstance.latestUnreadMessages = [NSMutableDictionary dictionary];
@@ -321,6 +270,93 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     return NO;
 }
 
+- (void)pp_invokeChatCallableNamed:(NSString *)callableName
+                           payload:(NSDictionary *)payload
+                        completion:(void (^)(NSDictionary * _Nullable data,
+                                             NSError * _Nullable error))completion
+{
+    NSString *safeName = PPSupportTrimmedString(callableName);
+    if (safeName.length == 0) {
+        if (completion) {
+            completion(nil, [NSError errorWithDomain:@"ChManager"
+                                                 code:400
+                                             userInfo:@{NSLocalizedDescriptionKey:
+                                                            kLang(@"SomethingWentWrong")}]);
+        }
+        return;
+    }
+
+    FIRHTTPSCallable *callable =
+        [[FIRFunctions functionsForRegion:@"us-central1"] HTTPSCallableWithName:safeName];
+    callable.timeoutInterval = 30.0;
+    [callable callWithObject:payload ?: @{}
+                  completion:^(FIRHTTPSCallableResult * _Nullable result,
+                               NSError * _Nullable error) {
+        NSDictionary *data = [result.data isKindOfClass:NSDictionary.class]
+            ? (NSDictionary *)result.data
+            : nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(data, error);
+        });
+    }];
+}
+
+- (void)pp_invokeChatCommandForThreadID:(NSString *)threadID
+                                  action:(NSString *)action
+                                 payload:(nullable NSDictionary *)payload
+                              completion:(void (^)(NSDictionary * _Nullable data,
+                                                   NSError * _Nullable error))completion
+{
+    NSString *safeThreadID = PPSupportTrimmedString(threadID);
+    NSString *safeAction = PPSupportTrimmedString(action);
+    if (safeThreadID.length == 0 || safeAction.length == 0) {
+        if (completion) {
+            completion(nil, [NSError errorWithDomain:@"ChManager"
+                                                 code:400
+                                             userInfo:@{NSLocalizedDescriptionKey:
+                                                            kLang(@"SomethingWentWrong")}]);
+        }
+        return;
+    }
+
+    NSNumber *cachedSupport = [self.supportThreadClassificationCache objectForKey:safeThreadID];
+    void (^invokeForClassification)(BOOL) = ^(BOOL supportThread) {
+        [self.supportThreadClassificationCache setObject:@(supportThread) forKey:safeThreadID];
+        NSMutableDictionary *command = [payload mutableCopy] ?: [NSMutableDictionary dictionary];
+        command[@"action"] = safeAction;
+        command[@"threadId"] = safeThreadID;
+        [self pp_invokeChatCallableNamed:(supportThread ? @"supportChatCommand" : @"chatMessageCommand")
+                                 payload:command.copy
+                              completion:completion];
+    };
+    if (cachedSupport) {
+        invokeForClassification(cachedSupport.boolValue);
+        return;
+    }
+
+    FIRDocumentReference *threadRef =
+        [[self.firestore collectionWithPath:@"Chats"] documentWithPath:safeThreadID];
+    [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot,
+                                           NSError * _Nullable readError) {
+        if (readError || !snapshot.exists) {
+            NSError *resolvedError = readError ?: [NSError errorWithDomain:@"ChManager"
+                                                                       code:404
+                                                                   userInfo:@{NSLocalizedDescriptionKey:
+                                                                                  kLang(@"SomethingWentWrong")}];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(nil, resolvedError);
+            });
+            return;
+        }
+        NSDictionary *threadData = snapshot.data ?: @{};
+        BOOL supportThread = [threadData[@"supportThread"] boolValue] ||
+            [PPSupportTrimmedString(threadData[@"conversationType"]) isEqualToString:@"support"] ||
+            [PPSupportTrimmedString(threadData[@"conversationType"]) isEqualToString:@"user_support"] ||
+            [PPSupportTrimmedString(threadData[@"threadType"]) isEqualToString:@"support"];
+        invokeForClassification(supportThread);
+    }];
+}
+
 - (void)pp_openSupportChatWithUser:(UserModel *)supportUser
                          customerID:(NSString *)customerID
                     fromController:(UIViewController *)controller
@@ -358,8 +394,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
             NSDictionary *threadData = snapshot.data ?: @{};
             if (!PPSupportThreadDataCanAcceptCustomerMessage(threadData, customerID, PURE_PETS_OFFICIAL_USER_ID)) {
-                NSLog(@"❌ [SupportChat] HTTP support thread %@ is missing canonical participants.",
-                      snapshot.documentID ?: @"");
+                NSLog(@"❌ [SupportChat] Server-created thread is missing canonical participants");
                 PPSupportPresentUnavailableAlert(
                     strongController,
                     kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now."
@@ -381,132 +416,27 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 - (void)pp_openSupportChatViaCloudFunctionWithCustomerID:(NSString *)customerID
                                               completion:(void (^)(NSString * _Nullable threadId, NSError * _Nullable error))completion
 {
-    NSURL *url = [NSURL URLWithString:@"https://us-central1-pure-pets-49199.cloudfunctions.net/openSupportChat"];
-    if (!url) {
-        if (completion) completion(nil, [NSError errorWithDomain:@"ChManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid function URL"}]);
-        return;
-    }
-
-    NSDictionary *payload = @{ @"customerId": customerID ?: @"" };
-
-    NSError *jsonError = nil;
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:payload options:0 error:&jsonError];
-    if (!jsonData || jsonError) {
-        if (completion) completion(nil, jsonError);
-        return;
-    }
-
-    [self pp_sendOpenSupportChatPayload:jsonData
-                                    url:url
-                    forceCredentialRefresh:NO
-                             didRetryAuth:NO
-                             completion:completion];
-}
-
-- (void)pp_sendOpenSupportChatPayload:(NSData *)jsonData
-                                  url:(NSURL *)url
-                 forceCredentialRefresh:(BOOL)forceCredentialRefresh
-                           didRetryAuth:(BOOL)didRetryAuth
-                             completion:(void (^)(NSString * _Nullable threadId, NSError * _Nullable error))completion
-{
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-    request.HTTPMethod = @"POST";
-    request.timeoutInterval = 20;
-    request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
-    request.HTTPBody = jsonData;
-    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-
-    PPFirebaseSessionAuthorizationOptions options =
-        PPFirebaseSessionAuthorizationOptionRequireSignedIn |
-        PPFirebaseSessionAuthorizationOptionIncludeAppCheck;
-    if (forceCredentialRefresh) {
-        options |= PPFirebaseSessionAuthorizationOptionForceRefreshAuth;
-        options |= PPFirebaseSessionAuthorizationOptionForceRefreshAppCheck;
-    }
-
-    [PPFirebaseSessionBridge authorizeRequest:request options:options completion:^(NSError * _Nullable authError) {
-        if (authError) {
-            if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:authError]) {
-                NSLog(@"⚠️ [SupportChat] Credential preflight failed before request. Retrying with forced refresh: %@",
-                      authError.localizedDescription ?: @"unknown error");
-                [self pp_sendOpenSupportChatPayload:jsonData
-                                                url:url
-                              forceCredentialRefresh:YES
-                                       didRetryAuth:YES
-                                         completion:completion];
-                return;
-            }
-            NSLog(@"❌ [SupportChat] Credential preflight failed after retry=%d: %@",
-                  didRetryAuth, authError.localizedDescription ?: @"unknown error");
-            if (completion) completion(nil, authError);
-            return;
+    NSString *safeCustomerID = PPSupportTrimmedString(customerID);
+    if (safeCustomerID.length == 0) {
+        if (completion) {
+            completion(nil, [NSError errorWithDomain:@"ChManager"
+                                                 code:401
+                                             userInfo:@{NSLocalizedDescriptionKey:
+                                                            kLang(@"pp_support_open_failed")}]);
         }
+        return;
+    }
 
-        NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
-        NSURLSession *session = [NSURLSession sessionWithConfiguration:config];
-
-        NSURLSessionDataTask *task = [session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-            if (error) {
-                if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
-                    [self pp_sendOpenSupportChatPayload:jsonData url:url forceCredentialRefresh:YES didRetryAuth:YES completion:completion];
-                    return;
-                }
-                if (completion) completion(nil, error);
-                return;
-            }
-
-            NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
-            NSData *responseData = data ?: [NSData data];
-
-            if (http.statusCode >= 400) {
-                NSString *body = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
-                NSLog(@"❌ [SupportChat] Cloud Function returned %ld: %@", (long)http.statusCode, body ?: @"<no body>");
-                NSDictionary *errorDict = nil;
-                if (responseData.length > 0) {
-                    errorDict = [NSJSONSerialization JSONObjectWithData:responseData options:0 error:nil];
-                }
-                NSString *message = nil;
-                if ([errorDict isKindOfClass:NSDictionary.class]) {
-                    id directMessage = errorDict[@"message"];
-                    id errorValue = errorDict[@"error"];
-                    if ([directMessage isKindOfClass:NSString.class]) {
-                        message = directMessage;
-                    } else if ([errorValue isKindOfClass:NSString.class]) {
-                        message = errorValue;
-                    } else if ([errorValue isKindOfClass:NSDictionary.class] &&
-                               [errorValue[@"message"] isKindOfClass:NSString.class]) {
-                        message = errorValue[@"message"];
-                    } else if ([errorValue isKindOfClass:NSDictionary.class] &&
-                               [errorValue[@"status"] isKindOfClass:NSString.class]) {
-                        message = errorValue[@"status"];
-                    }
-                }
-                if (!message.length) message = kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.";
-                NSError *httpError = [NSError errorWithDomain:@"ChManager"
-                                                         code:http.statusCode
-                                                     userInfo:@{NSLocalizedDescriptionKey: message}];
-                if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:httpError]) {
-                    [self pp_sendOpenSupportChatPayload:jsonData url:url forceCredentialRefresh:YES didRetryAuth:YES completion:completion];
-                    return;
-                }
-                if (completion) completion(nil, [PPFirebaseSessionBridge publicErrorForError:httpError fallbackKey:@"pp_support_open_failed"]);
-                return;
-            }
-
-            NSDictionary *result = [NSJSONSerialization JSONObjectWithData:responseData options:0 error:nil];
-            NSString *threadId = [result isKindOfClass:NSDictionary.class] ? ([result[@"threadId"] isKindOfClass:NSString.class] ? result[@"threadId"] : @"") : @"";
-
-            if (!threadId.length) {
-                NSError *responseError = [NSError errorWithDomain:@"ChManager"
-                                                              code:500
-                                                          userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now."}];
-                if (completion) completion(nil, responseError);
-                return;
-            }
-
-            if (completion) completion(threadId, nil);
-        }];
-        [task resume];
+    [self pp_invokeChatCallableNamed:@"supportChatCommand"
+                             payload:@{
+                                 @"action": @"create_or_get",
+                                 @"sourceApp": @"user_ios",
+                                 @"sourcePlatform": @"ios",
+                             }
+                          completion:^(NSDictionary * _Nullable data,
+                                       NSError * _Nullable error) {
+        NSString *threadId = PPSupportTrimmedString(data[@"threadId"]);
+        if (completion) completion(threadId.length > 0 ? threadId : nil, error);
     }];
 }
 
@@ -534,7 +464,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         UserModel *supportUser = PPSupportUserFromConfig(snapshot.data ?: @{});
         if (!supportUser) {
             NSLog(@"❌ [SupportChat] Missing supportUserId in CommerceConfig/supportChat");
-            PPSupportPresentUnavailableAlert(controller, kLang(@"Support chat is not configured yet.") ?: @"Support chat is not configured yet.");
+            PPSupportPresentUnavailableAlert(controller, kLang(@"pp_support_config_failed"));
             return;
         }
 
@@ -571,7 +501,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                                                 code:400
                                             userInfo:@{
                                                 NSLocalizedDescriptionKey:
-                                                @"Invalid message parameters"
+                                                kLang(@"chat_invalid_message_parameters")
                                             }]);
             });
         }
@@ -586,160 +516,44 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     msg.senderID = resolvedSenderID;
     msg.status   = ChatMessageStatusSent;
 
-    FIRFirestore *db = FIRFirestore.firestore;
-
-    FIRDocumentReference *messageRef =
-    [[[[db collectionWithPath:@"Chats"]
-       documentWithPath:threadID]
-      collectionWithPath:@"Messages"]
-     documentWithPath:msg.ID];
-
-    FIRDocumentReference *threadRef =
-    [[db collectionWithPath:@"Chats"]
-     documentWithPath:threadID];
-
-    // ─────────────────────────────
-    // 1️⃣ Optimistic local state
-    // (UI must already reflect this)
-    // ─────────────────────────────
-    NSDictionary *messageData = [msg toDictionary];
-
-    if (YES) {
-        NSMutableDictionary *serverMessage = [messageData mutableCopy];
-        [serverMessage removeObjectsForKeys:@[
-            @"ID", @"id", @"senderID", @"receiverID", @"timestamp",
-            @"createdAt", @"status", @"read", @"readBy", @"hiddenFrom"
-        ]];
-        if (msg.fileURL.length > 0 || msg.thumbnailURL.length > 0) {
-            serverMessage[@"mediaThreadId"] = threadID;
-        }
-        BOOL isSupportMessage = [resolvedReceiverID isEqualToString:PURE_PETS_OFFICIAL_USER_ID];
-        NSDictionary *payload = @{
-            @"action": isSupportMessage ? @"send_customer_message" : @"send",
-            @"threadId": threadID,
-            @"messageId": msg.ID,
-            @"receiverID": resolvedReceiverID,
-            @"text": msg.text ?: @"",
-            @"sourceApp": @"user_ios",
-            @"sourcePlatform": @"ios",
-            @"message": serverMessage.copy
-        };
-        NSString *callableName = isSupportMessage ? @"supportChatCommand" : @"chatMessageCommand";
-        FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"] HTTPSCallableWithName:callableName];
-        callable.timeoutInterval = 30.0;
-        [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result,
-                                                       NSError * _Nullable error) {
-            (void)result;
-            if (error) {
-                NSLog(@"❌ [SendSupportMessage] Callable failed — code=%ld domain=%@ desc=%@",
-                      (long)error.code,
-                      error.domain,
-                      error.localizedDescription ?: @"unknown");
-                if (completion) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        completion(error);
-                    });
-                }
-                return;
-            }
-
-            msg.status = ChatMessageStatusSent;
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"forceReloadThreads" object:nil];
-            if (completion) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(nil);
-                });
-            }
-        }];
-        return;
+    NSMutableDictionary *serverMessage = [[msg toDictionary] mutableCopy];
+    [serverMessage removeObjectsForKeys:@[
+        @"ID", @"id", @"senderID", @"receiverID", @"timestamp",
+        @"createdAt", @"status", @"read", @"readBy", @"hiddenFrom"
+    ]];
+    if (msg.fileURL.length > 0 || msg.thumbnailURL.length > 0) {
+        serverMessage[@"mediaThreadId"] = threadID;
     }
 
-    // Historical direct-write implementation retained only as migration
-    // reference. All runtime sends return through the callable above.
-#if 0
-    [messageRef setData:messageData
-             completion:^(NSError * _Nullable error) {
-
+    BOOL isSupportMessage = [resolvedReceiverID isEqualToString:PURE_PETS_OFFICIAL_USER_ID];
+    NSDictionary *payload = @{
+        @"action": isSupportMessage ? @"send_customer_message" : @"send",
+        @"threadId": threadID,
+        @"messageId": msg.ID,
+        @"receiverID": resolvedReceiverID,
+        @"text": msg.text ?: @"",
+        @"sourceApp": @"user_ios",
+        @"sourcePlatform": @"ios",
+        @"message": serverMessage.copy,
+    };
+    NSString *callableName = isSupportMessage ? @"supportChatCommand" : @"chatMessageCommand";
+    [self pp_invokeChatCallableNamed:callableName
+                             payload:payload
+                          completion:^(__unused NSDictionary * _Nullable data,
+                                       NSError * _Nullable error) {
         if (error) {
-            NSLog(@"❌ [SendMessage] Message write failed — code=%ld domain=%@ desc=%@ info=%@",
-                  (long)error.code, error.domain, error.localizedDescription, error.userInfo);
-
-            // 🔍 Additional App Check diagnostic
-            if ([error.domain isEqualToString:FIRFirestoreErrorDomain] &&
-                error.code == FIRFirestoreErrorCodePermissionDenied) {
-                NSLog(@"🔐 [SendMessage] PERMISSION_DENIED — possible App Check or security rules rejection on this device");
-            }
-
-            if (completion) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(error);
-                });
-            }
+            NSLog(@"❌ [ChatSend] Callable failed — code=%ld domain=%@",
+                  (long)error.code,
+                  error.domain ?: @"");
+            if (completion) completion(error);
             return;
         }
 
         msg.status = ChatMessageStatusSent;
-
-        // ─────────────────────────────
-        // 3️⃣ Update parent thread (atomic + safe)
-        // ─────────────────────────────
-        NSString *lastMessageText = @"";
-
-        switch (msg.messageType) {
-            case ChatMessageTypeText:
-                lastMessageText = msg.text ?: @"";
-                break;
-            case ChatMessageTypeAudio:
-                lastMessageText = kLang(@"Audio message");
-                break;
-            case ChatMessageTypeImage:
-                lastMessageText = kLang(@"Image");
-                break;
-            case ChatMessageTypeVideo:
-                lastMessageText = kLang(@"Video");
-                break;
-            case ChatMessageTypeFile:
-                lastMessageText = kLang(@"File");
-                break;
-            case ChatMessageTypeSticker:
-                lastMessageText = kLang(@"chat_sticker_message");
-                break;
-            default:
-                break;
-        }
-
-        NSMutableDictionary *threadPatch = [@{
-            @"lastMessage": lastMessageText,
-            @"senderID": resolvedSenderID,
-            @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
-            @"lastMessageAt": [FIRFieldValue fieldValueForServerTimestamp],
-            @"messagesCount": [FIRFieldValue fieldValueForIntegerIncrement:1],
-            @"schemaVersion": @(kPPChatV2SchemaVersion),
-            @"updatedByUid": resolvedSenderID,
-            @"updatedByActorKey": PPChatActorKey(resolvedSenderID, NO)
-        } mutableCopy];
-
-        [threadRef updateData:threadPatch.copy completion:^(NSError * _Nullable threadError) {
-            if (threadError) {
-                NSLog(@"⚠️ [SendMessage] Parent thread update failed — thread=%@ code=%ld desc=%@",
-                      threadID,
-                      (long)threadError.code,
-                      threadError.localizedDescription ?: @"unknown");
-            }
-        }];
-
         [[NSNotificationCenter defaultCenter] postNotificationName:@"forceReloadThreads" object:nil];
-
-        (void)msg;
-        if (completion) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(nil);
-            });
-        }
+        if (completion) completion(nil);
     }];
-#endif
 }
-
 - (void)pp_presentForegroundChatNotificationForThreadID:(NSString *)threadID
                                                 message:(ChatMessageModel *)message
                                          receiverUserID:(NSString *)receiverUserID
@@ -1020,45 +834,48 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             return;
         }
 
-        // We already filtered status == SENT in the query, so we can update without
-        // reading each document again.
-        NSInteger attempted = 0;
-        dispatch_group_t updateGroup = dispatch_group_create();
-
+        NSMutableOrderedSet<NSString *> *threadIDs = [NSMutableOrderedSet orderedSet];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
-
             NSString *threadID = doc.reference.parent.parent.documentID;
-            NSString *messageID = doc.documentID;
-
-            if (threadID.length == 0 || messageID.length == 0) {
-                continue;
-            }
-
-            FIRDocumentReference *ref =
-            [[[[[FIRFirestore firestore]
-               collectionWithPath:@"Chats"]
-              documentWithPath:threadID]
-             collectionWithPath:@"Messages"]
-             documentWithPath:messageID];
-
-            dispatch_group_enter(updateGroup);
-            [ref updateData:@{
-                @"status": @(ChatMessageStatusDelivered),
-                @"deliveredAt": [FIRFieldValue fieldValueForServerTimestamp],
-                @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
-            } completion:^(NSError * _Nullable updateError) {
-                if (updateError) {
-                    DLog(@"[DeliverySync] Delivery write failed | domain=%@ code=%ld",
-                         updateError.domain ?: @"",
-                         (long)updateError.code);
-                }
-                dispatch_group_leave(updateGroup);
-            }];
-
-            attempted += 1;
+            if (threadID.length > 0) [threadIDs addObject:threadID];
         }
 
-        DLog(@"[DeliverySync] Awaiting %ld delivery write(s)", (long)attempted);
+        dispatch_group_t updateGroup = dispatch_group_create();
+        for (NSString *threadID in threadIDs) {
+            dispatch_group_enter(updateGroup);
+            __block void (^acknowledgePage)(void) = nil;
+            acknowledgePage = ^{
+                [self pp_invokeChatCommandForThreadID:threadID
+                                               action:@"mark_delivered"
+                                              payload:nil
+                                           completion:^(NSDictionary * _Nullable data,
+                                                        NSError * _Nullable commandError) {
+                    if (commandError) {
+                        DLog(@"[DeliverySync] Command failed | domain=%@ code=%ld",
+                             commandError.domain ?: @"",
+                             (long)commandError.code);
+                        acknowledgePage = nil;
+                        dispatch_group_leave(updateGroup);
+                        return;
+                    }
+                    if ([data[@"hasMore"] boolValue] &&
+                        [data[@"acknowledgedMessageCount"] integerValue] > 0) {
+                        acknowledgePage();
+                        return;
+                    }
+                    acknowledgePage = nil;
+                    dispatch_group_leave(updateGroup);
+                }];
+            };
+            if (acknowledgePage) {
+                acknowledgePage();
+            } else {
+                dispatch_group_leave(updateGroup);
+            }
+        }
+
+        DLog(@"[DeliverySync] Awaiting %lu server command(s)",
+             (unsigned long)threadIDs.count);
         dispatch_group_notify(updateGroup, dispatch_get_main_queue(), ^{
             self.lastDeliverySyncUserID = resolvedUserID;
             self.lastDeliverySyncCompletedAt = [NSDate date];
@@ -1153,157 +970,6 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }];
 }
 
-/*
- const { onRequest } = require("firebase-functions/v2/https");
- const { logger } = require("firebase-functions/v2");
- const admin = require("firebase-admin");
-
- admin.initializeApp();
-
- exports.sendChatNotification = onRequest(
-   { region: "us-central1", cors: true },
-   async (req, res) => {
-     // Set CORS headers
-     res.set("Access-Control-Allow-Origin", "*");
-     res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-     res.set("Access-Control-Allow-Headers", "Content-Type");
-
-     // Handle preflight requests
-     if (req.method === "OPTIONS") {
-       return res.status(204).send("");
-     }
-
-     try {
-       // Validate request method
-       if (req.method !== "POST") {
-         return res.status(405).json({ error: "Method not allowed" });
-       }
-
-       const { toUserId, title, body, threadId, senderId } = req.body;
-
-       // Validate required parameters
-       if (!toUserId || !threadId || !title || !body) {
-         logger.warn("Missing required parameters", { body: req.body });
-         return res.status(400).json({
-           error: "Missing required parameters: toUserId, threadId, title, and body are required"
-         });
-       }
-
-       // Optional: Add authentication check
-       // const authHeader = req.headers.authorization;
-       // if (!authHeader || !authHeader.startsWith("Bearer ")) {
-       //   return res.status(401).json({ error: "Unauthorized" });
-       // }
-
-       // Get user document
-       const userRef = admin.firestore().collection("UsersCol").doc(toUserId);
-       const userSnap = await userRef.get();
-
-       if (!userSnap.exists) {
-         logger.info(`User not found: ${toUserId}`);
-         return res.status(200).json({ success: true, message: "User not found" });
-       }
-
-       const userData = userSnap.data();
-       const token = userData?.PPUserTokenID;
-
-       if (!token) {
-         logger.info(`No FCM token for user: ${toUserId}`);
-         return res.status(200).json({ success: true, message: "No FCM token" });
-       }
-
-       // Get total unread count for all threads where user is receiver
-       // This query needs to be efficient - consider caching or maintaining a counter
-       const chatsQuery = await admin
-         .firestore()
-         .collectionGroup("Messages")
-         .where("receiverID", "==", toUserId)
-         .where("status", "in", [0, 1]) // Assuming: 0=sent, 1=delivered, 2=read
-         .count()
-         .get();
-
-       const totalUnreadCount = chatsQuery.data().count;
-
-       // Alternative: If you maintain an unread count per user in their document
-       // const totalUnreadCount = userData.unreadCount || 0;
-
-       // Prepare notification payload
-       const message = {
-         token,
-         notification: {
-           title: title.trim(),
-           body: body.trim()
-         },
-         apns: {
-           payload: {
-             aps: {
-               badge: totalUnreadCount,
-               sound: "default",
-               "content-available": 1
-             }
-           },
-           headers: {
-             "apns-priority": "10" // Immediate delivery
-           }
-         },
-         android: {
-           priority: "high",
-           notification: {
-             sound: "default",
-             channelId: "chat_messages", // Create this channel in your Android app
-             priority: "high"
-           }
-         },
-         data: {
-           threadId: threadId.toString(),
-           senderId: senderId ? senderId.toString() : "",
-           type: "chat",
-           title: title.trim(),
-           body: body.trim(),
-           click_action: "FLUTTER_NOTIFICATION_CLICK"
-         }
-       };
-
-       // Send notification
-       const response = await admin.messaging().send(message);
-       logger.info("Notification sent successfully", {
-         messageId: response,
-         toUserId,
-         threadId,
-         badgeCount: totalUnreadCount
-       });
-
-       return res.status(200).json({
-         success: true,
-         messageId: response,
-         badgeCount: totalUnreadCount
-       });
-
-     } catch (error) {
-       logger.error("Error sending notification:", error);
-       
-       // Check for specific FCM errors
-       if (error.code === 'messaging/registration-token-not-registered') {
-         // Token is no longer valid, remove it from user document
-         try {
-           await admin.firestore()
-             .collection("UsersCol")
-             .doc(toUserId)
-             .update({ PPUserTokenID: admin.firestore.FieldValue.delete() });
-           logger.info(`Removed invalid FCM token for user: ${toUserId}`);
-         } catch (updateError) {
-           logger.error("Failed to remove invalid token:", updateError);
-         }
-       }
-
-       return res.status(500).json({
-         success: false,
-         error: error.message || "Internal server error"
-       });
-     }
-   }
- );
- */
 - (void)forceReloadThreads
 {
     NSLog(@"🔄 [ChManager] forceReloadThreads BEGIN");
@@ -1582,10 +1248,22 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 - (void)createOrGetChatThreadWithUser:(UserModel *)user
                            completion:(void (^)(ChatThreadModel *thread, NSError *error))completion
 {
+    [self createOrGetChatThreadWithUser:user
+                            contextType:nil
+                              contextID:nil
+                             completion:completion];
+}
+
+- (void)createOrGetChatThreadWithUser:(UserModel *)user
+                          contextType:(nullable NSString *)contextType
+                            contextID:(nullable NSString *)contextID
+                           completion:(void (^)(ChatThreadModel *thread, NSError *error))completion
+{
     if (!user.ID.length) {
         if (completion) completion(nil, [NSError errorWithDomain:@"Chat"
                                                             code:400
-                                                        userInfo:@{NSLocalizedDescriptionKey:@"Invalid user"}]);
+                                                        userInfo:@{NSLocalizedDescriptionKey:
+                                                                       kLang(@"SomethingWentWrong")}]);
         return;
     }
 
@@ -1594,7 +1272,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         if (completion) {
             completion(nil, [NSError errorWithDomain:@"Chat"
                                                 code:401
-                                            userInfo:@{NSLocalizedDescriptionKey:@"Missing authenticated user"}]);
+                                            userInfo:@{NSLocalizedDescriptionKey:
+                                                           kLang(@"SomethingWentWrong")}]);
         }
         return;
     }
@@ -1602,195 +1281,79 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         if (completion) {
             completion(nil, [NSError errorWithDomain:@"Chat"
                                                 code:400
-                                            userInfo:@{NSLocalizedDescriptionKey:@"Cannot start chat with yourself"}]);
+                                            userInfo:@{NSLocalizedDescriptionKey:
+                                                           kLang(@"SomethingWentWrong")}]);
         }
         return;
     }
 
-    // Check if the other user is a provider (service_provider)
-    BOOL hasProviderAppToken = user.PPProTokenID.length > 0;
-    BOOL hasProviderCapability =
-        user.canOfferServicesFeature ||
-        user.canVetFeature ||
-        user.canPharmacyFeature ||
-        user.canDeliveryFeature ||
-        user.canAccessProviderMarketplaceFeature ||
-        user.canManageServiceProviderPermission ||
-        user.canManageVetPermission ||
-        user.canManageDeliveryPermission;
-    BOOL isProviderChat =
-        hasProviderAppToken ||
-        hasProviderCapability ||
-        [user.selectedPartnerType isEqualToString:@"service_provider"] ||
-        [user.selectedPartnerType isEqualToString:@"vet"] ||
-        [user.selectedPartnerType isEqualToString:@"delivery"] ||
-        [user.selectedPartnerType isEqualToString:@"pharmacy"];
-    if (isProviderChat) {
-        NSLog(@"[ProviderChat] Detected provider chat with providerUID=%@ currentUserID=%@", user.ID, currentUserID);
+    NSString *safeContextType = [PPSupportTrimmedString(contextType) lowercaseString];
+    NSString *safeContextID = PPSupportTrimmedString(contextID);
+    if ((safeContextType.length == 0) != (safeContextID.length == 0)) {
+        if (completion) {
+            completion(nil, [NSError errorWithDomain:@"Chat"
+                                                code:400
+                                            userInfo:@{NSLocalizedDescriptionKey:
+                                                           kLang(@"SomethingWentWrong")}]);
+        }
+        return;
     }
 
-    // 🔒 Deterministic thread ID (CRITICAL)
-    NSString *a = currentUserID;
-    NSString *b = user.ID;
-    NSString *threadID =
-        ([a compare:b] == NSOrderedAscending)
-            ? [NSString stringWithFormat:@"%@_%@", a, b]
-            : [NSString stringWithFormat:@"%@_%@", b, a];
+    NSMutableDictionary *payload = [@{
+        @"action": @"create_or_get",
+        @"receiverID": user.ID,
+        @"sourceApp": @"user_ios",
+        @"sourcePlatform": @"ios",
+    } mutableCopy];
+    if (safeContextType.length > 0) {
+        payload[@"contextType"] = safeContextType;
+        payload[@"contextId"] = safeContextID;
+    }
 
-    FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *threadRef =
-        [[db collectionWithPath:@"Chats"] documentWithPath:threadID];
-
-    // 🔒 Atomic creation (idempotent)
-    [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot,
-                                           NSError *error) {
-
-        if (error) {
-            if (completion) completion(nil, error);
+    [self pp_invokeChatCallableNamed:@"chatMessageCommand"
+                             payload:payload.copy
+                          completion:^(NSDictionary * _Nullable data,
+                                       NSError * _Nullable error) {
+        NSString *threadID = PPSupportTrimmedString(data[@"threadID"]);
+        if (error || threadID.length == 0) {
+            if (completion) {
+                completion(nil, error ?: [NSError errorWithDomain:@"Chat"
+                                                              code:500
+                                                          userInfo:@{NSLocalizedDescriptionKey:
+                                                                         kLang(@"SomethingWentWrong")}]);
+            }
             return;
         }
 
-        // Thread already exists
-        if (snapshot.exists) {
-            ChatThreadModel *thread =
-                [[ChatThreadModel alloc] initWithDictionary:snapshot.data];
+        FIRDocumentReference *threadRef =
+            [[self.firestore collectionWithPath:@"Chats"] documentWithPath:threadID];
+        [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot,
+                                               NSError * _Nullable readError) {
+            if (readError || !snapshot.exists) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (completion) {
+                        completion(nil, readError ?: [NSError errorWithDomain:@"Chat"
+                                                                         code:404
+                                                                     userInfo:@{NSLocalizedDescriptionKey:
+                                                                                    kLang(@"SomethingWentWrong")}]);
+                    }
+                });
+                return;
+            }
+
+            ChatThreadModel *thread = [[ChatThreadModel alloc] initWithDictionary:snapshot.data ?: @{}];
             thread.ID = snapshot.documentID;
             thread.otherUser = user;
-            NSMutableDictionary *chatV2Metadata =
-                [PPChatThreadV2Metadata(threadID, currentUserID, user.ID, isProviderChat) mutableCopy];
-            NSArray *existingParticipantUids =
-                [snapshot.data[@"participantUids"] isKindOfClass:NSArray.class] ? snapshot.data[@"participantUids"] : nil;
-            if (existingParticipantUids.count > 0) {
-                chatV2Metadata[@"participantUids"] = existingParticipantUids;
-            }
-            NSArray *existingParticipantKeys =
-                [snapshot.data[@"participantKeys"] isKindOfClass:NSArray.class] ? snapshot.data[@"participantKeys"] : nil;
-            if (existingParticipantKeys.count > 0) {
-                chatV2Metadata[@"participantKeys"] = existingParticipantKeys;
-            }
-
-            if (isProviderChat) {
-                NSMutableDictionary *providerMetadata = [@{
-                    @"conversationType": kPPConversationTypeProviderChat,
-                    @"threadType": kPPConversationTypeProviderChat,
-                    @"supportThread": @(NO),
-                    @"supportUserId": user.ID,
-                    @"customerId": currentUserID,
-                    @"supportDisplayName": user.UserName ?: user.FirstName ?: @"",
-                    @"supportPhotoUrl": user.UserImageUrl.absoluteString ?: @"",
-                    @"supportStatus": @"waiting_for_provider",
-                    @"sourcePlatform": @"ios",
-                    @"sourceScreen": @"provider_chat",
-                    @"sourceType": @"general",
-                    @"sourceEntityId": @""
-                } mutableCopy];
-                [providerMetadata addEntriesFromDictionary:chatV2Metadata];
-                [threadRef setData:providerMetadata.copy merge:YES completion:^(NSError *mergeError) {
-                    if (mergeError) {
-                        NSLog(@"⚠️ [ProviderChat] Could not canonicalize provider metadata: %@", mergeError.localizedDescription ?: @"unknown error");
-                        if (completion) completion(nil, mergeError);
-                        return;
-                    }
-                    thread.conversationType = kPPConversationTypeProviderChat;
-                    thread.threadType = kPPConversationTypeProviderChat;
-                    thread.supportThread = NO;
-                    thread.supportUserID = user.ID;
-                    thread.customerId = currentUserID;
-                    [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
-                    if (completion) completion(thread, nil);
-                }];
-                return;
-            }
-
-            [threadRef setData:chatV2Metadata merge:YES completion:^(NSError *mergeError) {
-                if (mergeError) {
-                    NSLog(@"⚠️ [ChatV2] Could not canonicalize thread metadata for %@: %@",
-                          threadID,
-                          mergeError.localizedDescription ?: @"unknown error");
-                }
-            }];
-
-            // 🔥 ENSURE LISTENER IS ATTACHED
             [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
-            
-            if (completion) completion(thread, nil);
-            return;
-        }
-
-        // Thread does NOT exist → create ONCE
-        NSMutableDictionary *data = [NSMutableDictionary dictionaryWithDictionary:@{
-            @"members": @[a, b],
-            @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
-            @"lastMessage": @"",
-            @"lastUpdated": [FIRFieldValue fieldValueForServerTimestamp],
-            @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
-            @"messagesCount": @(0),
-            @"mutedBy": @[],
-            @"binnedBy": @[],
-            @"reportedBy": @[],
-            @"reportCount": @(0)
-        }];
-        [data addEntriesFromDictionary:PPChatThreadV2Metadata(threadID, currentUserID, user.ID, isProviderChat)];
-
-        if (isProviderChat) {
-            [data addEntriesFromDictionary:@{
-                @"conversationType": kPPConversationTypeProviderChat,
-                @"threadType": kPPConversationTypeProviderChat,
-                @"supportThread": @(NO),
-                @"supportUserId": user.ID,
-                @"customerId": currentUserID,
-                @"sourcePlatform": @"ios",
-                @"supportDisplayName": user.UserName ?: user.FirstName ?: @"",
-                @"supportPhotoUrl": user.UserImageUrl.absoluteString ?: @"",
-                @"supportStatus": @"waiting_for_provider",
-                @"sourceScreen": @"provider_chat",
-                @"sourceType": @"general",
-                @"sourceEntityId": @""
-            }];
-        }
-
-        [threadRef setData:data completion:^(NSError *err) {
-
-            if (err) {
-                if (completion) completion(nil, err);
-                return;
-            }
-
-            ChatThreadModel *thread = [[ChatThreadModel alloc] init];
-            thread.ID = threadID;
-            thread.memberIDs = @[a, b];
-            thread.timestamp = [NSDate date];
-            thread.otherUser = user;
-
-            // Set conversation type if it's a provider chat
-            if (isProviderChat) {
-                thread.conversationType = kPPConversationTypeProviderChat;
-                thread.threadType = kPPConversationTypeProviderChat;
-                thread.supportThread = NO;
-                thread.supportUserID = user.ID;
-                thread.customerId = currentUserID;
-            }
-
-            // 🔥 ATTACH LISTENER IMMEDIATELY
-            [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
-
-            [[NSNotificationCenter defaultCenter]
-             postNotificationName:@"UnreadCountsUpdated"
-             object:nil];
-
-            [[NSNotificationCenter defaultCenter]
-             postNotificationName:@"forceReloadThreads"
-             object:nil];
-
-            if (completion) completion(thread, nil);
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"forceReloadThreads" object:nil];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(thread, nil);
+            });
         }];
     }];
+    return;
+
 }
-
-
-
-
-
 
 
 - (_Nullable id<FIRListenerRegistration>) getListenerFromObserveChatThreadsForUserID:(NSString *)userID
@@ -2035,160 +1598,60 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 - (void)markMessageAsDelivered:(NSString *)messageID
                        threadID:(NSString *)threadID
 {
-    if (!messageID.length || !threadID.length) return;
-
-    FIRDocumentReference *ref =
-    [[[[[FIRFirestore firestore]
-       collectionWithPath:@"Chats"]
-      documentWithPath:threadID]
-     collectionWithPath:@"Messages"] documentWithPath:messageID];
-
-    [ref getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot,
-                                     NSError * _Nullable error) {
-        if (error || !snapshot.exists) return;
-
-        NSInteger currentStatus = [snapshot.data[@"status"] integerValue];
-        if (currentStatus >= ChatMessageStatusDelivered) return;
-
-        [ref updateData:@{
-            @"status": @(ChatMessageStatusDelivered),
-            @"deliveredAt": [FIRFieldValue fieldValueForServerTimestamp]
-        }];
+    if (messageID.length == 0 || threadID.length == 0) return;
+    [self pp_invokeChatCommandForThreadID:threadID
+                                   action:@"mark_delivered"
+                                  payload:@{@"messageId": messageID}
+                               completion:^(__unused NSDictionary * _Nullable data,
+                                            NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"⚠️ [ChatReceipt] Delivery acknowledgement failed — code=%ld domain=%@",
+                  (long)error.code,
+                  error.domain ?: @"");
+        }
     }];
 }
 
 - (void)markMessagesAsReadInThread:(NSString *)threadID
                           fromUser:(NSString *)senderID
 {
-    NSString *myUserID = [FIRAuth auth].currentUser.uid ?: UserManager.sharedManager.currentUser.ID;
-    if (!threadID.length || !myUserID.length) return;
-
-    NSString *resolvedSenderID = senderID ?: @"";
-    if (resolvedSenderID.length == 0) {
-        FIRDocumentReference *threadRef =
-        [[[FIRFirestore firestore]
-          collectionWithPath:@"Chats"]
-         documentWithPath:threadID];
-
-        [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-            if (error || !snapshot.exists) {
-                NSLog(@"❌ [Read] Could not resolve sender for thread %@: %@", threadID, error.localizedDescription ?: @"missing thread");
-                return;
-            }
-
-            NSArray<NSString *> *identityCandidates = [self pp_identityCandidatesForRequestedUID:myUserID];
-            NSArray *members = [snapshot.data[@"members"] isKindOfClass:NSArray.class] ? snapshot.data[@"members"] : @[];
-            NSString *peerUserID = @"";
-            for (NSString *candidate in members) {
-                if (![candidate isKindOfClass:NSString.class]) continue;
-                if (candidate.length > 0 && ![identityCandidates containsObject:candidate]) {
-                    peerUserID = candidate;
-                    break;
-                }
-            }
-
-            if (peerUserID.length == 0) {
-                NSLog(@"❌ [Read] Could not resolve peer user for thread %@", threadID);
-                return;
-            }
-
-            [self markMessagesAsReadInThread:threadID fromUser:peerUserID];
-        }];
-        return;
-    }
-
-    FIRCollectionReference *messagesRef =
-    [[[[FIRFirestore firestore]
-       collectionWithPath:@"Chats"]
-      documentWithPath:threadID]
-     collectionWithPath:@"Messages"];
-
-    // ✅ Only messages SENT BY other user AND RECEIVED by me.
-    FIRQuery *query =
-    [[[messagesRef queryWhereField:@"senderID" isEqualTo:resolvedSenderID]
-      queryWhereField:@"receiverID" isEqualTo:myUserID]
-     queryWhereField:@"status" isLessThan:@(ChatMessageStatusRead)];
-
-    [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snap, NSError *error) {
-
+    (void)senderID;
+    if (threadID.length == 0) return;
+    __weak typeof(self) weakSelf = self;
+    [self pp_invokeChatCommandForThreadID:threadID
+                                   action:@"mark_read"
+                                  payload:nil
+                               completion:^(NSDictionary * _Nullable data,
+                                            NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
         if (error) {
-            NSLog(@"❌ [Read] Query failed: %@", error.localizedDescription);
+            NSLog(@"⚠️ [ChatReceipt] Read acknowledgement failed — code=%ld domain=%@",
+                  (long)error.code,
+                  error.domain ?: @"");
             return;
         }
 
-        if (snap.documents.count == 0) {
-            NSLog(@"ℹ️ [Read] No unread messages to mark");
-            BOOL changed = NO;
-            NSMutableDictionary *counts = [self.liveUnreadCounts mutableCopy] ?: [NSMutableDictionary dictionary];
-            if (counts[threadID]) {
-                [counts removeObjectForKey:threadID];
-                self.liveUnreadCounts = counts;
-                changed = YES;
-            }
-            NSMutableDictionary *latest = [self.latestUnreadMessages mutableCopy] ?: [NSMutableDictionary dictionary];
-            if (latest[threadID]) {
-                [latest removeObjectForKey:threadID];
-                self.latestUnreadMessages = latest;
-                changed = YES;
-            }
-            if (changed) {
-                [[NSNotificationCenter defaultCenter]
-                 postNotificationName:@"UnreadCountsUpdated"
-                 object:nil];
-            }
-            return;
+        NSMutableDictionary *counts = [strongSelf.liveUnreadCounts mutableCopy]
+            ?: [NSMutableDictionary dictionary];
+        NSMutableDictionary *latest = [strongSelf.latestUnreadMessages mutableCopy]
+            ?: [NSMutableDictionary dictionary];
+        BOOL changed = counts[threadID] != nil || latest[threadID] != nil;
+        [counts removeObjectForKey:threadID];
+        [latest removeObjectForKey:threadID];
+        strongSelf.liveUnreadCounts = counts;
+        strongSelf.latestUnreadMessages = latest;
+        if (changed) {
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:@"UnreadCountsUpdated"
+             object:nil];
         }
 
-        FIRWriteBatch *batch = [[FIRFirestore firestore] batch];
-
-        for (FIRDocumentSnapshot *doc in snap.documents) {
-            NSLog(@"✏️ [Read] Marking message %@ as READ", doc.documentID);
-
-            NSInteger currentStatus = [doc.data[@"status"] integerValue];
-
-            // 🔒 Enforce pipeline: must be Delivered before Read
-            NSMutableDictionary *updates = [@{
-                @"status": @(ChatMessageStatusRead),
-                @"readAt": [FIRFieldValue fieldValueForServerTimestamp]
-            } mutableCopy];
-
-            if (currentStatus < ChatMessageStatusDelivered) {
-                updates[@"deliveredAt"] = [FIRFieldValue fieldValueForServerTimestamp];
-            }
-
-            [batch updateData:updates forDocument:doc.reference];
+        if ([data[@"hasMore"] boolValue] && [data[@"acknowledgedMessageCount"] integerValue] > 0) {
+            [strongSelf markMessagesAsReadInThread:threadID fromUser:@""];
         }
-
-        [batch commitWithCompletion:^(NSError * _Nullable err) {
-            if (err) {
-                NSLog(@"❌ [Read] Batch commit failed: %@", err.localizedDescription);
-            } else {
-                NSLog(@"✅ [Read] Marked %lu messages as READ",
-                      (unsigned long)snap.documents.count);
-
-                BOOL changed = NO;
-                NSMutableDictionary *counts = [self.liveUnreadCounts mutableCopy] ?: [NSMutableDictionary dictionary];
-                if (counts[threadID]) {
-                    [counts removeObjectForKey:threadID];
-                    self.liveUnreadCounts = counts;
-                    changed = YES;
-                }
-                NSMutableDictionary *latest = [self.latestUnreadMessages mutableCopy] ?: [NSMutableDictionary dictionary];
-                if (latest[threadID]) {
-                    [latest removeObjectForKey:threadID];
-                    self.latestUnreadMessages = latest;
-                    changed = YES;
-                }
-                if (changed) {
-                    [[NSNotificationCenter defaultCenter]
-                     postNotificationName:@"UnreadCountsUpdated"
-                     object:nil];
-                }
-            }
-        }];
     }];
 }
-
 
 - (void)sendImageMessage:(UIImage *)image
                  message:(ChatMessageModel *)msg
@@ -2201,7 +1664,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             completion([NSError errorWithDomain:@"ChManager"
                                             code:400
                                         userInfo:@{NSLocalizedDescriptionKey:
-                                                   @"Invalid image message params"}]);
+                                                   kLang(@"chat_invalid_image_parameters")}]);
         }
         return;
     }
@@ -2217,7 +1680,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                     completion([NSError errorWithDomain:@"ChManager"
                                                     code:500
                                                 userInfo:@{NSLocalizedDescriptionKey:
-                                                           @"Failed to encode image"}]);
+                                                           kLang(@"chat_image_encoding_failed")}]);
                 });
             }
             return;
@@ -2306,121 +1769,6 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     });
 }
 
-- (void)uploadVideoThumbnail:(UIImage *)image
-                     message:(ChatMessageModel *)msg
-                  completion:(void (^)(NSString *thumbURL))completion
-{
-    if (!image || !msg) {
-        completion(nil);
-        return;
-    }
-
-    NSData *data = UIImageJPEGRepresentation(image, 0.75);
-    if (!data) {
-        completion(nil);
-        return;
-    }
-
-    FIRStorageReference *ref =
-        [[[FIRStorage storage] reference]
-         child:[NSString stringWithFormat:@"chat_media/video_thumbnails/%@.jpg", msg.ID]];
-
-    FIRStorageMetadata *metadata = [FIRStorageMetadata new];
-    metadata.contentType = @"image/jpeg";
-    metadata.customMetadata = @{
-        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
-        @"message_id": msg.ID ?: @"",
-        @"media_type": @"video_thumbnail"
-    };
-    FIRStorageUploadTask *task =
-        [ref putData:data metadata:metadata];
-
-    [task observeStatus:FIRStorageTaskStatusSuccess handler:^(FIRStorageTaskSnapshot *snap) {
-
-        [ref downloadURLWithCompletion:^(NSURL *URL, NSError *error) {
-            completion(URL.absoluteString);
-        }];
-    }];
-}
-
-
-// Enhanced: uploadVideoThumbnail with logging and main-thread safety
-- (void)uploadVideoThumbnail:(UIImage *)image
-                   messageID:(NSString *)msgID
-                  completion:(void (^)(NSString *thumbURL))completion
-{
-    NSLog(@"🖼️ [VideoThumb] START msgID=%@", msgID);
-
-    if (!image || msgID.length == 0) {
-        NSLog(@"❌ [VideoThumb] Invalid params image=%@ msgID=%@",
-              image ? @"YES" : @"NO", msgID);
-        if (completion) completion(nil);
-        return;
-    }
-
-    NSData *data = UIImageJPEGRepresentation(image, 0.7);
-    if (!data) {
-        NSLog(@"❌ [VideoThumb] JPEG encode failed msgID=%@", msgID);
-        if (completion) completion(nil);
-        return;
-    }
-
-    NSLog(@"⬆️ [VideoThumb] Uploading (%lu bytes) msgID=%@",
-          (unsigned long)data.length, msgID);
-
-    FIRStorageReference *ref =
-        [[[FIRStorage storage] reference]
-         child:[NSString stringWithFormat:@"chat_media/video_thumbnails/%@.jpg", msgID]];
-
-    FIRStorageMetadata *metadata = [FIRStorageMetadata new];
-    metadata.contentType = @"image/jpeg";
-    metadata.customMetadata = @{
-        @"uploaded_by": [FIRAuth auth].currentUser.uid ?: @"",
-        @"message_id": msgID ?: @"",
-        @"media_type": @"video_thumbnail"
-    };
-    FIRStorageUploadTask *task =
-        [ref putData:data metadata:metadata];
-
-    [task observeStatus:FIRStorageTaskStatusFailure handler:^(FIRStorageTaskSnapshot *snap) {
-        NSLog(@"❌ [VideoThumb] Upload failed msgID=%@ error=%@",
-              msgID, snap.error.localizedDescription);
-        if (completion) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(nil);
-            });
-        }
-    }];
-
-    [task observeStatus:FIRStorageTaskStatusSuccess handler:^(FIRStorageTaskSnapshot *snap) {
-
-        NSLog(@"✅ [VideoThumb] Upload success msgID=%@", msgID);
-
-        [ref downloadURLWithCompletion:^(NSURL *URL, NSError *error) {
-
-            if (error || !URL) {
-                NSLog(@"❌ [VideoThumb] URL fetch failed msgID=%@ error=%@",
-                      msgID, error.localizedDescription);
-                if (completion) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        completion(nil);
-                    });
-                }
-                return;
-            }
-
-            NSLog(@"🔗 [VideoThumb] URL=%@ msgID=%@", URL.absoluteString, msgID);
-
-            if (completion) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(URL.absoluteString);
-                });
-            }
-        }];
-    }];
-}
-
-
 // Send a video message: uploads thumbnail (if any), then video, then writes to Firestore
 - (void)sendVideoMessage:(NSURL *)videoURL
                  message:(ChatMessageModel *)msg
@@ -2434,7 +1782,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             [NSError errorWithDomain:@"ChManager"
                                 code:400
                             userInfo:@{NSLocalizedDescriptionKey:
-                                       @"Invalid video message params"}];
+                                       kLang(@"chat_invalid_video_parameters")}];
         if (completion) completion(err);
         return;
     }
@@ -2445,7 +1793,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             [NSError errorWithDomain:@"ChManager"
                                 code:500
                             userInfo:@{NSLocalizedDescriptionKey:
-                                       @"Failed to read local video data"}];
+                                       kLang(@"chat_video_read_failed")}];
         if (completion) completion(err);
         return;
     }
@@ -2521,17 +1869,16 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
          inThread:(NSString *)threadID
            byUser:(NSString *)userID
 {
-    if (!threadID || !userID) return;
-
-    FIRDocumentReference *threadRef = [[FIRFirestore.firestore collectionWithPath:@"Chats"] documentWithPath:threadID];
-
-    NSString *fieldPath = [NSString stringWithFormat:@"typingStatus.%@", userID];
-
-    [threadRef updateData:@{fieldPath: @(isTyping)} completion:^(NSError * _Nullable error) {
+    if (threadID.length == 0 || userID.length == 0) return;
+    [self pp_invokeChatCommandForThreadID:threadID
+                                   action:@"set_typing"
+                                  payload:@{@"isTyping": @(isTyping)}
+                               completion:^(__unused NSDictionary * _Nullable data,
+                                            NSError * _Nullable error) {
         if (error) {
-            NSLog(@"❌ Failed to update typing status: %@", error.localizedDescription);
-        } else {
-            NSLog(@"✅ Typing status updated: %@ = %d", userID, isTyping);
+            NSLog(@"⚠️ [ChatTyping] Command failed — code=%ld domain=%@",
+                  (long)error.code,
+                  error.domain ?: @"");
         }
     }];
 }
@@ -2685,187 +2032,6 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }];
 }
  
-
-#pragma mark - Chat Push (Cloud Function)
-- (void)sendChatPushToUserID:(NSString *)toUserID
-                       title:(NSString *)title
-                        body:(NSString *)body
-                    threadID:(NSString *)threadID
-                    senderID:(NSString *)senderID
-{
-    [self sendChatPushToUserID:toUserID
-                         title:title
-                          body:body
-                      threadID:threadID
-                      senderID:senderID
-                     messageID:nil
-                    completion:nil];
-}
-
-- (void)sendChatPushToUserID:(NSString *)toUserID
-                       title:(NSString *)title
-                        body:(NSString *)body
-                    threadID:(NSString *)threadID
-                    senderID:(NSString *)senderID
-                   messageID:(nullable NSString *)messageID
-                  completion:(void (^ _Nullable)(BOOL didAcceptPush))completion
-{
-    void (^finish)(BOOL) = ^(BOOL accepted) {
-        if (!completion) return;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(accepted);
-        });
-    };
-
-    // ─────────────────────────────
-    // 1️⃣ Preconditions
-    // ─────────────────────────────
-    FIRUser *authUser = [FIRAuth auth].currentUser;
-    if (!authUser) {
-        NSLog(@"⚠️ [Push] Skipped — user not authenticated");
-        finish(NO);
-        return;
-    }
-
-    if (toUserID.length == 0 ||
-        senderID.length == 0 ||
-        threadID.length == 0) {
-
-        NSLog(@"❌ [Push] Invalid params → to=%@ sender=%@ thread=%@",
-              toUserID, senderID, threadID);
-        finish(NO);
-        return;
-    }
-
-    // Prevent self-push
-    if ([toUserID isEqualToString:senderID]) {
-        NSLog(@"ℹ️ [Push] Skipped — self message");
-        finish(NO);
-        return;
-    }
-
-    // ─────────────────────────────
-    // 2️⃣ Endpoint + payload
-    // ─────────────────────────────
-    NSURL *url = [NSURL URLWithString:
-        @"https://us-central1-pure-pets-49199.cloudfunctions.net/sendChatNotification"];
-    if (!url) {
-        NSLog(@"❌ [Push] Invalid function URL");
-        finish(NO);
-        return;
-    }
-
-    NSDictionary *payload = @{
-        @"toUserId"  : toUserID,
-        @"senderId"  : senderID,
-        @"conversationId" : threadID,
-        @"threadId"  : threadID,
-        @"messageId" : messageID ?: @"",
-        @"title"     : title ?: @"",
-        @"body"      : body ?: @""
-    };
-
-    NSError *jsonError = nil;
-    NSData *jsonData =
-        [NSJSONSerialization dataWithJSONObject:payload
-                                        options:0
-                                          error:&jsonError];
-
-    if (!jsonData || jsonError) {
-        NSLog(@"❌ [Push] JSON error: %@", jsonError.localizedDescription);
-        finish(NO);
-        return;
-    }
-
-    __block void (^authorizeAndSendRequest)(BOOL forceAuthRefresh);
-    authorizeAndSendRequest = ^(BOOL forceAuthRefresh) {
-        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-        request.HTTPMethod = @"POST";
-        request.timeoutInterval = 15;
-        request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
-        request.HTTPBody = jsonData;
-        [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-
-        PPFirebaseSessionAuthorizationOptions options =
-            PPFirebaseSessionAuthorizationOptionRequireSignedIn;
-        if (forceAuthRefresh) {
-            options |= PPFirebaseSessionAuthorizationOptionForceRefreshAuth;
-        }
-
-        [PPFirebaseSessionBridge authorizeRequest:request
-                                          options:options
-                                       completion:^(NSError * _Nullable authError) {
-            if (authError) {
-                NSLog(@"❌ [Push][Auth] Credential preparation failed after forceRefresh=%d: %@",
-                      forceAuthRefresh,
-                      authError.localizedDescription ?: @"unknown");
-                authorizeAndSendRequest = nil;
-                finish(NO);
-                return;
-            }
-
-            NSURLSessionConfiguration *config =
-                [NSURLSessionConfiguration ephemeralSessionConfiguration];
-            NSURLSession *session =
-                [NSURLSession sessionWithConfiguration:config];
-
-            NSURLSessionDataTask *task =
-            [session dataTaskWithRequest:request
-                       completionHandler:^(NSData *data,
-                                           NSURLResponse *response,
-                                           NSError *error) {
-
-                if (error) {
-                    NSLog(@"❌ [Push][Network] %@", error.localizedDescription);
-                    authorizeAndSendRequest = nil;
-                    finish(NO);
-                    return;
-                }
-
-                NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
-                NSString *resp =
-                    data ? [[NSString alloc] initWithData:data
-                                                 encoding:NSUTF8StringEncoding] : @"<no body>";
-
-                if (http.statusCode == 401 && !forceAuthRefresh) {
-                    NSLog(@"⚠️ [Push][Server] 401 received. Retrying once with refreshed Auth credentials.");
-                    authorizeAndSendRequest(YES);
-                    return;
-                }
-
-                if (http.statusCode != 200) {
-                    NSLog(@"🚨 [Push][Server] %ld → %@",
-                          (long)http.statusCode, resp);
-                    authorizeAndSendRequest = nil;
-                    finish(NO);
-                    return;
-                }
-
-                NSLog(@"✅ [Push] Delivered → %@", resp);
-
-                BOOL accepted = NO;
-                if (data.length > 0) {
-                    NSDictionary *json =
-                        [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-                    NSString *messageId = [json[@"messageId"] description];
-                    accepted = messageId.length > 0;
-                }
-                authorizeAndSendRequest = nil;
-                finish(accepted);
-            }];
-
-            [task resume];
-        }];
-    };
-
-    // ─────────────────────────────
-    // 4️⃣ Require Firebase ID token and retry once after a server 401
-    // ─────────────────────────────
-    authorizeAndSendRequest(NO);
-}
-
- 
-
 
 #pragma mark - Chat Availability (Cloud Function HTTP)
 #pragma mark - Chat Availability (Cloud Function HTTP)
@@ -3034,20 +2200,13 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     [self.activeMessageListeners removeAllObjects];
 }
 
-/*
- // Force parent chat doc to emit update
-        FIRDocumentReference *threadRef = [[[FIRFirestore firestore]
-                                             collectionWithPath:@"Chats"]
-                                             documentWithPath:threadID];
-        [threadRef updateData:@{@"lastReadAt": [FIRTimestamp timestamp]}];
- 
-
- */
 - (void)deleteChatThreadWithID:(NSString *)threadID
                     completion:(void (^)(NSError * _Nullable error))completion {
-    FIRDocumentReference *chatDoc = [[self.firestore collectionWithPath:@"Chats"] documentWithPath:threadID];
-    
-    [chatDoc deleteDocumentWithCompletion:^(NSError * _Nullable error) {
+    [self pp_invokeChatCommandForThreadID:threadID
+                                   action:@"set_binned"
+                                  payload:@{@"enabled": @YES}
+                               completion:^(__unused NSDictionary * _Nullable data,
+                                            NSError * _Nullable error) {
         if (completion) completion(error);
     }];
 }
@@ -3099,21 +2258,18 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                  muted:(BOOL)muted
              completion:(void (^)(NSError * _Nullable error))completion
 {
-    NSString *myUID = [FIRAuth auth].currentUser.uid ?: UserManager.sharedManager.currentUser.ID ?: @"";
-    if (!threadID.length || !myUID.length) {
+    if (!threadID.length) {
         if (completion) completion([NSError errorWithDomain:@"ChManager"
                                                        code:400
-                                                   userInfo:@{NSLocalizedDescriptionKey:@"Invalid params"}]);
+                                                   userInfo:@{NSLocalizedDescriptionKey:
+                                                                  kLang(@"SomethingWentWrong")}]);
         return;
     }
-    FIRDocumentReference *ref =
-    [[self.firestore collectionWithPath:@"Chats"] documentWithPath:threadID];
-    id value = muted
-        ? [FIRFieldValue fieldValueForArrayUnion:@[myUID]]
-        : [FIRFieldValue fieldValueForArrayRemove:@[myUID]];
-
-    [ref updateData:@{@"mutedBy": value}
-         completion:^(NSError * _Nullable error) {
+    [self pp_invokeChatCommandForThreadID:threadID
+                                   action:@"set_muted"
+                                  payload:@{@"enabled": @(muted)}
+                               completion:^(__unused NSDictionary * _Nullable data,
+                                            NSError * _Nullable error) {
         if (!error) {
             if (muted) {
                 [self.mutedThreadIDsStorage addObject:threadID];
@@ -3129,21 +2285,18 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 binned:(BOOL)binned
             completion:(void (^)(NSError * _Nullable error))completion
 {
-    NSString *myUID = [FIRAuth auth].currentUser.uid ?: UserManager.sharedManager.currentUser.ID ?: @"";
-    if (!threadID.length || !myUID.length) {
+    if (!threadID.length) {
         if (completion) completion([NSError errorWithDomain:@"ChManager"
                                                        code:400
-                                                   userInfo:@{NSLocalizedDescriptionKey:@"Invalid params"}]);
+                                                   userInfo:@{NSLocalizedDescriptionKey:
+                                                                  kLang(@"SomethingWentWrong")}]);
         return;
     }
-    FIRDocumentReference *ref =
-    [[self.firestore collectionWithPath:@"Chats"] documentWithPath:threadID];
-    id value = binned
-        ? [FIRFieldValue fieldValueForArrayUnion:@[myUID]]
-        : [FIRFieldValue fieldValueForArrayRemove:@[myUID]];
-
-    [ref updateData:@{@"binnedBy": value}
-         completion:^(NSError * _Nullable error) {
+    [self pp_invokeChatCommandForThreadID:threadID
+                                   action:@"set_binned"
+                                  payload:@{@"enabled": @(binned)}
+                               completion:^(__unused NSDictionary * _Nullable data,
+                                            NSError * _Nullable error) {
         if (completion) completion(error);
     }];
 }
@@ -3152,11 +2305,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
               reason:(nullable NSString *)reason
           completion:(void (^)(NSError * _Nullable error))completion
 {
-    NSString *myUID = [FIRAuth auth].currentUser.uid ?: UserManager.sharedManager.currentUser.ID ?: @"";
-    if (!thread.ID.length || !myUID.length) {
+    NSString *myUID = [self pp_authenticatedUIDForRequestedUID:nil];
+    if (!thread.ID.length || !myUID.length || thread.supportThread) {
         if (completion) completion([NSError errorWithDomain:@"ChManager"
                                                        code:400
-                                                   userInfo:@{NSLocalizedDescriptionKey:@"Invalid params"}]);
+                                                   userInfo:@{NSLocalizedDescriptionKey:
+                                                                  kLang(@"SomethingWentWrong")}]);
         return;
     }
     if ([thread.reportedBy containsObject:myUID]) {
@@ -3164,58 +2318,14 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         return;
     }
 
-    // Mark reported on thread (idempotent)
-    FIRDocumentReference *threadRef =
-    [[self.firestore collectionWithPath:@"Chats"] documentWithPath:thread.ID];
-    [threadRef updateData:@{
-        @"reportedBy": [FIRFieldValue fieldValueForArrayUnion:@[myUID]],
-        @"reportCount": [FIRFieldValue fieldValueForIntegerIncrement:1],
-        @"lastReportedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    }];
-
-    // Create / upsert report doc
-    NSString *reportID = [NSString stringWithFormat:@"%@_%@", thread.ID, myUID];
-    FIRDocumentReference *reportRef =
-    [[self.firestore collectionWithPath:@"ChatReports"] documentWithPath:reportID];
-
-    UserModel *otherUser = [ChatThreadModel resolveOtherUserFromThread:thread];
-    NSDictionary *clientInfo = @{
-        @"platform": @"ios",
-        @"osVersion": UIDevice.currentDevice.systemVersion ?: @"",
-        @"locale": NSLocale.currentLocale.localeIdentifier ?: @"",
-        @"timeZone": NSTimeZone.localTimeZone.name ?: @"",
-        @"appVersion": [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"",
-        @"appBuild": [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @""
-    };
-
-    NSDictionary *analysis = @{
-        @"clientTags": @[@"user_report"],
-        @"messageCount": @(thread.messagesCount),
-        @"lastMessageLength": @(thread.lastMessage.length),
-        @"source": @"client"
-    };
-
-    NSMutableDictionary *payload = [@{
-        @"reportId": reportID,
-        @"threadId": thread.ID ?: @"",
-        @"reporterId": myUID,
-        @"reportedUserId": otherUser.ID ?: @"",
-        @"memberIDs": thread.memberIDs ?: @[],
-        @"reason": reason ?: @"",
-        @"status": @"pending",
-        @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
-        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp],
-        @"lastMessage": thread.lastMessage ?: @"",
-        @"messagesCount": @(thread.messagesCount),
-        @"client": clientInfo,
-        @"analysis": analysis
-    } mutableCopy];
-
-    if (thread.lastMessageAt) {
-        payload[@"lastMessageAt"] = thread.lastMessageAt;
-    }
-
-    [reportRef setData:payload merge:YES completion:^(NSError * _Nullable error) {
+    [self pp_invokeChatCallableNamed:@"chatMessageCommand"
+                             payload:@{
+                                 @"action": @"report",
+                                 @"threadId": thread.ID,
+                                 @"reason": reason ?: @"",
+                             }
+                          completion:^(__unused NSDictionary * _Nullable data,
+                                       NSError * _Nullable error) {
         if (completion) completion(error);
     }];
 }
@@ -3316,69 +2426,3 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         }];
 }
 @end
-/*
- 
- - (void)sendChatPushToUserID:(NSString *)toUserID
-                        title:(NSString *)title
-                         body:(NSString *)body
-                     threadID:(NSString *)threadID
-                     senderID:(NSString *)senderID
- {
-     FIRUser *authUser = [FIRAuth auth].currentUser;
-     if (!authUser) {
-         NSLog(@"⚠️ [Chat] Push skipped — Firebase user not authenticated");
-         return;
-     }
-
-     if (toUserID.length == 0 || threadID.length == 0) {
-         NSLog(@"❌ [Chat] Invalid push parameters");
-         return;
-     }
-     
-     NSURL *url = [NSURL URLWithString:
-     @"https://us-central1-pure-pets-49199.cloudfunctions.net/sendChatNotification"];
-
-     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-     request.HTTPMethod = @"POST";
-     request.timeoutInterval = 15;
-
-     NSDictionary *payload = @{
-         @"toUserId": toUserID ?: @"",
-         @"title": title ?: @"",
-         @"body": body ?: @"",
-         @"conversationId": threadID ?: @"",
-         @"threadId": threadID ?: @"",
-         @"senderId": senderID ?: @""
-     };
-
-     NSData *bodyData =
-         [NSJSONSerialization dataWithJSONObject:payload options:0 error:nil];
-     request.HTTPBody = bodyData;
-
-     [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-
-     NSURLSessionDataTask *task =
-     [[NSURLSession sharedSession]
-      dataTaskWithRequest:request
-      completionHandler:^(NSData * _Nullable data,
-                          NSURLResponse * _Nullable response,
-                          NSError * _Nullable error) {
-
-         NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
-
-         if (error) {
-             NSLog(@"❌ [Chat][HTTP] Error: %@", error.localizedDescription);
-             return;
-         }
-
-         NSString *responseString =
-             [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-
-         NSLog(@"📡 [Chat][HTTP] Status Code: %ld", (long)http.statusCode);
-         NSLog(@"📨 [Chat][HTTP] Response: %@", responseString);
-     }];
-
-     [task resume];
-     
- }
- */

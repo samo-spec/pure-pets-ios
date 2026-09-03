@@ -9,12 +9,72 @@
 
 import AVKit
 import Combine
+import FirebaseFirestore
 import FirebaseStorage
 import PurePetsMessagingCore
 import PurePetsMessagingUI
 import SpearLivingChatHeader
 import SwiftUI
 import UIKit
+
+private func ppMessagingFormat(_ template: String, _ arguments: String...) -> String {
+    var rendered = template
+    let escapedPercent = "\u{F000}"
+    rendered = rendered.replacingOccurrences(of: "%%", with: escapedPercent)
+
+    var consumed = Set<Int>()
+    for (index, argument) in arguments.enumerated() {
+        let positionalToken = "%\(index + 1)$@"
+        if rendered.contains(positionalToken) {
+            rendered = rendered.replacingOccurrences(of: positionalToken, with: argument)
+            consumed.insert(index)
+        }
+    }
+
+    for (index, argument) in arguments.enumerated() where !consumed.contains(index) {
+        if let range = rendered.range(of: "%@") {
+            rendered.replaceSubrange(range, with: argument)
+            consumed.insert(index)
+        }
+    }
+
+    let omitted = arguments.enumerated()
+        .filter { !consumed.contains($0.offset) && !$0.element.isEmpty }
+        .map(\.element)
+    if !omitted.isEmpty {
+        rendered += (rendered.isEmpty ? "" : " ") + omitted.joined(separator: " ")
+    }
+
+    return rendered.replacingOccurrences(of: escapedPercent, with: "%")
+}
+
+private enum PPMessagingContextCache {
+    static let storage: NSCache<NSString, NSDictionary> = {
+        let cache = NSCache<NSString, NSDictionary>()
+        cache.countLimit = 200
+        cache.totalCostLimit = 4 * 1024 * 1024
+        return cache
+    }()
+
+    static func key(_ threadID: String) -> NSString { "PPChatContext_\(threadID)" as NSString }
+
+    static func set(_ payload: [String: Any], for threadID: String) {
+        guard !threadID.isEmpty else { return }
+        storage.set(payload as NSDictionary, forKey: key(threadID), cost: max(1, payload.description.utf8.count))
+    }
+
+    static func dictionary(for threadID: String) -> NSDictionary? {
+        guard !threadID.isEmpty else { return nil }
+        return storage.object(forKey: key(threadID))
+    }
+}
+
+@objc(PPMessagingContextCacheBridge)
+public final class PPMessagingContextCacheBridge: NSObject {
+    @objc public static func clear() {
+        PPMessagingContextCache.storage.removeAllObjects()
+    }
+}
 
 // MARK: - Objective-C Host Contract
 
@@ -76,6 +136,10 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
     private var lastObservedKeyboardOverlap: CGFloat = 0
     private var keyboardExpansionWorkItem: DispatchWorkItem?
 
+    @objc public var conversationThreadID: String {
+        chatThread?.id.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
     @objc(configureWithChatThread:)
     public func configure(with thread: ChatThreadModel) {
         configure(with: thread, petAdContext: nil)
@@ -93,9 +157,86 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                 isModal: false,
                 petAdContext: petAdContext
             )
+
+            // Preserve the verified server context locally for immediate presentation.
+            // Thread persistence is owned by chatMessageCommand.create_or_get.
+            if let petAd = petAdContext, !petAd.adID.isEmpty {
+                let snapshot = PPMessagingScreenState.presentationSnapshot(for: petAd)
+                thread.contextType = "pet_ad"
+                thread.contextId = petAd.adID
+                thread.contextSnapshot = (snapshot as? [String: Any]) ?? [:]
+
+                let payload: [String: Any] = [
+                    "contextType": "pet_ad",
+                    "contextId": petAd.adID,
+                    "contextSnapshot": snapshot
+                ]
+                PPMessagingContextCache.set(payload, for: thread.id)
+
+            } else {
+                // If reopened without petAdContext, rehydrate ad context dynamically
+                self.rehydrateAdContextIfNeeded(for: thread)
+            }
+
             if self.viewIfLoaded?.window != nil {
                 self.startConversationActivityObservationIfNeeded()
             }
+        }
+    }
+
+    private func rehydrateAdContextIfNeeded(for thread: ChatThreadModel) {
+        var targetAdID = ""
+        let currentType = screenState.contextType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let currentID = screenState.contextID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if ["pet_ad", "pet_listing", "listing"].contains(currentType), !currentID.isEmpty, currentID != thread.id {
+            targetAdID = currentID
+        } else if !thread.contextId.isEmpty, thread.contextId != thread.id {
+            targetAdID = thread.contextId
+        } else if let cached = PPMessagingContextCache.dictionary(for: thread.id),
+                  let cachedID = cached["contextId"] as? String,
+                  !cachedID.isEmpty, cachedID != thread.id {
+            targetAdID = cachedID
+            if let cachedType = cached["contextType"] as? String, !cachedType.isEmpty {
+                screenState.contextType = cachedType
+            }
+            if let cachedSnap = cached["contextSnapshot"] as? NSDictionary, cachedSnap.count > 0 {
+                screenState.contextSnapshot = cachedSnap
+            }
+        }
+
+        guard !targetAdID.isEmpty else { return }
+
+        // Fetch fresh PetAd document from Firestore pet_ads
+        Firestore.firestore().collection("pet_ads").document(targetAdID).getDocument { [weak self] snapshot, error in
+            guard let self = self,
+                  let snapshot = snapshot,
+                  snapshot.exists,
+                  let data = snapshot.data() else {
+                return
+            }
+
+            let ad = PetAd(dictionary: data, documentID: snapshot.documentID)
+
+            self.onMain {
+                self.launchPetAdContext = ad
+                let presentation = PPMessagingScreenState.presentationSnapshot(for: ad)
+                self.screenState.contextType = "pet_ad"
+                self.screenState.contextID = ad.adID
+                self.screenState.contextSnapshot = presentation
+            }
+
+            thread.contextType = "pet_ad"
+            thread.contextId = ad.adID
+            let presentation = PPMessagingScreenState.presentationSnapshot(for: ad)
+            thread.contextSnapshot = (presentation as? [String: Any]) ?? [:]
+
+            let payload: [String: Any] = [
+                "contextType": "pet_ad",
+                "contextId": ad.adID,
+                "contextSnapshot": presentation
+            ]
+            PPMessagingContextCache.set(payload, for: thread.id)
         }
     }
 
@@ -157,10 +298,28 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
             .contains(contextType)
 
         if isEntityContext {
-            if contextType == "pet_ad",
-               let petAd = launchPetAdContext,
-               petAd.adID == contextID {
-                PPPetAdViewerLegacyBridge.openPetAd(petAd, from: self)
+            if ["pet_ad", "pet_listing", "listing"].contains(contextType) {
+                if let petAd = launchPetAdContext, petAd.adID == contextID {
+                    PPPetAdViewerLegacyBridge.openPetAd(petAd, from: self)
+                    return
+                }
+
+                // If launchPetAdContext is not ready yet, fetch from Firestore pet_ads and open
+                Firestore.firestore().collection("pet_ads").document(contextID).getDocument { [weak self] snapshot, _ in
+                    guard let self = self else { return }
+                    if let snapshot = snapshot, snapshot.exists, let data = snapshot.data() {
+                        let ad = PetAd(dictionary: data, documentID: snapshot.documentID)
+                        self.launchPetAdContext = ad
+                        PPPetAdViewerLegacyBridge.openPetAd(ad, from: self)
+                    } else if let delegate = self.delegate {
+                        delegate.messagingHostDidRequestAction(
+                            PPMessagingAction.context.rawValue,
+                            messageID: contextID
+                        )
+                    } else {
+                        self.presentConversationContextDetails(contextID: contextID)
+                    }
+                }
                 return
             }
 
@@ -1256,7 +1415,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
         }
 
         guard let audioData = try? Data(contentsOf: url) else {
-            NSLog("[Chat] Failed to read audio data from URL: \(url)")
+            NSLog("[Chat] Failed to read the selected audio payload")
             return
         }
 
@@ -1271,14 +1430,38 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
         )
         screenState.clearReplyComposer()
 
-        AppManager.sharedInstance().uploadAudioData(audioData) { [weak self] (downloadURL: String?, error: Error?) in
-            guard let self = self else { return }
-            self.onMain {
-                if error != nil || downloadURL == nil {
+        let audioReference = Storage.storage().reference()
+            .child("Chats/\(threadID)/media/audio/\(messageID).m4a")
+        let metadata = StorageMetadata()
+        metadata.contentType = "audio/m4a"
+        metadata.customMetadata = [
+            "uploaded_by": senderID,
+            "thread_id": threadID,
+            "message_id": messageID,
+            "media_type": "audio"
+        ]
+
+        audioReference.putData(audioData, metadata: metadata) { [weak self] _, uploadError in
+            guard let self else { return }
+            guard uploadError == nil else {
+                self.onMain {
                     self.screenState.setFailure(
                         messageID: messageID,
                         message: self.ppLocalized("chat_message_failed_title")
                     )
+                }
+                return
+            }
+
+            audioReference.downloadURL { [weak self] downloadURL, downloadError in
+                guard let self else { return }
+                guard downloadError == nil, let downloadURL else {
+                    self.onMain {
+                        self.screenState.setFailure(
+                            messageID: messageID,
+                            message: self.ppLocalized("chat_message_failed_title")
+                        )
+                    }
                     return
                 }
 
@@ -1289,25 +1472,27 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                 message.receiverID = receiverID
                 message.timestamp = Date()
                 message.messageType = .audio
-                message.fileURL = downloadURL
+                message.fileURL = downloadURL.absoluteString
                 message.mediaDuration = duration
                 message.mimeType = "audio/m4a"
                 message.replyToMessageID = replyToMessageID
 
-                ChManager.shared().sendMessage(
-                    message,
-                    inThread: threadID,
-                    senderID: senderID
-                ) { [weak self] sendError in
-                    guard let self = self else { return }
-                    self.onMain {
-                        if sendError != nil {
-                            self.screenState.setFailure(
-                                messageID: messageID,
-                                message: self.ppLocalized("chat_message_failed_title")
-                            )
-                        } else {
-                            self.screenState.markMessageSent(messageID: messageID)
+                self.onMain {
+                    ChManager.shared().sendMessage(
+                        message,
+                        inThread: threadID,
+                        senderID: senderID
+                    ) { [weak self] sendError in
+                        guard let self else { return }
+                        self.onMain {
+                            if sendError != nil {
+                                self.screenState.setFailure(
+                                    messageID: messageID,
+                                    message: self.ppLocalized("chat_message_failed_title")
+                                )
+                            } else {
+                                self.screenState.markMessageSent(messageID: messageID)
+                            }
                         }
                     }
                 }
@@ -1861,13 +2046,36 @@ private final class PPMessagingScreenState: ObservableObject {
             contextID = petAdContext.adID
             contextSnapshot = Self.presentationSnapshot(for: petAdContext)
         } else {
-            contextType = thread.contextType
-            contextID = thread.contextId
-            contextSnapshot = (thread.contextSnapshot as? NSDictionary) ?? [:]
+            var resolvedType = thread.contextType.trimmingCharacters(in: .whitespacesAndNewlines)
+            var resolvedId = thread.contextId.trimmingCharacters(in: .whitespacesAndNewlines)
+            var resolvedSnapshot = (thread.contextSnapshot as? NSDictionary) ?? [:]
+
+            // If empty, direct_chat, or thread ID, check local cache fallback
+            if (resolvedType.isEmpty || resolvedType == "direct_chat" || resolvedId.isEmpty || resolvedId == thread.id),
+               let cached = PPMessagingContextCache.dictionary(for: thread.id) {
+                if let type = cached["contextType"] as? String, !type.isEmpty {
+                    resolvedType = type
+                }
+                if let cid = cached["contextId"] as? String, !cid.isEmpty {
+                    resolvedId = cid
+                }
+                if let snap = cached["contextSnapshot"] as? NSDictionary, snap.count > 0 {
+                    resolvedSnapshot = snap
+                }
+            }
+
+            // If contextId is present and not thread.id, but type is empty or direct_chat, infer pet_ad
+            if !resolvedId.isEmpty, resolvedId != thread.id, (resolvedType.isEmpty || resolvedType == "direct_chat") {
+                resolvedType = "pet_ad"
+            }
+
+            contextType = resolvedType
+            contextID = resolvedId
+            contextSnapshot = resolvedSnapshot
         }
     }
 
-    private static func presentationSnapshot(for ad: PetAd) -> NSDictionary {
+    fileprivate static func presentationSnapshot(for ad: PetAd) -> NSDictionary {
         let trimmedTitle = ad.adTitle?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let title = trimmedTitle.isEmpty
@@ -1887,9 +2095,12 @@ private final class PPMessagingScreenState: ObservableObject {
                 if !values.contains(value) { values.append(value) }
             }
             .joined(separator: " · ")
-        let thumbnailURLString = PPPetAdMediaItem.items(from: ad)
+        var thumbnailURLString = PPPetAdMediaItem.items(from: ad)
             .compactMap(\.imageURL)
             .first ?? ""
+        if thumbnailURLString.isEmpty, let firstURL = ad.imageURLs?.first, !firstURL.isEmpty {
+            thumbnailURLString = firstURL
+        }
 
         return [
             "title": title,
@@ -3926,7 +4137,7 @@ private struct PPMessagingHeader: View {
             let number = snapshotText("orderNumber")
             let title = snapshotText("title")
                 ?? number.map {
-                    String(format: localized("chat_header_order_title_format"), $0)
+                    ppMessagingFormat(localized("chat_header_order_title_format"), $0)
                 }
             guard let title else { return nil }
             return .order(
@@ -4589,8 +4800,15 @@ private enum PPMessagingAdapter {
             ))
 
         case "sticker":
-            // swiftlint:disable:next force_try
-            let desc = try! NonEmptyText((Language.get("chat_reply_sticker", alter: "chat_reply_sticker") ?? NSLocalizedString("chat_reply_sticker", comment: "")))
+            let localizedDescription = (
+                Language.get("chat_reply_sticker", alter: "chat_reply_sticker")
+                    ?? NSLocalizedString("chat_reply_sticker", comment: "")
+            ).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let desc = try? NonEmptyText(
+                localizedDescription.isEmpty ? "🐾" : localizedDescription
+            ) else {
+                return .text(TextPayload(text: localizedDescription.isEmpty ? "🐾" : localizedDescription))
+            }
             return .sticker(StickerPayload(
                 assetURL: snapshot.mediaURL,
                 fallbackEmoji: "🐾",
@@ -4646,7 +4864,7 @@ private struct PPMessagingReplyPreview: View {
             in: RoundedRectangle(cornerRadius: 11, style: .continuous)
         )
         .accessibilityLabel(
-            String(format: localized("chat_accessibility_reply_format"), previewText)
+            ppMessagingFormat(localized("chat_accessibility_reply_format"), previewText)
         )
     }
 
@@ -4774,7 +4992,7 @@ private struct PPMessagingTypingRow: View {
             HStack(spacing: 10) {
                 PPMessagingTypingDots()
 
-                Text(String(format: localized("chat_typing_format"), name))
+                Text(ppMessagingFormat(localized("chat_typing_format"), name))
                     .font(.custom("Beiruti-Medium", size: 12.5, relativeTo: .footnote))
                     .foregroundStyle(PPMessagingPalette.secondaryText)
                     .lineLimit(1)
@@ -4990,8 +5208,8 @@ private struct PPMessagingLatestButton: View {
         .buttonStyle(PPMessagingPressButtonStyle())
         .accessibilityLabel(
             count > 0
-                ? String(
-                    format: localized("chat_unread_count_accessibility_format"),
+                ? ppMessagingFormat(
+                    localized("chat_unread_count_accessibility_format"),
                     localizedCount
                 )
                 : localized("chat_scroll_latest")

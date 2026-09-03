@@ -18,7 +18,7 @@ static NSString *PPChatRouterThreadIDFromPayload(NSDictionary *userInfo)
 {
     if (![userInfo isKindOfClass:NSDictionary.class]) return @"";
     NSDictionary *meta = [userInfo[@"meta"] isKindOfClass:NSDictionary.class] ? userInfo[@"meta"] : @{};
-    NSArray<NSString *> *keys = @[@"conversationId", @"conversationID", @"threadID", @"threadId", @"chatId", @"chatID", @"contextId"];
+    NSArray<NSString *> *keys = @[@"conversationId", @"conversationID", @"threadID", @"threadId", @"chatId", @"chatID"];
     for (NSString *key in keys) {
         id value = userInfo[key] ?: meta[key];
         if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
@@ -55,7 +55,11 @@ static UIViewController *PPChatRouterVisibleMessagingController(UIViewController
     }
 
     if ([controller isKindOfClass:PPMessagingSwiftUIHostController.class]) {
-        return controller;
+        PPMessagingSwiftUIHostController *messagingController =
+            (PPMessagingSwiftUIHostController *)controller;
+        return [messagingController.conversationThreadID isEqualToString:threadID]
+            ? messagingController
+            : nil;
     }
 
     for (UIViewController *child in controller.childViewControllers.reverseObjectEnumerator) {
@@ -194,7 +198,9 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
     }
 
     if (threadID.length == 0 || !presentingVC) {
-        NSLog(@"❌ [NotificationRouter] Missing threadID=%@ presentingVC=%@", threadID ?: @"", presentingVC ? @"present" : @"nil");
+        NSLog(@"❌ [NotificationRouter] Invalid handoff target (hasThread=%@, hasPresenter=%@)",
+              threadID.length > 0 ? @"YES" : @"NO",
+              presentingVC ? @"YES" : @"NO");
         [ChManager sharedManager].isHandlingNotificationHandoff = NO;
         return;
     }
@@ -208,7 +214,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
     if (visibleChat) {
         [ChManager sharedManager].activeThreadID = threadID;
         [ChManager sharedManager].isHandlingNotificationHandoff = NO;
-        NSLog(@"[NotificationRouter] Chat already visible for thread %@", threadID);
+        NSLog(@"[NotificationRouter] Target chat is already visible");
         return;
     }
 
@@ -216,7 +222,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
                             completion:^(ChatThreadModel *thread) {
 
         if (!thread) {
-            NSLog(@"❌ [NotificationRouter] Thread not found for ID: %@", threadID);
+            NSLog(@"❌ [NotificationRouter] Target chat could not be loaded");
             [ChManager sharedManager].isHandlingNotificationHandoff = NO;
             return;
         }
@@ -231,7 +237,7 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
             if (visibleChat) {
                 [ChManager sharedManager].activeThreadID = threadID;
                 [ChManager sharedManager].isHandlingNotificationHandoff = NO;
-                NSLog(@"[NotificationRouter] Chat became visible for thread %@", threadID);
+                NSLog(@"[NotificationRouter] Target chat became visible");
                 return;
             }
 

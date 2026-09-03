@@ -584,6 +584,8 @@ fromViewController:(UIViewController *)viewController
 {
     [ChManager.sharedManager
      createOrGetChatThreadWithUser:user
+     contextType:(ad.adID.length > 0 ? @"pet_ad" : nil)
+     contextID:(ad.adID.length > 0 ? ad.adID : nil)
      completion:^(ChatThreadModel * _Nullable thread,
                   NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{

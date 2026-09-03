@@ -14,8 +14,11 @@
 
 import UIKit
 import SwiftUI
+import ObjectiveC
 import PPChatCellCore
 import PPChatCellUI
+
+private var ppChatLegacyHostAssociationKey: UInt8 = 0
 
 // MARK: - SwiftUI Host State
 
@@ -176,10 +179,13 @@ final class PPChatCellBridge: NSObject {
             expansionStore: expansionStore,
             onOpenChat: { onOpenChat(contentStore.sourceThread) },
             sendQuickReply: { message, conversationID in
-                try await Self.sendQuickReplyBridge(
+                let liveReceiverID = await MainActor.run {
+                    contentStore.thread.participantID
+                }
+                return try await Self.sendQuickReplyBridge(
                     message: message,
                     conversationID: conversationID,
-                    receiverID: snapshot.participantID
+                    receiverID: liveReceiverID
                 )
             }
         )
@@ -200,13 +206,22 @@ final class PPChatCellBridge: NSObject {
             .minSize(width: 0, height: 76)
         } else {
             let hostingTag = 948271
-            if let hostingView = cell.contentView.viewWithTag(hostingTag) {
+            if let previousHost = objc_getAssociatedObject(
+                cell,
+                &ppChatLegacyHostAssociationKey
+            ) as? UIViewController {
+                previousHost.willMove(toParent: nil)
+                previousHost.view.removeFromSuperview()
+                previousHost.removeFromParent()
+            } else if let hostingView = cell.contentView.viewWithTag(hostingTag) {
                 hostingView.removeFromSuperview()
             }
             let host = UIHostingController(rootView: rootView)
             host.view.tag = hostingTag
             host.view.backgroundColor = .clear
             host.view.translatesAutoresizingMaskIntoConstraints = false
+            let parentViewController = Self.nearestViewController(from: cell)
+            parentViewController?.addChild(host)
             cell.contentView.addSubview(host.view)
             NSLayoutConstraint.activate([
                 host.view.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
@@ -214,10 +229,30 @@ final class PPChatCellBridge: NSObject {
                 host.view.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
                 host.view.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
             ])
+            if parentViewController != nil {
+                host.didMove(toParent: parentViewController)
+            }
+            objc_setAssociatedObject(
+                cell,
+                &ppChatLegacyHostAssociationKey,
+                host,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
         }
 
         cell.backgroundColor = .clear
         cell.selectionStyle = .none
+    }
+
+    private static func nearestViewController(from responder: UIResponder) -> UIViewController? {
+        var candidate = responder.next
+        while let current = candidate {
+            if let viewController = current as? UIViewController {
+                return viewController
+            }
+            candidate = current.next
+        }
+        return nil
     }
 
     /// Resolve the live app color asset so light/dark brand behavior stays
@@ -291,7 +326,7 @@ final class PPChatCellBridge: NSObject {
             if ts != Date.distantPast {
                 return ts
             }
-            return Date()
+            return Date.distantPast
         }()
 
         return PPChatThreadSnapshot(
