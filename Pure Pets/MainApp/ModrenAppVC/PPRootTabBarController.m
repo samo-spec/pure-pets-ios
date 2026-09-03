@@ -4117,7 +4117,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [OptionModel optionWithID:@"newAd"
                             title:kLang(@"newAd")
                         imageName:nil
-                      systemImage:@"pawprint.fill"
+                      systemImage:@"square.and.pencil"
                              desc:kLang(@"newAd_desc")];
     newAd.sortOrder = 0;
 
@@ -4184,7 +4184,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [vc configurePremiumHeroWithEyebrow:kLang(@"create_picker_eyebrow")
                                   title:kLang(@"create_picker_title")
                                subtitle:kLang(@"create_picker_subtitle")
-                             symbolName:@"plus.app.fill"
+                             symbolName:@"plus.circle.fill"
                               badgeText:[self pp_addActionPickerBadgeTextForCount:options.count]];
     
     [PPFunc presentFloatingSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle35];

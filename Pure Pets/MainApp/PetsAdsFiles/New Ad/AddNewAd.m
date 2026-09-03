@@ -2427,13 +2427,13 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     return @[
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueMale
                                   localizedTitle:kLang(@"Male")
-                                 systemImageName:@"person.fill"],
+                                 systemImageName:@"male"],
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueFemale
                                   localizedTitle:kLang(@"Female")
-                                 systemImageName:@"person.crop.circle.fill"],
+                                 systemImageName:@"female"],
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueUndefined
                                   localizedTitle:kLang(@"no_value")
-                                 systemImageName:@"questionmark.circle.fill"]
+                                 systemImageName:@"questionmark.circle"]
     ];
 }
 
@@ -2849,15 +2849,32 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UIView *container = [[UIView alloc] init];
     container.backgroundColor = UIColor.clearColor;
 
-    UIView *accentBar = [[UIView alloc] init];
-    accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = PPAdFormAccentColor();
-    accentBar.layer.cornerRadius = 3.0;
-    [container addSubview:accentBar];
+    NSString *symbolName = @"doc.text.fill";
+    if ([title containsString:@"أساسية"] || [title containsString:@"basics"] || [title containsString:@"Basics"]) {
+        symbolName = @"sparkles";
+    } else if ([title containsString:@"الحيوان"] || [title containsString:@"Pet"] || [title containsString:@"pet"]) {
+        symbolName = @"pawprint.fill";
+    } else if ([title containsString:@"تفاصيل"] || [title containsString:@"Listing"] || [title containsString:@"listing"]) {
+        symbolName = @"tag.fill";
+    }
+
+    UIView *iconBadge = [[UIView alloc] init];
+    iconBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    iconBadge.backgroundColor = [PPAdFormAccentColor() colorWithAlphaComponent:0.12];
+    iconBadge.layer.cornerRadius = 8.0;
+    if (@available(iOS 13.0, *)) iconBadge.layer.cornerCurve = kCACornerCurveContinuous;
+    [container addSubview:iconBadge];
+
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightBold];
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbolName withConfiguration:config]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = PPAdFormAccentColor();
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    [iconBadge addSubview:iconView];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    titleLabel.font = [GM boldFontWithSize:16.5] ?: [UIFont systemFontOfSize:16.5 weight:UIFontWeightBold];
     titleLabel.textColor = PPAdFormPrimaryTextColor();
     titleLabel.text = title ?: @"";
     titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -2865,27 +2882,30 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    subtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.88];
+    subtitleLabel.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.85];
     subtitleLabel.text = subtitle ?: @"";
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     subtitleLabel.numberOfLines = 2;
     [container addSubview:subtitleLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [accentBar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:20.0],
-        [accentBar.topAnchor constraintEqualToAnchor:container.topAnchor constant:12.0],
-        [accentBar.widthAnchor constraintEqualToConstant:56.0],
-        [accentBar.heightAnchor constraintEqualToConstant:6.0],
+        [iconBadge.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:2.0],
+        [iconBadge.topAnchor constraintEqualToAnchor:container.topAnchor constant:12.0],
+        [iconBadge.widthAnchor constraintEqualToConstant:28.0],
+        [iconBadge.heightAnchor constraintEqualToConstant:28.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:10.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:accentBar.leadingAnchor],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-20.0],
+        [iconView.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:5.0],
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [titleLabel.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconBadge.trailingAnchor constant:10.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-4.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:iconBadge.bottomAnchor constant:5.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:iconBadge.leadingAnchor constant:2.0],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-        [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-10.0]
+        [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-6.0]
     ]];
 
     return container;
@@ -3115,13 +3135,21 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     vc.selectedOption = [self pp_genderOptionForAdModel];
     vc.showSearchBar = NO;
     vc.isGenderSelector = YES;
-    vc.modalPresentationStyle = UIModalPresentationPageSheet;
-    vc.presentationController.delegate = self;
+
+    // Keep UIKit's floating sheet chrome direction-neutral. The option
+    // controller continues to apply Arabic/English semantics to its own
+    // table, header, and cells, while the outer presentation remains centered
+    // with equal physical margins in both layout directions.
+    UINavigationController *sheetContainer = [[UINavigationController alloc] initWithRootViewController:vc];
+    sheetContainer.navigationBarHidden = YES;
+    sheetContainer.modalPresentationStyle = UIModalPresentationPageSheet;
+    sheetContainer.view.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    sheetContainer.presentationController.delegate = self;
     if (@available(iOS 15.0, *)) {
-        vc.sheetPresentationController.delegate = self;
+        sheetContainer.sheetPresentationController.delegate = self;
     }
     [self pp_prepareSelectorSheetPresentationForField:config.identifier];
-    [self presentViewController:vc animated:YES completion:nil];
+    [self presentViewController:sheetContainer animated:YES completion:nil];
 }
 
 #pragma mark - Build Form
@@ -3169,33 +3197,33 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (PPFormStyle *)pp_adFormStyle {
     PPFormStyle *style = [PPFormStyle defaultStyle];
+    style.groupedMode = YES;
+    style.hideAccentStrip = YES;
     style.cardBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
             ? [UIColor colorWithRed:0.16 green:0.16 blue:0.18 alpha:1.0]
             : UIColor.whiteColor;
     }];
-    style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+    style.cardBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithRed:0.12 green:0.12 blue:0.13 alpha:1.0]
-            : [UIColor colorWithRed:0.973 green:0.974 blue:0.978 alpha:1.0];
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.065];
     }];
-    style.fieldBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:1.0 alpha:0.06]
-            : [UIColor colorWithRed:0.42 green:0.43 blue:0.46 alpha:0.055];
-    }];
+    style.cardBorderWidth = 0.75;
+    style.fieldBackgroundColor = UIColor.clearColor;
+    style.fieldBorderWidth = 0.0;
     style.accentColor = PPAdFormAccentColor();
     style.primaryTextColor = PPAdFormPrimaryTextColor();
     style.secondaryTextColor = UIColor.secondaryLabelColor;
-    style.titleFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    style.inputFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
-    style.placeholderFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
-    style.cardCornerRadius = 24.0;
-    style.fieldCornerRadius = 14.0;
-    style.stackSpacing = 12.0;
-    style.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.01 : 0.03;
-    style.shadowRadius = 16.0;
-    style.shadowOffset = CGSizeMake(0.0, 6.0);
+    style.titleFont = [GM boldFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightBold];
+    style.inputFont = [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
+    style.placeholderFont = [GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightMedium];
+    style.cardCornerRadius = 22.0;
+    style.fieldCornerRadius = 12.0;
+    style.stackSpacing = 0.0;
+    style.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.01 : 0.035;
+    style.shadowRadius = 14.0;
+    style.shadowOffset = CGSizeMake(0.0, 4.0);
     return style;
 }
 
@@ -4281,10 +4309,63 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 -(void)ios26Bar
 {
     NSString *buttonTitle = (self.mode == AdEditorModeEdit) ? kLang(@"saveChanges") : kLang(@"postAd");
-    UIButton *savBtn = [PPButtonHelper pp_buttonWithTitle:buttonTitle font:[GM MidFontWithSize:16] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveFormData:)];
+
+    // Executive Pill Publish Button
+    UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
+    config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    config.baseBackgroundColor = PPAdFormAccentColor();
+    config.baseForegroundColor = UIColor.whiteColor;
+    config.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 16.0, 7.0, 16.0);
+
+    NSDictionary *attributes = @{
+        NSFontAttributeName: [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightBold]
+    };
+    config.attributedTitle = [[NSAttributedString alloc] initWithString:buttonTitle attributes:attributes];
+
+    UIButton *savBtn = [UIButton buttonWithConfiguration:config primaryAction:nil];
+    savBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    savBtn.layer.shadowColor = PPAdFormAccentColor().CGColor;
+    savBtn.layer.shadowOpacity = 0.28;
+    savBtn.layer.shadowRadius = 8.0;
+    savBtn.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+    [savBtn addTarget:self action:@selector(saveFormData:) forControlEvents:UIControlEventTouchUpInside];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:savBtn];
 
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName) style:UIBarButtonItemStylePlain target:self action:@selector(onBack:)];
+    // Refined Frosted Circular Back Button
+    UIButtonConfiguration *backConfig = [UIButtonConfiguration plainButtonConfiguration];
+    backConfig.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    UIImageSymbolConfiguration *chevronSym = [UIImageSymbolConfiguration configurationWithPointSize:13.5 weight:UIImageSymbolWeightSemibold];
+    backConfig.image = [UIImage systemImageNamed:PPChevronName withConfiguration:chevronSym];
+    backConfig.baseForegroundColor = PPAdFormPrimaryTextColor();
+    backConfig.contentInsets = NSDirectionalEdgeInsetsZero;
+
+    UIButton *backButton = [UIButton buttonWithConfiguration:backConfig primaryAction:nil];
+    backButton.translatesAutoresizingMaskIntoConstraints = NO;
+    backButton.layer.cornerRadius = 18.0;
+    if (@available(iOS 13.0, *)) backButton.layer.cornerCurve = kCACornerCurveContinuous;
+    backButton.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.12]
+            : [UIColor colorWithWhite:1.0 alpha:0.90];
+    }];
+    backButton.layer.borderWidth = 0.75;
+    backButton.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : [UIColor colorWithWhite:0.0 alpha:0.06];
+    }].CGColor;
+    backButton.layer.shadowColor = UIColor.blackColor.CGColor;
+    backButton.layer.shadowOpacity = 0.04;
+    backButton.layer.shadowRadius = 5.0;
+    backButton.layer.shadowOffset = CGSizeMake(0.0, 1.5);
+    [backButton addTarget:self action:@selector(onBack:) forControlEvents:UIControlEventTouchUpInside];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [backButton.widthAnchor constraintEqualToConstant:36.0],
+        [backButton.heightAnchor constraintEqualToConstant:36.0]
+    ]];
+
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
     [self pp_setSubmitEnabled:!self.isSubmittingAd && !self.isPrefillInProgress];
 }
 

@@ -60,7 +60,7 @@ private enum PPMessagingContextCache {
 
     static func set(_ payload: [String: Any], for threadID: String) {
         guard !threadID.isEmpty else { return }
-        storage.set(payload as NSDictionary, forKey: key(threadID), cost: max(1, payload.description.utf8.count))
+        storage.setObject(payload as NSDictionary, forKey: key(threadID), cost: max(1, payload.description.utf8.count))
     }
 
     static func dictionary(for threadID: String) -> NSDictionary? {

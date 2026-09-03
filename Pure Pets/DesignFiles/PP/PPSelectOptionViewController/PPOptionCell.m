@@ -361,7 +361,7 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
     } else if ([actionID isEqualToString:@"newAd"] || [actionID containsString:@"Ad"]) {
         c1 = [UIColor colorWithRed:0.90 green:0.00 blue:0.27 alpha:1.0]; // Pure Pets Crimson
         c2 = [UIColor colorWithRed:1.00 green:0.30 blue:0.46 alpha:1.0]; // Radiant Rose
-        if (!systemIcon.length) icon = @"pawprint.fill";
+        if (!systemIcon.length) icon = @"square.and.pencil";
     } else if ([actionID isEqualToString:@"addUsedButton"] || [actionID containsString:@"Accessory"] || [actionID containsString:@"Used"]) {
         c1 = [UIColor colorWithRed:0.15 green:0.42 blue:0.94 alpha:1.0]; // Royal Azure
         c2 = [UIColor colorWithRed:0.00 green:0.72 blue:0.88 alpha:1.0]; // Vivid Cyan
@@ -721,8 +721,8 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
                                                                                         weight:UIImageSymbolWeightSemibold
                                                                                          scale:UIImageSymbolScaleMedium];
     UIImage *image = [UIImage systemImageNamed:safeName withConfiguration:config];
-    if (!image) image = [UIImage systemImageNamed:@"tag.fill" withConfiguration:config];
     if (!image) image = [UIImage imageNamed:safeName];
+    if (!image) image = [UIImage systemImageNamed:@"tag.fill" withConfiguration:config];
     if (!image) image = [UIImage imageNamed:@"square-layout"];
     return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 }

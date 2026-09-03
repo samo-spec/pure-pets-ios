@@ -83,6 +83,8 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     style.minimumSingleLineFieldHeight = 46.0;
     style.minimumTextViewFieldHeight = 116.0;
     style.attachmentThumbSize = 44.0;
+    style.groupedMode = NO;
+    style.hideAccentStrip = NO;
 
     return style;
 }
@@ -115,6 +117,9 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     copy.shadowOpacity = self.shadowOpacity;
     copy.shadowRadius = self.shadowRadius;
     copy.shadowOffset = self.shadowOffset;
+
+    copy.groupedMode = self.groupedMode;
+    copy.hideAccentStrip = self.hideAccentStrip;
 
     copy.accentLeading = self.accentLeading;
     copy.accentTop = self.accentTop;
@@ -247,28 +252,40 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     self.cardView = [[UIView alloc] init];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.semanticContentAttribute = PPFormEngineSemanticAttribute();
-    self.cardView.backgroundColor = self.style.cardBackgroundColor;
-    self.cardView.layer.cornerRadius = self.style.cardCornerRadius;
-    if (@available(iOS 13.0, *)) self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.cardView.layer.borderWidth = self.style.cardBorderWidth;
-    self.cardView.layer.borderColor = self.style.cardBorderColor.CGColor;
-    self.cardView.layer.shadowColor = self.style.shadowColor.CGColor;
-    self.cardView.layer.shadowOffset = self.style.shadowOffset;
-    self.cardView.layer.shadowRadius = self.style.shadowRadius;
-    self.cardView.layer.shadowOpacity = self.style.shadowOpacity;
+
+    if (self.style.groupedMode) {
+        self.cardView.backgroundColor = UIColor.clearColor;
+        self.cardView.layer.borderWidth = 0.0;
+        self.cardView.layer.shadowOpacity = 0.0;
+    } else {
+        self.cardView.backgroundColor = self.style.cardBackgroundColor;
+        self.cardView.layer.cornerRadius = self.style.cardCornerRadius;
+        if (@available(iOS 13.0, *)) self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.cardView.layer.borderWidth = self.style.cardBorderWidth;
+        self.cardView.layer.borderColor = self.style.cardBorderColor.CGColor;
+        self.cardView.layer.shadowColor = self.style.shadowColor.CGColor;
+        self.cardView.layer.shadowOffset = self.style.shadowOffset;
+        self.cardView.layer.shadowRadius = self.style.shadowRadius;
+        self.cardView.layer.shadowOpacity = self.style.shadowOpacity;
+    }
     [self addSubview:self.cardView];
 
-    UIView *accentView = [[UIView alloc] init];
-    accentView.translatesAutoresizingMaskIntoConstraints = NO;
-    accentView.backgroundColor = [self.style.accentColor colorWithAlphaComponent:0.72];
-    accentView.layer.cornerRadius = 1.5;
-    if (@available(iOS 13.0, *)) accentView.layer.cornerCurve = kCACornerCurveContinuous;
-    [self.cardView addSubview:accentView];
+    BOOL hideAccent = self.style.hideAccentStrip || self.style.groupedMode || self.style.accentWidth <= 0.0;
+
+    UIView *accentView = nil;
+    if (!hideAccent) {
+        accentView = [[UIView alloc] init];
+        accentView.translatesAutoresizingMaskIntoConstraints = NO;
+        accentView.backgroundColor = [self.style.accentColor colorWithAlphaComponent:0.72];
+        accentView.layer.cornerRadius = 1.5;
+        if (@available(iOS 13.0, *)) accentView.layer.cornerCurve = kCACornerCurveContinuous;
+        [self.cardView addSubview:accentView];
+    }
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.font = self.style.titleFont;
-    self.titleLabel.textColor = [self.style.primaryTextColor colorWithAlphaComponent:0.82];
+    self.titleLabel.textColor = self.style.groupedMode ? [self.style.secondaryTextColor colorWithAlphaComponent:0.92] : [self.style.primaryTextColor colorWithAlphaComponent:0.82];
     self.titleLabel.semanticContentAttribute = PPFormEngineSemanticAttribute();
     self.titleLabel.textAlignment = PPFormEngineTextAlignment();
     self.titleLabel.numberOfLines = 1;
@@ -299,37 +316,67 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     self.errorLabel.hidden = YES;
     [self.cardView addSubview:self.errorLabel];
 
-    CGFloat minimumFieldHeight = self.inputType == PPFormInputTypeTextView ? self.style.minimumTextViewFieldHeight : self.style.minimumSingleLineFieldHeight;
+    CGFloat minimumFieldHeight = self.inputType == PPFormInputTypeTextView ? self.style.minimumTextViewFieldHeight : (self.style.groupedMode ? 38.0 : self.style.minimumSingleLineFieldHeight);
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
         [self.cardView.topAnchor constraintEqualToAnchor:self.topAnchor],
         [self.cardView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [self.cardView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [self.cardView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+    ]];
 
-        [accentView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:self.style.accentLeading],
-        [accentView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:self.style.accentTop],
-        [accentView.widthAnchor constraintEqualToConstant:self.style.accentWidth],
-        [accentView.heightAnchor constraintEqualToConstant:self.style.accentHeight],
+    if (accentView) {
+        [constraints addObjectsFromArray:@[
+            [accentView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:self.style.accentLeading],
+            [accentView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:self.style.accentTop],
+            [accentView.widthAnchor constraintEqualToConstant:self.style.accentWidth],
+            [accentView.heightAnchor constraintEqualToConstant:self.style.accentHeight],
 
-        [self.titleLabel.centerYAnchor constraintEqualToAnchor:accentView.centerYAnchor],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:accentView.trailingAnchor constant:self.style.titleLeadingFromAccent],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-self.style.titleTrailing],
+            [self.titleLabel.centerYAnchor constraintEqualToAnchor:accentView.centerYAnchor],
+            [self.titleLabel.leadingAnchor constraintEqualToAnchor:accentView.trailingAnchor constant:self.style.titleLeadingFromAccent],
+            [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-self.style.titleTrailing],
 
-        [self.fieldSurface.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:self.style.titleToFieldSpacing],
-        [self.fieldSurface.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:self.style.fieldLeading],
-        [self.fieldSurface.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-self.style.fieldTrailing],
-        [self.fieldSurface.heightAnchor constraintGreaterThanOrEqualToConstant:minimumFieldHeight],
+            [self.fieldSurface.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:self.style.titleToFieldSpacing],
+            [self.fieldSurface.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:self.style.fieldLeading],
+            [self.fieldSurface.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-self.style.fieldTrailing],
+            [self.fieldSurface.heightAnchor constraintGreaterThanOrEqualToConstant:minimumFieldHeight],
+        ]];
+    } else {
+        CGFloat leadPad = self.style.groupedMode ? 18.0 : self.style.fieldLeading;
+        CGFloat trailPad = self.style.groupedMode ? 18.0 : self.style.fieldTrailing;
+        CGFloat topPad = self.style.groupedMode ? 10.0 : self.style.accentTop;
+        CGFloat fieldSpacing = self.style.groupedMode ? 3.0 : self.style.titleToFieldSpacing;
 
-        [inputView.topAnchor constraintEqualToAnchor:self.fieldSurface.topAnchor constant:self.style.fieldTopInset],
-        [inputView.leadingAnchor constraintEqualToAnchor:self.fieldSurface.leadingAnchor constant:self.style.fieldHorizontalInset],
-        [inputView.trailingAnchor constraintEqualToAnchor:self.fieldSurface.trailingAnchor constant:-self.style.fieldHorizontalInset],
-        [inputView.bottomAnchor constraintEqualToAnchor:self.fieldSurface.bottomAnchor constant:-self.style.fieldBottomInset],
+        [constraints addObjectsFromArray:@[
+            [self.titleLabel.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:topPad],
+            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:leadPad],
+            [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-trailPad],
+
+            [self.fieldSurface.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:fieldSpacing],
+            [self.fieldSurface.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:leadPad],
+            [self.fieldSurface.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-trailPad],
+            [self.fieldSurface.heightAnchor constraintGreaterThanOrEqualToConstant:minimumFieldHeight],
+        ]];
+    }
+
+    CGFloat inTop = self.style.groupedMode ? 0.0 : self.style.fieldTopInset;
+    CGFloat inBottom = self.style.groupedMode ? 0.0 : self.style.fieldBottomInset;
+    CGFloat inHoriz = self.style.groupedMode ? 0.0 : self.style.fieldHorizontalInset;
+
+    [constraints addObjectsFromArray:@[
+        [inputView.topAnchor constraintEqualToAnchor:self.fieldSurface.topAnchor constant:inTop],
+        [inputView.leadingAnchor constraintEqualToAnchor:self.fieldSurface.leadingAnchor constant:inHoriz],
+        [inputView.trailingAnchor constraintEqualToAnchor:self.fieldSurface.trailingAnchor constant:-inHoriz],
+        [inputView.bottomAnchor constraintEqualToAnchor:self.fieldSurface.bottomAnchor constant:-inBottom],
 
         [self.errorLabel.topAnchor constraintEqualToAnchor:self.fieldSurface.bottomAnchor constant:self.style.errorTopSpacing],
         [self.errorLabel.leadingAnchor constraintEqualToAnchor:self.fieldSurface.leadingAnchor],
         [self.errorLabel.trailingAnchor constraintEqualToAnchor:self.fieldSurface.trailingAnchor],
     ]];
+
+    if (self.style.groupedMode && self.inputType != PPFormInputTypeAttachment) {
+        [constraints addObject:[self.fieldSurface.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-10.0]];
+    }
 
     if (self.inputType == PPFormInputTypeAttachment) {
         UIView *divider = [[UIView alloc] init];
@@ -364,17 +411,16 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
         self.textView.translatesAutoresizingMaskIntoConstraints = NO;
         self.textView.backgroundColor = UIColor.clearColor;
         self.textView.textColor = self.style.primaryTextColor;
+        self.textView.tintColor = self.style.accentColor;
         self.textView.font = self.style.inputFont;
-        self.textView.delegate = self;
         self.textView.semanticContentAttribute = PPFormEngineSemanticAttribute();
         self.textView.textAlignment = PPFormEngineTextAlignment();
-        self.textView.textContainerInset = UIEdgeInsetsZero;
-        self.textView.textContainer.lineFragmentPadding = 0.0;
+        self.textView.delegate = self;
 
         self.textViewPlaceholderLabel = [[UILabel alloc] init];
         self.textViewPlaceholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.textViewPlaceholderLabel.font = self.style.placeholderFont;
-        self.textViewPlaceholderLabel.textColor = [self.style.secondaryTextColor colorWithAlphaComponent:0.66];
+        self.textViewPlaceholderLabel.textColor = [self.style.secondaryTextColor colorWithAlphaComponent:0.72];
         self.textViewPlaceholderLabel.semanticContentAttribute = PPFormEngineSemanticAttribute();
         self.textViewPlaceholderLabel.textAlignment = PPFormEngineTextAlignment();
         self.textViewPlaceholderLabel.numberOfLines = 0;
@@ -410,11 +456,13 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
         [self.fieldSurface addSubview:self.pickerButton];
 
         UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightSemibold];
-        self.pickerIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.down" withConfiguration:iconConfig]];
+        NSString *symbolName = self.style.groupedMode ? @"chevron.forward" : @"chevron.down";
+        self.pickerIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbolName withConfiguration:iconConfig]];
         self.pickerIconView.translatesAutoresizingMaskIntoConstraints = NO;
         self.pickerIconView.tintColor = [self.style.secondaryTextColor colorWithAlphaComponent:0.86];
         [self.fieldSurface addSubview:self.pickerIconView];
 
+        CGFloat chevronPad = self.style.groupedMode ? 0.0 : 12.0;
         [NSLayoutConstraint activateConstraints:@[
             [self.pickerButton.topAnchor constraintEqualToAnchor:self.fieldSurface.topAnchor],
             [self.pickerButton.leadingAnchor constraintEqualToAnchor:self.fieldSurface.leadingAnchor],
@@ -422,7 +470,7 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
             [self.pickerButton.bottomAnchor constraintEqualToAnchor:self.fieldSurface.bottomAnchor],
 
             [self.pickerIconView.centerYAnchor constraintEqualToAnchor:self.fieldSurface.centerYAnchor],
-            [self.pickerIconView.trailingAnchor constraintEqualToAnchor:self.fieldSurface.trailingAnchor constant:-12.0],
+            [self.pickerIconView.trailingAnchor constraintEqualToAnchor:self.fieldSurface.trailingAnchor constant:-chevronPad],
         ]];
     }
 
@@ -665,6 +713,7 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
 @property (nonatomic, strong, readwrite) NSDictionary<NSString *, PPFormFieldRowView *> *rowsByIdentifier;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *errorsByIdentifier;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, PPFormFieldConfig *> *mutableConfigsByIdentifier;
+@property (nonatomic, strong) UIView *deckContainerView;
 @end
 
 @implementation PPFormEngineView
@@ -687,14 +736,45 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
         self.stackView.spacing = self.style.stackSpacing;
         self.stackView.alignment = UIStackViewAlignmentFill;
         self.stackView.distribution = UIStackViewDistributionFill;
-        [self addSubview:self.stackView];
 
-        [NSLayoutConstraint activateConstraints:@[
-            [self.stackView.topAnchor constraintEqualToAnchor:self.topAnchor],
-            [self.stackView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-            [self.stackView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-            [self.stackView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        ]];
+        if (self.style.groupedMode) {
+            self.deckContainerView = [[UIView alloc] init];
+            self.deckContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+            self.deckContainerView.backgroundColor = self.style.cardBackgroundColor;
+            self.deckContainerView.layer.cornerRadius = self.style.cardCornerRadius;
+            if (@available(iOS 13.0, *)) self.deckContainerView.layer.cornerCurve = kCACornerCurveContinuous;
+            self.deckContainerView.layer.borderWidth = self.style.cardBorderWidth;
+            self.deckContainerView.layer.borderColor = self.style.cardBorderColor.CGColor;
+            self.deckContainerView.layer.shadowColor = self.style.shadowColor.CGColor;
+            self.deckContainerView.layer.shadowOffset = self.style.shadowOffset;
+            self.deckContainerView.layer.shadowRadius = self.style.shadowRadius;
+            self.deckContainerView.layer.shadowOpacity = self.style.shadowOpacity;
+            self.deckContainerView.clipsToBounds = NO;
+            [self addSubview:self.deckContainerView];
+
+            [self.deckContainerView addSubview:self.stackView];
+
+            [NSLayoutConstraint activateConstraints:@[
+                [self.deckContainerView.topAnchor constraintEqualToAnchor:self.topAnchor],
+                [self.deckContainerView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+                [self.deckContainerView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+                [self.deckContainerView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+                [self.stackView.topAnchor constraintEqualToAnchor:self.deckContainerView.topAnchor constant:4.0],
+                [self.stackView.leadingAnchor constraintEqualToAnchor:self.deckContainerView.leadingAnchor],
+                [self.stackView.trailingAnchor constraintEqualToAnchor:self.deckContainerView.trailingAnchor],
+                [self.stackView.bottomAnchor constraintEqualToAnchor:self.deckContainerView.bottomAnchor constant:-4.0],
+            ]];
+        } else {
+            [self addSubview:self.stackView];
+
+            [NSLayoutConstraint activateConstraints:@[
+                [self.stackView.topAnchor constraintEqualToAnchor:self.topAnchor],
+                [self.stackView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+                [self.stackView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+                [self.stackView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+            ]];
+        }
     }
     return self;
 }
@@ -768,6 +848,30 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
                 liveConfig.attachmentRemoveBlock(liveConfig, rowView);
             }
         };
+
+        if (self.style.groupedMode && copiedFields.count > 0) {
+            UIView *dividerContainer = [[UIView alloc] init];
+            dividerContainer.translatesAutoresizingMaskIntoConstraints = NO;
+            dividerContainer.backgroundColor = UIColor.clearColor;
+
+            UIView *hairline = [[UIView alloc] init];
+            hairline.translatesAutoresizingMaskIntoConstraints = NO;
+            hairline.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+                return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? [UIColor colorWithWhite:1.0 alpha:0.07]
+                    : [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.06];
+            }];
+            [dividerContainer addSubview:hairline];
+
+            [NSLayoutConstraint activateConstraints:@[
+                [dividerContainer.heightAnchor constraintEqualToConstant:PPFormPixel()],
+                [hairline.topAnchor constraintEqualToAnchor:dividerContainer.topAnchor],
+                [hairline.bottomAnchor constraintEqualToAnchor:dividerContainer.bottomAnchor],
+                [hairline.leadingAnchor constraintEqualToAnchor:dividerContainer.leadingAnchor constant:18.0],
+                [hairline.trailingAnchor constraintEqualToAnchor:dividerContainer.trailingAnchor constant:-18.0]
+            ]];
+            [self.stackView addArrangedSubview:dividerContainer];
+        }
 
         [self.stackView addArrangedSubview:row];
 

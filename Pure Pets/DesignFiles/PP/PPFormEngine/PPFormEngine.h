@@ -56,6 +56,9 @@ typedef void (^PPFormAttachmentRemoveBlock)(PPFormFieldConfig *config, PPFormFie
 @property (nonatomic, assign) CGFloat shadowRadius;
 @property (nonatomic, assign) CGSize shadowOffset;
 
+@property (nonatomic, assign) BOOL groupedMode;
+@property (nonatomic, assign) BOOL hideAccentStrip;
+
 @property (nonatomic, assign) CGFloat accentLeading;
 @property (nonatomic, assign) CGFloat accentTop;
 @property (nonatomic, assign) CGFloat accentWidth;

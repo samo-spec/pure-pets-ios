@@ -20,6 +20,7 @@
 #define LogCurrentFunc() DLog(@"[%s]", __FUNCTION__)
 
 static CGFloat const PPPremiumOptionPickerDefaultDetentFraction = 0.82;
+static CGFloat const PPPremiumOptionPickerSheetCornerRadius = 42.0;
 static CGFloat const PPPremiumOptionPickerSideInset = 16.0;
 static CGFloat const PPPremiumOptionPickerExpandedHeroMinHeight = 176.0;
 static CGFloat const PPPremiumOptionPickerCompactHeroMinHeight = 136.0;
@@ -99,6 +100,9 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedCellKeys;
 @property (nonatomic, assign) BOOL didPrepareEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
+@property (nonatomic, assign) BOOL isUpdatingPremiumHeroHeader;
+@property (nonatomic, assign) BOOL isPremiumHeroHeaderUpdateScheduled;
+@property (nonatomic, assign) BOOL didConfigureSheetPresentation;
 @property (nonatomic, assign) CGFloat premiumHeroHeaderWidth;
 @property (nonatomic, strong) UIView *premiumBackgroundView;
 @property (nonatomic, strong) UIView *premiumGlowCircleView;
@@ -113,6 +117,8 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 - (void)pp_updateEmptyStateVisibility;
 - (NSString *)pp_premiumHeroCountText;
 - (void)pp_updatePremiumHeroCountLabel;
+- (void)pp_schedulePremiumHeroHeaderUpdate;
+- (void)pp_updateLegacySearchHeaderWidthIfNeeded;
 @end
 
 @implementation PPSelectOptionViewController
@@ -221,13 +227,12 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     [self pp_applyPremiumTableInsets];
     self.view.backgroundColor = premiumPicker ? [self pp_sheetBackgroundColor] : self.tableView.backgroundColor;
     
-    self.view.layer.cornerRadius = premiumPicker ? 36.0 : 25.0;
+    self.view.layer.cornerRadius = premiumPicker ? PPPremiumOptionPickerSheetCornerRadius : 25.0;
     self.view.layer.cornerCurve = kCACornerCurveContinuous;
     self.view.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
     self.view.clipsToBounds = YES;
     if (premiumPicker) {
         [self pp_configureNavigationAppearance];
-        [self pp_updatePremiumHeroHeaderIfNeeded];
     } else if (self.showSearchBar) {
         [self setupSearchView];
     }
@@ -241,13 +246,6 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     if (!self.filteredOptions) self.filteredOptions = self.allOptions ?: @[];
 
     DLog(@"[PPSelectOption] allOptions=%lu", (unsigned long)self.allOptions.count);
-}
-
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    if ([self pp_usesPremiumPickerPresentation]) {
-        [self pp_updatePremiumHeroHeaderIfNeeded];
-    }
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -265,8 +263,33 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     if ([self pp_usesPremiumPickerPresentation]) {
+        // tableHeaderView invalidates UITableView layout.  Build the header only
+        // after the sheet's first layout has completed, never from
+        // viewDidLayoutSubviews.
+        [self pp_updatePremiumHeroHeaderIfNeeded];
         [self pp_runEntranceIfNeeded];
+    } else {
+        [self pp_updateLegacySearchHeaderWidthIfNeeded];
     }
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size
+       withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
+{
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+
+    __weak typeof(self) weakSelf = self;
+    [coordinator animateAlongsideTransition:nil completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        if ([self pp_usesPremiumPickerPresentation]) {
+            [self pp_schedulePremiumHeroHeaderUpdate];
+        } else {
+            [self pp_updateLegacySearchHeaderWidthIfNeeded];
+        }
+    }];
 }
 
 - (void)pp_configureNavigationAppearance {
@@ -301,16 +324,20 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 }
 
 - (void)pp_configureSheetPresentationIfNeeded {
-    if (self.presentationStyle == PPSelectOptionPresentationPush) return;
+    if (self.presentationStyle == PPSelectOptionPresentationPush || self.didConfigureSheetPresentation) return;
     if (@available(iOS 15.0, *)) {
         UIViewController *sheetOwner = self.navigationController ?: self;
         UISheetPresentationController *sheet = sheetOwner.sheetPresentationController;
         if (!sheet) return;
+        // Setting detents can synchronously trigger another appearance/layout
+        // pass on some sheet configurations, so mark this controller as the
+        // owner before mutating UIKit's presentation state.
+        self.didConfigureSheetPresentation = YES;
 
         BOOL premiumPicker = [self pp_usesPremiumPickerPresentation];
         sheet.prefersGrabberVisible = NO; // Studio Header has its own grabber and frosted close button
         sheet.prefersScrollingExpandsWhenScrolledToEdge = premiumPicker;
-        sheet.preferredCornerRadius = premiumPicker ? 36.0 : 25.0;
+        sheet.preferredCornerRadius = premiumPicker ? PPPremiumOptionPickerSheetCornerRadius : 25.0;
 
         BOOL isUserMode = self.useUsersOption || [self.allOptions.firstObject isKindOfClass:[UserModel class]];
         BOOL needsSearch = self.showSearchBar || isUserMode || self.allOptions.count > 4;
@@ -367,7 +394,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         self.premiumHeroHeaderWidth = 0.0;
         [self pp_applyPremiumTableInsets];
         [self pp_configurePremiumBackgroundIfNeeded];
-        [self pp_updatePremiumHeroHeaderIfNeeded];
+        [self pp_schedulePremiumHeroHeaderUpdate];
     }
 }
 
@@ -384,7 +411,8 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 
 - (NSString *)pp_effectivePremiumHeroTitle {
     if (self.premiumHeroTitle.length > 0) return self.premiumHeroTitle;
-    return self.title.length > 0 ? self.title : nil;
+    if (self.title.length > 0) return self.title;
+    return self.premiumHeroEyebrow.length > 0 ? self.premiumHeroEyebrow : nil;
 }
 
 - (NSString *)pp_effectivePremiumHeroSubtitle {
@@ -394,11 +422,11 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     }
 
     if (self.useUsersOption || [self.allOptions.firstObject isKindOfClass:[UserModel class]]) {
-        return kLang(@"selection_studio_user_subtitle") ?: @"اختر جهة الاتصال لبدء محادثة فورية جديدة.";
+        return PPSelectOptionLocalizedString(@"selection_studio_user_subtitle", @"");
     }
 
     if ([self.allOptions.firstObject isKindOfClass:[OptionModel class]]) {
-        return (kLang(@"create_picker_subtitle") ?: @"اختر نوع النشر المناسب، وسنفتح النموذج الصحيح مباشرة.");
+        return PPSelectOptionLocalizedString(@"create_picker_subtitle", @"");
     }
 
     NSString *title = PPSelectOptionTrimmedString([self pp_effectivePremiumHeroTitle]);
@@ -492,7 +520,33 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     return lightColor;
 }
 
+- (void)pp_schedulePremiumHeroHeaderUpdate {
+    if (!self.isViewLoaded ||
+        ![self pp_usesPremiumPickerPresentation] ||
+        self.isPremiumHeroHeaderUpdateScheduled) {
+        return;
+    }
+
+    self.isPremiumHeroHeaderUpdateScheduled = YES;
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        self.isPremiumHeroHeaderUpdateScheduled = NO;
+        if (self.view.window) {
+            [self pp_updatePremiumHeroHeaderIfNeeded];
+        }
+    });
+}
+
 - (void)pp_updatePremiumHeroHeaderIfNeeded {
+    if (self.isUpdatingPremiumHeroHeader) {
+        return;
+    }
+
     if (![self pp_usesPremiumPickerPresentation]) {
         self.tableView.tableHeaderView = nil;
         self.premiumHeroHeaderWidth = 0.0;
@@ -505,9 +559,14 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 
     [self pp_configurePremiumBackgroundIfNeeded];
 
-    CGFloat width = CGRectGetWidth(self.view.bounds);
+    // UITableViewController owns the table view's frame. Its bounds are stable
+    // only after the sheet's first presentation layout (or a size-transition
+    // completion). Replacing tableHeaderView from viewDidLayoutSubviews creates
+    // another layout pass and previously starved the main thread until iOS'
+    // scene-update watchdog terminated the app.
+    CGFloat width = CGRectGetWidth(self.tableView.bounds);
     if (width <= 0.0) {
-        width = CGRectGetWidth(UIScreen.mainScreen.bounds);
+        return;
     }
     if (fabs(width - self.premiumHeroHeaderWidth) < 0.5 && self.tableView.tableHeaderView) {
         [self pp_updatePremiumHeroCountLabel];
@@ -520,9 +579,11 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     self.headerSearchTextField = nil;
     self.headerClearButton = nil;
     self.premiumHeroCountLabel = nil;
+    self.isUpdatingPremiumHeroHeader = YES;
     UIView *header = [self pp_makePremiumHeroHeaderWithWidth:width];
     self.tableView.tableHeaderView = header;
     self.premiumHeroHeaderWidth = width;
+    self.isUpdatingPremiumHeroHeader = NO;
     if (restoreSearchFocus && self.headerSearchTextField) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.headerSearchTextField becomeFirstResponder];
@@ -580,6 +641,10 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     grabber.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.18];
     grabber.layer.cornerRadius = 2.5;
     grabber.layer.cornerCurve = kCACornerCurveContinuous;
+    // Gender already has an explicit close control; keep the decorative
+    // handle out of that focused three-choice sheet without changing spacing
+    // or swipe-to-dismiss behavior for this or any other picker.
+    grabber.hidden = self.isGenderSelector;
     [container addSubview:grabber];
 
     // 2. Circular glass close button
@@ -596,53 +661,40 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     [closeBtn addTarget:self action:@selector(pp_dismissAction) forControlEvents:UIControlEventTouchUpInside];
     [container addSubview:closeBtn];
 
-    // 3. Context Pill & Eyebrow Row
-    UIView *contextPill = [UIView new];
-    contextPill.translatesAutoresizingMaskIntoConstraints = NO;
-    contextPill.backgroundColor = [accent colorWithAlphaComponent:0.10];
-    contextPill.layer.cornerRadius = 12.0;
-    contextPill.layer.cornerCurve = kCACornerCurveContinuous;
-    [container addSubview:contextPill];
+    // 3. Optional task symbol. The calling flow owns the semantic name, so the
+    // same shared header can stay concise without duplicating contextual copy.
+    BOOL showsHeroSymbol = self.premiumHeroSymbolName.length > 0;
+    UIView *heroSymbolPlate = nil;
+    if (showsHeroSymbol) {
+        heroSymbolPlate = [UIView new];
+        heroSymbolPlate.translatesAutoresizingMaskIntoConstraints = NO;
+        heroSymbolPlate.backgroundColor = [accent colorWithAlphaComponent:0.12];
+        heroSymbolPlate.layer.cornerRadius = 14.0;
+        heroSymbolPlate.layer.cornerCurve = kCACornerCurveContinuous;
+        [container addSubview:heroSymbolPlate];
 
-    UIView *pulseDot = [UIView new];
-    pulseDot.translatesAutoresizingMaskIntoConstraints = NO;
-    pulseDot.backgroundColor = accent;
-    pulseDot.layer.cornerRadius = 3.5;
-    [contextPill addSubview:pulseDot];
-
-    UILabel *contextLabel = [UILabel new];
-    contextLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    contextLabel.font = [Styling fontBold:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
-    contextLabel.textColor = accent;
-    contextLabel.textAlignment = alignment;
-    
-    NSString *contextText = self.premiumHeroEyebrow;
-    if (!contextText.length) {
-        if (isUserMode) contextText = kLang(@"messages") ?: @"صندوق التواصل";
-        else if ([self.allOptions.firstObject isKindOfClass:[OptionModel class]]) contextText = kLang(@"selection_studio_quick_action") ?: @"إجراء سريع";
-        else contextText = kLang(@"Select") ?: @"تحديد خيار";
+        UIImageSymbolConfiguration *symbolConfiguration =
+            [UIImageSymbolConfiguration configurationWithPointSize:20.0
+                                                             weight:UIImageSymbolWeightSemibold];
+        UIImage *symbol = [UIImage systemImageNamed:self.premiumHeroSymbolName
+                                   withConfiguration:symbolConfiguration];
+        if (!symbol) {
+            symbol = [UIImage systemImageNamed:@"plus.circle.fill"
+                              withConfiguration:symbolConfiguration];
+        }
+        UIImageView *symbolView = [[UIImageView alloc] initWithImage:[symbol imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+        symbolView.translatesAutoresizingMaskIntoConstraints = NO;
+        symbolView.tintColor = accent;
+        symbolView.contentMode = UIViewContentModeScaleAspectFit;
+        symbolView.isAccessibilityElement = NO;
+        [heroSymbolPlate addSubview:symbolView];
+        [NSLayoutConstraint activateConstraints:@[
+            [symbolView.centerXAnchor constraintEqualToAnchor:heroSymbolPlate.centerXAnchor],
+            [symbolView.centerYAnchor constraintEqualToAnchor:heroSymbolPlate.centerYAnchor],
+            [symbolView.widthAnchor constraintEqualToConstant:24.0],
+            [symbolView.heightAnchor constraintEqualToConstant:24.0]
+        ]];
     }
-    contextLabel.text = contextText;
-    [contextPill addSubview:contextLabel];
-
-    // Telemetry Count Pill
-    UIView *countPill = [UIView new];
-    countPill.translatesAutoresizingMaskIntoConstraints = NO;
-    countPill.backgroundColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.04]
-                                                 darkColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
-    countPill.layer.cornerRadius = 12.0;
-    countPill.layer.cornerCurve = kCACornerCurveContinuous;
-    [container addSubview:countPill];
-
-    UILabel *countLabel = [UILabel new];
-    countLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    countLabel.font = [Styling fontMedium:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
-    countLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    countLabel.textAlignment = NSTextAlignmentCenter;
-    
-    countLabel.text = [self pp_premiumHeroCountText];
-    [countPill addSubview:countLabel];
-    self.premiumHeroCountLabel = countLabel;
 
     // 4. Hero Title
     UILabel *title = [UILabel new];
@@ -676,37 +728,32 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         [grabber.widthAnchor constraintEqualToConstant:36.0],
         [grabber.heightAnchor constraintEqualToConstant:5.0],
 
-        [contextPill.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:12.0],
-        [contextPill.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
-        [contextPill.heightAnchor constraintEqualToConstant:26.0],
-
-        [pulseDot.leadingAnchor constraintEqualToAnchor:contextPill.leadingAnchor constant:8.0],
-        [pulseDot.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
-        [pulseDot.widthAnchor constraintEqualToConstant:7.0],
-        [pulseDot.heightAnchor constraintEqualToConstant:7.0],
-
-        [contextLabel.leadingAnchor constraintEqualToAnchor:pulseDot.trailingAnchor constant:5.0],
-        [contextLabel.trailingAnchor constraintEqualToAnchor:contextPill.trailingAnchor constant:-9.0],
-        [contextLabel.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
-
-        [countPill.leadingAnchor constraintEqualToAnchor:contextPill.trailingAnchor constant:8.0],
-        [countPill.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
-        [countPill.heightAnchor constraintEqualToConstant:26.0],
-        [countPill.trailingAnchor constraintLessThanOrEqualToAnchor:closeBtn.leadingAnchor constant:-8.0],
-
-        [countLabel.leadingAnchor constraintEqualToAnchor:countPill.leadingAnchor constant:9.0],
-        [countLabel.trailingAnchor constraintEqualToAnchor:countPill.trailingAnchor constant:-9.0],
-        [countLabel.centerYAnchor constraintEqualToAnchor:countPill.centerYAnchor],
-
-        [closeBtn.centerYAnchor constraintEqualToAnchor:contextPill.centerYAnchor],
+        [closeBtn.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:10.0],
         [closeBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
         [closeBtn.widthAnchor constraintEqualToConstant:32.0],
-        [closeBtn.heightAnchor constraintEqualToConstant:32.0],
+        [closeBtn.heightAnchor constraintEqualToConstant:32.0]
+    ]];
 
-        [title.topAnchor constraintEqualToAnchor:contextPill.bottomAnchor constant:12.0],
-        [title.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
-        [title.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
+    if (showsHeroSymbol) {
+        [constraints addObjectsFromArray:@[
+            [heroSymbolPlate.topAnchor constraintEqualToAnchor:closeBtn.bottomAnchor constant:16.0],
+            [heroSymbolPlate.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
+            [heroSymbolPlate.widthAnchor constraintEqualToConstant:44.0],
+            [heroSymbolPlate.heightAnchor constraintEqualToConstant:44.0],
 
+            [title.topAnchor constraintEqualToAnchor:heroSymbolPlate.topAnchor constant:2.0],
+            [title.leadingAnchor constraintEqualToAnchor:heroSymbolPlate.trailingAnchor constant:12.0],
+            [title.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset]
+        ]];
+    } else {
+        [constraints addObjectsFromArray:@[
+            [title.topAnchor constraintEqualToAnchor:closeBtn.bottomAnchor constant:18.0],
+            [title.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:sideInset],
+            [title.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset]
+        ]];
+    }
+
+    [constraints addObjectsFromArray:@[
         [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:4.0],
         [subtitle.leadingAnchor constraintEqualToAnchor:title.leadingAnchor],
         [subtitle.trailingAnchor constraintEqualToAnchor:title.trailingAnchor]
@@ -1042,7 +1089,10 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     CGFloat padding = 20.0;
     CGFloat searchHeight = 50.0;
     CGFloat containerHeight = padding + searchHeight + padding;
-    CGFloat width = self.view.bounds.size.width;
+    CGFloat width = CGRectGetWidth(self.tableView.bounds);
+    if (width <= 0.0) {
+        width = CGRectGetWidth(self.view.bounds);
+    }
 
     // ✅ tableHeaderView must have a concrete frame
     self.searchContainer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, containerHeight)];
@@ -1107,15 +1157,22 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     }];
     
     
-    self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    // constraints
-    [NSLayoutConstraint activateConstraints:@[
-        [self.tableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
-        [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-    ]];
+}
+
+- (void)pp_updateLegacySearchHeaderWidthIfNeeded {
+    if (!self.searchContainer) {
+        return;
+    }
+
+    CGFloat width = CGRectGetWidth(self.tableView.bounds);
+    if (width <= 0.0 || fabs(width - CGRectGetWidth(self.searchContainer.bounds)) < 0.5) {
+        return;
+    }
+
+    CGRect frame = self.searchContainer.frame;
+    frame.size.width = width;
+    self.searchContainer.frame = frame;
+    self.tableView.tableHeaderView = self.searchContainer;
 }
 
 
@@ -1417,7 +1474,16 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     LogCurrentFunc();
-    id option = self.filteredOptions[indexPath.row];
+    // The filtered list is mutated by search/filtering and reloaded inside a cross-dissolve
+    // transition, so a tap can land after the array shrank. Match the defensive read used by
+    // cellForRowAtIndexPath: instead of trusting the index.
+    id option = (indexPath.row >= 0 && indexPath.row < self.filteredOptions.count)
+        ? self.filteredOptions[indexPath.row]
+        : nil;
+    if (!option) {
+        DLog(@"[PPSelectOption] didSelect ignored: stale index=%ld count=%lu", (long)indexPath.row, (unsigned long)self.filteredOptions.count);
+        return;
+    }
     UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
     [feedback selectionChanged];
     if ([option isKindOfClass:[OptionModel class]]) {
@@ -1426,7 +1492,10 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
             [self.navigationController popViewControllerAnimated:YES ];
         } else {
             [self dismissViewControllerAnimated:YES completion:^{
-                self.onSelectOption(option);
+                // completion is documented nullable, so never invoke a NULL block.
+                if (self.onSelectOption) {
+                    self.onSelectOption(option);
+                }
             }];
         }
         return;

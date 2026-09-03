@@ -1847,7 +1847,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
             [UISheetPresentationControllerDetent largeDetent]
         ];
         sheet.prefersGrabberVisible = YES;
-        sheet.preferredCornerRadius = 28.0;
+        sheet.preferredCornerRadius = 42.0;
         sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
     }
 
