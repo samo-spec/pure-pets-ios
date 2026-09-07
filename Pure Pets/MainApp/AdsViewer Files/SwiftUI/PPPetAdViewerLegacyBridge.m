@@ -13,6 +13,7 @@
 #import "PPAlertHelper.h"
 #import "PPAnalytics.h"
 #import "PPCommerceFeedbackManager.h"
+#import "PPFirebaseSessionBridge.h"
 #import "PPImageLoaderManager.h"
 #import "PPNavigationController.h"
 #import "PPNetworkRetryHelper.h"
@@ -590,15 +591,19 @@ fromViewController:(UIViewController *)viewController
                   NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error || !thread) {
-                NSError *resolvedError =
-                    error ?: [NSError
+                NSString *message = error
+                    ? [PPFirebaseSessionBridge publicMessageForError:error
+                                                        fallbackKey:@"pet_ad_viewer_chat_failed"]
+                    : [Language get:@"pet_ad_viewer_chat_failed"
+                               alter:@"The chat could not be opened."];
+                NSMutableDictionary *errorInfo = [@{
+                    NSLocalizedDescriptionKey: message
+                } mutableCopy];
+                if (error) errorInfo[NSUnderlyingErrorKey] = error;
+                NSError *resolvedError = [NSError
                         errorWithDomain:PPPetAdViewerBridgeErrorDomain
                                    code:1005
-                               userInfo:@{
-                    NSLocalizedDescriptionKey:
-                        [Language get:@"pet_ad_viewer_chat_failed"
-                               alter:@"The chat could not be opened."]
-                }];
+                               userInfo:errorInfo];
                 completion(resolvedError);
                 return;
             }

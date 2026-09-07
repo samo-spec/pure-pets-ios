@@ -3997,6 +3997,7 @@
 "pet_ad_viewer_chat_opening" = "Opening chat";
 "pet_ad_viewer_chat_ready" = "Chat ready";
 "pet_ad_viewer_chat_retry" = "Try chat again";
+"pet_ad_support_inquiry_intro" = "Hi Pure Pets, I’d like to ask about this pet ad.";
 "pet_ad_viewer_contact_pet_fallback" = "Ask for this pet";
 "pet_ad_viewer_contact_pet_format" = "Ask for %@";
 "pet_ad_viewer_description" = "About this pet";

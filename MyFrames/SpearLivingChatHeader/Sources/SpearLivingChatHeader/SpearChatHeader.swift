@@ -1,15 +1,12 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Seamless Chat Header
+// MARK: - Conversation Header
 
-/// A living chat header that dissolves into the message surface.
-/// The app's semantic main background owns the large color field; brand color
-/// remains a quiet signal rather than becoming another painted surface.
+/// One conversation surface, with identity first and contextual actions below.
+/// Its height belongs to content; the host retains transcript and route ownership.
 @available(iOS 15.0, *)
 public struct SpearChatHeader<AvatarContent: View>: View {
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-  @Environment(\.colorScheme) private var colorScheme
   @Environment(\.colorSchemeContrast) private var contrast
 
   private let state: SpearChatHeaderLoadState
@@ -81,37 +78,14 @@ public struct SpearChatHeader<AvatarContent: View>: View {
     }
   }
 
-  /// The canopy remains one calm surface. Live state motion stays local to the
-  /// avatar and presence line, so content and layout never animate implicitly.
+  /// An opaque semantic field also serves Reduce Transparency. Color is reserved
+  /// for real trust, presence, and actions instead of painting the entire header.
   private var headerBackground: some View {
-    ZStack {
-      style.mainBackgroundColor
-
-      if !reduceTransparency {
-        LinearGradient(
-          colors: [
-            Color.white.opacity(colorScheme == .dark ? 0.025 : 0.42),
-            .clear,
-          ],
-          startPoint: .top,
-          endPoint: .center
-        )
-
-        RadialGradient(
-          colors: [
-            style.brandColor.opacity(colorScheme == .dark ? 0.060 : 0.035),
-            .clear,
-          ],
-          center: .topLeading,
-          startRadius: 0,
-          endRadius: 260
-        )
+    style.mainBackgroundColor
+      .overlay(alignment: .bottom) {
+        Color.primary.opacity(contrast == .increased ? 0.24 : 0.08)
+          .frame(height: contrast == .increased ? 1.5 : 0.5)
       }
-    }
-    .overlay(alignment: .bottom) {
-      Color.primary.opacity(contrast == .increased ? 0.22 : 0.060)
-        .frame(height: contrast == .increased ? 2 : 1)
-    }
   }
 }
 

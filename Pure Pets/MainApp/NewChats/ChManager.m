@@ -1299,28 +1299,37 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         return;
     }
 
+    // The official account is always a canonical support conversation. Pet-ad
+    // context is presentation data here; support routing stays server-owned.
+    BOOL isSupportRecipient = [user.ID isEqualToString:PURE_PETS_OFFICIAL_USER_ID];
     NSMutableDictionary *payload = [@{
         @"action": @"create_or_get",
-        @"receiverID": user.ID,
         @"sourceApp": @"user_ios",
         @"sourcePlatform": @"ios",
     } mutableCopy];
-    if (safeContextType.length > 0) {
-        payload[@"contextType"] = safeContextType;
-        payload[@"contextId"] = safeContextID;
+    if (!isSupportRecipient) {
+        payload[@"receiverID"] = user.ID;
+        if (safeContextType.length > 0) {
+            payload[@"contextType"] = safeContextType;
+            payload[@"contextId"] = safeContextID;
+        }
     }
 
-    [self pp_invokeChatCallableNamed:@"chatMessageCommand"
+    NSString *callableName = isSupportRecipient ? @"supportChatCommand" : @"chatMessageCommand";
+    [self pp_invokeChatCallableNamed:callableName
                              payload:payload.copy
                           completion:^(NSDictionary * _Nullable data,
                                        NSError * _Nullable error) {
-        NSString *threadID = PPSupportTrimmedString(data[@"threadID"]);
-        if (error || threadID.length == 0) {
+        NSString *threadID = PPSupportTrimmedString(data[isSupportRecipient ? @"threadId" : @"threadID"]);
+        NSString *expectedSupportID = [ChatThreadModel canonicalSupportThreadIDForCustomerID:currentUserID];
+        BOOL invalidSupportID = isSupportRecipient && ![threadID isEqualToString:expectedSupportID];
+        BOOL sessionChanged = ![[FIRAuth auth].currentUser.uid isEqualToString:currentUserID];
+        if (error || threadID.length == 0 || invalidSupportID || sessionChanged) {
             if (completion) {
                 completion(nil, error ?: [NSError errorWithDomain:@"Chat"
                                                               code:500
                                                           userInfo:@{NSLocalizedDescriptionKey:
-                                                                         kLang(@"SomethingWentWrong")}]);
+                                                                         kLang(isSupportRecipient ? @"pp_support_open_failed" : @"SomethingWentWrong")}]);
             }
             return;
         }
@@ -1329,24 +1338,31 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             [[self.firestore collectionWithPath:@"Chats"] documentWithPath:threadID];
         [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot,
                                                NSError * _Nullable readError) {
-            if (readError || !snapshot.exists) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                NSDictionary *threadData = snapshot.data ?: @{};
+                BOOL sessionChanged = ![[FIRAuth auth].currentUser.uid isEqualToString:currentUserID];
+                BOOL validSupportThread = !isSupportRecipient ||
+                    ([threadData[@"supportThread"] isEqual:@YES] &&
+                     [PPSupportTrimmedString(threadData[@"customerId"]) isEqualToString:currentUserID] &&
+                     PPSupportThreadDataCanAcceptCustomerMessage(threadData, currentUserID, PURE_PETS_OFFICIAL_USER_ID));
+                if (readError || !snapshot.exists || sessionChanged || !validSupportThread) {
                     if (completion) {
                         completion(nil, readError ?: [NSError errorWithDomain:@"Chat"
                                                                          code:404
                                                                      userInfo:@{NSLocalizedDescriptionKey:
-                                                                                    kLang(@"SomethingWentWrong")}]);
+                                                                                    kLang(isSupportRecipient ? @"pp_support_open_failed" : @"SomethingWentWrong")}]);
                     }
-                });
-                return;
-            }
+                    return;
+                }
 
-            ChatThreadModel *thread = [[ChatThreadModel alloc] initWithDictionary:snapshot.data ?: @{}];
-            thread.ID = snapshot.documentID;
-            thread.otherUser = user;
-            [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"forceReloadThreads" object:nil];
-            dispatch_async(dispatch_get_main_queue(), ^{
+                ChatThreadModel *thread = [[ChatThreadModel alloc] initWithDictionary:threadData];
+                thread.ID = snapshot.documentID;
+                thread.otherUser = isSupportRecipient
+                    ? PPSupportUserFromConfig(@{@"supportUserId": PURE_PETS_OFFICIAL_USER_ID})
+                    : user;
+                [self.supportThreadClassificationCache setObject:@(isSupportRecipient) forKey:thread.ID];
+                [self startListeningForThreadMessages:@[thread]];
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"forceReloadThreads" object:nil];
                 if (completion) completion(thread, nil);
             });
         }];

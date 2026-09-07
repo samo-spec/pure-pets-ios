@@ -1,15 +1,13 @@
 import SwiftUI
 
-// MARK: - Seamless Ready Header
+// MARK: - Ready Conversation Header
 
-/// The ready state of the living chat header. Uses atmospheric presence
-/// indicators and seamless expansion instead of compartmentalized sections.
+/// Identity anchors one reading column. Context stays mounted while utilities
+/// disclose in that column, preserving both the route and transcript anchors.
 @available(iOS 15.0, *)
 internal struct SpearReadyHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-  @Environment(\.colorScheme) private var colorScheme
-  @Environment(\.colorSchemeContrast) private var contrast
 
   let model: SpearChatHeaderModel
   let style: SpearChatHeaderStyle
@@ -27,6 +25,11 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       subordinateContent
     }
     .spearSensoryFeedback(trigger: isExpanded)
+    .onChange(of: canExpand) { available in
+      if !available && isExpanded {
+        setExpansion(false)
+      }
+    }
   }
 
   // MARK: - Top Section
@@ -34,15 +37,15 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   @ViewBuilder
   private var topSection: some View {
     if dynamicTypeSize.isAccessibilitySize {
-      compactLayout
+      accessibilityLayout
     } else {
       if #available(iOS 16.0, *) {
         ViewThatFits(in: .horizontal) {
-          regularLayout.frame(minWidth: 350)
+          regularLayout.frame(minWidth: regularMinimumWidth)
           compactLayout
         }
       } else {
-        regularLayout
+        compactLayout
       }
     }
   }
@@ -52,34 +55,50 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   @ViewBuilder
   private var subordinateContent: some View {
     if hasSubordinateContent {
-      VStack(spacing: SpearHeaderLayout.deckSpacing) {
-        if let context = model.context {
-          SpearContextRail(
-            context: context,
-            brandColor: style.brandColor,
-            mainBackgroundColor: style.mainBackgroundColor,
-            cornerRadius: min(style.cornerRadius, SpearHeaderLayout.deckCornerRadius),
-            action: actions.context,
-            thumbnail: contextThumbnail
-          )
-        }
-
-        if showsIdentityExpansion {
-          SpearIdentityExpansion(
-            trust: model.trust,
-            metrics: model.metrics,
-            copy: copy,
-            brandColor: style.brandColor,
-            mainBackgroundColor: style.mainBackgroundColor,
-            showsTrustDetail: model.context?.isSupport != true,
-            profileAction: actions.profile,
-            safetyAction: actions.safety
-          )
-          .transition(expansionTransition)
+      SpearHeaderDeck(mainBackgroundColor: style.mainBackgroundColor) {
+        if dynamicTypeSize.isAccessibilitySize {
+          // Context and utilities share a single scroll owner at AX sizes.
+          ScrollView(.vertical) {
+            subordinateLayout
+          }
+          .frame(maxHeight: SpearHeaderLayout.accessibilityExpansionMaximumHeight)
+        } else {
+          subordinateLayout
         }
       }
+      .padding(
+        .leading,
+        dynamicTypeSize.isAccessibilitySize ? 0 : SpearHeaderLayout.conversationLeadingInset
+      )
       .padding(.horizontal, style.horizontalPadding)
       .padding(.bottom, SpearHeaderLayout.deckSpacing)
+    }
+  }
+
+  private var subordinateLayout: some View {
+    VStack(spacing: SpearHeaderLayout.deckSpacing) {
+      if let context = model.context {
+        SpearContextRail(
+          context: context,
+          brandColor: style.brandColor,
+          cornerRadius: min(style.cornerRadius, SpearHeaderLayout.deckCornerRadius),
+          action: actions.context,
+          thumbnail: contextThumbnail
+        )
+      }
+
+      if showsIdentityExpansion {
+        SpearIdentityExpansion(
+          trust: model.trust,
+          metrics: model.metrics,
+          copy: copy,
+          brandColor: style.brandColor,
+          showsTrustDetail: showsTrustDetail,
+          profileAction: actions.profile,
+          safetyAction: actions.safety
+        )
+        .transition(expansionTransition)
+      }
     }
   }
 
@@ -93,10 +112,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
 
   private var expansionTransition: AnyTransition {
     if reduceMotion { return .opacity }
-    return .asymmetric(
-      insertion: .opacity.combined(with: .scale(scale: 0.985, anchor: .top)),
-      removal: .opacity.combined(with: .scale(scale: 0.99, anchor: .top))
-    )
+    return .opacity.combined(with: .offset(y: -4))
   }
 
   // MARK: - Regular Layout
@@ -104,22 +120,20 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   private var regularLayout: some View {
     HStack(spacing: SpearHeaderLayout.topRowSpacing) {
       backButton
-      identityButton(compact: false)
-      Spacer(minLength: 2)
-      actionCapsule
+      identityButton
+      toolbarActions
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.top, 8)
-    .padding(.bottom, topSectionBottomPadding)
+    .padding(.vertical, 8)
   }
 
   // MARK: - Compact Layout
 
   private var compactLayout: some View {
-    VStack(spacing: 8) {
-      HStack(spacing: 10) {
+    VStack(spacing: 4) {
+      HStack(spacing: SpearHeaderLayout.topRowSpacing) {
         backButton
-        identityButton(compact: true)
+        identityButton
       }
 
       if actions.call.isVisible || actions.more.availability.isVisible {
@@ -127,21 +141,33 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           compactCallButton
           compactMoreButton
         }
-        .padding(.leading, 52)
+        .padding(.leading, SpearHeaderLayout.conversationLeadingInset)
       }
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.top, 8)
-    .padding(.bottom, topSectionBottomPadding)
+    .padding(.vertical, 8)
   }
 
-  // MARK: - Action Cluster
+  private var accessibilityLayout: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        backButton
+        Spacer(minLength: 8)
+        toolbarActions
+      }
+      identityButton
+    }
+    .padding(.horizontal, style.horizontalPadding)
+    .padding(.vertical, 8)
+  }
+
+  // MARK: - Toolbar
 
   @ViewBuilder
-  private var actionCapsule: some View {
-    if hasTopActions {
-      HStack(spacing: 0) {
-        SpearHeaderCapsuleButton(
+  private var toolbarActions: some View {
+    if actions.call.isVisible || actions.more.availability.isVisible {
+      HStack(spacing: 4) {
+        SpearHeaderToolbarButton(
           systemName: callSystemName,
           accessibilityLabel: callAccessibilityLabel,
           accessibilityIdentifier: SpearChatHeaderAccessibilityID.call,
@@ -150,13 +176,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           isActive: actions.call.isActive
         )
 
-        if actions.call.isVisible && actions.more.availability.isVisible {
-          Divider()
-            .frame(height: 20)
-            .opacity(contrast == .increased ? 0.72 : 0.42)
-        }
-
-        SpearHeaderCapsuleButton(
+        SpearHeaderToolbarButton(
           systemName: "ellipsis",
           accessibilityLabel: copy.moreAccessibilityLabel,
           accessibilityIdentifier: SpearChatHeaderAccessibilityID.more,
@@ -165,22 +185,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           isActive: false
         )
       }
-      .padding(2)
-      .background {
-        Capsule(style: .continuous)
-          .fill(style.mainBackgroundColor)
-          .overlay {
-            Capsule(style: .continuous)
-              .fill(Color.primary.opacity(colorScheme == .dark ? 0.070 : 0.040))
-          }
-      }
-      .overlay {
-        Capsule(style: .continuous)
-          .strokeBorder(
-            Color.primary.opacity(contrast == .increased ? 0.24 : 0.09),
-            lineWidth: contrast == .increased ? 1.5 : 0.75
-          )
-      }
+      .fixedSize(horizontal: true, vertical: false)
     }
   }
 
@@ -193,11 +198,12 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
         ? copy.closeAccessibilityLabel
         : copy.backAccessibilityLabel,
       accessibilityIdentifier: SpearChatHeaderAccessibilityID.back,
-      action: .enabled(performBack)
+      action: .enabled(actions.onBack)
     )
+    .fixedSize()
   }
 
-  private func identityButton(compact: Bool) -> some View {
+  private var identityButton: some View {
     SpearIdentityButton(
       model: model,
       avatarContent: avatarContent,
@@ -207,10 +213,9 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       motionMode: SpearMotionMode(presence: model.presence, call: actions.call),
       isExpanded: isExpanded,
       canExpand: canExpand,
-      compact: compact,
       action: toggleExpansion
     )
-    .layoutPriority(1)
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var compactCallButton: some View {
@@ -249,29 +254,28 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   }
 
   private var canExpand: Bool {
-    model.trust.detailText != nil
+    (showsTrustDetail && model.trust.detailText != nil)
       || !model.metrics.isEmpty
       || actions.profile.availability.isVisible
       || actions.safety.availability.isVisible
   }
 
-  private var hasTopActions: Bool {
-    actions.call.isVisible || actions.more.availability.isVisible
+  private var showsTrustDetail: Bool {
+    model.context?.isSupport != true || model.trust.isRestricted
   }
 
-  private var topSectionBottomPadding: CGFloat {
-    model.context == nil ? 9 : 5
+  private var regularMinimumWidth: CGFloat {
+    actions.call.isVisible && actions.more.availability.isVisible ? 376 : 320
   }
 
   // MARK: - Actions
 
-  private func performBack() {
-    actions.onBack()
-  }
-
   private func toggleExpansion() {
     guard canExpand else { return }
-    let nextValue = !isExpanded
+    setExpansion(!isExpanded)
+  }
+
+  private func setExpansion(_ nextValue: Bool) {
     onExpansionChanged(nextValue)
 
     if reduceMotion {
@@ -284,9 +288,9 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   }
 }
 
-private extension View {
+extension View {
   @ViewBuilder
-  func spearSensoryFeedback(trigger: Bool) -> some View {
+  fileprivate func spearSensoryFeedback(trigger: Bool) -> some View {
     if #available(iOS 17.0, *) {
       self.sensoryFeedback(.selection, trigger: trigger)
     } else {

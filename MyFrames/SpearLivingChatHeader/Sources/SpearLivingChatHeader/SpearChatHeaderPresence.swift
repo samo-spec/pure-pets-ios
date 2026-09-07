@@ -43,8 +43,9 @@ internal struct SpearAvatarFrame<Content: View>: View {
 
   private var ringStrokeColor: Color {
     if trust.isRestricted { return SpearHeaderSemanticColor.warning.opacity(0.7) }
-    if trust.isVerified { return brandColor.opacity(0.6) }
-    return Color.primary.opacity(0.1)
+    // Verification already has a named badge beside the conversation title.
+    // A second brand ring competes with the avatar and implies activity.
+    return Color.primary.opacity(0.08)
   }
 }
 
@@ -59,6 +60,7 @@ internal struct SpearPresenceLine: View {
   let brandColor: Color
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
@@ -80,16 +82,16 @@ internal struct SpearPresenceLine: View {
     HStack(spacing: 5) {
       if #available(iOS 16.0, *) {
         Text(displayText)
-          .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
+          .font(Font.ppBeirutiRegular(size: 13, relativeTo: .subheadline))
           .foregroundStyle(semanticColor)
-          .lineLimit(2)
+          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
           .multilineTextAlignment(.leading)
           .contentTransition(.interpolate)
       } else {
         Text(displayText)
-          .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
+          .font(Font.ppBeirutiRegular(size: 13, relativeTo: .subheadline))
           .foregroundStyle(semanticColor)
-          .lineLimit(2)
+          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
           .multilineTextAlignment(.leading)
       }
 

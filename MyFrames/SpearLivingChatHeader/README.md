@@ -1,6 +1,14 @@
 # SPEar Living Chat Header
 
-A release-candidate SwiftUI chat header for iOS 17+, designed for marketplace conversations, verified identities, active orders, support cases, and live communication states.
+A SwiftUI chat header for iOS 15+, designed for marketplace conversations, verified identities, active orders, support cases, and live communication states. Native release readiness requires the app's authorized physical-device validation.
+
+## Connected header redesign — September 7, 2026
+
+The identity, persistent context, and disclosed utilities now form one reading column. The conversation name owns the hierarchy, with an inline disclosure cue, quiet 44pt navigation targets, and independent utility buttons. The support stripe, repeated card outlines, decorative canopy gradients, and redundant verification ring have been removed.
+
+The entire context row opens its existing destination. Disabled actions retain readable context and a disabled reason; hidden actions show context without a button. At accessibility text sizes, the toolbar gets its own row and context/utilities share one bounded scroll region. No public models, action signatures, localization contracts, or host routes changed.
+
+See [the redesign handoff](REDESIGN_2026-09-07.md) for scope, behavior, validation, and outstanding device proof.
 
 ## What changed in the Conversation Compass redesign
 
@@ -15,7 +23,7 @@ A release-candidate SwiftUI chat header for iOS 17+, designed for marketplace co
 - VoiceOver identity output includes name, trust state, presence or call state, and expanded/collapsed state without repeating the visual trust detail.
 - Reduce Motion, Reduce Transparency, Increased Contrast, RTL, Dynamic Type, hidden/disabled actions, loading, error, and retry are first-class states.
 - Marketplace, order, and support context stays mounted while expanded trust utilities reveal beneath it, extending the header without replacing or reloading conversation context.
-- Accessibility-size utility content uses a bounded vertical region so every action stays reachable without consuming the entire transcript viewport.
+- Accessibility-size context and utility content share a bounded vertical region so the actions remain reachable without consuming the entire transcript viewport.
 - Trust and presence remain legible without badge-on-badge decoration or a redundant status pill.
 - Production files are split by responsibility and remain below 300 lines.
 - A Swift package, contract tests, source guardrail script, Xcode release script, and manual QA matrix are included.
@@ -50,7 +58,7 @@ SpearLivingChatHeader/
 
 Use **File → Add Package Dependencies… → Add Local…** and select this folder, or drag the production files from `Sources/SpearLivingChatHeader` into the app target.
 
-Minimum deployment target: **iOS 17.0**.
+Minimum deployment target: **iOS 15.0**, as declared in `Package.swift`. Newer layout and sensory-feedback APIs retain availability gates.
 
 ## Basic integration
 

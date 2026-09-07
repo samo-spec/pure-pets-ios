@@ -1,244 +1,202 @@
 import SwiftUI
-import UIKit
 
-// MARK: - Context Rail (Seamless Integration)
+// MARK: - Conversation Context
 
-/// Context rail that continues the identity header instead of introducing a
-/// second card. The media/symbol is the visual anchor; metadata and the action
-/// share one reading line beneath a quiet separator.
+/// One semantic row and one action. The entire row opens the host-owned
+/// destination; a hidden action retains context without a disclosure affordance.
 @available(iOS 15.0, *)
 internal struct SpearContextRail: View {
   let context: SpearConversationContext
   let brandColor: Color
-  let mainBackgroundColor: Color
   let cornerRadius: CGFloat
   let action: SpearContextHeaderAction
   let thumbnail: (URL) -> AnyView
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-  @Environment(\.colorSchemeContrast) private var contrast
-  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     Group {
-      if context.isSupport {
-        // Support status belongs to the conversation's live header, not a
-        // second competing card. This keeps its state legible while giving
-        // the transcript back its vertical room.
-        supportRail
+      if let progress = context.orderProgress {
+        contextControl
+          .accessibilityValue(Text(progress, format: .percent.precision(.fractionLength(0))))
       } else {
-        SpearHeaderDeck(
-          brandColor: brandColor,
-          mainBackgroundColor: mainBackgroundColor,
-          cornerRadius: cornerRadius,
-          horizontalPadding: 10,
-          verticalPadding: 9
-        ) {
-          if dynamicTypeSize.isAccessibilitySize {
-            verticalLayout
-          } else {
-            if #available(iOS 16.0, *) {
-              ViewThatFits(in: .horizontal) {
-                horizontalLayout
-                  .frame(minWidth: 340)
-                verticalLayout
-              }
-            } else {
-              horizontalLayout
-            }
-          }
-        }
+        contextControl
       }
     }
     .animation(contextMotion, value: context.contentTransitionIdentity)
   }
 
-  // MARK: - Layouts
-
-  private var horizontalLayout: some View {
-    HStack(spacing: 11) {
-      contextVisual
-      contextText
-      contextAction
+  @ViewBuilder
+  private var contextControl: some View {
+    if action.availability.isVisible {
+      Button {
+        guard action.availability.isEnabled else { return }
+        action.perform(context)
+      } label: {
+        contextLayout
+      }
+      .buttonStyle(SpearContextRowButtonStyle(color: brandColor, cornerRadius: cornerRadius))
+      .hoverEffect(.highlight)
+      .disabled(!action.availability.isEnabled)
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(accessibilityLabel)
+      .accessibilityIdentifier(SpearChatHeaderAccessibilityID.contextAction)
+      .modifier(SpearDisabledReasonModifier(reason: action.availability.disabledReason))
+    } else {
+      contextLayout
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
     }
   }
 
-  private var supportRail: some View {
+  @ViewBuilder
+  private var contextLayout: some View {
     Group {
       if dynamicTypeSize.isAccessibilitySize {
-        supportAccessibilityLayout
+        verticalLayout
+      } else if #available(iOS 16.0, *) {
+        ViewThatFits(in: .horizontal) {
+          horizontalLayout.frame(minWidth: context.isSupport ? 240 : 280)
+          verticalLayout
+        }
       } else {
-        supportLayout
+        verticalLayout
       }
     }
-    .padding(.horizontal, 8)
+    .padding(.horizontal, 4)
     .padding(.vertical, 4)
-    .background {
-      if reduceTransparency {
-        mainBackgroundColor
-      } else {
-        LinearGradient(
-          colors: [
-            brandColor.opacity(colorScheme == .dark ? 0.075 : 0.045),
-            .clear,
-          ],
-          startPoint: .leading,
-          endPoint: .trailing
-        )
-      }
-    }
-    .overlay(alignment: .bottom) {
-      LinearGradient(
-        colors: [
-          .clear,
-          Color.primary.opacity(contrast == .increased ? 0.24 : 0.08),
-          .clear,
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-      )
-      .frame(height: contrast == .increased ? 1.5 : 0.75)
-    }
-    .overlay(alignment: .leading) {
-      Capsule(style: .continuous)
-        .fill(brandColor.opacity(contrast == .increased ? 0.92 : 0.70))
-        .frame(width: contrast == .increased ? 3.5 : 2.5, height: 28)
-        .accessibilityHidden(true)
-    }
+    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    .contentShape(Rectangle())
   }
 
-  private var supportLayout: some View {
-    HStack(spacing: 9) {
-      supportVisual
-
-      Text(context.detail)
-        .font(Font.ppBeirutiMedium(size: 13, relativeTo: .subheadline))
-        .foregroundStyle(.secondary)
-        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
-
-      contextAction
+  private var horizontalLayout: some View {
+    HStack(spacing: 8) {
+      contextVisual
+      contextText
+      actionLabel
     }
-    .frame(minHeight: 36)
-    .accessibilityElement(children: .contain)
-  }
-
-  private var supportAccessibilityLayout: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(alignment: .top, spacing: 12) {
-        supportVisual
-
-        Text(context.detail)
-          .font(Font.ppBeirutiMedium(size: 13, relativeTo: .subheadline))
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-
-      contextAction
-        .frame(maxWidth: .infinity, alignment: .trailing)
-    }
-    .accessibilityElement(children: .contain)
-  }
-
-  private var supportVisual: some View {
-    ZStack {
-      Circle()
-        .fill(brandColor.opacity(colorScheme == .dark ? 0.16 : 0.09))
-      Image(systemName: context.symbolSystemName)
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(brandColor)
-    }
-    .frame(width: 30, height: 30)
-    .accessibilityHidden(true)
   }
 
   private var verticalLayout: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(alignment: .top, spacing: 12) {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .top, spacing: 8) {
         contextVisual
         contextText
       }
-
-      contextAction
+      actionLabel
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
   }
 
-  // MARK: - Symbol
+  // MARK: - Identity and State
 
   @ViewBuilder
   private var contextVisual: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .fill(brandColor.opacity(colorScheme == .dark ? 0.13 : 0.07))
-
+    if context.isSupport {
       Image(systemName: context.symbolSystemName)
-        .font(.body.weight(.semibold))
+        .font(.system(size: 14, weight: .medium))
         .foregroundStyle(brandColor)
-
-      if let thumbnailURL = context.listingThumbnailURL {
-        thumbnail(thumbnailURL)
+        .frame(width: 24, height: 24)
+        .accessibilityHidden(true)
+    } else {
+      ZStack {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+          .fill(Color.primary.opacity(0.045))
+        Image(systemName: context.symbolSystemName)
+          .font(.system(size: 18, weight: .medium))
+          .foregroundStyle(brandColor)
+        if let thumbnailURL = context.listingThumbnailURL {
+          thumbnail(thumbnailURL)
+        }
       }
+      .frame(width: 44, height: 44)
+      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .accessibilityHidden(true)
     }
-    .frame(width: 46, height: 46)
-    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .strokeBorder(
-          brandColor.opacity(contrast == .increased ? 0.30 : 0.12),
-          lineWidth: contrast == .increased ? 1.5 : 0.7
-        )
-    }
-    .accessibilityHidden(true)
   }
-
-  // MARK: - Text
 
   private var contextText: some View {
     VStack(alignment: .leading, spacing: 2) {
-      Text(context.eyebrow)
-        .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
-        .foregroundStyle(.secondary)
-
-      Text(context.title)
-        .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
-        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
-
-      if !context.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        Text(context.detail)
+      if context.isSupport {
+        Text(context.detail.isEmpty ? context.title : context.detail)
+          .font(Font.ppBeirutiMedium(size: 14, relativeTo: .subheadline))
+          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+      } else {
+        Text(context.eyebrow)
           .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
           .foregroundStyle(.secondary)
-          .lineLimit(2)
-      }
-
-      if let progress = context.orderProgress {
-        ProgressView(value: progress)
-          .tint(brandColor)
-          .accessibilityValue(Text(progress, format: .percent.precision(.fractionLength(0))))
+        Text(context.title)
+          .font(Font.ppBeirutiSemiBold(size: 15, relativeTo: .subheadline))
+          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+        if !context.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          Text(context.detail)
+            .font(Font.ppBeirutiRegular(size: 13, relativeTo: .caption))
+            .foregroundStyle(.secondary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+        }
+        if let progress = context.orderProgress {
+          ProgressView(value: progress)
+            .tint(brandColor)
+            .padding(.top, 4)
+        }
       }
     }
+    .foregroundStyle(Color.primary)
+    .multilineTextAlignment(.leading)
     .frame(maxWidth: .infinity, alignment: .leading)
     .fixedSize(horizontal: false, vertical: true)
-    .accessibilityElement(children: .combine)
   }
 
-  // MARK: - Action
-
   @ViewBuilder
-  private var contextAction: some View {
-    SpearContextActionButton(
-      title: context.actionTitle,
-      brandColor: brandColor,
-      context: context,
-      action: action
-    )
+  private var actionLabel: some View {
+    if action.availability.isVisible {
+      HStack(spacing: 4) {
+        Text(context.actionTitle)
+          .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
+          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+        Image(systemName: "chevron.forward")
+          .font(.system(size: 10, weight: .semibold))
+      }
+      .foregroundStyle(action.availability.isEnabled ? brandColor : Color.secondary)
+      .multilineTextAlignment(.trailing)
+      .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private var accessibilityLabel: String {
+    let contextParts =
+      context.isSupport
+      ? [context.title, context.detail]
+      : [context.eyebrow, context.title, context.detail]
+    let actionParts = action.availability.isVisible ? [context.actionTitle] : []
+    return (contextParts + actionParts)
+      .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+      .joined(separator: ", ")
   }
 
   private var contextMotion: Animation? {
     if reduceMotion { return nil }
     return SpearHeaderMotion.liveIndicator
+  }
+}
+
+internal struct SpearContextRowButtonStyle: ButtonStyle {
+  let color: Color
+  let cornerRadius: CGFloat
+
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .background(
+        color.opacity(configuration.isPressed ? 0.07 : 0),
+        in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+      )
+      .opacity(configuration.isPressed ? 0.82 : 1)
+      .animation(
+        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
+        value: configuration.isPressed
+      )
   }
 }

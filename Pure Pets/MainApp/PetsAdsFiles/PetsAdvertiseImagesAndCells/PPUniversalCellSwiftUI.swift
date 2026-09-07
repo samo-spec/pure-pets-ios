@@ -3685,55 +3685,16 @@ private struct PPUniversalCardRenderer: View {
                 )
             }
 
-        case .pordersDataView:
-            ZStack {
-                if store.isSelected || colorSchemeContrast == .increased {
-                    cardShape.strokeBorder(
-                        store.isSelected
-                            ? store.palette.primary.opacity(
-                                colorSchemeContrast == .increased ? 0.64 : 0.36
-                            )
-                            : store.palette.ink.opacity(
-                                colorScheme == .dark ? 0.18 : 0.34
-                            ),
-                        lineWidth:
-                            colorSchemeContrast == .increased ? 2.5 : 2
-                    )
-                }
+        case .pordersDataView, .pordersForHomeView:
+            if store.isSelected {
                 cardShape.strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.16 : 1
-                            ),
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.12 : 0.56
-                            ),
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.14 : 0.96
-                            ),
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.10 : 0.38
-                            )
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                    store.palette.primary.opacity(
+                        colorSchemeContrast == .increased ? 0.64 : 0.36
                     ),
                     lineWidth:
-                        colorSchemeContrast == .increased ? 1.75 : 1.25
+                        colorSchemeContrast == .increased ? 2.5 : 2
                 )
-            }
-            .shadow(
-                color: Color.white.opacity(
-                    colorScheme == .dark ? 0.05 : 0.64
-                ),
-                radius: 1.25,
-                x: -0.5,
-                y: -0.5
-            )
-
-        case .pordersForHomeView:
-            if store.isHomePresentation {
+            } else {
                 cardShape.strokeBorder(
                     HomeVisualTokens.cardBorder(
                         colorScheme: colorScheme,
@@ -3742,15 +3703,6 @@ private struct PPUniversalCardRenderer: View {
                     lineWidth: HomeVisualTokens.cardBorderWidth(
                         contrast: colorSchemeContrast
                     )
-                )
-            } else {
-                cardShape.stroke(
-                    colorScheme == .dark && store.userBordersV2
-                        ? (store.isSelected
-                            ? store.palette.primary.opacity(0.12)
-                           : store.palette.diffColor.opacity(0.08))
-                        : Color.clear,
-                    lineWidth: 0.75
                 )
             }
         }

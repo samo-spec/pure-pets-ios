@@ -3975,6 +3975,7 @@
 "pet_ad_viewer_chat_opening" = "جارٍ فتح المحادثة";
 "pet_ad_viewer_chat_ready" = "المحادثة جاهزة";
 "pet_ad_viewer_chat_retry" = "أعد محاولة المحادثة";
+"pet_ad_support_inquiry_intro" = "مرحباً بيور بيتس، أود الاستفسار عن هذا الإعلان.";
 "pet_ad_viewer_contact_pet_fallback" = "اسأل عن هذا الحيوان";
 "pet_ad_viewer_contact_pet_format" = "اسأل عن %@";
 "pet_ad_viewer_description" = "نبذة عن هذا الحيوان";

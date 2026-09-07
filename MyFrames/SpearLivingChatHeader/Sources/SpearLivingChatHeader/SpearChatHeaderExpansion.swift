@@ -11,7 +11,6 @@ internal struct SpearIdentityExpansion: View {
   let metrics: [SpearIdentityMetric]
   let copy: SpearChatHeaderCopy
   let brandColor: Color
-  let mainBackgroundColor: Color
   let showsTrustDetail: Bool
   let profileAction: SpearHeaderAction
   let safetyAction: SpearHeaderAction
@@ -19,30 +18,12 @@ internal struct SpearIdentityExpansion: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
-    SpearHeaderDeck(
-      brandColor: trust.isRestricted ? SpearHeaderSemanticColor.warning : brandColor,
-      mainBackgroundColor: mainBackgroundColor,
-      cornerRadius: SpearHeaderLayout.deckCornerRadius
-    ) {
-      expansionContent
-    }
-  }
-
-  @ViewBuilder
-  private var expansionContent: some View {
-    if dynamicTypeSize.isAccessibilitySize {
-      ScrollView(.vertical) {
-        contentStack
-          .frame(maxWidth: .infinity)
-      }
-      .frame(maxHeight: SpearHeaderLayout.accessibilityExpansionMaximumHeight)
-    } else {
-      contentStack
-    }
+    contentStack
+      .padding(.vertical, 4)
   }
 
   private var contentStack: some View {
-    VStack(spacing: 9) {
+    VStack(spacing: 12) {
       if showsTrustDetail {
         trustDetail
       }
@@ -135,12 +116,8 @@ internal struct SpearIdentityExpansion: View {
   }
 
   private var horizontalActions: some View {
-    HStack(spacing: 0) {
+    HStack(spacing: 8) {
       profileButton
-      if profileAction.availability.isVisible && safetyAction.availability.isVisible {
-        Divider()
-          .frame(height: 24)
-      }
       safetyButton
     }
   }
@@ -184,10 +161,20 @@ internal struct SpearIdentityExpansion: View {
         guard action.availability.isEnabled else { return }
         action.perform()
       } label: {
-        Label(title, systemImage: systemName)
-          .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
-          .frame(maxWidth: .infinity)
-          .frame(minHeight: 44)
+        HStack(spacing: 8) {
+          Image(systemName: systemName)
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
+          Text(title)
+            .font(Font.ppBeirutiSemiBold(size: 15, relativeTo: .subheadline))
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: 44)
       }
       .buttonStyle(SpearIdentityUtilityButtonStyle(brandColor: brandColor))
       .hoverEffect(.highlight)
@@ -207,15 +194,22 @@ private struct SpearIdentityUtilityButtonStyle: ButtonStyle {
   let brandColor: Color
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorSchemeContrast) private var contrast
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .foregroundStyle(configuration.isPressed ? brandColor : Color.primary)
-      .contentShape(Rectangle())
+      .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
       .background(
-        configuration.isPressed ? brandColor.opacity(0.07) : .clear,
-        in: Capsule(style: .continuous)
+        configuration.isPressed ? brandColor.opacity(0.07) : Color.primary.opacity(0.04),
+        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
       )
+      .overlay {
+        if contrast == .increased {
+          RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(Color.primary.opacity(0.24), lineWidth: 1)
+        }
+      }
       .opacity(configuration.isPressed ? 0.82 : 1)
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
       .animation(

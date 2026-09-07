@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Grouped Header Action
+// MARK: - Toolbar Action
 
-internal struct SpearHeaderCapsuleButton: View {
+internal struct SpearHeaderToolbarButton: View {
   let systemName: String
   let accessibilityLabel: String
   let accessibilityIdentifier: String
@@ -11,15 +11,26 @@ internal struct SpearHeaderCapsuleButton: View {
   let tint: Color
   let isActive: Bool
 
+  @Environment(\.colorSchemeContrast) private var contrast
+
   var body: some View {
     if action.availability.isVisible {
       Button(action: action.perform) {
         Image(systemName: systemName)
-          .font(.body.weight(.medium))
+          .font(.system(size: 17, weight: .medium))
           .foregroundStyle(tint)
+          .frame(width: 32, height: 32)
+          .background {
+            Circle()
+              .fill(isActive ? tint.opacity(0.12) : Color.primary.opacity(0.045))
+          }
+          .overlay {
+            if contrast == .increased {
+              Circle().strokeBorder(Color.primary.opacity(0.24), lineWidth: 1)
+            }
+          }
           .frame(width: 44, height: 44)
           .contentShape(Circle())
-          .background { activeGlow }
       }
       .buttonStyle(SpearCapsuleItemStyle())
       .hoverEffect(.highlight)
@@ -31,13 +42,6 @@ internal struct SpearHeaderCapsuleButton: View {
     }
   }
 
-  @ViewBuilder
-  private var activeGlow: some View {
-    if isActive {
-      Circle()
-        .fill(tint.opacity(0.12))
-    }
-  }
 }
 
 // MARK: - Icon Action Button
@@ -53,7 +57,7 @@ internal struct SpearHeaderIconActionButton: View {
     if action.availability.isVisible {
       Button(action: action.perform) {
         Image(systemName: systemName)
-          .font(.body.weight(.semibold))
+          .font(.system(size: 17, weight: .semibold))
           .foregroundStyle(tint)
           .frame(width: 44, height: 44)
           .contentShape(Circle())
@@ -99,67 +103,6 @@ internal struct SpearHeaderLabeledActionButton: View {
   }
 }
 
-// MARK: - Context Action Button
-
-internal struct SpearContextActionButton: View {
-  let title: String
-  let brandColor: Color
-  let context: SpearConversationContext
-  let action: SpearContextHeaderAction
-
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-  var body: some View {
-    if action.availability.isVisible {
-      Button {
-        action.perform(context)
-      } label: {
-        HStack(spacing: 6) {
-          Text(title)
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-            .multilineTextAlignment(.leading)
-          Image(systemName: "chevron.forward")
-            .font(.caption.weight(.bold))
-            .accessibilityHidden(true)
-        }
-      }
-      .buttonStyle(SpearContextButtonStyle(color: brandColor))
-      .hoverEffect(.highlight)
-      .disabled(!action.availability.isEnabled)
-      .opacity(action.availability.isEnabled ? 1 : 0.56)
-      .accessibilityLabel("\(title), \(context.title)")
-      .accessibilityIdentifier(SpearChatHeaderAccessibilityID.contextAction)
-      .modifier(SpearDisabledReasonModifier(reason: action.availability.disabledReason))
-    }
-  }
-}
-
-internal struct SpearContextButtonStyle: ButtonStyle {
-  let color: Color
-
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.colorSchemeContrast) private var contrast
-
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
-      .foregroundStyle(color)
-      .padding(.horizontal, 8)
-      .frame(minWidth: 44, minHeight: 44)
-      .contentShape(Rectangle())
-      .background(
-        color.opacity(contrast == .increased ? 0.15 : 0.08)
-          .opacity(configuration.isPressed ? 1 : 0),
-        in: Capsule(style: .continuous)
-      )
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
-      .opacity(configuration.isPressed ? 0.84 : 1)
-      .animation(
-        reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
-        value: configuration.isPressed)
-  }
-}
-
 // MARK: - Disabled Reason Modifier
 
 internal struct SpearDisabledReasonModifier: ViewModifier {
@@ -177,7 +120,7 @@ internal struct SpearDisabledReasonModifier: ViewModifier {
 
 // MARK: - Button Styles
 
-/// Capsule item: lives inside the floating action pill
+/// Toolbar control: a local press response without moving adjacent identity.
 internal struct SpearCapsuleItemStyle: ButtonStyle {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -200,22 +143,10 @@ internal struct SpearIconButtonStyle: ButtonStyle {
     configuration.label
       .background(
         Color.primary.opacity(
-          contrast == .increased ? 0.10 : 0.045
-        ),
+          contrast == .increased ? 0.12 : 0.065
+        ).opacity(configuration.isPressed ? 1 : 0),
         in: Circle()
       )
-      .overlay {
-        Circle()
-          .fill(Color.primary.opacity(contrast == .increased ? 0.10 : 0.065))
-          .opacity(configuration.isPressed ? 1 : 0)
-      }
-      .overlay {
-        Circle()
-          .strokeBorder(
-            Color.primary.opacity(contrast == .increased ? 0.22 : 0.07),
-            lineWidth: contrast == .increased ? 1.5 : 0.5
-          )
-      }
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
       .opacity(configuration.isPressed ? 0.82 : 1)
       .animation(
@@ -230,8 +161,7 @@ internal struct SpearIdentityButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .padding(.horizontal, 4)
-      .padding(.vertical, 3)
+      .padding(.vertical, 4)
       .background(
         Color.primary.opacity(0.05)
           .opacity(configuration.isPressed ? 1 : 0),

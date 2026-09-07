@@ -22,16 +22,7 @@ public struct SpearDefaultAvatarContent: View {
         .font(Font.ppBeirutiBold(size: 14, relativeTo: .subheadline))
         .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-          LinearGradient(
-            colors: [
-              Color(uiColor: .secondarySystemBackground),
-              Color(uiColor: .tertiarySystemBackground),
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
+        .background(Color(uiColor: .secondarySystemBackground))
 
     case .systemImage(let name):
       Image(systemName: name)
@@ -57,7 +48,6 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
   let motionMode: SpearMotionMode
   let isExpanded: Bool
   let canExpand: Bool
-  let compact: Bool
   let action: () -> Void
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -88,7 +78,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
   }
 
   private var identityContent: some View {
-    HStack(spacing: compact ? 10 : 12) {
+    HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
       SpearAvatarFrame(
         trust: model.trust,
         presence: model.presence,
@@ -99,11 +89,12 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
       )
 
       VStack(alignment: .leading, spacing: 2) {
-        HStack(alignment: .firstTextBaseline, spacing: 5) {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
           Text(model.name)
-            .font(Font.ppBeirutiBold(size: 17, relativeTo: .headline))
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            .font(Font.ppBeirutiBold(size: 20, relativeTo: .headline))
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
             .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
             .layoutPriority(1)
 
           if let badge = model.trust.badgeSystemName {
@@ -112,6 +103,14 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
               .foregroundStyle(trustTint)
               .symbolRenderingMode(.hierarchical)
               .frame(minWidth: 18, minHeight: 18)
+              .accessibilityHidden(true)
+          }
+
+          if canExpand {
+            Image(systemName: "chevron.down")
+              .font(.system(size: 10, weight: .bold))
+              .foregroundStyle(isExpanded ? brandColor : Color.secondary)
+              .rotationEffect(.degrees(isExpanded ? 180 : 0))
               .accessibilityHidden(true)
           }
         }
@@ -124,17 +123,9 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
           brandColor: brandColor
         )
       }
-      .frame(maxWidth: compact ? .infinity : nil, alignment: .leading)
-
-      if canExpand {
-        Image(systemName: "chevron.down")
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(isExpanded ? brandColor : Color.secondary)
-          .frame(width: 28, height: 44)
-          .rotationEffect(.degrees(isExpanded ? 180 : 0))
-          .accessibilityHidden(true)
-      }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
+    .frame(minHeight: 44)
     .contentShape(Rectangle())
   }
 

@@ -48,11 +48,14 @@ public struct SpearChatHeaderStyle {
 
 internal enum SpearHeaderLayout {
   static let maximumContentWidth: CGFloat = 720
-  static let topRowSpacing: CGFloat = 10
-  static let deckSpacing: CGFloat = 7
+  static let topRowSpacing: CGFloat = 8
+  static let deckSpacing: CGFloat = 8
   static let deckCornerRadius: CGFloat = 18
   static let accessibilityExpansionMaximumHeight: CGFloat = 220
-  static let avatarMaximumSize: CGFloat = 50
+  static let avatarMaximumSize: CGFloat = 48
+  // Mirrors the app's 44pt target and PPSpaceSM (8pt). The package has no
+  // dependency on app-only tokens, so the conversation column is derived here.
+  static let conversationLeadingInset: CGFloat = 44 + topRowSpacing
 }
 
 // MARK: - Motion Tokens
@@ -152,7 +155,7 @@ extension Font {
     if UIFont(name: "Beiruti-Bold", size: size) != nil {
       return .custom("Beiruti-Bold", size: size, relativeTo: textStyle)
     }
-    return .system(size: size, weight: .bold)
+    return .system(textStyle).weight(.bold)
   }
 
   public static func ppBeirutiSemiBold(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body)
@@ -163,7 +166,7 @@ extension Font {
     } else if UIFont(name: "Beiruti-Bold", size: size) != nil {
       return .custom("Beiruti-Bold", size: size, relativeTo: textStyle)
     }
-    return .system(size: size, weight: .semibold)
+    return .system(textStyle).weight(.semibold)
   }
 
   public static func ppBeirutiMedium(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body)
@@ -172,7 +175,7 @@ extension Font {
     if UIFont(name: "Beiruti-Medium", size: size) != nil {
       return .custom("Beiruti-Medium", size: size, relativeTo: textStyle)
     }
-    return .system(size: size, weight: .medium)
+    return .system(textStyle).weight(.medium)
   }
 
   public static func ppBeirutiRegular(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body)
@@ -181,7 +184,7 @@ extension Font {
     if UIFont(name: "Beiruti-Regular", size: size) != nil {
       return .custom("Beiruti-Regular", size: size, relativeTo: textStyle)
     }
-    return .system(size: size, weight: .regular)
+    return .system(textStyle).weight(.regular)
   }
 
   public static func ppBeirutiBlack(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body)
@@ -190,6 +193,6 @@ extension Font {
     if UIFont(name: "Beiruti-Black", size: size) != nil {
       return .custom("Beiruti-Black", size: size, relativeTo: textStyle)
     }
-    return .system(size: size, weight: .black)
+    return .system(textStyle).weight(.black)
   }
 }

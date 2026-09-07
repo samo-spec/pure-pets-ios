@@ -120,6 +120,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
     private var hostingController: UIHostingController<PPMessagingScreen>?
     private var chatThread: ChatThreadModel?
     private var launchPetAdContext: PetAd?
+    private var preparedSupportInquiryKey: String?
     private var messagePageLimit = 50
     private var messageObservationGeneration = 0
     private var conversationActivityGeneration = 0
@@ -158,21 +159,24 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                 petAdContext: petAdContext
             )
 
-            // Preserve the verified server context locally for immediate presentation.
-            // Thread persistence is owned by chatMessageCommand.create_or_get.
+            // Support keeps its canonical routing context. An ad belongs to this
+            // presentation and the editable inquiry, not the shared support model.
             if let petAd = petAdContext, !petAd.adID.isEmpty {
-                let snapshot = PPMessagingScreenState.presentationSnapshot(for: petAd)
-                thread.contextType = "pet_ad"
-                thread.contextId = petAd.adID
-                thread.contextSnapshot = (snapshot as? [String: Any]) ?? [:]
+                if ChatThreadModel.isSupportThread(thread) {
+                    self.prepareSupportPetAdInquiry(for: petAd, threadID: thread.id)
+                } else {
+                    let snapshot = PPMessagingScreenState.presentationSnapshot(for: petAd)
+                    thread.contextType = "pet_ad"
+                    thread.contextId = petAd.adID
+                    thread.contextSnapshot = (snapshot as? [String: Any]) ?? [:]
 
-                let payload: [String: Any] = [
-                    "contextType": "pet_ad",
-                    "contextId": petAd.adID,
-                    "contextSnapshot": snapshot
-                ]
-                PPMessagingContextCache.set(payload, for: thread.id)
-
+                    let payload: [String: Any] = [
+                        "contextType": "pet_ad",
+                        "contextId": petAd.adID,
+                        "contextSnapshot": snapshot
+                    ]
+                    PPMessagingContextCache.set(payload, for: thread.id)
+                }
             } else {
                 // If reopened without petAdContext, rehydrate ad context dynamically
                 self.rehydrateAdContextIfNeeded(for: thread)
@@ -185,6 +189,10 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
     }
 
     private func rehydrateAdContextIfNeeded(for thread: ChatThreadModel) {
+        // Support contextId identifies the customer, never a pet_ads document.
+        // General support opens must not inherit an earlier ad inquiry.
+        guard !ChatThreadModel.isSupportThread(thread) else { return }
+
         var targetAdID = ""
         let currentType = screenState.contextType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let currentID = screenState.contextID.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -238,6 +246,42 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
             ]
             PPMessagingContextCache.set(payload, for: thread.id)
         }
+    }
+
+    private func prepareSupportPetAdInquiry(for ad: PetAd, threadID: String) {
+        let adID = ad.adID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !adID.isEmpty else { return }
+        let inquiryKey = "\(threadID)/\(adID)"
+        guard preparedSupportInquiryKey != inquiryKey else { return }
+        preparedSupportInquiryKey = inquiryKey
+
+        let composer = screenState.composerState
+        guard composer.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !composer.hasReply,
+              !composer.thinking,
+              screenState.composerReplyMessageID == nil,
+              var components = URLComponents(string: "https://pure-pets.net/share") else {
+            return
+        }
+        components.queryItems = [
+            URLQueryItem(name: "type", value: "pet_ad"),
+            URLQueryItem(name: "id", value: adID)
+        ]
+        guard let url = components.url else { return }
+
+        let snapshot = PPMessagingScreenState.presentationSnapshot(for: ad)
+        let title = String((snapshot["title"] as? String ?? "").prefix(240))
+        let detail = String((snapshot["detail"] as? String ?? "").prefix(360))
+        let inquiry = [
+            ppLocalized("pet_ad_support_inquiry_intro"),
+            [title, detail].filter { !$0.isEmpty }.joined(separator: "\n"),
+            url.absoluteString
+        ].joined(separator: "\n\n")
+        guard inquiry.utf16.count <= 4000 else { return }
+
+        // The user can edit or discard this. Sending uses the existing support
+        // command, so the team receives the ad details in the conversation.
+        composer.message = inquiry
     }
 
     public override func viewDidLoad() {
@@ -2045,7 +2089,7 @@ private final class PPMessagingScreenState: ObservableObject {
             contextType = "pet_ad"
             contextID = petAdContext.adID
             contextSnapshot = Self.presentationSnapshot(for: petAdContext)
-        } else {
+        } else if !isSupportThread {
             var resolvedType = thread.contextType.trimmingCharacters(in: .whitespacesAndNewlines)
             var resolvedId = thread.contextId.trimmingCharacters(in: .whitespacesAndNewlines)
             var resolvedSnapshot = (thread.contextSnapshot as? NSDictionary) ?? [:]

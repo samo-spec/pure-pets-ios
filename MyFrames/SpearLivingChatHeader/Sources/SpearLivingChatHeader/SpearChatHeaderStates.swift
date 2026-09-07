@@ -8,7 +8,7 @@ internal struct SpearHeaderLoadingRow: View {
   let actions: SpearChatHeaderActions
 
   var body: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: SpearHeaderLayout.topRowSpacing) {
       SpearHeaderIconActionButton(
         systemName: "chevron.backward",
         accessibilityLabel: copy.backAccessibilityLabel,
@@ -23,17 +23,16 @@ internal struct SpearHeaderLoadingRow: View {
       activeCallButton
     }
     .padding(.horizontal, 12)
-    .padding(.top, 10)
-    .padding(.bottom, 10)
+    .padding(.vertical, 8)
   }
 
   @ViewBuilder
   private var skeletonContent: some View {
     let content = HStack(spacing: 12) {
-      // Avatar skeleton with warm tint
+      // Match the ready identity footprint without continuous shimmer work.
       Circle()
         .fill(.quaternary)
-        .frame(width: 48, height: 48)
+        .frame(width: 44, height: 44)
         .overlay {
           Circle()
             .strokeBorder(Color.primary.opacity(0.04), lineWidth: 1)
@@ -55,7 +54,7 @@ internal struct SpearHeaderLoadingRow: View {
       // Preserve the ready row's action footprint to avoid a loading-to-ready
       // width jump. Active calls remain real controls outside the skeleton.
       if !actions.call.isActive && hasLoadingActionFootprint {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
           if actions.call.isVisible {
             loadingActionPlaceholder
           }
@@ -63,8 +62,6 @@ internal struct SpearHeaderLoadingRow: View {
             loadingActionPlaceholder
           }
         }
-        .padding(2)
-        .background(Color.primary.opacity(0.02), in: Capsule(style: .continuous))
       }
     }
 
@@ -78,7 +75,7 @@ internal struct SpearHeaderLoadingRow: View {
   private var loadingActionPlaceholder: some View {
     Circle()
       .fill(.quaternary)
-      .frame(width: 28, height: 28)
+      .frame(width: 32, height: 32)
       .frame(width: 44, height: 44)
       .accessibilityHidden(true)
   }

@@ -53,52 +53,18 @@ struct PPMarketplaceCompatibilityCard: View {
             RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
         )
         .overlay {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius: PPCorner.card,
-                    style: .continuous
-                )
-                .strokeBorder(
-                    Color.ppMarketplaceTextPrimary.opacity(
-                        colorScheme == .dark ? 0.18 : 0.08
-                    ),
-                    lineWidth:
-                        colorSchemeContrast == .increased ? 2.5 : 1.75
-                )
-                RoundedRectangle(
-                    cornerRadius: PPCorner.card,
-                    style: .continuous
-                )
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.88 : 0.98
-                            ),
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.30 : 0.44
-                            ),
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.74 : 0.92
-                            ),
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.18 : 0.24
-                            )
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth:
-                        colorSchemeContrast == .increased ? 2 : 1.15
-                )
-            }
-            .shadow(
-                color: Color.white.opacity(
-                    colorScheme == .dark ? 0.18 : 0.56
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .strokeBorder(
+                HomeVisualTokens.cardBorder(
+                    colorScheme: colorScheme,
+                    contrast: colorSchemeContrast
                 ),
-                radius: 1.5,
-                x: -0.5,
-                y: -0.5
+                lineWidth: HomeVisualTokens.cardBorderWidth(
+                    contrast: colorSchemeContrast
+                )
             )
         }
         .shadow(

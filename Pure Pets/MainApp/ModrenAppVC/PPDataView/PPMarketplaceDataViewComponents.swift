@@ -251,13 +251,13 @@ struct PPMarketplaceHero: View {
     ) -> some View {
         HStack(spacing: PPSpace.xs) {
             Text(text)
-                .font(primary ? HomeFont.bold(28) : HomeFont.medium(15))
+                .font(primary ? HomeFont.bold(26) : HomeFont.medium(15))
                 .foregroundStyle(
                     primary
                         ? Color.ppTextPrimary
                         : Color.ppTextSecondary
                 )
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : (primary ? 2 : 1))
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -269,6 +269,7 @@ struct PPMarketplaceHero: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, primary ? 2 : 1)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
     }
 
@@ -276,8 +277,11 @@ struct PPMarketplaceHero: View {
         Button(action: store.openSearch) {
             HStack(spacing: PPSpace.sm) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 19, weight: .bold))
-                    .frame(width: 48, height: 48)
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(
+                        width: heroControlMetrics.searchButtonSize,
+                        height: heroControlMetrics.searchButtonSize
+                    )
                     .accessibilityHidden(true)
                 if expanded {
                     Text(PPMarketplaceText.localized("marketplace_search_title"))
@@ -296,9 +300,9 @@ struct PPMarketplaceHero: View {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
             }
-            .shadow(color: Color.ppPrimary.opacity(0.35), radius: 6, x: 0, y: 3)
+            .shadow(color: Color.ppPrimary.opacity(0.16), radius: 4, x: 0, y: 2)
             .contentShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
         }
         .buttonStyle(PPMarketplacePressStyle(
@@ -329,12 +333,14 @@ struct PPMarketplaceBackControl: View {
     var isEmbedded = false
     let action: () -> Void
 
+    @Environment(\.colorSchemeContrast) private var contrast
+
     var body: some View {
         Button(action: action) {
             Image(systemName: isRightToLeft ? "chevron.right" : "chevron.left")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Color(uiColor: accent))
-                .frame(width: 40, height: 40)
+                .frame(width: 36, height: 36)
                 .background(
                     Color.ppSurface,
                     in: Circle()
@@ -342,15 +348,11 @@ struct PPMarketplaceBackControl: View {
                 .overlay {
                     Circle()
                         .strokeBorder(
-                            Color.ppSeparator.opacity(0.8),
-                            lineWidth: 1
+                            contrast == .increased ? Color.ppTextPrimary : Color.ppSeparator.opacity(0.5),
+                            lineWidth: contrast == .increased ? 1 : 0.5
                         )
                 }
-                .shadow(
-                    color: Color.black.opacity(0.04),
-                    radius: 4,
-                    y: 1
-                )
+                .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -369,6 +371,8 @@ private struct PPMarketplaceSmartContextPill: View {
     let action: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
 
     private var context: PPMarketplaceNavigationContext {
         store.navigationContext
@@ -391,7 +395,7 @@ private struct PPMarketplaceSmartContextPill: View {
                             .foregroundStyle(Color.ppTextSecondary)
                     }
                 }
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -410,20 +414,22 @@ private struct PPMarketplaceSmartContextPill: View {
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, PPSpace.md)
-            .padding(.vertical, 7)
-            .frame(minHeight: 40)
+            .padding(.vertical, PPSpace.sm)
+            .frame(minHeight: 44)
             .background(
                 Color.ppSurface,
                 in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                    .strokeBorder(Color.ppSeparator.opacity(0.8), lineWidth: 1)
+                    .strokeBorder(
+                        contrast == .increased ? Color.ppTextPrimary : Color.ppSeparator.opacity(0.5),
+                        lineWidth: contrast == .increased ? 1 : 0.5
+                    )
             }
-            .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 1)
             .contentShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PPMarketplacePressStyle(reduceMotion: reduceMotion))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             context.accessibilityLabel.isEmpty ? context.title : context.accessibilityLabel
@@ -442,6 +448,7 @@ struct PPMarketplaceCurrentDock: View {
     let statusBarHeight: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.colorSchemeContrast) private var contrast
@@ -472,11 +479,15 @@ struct PPMarketplaceCurrentDock: View {
                     ? max(0, statusBarHeight) + PPCorner.hero
                     : 0
                 if showsPinnedBackControl {
-                    ZStack {
-                        Rectangle()
-                            .fill(.regularMaterial)
-                        Rectangle()
-                            .fill(Color(uiColor: UIColor(named: "AppForegroundColor") ?? .white).opacity(0.85))
+                    Group {
+                        if reduceTransparency || contrast == .increased {
+                            Rectangle().fill(Color.ppSurface)
+                        } else {
+                            ZStack {
+                                Rectangle().fill(.regularMaterial)
+                                Rectangle().fill(Color.ppSurface.opacity(0.90))
+                            }
+                        }
                     }
                     .frame(height: proxy.size.height + topExtension)
                     .offset(y: -topExtension)
@@ -498,10 +509,10 @@ struct PPMarketplaceCurrentDock: View {
                     } label: {
                         HStack(spacing: PPSpace.xs) {
                             Image(systemName: descriptor.iconName)
-                                .font(.system(size: 14, weight: selected ? .bold : .medium))
+                                .font(.system(size: 14, weight: .semibold))
                                 .accessibilityHidden(true)
                             Text(PPMarketplaceText.localized(descriptor.titleKey))
-                                .font(selected ? HomeFont.bold(15) : HomeFont.medium(14))
+                                .font(selected ? HomeFont.bold(15) : HomeFont.medium(15))
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                         }
@@ -515,7 +526,7 @@ struct PPMarketplaceCurrentDock: View {
                                     .fill(contrast == .increased
                                           ? Color.ppTextPrimary
                                           : Color.ppPrimary)
-                                    .frame(height: 3)
+                                    .frame(height: contrast == .increased ? 3 : 2)
                                     .matchedGeometryEffect(
                                         id: "marketplace.section.selection",
                                         in: sectionSelection
@@ -534,9 +545,9 @@ struct PPMarketplaceCurrentDock: View {
                 }
             }
             .padding(.horizontal, horizontalInset)
-            // One marker follows the committed section; smooth native spring motion
+            // Keep the committed selection response local and gently damped.
             .animation(
-                interactionMotionIsDisabled ? nil : .spring(response: 0.32, dampingFraction: 0.78),
+                interactionMotionIsDisabled ? nil : .spring(response: 0.28, dampingFraction: 0.90),
                 value: store.currentSection.rawValue
             )
             .transaction { transaction in
@@ -672,8 +683,8 @@ struct PPMarketplaceCurrentDock: View {
                         .strokeBorder(
                             store.activeFilterCount > 0
                                 ? Color.clear
-                                : (contrast == .increased ? Color.ppTextPrimary : Color.ppSeparator.opacity(0.8)),
-                            lineWidth: 1
+                                : (contrast == .increased ? Color.ppTextPrimary : Color.ppSeparator.opacity(0.5)),
+                            lineWidth: contrast == .increased ? 1 : 0.5
                         )
                 }
                 .overlay(alignment: .topTrailing) {
@@ -687,7 +698,7 @@ struct PPMarketplaceCurrentDock: View {
                             .offset(x: store.isRightToLeft ? -2 : 2, y: -2)
                     }
                 }
-                .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 1)
+                .frame(width: 44, height: 44)
                 .contentShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
         }
         .buttonStyle(PPMarketplacePressStyle(reduceMotion: interactionMotionIsDisabled))
@@ -755,22 +766,21 @@ private struct PPMarketplaceRefinementLabel: View {
         .foregroundStyle(selected ? Color.ppPrimary : Color.ppTextPrimary)
         .padding(.horizontal, PPSpace.md)
         .padding(.vertical, 8)
-        .frame(minHeight: 40)
+        .frame(minHeight: 44)
         .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 240 : nil)
         .background(
-            selected ? Color.ppPrimary.opacity(0.10) : Color.ppSurface,
+            selected ? Color.ppPrimary.opacity(0.08) : Color.clear,
             in: Capsule(style: .continuous)
         )
         .overlay {
             Capsule(style: .continuous)
                 .strokeBorder(
-                    selected
-                        ? Color.ppPrimary.opacity(0.5)
-                        : (contrast == .increased ? Color.ppTextPrimary : Color.ppSeparator.opacity(0.8)),
-                    lineWidth: 1
+                    contrast == .increased
+                        ? Color.ppTextPrimary
+                        : (selected ? Color.ppPrimary.opacity(0.24) : Color.clear),
+                    lineWidth: contrast == .increased ? 1 : 0.5
                 )
         }
-        .shadow(color: Color.black.opacity(selected ? 0.04 : 0.02), radius: 3, x: 0, y: 1)
         .contentShape(Capsule(style: .continuous))
     }
 }
@@ -797,7 +807,7 @@ struct PPMarketplaceUniversalCard: View {
                     forceShowsOwnerMenuButton: true,
                     dataViewPresentation: true,
                     isHomePresentation: false,
-                    borderMode: .pordersDataView,
+                    borderMode: .pordersForHomeView,
                     palette: marketplaceCardPalette,
                     onTap: nil,
                     onQuantityChange: nil
