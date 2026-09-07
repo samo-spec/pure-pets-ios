@@ -474,9 +474,9 @@ struct PPMarketplaceCurrentDock: View {
                 if showsPinnedBackControl {
                     ZStack {
                         Rectangle()
-                            .fill(.ultraThinMaterial)
+                            .fill(.regularMaterial)
                         Rectangle()
-                            .fill(Color(uiColor: UIColor(named: "AppForegroundColor") ?? .white).opacity(0.35))
+                            .fill(Color(uiColor: UIColor(named: "AppForegroundColor") ?? .white).opacity(0.85))
                     }
                     .frame(height: proxy.size.height + topExtension)
                     .offset(y: -topExtension)
