@@ -169,6 +169,10 @@ struct PPMarketplaceDataViewScreen: View {
                     .onChange(of: scrollGestureIsActive) { isActive in
                         updateBridgeScrollInteraction(isActive: isActive)
                     }
+                }
+            }
+            .overlay(alignment: .bottom) {
+                bottomNavigationFade
             }
         }
         .background {
@@ -253,6 +257,30 @@ struct PPMarketplaceDataViewScreen: View {
         case .empty, .offline, .failed, .loading, .content:
             return base
         }
+    }
+
+    private var bottomNavigationFade: some View {
+        GeometryReader { proxy in
+            let fadeHeight = max(
+                store.bottomClearance,
+                proxy.safeAreaInsets.bottom
+            ) + PPSpace.xxxl
+
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color.ppBackground.opacity(0.58),
+                    Color.ppBackground,
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: fadeHeight)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea(edges: .bottom)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var entranceMotionIsDisabled: Bool {
@@ -660,6 +688,7 @@ private struct PPMarketplaceContent: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -669,9 +698,12 @@ private struct PPMarketplaceContent: View {
                     layout: store.layout,
                     availableWidth: availableWidth
                 )
+                .transition(stateTransition)
 
             case .content:
                 content
+                    .id("content-\(store.currentSection.rawValue)-\(store.contentRevision)")
+                    .transition(contentTransition)
 
             case .empty:
                 PPMarketplaceEmptyState(
@@ -680,6 +712,7 @@ private struct PPMarketplaceContent: View {
                     clearAction: store.clearAllFilters,
                     retryAction: store.retry
                 )
+                .transition(stateTransition)
 
             case .offline(let message):
                 PPMarketplaceRecoveryState(
@@ -688,6 +721,7 @@ private struct PPMarketplaceContent: View {
                     accent: store.accentColor,
                     retryAction: store.retry
                 )
+                .transition(stateTransition)
 
             case .failed(let message):
                 PPMarketplaceRecoveryState(
@@ -696,14 +730,30 @@ private struct PPMarketplaceContent: View {
                     accent: store.accentColor,
                     retryAction: store.retry
                 )
+                .transition(stateTransition)
             }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82), value: store.contentRevision)
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82), value: store.currentSection.rawValue)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: store.loadState)
         // A viewport-tall results surface keeps the pinned Section header
         // alive while the bridge swaps a long grid for its loading/empty state.
         .frame(
             maxWidth: .infinity,
             minHeight: max(availableHeight, 1),
             alignment: .top
+        )
+    }
+
+    private var stateTransition: AnyTransition {
+        reduceMotion ? .identity : .opacity
+    }
+
+    private var contentTransition: AnyTransition {
+        guard !reduceMotion else { return .identity }
+        return .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.985, anchor: .top)),
+            removal: .opacity
         )
     }
 

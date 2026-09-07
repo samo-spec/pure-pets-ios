@@ -1174,7 +1174,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
                 NSString *osVersion = PPAppDelegateTrimmedString(UIDevice.currentDevice.systemVersion);
                 NSString *deviceModel = PPAppDelegateCurrentDeviceModel();
                 NSString *apnsTokenHex = PPAppDelegateTrimmedString(strongSelf.pp_apnsTokenHexString);
-                NSArray<NSString *> *notificationScopes = @[@"customer.orders", @"customer.chat", @"customer.marketing", @"customer.account"];
+                NSArray<NSString *> *notificationScopes = @[@"customer.orders", @"customer.chat", @"customer.marketing", @"customer.account", @"customer.manual"];
                 NSDictionary *capabilities = @{
                     @"customer": @YES,
                     @"provider": @NO,
