@@ -134,12 +134,15 @@ struct PPMarketplaceDataViewScreen: View {
                     .onPreferenceChange(
                         PPMarketplaceScrollContentHeightPreferenceKey.self
                     ) { height in
-                        measuredScrollContentHeight = max(0, height)
-                        if store.isReplacingContext {
-                            retainedScrollContentHeight = max(
-                                retainedScrollContentHeight,
-                                measuredScrollContentHeight
-                            )
+                        guard abs(measuredScrollContentHeight - height) > 0.5 else { return }
+                        DispatchQueue.main.async {
+                            measuredScrollContentHeight = max(0, height)
+                            if store.isReplacingContext {
+                                retainedScrollContentHeight = max(
+                                    retainedScrollContentHeight,
+                                    measuredScrollContentHeight
+                                )
+                            }
                         }
                     }
                     .onChange(of: store.isReplacingContext) { isReplacing in
@@ -169,7 +172,6 @@ struct PPMarketplaceDataViewScreen: View {
                     .onChange(of: scrollGestureIsActive) { isActive in
                         updateBridgeScrollInteraction(isActive: isActive)
                     }
-                }
             }
             .overlay(alignment: .bottom) {
                 bottomNavigationFade

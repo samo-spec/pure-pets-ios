@@ -35,7 +35,7 @@ struct PPMarketplaceAtmosphere: View {
     var body: some View {
         WorldGlassBackground(
             tint: usesBrandAccent ? .worldGlassBerry : Color(accent),
-            isFaded: false
+            isFaded: true
         )
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -472,12 +472,16 @@ struct PPMarketplaceCurrentDock: View {
                     ? max(0, statusBarHeight) + PPCorner.hero
                     : 0
                 if showsPinnedBackControl {
-                    Rectangle()
-                        .fill(.ultraThinMaterial)
-                        .frame(height: proxy.size.height + topExtension)
-                        .offset(y: -topExtension)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
+                    ZStack {
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                        Rectangle()
+                            .fill(Color(uiColor: UIColor(named: "AppForegroundColor") ?? .white).opacity(0.35))
+                    }
+                    .frame(height: proxy.size.height + topExtension)
+                    .offset(y: -topExtension)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 }
             }
         }

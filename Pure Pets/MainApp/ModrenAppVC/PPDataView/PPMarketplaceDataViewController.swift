@@ -34,7 +34,7 @@ final class PPMarketplaceDataViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .clear
         view.semanticContentAttribute = PPUniversalCellSwiftUIBridge.isRightToLeft()
             ? .forceRightToLeft
             : .forceLeftToRight
