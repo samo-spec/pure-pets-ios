@@ -3039,6 +3039,7 @@ struct HomeCategoryRail: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var isExpanded = false
     @State private var viewportWidth: CGFloat = 0
+    @ScaledMetric(relativeTo: .subheadline) private var captionLineHeight: CGFloat = 22
 
     private enum RailLayout {
         static let cellSpacing = PPSpace.md
@@ -3170,13 +3171,26 @@ struct HomeCategoryRail: View {
     }
 
     private var gridColumns: [GridItem] {
-        Array(
+        let availableWidth = max(
+            (viewportWidth > 1 ? viewportWidth : 390)
+                - RailLayout.screenGutter * 2,
+            1
+        )
+        let columnCount: Int
+        if dynamicTypeSize.isAccessibilitySize {
+            columnCount = dynamicTypeSize >= .accessibility3
+                ? 1
+                : max(1, min(2, Int((availableWidth + RailLayout.cellSpacing) / (160 + RailLayout.cellSpacing))))
+        } else {
+            columnCount = 3
+        }
+        return Array(
             repeating: GridItem(
                 .flexible(minimum: 0, maximum: .infinity),
                 spacing: RailLayout.cellSpacing,
                 alignment: .top
             ),
-            count: 3
+            count: columnCount
         )
     }
 
@@ -3311,24 +3325,28 @@ struct HomeCategoryRail: View {
 
     private var itemSize: CGSize {
         let width = viewportWidth > 1 ? viewportWidth : 390
-        let baseSize: CGSize
+        let itemWidth: CGFloat
         if dynamicTypeSize.isAccessibilitySize {
-            baseSize = CGSize(
-                width: width < 375 ? 120 : 132,
-                height: 156
+            itemWidth = min(
+                max(176, captionLineHeight * 5),
+                max(176, width - RailLayout.screenGutter * 2)
             )
-        } else if width >= 700 {
-            baseSize = CGSize(width: 140, height: 180)
         } else if width >= 430 {
-            baseSize = CGSize(width: 140, height: 148)
+            itemWidth = 140 * RailLayout.horizontalCellWidthScale
         } else if width < 375 {
-            baseSize = CGSize(width: 120, height: 132)
+            itemWidth = 120 * RailLayout.horizontalCellWidthScale
         } else {
-            baseSize = CGSize(width: 132, height: 142)
+            itemWidth = 132 * RailLayout.horizontalCellWidthScale
         }
+        let lines: CGFloat = dynamicTypeSize >= .xxxLarge ? 3 : 2
+        // The UIKit caption scales without a font ceiling. Reserve its line
+        // budget here so both the scrolling rail and expanded grid can reflow.
+        let portraitHeight: CGFloat = dynamicTypeSize.isAccessibilitySize
+            ? 124 : min(itemWidth - PPSpace.sm, 144)
         return CGSize(
-            width: baseSize.width * RailLayout.horizontalCellWidthScale,
-            height: baseSize.height
+            width: itemWidth,
+            height: portraitHeight + ceil(captionLineHeight) * lines
+                + PPSpace.md + PPSpace.sm
         )
     }
 
@@ -4483,7 +4501,7 @@ private struct HomeMainKindScopeMark: View {
 /// category renderer. `HomeMainKindHabitatCell` remains available as the narrow
 /// rollback seam; selection, persistence, routing, and haptics stay owned by
 /// `HomeStore`. The UIKit cell releases this callback only after its bounded
-/// tap halo finishes, so navigation ordering has one explicit owner.
+/// press release finishes, so navigation ordering has one explicit owner.
 private struct HomeMainKindCellRepresentable: UIViewRepresentable {
     let category: HomeCategoryModel?
     let selected: Bool

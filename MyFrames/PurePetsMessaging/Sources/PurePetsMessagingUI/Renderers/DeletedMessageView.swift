@@ -5,18 +5,19 @@ struct DeletedMessageView: View {
   let payload: DeletedPayload
 
   var body: some View {
-    HStack(spacing: 8) {
-      Image(systemName: "nosign")
-        .font(.system(size: 11, weight: .semibold))
+    HStack(spacing: 7) {
+      Image(systemName: "slash.circle")
+        .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(.secondary)
         .frame(width: 24, height: 24)
         .background(PurePetsMessagingTheme.replySurface, in: Circle())
         .accessibilityHidden(true)
 
       Text(message)
-        .font(Font.ppBeirutiRegular(size: 14, relativeTo: .subheadline).italic())
+        .font(Font.ppBeirutiRegular(size: 13.5, relativeTo: .subheadline).italic())
         .foregroundStyle(.secondary)
     }
+    .padding(.vertical, 2)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(message)
   }

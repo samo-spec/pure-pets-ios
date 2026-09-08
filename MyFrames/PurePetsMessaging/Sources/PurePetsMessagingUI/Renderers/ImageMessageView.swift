@@ -5,7 +5,10 @@ struct ImageMessageView: View {
   let onOpen: () -> Void
 
   var body: some View {
-    Button(action: onOpen) {
+    Button {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      onOpen()
+    } label: {
       ZStack {
         RemoteMediaImage(
           url: payload.thumbnailURL ?? payload.imageURL,
@@ -27,7 +30,7 @@ struct ImageMessageView: View {
         }
 
         LinearGradient(
-          colors: [.clear, Color.black.opacity(0.10)],
+          colors: [.clear, Color.black.opacity(0.12)],
           startPoint: .center,
           endPoint: .bottom
         )
@@ -35,12 +38,12 @@ struct ImageMessageView: View {
       }
       .frame(maxWidth: 284)
       .aspectRatio(clampedAspectRatio, contentMode: .fit)
-      .clipShape(.rect(cornerRadius: 17, style: .continuous))
+      .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
       .overlay {
-        RoundedRectangle(cornerRadius: 17, style: .continuous)
-          .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8)
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+          .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
       }
-      .contentShape(.rect)
+      .contentShape(Rectangle())
     }
     .buttonStyle(PurePetsMessagingPressButtonStyle())
     .accessibilityLabel(

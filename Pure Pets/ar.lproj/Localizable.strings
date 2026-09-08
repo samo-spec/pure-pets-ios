@@ -3298,6 +3298,26 @@
 "chat_accessibility_outgoing" = "رسالة مرسلة";
 "chat_accessibility_reply_format" = "رد على: %@";
 "chat_message_actions_hint" = "تتوفر إجراءات لهذه الرسالة.";
+"chat_header_back" = "رجوع";
+"chat_header_support" = "الدعم الفني";
+"chat_header_details" = "تفاصيل المحادثة";
+"chat_header_mute" = "كتم التنبيهات";
+"chat_header_report" = "إبلاغ";
+"chat_header_actions" = "خيارات المحادثة";
+"chat_status_typing" = "يكتب الآن…";
+"chat_status_online" = "متصل الآن";
+"chat_status_active_recently_format" = "نشط %@";
+"chat_status_offline" = "غير متصل";
+"chat_status_unavailable" = "مستخدم";
+"chat_order_created" = "تم إنشاء الطلب";
+"chat_order_preparing" = "قيد التجهيز";
+"chat_order_ready" = "جاهز للاستلام";
+"chat_order_courier_assigned" = "تم تعيين المندوب";
+"chat_order_on_the_way" = "في الطريق إليك";
+"chat_order_delivered" = "تم التوصيل";
+"chat_order_completed" = "مكتمل";
+"chat_order_cancelled" = "ملغي";
+"chat_react" = "تفاعل";
 
 /* Premium intro */
 "intro_brand_kicker" = "عناية متكاملة بكل اهتمام";

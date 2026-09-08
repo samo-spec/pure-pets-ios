@@ -69,19 +69,29 @@ struct DeliveryStatusView: View {
   @ViewBuilder
   private func checkGlyph(for state: OutgoingDeliveryState) -> some View {
     let isRead = { if case .read = state { return true } else { return false } }()
-    if #available(iOS 17.0, *) {
-      Image(systemName: checkSymbol(for: state))
-        .font(.system(size: 11.5, weight: .bold))
-        .foregroundStyle(isRead ? PurePetsMessagingTheme.signal : Color.secondary)
-        .contentTransition(
-          reduceMotion ? .identity : .symbolEffect(.replace.downUp)
-        )
-        .accessibilityLabel(localized(checkAccessibilityKey(for: state)))
-    } else {
-      Image(systemName: checkSymbol(for: state))
-        .font(.system(size: 11.5, weight: .bold))
-        .foregroundStyle(isRead ? PurePetsMessagingTheme.signal : Color.secondary)
-        .accessibilityLabel(localized(checkAccessibilityKey(for: state)))
+    let checkColor: Color = isRead ? PurePetsMessagingTheme.signal : Color.secondary.opacity(0.85)
+
+    switch state {
+    case .sent:
+      Image(systemName: "checkmark")
+        .font(.system(size: 10.5, weight: .bold))
+        .foregroundStyle(checkColor)
+        .accessibilityLabel(localized("chat_status_sent"))
+
+    case .delivered, .read:
+      HStack(spacing: -5) {
+        Image(systemName: "checkmark")
+          .font(.system(size: 10, weight: .bold))
+        Image(systemName: "checkmark")
+          .font(.system(size: 10, weight: .bold))
+      }
+      .foregroundStyle(checkColor)
+      .accessibilityLabel(localized(isRead ? "chat_status_read" : "chat_status_delivered"))
+
+    default:
+      Image(systemName: "checkmark")
+        .font(.system(size: 10.5, weight: .bold))
+        .foregroundStyle(checkColor)
     }
   }
 
@@ -90,30 +100,12 @@ struct DeliveryStatusView: View {
       Image(systemName: "exclamationmark.circle.fill")
         .font(.system(size: 12, weight: .bold))
         .foregroundStyle(PurePetsMessagingTheme.danger)
-        .frame(width: 44, height: 44)
+        .frame(width: 32, height: 32)
         .contentShape(Rectangle())
     }
     .buttonStyle(PurePetsMessagingPressButtonStyle())
     .accessibilityLabel(localized("Retry"))
     .accessibilityHint(localized("chat_retry_send_message"))
-  }
-
-  private func checkSymbol(for state: OutgoingDeliveryState) -> String {
-    switch state {
-    case .sent: return "checkmark"
-    case .delivered: return "checkmark.circle"
-    case .read: return "checkmark.circle.fill"
-    default: return "checkmark"
-    }
-  }
-
-  private func checkAccessibilityKey(for state: OutgoingDeliveryState) -> String {
-    switch state {
-    case .sent: return "chat_status_sent"
-    case .delivered: return "chat_status_delivered"
-    case .read: return "chat_status_read"
-    default: return "chat_status_sent"
-    }
   }
 
   private func phaseToken(_ state: OutgoingDeliveryState) -> Int {

@@ -3320,6 +3320,27 @@
 "chat_accessibility_outgoing" = "Sent message";
 "chat_accessibility_reply_format" = "Reply to: %@";
 "chat_message_actions_hint" = "Message actions are available.";
+"chat_header_back" = "Back";
+"chat_header_support" = "Pure Pets Support";
+"chat_header_details" = "Conversation Details";
+"chat_header_mute" = "Mute Notifications";
+"chat_header_report" = "Report";
+"chat_header_actions" = "Conversation Options";
+"chat_status_typing" = "typing…";
+"chat_status_online" = "Active now";
+"chat_status_active_recently_format" = "Active %@";
+"chat_status_offline" = "Offline";
+"chat_status_unavailable" = "Member";
+"chat_order_created" = "Order Placed";
+"chat_order_preparing" = "Preparing";
+"chat_order_ready" = "Ready for Pickup";
+"chat_order_courier_assigned" = "Courier Assigned";
+"chat_order_on_the_way" = "On the Way";
+"chat_order_delivered" = "Delivered";
+"chat_order_completed" = "Completed";
+"chat_order_cancelled" = "Cancelled";
+"chat_react" = "React";
+
 
 /* Premium intro */
 "intro_brand_kicker" = "Care, thoughtfully connected";

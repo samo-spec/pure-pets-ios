@@ -39,23 +39,30 @@ struct MessageReactionsView: View {
   private var reactionButtons: some View {
     ForEach(reactions) { reaction in
       Button {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onReactionTap(reaction)
       } label: {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
           Text(reaction.emoji)
+            .font(.system(size: 13))
           Text(localizedCount(reaction.count))
             .monospacedDigit()
+            .font(Font.ppBeirutiBold(size: 11.5, relativeTo: .caption))
+            .foregroundStyle(
+              reaction.reactedByCurrentUser
+                ? PurePetsMessagingTheme.signal
+                : .primary
+            )
 
           if reaction.reactedByCurrentUser && differentiateWithoutColor {
             Image(systemName: "checkmark.circle.fill")
-              .font(.system(size: 10, weight: .bold))
+              .font(.system(size: 9, weight: .bold))
+              .foregroundStyle(PurePetsMessagingTheme.signal)
               .accessibilityHidden(true)
           }
         }
-        .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
-        .foregroundStyle(.primary)
-        .padding(.horizontal, 10)
-        .frame(minWidth: 44, minHeight: 44)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
           reaction.reactedByCurrentUser
             ? PurePetsMessagingTheme.brandSoft
@@ -66,11 +73,17 @@ struct MessageReactionsView: View {
           Capsule(style: .continuous)
             .strokeBorder(
               reaction.reactedByCurrentUser
-                ? PurePetsMessagingTheme.signal.opacity(0.34)
+                ? PurePetsMessagingTheme.signal.opacity(0.38)
                 : PurePetsMessagingTheme.surfaceStroke,
-              lineWidth: reaction.reactedByCurrentUser ? 1 : 0.7
+              lineWidth: reaction.reactedByCurrentUser ? 1 : 0.65
             )
         }
+        .shadow(
+          color: Color.black.opacity(reaction.reactedByCurrentUser ? 0.06 : 0.03),
+          radius: 3,
+          x: 0,
+          y: 1
+        )
       }
       .buttonStyle(PurePetsMessagingPressButtonStyle())
       .contentShape(Capsule(style: .continuous))

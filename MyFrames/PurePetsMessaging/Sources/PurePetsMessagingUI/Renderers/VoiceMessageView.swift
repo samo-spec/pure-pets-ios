@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct VoiceMessageView: View {
   let messageID: MessageID
@@ -9,6 +10,8 @@ struct VoiceMessageView: View {
   @Environment(\.locale) private var locale
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorScheme) private var colorScheme
+  @State private var isDraggingSeek = false
+  @State private var dragProgress: Double = 0
 
   private let barHeight: CGFloat = 28
   private let maxBarHeight: CGFloat = 24
@@ -28,7 +31,7 @@ struct VoiceMessageView: View {
       }
     }
     .frame(
-      width: dynamicTypeSize.isAccessibilitySize ? nil : 224,
+      width: dynamicTypeSize.isAccessibilitySize ? nil : 246,
       alignment: .leading
     )
     .onDisappear {
@@ -40,8 +43,13 @@ struct VoiceMessageView: View {
     audioCoordinator.isPlaying(messageID)
   }
 
+  private var isActive: Bool {
+    audioCoordinator.activeMessageID == messageID
+  }
+
   private var playButton: some View {
     Button {
+      UIImpactFeedbackGenerator(style: .medium).impactOccurred()
       audioCoordinator.toggle(messageID: messageID, payload: payload)
     } label: {
       ZStack {
@@ -55,7 +63,7 @@ struct VoiceMessageView: View {
           )
 
         Circle()
-          .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+          .strokeBorder(Color.white.opacity(0.24), lineWidth: 0.8)
 
         if #available(iOS 17.0, *) {
           Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -87,14 +95,35 @@ struct VoiceMessageView: View {
   private var waveform: some View {
     VStack(alignment: .leading, spacing: 4) {
       GeometryReader { proxy in
-        waveformBars(width: proxy.size.width)
+        let width = proxy.size.width
+        waveformBars(width: width)
+          .contentShape(Rectangle())
+          .gesture(
+            DragGesture(minimumDistance: 0)
+              .onChanged { value in
+                isDraggingSeek = true
+                let normalized = min(max(value.location.x / width, 0), 1)
+                dragProgress = normalized
+                audioCoordinator.seek(to: normalized, messageID: messageID)
+              }
+              .onEnded { _ in
+                isDraggingSeek = false
+                UISelectionFeedbackGenerator().selectionChanged()
+              }
+          )
       }
       .frame(height: barHeight)
 
-      HStack(spacing: 8) {
+      HStack(spacing: 6) {
         Text(elapsedText)
           .foregroundStyle(isPlaying ? PurePetsMessagingTheme.signal : .secondary)
-        Spacer(minLength: 8)
+
+        Spacer(minLength: 4)
+
+        if isActive || isPlaying {
+          speedButton
+        }
+
         Text(durationText)
       }
       .font(Font.ppBeirutiRegular(size: 11.5, relativeTo: .caption))
@@ -105,10 +134,10 @@ struct VoiceMessageView: View {
     .padding(.vertical, 7)
     .background(
       PurePetsMessagingTheme.replySurface,
-      in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+      in: RoundedRectangle(cornerRadius: 14, style: .continuous)
     )
     .overlay {
-      RoundedRectangle(cornerRadius: 13, style: .continuous)
+      RoundedRectangle(cornerRadius: 14, style: .continuous)
         .strokeBorder(PurePetsMessagingTheme.surfaceStroke, lineWidth: 0.65)
     }
     .accessibilityElement(children: .ignore)
@@ -122,8 +151,33 @@ struct VoiceMessageView: View {
     )
   }
 
+  private var speedButton: some View {
+    Button {
+      UISelectionFeedbackGenerator().selectionChanged()
+      withAnimation(PurePetsMessagingMotion.quick) {
+        audioCoordinator.cyclePlaybackRate()
+      }
+    } label: {
+      Text(speedText)
+        .font(Font.ppBeirutiBold(size: 10.5, relativeTo: .caption2))
+        .foregroundStyle(PurePetsMessagingTheme.signal)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(PurePetsMessagingTheme.brandSoft, in: Capsule())
+    }
+    .buttonStyle(PurePetsMessagingPressButtonStyle())
+  }
+
+  private var speedText: String {
+    let rate = audioCoordinator.playbackRate
+    if rate == 1.5 { return "1.5×" }
+    if rate == 2.0 { return "2×" }
+    return "1×"
+  }
+
   private func waveformBars(width: CGFloat) -> some View {
     let samples = decimatedSamples(for: width)
+    let currentProgress = effectiveProgress
 
     return ZStack(alignment: .leading) {
       barLayer(
@@ -140,7 +194,7 @@ struct VoiceMessageView: View {
       .mask(alignment: .leading) {
         GeometryReader { proxy in
           Rectangle()
-            .frame(width: proxy.size.width * min(max(progress, 0), 1))
+            .frame(width: proxy.size.width * min(max(currentProgress, 0), 1))
             .frame(maxWidth: .infinity, alignment: .leading)
         }
       }
@@ -183,12 +237,16 @@ struct VoiceMessageView: View {
     }
   }
 
+  private var effectiveProgress: Double {
+    isDraggingSeek ? dragProgress : progress
+  }
+
   private var progress: Double {
     audioCoordinator.progress(for: messageID)
   }
 
   private var elapsedText: String {
-    durationString(payload.duration * progress)
+    durationString(payload.duration * effectiveProgress)
   }
 
   private var durationText: String {

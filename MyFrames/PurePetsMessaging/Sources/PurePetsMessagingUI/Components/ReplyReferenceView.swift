@@ -7,7 +7,10 @@ struct ReplyReferenceView: View {
   @Environment(\.layoutDirection) private var fallbackLayoutDirection
 
   var body: some View {
-    Button(action: onOpen) {
+    Button {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      onOpen()
+    } label: {
       HStack(spacing: 10) {
         Capsule(style: .continuous)
           .fill(
@@ -17,7 +20,7 @@ struct ReplyReferenceView: View {
               endPoint: .bottom
             )
           )
-          .frame(width: 3)
+          .frame(width: 3.5)
           .accessibilityHidden(true)
 
         VStack(alignment: .leading, spacing: 2) {
@@ -53,10 +56,10 @@ struct ReplyReferenceView: View {
       .frame(minWidth: 154, alignment: .leading)
       .background(
         PurePetsMessagingTheme.replySurface,
-        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
       )
       .overlay {
-        RoundedRectangle(cornerRadius: 13, style: .continuous)
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
           .strokeBorder(PurePetsMessagingTheme.surfaceStroke, lineWidth: 0.65)
       }
       .contentShape(.rect)

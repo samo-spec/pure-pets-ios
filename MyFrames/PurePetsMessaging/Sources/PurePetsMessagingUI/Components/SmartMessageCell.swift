@@ -12,6 +12,7 @@ public struct SmartMessageCell: View {
     public var onOpenImage: (ImagePayload) -> Void
     public var onOpenVideo: (VideoPayload) -> Void
     public var onReactionTap: (MessageReaction) -> Void
+    public var onSelectQuickReaction: (String) -> Void
     public var onUpdateApp: () -> Void
     public var canDelete: Bool
     public var canForward: Bool
@@ -26,6 +27,7 @@ public struct SmartMessageCell: View {
       onOpenImage: @escaping (ImagePayload) -> Void = { _ in },
       onOpenVideo: @escaping (VideoPayload) -> Void = { _ in },
       onReactionTap: @escaping (MessageReaction) -> Void = { _ in },
+      onSelectQuickReaction: @escaping (String) -> Void = { _ in },
       onUpdateApp: @escaping () -> Void = {},
       canDelete: Bool = false,
       canForward: Bool = true
@@ -39,6 +41,7 @@ public struct SmartMessageCell: View {
       self.onOpenImage = onOpenImage
       self.onOpenVideo = onOpenVideo
       self.onReactionTap = onReactionTap
+      self.onSelectQuickReaction = onSelectQuickReaction
       self.onUpdateApp = onUpdateApp
       self.canDelete = canDelete
       self.canForward = canForward
@@ -367,6 +370,16 @@ public struct SmartMessageCell: View {
 
   @ViewBuilder
   private var actionMenu: some View {
+    Menu {
+      ForEach(MessageQuickReactionBar.defaultEmojis, id: \.self) { emoji in
+        Button(emoji) {
+          actions.onSelectQuickReaction(emoji)
+        }
+      }
+    } label: {
+      Label(localized("chat_react"), systemImage: "face.smiling")
+    }
+
     Button {
       actions.onReply()
     } label: {

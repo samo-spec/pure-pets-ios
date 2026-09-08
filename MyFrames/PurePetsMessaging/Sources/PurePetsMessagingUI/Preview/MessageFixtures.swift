@@ -103,4 +103,81 @@ public enum MessageFixtures {
       sentAt: .now.addingTimeInterval(-60)
     ),
   ]
+
+  public static let arabicCustomer = MessageSender(
+    displayName: "سالم بن ناصر",
+    initials: "سن"
+  )
+
+  public static let arabicHeader = ChatHeaderPresentation(
+    participant: arabicCustomer,
+    roleLabel: "عميل معتمد",
+    presence: .online(expiresAt: .now.addingTimeInterval(60)),
+    context: .activeOrder(
+      ActiveOrderContext(orderNumber: "4821", status: .preparing)
+    )
+  )
+
+  public static let arabicAll: [ChatMessage] = [
+    ChatMessage(
+      sender: arabicCustomer,
+      direction: .incoming(receivedAt: .now),
+      payload: .text(TextPayload(text: "مرحباً، هل خلطة السالمون الطبيعية متوفرة للشحن اليوم؟")),
+      sentAt: .now.addingTimeInterval(-480)
+    ),
+    ChatMessage(
+      sender: currentUser,
+      direction: .outgoing(.read(at: .now)),
+      payload: .text(TextPayload(text: "أهلاً بك! نعم متوفرة وجاهزة للتوصيل السريع خلال ساعتين.", isEdited: true)),
+      replyReference: ReplyReference(
+        messageID: MessageID(),
+        senderDisplayName: arabicCustomer.displayName,
+        preview: .text("مرحباً، هل خلطة السالمون الطبيعية متوفرة للشحن اليوم؟")
+      ),
+      reactions: [MessageReaction(emoji: "❤️", count: 3, reactedByCurrentUser: true)],
+      sentAt: .now.addingTimeInterval(-420)
+    ),
+    ChatMessage(
+      sender: arabicCustomer,
+      direction: .incoming(receivedAt: .now),
+      payload: .voice(
+        VoicePayload(
+          duration: 16,
+          waveform: [0.25, 0.60, 0.45, 0.85, 0.65, 0.95, 0.50, 0.80, 0.35, 0.90, 0.55, 0.70],
+          transcript: "ممتاز جداً، يرجى إضافة عبوتين إضافيتين للطلب."
+        )
+      ),
+      sentAt: .now.addingTimeInterval(-360)
+    ),
+    ChatMessage(
+      sender: currentUser,
+      direction: .outgoing(.delivered),
+      payload: .image(
+        ImagePayload(
+          dimensions: MediaDimensions(width: 4, height: 3),
+          accessibilityDescription: "عبوة سالمون بيور بتس الفاخرة"
+        )
+      ),
+      sentAt: .now.addingTimeInterval(-300)
+    ),
+    ChatMessage(
+      sender: arabicCustomer,
+      direction: .incoming(receivedAt: .now),
+      payload: .sticker(
+        StickerPayload(
+          fallbackEmoji: "🐾",
+          accessibilityDescription: try! NonEmptyText("أثر قدم أليف"),
+          isAnimated: true
+        )
+      ),
+      reactions: [MessageReaction(emoji: "😍", count: 1)],
+      sentAt: .now.addingTimeInterval(-180)
+    ),
+    ChatMessage(
+      sender: arabicCustomer,
+      direction: .incoming(receivedAt: .now),
+      payload: .deleted(DeletedPayload(deletedBy: .sender)),
+      sentAt: .now.addingTimeInterval(-120)
+    )
+  ]
 }
