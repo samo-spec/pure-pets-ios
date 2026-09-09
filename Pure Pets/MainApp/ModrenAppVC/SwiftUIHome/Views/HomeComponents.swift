@@ -3039,12 +3039,12 @@ struct HomeCategoryRail: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var isExpanded = false
     @State private var viewportWidth: CGFloat = 0
-    @ScaledMetric(relativeTo: .subheadline) private var captionLineHeight: CGFloat = 22
+    @ScaledMetric(relativeTo: .subheadline) private var captionFontSize: CGFloat = PPMainKindsGalleryLayout.captionPointSize
 
     private enum RailLayout {
         static let cellSpacing = PPSpace.md
-        static let shadowTopInset = PPSpace.sm
-        static let shadowBottomInset = PPSpace.md
+        static let artworkTopInset = PPSpace.sm
+        static let artworkBottomInset = PPSpace.xs
         static let screenGutter = HomeVisualTokens.contentHorizontalMargin
         static let horizontalCellWidthScale: CGFloat = 0.85
     }
@@ -3099,14 +3099,16 @@ struct HomeCategoryRail: View {
     }
 
     private var horizontalRail: some View {
-        GeometryReader { geometry in
+        // Measure the title set once per rail update, not once per child.
+        let cellSize = itemSize
+        return GeometryReader { geometry in
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: RailLayout.cellSpacing) {
                         categoryCell(
                             nil,
                             entranceOrdinal: 0,
-                            size: itemSize
+                            size: cellSize
                         )
                         .id(allCategoryScrollID)
 
@@ -3117,14 +3119,14 @@ struct HomeCategoryRail: View {
                             categoryCell(
                                 category,
                                 entranceOrdinal: index + 1,
-                                size: itemSize
+                                size: cellSize
                             )
                             .id(scrollID(for: category))
                         }
                     }
                     .padding(.horizontal, RailLayout.screenGutter)
-                    .padding(.top, RailLayout.shadowTopInset)
-                    .padding(.bottom, RailLayout.shadowBottomInset)
+                    .padding(.top, RailLayout.artworkTopInset)
+                    .padding(.bottom, RailLayout.artworkBottomInset)
                 }
                 .onAppear {
                     proxy.scrollTo(
@@ -3137,21 +3139,23 @@ struct HomeCategoryRail: View {
             }
         }
         .frame(
-            height: itemSize.height
-                + RailLayout.shadowTopInset
-                + RailLayout.shadowBottomInset
+            height: cellSize.height
+                + RailLayout.artworkTopInset
+                + RailLayout.artworkBottomInset
         )
     }
 
     private var expandedGrid: some View {
-        LazyVGrid(
+        let rowHeight = gridItemHeight
+        return LazyVGrid(
             columns: gridColumns,
             alignment: .leading,
             spacing: RailLayout.cellSpacing
         ) {
             responsiveGridCell(
                 nil,
-                entranceOrdinal: 0
+                entranceOrdinal: 0,
+                height: rowHeight
             )
             .id(allCategoryScrollID)
 
@@ -3161,7 +3165,8 @@ struct HomeCategoryRail: View {
             ) { index, category in
                 responsiveGridCell(
                     category,
-                    entranceOrdinal: index + 1
+                    entranceOrdinal: index + 1,
+                    height: rowHeight
                 )
                 .id(scrollID(for: category))
             }
@@ -3170,27 +3175,28 @@ struct HomeCategoryRail: View {
         .padding(.vertical, PPSpace.xs)
     }
 
-    private var gridColumns: [GridItem] {
+    private var gridColumnCount: Int {
         let availableWidth = max(
             (viewportWidth > 1 ? viewportWidth : 390)
                 - RailLayout.screenGutter * 2,
             1
         )
-        let columnCount: Int
         if dynamicTypeSize.isAccessibilitySize {
-            columnCount = dynamicTypeSize >= .accessibility3
+            return dynamicTypeSize >= .accessibility3
                 ? 1
                 : max(1, min(2, Int((availableWidth + RailLayout.cellSpacing) / (160 + RailLayout.cellSpacing))))
-        } else {
-            columnCount = 3
         }
+        return 3
+    }
+
+    private var gridColumns: [GridItem] {
         return Array(
             repeating: GridItem(
                 .flexible(minimum: 0, maximum: .infinity),
                 spacing: RailLayout.cellSpacing,
                 alignment: .top
             ),
-            count: columnCount
+            count: gridColumnCount
         )
     }
 
@@ -3311,7 +3317,8 @@ struct HomeCategoryRail: View {
 
     private func responsiveGridCell(
         _ category: HomeCategoryModel?,
-        entranceOrdinal: Int
+        entranceOrdinal: Int,
+        height: CGFloat
     ) -> some View {
         GeometryReader { geometry in
             categoryCell(
@@ -3320,7 +3327,23 @@ struct HomeCategoryRail: View {
                 size: geometry.size
             )
         }
-        .frame(height: itemSize.height)
+        .frame(height: height)
+    }
+
+    private var categoryTitles: [String] {
+        [Language.get("all", alter: nil) ?? ""] + categories.map(\.title)
+    }
+
+    private var gridItemHeight: CGFloat {
+        let width = viewportWidth > 1 ? viewportWidth : 390
+        let columnWidth = max(
+            1, (width - RailLayout.screenGutter * 2
+                - RailLayout.cellSpacing * CGFloat(gridColumnCount - 1)) / CGFloat(gridColumnCount)
+        )
+        return PPMainKindsGalleryLayout.preferredHeight(
+            width: columnWidth, titles: categoryTitles, fontSize: captionFontSize,
+            expandedText: dynamicTypeSize >= .xxxLarge
+        )
     }
 
     private var itemSize: CGSize {
@@ -3328,7 +3351,7 @@ struct HomeCategoryRail: View {
         let itemWidth: CGFloat
         if dynamicTypeSize.isAccessibilitySize {
             itemWidth = min(
-                max(176, captionLineHeight * 5),
+                max(176, captionFontSize * 7),
                 max(176, width - RailLayout.screenGutter * 2)
             )
         } else if width >= 430 {
@@ -3338,15 +3361,12 @@ struct HomeCategoryRail: View {
         } else {
             itemWidth = 132 * RailLayout.horizontalCellWidthScale
         }
-        let lines: CGFloat = dynamicTypeSize >= .xxxLarge ? 3 : 2
-        // The UIKit caption scales without a font ceiling. Reserve its line
-        // budget here so both the scrolling rail and expanded grid can reflow.
-        let portraitHeight: CGFloat = dynamicTypeSize.isAccessibilitySize
-            ? 124 : min(itemWidth - PPSpace.sm, 144)
         return CGSize(
             width: itemWidth,
-            height: portraitHeight + ceil(captionLineHeight) * lines
-                + PPSpace.md + PPSpace.sm
+            height: PPMainKindsGalleryLayout.preferredHeight(
+                width: itemWidth, titles: categoryTitles, fontSize: captionFontSize,
+                expandedText: dynamicTypeSize >= .xxxLarge
+            )
         )
     }
 

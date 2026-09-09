@@ -1,8 +1,8 @@
 import UIKit
 
-// MARK: - Home species portraits
+// MARK: - Home animal gallery
 
-/// Home's UIKit species selector. The portrait field and caption form one
+/// Home's UIKit species selector. The animal and its caption form one
 /// native button; selection, persistence, routing, and haptics belong to Home.
 @objc(PPMainKindsCell)
 public final class PPMainKindsCell: UICollectionViewCell {
@@ -19,11 +19,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
     // MARK: Presentation
 
     private let actionButton = UIButton(type: .custom)
+    private let selectionSurface = UIView()
     private let portraitContainer = UIView()
-    private let fieldLayer = CAShapeLayer()
     private let artworkView = UIImageView()
-    private let selectionSeal = UIView()
-    private let checkmarkView = UIImageView()
+    private let allArtworkViews = (0..<3).map { _ in UIImageView() }
     private let titleLabel = UILabel()
 
     // MARK: Content and lifecycle
@@ -33,6 +32,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private var usesRestoredSelectionAppearance = false
     private var hasConfigured = false
     private var primaryImageGeneration = 0
+    private var primaryImageRequestView: UIImageView?
+    private var allPreviewContents: [PPMainKindsContent] = []
+    private var allPreviewGeneration = 0
+    private var allPreviewRequestViews: [UIImageView?] = Array(repeating: nil, count: 3)
     private var observers: [NSObjectProtocol] = []
 
     private var stateAnimator: UIViewPropertyAnimator?
@@ -71,12 +74,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
     deinit {
         observers.forEach { NotificationCenter.default.removeObserver($0) }
         cancelPrimaryImageRequest()
+        cancelAllPreviewRequests()
         stopAllMotion()
     }
 
     public override func prepareForReuse() {
         super.prepareForReuse()
         cancelPrimaryImageRequest()
+        resetAllPreview()
         stopAllMotion()
         onSelect = nil
         content = nil
@@ -109,53 +114,48 @@ public final class PPMainKindsCell: UICollectionViewCell {
         actionButton.bounds = CGRect(origin: .zero, size: contentView.bounds.size)
         actionButton.center = CGPoint(x: contentView.bounds.midX, y: contentView.bounds.midY)
 
-        let geometry = PPMainKindsGeometry(
+        let geometry = PPMainKindsGalleryLayout(
             bounds: actionButton.bounds,
+            title: titleLabel.text ?? "",
             titleFont: titleLabel.font,
-            expandedText: usesExpandedTextLayout,
-            isRightToLeft: effectiveUserInterfaceLayoutDirection == .rightToLeft
+            expandedText: usesExpandedTextLayout
         )
         portraitContainer.bounds = CGRect(origin: .zero, size: geometry.portraitFrame.size)
         portraitContainer.center = CGPoint(
             x: geometry.portraitFrame.midX, y: geometry.portraitFrame.midY
         )
         titleLabel.frame = geometry.titleFrame
-        selectionSeal.bounds = CGRect(origin: .zero, size: geometry.sealFrame.size)
-        selectionSeal.center = CGPoint(x: geometry.sealFrame.midX, y: geometry.sealFrame.midY)
-        selectionSeal.layer.cornerRadius = geometry.sealFrame.height / 2
-        checkmarkView.frame = selectionSeal.bounds.insetBy(dx: 5, dy: 5)
+        selectionSurface.bounds = CGRect(origin: .zero, size: geometry.selectionFrame.size)
+        selectionSurface.center = CGPoint(
+            x: geometry.selectionFrame.midX, y: geometry.selectionFrame.midY
+        )
 
         let artworkCanvas = CGRect(
-            x: PPSpace.sm, y: PPSpace.sm,
-            width: max(0, portraitContainer.bounds.width - PPSpace.sm * 2),
-            height: max(0, portraitContainer.bounds.height - PPSpace.sm * 2)
+            x: PPSpace.xxs, y: PPSpace.xxs,
+            width: max(0, portraitContainer.bounds.width - PPSpace.xs),
+            height: max(0, portraitContainer.bounds.height - PPSpace.xs)
         )
         if content?.isAll == true {
-            let side = min(artworkCanvas.width, artworkCanvas.height) * 0.48
+            let side = min(artworkCanvas.width, artworkCanvas.height) * 0.42
             artworkView.frame = CGRect(
                 x: artworkCanvas.midX - side / 2,
                 y: artworkCanvas.midY - side / 2,
                 width: side, height: side
             ).integral
+            layoutAllArtwork(in: artworkCanvas)
         } else {
-            // The field has a silhouette, the artwork has no mask. Optical
-            // profiles remain shared with Home; animal images never reflect.
-            artworkView.frame = HomeSpeciesArtworkTreatment
+            // Optical profiles normalize the real artwork. Bottom-align the
+            // image canvas so an enlarged silhouette cannot cover its caption.
+            var frame = HomeSpeciesArtworkTreatment
                 .resolved(for: content?.numericID ?? 0)
                 .frame(in: artworkCanvas)
+            frame.origin.y = min(frame.minY, artworkCanvas.maxY - frame.height)
+            artworkView.frame = frame
         }
         artworkView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
             pointSize: max(20, min(artworkView.bounds.width, artworkView.bounds.height) * 0.70),
             weight: .medium
         )
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        fieldLayer.frame = portraitContainer.bounds
-        let fieldPath = PPMainKindsGeometry.portraitPath(in: portraitContainer.bounds)
-        fieldLayer.path = fieldPath.cgPath
-        portraitContainer.layer.shadowPath = fieldPath.cgPath
-        CATransaction.commit()
     }
 
     public override func traitCollectionDidChange(_ previous: UITraitCollection?) {
@@ -190,6 +190,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let selectionChanged = hasConfigured && isKindSelected != selected
         if bindingChanged {
             cancelPrimaryImageRequest()
+            resetAllPreview()
             stopAllMotion()
             lastActivationTime = 0
         }
@@ -215,11 +216,60 @@ public final class PPMainKindsCell: UICollectionViewCell {
         setNeedsLayout()
     }
 
-    /// All retains its single approved menugrid symbol and original callback.
-    /// Home still supplies this hook; it creates no extra requests or state.
+    /// Home already supplies these category models. A small ensemble makes
+    /// All part of the same animal gallery without a second asset/data owner.
     public func configureAllPreview(withMainKinds kinds: [NSObject]) {
         guard content?.isAll == true else { return }
-        updateLargeContentImage()
+        var seen = Set<String>()
+        let next = kinds.map { PPMainKindsContent(kind: $0, isAll: false) }
+            .filter { seen.insert($0.cellID).inserted }
+            .prefix(allArtworkViews.count)
+        let nextContents = Array(next)
+        let unchanged = nextContents.count == allPreviewContents.count
+            && zip(nextContents, allPreviewContents).allSatisfy { next, previous in
+                next.cellID == previous.cellID
+                    && next.assetName == previous.assetName
+                    && next.iconName == previous.iconName
+                    && next.localImage === previous.localImage
+            }
+        guard !unchanged else { return }
+
+        resetAllPreview()
+        allPreviewContents = nextContents
+        let generation = allPreviewGeneration
+        let expectedCellID = boundCellID
+        for (index, preview) in nextContents.enumerated() {
+            let view = allArtworkViews[index]
+            if let local = resolvedLocalArtwork(for: preview) {
+                view.image = local.image.withRenderingMode(
+                    local.isTemplate ? .alwaysTemplate : .alwaysOriginal
+                )
+            }
+            guard !preview.imageURL.isEmpty else { continue }
+            let expectedURL = preview.imageURL
+            let requestView = UIImageView()
+            allPreviewRequestViews[index] = requestView
+            PPImageLoaderManager.shared().setImage(
+                on: requestView, url: expectedURL, placeholder: nil,
+                transitionStyle: .none
+            ) { [weak self] image, _ in
+                let applyResult = {
+                    guard let self,
+                          self.allPreviewGeneration == generation,
+                          self.boundCellID == expectedCellID,
+                          self.content?.isAll == true,
+                          self.allPreviewContents.indices.contains(index),
+                          self.allPreviewContents[index].imageURL == expectedURL else { return }
+                    self.allPreviewRequestViews[index] = nil
+                    guard let image else { return }
+                    self.allArtworkViews[index].image = image.withRenderingMode(.alwaysOriginal)
+                    self.updateAllArtworkVisibility()
+                }
+                if Thread.isMainThread { applyResult() }
+                else { DispatchQueue.main.async(execute: applyResult) }
+            }
+        }
+        updateAllArtworkVisibility()
     }
 
     @objc public func playRestoredSelectionAnimation() {
@@ -257,11 +307,17 @@ public final class PPMainKindsCell: UICollectionViewCell {
         contentView.addSubview(actionButton)
         accessibilityElements = [actionButton]
 
+        // One low ink surface joins the selected animal to its name. Passive
+        // animals sit directly on Home, with no repeated enclosing chrome.
+        selectionSurface.isUserInteractionEnabled = false
+        selectionSurface.isAccessibilityElement = false
+        selectionSurface.layer.cornerRadius = PPSpace.xs + PPSpace.xxs
+        selectionSurface.layer.cornerCurve = .continuous
+        actionButton.addSubview(selectionSurface)
+
         portraitContainer.isUserInteractionEnabled = false
         portraitContainer.isAccessibilityElement = false
         portraitContainer.clipsToBounds = false
-        fieldLayer.name = "PPMainKindsPortraitField"
-        portraitContainer.layer.addSublayer(fieldLayer)
         actionButton.addSubview(portraitContainer)
 
         artworkView.contentMode = .scaleAspectFit
@@ -270,17 +326,14 @@ public final class PPMainKindsCell: UICollectionViewCell {
         artworkView.accessibilityIgnoresInvertColors = true
         portraitContainer.addSubview(artworkView)
 
-        selectionSeal.isUserInteractionEnabled = false
-        selectionSeal.isAccessibilityElement = false
-        selectionSeal.layer.cornerCurve = .continuous
-        checkmarkView.image = UIImage(
-            systemName: "checkmark",
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)
-        )
-        checkmarkView.contentMode = .scaleAspectFit
-        checkmarkView.isAccessibilityElement = false
-        selectionSeal.addSubview(checkmarkView)
-        portraitContainer.addSubview(selectionSeal)
+        for view in allArtworkViews.reversed() {
+            view.contentMode = .scaleAspectFit
+            view.isAccessibilityElement = false
+            view.isUserInteractionEnabled = false
+            view.accessibilityIgnoresInvertColors = true
+            view.isHidden = true
+            portraitContainer.addSubview(view)
+        }
 
         titleLabel.backgroundColor = .clear
         titleLabel.textAlignment = .center
@@ -341,17 +394,19 @@ public final class PPMainKindsCell: UICollectionViewCell {
         contentView.semanticContentAttribute = semantic
         actionButton.semanticContentAttribute = semantic
         titleLabel.semanticContentAttribute = semantic
-        // Only the seal's logical trailing position changes. The subject's
-        // pose and any text inside an image are preserved in both languages.
+        // This centered gallery preserves every subject's pose in both
+        // languages; the rail continues to own logical order and scrolling.
         portraitContainer.semanticContentAttribute = .forceLeftToRight
         artworkView.semanticContentAttribute = .forceLeftToRight
         artworkView.transform = .identity
+        allArtworkViews.forEach { $0.semanticContentAttribute = .forceLeftToRight }
     }
 
     private func updateTypography() {
         let bold = isKindSelected || UIAccessibility.isBoldTextEnabled
-        let baseFont = UIFont(name: bold ? "Beiruti-Bold" : "Beiruti-Medium", size: 15)
-            ?? UIFont.systemFont(ofSize: 15, weight: bold ? .bold : .medium)
+        let baseFont = PPMainKindsGalleryLayout.captionFont(
+            size: PPMainKindsGalleryLayout.captionPointSize, bold: bold
+        )
         titleLabel.font = UIFontMetrics(forTextStyle: .subheadline).scaledFont(
             for: baseFont, compatibleWith: traitCollection
         )
@@ -379,40 +434,16 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
 
     private func updateAppearance() {
-        let surface = UIColor.ppSurfaceRaised.resolvedColor(with: traitCollection)
         let text = UIColor.ppTextPrimary.resolvedColor(with: traitCollection)
-        let border = UIColor.ppSurfaceBorder.resolvedColor(with: traitCollection)
-        let kindColor = content?.accent.resolvedColor(with: traitCollection).ppMainKindOpaque
-            ?? UIColor.ppPrimary.resolvedColor(with: traitCollection)
         let accent = resolvedAccent
-        let highContrast = traitCollection.accessibilityContrast == .high
-        let isDark = traitCollection.userInterfaceStyle == .dark
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        // Opaque, token-derived fields keep the same hierarchy with Reduce
-        // Transparency. Only the chosen species receives its identity color.
-        fieldLayer.fillColor = (isKindSelected
-            ? kindColor.ppMainKindMixed(with: surface, amountOfSelf: isDark ? 0.18 : 0.09)
-            : surface).cgColor
-        fieldLayer.strokeColor = (isKindSelected ? accent : border)
-            .withAlphaComponent(highContrast ? 1 : (isKindSelected ? 0.55 : 0.65)).cgColor
-        fieldLayer.lineWidth = highContrast ? 1.5 : 0.75
-        portraitContainer.layer.shadowColor = UIColor.black.cgColor
-        portraitContainer.layer.shadowOpacity = highContrast ? 0 : (isDark ? 0.08 : 0.035)
-        portraitContainer.layer.shadowRadius = PPSpace.sm
-        portraitContainer.layer.shadowOffset = CGSize(width: 0, height: PPSpace.xxs)
-        selectionSeal.layer.borderWidth = highContrast ? 2 : 1.5
-        selectionSeal.layer.borderColor = surface.cgColor
-        CATransaction.commit()
-
-        selectionSeal.backgroundColor = accent
-        checkmarkView.tintColor = UIColor.white.ppMainKindContrastRatio(against: accent)
+        let selectedText: UIColor = UIColor.white.ppMainKindContrastRatio(against: accent)
             >= UIColor.black.ppMainKindContrastRatio(against: accent) ? .white : .black
-        selectionSeal.alpha = isKindSelected ? 1 : 0
-        titleLabel.textColor = text
+        selectionSurface.backgroundColor = accent
+        selectionSurface.alpha = isKindSelected ? 1 : 0
+        titleLabel.textColor = isKindSelected ? selectedText : text
         artworkView.tintColor = content?.isAll == true && !isKindSelected
             ? .ppTextSecondary : accent
+        allArtworkViews.forEach { $0.tintColor = accent }
     }
 
     // MARK: Existing image ownership
@@ -430,16 +461,22 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let generation = primaryImageGeneration
         let expectedCellID = content.cellID
         let expectedURL = content.imageURL
+        // The shared loader applies before invoking its completion. A detached
+        // request view keeps that write away from the live cell until all
+        // identity guards pass, including a completion queued before reuse.
+        let requestView = UIImageView()
+        primaryImageRequestView = requestView
         PPImageLoaderManager.shared().setImage(
-            on: artworkView, url: expectedURL,
-            placeholder: artworkView.image, transitionStyle: .none
+            on: requestView, url: expectedURL,
+            placeholder: nil, transitionStyle: .none
         ) { [weak self] image, _ in
             let applyResult = {
                 guard let self,
                       self.primaryImageGeneration == generation,
                       self.boundCellID == expectedCellID,
-                      self.content?.imageURL == expectedURL,
-                      let image else { return }
+                      self.content?.imageURL == expectedURL else { return }
+                self.primaryImageRequestView = nil
+                guard let image else { return }
                 self.artworkView.image = image.withRenderingMode(.alwaysOriginal)
                 self.updateLargeContentImage()
             }
@@ -452,18 +489,80 @@ public final class PPMainKindsCell: UICollectionViewCell {
         if content.isAll {
             return (UIImage(named: "menugrid") ?? UIImage(systemName: "line.3.horizontal"), true)
         }
+        if let local = resolvedLocalArtwork(for: content) { return local }
+        return (UIImage(systemName: "pawprint.fill"), true)
+    }
+
+    private func resolvedLocalArtwork(for content: PPMainKindsContent) -> (image: UIImage, isTemplate: Bool)? {
         if let image = content.localImage { return (image, false) }
         if !content.assetName.isEmpty, let image = UIImage(named: content.assetName) { return (image, false) }
         if !content.iconName.isEmpty, let image = UIImage(named: content.iconName) { return (image, false) }
         if !content.iconName.isEmpty, let image = UIImage(systemName: content.iconName) { return (image, true) }
-        return (UIImage(systemName: "pawprint.fill"), true)
+        return nil
     }
 
     private func updateLargeContentImage() { actionButton.largeContentImage = artworkView.image }
 
     private func cancelPrimaryImageRequest() {
         primaryImageGeneration &+= 1
-        PPImageLoaderManager.shared().cancelImageLoad(for: artworkView)
+        if let requestView = primaryImageRequestView {
+            PPImageLoaderManager.shared().cancelImageLoad(for: requestView)
+        }
+        primaryImageRequestView = nil
+    }
+
+    private func cancelAllPreviewRequests() {
+        allPreviewGeneration &+= 1
+        allPreviewRequestViews.compactMap { $0 }.forEach {
+            PPImageLoaderManager.shared().cancelImageLoad(for: $0)
+        }
+        allPreviewRequestViews = Array(repeating: nil, count: allArtworkViews.count)
+    }
+
+    private func resetAllPreview() {
+        cancelAllPreviewRequests()
+        allPreviewContents.removeAll()
+        allArtworkViews.forEach {
+            $0.image = nil
+            $0.isHidden = true
+        }
+        artworkView.isHidden = false
+    }
+
+    private func updateAllArtworkVisibility() {
+        guard content?.isAll == true else { return }
+        // Keep the existing All glyph until a real ensemble is available.
+        // Partial/failed loads never manufacture extra animals or blank All.
+        let hasEnsemble = allArtworkViews.filter { $0.image != nil }.count >= 2
+        artworkView.isHidden = hasEnsemble
+        allArtworkViews.forEach { $0.isHidden = !hasEnsemble || $0.image == nil }
+        setNeedsLayout()
+    }
+
+    private func layoutAllArtwork(in canvas: CGRect) {
+        let visibleViews = allArtworkViews.filter { !$0.isHidden }
+        for (index, view) in visibleViews.enumerated() {
+            let normalized: CGRect
+            if visibleViews.count == 2 {
+                normalized = index == 0
+                    ? CGRect(x: -0.02, y: 0.03, width: 0.68, height: 0.94)
+                    : CGRect(x: 0.36, y: 0, width: 0.66, height: 0.90)
+            } else {
+                // The front portrait stays upright; two smaller subjects
+                // emerge behind it. Only existing category artwork is used.
+                switch index {
+                case 0: normalized = CGRect(x: 0.15, y: 0.18, width: 0.70, height: 0.82)
+                case 1: normalized = CGRect(x: -0.02, y: 0.01, width: 0.62, height: 0.76)
+                default: normalized = CGRect(x: 0.42, y: 0, width: 0.60, height: 0.76)
+                }
+            }
+            view.frame = CGRect(
+                x: canvas.minX + normalized.minX * canvas.width,
+                y: canvas.minY + normalized.minY * canvas.height,
+                width: normalized.width * canvas.width,
+                height: normalized.height * canvas.height
+            ).integral
+        }
     }
 
     // MARK: Finite, cancellable feedback
@@ -549,14 +648,15 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func animateSelection(restored: Bool) {
         stopStateMotion()
-        guard !reduceMotion, window != nil else {
-            updateAppearance()
-            return
-        }
+        // Reverse text and its ink arrive together at full contrast. Settle
+        // only the low surface; never fade white text through a clear field.
+        updateAppearance()
+        guard isKindSelected, !reduceMotion, window != nil else { return }
         stateGeneration &+= 1
         let generation = stateGeneration
+        selectionSurface.transform = CGAffineTransform(translationX: 0, y: 3)
         let animator = UIViewPropertyAnimator(duration: restored ? 0.12 : 0.18, curve: .easeOut) { [weak self] in
-            self?.updateAppearance()
+            self?.selectionSurface.transform = .identity
         }
         animator.addCompletion { [weak self] _ in
             guard let self, self.stateGeneration == generation else { return }
@@ -570,6 +670,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         stateGeneration &+= 1
         stateAnimator?.stopAnimation(true)
         stateAnimator = nil
+        selectionSurface.transform = .identity
     }
 
     private func stopPressMotion() {
@@ -596,7 +697,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         stopPressMotion()
         stopActivationMotion()
         portraitContainer.layer.removeAllAnimations()
-        selectionSeal.layer.removeAllAnimations()
+        selectionSurface.layer.removeAllAnimations()
+        titleLabel.layer.removeAllAnimations()
         updateAppearance()
     }
 }
@@ -654,68 +756,80 @@ private struct PPMainKindsContent {
     }
 }
 
-// MARK: - Adaptive portrait geometry
+// MARK: - Measured gallery geometry shared with the Home rail
 
-private struct PPMainKindsGeometry {
+/// The rail and UIKit renderer use the same caption measurement. A short
+/// name occupies one actual line, rather than floating in a two-line box.
+struct PPMainKindsGalleryLayout {
+    static let captionPointSize: CGFloat = 18
+    static let captionInset = PPSpace.sm
+    static let captionGap = PPSpace.xs
+    static let bottomInset = PPSpace.sm
+
     let portraitFrame: CGRect
     let titleFrame: CGRect
-    let sealFrame: CGRect
+    let selectionFrame: CGRect
 
-    init(bounds: CGRect, titleFont: UIFont, expandedText: Bool, isRightToLeft: Bool) {
+    init(bounds: CGRect, title: String, titleFont: UIFont, expandedText: Bool) {
         let inset = PPSpace.xs
-        let captionHeight = ceil(titleFont.lineHeight) * (expandedText ? 3 : 2)
-        let gap = PPSpace.md
-        let availableHeight = max(0, bounds.height - captionHeight - gap - inset * 2)
+        let labelWidth = max(0, bounds.width - Self.captionInset * 2)
+        let captionHeight = Self.captionHeight(
+            title: title, width: labelWidth, font: titleFont, expandedText: expandedText
+        )
+        let availableHeight = max(
+            0, bounds.height - captionHeight - Self.captionGap - Self.bottomInset - inset
+        )
         let width = min(max(0, bounds.width - inset * 2), expandedText ? 124 : 144)
-        let height = min(availableHeight, width * 0.98)
+        let height = min(availableHeight, Self.portraitHeight(for: bounds.width, expandedText: expandedText))
         portraitFrame = CGRect(
             x: bounds.midX - width / 2, y: inset, width: width, height: height
         ).integral
         titleFrame = CGRect(
-            x: inset,
-            y: portraitFrame.maxY + gap,
-            width: max(0, bounds.width - inset * 2),
-            height: max(0, bounds.maxY - portraitFrame.maxY - gap - inset)
+            x: Self.captionInset,
+            y: portraitFrame.maxY + Self.captionGap,
+            width: labelWidth,
+            height: min(captionHeight, max(0, bounds.maxY - portraitFrame.maxY - Self.captionGap - Self.bottomInset))
         ).integral
-
-        let sealSide: CGFloat = 22
-        // Its lower trailing position leaves ears, horns, and wings untouched.
-        sealFrame = CGRect(
-            x: isRightToLeft ? 0 : max(0, width - sealSide),
-            y: max(0, height - sealSide + inset),
-            width: sealSide, height: sealSide
+        let surfaceTop = max(inset, portraitFrame.maxY - PPSpace.base)
+        selectionFrame = CGRect(
+            x: inset, y: surfaceTop,
+            width: max(0, bounds.width - inset * 2),
+            height: max(0, titleFrame.maxY + Self.bottomInset - surfaceTop)
         ).integral
     }
 
-    /// A soft shoulder above a grounded base. This shapes the background only.
-    static func portraitPath(in bounds: CGRect) -> UIBezierPath {
-        let rect = bounds.insetBy(dx: 1, dy: 1)
-        guard rect.width > 0, rect.height > 0 else { return UIBezierPath() }
-        let shoulder = min(rect.width * 0.5, rect.height * 0.54)
-        let foot = min(PPCorner.card, rect.height * 0.22)
-        let path = UIBezierPath()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY + shoulder))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.minX + shoulder, y: rect.minY),
-            controlPoint: CGPoint(x: rect.minX, y: rect.minY)
+    static func captionFont(size: CGFloat, bold: Bool) -> UIFont {
+        UIFont(name: bold ? "Beiruti-Bold" : "Beiruti-Medium", size: size)
+            ?? UIFont.systemFont(ofSize: size, weight: bold ? .bold : .medium)
+    }
+
+    static func portraitHeight(for width: CGFloat, expandedText: Bool) -> CGFloat {
+        ceil(min(max(0, width - PPSpace.xs), expandedText ? 124 : 112) * 0.90)
+    }
+
+    static func captionHeight(title: String, width: CGFloat, font: UIFont, expandedText: Bool) -> CGFloat {
+        let lineHeight = ceil(font.lineHeight)
+        guard width > 0 else { return lineHeight }
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byWordWrapping
+        let measured = (title as NSString).boundingRect(
+            with: CGSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font, .paragraphStyle: paragraph], context: nil
         )
-        path.addLine(to: CGPoint(x: rect.maxX - shoulder, y: rect.minY))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.maxX, y: rect.minY + shoulder),
-            controlPoint: CGPoint(x: rect.maxX, y: rect.minY)
-        )
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - foot))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.maxX - foot, y: rect.maxY),
-            controlPoint: CGPoint(x: rect.maxX, y: rect.maxY)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + foot, y: rect.maxY))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.minX, y: rect.maxY - foot),
-            controlPoint: CGPoint(x: rect.minX, y: rect.maxY)
-        )
-        path.close()
-        return path
+        return min(lineHeight * (expandedText ? 3 : 2), max(lineHeight, ceil(measured.height)))
+    }
+
+    static func preferredHeight(width: CGFloat, titles: [String], fontSize: CGFloat, expandedText: Bool) -> CGFloat {
+        let labelWidth = max(0, width - captionInset * 2)
+        let fonts = [captionFont(size: fontSize, bold: false), captionFont(size: fontSize, bold: true)]
+        let textHeight = titles.reduce(ceil(fonts[0].lineHeight)) { current, title in
+            fonts.reduce(current) { maximum, font in
+                max(maximum, captionHeight(title: title, width: labelWidth, font: font, expandedText: expandedText))
+            }
+        }
+        return PPSpace.xs + portraitHeight(for: width, expandedText: expandedText)
+            + captionGap + textHeight + bottomInset
     }
 }
 

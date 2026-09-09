@@ -1,71 +1,83 @@
-# Home MainKinds portrait redesign
+# Home MainKinds animal gallery — revised implementation
 
-Date: 2026-09-08
+Updated: 2026-09-09
 
-Source baseline: `c354d0ae95a0c2f636ab606dcb17d1e073bfed06`
+Source baseline: `60cb055733c31c6054e6ffa20af185bf53eac515`
 
-Status: Implementation and source review completed. Native build, rendered device, accessibility interaction, motion capture, and performance proof remain **UNVERIFIED**. No build or deployment was authorized or run.
+Status: The revised implementation, source checks, and independent source review are finished. The candidate has **not** been built, installed, or rendered. Physical-device visual, accessibility, interaction, motion, and performance verification remain **UNVERIFIED**. Explicit build authorization is still required by the supplied AGENTS.md instructions.
 
-## Scope and design decision
+## Actual baseline and revision
 
-The live chain is `HomeView` → `HomeCategoryRail` → `HomeMainKindCellRepresentable` → `PPMainKindsCell`. `HomeStore.selectCategory` continues to own selection, persistence, haptics, and the existing category/All route.
+The user supplied two real Arabic/light Home screenshots on 2026-09-08 at 20:20:17 and 20:20:29, showing Birds and All selected. These exposed weaknesses in the previous implementation: repeated tall arches dominated the artwork, names appeared disconnected from the portraits, the tick read as a generic checkbox, and the All grid glyph did not belong to the animal imagery.
 
-Three structures were considered before implementation:
+The caption gap also had a concrete layout cause: a one-line name was vertically centered inside a reserved two-line UILabel frame. The revision measures the actual caption and positions that frame four points after the portrait canvas.
+
+This document supersedes the earlier arch/check design and its source hashes. Historical source or device evidence does not verify this candidate.
+
+## Chosen direction
+
+Three structurally different options were assessed against the supplied screenshots:
 
 | Direction | Assessment |
 | --- | --- |
-| Open animal portrait with an independent caption | Selected. Keeps recognition and the category name clear at the existing compact rail widths, gives selection one distinct mark, and scales into the existing expanded grid. |
-| Asymmetric typographic field ticket | Rejected. Competing title/tag regions consume the narrow rail width and weaken animal recognition. |
-| Horizontal portrait and label strip | Rejected. It requires substantially wider cells or compressed artwork in the phone rail. |
+| Unframed animal gallery; one low selected surface joins portrait and caption | Selected after independent critique. Keeps animal recognition dominant, integrates state with the content, retains fixed tap targets, and fits the expanded grid. |
+| Connected editorial index with a shared rail and reversed selected label | Rejected. Risks becoming ordinary picture tabs and introduces another rail-wide drawing owner through scrolling/grid changes. |
+| A wide featured selected animal among compact passive portraits | Rejected. Changes subsequent target positions and the next-item peek; duplicates the large hero and complicates scroll/activation behavior. |
 
-The implemented cell uses a softly arched background behind the existing aspect-fit animal artwork. The name sits outside that background. A check at the field's lower logical trailing edge, selected Beiruti weight, and the existing category color identify selection. Passive cells use neutral PP surfaces. The background shape does not mask the animal. Layered glass, pedestals, gradients, and halo/echo effects from the previous cell were removed.
+The selected design uses the existing category artwork directly on Home. Passive animals have no enclosing surface, outline, shadow, or badge. Only the selected animal has a low, solid category-colored surface extending behind its lower portrait and caption. It has a 6-point corner radius, contrasting text, and no tick. Beiruti captions increase from a 15-point to an 18-point base and remain uncapped under Dynamic Type.
 
-## Files
+All becomes an ensemble of up to three already supplied category images. The existing All glyph remains until at least two images are available. Empty, partial, and failed image loading do not fabricate additional animals or leave All blank.
 
-- `Pure Pets/MainApp/ModrenAppVC/HomeCells/PPMainKindsCell.swift`: replaces the private presentation graph and feedback mechanics; preserves the public UIKit/Objective-C integration and model adaptation.
-- `Pure Pets/MainApp/ModrenAppVC/SwiftUIHome/Views/HomeComponents.swift`: adjusts only `HomeCategoryRail` caption budgeting, accessibility rail widths/grid columns, and the bridge's explanatory comment.
+## Live ownership and changed files
 
-Existing unrelated messaging and localization edits were preserved. No Firebase, permissions, collections, data models, navigation destinations, or localization entries were changed.
+The flow remains `HomeView → HomeCategoryRail → HomeMainKindCellRepresentable → PPMainKindsCell`. `HomeStore.selectCategory` owns the selected scope, persistence, haptics, and the original category/All navigation.
 
-## Preserved behavior and states
+- `Pure Pets/MainApp/ModrenAppVC/HomeCells/PPMainKindsCell.swift`: gallery presentation, selected surface, actual caption measurement, All ensemble, and safe visible-image application.
+- `Pure Pets/MainApp/ModrenAppVC/SwiftUIHome/Views/HomeComponents.swift`: shared gallery sizing within HomeCategoryRail, separate grid measurement at actual column width, and tighter bottom spacing.
+- This handoff.
 
-- Existing category order, numeric IDs, stable scroll IDs, logical scroll anchoring, All action, and Show All/Show Less behavior remain in their original owners.
-- Objective-C class identity, both configuration selectors, `onSelect`, `boundCellID`, restored-selection hooks, and the All-preview integration hook remain available. All retains the bundled `menugrid` glyph.
-- The model adapter and palette contrast helpers are unchanged. Existing Arabic/English titles and the `Language` semantic-direction helper are reused.
-- Artwork preserves the local image → asset → icon → fallback chain and the shared image loader. Loading/failure keeps the existing usable placeholder. Completion checks generation, binding identity, and URL before application; requests are cancelled on reuse/rebind. No image is horizontally reflected for RTL.
-- One native button exposes the category label, stable accessibility ID, selected/disabled traits, and Large Content Viewer data. An unavailable callback disables the action. Empty category data retains the original All entry and Home's existing state ownership.
-- Dynamic Type is uncapped. The rail reserves scaled caption height; captions use two lines, or three from XXXL upward. Accessibility sizes widen the rail cells and reduce expanded-grid columns to two or one, depending on available width and text size.
-- Dark mode and Increased Contrast use existing resolved PP tokens and contrast helpers. The check foreground is chosen against its actual accent fill. The field is opaque, so Reduce Transparency has an equivalent static appearance.
+Objective-C class identity, both configure selectors, public hooks, original NSObject/All callback semantics, category ordering/IDs, scroll anchoring, Show All/Show Less, and the UIKit bridge remain intact. HomeStore, HomeRouter, HomeModelAdapter, PPHomeDataBridge, HomeView, and HomeViewState are unchanged.
 
-## Motion and cancellation
+Firebase, permissions, collections, backend contracts, model fields, localization entries, the hero, and other Home sections are outside this patch. Existing localization and PP colors/spacing/fonts remain authoritative.
 
-| Event | Presentation | Behavior |
-| --- | --- | --- |
-| Touch down/drag enter | Portrait compresses to 0.974 and fades to 0.86 over 90 ms | Caption remains stationary; no additional haptic owner. |
-| Accepted activation | Portrait returns to rest over 180 ms | Existing callback fires once after completion, subject to generation, binding, and window checks. |
-| Cancel/drag exit/debounced release | Portrait returns to rest | A rejected rapid tap cannot leave the cell visually pressed. |
-| Selection/restoration | Finite appearance feedback, 180/120 ms | No looping animation or separate navigation owner. |
-| Reduce Motion | Static touch feedback and immediate activation | Same model, All semantics, and destination; live setting changes cancel motion. |
-| Reuse/rebind/disappearance/background/dismantle | Animators stop and appearance resets | Pending activation is invalidated; clearing `onSelect` cancels its owned activation. |
+## Layout and native behavior
 
-## Verification evidence
+- Ordinary rail widths remain 102 / 112.2 / 119 points. Selection never expands or reorders items.
+- Actual medium/bold caption measurements determine the required row height. Measurement is performed once per rail/grid body update, rather than once for every child.
+- The label occupies its measured height and begins four points after the portrait canvas. Two-line text is supported, increasing to three from XXXL upward. Full labels remain available to accessibility.
+- Accessibility sizes widen the rail and retain the two-/one-column grid adaptation. Grid height is calculated from the grid's column width, independently of rail width.
+- Artwork stays aspect-fit, unmasked, and unreflected. Existing optical profiles remain shared with Home; oversized canvases align to the portrait baseline so they cannot cover the caption.
+- One native button exposes the existing ID, label, selected/disabled traits, and Large Content Viewer data. An unavailable callback disables it.
+- The selected foreground is chosen by measured contrast against its actual fill. The surface is opaque and uses the existing contrast-safe category palette for light/dark and Increased Contrast.
 
-- `xcrun swiftc -frontend -parse` passed for both changed Swift files. This proves parsing only, not type checking, linkage, signing, installation, or runtime behavior.
-- Scoped `git diff --check` passed.
-- Thirty transient source-preservation checks passed against the baseline, covering bridge selectors, model/palette adaptation, callback and scroll ownership, image fallbacks/guards, button semantics, and unchanged Home state/router/data-bridge/view sources.
-- A 180-case arithmetic layout stress check passed for rail/grid widths and hypothetical text scale factors. Bundled Beiruti font metadata was inspected to compare the 18-point base line height with the rail's 22-point scaled reserve. These checks do not substitute for UIKit text rendering or a native Dynamic Type matrix.
-- The NextGen brand validator accepted the source-backed PP token and asset brief. This is structural validation, not visual certification.
-- The static UI audit emitted a `reduce-motion-missing` hint at animator declarations. Manual source review confirms the `reduceMotion` property, explicit guards in all three animation entry paths, and live-setting cancellation. The hint does not establish a missing guard; runtime behavior still requires device proof.
-- Independent read-only review found no remaining concrete source regression after the rapid-tap release fix.
-- Visual preflight remains **BLOCKED/UNVERIFIED**: no current Home baseline capture or authorized native render was available. No overall quality score or release certification is claimed.
+## Image and motion ownership
+
+The shared image loader applies an image before invoking the client completion. Generation checks solely inside that completion could therefore be too late to prevent a stale visible write. The cell now retains detached request UIImageViews; only a completion matching generation, binding, and URL can copy its image into the visible artwork. Reuse/rebind cancels and clears primary/ensemble requests. The same loader and cache remain in use, with no new URLs or fetch subsystem.
+
+Touch feedback remains a finite 90 ms portrait compression followed by a 180 ms release. The existing callback fires after release, subject to its original debounce, generation, binding, and window checks. Rejected rapid taps release pressure; reuse, rebind, disappearance, backgrounding, and callback removal cancel pending activation.
+
+Selection text and its ink update together at full contrast. Only the selected surface settles upward by three points over 180 ms (120 ms for the retained restoration hook). It is laid out with bounds/center so an interrupted transform does not corrupt its frame. Reduce Motion applies the same state without spatial animation and invokes the original activation callback immediately.
+
+## Current verification
+
+- Swift frontend parsing passed for both changed Swift files. Parsing does not prove type correctness, linkage, signing, or runtime behavior.
+- Scoped whitespace/diff checks passed.
+- Thirty transient source-preservation/ownership checks passed against the baseline, including selectors, model/palette adaptation, callback ordering, scroll ownership, image request isolation, and unchanged downstream owners.
+- 480 arithmetic geometry/selected-text coverage cases passed for rail/grid widths and hypothetical text scales. These are geometry stress checks, not native Dynamic Type or glyph-rendering proof.
+- Independent screenshot-based concept assessment selected the gallery direction. Independent read-only review of the resulting two-file diff found no remaining concrete source-level regression.
+- The bounded UI analyzer emitted a `reduce-motion-missing` lexical hint at animator declarations. Manual review confirms the property, explicit guards in all animation entry paths, and live-setting cancellation; the analyzer does not follow those indirections. No zero-findings or runtime-accessibility claim is made.
+- Visual preflight has real user-supplied baseline evidence but no authorized candidate render. No quality score, Apple endorsement, or release certification is claimed.
+- The approved iPhone 13 Pro Max was found paired and available. Read-only lock-state inspection returned `passcodeRequired: false` and `unlockedSinceBoot: true`. No build or app launch was performed.
 
 Source hashes at handoff:
 
-```text
-fd124824dce735366f5fdcb0fc17cfcb703af6ca5ec7d224f8c3a2cbc0c3b3d3  PPMainKindsCell.swift
-5e38bddc0eae555c69e3056404c8d278289ae8094daa2773d641f7a6797adcf3  HomeComponents.swift
-```
+~~~text
+566d1d674b16f14c2700119cde357dabc785623dacb40bda52b2a693cd0360aa  PPMainKindsCell.swift
+d104d485389514501f3264193b5e61ff89169e898e425b4dfbdfb843d407c5ae  HomeComponents.swift
+~~~
 
-## Remaining verification
+## Continue from here
 
-When explicitly authorized, use the approved physical iPhone workflow and default Xcode DerivedData. Capture the live Home rail and expanded grid in Arabic/English, light/dark, standard/large accessibility text, Increased Contrast, and Reduce Motion. Verify All/category navigation, rapid taps across different cells, scroll-versus-tap cancellation, backgrounding, and visible image reuse. Confirm artwork balance and caption wrapping with real category content, then capture motion/performance evidence. Do not reuse historical device proof for this patch.
+After explicit authorization, build/install using the approved physical iPhone 13 Pro Max workflow and Xcode's default DerivedData. Inspect the real candidate against the two supplied baseline states. Check the unframed animal balance, selected surface integration, All ensemble overlap, and caption spacing with actual category artwork.
+
+Verify Arabic/English, light/dark, standard/maximum accessibility text, Increased Contrast, and Reduce Motion. Exercise All/category navigation, Show All/Show Less, fast taps across cells, scroll-versus-tap cancellation, image failures/reuse, and backgrounding. Capture actual motion and performance evidence separately from still screenshots. Resume this verification phase; the implementation and source-review phase need not be restarted.
