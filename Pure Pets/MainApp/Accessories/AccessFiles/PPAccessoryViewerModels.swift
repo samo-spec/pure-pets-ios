@@ -251,6 +251,7 @@ struct PPAccessoryViewerSnapshot {
     let condition: String
     let stock: String
     let weight: String
+    let size: String
     let location: String
     let createdDate: String
     let expiryDate: String
@@ -294,6 +295,7 @@ struct PPAccessoryViewerSnapshot {
             PPAccessoryViewerLegacyBridge.conditionName(for: accessory)
         stock = PPAccessoryViewerLegacyBridge.stockText(for: accessory)
         weight = PPAccessoryViewerLegacyBridge.weightText(for: accessory)
+        size = PPAccessoryViewerLegacyBridge.sizeText(for: accessory)
         location =
             PPAccessoryViewerLegacyBridge.locationName(for: accessory)
         createdDate =
@@ -420,6 +422,17 @@ struct PPAccessoryViewerSnapshot {
                     value: weight,
                     symbol: "scalemass.fill",
                     tone: .ink
+                )
+            )
+        }
+        if !size.isEmpty {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "fit-size",
+                    title: PPAccessoryViewerL10n.text("accessory_view_size"),
+                    value: size,
+                    symbol: "ruler.fill",
+                    tone: .palm
                 )
             )
         }

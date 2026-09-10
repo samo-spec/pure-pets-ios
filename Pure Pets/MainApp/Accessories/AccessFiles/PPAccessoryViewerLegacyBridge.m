@@ -402,6 +402,11 @@ static UIViewController *PPAccessoryResolvedPresenter(
         : number;
 }
 
++ (NSString *)sizeTextForAccessory:(PetAccessory *)accessory
+{
+    return PPAccessoryBridgeTrimmedString(accessory.size);
+}
+
 + (NSString *)locationNameForAccessory:(PetAccessory *)accessory
 {
     NSString *city = [CitiesManager.shared cityNameForID:accessory.cityID];

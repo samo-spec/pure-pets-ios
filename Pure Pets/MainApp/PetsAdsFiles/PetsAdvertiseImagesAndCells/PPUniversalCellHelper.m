@@ -382,7 +382,14 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
 
     if ([viewModel.ModelObject isKindOfClass:PetAccessory.class]) {
         PetAccessory *accessory = (PetAccessory *)viewModel.ModelObject;
+        NSString *sizeText = PPUniversalSwiftUISafeString(accessory.size);
         NSString *weightText = PPUniversalSwiftUISafeString(accessory.weightText);
+        if (sizeText.length > 0 && weightText.length > 0) {
+            return [NSString stringWithFormat:@"%@ • %@", sizeText, weightText];
+        }
+        if (sizeText.length > 0) {
+            return sizeText;
+        }
         if (weightText.length > 0) {
             return weightText;
         }
@@ -402,6 +409,12 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
     if ([viewModel.ModelObject isKindOfClass:ServiceModel.class] &&
         [(ServiceModel *)viewModel.ModelObject hasDisplayableRating]) {
         return @"star.fill";
+    }
+    if ([viewModel.ModelObject isKindOfClass:PetAccessory.class]) {
+        PetAccessory *accessory = (PetAccessory *)viewModel.ModelObject;
+        if (accessory.size.length > 0) {
+            return @"ruler.fill";
+        }
     }
     return [self metadataTextForViewModel:viewModel].length > 0
         ? @"scalemass.fill"

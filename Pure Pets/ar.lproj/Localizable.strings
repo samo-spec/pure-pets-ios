@@ -1383,6 +1383,9 @@
 "Location" = "الموقع";
 "Status" = "الحالة";
 "Condition" = "الحالة";
+"Size" = "المقاس";
+"accessory_view_size" = "المقاس";
+"StandardUnit" = "وحدة قياسية";
 "Availability" = "التوفر";
 "Type" = "النوع";
 "Name" = "الاسم";

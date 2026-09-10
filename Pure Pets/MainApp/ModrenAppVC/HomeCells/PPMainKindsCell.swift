@@ -16,14 +16,23 @@ public final class PPMainKindsCell: UICollectionViewCell {
     }
     @objc public var boundCellID: String?
 
-    // MARK: Presentation
+    // MARK: Presentation — Living Sanctuary Totem
 
     private let actionButton = UIButton(type: .custom)
-    private let selectionSurface = UIView()
+    private let cardSurface = UIView()
+    private let cardContentContainer = UIView()
+    private let backgroundBaseView = UIView()
+    private let radiantGlowView = UIView()
+    private let gradientLayer = CAGradientLayer()
+    private let borderOverlayView = UIView()
     private let portraitContainer = UIView()
     private let artworkView = UIImageView()
     private let allArtworkViews = (0..<3).map { _ in UIImageView() }
+    private let titlePillView = UIView()
+    private let titleStackView = UIStackView()
+    private let activePipView = UIView()
     private let titleLabel = UILabel()
+    private let highlightOverlayView = UIView()
 
     // MARK: Content and lifecycle
 
@@ -110,52 +119,86 @@ public final class PPMainKindsCell: UICollectionViewCell {
     public override func layoutSubviews() {
         super.layoutSubviews()
         guard contentView.bounds.width > 0, contentView.bounds.height > 0 else { return }
-        // Bounds/center keep the layout stable while press feedback is active.
+
         actionButton.bounds = CGRect(origin: .zero, size: contentView.bounds.size)
         actionButton.center = CGPoint(x: contentView.bounds.midX, y: contentView.bounds.midY)
 
-        let geometry = PPMainKindsGalleryLayout(
-            bounds: actionButton.bounds,
+        let margin: CGFloat = PPMainKindsGalleryLayout.cardMargin
+        let cardFrame = CGRect(
+            x: margin,
+            y: margin,
+            width: max(0, actionButton.bounds.width - margin * 2),
+            height: max(0, actionButton.bounds.height - margin * 2)
+        )
+        cardSurface.bounds = CGRect(origin: .zero, size: cardFrame.size)
+        cardSurface.center = CGPoint(x: cardFrame.midX, y: cardFrame.midY)
+        cardContentContainer.frame = cardSurface.bounds
+        backgroundBaseView.frame = cardContentContainer.bounds
+        radiantGlowView.frame = cardContentContainer.bounds
+        gradientLayer.frame = radiantGlowView.bounds
+        borderOverlayView.frame = cardContentContainer.bounds
+        highlightOverlayView.frame = cardContentContainer.bounds
+
+        // Calculate typography and caption pill height
+        let titleFont = titleLabel.font ?? UIFont.systemFont(ofSize: 16, weight: .bold)
+        let pillHorizontalMargin: CGFloat = 6.0
+        let availablePillWidth = max(0, cardSurface.bounds.width - pillHorizontalMargin * 2)
+        let measuredTextHeight = PPMainKindsGalleryLayout.captionHeight(
             title: titleLabel.text ?? "",
-            titleFont: titleLabel.font,
+            width: max(0, availablePillWidth - 14.0),
+            font: titleFont,
             expandedText: usesExpandedTextLayout
         )
-        portraitContainer.bounds = CGRect(origin: .zero, size: geometry.portraitFrame.size)
-        portraitContainer.center = CGPoint(
-            x: geometry.portraitFrame.midX, y: geometry.portraitFrame.midY
+        let pillHeight = min(
+            max(26.0, measuredTextHeight + 8.0),
+            cardSurface.bounds.height * 0.38
         )
-        titleLabel.frame = geometry.titleFrame
-        selectionSurface.bounds = CGRect(origin: .zero, size: geometry.selectionFrame.size)
-        selectionSurface.center = CGPoint(
-            x: geometry.selectionFrame.midX, y: geometry.selectionFrame.midY
+        let pillY = max(0, cardSurface.bounds.height - pillHeight - 6.0)
+        titlePillView.frame = CGRect(
+            x: pillHorizontalMargin,
+            y: pillY,
+            width: availablePillWidth,
+            height: pillHeight
+        )
+        titlePillView.layer.cornerRadius = min(pillHeight / 2.0, 11.0)
+        titlePillView.layer.cornerCurve = .continuous
+
+        // Portrait stage canvas
+        let portraitTop: CGFloat = 6.0
+        let portraitBottom = max(portraitTop, titlePillView.frame.minY - 4.0)
+        let portraitHeight = max(0, portraitBottom - portraitTop)
+        let portraitWidth = max(0, cardSurface.bounds.width - 10.0)
+        portraitContainer.frame = CGRect(
+            x: (cardSurface.bounds.width - portraitWidth) / 2.0,
+            y: portraitTop,
+            width: portraitWidth,
+            height: portraitHeight
         )
 
-        let artworkCanvas = CGRect(
-            x: PPSpace.xxs, y: PPSpace.xxs,
-            width: max(0, portraitContainer.bounds.width - PPSpace.xs),
-            height: max(0, portraitContainer.bounds.height - PPSpace.xs)
-        )
+        let artworkCanvas = portraitContainer.bounds
         if content?.isAll == true {
-            let side = min(artworkCanvas.width, artworkCanvas.height) * 0.42
+            let side = min(artworkCanvas.width, artworkCanvas.height) * 0.50
             artworkView.frame = CGRect(
-                x: artworkCanvas.midX - side / 2,
-                y: artworkCanvas.midY - side / 2,
-                width: side, height: side
+                x: (artworkCanvas.width - side) / 2.0,
+                y: (artworkCanvas.height - side) / 2.0,
+                width: side,
+                height: side
             ).integral
             layoutAllArtwork(in: artworkCanvas)
         } else {
-            // Optical profiles normalize the real artwork. Bottom-align the
-            // image canvas so an enlarged silhouette cannot cover its caption.
             var frame = HomeSpeciesArtworkTreatment
                 .resolved(for: content?.numericID ?? 0)
                 .frame(in: artworkCanvas)
             frame.origin.y = min(frame.minY, artworkCanvas.maxY - frame.height)
             artworkView.frame = frame
         }
+
         artworkView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
-            pointSize: max(20, min(artworkView.bounds.width, artworkView.bounds.height) * 0.70),
+            pointSize: max(22, min(artworkView.bounds.width, artworkView.bounds.height) * 0.65),
             weight: .medium
         )
+
+        updateShadow(isPressed: pressAnimator != nil)
     }
 
     public override func traitCollectionDidChange(_ previous: UITraitCollection?) {
@@ -307,18 +350,35 @@ public final class PPMainKindsCell: UICollectionViewCell {
         contentView.addSubview(actionButton)
         accessibilityElements = [actionButton]
 
-        // One low ink surface joins the selected animal to its name. Passive
-        // animals sit directly on Home, with no repeated enclosing chrome.
-        selectionSurface.isUserInteractionEnabled = false
-        selectionSurface.isAccessibilityElement = false
-        selectionSurface.layer.cornerRadius = PPSpace.xs + PPSpace.xxs
-        selectionSurface.layer.cornerCurve = .continuous
-        actionButton.addSubview(selectionSurface)
+        // Outer squircle card surface (owns dynamic elevation shadow)
+        cardSurface.isUserInteractionEnabled = false
+        cardSurface.layer.cornerRadius = 18.0
+        cardSurface.layer.cornerCurve = .continuous
+        cardSurface.backgroundColor = .clear
+        actionButton.addSubview(cardSurface)
 
+        // Inner content container (clips background, gradients, and images to continuous squircle)
+        cardContentContainer.isUserInteractionEnabled = false
+        cardContentContainer.layer.cornerRadius = 18.0
+        cardContentContainer.layer.cornerCurve = .continuous
+        cardContentContainer.clipsToBounds = true
+        cardSurface.addSubview(cardContentContainer)
+
+        // Resting surface layer
+        backgroundBaseView.isUserInteractionEnabled = false
+        cardContentContainer.addSubview(backgroundBaseView)
+
+        // Radiant glow gradient layer
+        radiantGlowView.isUserInteractionEnabled = false
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1.0)
+        radiantGlowView.layer.addSublayer(gradientLayer)
+        cardContentContainer.addSubview(radiantGlowView)
+
+        // Portrait canvas stage
         portraitContainer.isUserInteractionEnabled = false
-        portraitContainer.isAccessibilityElement = false
         portraitContainer.clipsToBounds = false
-        actionButton.addSubview(portraitContainer)
+        cardContentContainer.addSubview(portraitContainer)
 
         artworkView.contentMode = .scaleAspectFit
         artworkView.clipsToBounds = false
@@ -331,16 +391,61 @@ public final class PPMainKindsCell: UICollectionViewCell {
             view.isAccessibilityElement = false
             view.isUserInteractionEnabled = false
             view.accessibilityIgnoresInvertColors = true
+            view.layer.shadowColor = UIColor.black.cgColor
+            view.layer.shadowOpacity = 0.12
+            view.layer.shadowOffset = CGSize(width: 0, height: 2)
+            view.layer.shadowRadius = 3
             view.isHidden = true
             portraitContainer.addSubview(view)
         }
+
+        // Title Pill Capsule
+        titlePillView.isUserInteractionEnabled = false
+        cardContentContainer.addSubview(titlePillView)
+
+        titleStackView.axis = .horizontal
+        titleStackView.spacing = 5.0
+        titleStackView.alignment = .center
+        titleStackView.distribution = .fill
+        titleStackView.isUserInteractionEnabled = false
+        titleStackView.translatesAutoresizingMaskIntoConstraints = false
+        titlePillView.addSubview(titleStackView)
+
+        activePipView.translatesAutoresizingMaskIntoConstraints = false
+        activePipView.layer.cornerRadius = 2.5
+        activePipView.clipsToBounds = true
+        activePipView.isHidden = true
+        titleStackView.addArrangedSubview(activePipView)
 
         titleLabel.backgroundColor = .clear
         titleLabel.textAlignment = .center
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.isAccessibilityElement = false
-        actionButton.addSubview(titleLabel)
+        titleStackView.addArrangedSubview(titleLabel)
+
+        NSLayoutConstraint.activate([
+            activePipView.widthAnchor.constraint(equalToConstant: 5.0),
+            activePipView.heightAnchor.constraint(equalToConstant: 5.0),
+
+            titleStackView.centerXAnchor.constraint(equalTo: titlePillView.centerXAnchor),
+            titleStackView.centerYAnchor.constraint(equalTo: titlePillView.centerYAnchor),
+            titleStackView.leadingAnchor.constraint(greaterThanOrEqualTo: titlePillView.leadingAnchor, constant: 6),
+            titleStackView.trailingAnchor.constraint(lessThanOrEqualTo: titlePillView.trailingAnchor, constant: -6),
+        ])
+
+        // Catchlight border overlay
+        borderOverlayView.isUserInteractionEnabled = false
+        borderOverlayView.layer.cornerRadius = 18.0
+        borderOverlayView.layer.cornerCurve = .continuous
+        borderOverlayView.backgroundColor = .clear
+        cardContentContainer.addSubview(borderOverlayView)
+
+        // Instant highlight touch overlay
+        highlightOverlayView.isUserInteractionEnabled = false
+        highlightOverlayView.backgroundColor = .black
+        highlightOverlayView.alpha = 0.0
+        cardContentContainer.addSubview(highlightOverlayView)
 
         applyLayoutDirection()
         updateTypography()
@@ -393,9 +498,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
         semanticContentAttribute = semantic
         contentView.semanticContentAttribute = semantic
         actionButton.semanticContentAttribute = semantic
+        titlePillView.semanticContentAttribute = semantic
+        titleStackView.semanticContentAttribute = semantic
         titleLabel.semanticContentAttribute = semantic
-        // This centered gallery preserves every subject's pose in both
-        // languages; the rail continues to own logical order and scrolling.
+
         portraitContainer.semanticContentAttribute = .forceLeftToRight
         artworkView.semanticContentAttribute = .forceLeftToRight
         artworkView.transform = .identity
@@ -416,7 +522,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private func updateContent() {
         guard let content else { return }
         titleLabel.text = content.title
-        actionButton.accessibilityLabel = content.title
+        actionButton.accessibilityLabel = "\(content.title), \(isKindSelected ? (Language.isRTL() ? "محدد" : "Selected") : "")"
         actionButton.accessibilityIdentifier = content.isAll
             ? "home.mainKinds.all" : "home.mainKinds.\(content.numericID)"
         actionButton.largeContentTitle = content.title
@@ -430,20 +536,91 @@ public final class PPMainKindsCell: UICollectionViewCell {
         if isKindSelected { traits.insert(.selected) }
         if !actionButton.isEnabled { traits.insert(.notEnabled) }
         actionButton.accessibilityTraits = traits
-        actionButton.alpha = actionButton.isEnabled ? 1 : 0.55
+        actionButton.alpha = actionButton.isEnabled ? 1.0 : 0.55
     }
 
     private func updateAppearance() {
-        let text = UIColor.ppTextPrimary.resolvedColor(with: traitCollection)
+        let traits = traitCollection
+        let isDark = traits.userInterfaceStyle == .dark
         let accent = resolvedAccent
-        let selectedText: UIColor = UIColor.white.ppMainKindContrastRatio(against: accent)
+        let selectedTextColor: UIColor = UIColor.white.ppMainKindContrastRatio(against: accent)
             >= UIColor.black.ppMainKindContrastRatio(against: accent) ? .white : .black
-        selectionSurface.backgroundColor = accent
-        selectionSurface.alpha = isKindSelected ? 1 : 0
-        titleLabel.textColor = isKindSelected ? selectedText : text
-        artworkView.tintColor = content?.isAll == true && !isKindSelected
-            ? .ppTextSecondary : accent
-        allArtworkViews.forEach { $0.tintColor = accent }
+
+        if isKindSelected {
+            // Selected Sanctuary Stage
+            backgroundBaseView.backgroundColor = accent.withAlphaComponent(isDark ? 0.22 : 0.12)
+
+            gradientLayer.colors = [
+                accent.withAlphaComponent(isDark ? 0.28 : 0.18).cgColor,
+                accent.withAlphaComponent(isDark ? 0.12 : 0.04).cgColor
+            ]
+            radiantGlowView.alpha = 1.0
+
+            borderOverlayView.layer.borderColor = accent.withAlphaComponent(isDark ? 0.72 : 0.60).cgColor
+            borderOverlayView.layer.borderWidth = 1.5
+
+            titlePillView.backgroundColor = accent
+            titlePillView.layer.borderWidth = 0
+            titleLabel.textColor = selectedTextColor
+
+            activePipView.backgroundColor = selectedTextColor
+            activePipView.isHidden = false
+            activePipView.alpha = 1.0
+
+            if content?.isAll == true {
+                artworkView.tintColor = selectedTextColor
+            }
+            allArtworkViews.forEach { $0.tintColor = selectedTextColor }
+            updateShadow(isPressed: pressAnimator != nil)
+        } else {
+            // Resting Clean Porcelain / Obsidian Stage
+            backgroundBaseView.backgroundColor = UIColor.ppSurfaceRaised.resolvedColor(with: traits)
+            radiantGlowView.alpha = 0.0
+
+            borderOverlayView.layer.borderColor = UIColor.ppSurfaceBorder.resolvedColor(with: traits).withAlphaComponent(isDark ? 0.40 : 0.65).cgColor
+            borderOverlayView.layer.borderWidth = 1.0
+
+            titlePillView.backgroundColor = UIColor.ppSurface.resolvedColor(with: traits).withAlphaComponent(0.60)
+            titlePillView.layer.borderWidth = 0.5
+            titlePillView.layer.borderColor = UIColor.ppSurfaceBorder.resolvedColor(with: traits).withAlphaComponent(0.35).cgColor
+            titleLabel.textColor = UIColor.ppTextPrimary.resolvedColor(with: traits)
+
+            activePipView.isHidden = true
+            activePipView.alpha = 0.0
+
+            if content?.isAll == true {
+                artworkView.tintColor = UIColor.ppTextSecondary.resolvedColor(with: traits)
+            }
+            allArtworkViews.forEach { $0.tintColor = accent }
+            updateShadow(isPressed: pressAnimator != nil)
+        }
+    }
+
+    private func updateShadow(isPressed: Bool) {
+        guard traitCollection.accessibilityContrast != .high else {
+            cardSurface.layer.shadowOpacity = 0
+            return
+        }
+        let accent = resolvedAccent
+        let isDark = traitCollection.userInterfaceStyle == .dark
+
+        if isKindSelected {
+            cardSurface.layer.shadowColor = accent.cgColor
+            cardSurface.layer.shadowOpacity = isPressed ? (isDark ? 0.25 : 0.20) : (isDark ? 0.42 : 0.32)
+            cardSurface.layer.shadowOffset = CGSize(width: 0, height: isPressed ? 2 : 5)
+            cardSurface.layer.shadowRadius = isPressed ? 4 : 10
+        } else {
+            cardSurface.layer.shadowColor = UIColor.black.cgColor
+            cardSurface.layer.shadowOpacity = isPressed ? 0.02 : (isDark ? 0.22 : 0.06)
+            cardSurface.layer.shadowOffset = CGSize(width: 0, height: isPressed ? 1 : 3)
+            cardSurface.layer.shadowRadius = isPressed ? 2 : 6
+        }
+        if cardSurface.bounds.width > 0 && cardSurface.bounds.height > 0 {
+            cardSurface.layer.shadowPath = UIBezierPath(
+                roundedRect: cardSurface.bounds,
+                cornerRadius: 18.0
+            ).cgPath
+        }
     }
 
     // MARK: Existing image ownership
@@ -545,15 +722,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
             let normalized: CGRect
             if visibleViews.count == 2 {
                 normalized = index == 0
-                    ? CGRect(x: -0.02, y: 0.03, width: 0.68, height: 0.94)
-                    : CGRect(x: 0.36, y: 0, width: 0.66, height: 0.90)
+                    ? CGRect(x: 0.02, y: 0.08, width: 0.64, height: 0.88)
+                    : CGRect(x: 0.34, y: 0.04, width: 0.64, height: 0.88)
             } else {
-                // The front portrait stays upright; two smaller subjects
-                // emerge behind it. Only existing category artwork is used.
                 switch index {
-                case 0: normalized = CGRect(x: 0.15, y: 0.18, width: 0.70, height: 0.82)
-                case 1: normalized = CGRect(x: -0.02, y: 0.01, width: 0.62, height: 0.76)
-                default: normalized = CGRect(x: 0.42, y: 0, width: 0.60, height: 0.76)
+                case 0: normalized = CGRect(x: 0.16, y: 0.16, width: 0.68, height: 0.84)
+                case 1: normalized = CGRect(x: -0.02, y: 0.02, width: 0.58, height: 0.76)
+                default: normalized = CGRect(x: 0.44, y: 0.02, width: 0.58, height: 0.76)
                 }
             }
             view.frame = CGRect(
@@ -565,7 +740,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         }
     }
 
-    // MARK: Finite, cancellable feedback
+    // MARK: - Finite Tactile Motion & Spring Microinteractions
 
     @objc private func handleTouchDown() {
         guard !activationInFlight else { return }
@@ -580,20 +755,21 @@ public final class PPMainKindsCell: UICollectionViewCell {
     @objc private func handleActivation() {
         let now = CACurrentMediaTime()
         guard !activationInFlight,
-              now - lastActivationTime >= 0.30,
+              now - lastActivationTime >= 0.25,
               let content, let expectedCellID = boundCellID,
               onSelect != nil, window != nil else {
-            // A debounced touchUpInside still ends its touchDown state. An
-            // accepted activation owns its release until completion instead.
             if !activationInFlight { animatePress(pressed: false) }
             return
         }
         lastActivationTime = now
         stopPressMotion()
 
+        let haptic = UIImpactFeedbackGenerator(style: .medium)
+        haptic.prepare()
+        haptic.impactOccurred()
+
         guard !reduceMotion else {
-            portraitContainer.transform = .identity
-            portraitContainer.alpha = 1
+            cardSurface.transform = .identity
             onSelect?(content.kind, content.isAll)
             return
         }
@@ -602,11 +778,10 @@ public final class PPMainKindsCell: UICollectionViewCell {
         updateInteractionAvailability()
         activationGeneration &+= 1
         let generation = activationGeneration
-        // A release acknowledges the touch; it does not launch a second
-        // spectacle or move the caption. Home receives the intent once settled.
-        let animator = UIViewPropertyAnimator(duration: 0.18, dampingRatio: 0.90) { [weak self] in
-            self?.portraitContainer.transform = .identity
-            self?.portraitContainer.alpha = 1
+
+        let animator = UIViewPropertyAnimator(duration: 0.20, dampingRatio: 0.74) { [weak self] in
+            self?.cardSurface.transform = .identity
+            self?.highlightOverlayView.alpha = 0.0
         }
         animator.addCompletion { [weak self] position in
             guard let self, position == .end,
@@ -625,18 +800,23 @@ public final class PPMainKindsCell: UICollectionViewCell {
     private func animatePress(pressed: Bool) {
         stopPressMotion()
         let target = pressed && !reduceMotion
-            ? CGAffineTransform(scaleX: 0.974, y: 0.974) : .identity
-        let alpha: CGFloat = pressed ? 0.86 : 1
+            ? CGAffineTransform(scaleX: 0.945, y: 0.945).translatedBy(x: 0, y: 1.5)
+            : .identity
+        let overlayAlpha: CGFloat = pressed ? 0.04 : 0.0
         guard !reduceMotion, window != nil else {
-            portraitContainer.transform = .identity
-            portraitContainer.alpha = alpha
+            cardSurface.transform = .identity
+            highlightOverlayView.alpha = 0.0
             return
         }
         pressGeneration &+= 1
         let generation = pressGeneration
-        let animator = UIViewPropertyAnimator(duration: pressed ? 0.09 : 0.18, curve: .easeOut) { [weak self] in
-            self?.portraitContainer.transform = target
-            self?.portraitContainer.alpha = alpha
+        let animator = UIViewPropertyAnimator(
+            duration: pressed ? 0.10 : 0.22,
+            dampingRatio: pressed ? 0.85 : 0.72
+        ) { [weak self] in
+            self?.cardSurface.transform = target
+            self?.highlightOverlayView.alpha = overlayAlpha
+            self?.updateShadow(isPressed: pressed)
         }
         animator.addCompletion { [weak self] _ in
             guard let self, self.pressGeneration == generation else { return }
@@ -648,18 +828,32 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func animateSelection(restored: Bool) {
         stopStateMotion()
-        // Reverse text and its ink arrive together at full contrast. Settle
-        // only the low surface; never fade white text through a clear field.
-        updateAppearance()
-        guard isKindSelected, !reduceMotion, window != nil else { return }
+        guard !reduceMotion, window != nil else {
+            updateAppearance()
+            return
+        }
         stateGeneration &+= 1
         let generation = stateGeneration
-        selectionSurface.transform = CGAffineTransform(translationX: 0, y: 3)
-        let animator = UIViewPropertyAnimator(duration: restored ? 0.12 : 0.18, curve: .easeOut) { [weak self] in
-            self?.selectionSurface.transform = .identity
+
+        let animator = UIViewPropertyAnimator(
+            duration: restored ? 0.18 : 0.30,
+            dampingRatio: 0.80
+        ) { [weak self] in
+            guard let self else { return }
+            self.updateAppearance()
+            if self.isKindSelected {
+                self.portraitContainer.transform = CGAffineTransform(scaleX: 1.04, y: 1.04).translatedBy(x: 0, y: -2.0)
+            } else {
+                self.portraitContainer.transform = .identity
+            }
         }
         animator.addCompletion { [weak self] _ in
             guard let self, self.stateGeneration == generation else { return }
+            if self.isKindSelected && !self.reduceMotion {
+                UIViewPropertyAnimator.runningPropertyAnimator(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) {
+                    self.portraitContainer.transform = .identity
+                }
+            }
             self.stateAnimator = nil
         }
         stateAnimator = animator
@@ -670,7 +864,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         stateGeneration &+= 1
         stateAnimator?.stopAnimation(true)
         stateAnimator = nil
-        selectionSurface.transform = .identity
+        portraitContainer.transform = .identity
     }
 
     private func stopPressMotion() {
@@ -680,6 +874,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             animator.finishAnimation(at: .current)
         }
         pressAnimator = nil
+        highlightOverlayView.alpha = 0.0
     }
 
     private func stopActivationMotion() {
@@ -687,8 +882,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         activationAnimator?.stopAnimation(true)
         activationAnimator = nil
         activationInFlight = false
-        portraitContainer.transform = .identity
-        portraitContainer.alpha = 1
+        cardSurface.transform = .identity
+        highlightOverlayView.alpha = 0.0
         updateInteractionAvailability()
     }
 
@@ -696,8 +891,9 @@ public final class PPMainKindsCell: UICollectionViewCell {
         stopStateMotion()
         stopPressMotion()
         stopActivationMotion()
+        cardSurface.layer.removeAllAnimations()
         portraitContainer.layer.removeAllAnimations()
-        selectionSurface.layer.removeAllAnimations()
+        titlePillView.layer.removeAllAnimations()
         titleLabel.layer.removeAllAnimations()
         updateAppearance()
     }
@@ -756,46 +952,36 @@ private struct PPMainKindsContent {
     }
 }
 
-// MARK: - Measured gallery geometry shared with the Home rail
+// MARK: - Measured Gallery Geometry Shared with Home Rail
 
-/// The rail and UIKit renderer use the same caption measurement. A short
-/// name occupies one actual line, rather than floating in a two-line box.
 struct PPMainKindsGalleryLayout {
-    static let captionPointSize: CGFloat = 18
-    static let captionInset = PPSpace.sm
-    static let captionGap = PPSpace.xs
-    static let bottomInset = PPSpace.sm
+    static let captionPointSize: CGFloat = 17
+    static let captionInset: CGFloat = PPSpace.sm
+    static let captionGap: CGFloat = PPSpace.xs
+    static let bottomInset: CGFloat = PPSpace.sm
+    static let cardMargin: CGFloat = 3.0
 
     let portraitFrame: CGRect
     let titleFrame: CGRect
     let selectionFrame: CGRect
 
     init(bounds: CGRect, title: String, titleFont: UIFont, expandedText: Bool) {
-        let inset = PPSpace.xs
-        let labelWidth = max(0, bounds.width - Self.captionInset * 2)
-        let captionHeight = Self.captionHeight(
-            title: title, width: labelWidth, font: titleFont, expandedText: expandedText
-        )
-        let availableHeight = max(
-            0, bounds.height - captionHeight - Self.captionGap - Self.bottomInset - inset
-        )
-        let width = min(max(0, bounds.width - inset * 2), expandedText ? 124 : 144)
-        let height = min(availableHeight, Self.portraitHeight(for: bounds.width, expandedText: expandedText))
-        portraitFrame = CGRect(
-            x: bounds.midX - width / 2, y: inset, width: width, height: height
-        ).integral
-        titleFrame = CGRect(
-            x: Self.captionInset,
-            y: portraitFrame.maxY + Self.captionGap,
-            width: labelWidth,
-            height: min(captionHeight, max(0, bounds.maxY - portraitFrame.maxY - Self.captionGap - Self.bottomInset))
-        ).integral
-        let surfaceTop = max(inset, portraitFrame.maxY - PPSpace.base)
-        selectionFrame = CGRect(
-            x: inset, y: surfaceTop,
-            width: max(0, bounds.width - inset * 2),
-            height: max(0, titleFrame.maxY + Self.bottomInset - surfaceTop)
-        ).integral
+        let margin = Self.cardMargin
+        let cardW = max(0, bounds.width - margin * 2)
+        let cardH = max(0, bounds.height - margin * 2)
+        let labelW = max(0, cardW - 16.0)
+        let captionH = Self.captionHeight(title: title, width: labelW, font: titleFont, expandedText: expandedText)
+        let pillH = min(max(26.0, captionH + 8.0), cardH * 0.38)
+        let pillY = max(0, cardH - pillH - 6.0)
+
+        let pTop: CGFloat = 6.0
+        let pBottom = max(pTop, pillY - 4.0)
+        let pHeight = max(0, pBottom - pTop)
+        let pWidth = max(0, cardW - 10.0)
+
+        portraitFrame = CGRect(x: margin + (cardW - pWidth) / 2.0, y: margin + pTop, width: pWidth, height: pHeight).integral
+        titleFrame = CGRect(x: margin + 6.0, y: margin + pillY, width: labelW, height: pillH).integral
+        selectionFrame = CGRect(x: margin, y: margin, width: cardW, height: cardH).integral
     }
 
     static func captionFont(size: CGFloat, bold: Bool) -> UIFont {
@@ -804,12 +990,12 @@ struct PPMainKindsGalleryLayout {
     }
 
     static func portraitHeight(for width: CGFloat, expandedText: Bool) -> CGFloat {
-        ceil(min(max(0, width - PPSpace.xs), expandedText ? 124 : 112) * 0.90)
+        ceil(min(max(0, width - PPSpace.xs), expandedText ? 124 : 112) * 0.88)
     }
 
     static func captionHeight(title: String, width: CGFloat, font: UIFont, expandedText: Bool) -> CGFloat {
         let lineHeight = ceil(font.lineHeight)
-        guard width > 0 else { return lineHeight }
+        guard width > 0, !title.isEmpty else { return lineHeight }
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineBreakMode = .byWordWrapping
         let measured = (title as NSString).boundingRect(
@@ -828,8 +1014,8 @@ struct PPMainKindsGalleryLayout {
                 max(maximum, captionHeight(title: title, width: labelWidth, font: font, expandedText: expandedText))
             }
         }
-        return PPSpace.xs + portraitHeight(for: width, expandedText: expandedText)
-            + captionGap + textHeight + bottomInset
+        return cardMargin * 2 + portraitHeight(for: width, expandedText: expandedText)
+            + captionGap + textHeight + bottomInset + 10.0
     }
 }
 

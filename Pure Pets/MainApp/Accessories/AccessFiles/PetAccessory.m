@@ -99,6 +99,7 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     }
     if (self.weight) dict[@"weight"] = self.weight;
     if (self.weightUnit.length > 0) dict[@"weightUnit"] = self.weightUnit;
+    if (self.size.length > 0) dict[@"size"] = self.size;
     
     // Images
     if (self.imageURLsArray) dict[@"imageURLsArray"] = self.imageURLsArray;
@@ -317,6 +318,11 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
             @"measurementUnit",
             @"weight_unit"
         ]));
+        _size = PPAccessoryStringValueForKeys(dict, (@[
+            @"size",
+            @"itemSize",
+            @"accessorySize"
+        ]));
         _imageURLsArray = dict[@"imageURLsArray"] ?: @[];
         _imageMeta  = dict[@"imageMeta"] ?: nil;
         _petMainCategoryID = [dict[@"petMainCategoryID"] integerValue];
@@ -408,6 +414,7 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.weightText = [source.weightText copy];
     copy.weight = [source.weight copy];
     copy.weightUnit = [source.weightUnit copy];
+    copy.size = [source.size copy];
     copy.desc = [source.desc copy];
     copy.blurHash = [source.blurHash copy];
     copy.petMainCategoryID = source.petMainCategoryID;

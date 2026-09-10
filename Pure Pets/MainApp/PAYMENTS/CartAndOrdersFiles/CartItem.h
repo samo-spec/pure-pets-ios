@@ -33,6 +33,7 @@ typedef NS_ENUM(NSInteger, OrderStatus)
 @property (nonatomic, strong) NSString *imageURL;
 @property (nonatomic, strong) NSString *providerID;
 @property (nonatomic, strong) NSString *type;
+@property (nonatomic, copy, nullable) NSString *size;
 
 /// YES when originalPrice > price (a discount is active).
 @property (nonatomic, readonly) BOOL hasDiscount;

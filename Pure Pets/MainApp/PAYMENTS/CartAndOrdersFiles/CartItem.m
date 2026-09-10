@@ -70,6 +70,7 @@
         }
         _imageURL = firstImage;
         _providerID = accessory.ownerID ?: @"";
+        _size = accessory.size ?: @"";
 
         NSLog(@"[CartItem] Created | id=%@ | basePrice=%.2f | finalPrice=%.2f | effectivePrice=%.2f | discount=%@ | qty=%ld",
               _itemID, basePrice, finalPrice, _price,
@@ -90,6 +91,9 @@
         @"originalPrice": @(self.originalPrice),
         @"qty": @(MAX(self.quantity, 0))
     } mutableCopy];
+    if (self.size.length > 0) {
+        dict[@"size"] = self.size;
+    }
     if (self.stockQuantity != NSNotFound) {
         dict[@"stockQuantity"] = @(MAX(self.stockQuantity, 0));
     }
@@ -107,6 +111,7 @@
     if (self) {
         _itemID = dict[@"itemID"] ?: @"";
         _name = dict[@"name"] ?: @"";
+        _size = dict[@"size"] ?: @"";
         _quantity = [dict[@"quantity"] integerValue];
         if ([dict[@"stockQuantity"] respondsToSelector:@selector(integerValue)]) {
             _stockQuantity = MAX(0, [dict[@"stockQuantity"] integerValue]);

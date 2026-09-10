@@ -74,6 +74,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
     NS_SWIFT_NAME(stockText(for:));
 + (NSString *)weightTextForAccessory:(PetAccessory *)accessory
     NS_SWIFT_NAME(weightText(for:));
++ (NSString *)sizeTextForAccessory:(PetAccessory *)accessory
+    NS_SWIFT_NAME(sizeText(for:));
 + (NSString *)locationNameForAccessory:(PetAccessory *)accessory
     NS_SWIFT_NAME(locationName(for:));
 + (NSString *)createdDateTextForAccessory:(PetAccessory *)accessory

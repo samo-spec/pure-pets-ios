@@ -1406,6 +1406,9 @@
 "Location" = "Location";
 "Status" = "Status";
 "Condition" = "Condition";
+"Size" = "Size";
+"accessory_view_size" = "Size";
+"StandardUnit" = "Standard Unit";
 "Availability" = "Availability";
 "Type" = "Type";
 "Name" = "Name";
