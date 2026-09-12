@@ -559,6 +559,8 @@ final class HomeStore: ObservableObject {
             router.openServices(mainKind: kind)
         case .petProfile:
             editSelectedPet()
+        case .adopt:
+            router.openAdoption()
         }
     }
 
@@ -1788,6 +1790,20 @@ final class HomeStore: ObservableObject {
                 systemImage: "hands.sparkles.fill",
                 accent: .ppQuickActionServices,
                 destination: .services
+            ),
+            HomePriorityAction(
+                id: "adopt",
+                title: HomeModelAdapter.localized(
+                    "home_pulse_priority_adopt",
+                    fallback: "Adopt"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "home_pulse_priority_adopt_subtitle",
+                    fallback: "Pets looking for a home"
+                ),
+                systemImage: "pawprint.fill",
+                accent: .ppQuickActionAdoption,
+                destination: .adopt
             ),
         ]
     }

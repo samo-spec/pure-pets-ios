@@ -4272,6 +4272,8 @@
 "home_pulse_priority_food_subtitle" = "Nutrition & treats";
 "home_pulse_priority_services" = "Services";
 "home_pulse_priority_services_subtitle" = "Grooming & training";
+"home_pulse_priority_adopt" = "Adopt";
+"home_pulse_priority_adopt_subtitle" = "Pets looking for a home";
 "home_pulse_priority_shop" = "Shop";
 "home_pulse_priority_shop_subtitle" = "Food & essentials";
 "home_pulse_priority_title" = "Your next step";

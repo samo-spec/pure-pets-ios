@@ -2087,7 +2087,7 @@ private enum HomeQuickActionTone {
             return HomeSemanticTone.brand
         case "pharmacy", "vet":
             return HomeSemanticTone.health
-        case "food", "pet", "services":
+        case "food", "pet", "services", "adopt":
             return HomeSemanticTone.care
         default:
             return HomeSemanticTone.brand
@@ -2117,8 +2117,19 @@ struct HomePriorityGrid: View {
         static let maximumContentWidth: CGFloat = 488
     }
 
+    private var rowCount: Int {
+        if secondaryActions.count >= 7 {
+            return 3
+        } else if secondaryActions.count > 3 {
+            return 2
+        } else {
+            return max(1, secondaryActions.count)
+        }
+    }
+
     private var compactSectionHeight: CGFloat {
-        (compactCardHeight * 2) + Layout.cardSpacing
+        let rows = CGFloat(rowCount)
+        return (compactCardHeight * rows) + (Layout.cardSpacing * max(0, rows - 1))
     }
 
     private var featuredAction: HomePriorityAction? {
@@ -2191,6 +2202,13 @@ struct HomePriorityGrid: View {
             Layout.maximumFeaturedCircle
         )
 
+        let gridWidth: CGFloat
+        if featuredAction != nil {
+            gridWidth = max(0, contentWidth - featuredWidth - Layout.columnSpacing)
+        } else {
+            gridWidth = contentWidth
+        }
+
         return HStack(
             alignment: .top,
             spacing: Layout.columnSpacing
@@ -2208,7 +2226,7 @@ struct HomePriorityGrid: View {
                 .frame(width: featuredWidth)
             }
 
-            secondaryGrid
+            secondaryGrid(totalWidth: gridWidth)
                 .frame(maxWidth: .infinity)
         }
         .frame(width: contentWidth)
@@ -2216,17 +2234,78 @@ struct HomePriorityGrid: View {
         .frame(height: compactSectionHeight)
     }
 
-    private var secondaryGrid: some View {
+    @ViewBuilder
+    private func secondaryGrid(totalWidth: CGFloat) -> some View {
         let count = secondaryActions.count
-        let firstRowCount = (count == 6 || count == 4) ? count / 2 : ((count == 5) ? 2 : (count > 4 ? (count + 1) / 2 : min(2, count)))
-        let firstRow = Array(secondaryActions.prefix(firstRowCount))
-        let secondRow = Array(secondaryActions.dropFirst(firstRowCount))
+        let spacing = Layout.cardSpacing
 
-        return VStack(spacing: Layout.cardSpacing) {
-            secondaryRow(firstRow)
+        if count >= 7 {
+            let singleColWidth = max(0, (totalWidth - (spacing * 2)) / 3)
+            let doubleColWidth = (singleColWidth * 2) + spacing
 
-            if !secondRow.isEmpty {
-                secondaryRow(secondRow)
+            VStack(spacing: spacing) {
+                // Row 1: Shopping (2 cols), Food (1 col)
+                HStack(spacing: spacing) {
+                    HomeSecondaryActionCard(
+                        action: secondaryActions[0],
+                        compactHeight: compactCardHeight,
+                        isDoubleWidth: true,
+                        onSelect: onSelect
+                    )
+                    .frame(width: doubleColWidth)
+
+                    HomeSecondaryActionCard(
+                        action: secondaryActions[1],
+                        compactHeight: compactCardHeight,
+                        isDoubleWidth: false,
+                        onSelect: onSelect
+                    )
+                    .frame(width: singleColWidth)
+                }
+
+                // Row 2: Animals (1 col), Vet (1 col), Pharmacy (1 col)
+                HStack(spacing: spacing) {
+                    ForEach(Array(secondaryActions[2..<min(5, count)])) { action in
+                        HomeSecondaryActionCard(
+                            action: action,
+                            compactHeight: compactCardHeight,
+                            isDoubleWidth: false,
+                            onSelect: onSelect
+                        )
+                        .frame(width: singleColWidth)
+                    }
+                }
+
+                // Row 3: Services (1 col), Adopt (2 cols)
+                HStack(spacing: spacing) {
+                    HomeSecondaryActionCard(
+                        action: secondaryActions[5],
+                        compactHeight: compactCardHeight,
+                        isDoubleWidth: false,
+                        onSelect: onSelect
+                    )
+                    .frame(width: singleColWidth)
+
+                    HomeSecondaryActionCard(
+                        action: secondaryActions[6],
+                        compactHeight: compactCardHeight,
+                        isDoubleWidth: true,
+                        onSelect: onSelect
+                    )
+                    .frame(width: doubleColWidth)
+                }
+            }
+        } else {
+            let firstRowCount = (count == 6 || count == 4) ? count / 2 : ((count == 5) ? 2 : (count > 4 ? (count + 1) / 2 : min(2, count)))
+            let firstRow = Array(secondaryActions.prefix(firstRowCount))
+            let secondRow = Array(secondaryActions.dropFirst(firstRowCount))
+
+            VStack(spacing: Layout.cardSpacing) {
+                secondaryRow(firstRow)
+
+                if !secondRow.isEmpty {
+                    secondaryRow(secondRow)
+                }
             }
         }
     }
@@ -2722,6 +2801,7 @@ struct HomeFeaturedPetCard: View {
 private struct HomeSecondaryActionCard: View {
     let action: HomePriorityAction
     let compactHeight: CGFloat
+    var isDoubleWidth: Bool = false
     let onSelect: (HomePriorityAction) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -2806,7 +2886,7 @@ private struct HomeSecondaryActionCard: View {
                     Spacer(minLength: PPSpace.xs)
 
                     Text(action.title)
-                        .font(HomeFont.bold(15))
+                        .font(HomeFont.bold(isDoubleWidth ? 16 : 15))
                         .foregroundStyle(Color.homeTextPrimary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(1)
@@ -2815,7 +2895,7 @@ private struct HomeSecondaryActionCard: View {
 
                     if !action.subtitle.isEmpty {
                         Text(action.subtitle)
-                            .font(HomeFont.medium(11))
+                            .font(HomeFont.medium(isDoubleWidth ? 12 : 11))
                             .foregroundStyle(subtitleColor)
                             .multilineTextAlignment(.leading)
                             .lineLimit(1)
@@ -2938,6 +3018,7 @@ private struct HomeSecondaryActionCard: View {
         case "pharmacy": return "pills.fill"
         case "vet": return "cross.case.fill"
         case "services": return "hands.sparkles.fill"
+        case "adopt": return "pawprint.fill"
         default: return action.systemImage
         }
     }

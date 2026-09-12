@@ -1085,7 +1085,7 @@ struct HomeView: View {
     }
 
     private var placeholderActions: [HomePriorityAction] {
-        ["shop", "food", "ads", "vet", "pharmacy", "services"].map {
+        ["shop", "food", "ads", "vet", "pharmacy", "services", "adopt"].map {
             placeholderAction(id: $0)
         }
     }

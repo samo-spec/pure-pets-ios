@@ -212,6 +212,7 @@ enum HomePriorityDestination {
     case pharmacy
     case services
     case petProfile
+    case adopt
 }
 
 struct HomePriorityAction: Identifiable {

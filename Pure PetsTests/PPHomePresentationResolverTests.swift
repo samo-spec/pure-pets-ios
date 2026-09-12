@@ -501,10 +501,10 @@ final class PPHomePresentationResolverTests: XCTestCase {
         )
     }
 
-    func testMyPetFeatureLeadsFourHighestPrioritySecondaryActions() {
+    func testMyPetFeatureLeadsSecondaryActionsBoundedByLauncherLimit() {
         var value = populatedState()
         value.priorityActions = [
-            "pet", "shop", "ads", "pharmacy", "vet", "services",
+            "pet", "shop", "food", "ads", "pharmacy", "vet", "services", "adopt", "extra1",
         ].map(priorityAction)
 
         let plan = PPHomePresentationResolver.plan(for: value)
@@ -518,16 +518,16 @@ final class PPHomePresentationResolverTests: XCTestCase {
         XCTAssertEqual(featured?.id, "pet")
         XCTAssertEqual(
             actions.map(\.id),
-            ["shop", "ads", "pharmacy", "vet"]
+            ["shop", "food", "ads", "pharmacy", "vet", "services", "adopt"]
         )
-        XCTAssertTrue(value.priorityActions.contains { $0.id == "services" })
-        XCTAssertFalse(actions.contains { $0.id == "services" })
+        XCTAssertTrue(value.priorityActions.contains { $0.id == "extra1" })
+        XCTAssertFalse(actions.contains { $0.id == "extra1" })
     }
 
     func testMissingPetDoesNotPromoteASecondaryActionToFeatured() {
         var value = populatedState()
         value.priorityActions = [
-            "shop", "ads", "pharmacy", "vet", "services",
+            "shop", "food", "ads", "pharmacy", "vet", "services", "adopt", "extra1",
         ].map(priorityAction)
 
         let plan = PPHomePresentationResolver.plan(for: value)
@@ -541,7 +541,7 @@ final class PPHomePresentationResolverTests: XCTestCase {
         XCTAssertNil(featured)
         XCTAssertEqual(
             actions.map(\.id),
-            ["shop", "ads", "pharmacy", "vet"]
+            ["shop", "food", "ads", "pharmacy", "vet", "services", "adopt"]
         )
     }
 

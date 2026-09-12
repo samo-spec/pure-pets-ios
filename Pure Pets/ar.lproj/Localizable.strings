@@ -4249,6 +4249,8 @@
 "home_pulse_priority_food_subtitle" = "تغذية ومأكولات";
 "home_pulse_priority_services" = "الخدمات";
 "home_pulse_priority_services_subtitle" = "عناية وتدريب";
+"home_pulse_priority_adopt" = "تبنّي";
+"home_pulse_priority_adopt_subtitle" = "حيوانات تبحث عن مأوى";
 "home_pulse_priority_shop" = "تسوّق";
 "home_pulse_priority_shop_subtitle" = "طعام ومستلزمات";
 "home_pulse_priority_title" = "خطوتك التالية";
