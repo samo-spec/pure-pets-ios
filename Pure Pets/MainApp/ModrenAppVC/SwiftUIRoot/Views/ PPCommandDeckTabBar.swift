@@ -282,26 +282,73 @@ public struct PPCommandDeckTabBar: View {
 
     @ViewBuilder
     private var deckVariant: some View {
-        if #available(iOS 26.0, *) {
-            if reduceTransparency {
-                opaqueDeck
-            } else {
-                glassDeck
-            }
-        } else {
+        if reduceTransparency {
             opaqueDeck
+        } else {
+            glassDeck
         }
     }
 
-    @available(iOS 26.0, *)
     private var glassDeck: some View {
         deckContent
-            .background(deckShape.fill(theme.surface.opacity(0.72)))
-            .glassEffect(.regular, in: deckShape)
-            .overlay {
-                deckShape.strokeBorder(deckBorderColor, lineWidth: deckBorderWidth)
+            .background {
+                deckShape
+                    .fill(theme.surface.opacity(colorScheme == .dark ? 0.38 : 0.50))
+                    .background(deckShape.fill(.ultraThinMaterial))
             }
-            .shadow(color: deckShadowColor, radius: 14, y: 6)
+            .background {
+                deckGlowLayer
+            }
+            .overlay {
+                deckShape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            deckBorderColor.opacity(colorScheme == .dark ? 0.9 : 0.7),
+                            deckBorderColor.opacity(0.2)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: deckBorderWidth
+                )
+            }
+            .shadow(color: deckShadowColor, radius: 16, y: 6)
+    }
+
+    private var deckGlowLayer: some View {
+        ZStack {
+            // Soft atmospheric bloom fading upwards
+            deckShape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            theme.accent.opacity(colorScheme == .dark ? 0.28 : 0.18),
+                            Color.clear
+                        ],
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                )
+                .blur(radius: 16)
+                .padding(-6)
+
+            // Dynamic ambient aura
+            deckShape
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            theme.accent.opacity(colorScheme == .dark ? 0.22 : 0.14),
+                            Color.clear
+                        ],
+                        center: .bottom,
+                        startRadius: 8,
+                        endRadius: 80
+                    )
+                )
+                .blur(radius: 20)
+                .offset(y: 4)
+        }
+        .allowsHitTesting(false)
     }
 
     private var opaqueDeck: some View {

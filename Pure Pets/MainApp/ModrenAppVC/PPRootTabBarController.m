@@ -2671,16 +2671,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
 
-    if (@available(iOS 26.0, *)) {
+    if (@available(iOS 13.0, *)) {
         [appearance configureWithTransparentBackground];
         appearance.backgroundEffect =
             [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
         appearance.backgroundColor = [glassTint colorWithAlphaComponent:0.18];
-    } else if (@available(iOS 13.0, *)) {
-        [appearance configureWithDefaultBackground];
-        appearance.backgroundEffect =
-            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        appearance.backgroundColor = [glassTint colorWithAlphaComponent:0.62];
     } else {
         appearance.backgroundImage = [UIImage new];
         appearance.shadowImage = [UIImage new];
@@ -2697,9 +2692,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         UITabBarAppearance *appearance = [UITabBarAppearance new];
         [self pp_configureFloatingBackgroundForAppearance:appearance];
         appearance.selectionIndicatorImage = nil;
-        if (@available(iOS 26.0, *)) {
-            appearance.selectionIndicatorTintColor = UIColor.clearColor;
-        }
+        appearance.selectionIndicatorTintColor = UIColor.clearColor;
         appearance.stackedItemPositioning = UITabBarItemPositioningFill;
         
         NSDictionary<NSAttributedStringKey, id> *selectedTitle =
@@ -3074,13 +3067,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     CAGradientLayer *gradientLayer = (CAGradientLayer *)fadeView.layer;
     gradientLayer.startPoint = CGPointMake(0.5, 0.0);
     gradientLayer.endPoint = CGPointMake(0.5, 1.0);
-    gradientLayer.locations = @[@0.0, @0.85];
+    gradientLayer.locations = @[@0.0, @0.45, @1.0];
 
-    [self.view addSubview:fadeView];
+    if (self.tabBar) {
+        [self.view insertSubview:fadeView belowSubview:self.tabBar];
+    } else {
+        [self.view addSubview:fadeView];
+    }
     self.premiumBottomFadeView = fadeView;
     [self pp_updatePremiumBottomFadeAppearance];
 
-    fadeView.alpha = 0.0;
+    fadeView.alpha = 1.0;
 
     [NSLayoutConstraint activateConstraints:@[
         [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -3101,15 +3098,18 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    UIColor *fadeColor = isDark
+    UIColor *glowAccent = AppPrimaryClr ?: [UIColor colorWithRed:0.95 green:0.40 blue:0.18 alpha:1.0];
+    UIColor *baseTint = isDark
         ? UIColor.blackColor
         : (bageColor ?: AppBackgroundClr ?: UIColor.systemBackgroundColor);
 
     CAGradientLayer *gradientLayer = (CAGradientLayer *)self.premiumBottomFadeView.layer;
     gradientLayer.colors = @[
-        (__bridge id)[fadeColor colorWithAlphaComponent:0.0].CGColor,
-        (__bridge id)fadeColor.CGColor
+        (__bridge id)[baseTint colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)[glowAccent colorWithAlphaComponent:isDark ? 0.14 : 0.09].CGColor,
+        (__bridge id)[baseTint colorWithAlphaComponent:isDark ? 0.40 : 0.45].CGColor
     ];
+    gradientLayer.locations = @[@0.0, @0.45, @1.0];
 }
 
 - (void)pp_setupPremiumNovaButton
