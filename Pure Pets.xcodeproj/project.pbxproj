@@ -640,6 +640,7 @@
 		F2ACA9F8301A93C000F55032 /* PetMedicine.json in Resources */ = {isa = PBXBuildFile; fileRef = F2ACA9F6301A93C000F55032 /* PetMedicine.json */; };
 		F2ACA9FA301A93C000F55032 /* thinking.json in Resources */ = {isa = PBXBuildFile; fileRef = F2ACA9F7301A93C000F55032 /* thinking.json */; };
 		F2ACA9FC301ABCDB00F55032 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */; };
+		A8F0C52CE16A4B549AF51AA4 /* MainKindsCellV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B66D4BA3B4C491BB6A24122 /* MainKindsCellV2.swift */; };
 		F2ACA9FF301ACF4A00F55032 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = F2ACA9FE301ACF4A00F55032 /* Kingfisher */; };
 		F2ACAA01301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */; };
 		F2AD5A010000000000000001 /* PurePetsAdShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AD5A030000000000000001 /* PurePetsAdShareKit */; };
@@ -2052,6 +2053,7 @@
 		F2ACA9F6301A93C000F55032 /* PetMedicine.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PetMedicine.json; sourceTree = "<group>"; };
 		F2ACA9F7301A93C000F55032 /* thinking.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = thinking.json; sourceTree = "<group>"; };
 		F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
+		7B66D4BA3B4C491BB6A24122 /* MainKindsCellV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainKindsCellV2.swift; sourceTree = "<group>"; };
 		F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSectionHeaderSwiftUI.swift; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
 		F2AEC1452D6E6AB400B55427 /* MainController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainController.h; sourceTree = "<group>"; };
@@ -2574,6 +2576,7 @@
 			isa = PBXGroup;
 			children = (
 				F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */,
+				7B66D4BA3B4C491BB6A24122 /* MainKindsCellV2.swift */,
 				F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */,
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
 			);
@@ -6179,6 +6182,7 @@
 				F20F31012D13F986001D1D57 /* ArchiveModel.m in Sources */,
 				F2ACAA01301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift in Sources */,
 				F2ACA9FC301ABCDB00F55032 /* PPMainKindsCell.swift in Sources */,
+				A8F0C52CE16A4B549AF51AA4 /* MainKindsCellV2.swift in Sources */,
 				F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */,
 				F24F9BA82EE5D6E4002AAD27 /* MainControllerHelper.m in Sources */,
 				F240BD442D74D237004DDA6A /* BarcodeGenerator.m in Sources */,

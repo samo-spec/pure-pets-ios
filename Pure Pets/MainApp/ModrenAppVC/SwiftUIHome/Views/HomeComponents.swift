@@ -2936,7 +2936,7 @@ struct HomeCategoryRail: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var isExpanded = false
     @State private var viewportWidth: CGFloat = 0
-    @ScaledMetric(relativeTo: .subheadline) private var captionFontSize: CGFloat = PPMainKindsGalleryLayout.captionPointSize
+    @ScaledMetric(relativeTo: .subheadline) private var captionFontSize: CGFloat = MainKindsCellV2Layout.captionPointSize
 
     private enum RailLayout {
         static let cellSpacing = PPSpace.md
@@ -3185,7 +3185,7 @@ struct HomeCategoryRail: View {
         let categoryID = category.map {
             HomeModelAdapter.mainKindID($0.raw)
         }
-        HomeMainKindCellRepresentable(
+        HomeMainKindCellV2Representable(
             category: category,
             selected: category == nil
                 ? selectedID == nil
@@ -3237,7 +3237,7 @@ struct HomeCategoryRail: View {
             1, (width - RailLayout.screenGutter * 2
                 - RailLayout.cellSpacing * CGFloat(gridColumnCount - 1)) / CGFloat(gridColumnCount)
         )
-        return PPMainKindsGalleryLayout.preferredHeight(
+        return MainKindsCellV2Layout.preferredHeight(
             width: columnWidth, titles: categoryTitles, fontSize: captionFontSize,
             expandedText: dynamicTypeSize >= .xxxLarge
         )
@@ -3260,7 +3260,7 @@ struct HomeCategoryRail: View {
         }
         return CGSize(
             width: itemWidth,
-            height: PPMainKindsGalleryLayout.preferredHeight(
+            height: MainKindsCellV2Layout.preferredHeight(
                 width: itemWidth, titles: categoryTitles, fontSize: captionFontSize,
                 expandedText: dynamicTypeSize >= .xxxLarge
             )
@@ -4412,10 +4412,44 @@ private struct HomeMainKindScopeMark: View {
     }
 }
 
-/// Production UIKit bridge for the species scope selector.
+/// V2 is the active renderer; HomeStore remains the only selection/route owner.
+/// The legacy bridge below is retained for a narrow source-level rollback.
+private struct HomeMainKindCellV2Representable: UIViewRepresentable {
+    let category: HomeCategoryModel?
+    let selected: Bool
+    let size: CGSize
+    let allPreviewKinds: [NSObject]
+    let onSelect: () -> Void
+
+    func makeUIView(context: Context) -> MainKindsCellV2 {
+        MainKindsCellV2(frame: CGRect(origin: .zero, size: size))
+    }
+
+    func updateUIView(_ cell: MainKindsCellV2, context: Context) {
+        if cell.bounds.size != size {
+            cell.bounds = CGRect(origin: .zero, size: size)
+        }
+        cell.configure(
+            withMainKind: category?.raw,
+            isAll: category == nil,
+            selected: selected,
+            restoredSelectionAppearance: false
+        )
+        if category == nil {
+            cell.configureAllPreview(withMainKinds: allPreviewKinds)
+        }
+        cell.onSelect = { _, _ in onSelect() }
+    }
+
+    static func dismantleUIView(_ cell: MainKindsCellV2, coordinator: Void) {
+        cell.prepareForReuse()
+    }
+}
+
+/// Original UIKit bridge retained for source-level rollback.
 ///
-/// `HomeCategoryRail.categoryCell` mounts this adapter as the one active
-/// category renderer. `HomeMainKindHabitatCell` remains available as the narrow
+/// `HomeCategoryRail.categoryCell` now mounts the V2 adapter above.
+/// This adapter and `HomeMainKindHabitatCell` remain available as a narrow
 /// rollback seam; selection, persistence, routing, and haptics stay owned by
 /// `HomeStore`. The UIKit cell releases this callback only after its bounded
 /// press release finishes, so navigation ordering has one explicit owner.
