@@ -7,6 +7,7 @@
 
 
 #import "PPImageCollection.h"
+#import <Pure_Pets-Swift.h>
 #import "QB.h"
 #import <AVFoundation/AVFoundation.h>
 #import <AVKit/AVKit.h>

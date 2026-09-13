@@ -1638,11 +1638,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self pp_updatePremiumBottomFadeAppearance];
     if (self.swiftCoordinator) {
         [self.swiftCoordinator viewWillAppearWithAnimated:animated];
     } else {
         [self pp_assertPremiumTabBarState];
-        [self pp_updatePremiumBottomFadeAppearance];
         [UserManager.sharedManager startListeningCurrentUserBlockedState];
         [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
         [self pp_refreshProfileTabPresentation];
@@ -1940,11 +1940,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    [self pp_updatePremiumBottomFadeAppearance];
 
     if (self.swiftCoordinator) {
         [self.swiftCoordinator viewDidLayoutSubviews];
     } else {
-        [self pp_updatePremiumBottomFadeAppearance];
         [self pp_updateBlockedOverlayTopInset];
         [self pp_updateTabBarSelectionIndicatorIfNeeded];
         [self pp_applyPremiumTabSelectionAnimated:NO];
@@ -3098,16 +3098,18 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    UIColor *glowAccent = AppPrimaryClr ?: [UIColor colorWithRed:0.95 green:0.40 blue:0.18 alpha:1.0];
-    UIColor *baseTint = isDark
-        ? UIColor.blackColor
-        : (bageColor ?: AppBackgroundClr ?: UIColor.systemBackgroundColor);
+    UIColor *baseColor = AppForgroundColr ?: AppBackgroundClr ?: UIColor.whiteColor;
+    if (@available(iOS 13.0, *)) {
+        if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            baseColor = [UIColor colorWithWhite:0.05 alpha:1.0];
+        }
+    }
 
     CAGradientLayer *gradientLayer = (CAGradientLayer *)self.premiumBottomFadeView.layer;
     gradientLayer.colors = @[
-        (__bridge id)[baseTint colorWithAlphaComponent:0.0].CGColor,
-        (__bridge id)[glowAccent colorWithAlphaComponent:isDark ? 0.14 : 0.09].CGColor,
-        (__bridge id)[baseTint colorWithAlphaComponent:isDark ? 0.40 : 0.45].CGColor
+        (__bridge id)[baseColor colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)[baseColor colorWithAlphaComponent:isDark ? 0.10 : 0.08].CGColor,
+        (__bridge id)[baseColor colorWithAlphaComponent:isDark ? 0.40 : 0.45].CGColor
     ];
     gradientLayer.locations = @[@0.0, @0.45, @1.0];
 }

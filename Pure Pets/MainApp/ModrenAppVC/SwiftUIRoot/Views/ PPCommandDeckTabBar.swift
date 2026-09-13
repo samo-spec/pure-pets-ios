@@ -322,7 +322,7 @@ public struct PPCommandDeckTabBar: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            theme.accent.opacity(colorScheme == .dark ? 0.28 : 0.18),
+                            theme.surface.opacity(colorScheme == .dark ? 0.28 : 0.18),
                             Color.clear
                         ],
                         startPoint: .bottom,
@@ -337,7 +337,7 @@ public struct PPCommandDeckTabBar: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            theme.accent.opacity(colorScheme == .dark ? 0.22 : 0.14),
+                            theme.surface.opacity(colorScheme == .dark ? 0.22 : 0.14),
                             Color.clear
                         ],
                         center: .bottom,

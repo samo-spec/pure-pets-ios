@@ -4278,18 +4278,1008 @@ struct PPHomePartnerFeature: View {
 
 // MARK: - Ecosystem launcher
 
-/// Zone 3. Bounded, immediate access to the highest-value destinations.
-///
-/// My Pet owns the logical-leading, two-row feature lane. The first four
-/// secondary actions keep their source priority in the adjacent 2 x 2 grid;
-/// lower-priority actions remain available through their existing entry points.
-/// Accessibility text sizes preserve source order in full-width rows.
+// MARK: - Zone 3: NextGen Ecosystem Launcher (Dual-Domain Native Architecture)
+
+/// Domain partition for the NextGen Ecosystem Launcher.
+/// Separates commercial provisions & clinical health from living companion stewardship.
+@available(iOS 15.0, *)
+enum PPEcosystemDomain: String, CaseIterable, Identifiable {
+    case provisionsAndCare = "provisions"
+    case liveCompanions = "companions"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .provisionsAndCare:
+            return PPHomeZoneCopy.launcherDomainProvisions
+        case .liveCompanions:
+            return PPHomeZoneCopy.launcherDomainCompanions
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .provisionsAndCare:
+            return "bag.fill"
+        case .liveCompanions:
+            return "pawprint.fill"
+        }
+    }
+
+    var accessibilityHint: String {
+        switch self {
+        case .provisionsAndCare:
+            return PPHomeZoneCopy.launcherDomainProvisionsHint
+        case .liveCompanions:
+            return PPHomeZoneCopy.launcherDomainCompanionsHint
+        }
+    }
+}
+
+/// Category-defining tactile domain selector with sliding pill indicator and haptic feedback.
+@available(iOS 15.0, *)
+struct PPEcosystemDomainSwitcher: View {
+    @Binding var selectedDomain: PPEcosystemDomain
+    let reduceMotion: Bool
+    @Namespace private var segmentNamespace
+
+    var body: some View {
+        HStack(spacing: PPSpace.xxs) {
+            ForEach(PPEcosystemDomain.allCases) { domain in
+                let isSelected = selectedDomain == domain
+                Button {
+                    guard selectedDomain != domain else { return }
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    if reduceMotion {
+                        selectedDomain = domain
+                    } else {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                            selectedDomain = domain
+                        }
+                    }
+                } label: {
+                    HStack(spacing: PPSpace.xs) {
+                        Image(systemName: domain.symbol)
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                            .foregroundStyle(isSelected ? activeAccent(for: domain) : Color.homeTextSecondary)
+
+                        Text(domain.title)
+                            .font(isSelected ? HomeFont.bold(14) : HomeFont.medium(14))
+                            .foregroundStyle(isSelected ? Color.homeTextPrimary : Color.homeTextSecondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 38)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: PPCorner.small + 2, style: .continuous)
+                                .fill(Color.homeRaisedSurface)
+                                .matchedGeometryEffect(id: "activeDomainPill", in: segmentNamespace)
+                                .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(domain.title)
+                .accessibilityHint(domain.accessibilityHint)
+                .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(Color.homeSurface.opacity(0.85))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .stroke(Color.homeFocus.opacity(0.12), lineWidth: 1)
+        }
+    }
+
+    private func activeAccent(for domain: PPEcosystemDomain) -> Color {
+        switch domain {
+        case .provisionsAndCare:
+            return HomeSemanticTone.brand
+        case .liveCompanions:
+            return HomeSemanticTone.care
+        }
+    }
+}
+
+/// Retail Commerce Hero Card (Shop & Food)
+@available(iOS 15.0, *)
+struct PPCommerceHeroCard: View {
+    let action: HomePriorityAction
+    let accent: Color
+    let cueText: String
+    let onTap: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                HStack(alignment: .top) {
+                    // Icon Medallion
+                    ZStack {
+                        RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                            .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.12))
+                            .frame(width: 44, height: 44)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                                    .stroke(accent.opacity(contrast == .increased ? 0.55 : 0.18), lineWidth: 1)
+                            }
+
+                        if action.id == "food" || action.systemImage == "pet-food" {
+                            Image("pet-food")
+                                .renderingMode(.template)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 20, height: 20)
+                                .foregroundStyle(accent)
+                        } else {
+                            Image(systemName: action.systemImage)
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(accent)
+                        }
+                    }
+
+                    Spacer(minLength: PPSpace.xs)
+
+                    // Direction / Delivery Cue Pill
+                    Text(cueText)
+                        .font(HomeFont.bold(10))
+                        .foregroundStyle(accent)
+                        .padding(.horizontal, PPSpace.xs + 2)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(accent.opacity(colorScheme == .dark ? 0.20 : 0.10))
+                        )
+                }
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    Text(action.title)
+                        .font(HomeFont.bold(17))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Text(action.subtitle)
+                        .font(HomeFont.medium(12))
+                        .foregroundStyle(Color.homeTextSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+
+                HStack {
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "arrow.up.forward.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(accent.opacity(contrast == .increased ? 1 : 0.82))
+                        .flipsForRightToLeftLayoutDirection(true)
+                }
+            }
+            .padding(PPSpace.base)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 156)
+            .background(Color.homeSurface)
+            .clipShape(shape)
+            .overlay {
+                shape.stroke(
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                )
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
+        .hoverEffect(.highlight)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(action.title), \(action.subtitle), \(cueText)")
+        .accessibilityHint(action.subtitle)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Clinical & Care Service Card (Vet, Pharmacy, Services)
+@available(iOS 15.0, *)
+struct PPClinicalServiceCard: View {
+    let action: HomePriorityAction
+    let accent: Color
+    let onTap: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                HStack(alignment: .center) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: PPCorner.small - 2, style: .continuous)
+                            .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.12))
+                            .frame(width: 36, height: 36)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: PPCorner.small - 2, style: .continuous)
+                                    .stroke(accent.opacity(contrast == .increased ? 0.55 : 0.16), lineWidth: 1)
+                            }
+
+                        Image(systemName: action.systemImage)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(accent)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.homeTextSecondary.opacity(0.6))
+                        .flipsForRightToLeftLayoutDirection(true)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(action.title)
+                        .font(HomeFont.bold(13))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.80)
+
+                    Text(action.subtitle)
+                        .font(HomeFont.medium(10))
+                        .foregroundStyle(Color.homeTextSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.80)
+                }
+            }
+            .padding(PPSpace.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 92)
+            .background(Color.homeSurface)
+            .clipShape(shape)
+            .overlay {
+                shape.stroke(
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                )
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
+        .hoverEffect(.lift)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(action.title), \(action.subtitle)")
+        .accessibilityHint(action.subtitle)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Provisions & Care Native Architecture (Commerce Gateway & Clinical Suite)
+@available(iOS 15.0, *)
+struct PPProvisionsCareArchitectureView: View {
+    let actions: [HomePriorityAction]
+    let onSelect: (HomePriorityAction) -> Void
+    var isIPadWing: Bool = false
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var shopAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "shop" })
+    }
+
+    private var foodAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "food" })
+    }
+
+    private var vetAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "vet" })
+    }
+
+    private var pharmacyAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "pharmacy" })
+    }
+
+    private var servicesAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "services" })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            // Dual-Pillar Retail Commerce Stage
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: PPSpace.sm) {
+                    if let shopAction {
+                        PPCommerceHeroCard(
+                            action: shopAction,
+                            accent: HomeSemanticTone.brand,
+                            cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
+                            onTap: { onSelect(shopAction) }
+                        )
+                    }
+
+                    if let foodAction {
+                        PPCommerceHeroCard(
+                            action: foodAction,
+                            accent: HomeSemanticTone.care,
+                            cueText: PPHomeZoneCopy.launcherBalancedNutritionCue,
+                            onTap: { onSelect(foodAction) }
+                        )
+                    }
+                }
+            } else {
+                HStack(spacing: PPSpace.sm) {
+                    if let shopAction {
+                        PPCommerceHeroCard(
+                            action: shopAction,
+                            accent: HomeSemanticTone.brand,
+                            cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
+                            onTap: { onSelect(shopAction) }
+                        )
+                    }
+
+                    if let foodAction {
+                        PPCommerceHeroCard(
+                            action: foodAction,
+                            accent: HomeSemanticTone.care,
+                            cueText: PPHomeZoneCopy.launcherBalancedNutritionCue,
+                            onTap: { onSelect(foodAction) }
+                        )
+                    }
+                }
+            }
+
+            // Clinical & Grooming Suite Header
+            HStack(spacing: PPSpace.xs) {
+                Text(PPHomeZoneCopy.launcherClinicalTitle)
+                    .font(HomeFont.bold(13))
+                    .foregroundStyle(Color.homeTextPrimary)
+
+                Text("•")
+                    .font(HomeFont.medium(12))
+                    .foregroundStyle(Color.homeTextSecondary.opacity(0.5))
+
+                Text(PPHomeZoneCopy.launcherClinicalSubtitle)
+                    .font(HomeFont.medium(11))
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.top, PPSpace.xxs)
+
+            // Clinical Suite Trio
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: PPSpace.xs) {
+                    if let vetAction {
+                        PPClinicalServiceCard(
+                            action: vetAction,
+                            accent: HomeSemanticTone.health,
+                            onTap: { onSelect(vetAction) }
+                        )
+                    }
+
+                    if let pharmacyAction {
+                        PPClinicalServiceCard(
+                            action: pharmacyAction,
+                            accent: HomeSemanticTone.health,
+                            onTap: { onSelect(pharmacyAction) }
+                        )
+                    }
+
+                    if let servicesAction {
+                        PPClinicalServiceCard(
+                            action: servicesAction,
+                            accent: Color.ppQuickActionServices,
+                            onTap: { onSelect(servicesAction) }
+                        )
+                    }
+                }
+            } else {
+                HStack(spacing: PPSpace.xs) {
+                    if let vetAction {
+                        PPClinicalServiceCard(
+                            action: vetAction,
+                            accent: HomeSemanticTone.health,
+                            onTap: { onSelect(vetAction) }
+                        )
+                    }
+
+                    if let pharmacyAction {
+                        PPClinicalServiceCard(
+                            action: pharmacyAction,
+                            accent: HomeSemanticTone.health,
+                            onTap: { onSelect(pharmacyAction) }
+                        )
+                    }
+
+                    if let servicesAction {
+                        PPClinicalServiceCard(
+                            action: servicesAction,
+                            accent: Color.ppQuickActionServices,
+                            onTap: { onSelect(servicesAction) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Companion Stewardship Centerpiece Card (My Pet with Living Halo or Rescue Spotlight)
+@available(iOS 15.0, *)
+struct PPCompanionStewardCard: View {
+    let petAction: HomePriorityAction?
+    let featuredPet: HomePetModel?
+    let adoptAction: HomePriorityAction?
+    let onTap: (HomePriorityAction) -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var haloPulse = false
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    }
+
+    var body: some View {
+        if let petAction {
+            activePetView(petAction: petAction)
+        } else if let adoptAction {
+            rescueSpotlightView(adoptAction: adoptAction)
+        }
+    }
+
+    private func activePetView(petAction: HomePriorityAction) -> some View {
+        Button {
+            onTap(petAction)
+        } label: {
+            HStack(spacing: PPSpace.base) {
+                // Living Avatar with breathing halo
+                ZStack {
+                    if !reduceMotion && contrast != .increased {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        HomeSemanticTone.care.opacity(haloPulse ? 0.28 : 0.12),
+                                        HomeSemanticTone.care.opacity(0)
+                                    ],
+                                    center: .center,
+                                    startRadius: 28,
+                                    endRadius: 46
+                                )
+                            )
+                            .frame(width: 84, height: 84)
+                            .scaleEffect(haloPulse ? 1.08 : 0.98)
+                    }
+
+                    if let imageURL = featuredPet?.imageURL, !imageURL.isEmpty {
+                        AppRemoteImage(
+                            urlString: imageURL,
+                            cacheKey: "home-launcher-pet|\(featuredPet?.id ?? petAction.id)",
+                            displaySize: CGSize(width: 64, height: 64),
+                            contentMode: .fill,
+                            retryCount: 2,
+                            fadeDuration: 0.20,
+                            showsRetryAction: false,
+                            onImageLoaded: { _ in }
+                        ) {
+                            Color.clear
+                        } failurePlaceholder: {
+                            fallbackAvatar
+                        }
+                        .frame(width: 64, height: 64)
+                        .clipShape(Circle())
+                        .overlay {
+                            Circle().stroke(Color.homeSurface, lineWidth: 2)
+                        }
+                    } else {
+                        fallbackAvatar
+                    }
+                }
+                .frame(width: 76, height: 76)
+
+                // Pet Profile Details
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    HStack(spacing: PPSpace.xs) {
+                        Text(featuredPet?.name ?? petAction.title)
+                            .font(HomeFont.bold(18))
+                            .foregroundStyle(Color.homeTextPrimary)
+                            .lineLimit(1)
+
+                        // Health Active Pulse Dot
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(HomeSemanticTone.health)
+                                .frame(width: 6, height: 6)
+
+                            Text(PPHomeZoneCopy.launcherActiveHealthCue)
+                                .font(HomeFont.bold(10))
+                                .foregroundStyle(HomeSemanticTone.health)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(HomeSemanticTone.health.opacity(colorScheme == .dark ? 0.20 : 0.10))
+                        )
+                    }
+
+                    if let breed = featuredPet?.breedOrCategory, !breed.isEmpty {
+                        Text(breed)
+                            .font(HomeFont.medium(12))
+                            .foregroundStyle(Color.homeTextSecondary)
+                            .lineLimit(1)
+                    } else {
+                        Text(petAction.subtitle)
+                            .font(HomeFont.medium(12))
+                            .foregroundStyle(Color.homeTextSecondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: PPSpace.xxs)
+
+                    // Direct Action CTA Pill
+                    HStack(spacing: PPSpace.xs) {
+                        Text(PPHomeZoneCopy.launcherManagePetCTA)
+                            .font(HomeFont.bold(12))
+                            .foregroundStyle(HomeSemanticTone.care)
+
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(HomeSemanticTone.care)
+                            .flipsForRightToLeftLayoutDirection(true)
+                    }
+                    .padding(.horizontal, PPSpace.sm)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(HomeSemanticTone.care.opacity(colorScheme == .dark ? 0.22 : 0.12))
+                    )
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(PPSpace.base)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 124)
+            .background(Color.homeSurface)
+            .clipShape(shape)
+            .overlay {
+                shape.stroke(
+                    HomeSemanticTone.care.opacity(contrast == .increased ? 0.6 : 0.22),
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
+        .hoverEffect(.highlight)
+        .onAppear {
+            guard !reduceMotion, contrast != .increased else { return }
+            withAnimation(.easeInOut(duration: 3.8).repeatForever(autoreverses: true)) {
+                haloPulse = true
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(featuredPet?.name ?? petAction.title), \(PPHomeZoneCopy.launcherManagePetCTA)")
+        .accessibilityHint(petAction.subtitle)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private func rescueSpotlightView(adoptAction: HomePriorityAction) -> some View {
+        Button {
+            onTap(adoptAction)
+        } label: {
+            HStack(spacing: PPSpace.base) {
+                // Heart & Paw Emblem
+                ZStack {
+                    Circle()
+                        .fill(HomeSemanticTone.care.opacity(colorScheme == .dark ? 0.24 : 0.12))
+                        .frame(width: 64, height: 64)
+                        .overlay {
+                            Circle().stroke(HomeSemanticTone.care.opacity(0.3), lineWidth: 1)
+                        }
+
+                    Image(systemName: "heart.circle.fill")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundStyle(HomeSemanticTone.care)
+                }
+
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    Text(PPHomeZoneCopy.launcherAdoptRescueTitle)
+                        .font(HomeFont.bold(17))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .lineLimit(1)
+
+                    Text(PPHomeZoneCopy.launcherAdoptRescueSubtitle)
+                        .font(HomeFont.medium(11))
+                        .foregroundStyle(Color.homeTextSecondary)
+                        .lineLimit(2)
+
+                    Spacer(minLength: PPSpace.xxs)
+
+                    HStack(spacing: PPSpace.xs) {
+                        Text(PPHomeZoneCopy.launcherAdoptCTA)
+                            .font(HomeFont.bold(12))
+                            .foregroundStyle(HomeSemanticTone.care)
+
+                        Image(systemName: "pawprint.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(HomeSemanticTone.care)
+                    }
+                    .padding(.horizontal, PPSpace.sm)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(HomeSemanticTone.care.opacity(colorScheme == .dark ? 0.22 : 0.12))
+                    )
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(PPSpace.base)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 124)
+            .background(Color.homeSurface)
+            .clipShape(shape)
+            .overlay {
+                shape.stroke(
+                    HomeSemanticTone.care.opacity(contrast == .increased ? 0.6 : 0.22),
+                    lineWidth: contrast == .increased ? 1.5 : 1
+                )
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
+        .hoverEffect(.highlight)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(PPHomeZoneCopy.launcherAdoptRescueTitle), \(PPHomeZoneCopy.launcherAdoptRescueSubtitle)")
+        .accessibilityHint(adoptAction.subtitle)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var fallbackAvatar: some View {
+        ZStack {
+            Circle()
+                .fill(HomeSemanticTone.care.opacity(0.15))
+                .frame(width: 64, height: 64)
+
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(HomeSemanticTone.care)
+        }
+        .overlay {
+            Circle().stroke(Color.homeSurface, lineWidth: 2)
+        }
+    }
+}
+
+/// Community & Rescue Exchange Card (Live Pets / Marketplace Ads & Adoption)
+@available(iOS 15.0, *)
+struct PPCommunityExchangeCard: View {
+    let action: HomePriorityAction
+    let accent: Color
+    let tagText: String
+    let onTap: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                HStack(alignment: .top) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                            .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.12))
+                            .frame(width: 44, height: 44)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                                    .stroke(accent.opacity(contrast == .increased ? 0.55 : 0.18), lineWidth: 1)
+                            }
+
+                        Image(systemName: action.systemImage)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(accent)
+                    }
+
+                    Spacer(minLength: PPSpace.xs)
+
+                    Text(tagText)
+                        .font(HomeFont.bold(10))
+                        .foregroundStyle(accent)
+                        .padding(.horizontal, PPSpace.xs + 2)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(accent.opacity(colorScheme == .dark ? 0.20 : 0.10))
+                        )
+                }
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    Text(action.title)
+                        .font(HomeFont.bold(16))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Text(action.subtitle)
+                        .font(HomeFont.medium(12))
+                        .foregroundStyle(Color.homeTextSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+
+                HStack {
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "arrow.up.forward.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(accent.opacity(contrast == .increased ? 1 : 0.82))
+                        .flipsForRightToLeftLayoutDirection(true)
+                }
+            }
+            .padding(PPSpace.base)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 140)
+            .background(Color.homeSurface)
+            .clipShape(shape)
+            .overlay {
+                shape.stroke(
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                )
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
+        .hoverEffect(.highlight)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(action.title), \(action.subtitle), \(tagText)")
+        .accessibilityHint(action.subtitle)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Live Companions & Stewardship Native Architecture
+@available(iOS 15.0, *)
+struct PPLiveCompanionsArchitectureView: View {
+    let petAction: HomePriorityAction?
+    let featuredPet: HomePetModel?
+    let actions: [HomePriorityAction]
+    let onSelect: (HomePriorityAction) -> Void
+    var isIPadWing: Bool = false
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var adsAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "ads" })
+    }
+
+    private var adoptAction: HomePriorityAction? {
+        actions.first(where: { $0.id == "adopt" })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            // Dominant Stewardship Hero: My Pet or Adoption Rescue
+            PPCompanionStewardCard(
+                petAction: petAction,
+                featuredPet: featuredPet,
+                adoptAction: adoptAction,
+                onTap: onSelect
+            )
+
+            // Community & Rescue Exchange Deck Header
+            HStack(spacing: PPSpace.xs) {
+                Text(PPHomeZoneCopy.launcherCommunityTitle)
+                    .font(HomeFont.bold(13))
+                    .foregroundStyle(Color.homeTextPrimary)
+
+                Text("•")
+                    .font(HomeFont.medium(12))
+                    .foregroundStyle(Color.homeTextSecondary.opacity(0.5))
+
+                Text(PPHomeZoneCopy.launcherCommunitySubtitle)
+                    .font(HomeFont.medium(11))
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.top, PPSpace.xxs)
+
+            // Community Exchange Cards
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: PPSpace.sm) {
+                    if let adsAction {
+                        PPCommunityExchangeCard(
+                            action: adsAction,
+                            accent: HomeSemanticTone.brand,
+                            tagText: PPHomeZoneCopy.launcherCommunityTag,
+                            onTap: { onSelect(adsAction) }
+                        )
+                    }
+
+                    if petAction != nil, let adoptAction {
+                        PPCommunityExchangeCard(
+                            action: adoptAction,
+                            accent: HomeSemanticTone.care,
+                            tagText: PPHomeZoneCopy.launcherRescueTag,
+                            onTap: { onSelect(adoptAction) }
+                        )
+                    }
+                }
+            } else {
+                HStack(spacing: PPSpace.sm) {
+                    if let adsAction {
+                        PPCommunityExchangeCard(
+                            action: adsAction,
+                            accent: HomeSemanticTone.brand,
+                            tagText: PPHomeZoneCopy.launcherCommunityTag,
+                            onTap: { onSelect(adsAction) }
+                        )
+                    }
+
+                    if petAction != nil, let adoptAction {
+                        PPCommunityExchangeCard(
+                            action: adoptAction,
+                            accent: HomeSemanticTone.care,
+                            tagText: PPHomeZoneCopy.launcherRescueTag,
+                            onTap: { onSelect(adoptAction) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// iPadOS Purpose-Built Dual-Wing Workstation
+/// Displays both Provisions & Health and Live Companions side-by-side with full keyboard & pointer fidelity.
+@available(iOS 15.0, *)
+struct PPHomeIPadEcosystemWorkstation: View {
+    let petAction: HomePriorityAction?
+    let featuredPet: HomePetModel?
+    let actions: [HomePriorityAction]
+    let onSelect: (HomePriorityAction) -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        HStack(alignment: .top, spacing: PPSpace.lg) {
+            // Wing 1: Provisions & Veterinary Care
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                HStack(spacing: PPSpace.xs) {
+                    Image(systemName: "cart.badge.plus")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(HomeSemanticTone.brand)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(PPHomeZoneCopy.launcherIPadProvisionsWing)
+                            .font(HomeFont.bold(15))
+                            .foregroundStyle(Color.homeTextPrimary)
+
+                        Text(PPHomeZoneCopy.launcherIPadProvisionsSubtitle)
+                            .font(HomeFont.medium(11))
+                            .foregroundStyle(Color.homeTextSecondary)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(.bottom, PPSpace.xxs)
+
+                PPProvisionsCareArchitectureView(
+                    actions: actions,
+                    onSelect: onSelect,
+                    isIPadWing: true
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(PPSpace.base)
+            .background(
+                RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
+                    .fill(Color.homeSurface.opacity(0.65))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
+                    .stroke(HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast), lineWidth: 1)
+            }
+
+            // Wing 2: Live Companions & Stewardship
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                HStack(spacing: PPSpace.xs) {
+                    Image(systemName: "pawprint.circle.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(HomeSemanticTone.care)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(PPHomeZoneCopy.launcherIPadCompanionsWing)
+                            .font(HomeFont.bold(15))
+                            .foregroundStyle(Color.homeTextPrimary)
+
+                        Text(PPHomeZoneCopy.launcherIPadCompanionsSubtitle)
+                            .font(HomeFont.medium(11))
+                            .foregroundStyle(Color.homeTextSecondary)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(.bottom, PPSpace.xxs)
+
+                PPLiveCompanionsArchitectureView(
+                    petAction: petAction,
+                    featuredPet: featuredPet,
+                    actions: actions,
+                    onSelect: onSelect,
+                    isIPadWing: true
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(PPSpace.base)
+            .background(
+                RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
+                    .fill(Color.homeSurface.opacity(0.65))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
+                    .stroke(HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast), lineWidth: 1)
+            }
+        }
+    }
+}
+
+/// Zone 3. NextGen Ecosystem Launcher.
+/// Authoring distinct, dedicated native architectures for Accessories/Food vs Live Pets.
+/// Delivers an adaptive tactile segmented experience on iPhone and a synchronized dual-wing workstation on iPad.
 @available(iOS 15.0, *)
 struct PPHomeEcosystemLauncher: View {
     let featuredAction: HomePriorityAction?
     let featuredPet: HomePetModel?
     let actions: [HomePriorityAction]
     let onSelect: (HomePriorityAction) -> Void
+
+    @State private var selectedDomain: PPEcosystemDomain = .provisionsAndCare
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var petAction: HomePriorityAction? {
+        if let featuredAction, featuredAction.id == "pet" {
+            return featuredAction
+        }
+        return actions.first(where: { $0.id == "pet" })
+    }
 
     private var boundedActions: [HomePriorityAction] {
         Array(
@@ -4302,15 +5292,6 @@ struct PPHomeEcosystemLauncher: View {
         )
     }
 
-    private var bentoActions: [HomePriorityAction] {
-        var result: [HomePriorityAction] = []
-        if let featuredAction, featuredAction.id == "pet" {
-            result.append(featuredAction)
-        }
-        result.append(contentsOf: boundedActions)
-        return result
-    }
-
     var body: some View {
         VStack(
             alignment: .leading,
@@ -4321,15 +5302,85 @@ struct PPHomeEcosystemLauncher: View {
                 subtitle: PPHomeZoneCopy.launcherSubtitle
             )
 
-            HomePriorityGrid(
-                actions: bentoActions,
-                featuredPet: featuredPet,
-                onSelect: onSelect
-            )
+            if horizontalSizeClass == .regular {
+                // Dedicated Adaptive iPadOS Workstation
+                PPHomeIPadEcosystemWorkstation(
+                    petAction: petAction,
+                    featuredPet: featuredPet,
+                    actions: boundedActions,
+                    onSelect: onSelect
+                )
+            } else {
+                // Dedicated iPhone One-Handed Segmented Architecture
+                VStack(spacing: PPSpace.md) {
+                    PPEcosystemDomainSwitcher(
+                        selectedDomain: $selectedDomain,
+                        reduceMotion: reduceMotion
+                    )
+
+                    Group {
+                        switch selectedDomain {
+                        case .provisionsAndCare:
+                            PPProvisionsCareArchitectureView(
+                                actions: boundedActions,
+                                onSelect: onSelect
+                            )
+                            .transition(
+                                reduceMotion
+                                    ? .identity
+                                    : .asymmetric(
+                                        insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                                        removal: .opacity
+                                    )
+                            )
+
+                        case .liveCompanions:
+                            PPLiveCompanionsArchitectureView(
+                                petAction: petAction,
+                                featuredPet: featuredPet,
+                                actions: boundedActions,
+                                onSelect: onSelect
+                            )
+                            .transition(
+                                reduceMotion
+                                    ? .identity
+                                    : .asymmetric(
+                                        insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                                        removal: .opacity
+                                    )
+                            )
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 24, coordinateSpace: .local)
+                            .onEnded { value in
+                                let threshold: CGFloat = 30
+                                if value.translation.width > threshold {
+                                    // Swipe gesture direction
+                                    switchDomain(to: .provisionsAndCare)
+                                } else if value.translation.width < -threshold {
+                                    switchDomain(to: .liveCompanions)
+                                }
+                            }
+                    )
+                }
+            }
         }
         .accessibilityElement(children: .contain)
     }
 
+    private func switchDomain(to domain: PPEcosystemDomain) {
+        guard selectedDomain != domain else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        if reduceMotion {
+            selectedDomain = domain
+        } else {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                selectedDomain = domain
+            }
+        }
+    }
 }
 
 // MARK: - Live priority
@@ -5413,6 +6464,167 @@ enum PPHomeZoneCopy {
         HomeModelAdapter.localized(
             "home_ecosystem_launcher_subtitle",
             fallback: "Your main destinations"
+        )
+    }
+
+    static var launcherDomainProvisions: String {
+        HomeModelAdapter.localized(
+            "home_launcher_domain_provisions",
+            fallback: "Provisions & Care"
+        )
+    }
+
+    static var launcherDomainProvisionsHint: String {
+        HomeModelAdapter.localized(
+            "home_launcher_domain_provisions_hint",
+            fallback: "Show food, shopping, and veterinary care"
+        )
+    }
+
+    static var launcherDomainCompanions: String {
+        HomeModelAdapter.localized(
+            "home_launcher_domain_companions",
+            fallback: "Live Companions"
+        )
+    }
+
+    static var launcherDomainCompanionsHint: String {
+        HomeModelAdapter.localized(
+            "home_launcher_domain_companions_hint",
+            fallback: "Show my pet, adoption, and pet listings"
+        )
+    }
+
+    static var launcherProvisionsHeroEyebrow: String {
+        HomeModelAdapter.localized(
+            "home_launcher_provisions_hero_eyebrow",
+            fallback: "Shopping & Nutrition"
+        )
+    }
+
+    static var launcherFastDeliveryCue: String {
+        HomeModelAdapter.localized(
+            "home_launcher_fast_delivery_cue",
+            fallback: "Express Shop"
+        )
+    }
+
+    static var launcherBalancedNutritionCue: String {
+        HomeModelAdapter.localized(
+            "home_launcher_balanced_nutrition_cue",
+            fallback: "Complete Nutrition"
+        )
+    }
+
+    static var launcherClinicalTitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_clinical_title",
+            fallback: "Care & Services"
+        )
+    }
+
+    static var launcherClinicalSubtitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_clinical_subtitle",
+            fallback: "Clinics, medicines & grooming"
+        )
+    }
+
+    static var launcherCompanionsHeroEyebrow: String {
+        HomeModelAdapter.localized(
+            "home_launcher_companions_hero_eyebrow",
+            fallback: "Your Companion"
+        )
+    }
+
+    static var launcherActiveHealthCue: String {
+        HomeModelAdapter.localized(
+            "home_launcher_active_health_cue",
+            fallback: "Health Record Active"
+        )
+    }
+
+    static var launcherAdoptRescueTitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_adopt_rescue_title",
+            fallback: "Adopt a New Friend"
+        )
+    }
+
+    static var launcherAdoptRescueSubtitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_adopt_rescue_subtitle",
+            fallback: "Rescue pets waiting for a loving home"
+        )
+    }
+
+    static var launcherAdoptCTA: String {
+        HomeModelAdapter.localized(
+            "home_launcher_adopt_cta",
+            fallback: "Explore Adoption"
+        )
+    }
+
+    static var launcherCommunityTitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_community_title",
+            fallback: "Pet Community"
+        )
+    }
+
+    static var launcherCommunitySubtitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_community_subtitle",
+            fallback: "Listings, community & lost pets"
+        )
+    }
+
+    static var launcherCommunityTag: String {
+        HomeModelAdapter.localized(
+            "home_launcher_community_tag",
+            fallback: "Pet Owners"
+        )
+    }
+
+    static var launcherRescueTag: String {
+        HomeModelAdapter.localized(
+            "home_launcher_rescue_tag",
+            fallback: "Rescue & Care"
+        )
+    }
+
+    static var launcherIPadProvisionsWing: String {
+        HomeModelAdapter.localized(
+            "home_launcher_ipad_provisions_wing",
+            fallback: "Provisions & Veterinary Care"
+        )
+    }
+
+    static var launcherIPadProvisionsSubtitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_ipad_provisions_subtitle",
+            fallback: "Shopping, nutrition, and clinic services within reach"
+        )
+    }
+
+    static var launcherIPadCompanionsWing: String {
+        HomeModelAdapter.localized(
+            "home_launcher_ipad_companions_wing",
+            fallback: "Live Companions & Adoption"
+        )
+    }
+
+    static var launcherIPadCompanionsSubtitle: String {
+        HomeModelAdapter.localized(
+            "home_launcher_ipad_companions_subtitle",
+            fallback: "Pet stewardship, adoption, and pet community"
+        )
+    }
+
+    static var launcherManagePetCTA: String {
+        HomeModelAdapter.localized(
+            "home_launcher_manage_pet_cta",
+            fallback: "Manage My Pet"
         )
     }
 

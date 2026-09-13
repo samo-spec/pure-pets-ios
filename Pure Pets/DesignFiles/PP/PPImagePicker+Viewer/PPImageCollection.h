@@ -12,7 +12,6 @@
 #import "PPImageCollection.h"
 #import "QBImagePickerController.h"
 
-#import <Pure_Pets-Swift.h>
 @class PPEditorBridge;
 
 

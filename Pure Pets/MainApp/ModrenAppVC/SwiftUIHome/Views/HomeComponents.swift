@@ -2100,231 +2100,47 @@ struct HomePriorityGrid: View {
     let featuredPet: HomePetModel?
     let onSelect: (HomePriorityAction) -> Void
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .subheadline)
-    private var compactCardHeight: CGFloat = HomeVisualTokens.discoveryCardHeight
+    @State private var selectedDomain: PPEcosystemDomain = .provisionsAndCare
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private enum Layout {
-        static let columnSpacing = PPSpace.md
-        static let cardSpacing = PPSpace.sm
-        static let featuredCircleTopInset = PPSpace.sm
-        static let minimumFeaturedWidth: CGFloat = 104
-        static let maximumFeaturedWidth: CGFloat = 148
-        static let featuredWidthRatio: CGFloat = 0.38
-        static let minimumFeaturedCircle: CGFloat = 80
-        static let maximumFeaturedCircle: CGFloat = 100
-        static let featuredCircleWidthRatio: CGFloat = 0.68
-        static let maximumContentWidth: CGFloat = 488
-    }
-
-    private var rowCount: Int {
-        if secondaryActions.count >= 7 {
-            return 3
-        } else if secondaryActions.count > 3 {
-            return 2
-        } else {
-            return max(1, secondaryActions.count)
-        }
-    }
-
-    private var compactSectionHeight: CGFloat {
-        let rows = CGFloat(rowCount)
-        return (compactCardHeight * rows) + (Layout.cardSpacing * max(0, rows - 1))
-    }
-
-    private var featuredAction: HomePriorityAction? {
+    private var petAction: HomePriorityAction? {
         actions.first(where: { $0.id == "pet" })
     }
 
     private var secondaryActions: [HomePriorityAction] {
-        let items = actions.filter { $0.id != "pet" }
-        let limit = PPHomePresentationLimits.ecosystemLauncherSecondaryActions
-        if items.count >= limit {
-            return Array(items.prefix(limit))
-        }
-        return items
+        actions.filter { $0.id != "pet" }
     }
 
     var body: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                accessibilityLayout
-            } else {
-                GeometryReader { proxy in
-                    bentoLayout(availableWidth: proxy.size.width)
-                }
-                .frame(height: compactSectionHeight)
-            }
-        }
-    }
-
-    private var accessibilityLayout: some View {
-        VStack(spacing: PPSpace.sm) {
-            if let featured = featuredAction {
-                HomeFeaturedPetCard(
-                    action: featured,
-                    pet: featuredPet,
-                    regularWidth: nil,
-                    compactHeight: compactSectionHeight,
-                    regularCircleSize: Layout.maximumFeaturedCircle,
-                    circleInset: Layout.featuredCircleTopInset,
-                    onSelect: onSelect
-                )
-            }
-
-            ForEach(secondaryActions) { action in
-                HomeSecondaryActionCard(
-                    action: action,
-                    compactHeight: compactCardHeight,
-                    onSelect: onSelect
-                )
-            }
-        }
-    }
-
-    private func bentoLayout(availableWidth: CGFloat) -> some View {
-        let contentWidth = min(
-            availableWidth,
-            Layout.maximumContentWidth
-        )
-        let featuredWidth = min(
-            max(
-                contentWidth * Layout.featuredWidthRatio,
-                Layout.minimumFeaturedWidth
-            ),
-            Layout.maximumFeaturedWidth
-        )
-        let featuredCircle = min(
-            max(
-                featuredWidth * Layout.featuredCircleWidthRatio,
-                Layout.minimumFeaturedCircle
-            ),
-            Layout.maximumFeaturedCircle
-        )
-
-        let gridWidth: CGFloat
-        if featuredAction != nil {
-            gridWidth = max(0, contentWidth - featuredWidth - Layout.columnSpacing)
+        if horizontalSizeClass == .regular {
+            PPHomeIPadEcosystemWorkstation(
+                petAction: petAction,
+                featuredPet: featuredPet,
+                actions: secondaryActions,
+                onSelect: onSelect
+            )
         } else {
-            gridWidth = contentWidth
-        }
-
-        return HStack(
-            alignment: .top,
-            spacing: Layout.columnSpacing
-        ) {
-            if let featured = featuredAction {
-                HomeFeaturedPetCard(
-                    action: featured,
-                    pet: featuredPet,
-                    regularWidth: featuredWidth,
-                    compactHeight: compactSectionHeight,
-                    regularCircleSize: featuredCircle,
-                    circleInset: Layout.featuredCircleTopInset,
-                    onSelect: onSelect
+            VStack(spacing: PPSpace.md) {
+                PPEcosystemDomainSwitcher(
+                    selectedDomain: $selectedDomain,
+                    reduceMotion: reduceMotion
                 )
-                .frame(width: featuredWidth)
-            }
 
-            secondaryGrid(totalWidth: gridWidth)
-                .frame(maxWidth: .infinity)
-        }
-        .frame(width: contentWidth)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .frame(height: compactSectionHeight)
-    }
-
-    @ViewBuilder
-    private func secondaryGrid(totalWidth: CGFloat) -> some View {
-        let count = secondaryActions.count
-        let spacing = Layout.cardSpacing
-
-        if count >= 7 {
-            let singleColWidth = max(0, (totalWidth - (spacing * 2)) / 3)
-            let doubleColWidth = (singleColWidth * 2) + spacing
-
-            VStack(spacing: spacing) {
-                // Row 1: Shopping (2 cols), Food (1 col)
-                HStack(spacing: spacing) {
-                    HomeSecondaryActionCard(
-                        action: secondaryActions[0],
-                        compactHeight: compactCardHeight,
-                        isDoubleWidth: true,
+                switch selectedDomain {
+                case .provisionsAndCare:
+                    PPProvisionsCareArchitectureView(
+                        actions: secondaryActions,
                         onSelect: onSelect
                     )
-                    .frame(width: doubleColWidth)
-
-                    HomeSecondaryActionCard(
-                        action: secondaryActions[1],
-                        compactHeight: compactCardHeight,
-                        isDoubleWidth: false,
+                case .liveCompanions:
+                    PPLiveCompanionsArchitectureView(
+                        petAction: petAction,
+                        featuredPet: featuredPet,
+                        actions: secondaryActions,
                         onSelect: onSelect
                     )
-                    .frame(width: singleColWidth)
                 }
-
-                // Row 2: Animals (1 col), Vet (1 col), Pharmacy (1 col)
-                HStack(spacing: spacing) {
-                    ForEach(Array(secondaryActions[2..<min(5, count)])) { action in
-                        HomeSecondaryActionCard(
-                            action: action,
-                            compactHeight: compactCardHeight,
-                            isDoubleWidth: false,
-                            onSelect: onSelect
-                        )
-                        .frame(width: singleColWidth)
-                    }
-                }
-
-                // Row 3: Services (1 col), Adopt (2 cols)
-                HStack(spacing: spacing) {
-                    HomeSecondaryActionCard(
-                        action: secondaryActions[5],
-                        compactHeight: compactCardHeight,
-                        isDoubleWidth: false,
-                        onSelect: onSelect
-                    )
-                    .frame(width: singleColWidth)
-
-                    HomeSecondaryActionCard(
-                        action: secondaryActions[6],
-                        compactHeight: compactCardHeight,
-                        isDoubleWidth: true,
-                        onSelect: onSelect
-                    )
-                    .frame(width: doubleColWidth)
-                }
-            }
-        } else {
-            let firstRowCount = (count == 6 || count == 4) ? count / 2 : ((count == 5) ? 2 : (count > 4 ? (count + 1) / 2 : min(2, count)))
-            let firstRow = Array(secondaryActions.prefix(firstRowCount))
-            let secondRow = Array(secondaryActions.dropFirst(firstRowCount))
-
-            VStack(spacing: Layout.cardSpacing) {
-                secondaryRow(firstRow)
-
-                if !secondRow.isEmpty {
-                    secondaryRow(secondRow)
-                }
-            }
-        }
-    }
-
-    private func secondaryRow(
-        _ actions: [HomePriorityAction]
-    ) -> some View {
-        HStack(spacing: Layout.cardSpacing) {
-            ForEach(actions) { action in
-                HomeSecondaryActionCard(
-                    action: action,
-                    compactHeight: compactCardHeight,
-                    onSelect: onSelect
-                )
-                .frame(maxWidth: .infinity)
-            }
-
-            if actions.count == 1 {
-                Spacer(minLength: 0)
             }
         }
     }

@@ -311,6 +311,7 @@
 		F251008F2F73C2D8008F6AFE /* FirebaseMLModelDownloader in Frameworks */ = {isa = PBXBuildFile; productRef = F251008E2F73C2D8008F6AFE /* FirebaseMLModelDownloader */; };
 		F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */; };
 		F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */; };
+		F256E4E62FE0C70C004E1E2E /* PPUserMenuScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F256E4E52FE0C70C004E1E2E /* PPUserMenuScreen.swift */; };
 		F25971AE2D1BEF3F00708763 /* ArchiveManagerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */; };
 		F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F259DDDC2D29622E005524F8 /* XLFormButtonCell.m */; };
 		F25B387E2E173CB60066D504 /* OrderDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */; };
@@ -1471,6 +1472,7 @@
 		F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LeaveFeedbackViewController.m; sourceTree = "<group>"; };
 		F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserMenuViewController.h; sourceTree = "<group>"; };
 		F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserMenuViewController.m; sourceTree = "<group>"; };
+		F256E4E52FE0C70C004E1E2E /* PPUserMenuScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUserMenuScreen.swift; sourceTree = "<group>"; };
 		F25971AC2D1BEF3F00708763 /* ArchiveManagerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchiveManagerVC.h; sourceTree = "<group>"; };
 		F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchiveManagerVC.m; sourceTree = "<group>"; };
 		F259DDDB2D29622E005524F8 /* XLFormButtonCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormButtonCell.h; sourceTree = "<group>"; };
@@ -3375,6 +3377,7 @@
 			children = (
 				F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */,
 				F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */,
+				F256E4E52FE0C70C004E1E2E /* PPUserMenuScreen.swift */,
 				F27365F92F85D5AB000AB3DD /* UsesHelpers */,
 				F20956702F8564C9007C4ABA /* PetsProfiles */,
 				F2D6396E2ECB4E1000FEBCBB /* SignIn Files */,
@@ -5641,6 +5644,7 @@
 				F2449C4C2D0F169B00DB6BBC /* subKindItemsModel.m in Sources */,
 				F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */,
 				F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */,
+				F256E4E62FE0C70C004E1E2E /* PPUserMenuScreen.swift in Sources */,
 				F2916F102D54C6B600FF0394 /* PopupPickerView.m in Sources */,
 				F24F364C2D8A426B0094C6F2 /* BuyerCell.m in Sources */,
 				F27146692CCE6B5300F7F3BA /* NSArray+XLFormAdditions.m in Sources */,
