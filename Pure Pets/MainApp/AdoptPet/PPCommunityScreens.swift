@@ -102,8 +102,9 @@ private func communityDictionary(_ value: Any?) -> [String: Any] {
     value as? [String: Any] ?? [:]
 }
 
-private func communityString(_ value: Any?) -> String {
-    (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+private func communityString(_ value: Any?, fallback: String = "") -> String {
+    let string = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    return string.isEmpty ? fallback : string
 }
 
 private func communityInt(_ value: Any?, fallback: Int = 0) -> Int {
@@ -1055,7 +1056,7 @@ private final class CommunityCaseFormStore: ObservableObject {
             eventDate = Date(timeIntervalSince1970: eventTime)
         }
         rewardOffered = payload["rewardOffered"] as? Bool ?? false
-        custodyStatus = communityString(payload["custodyStatus"]) || "unknown"
+        custodyStatus = communityString(payload["custodyStatus"], fallback: "unknown")
         uploadedMediaAssetIDs = Array(Set((payload["uploadedMediaAssetIDs"] as? [String] ?? [])
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty })).prefix(8).map { $0 }
