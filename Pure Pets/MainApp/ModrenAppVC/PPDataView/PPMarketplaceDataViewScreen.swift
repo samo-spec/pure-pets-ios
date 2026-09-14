@@ -29,7 +29,8 @@ struct PPMarketplaceDataViewScreen: View {
                             PPMarketplaceHero(
                                 store: store,
                                 availableWidth: proxy.size.width,
-                                showsBackControl: !dockIsPinned
+                                showsBackControl: !dockIsPinned,
+                                statusBarHeight: proxy.safeAreaInsets.top
                             )
                             .ppMarketplaceEntrance(
                                 isPresented: hasPresentedEntrance

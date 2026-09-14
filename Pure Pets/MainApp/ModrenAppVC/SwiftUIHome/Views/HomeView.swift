@@ -123,28 +123,37 @@ private struct HomeLivingGatewayStage: View {
 private struct HomeHeroV2Stage: View {
     let pages: [HomeHeroPage]
     let selectedIndex: Int
+    var categories: [HomeCategoryModel] = []
+    var selectedCategoryID: Int? = nil
     let onSelect: (Int) -> Void
     let onPrimary: (HomeHeroPage) -> Void
     let onSecondary: (HomeHeroPage) -> Void
     let onInteractionChanged: (Bool) -> Void
+    var onSelectCategory: ((HomeCategoryModel?) -> Void)? = nil
 
     init(
         pages: [HomeHeroPage],
         selectedIndex: Int,
         discloseCampaign: Bool,
+        categories: [HomeCategoryModel] = [],
+        selectedCategoryID: Int? = nil,
         marketplaceSignals: HomeMarketplaceSignals = HomeMarketplaceSignals(),
         onSelect: @escaping (Int) -> Void,
         onPrimary: @escaping (HomeHeroPage) -> Void,
         onSecondary: @escaping (HomeHeroPage) -> Void,
         onInteractionChanged: @escaping (Bool) -> Void,
+        onSelectCategory: ((HomeCategoryModel?) -> Void)? = nil,
         onMarketplaceSignal: @escaping (HomeMarketplaceSignalKind) -> Void = { _ in }
     ) {
         self.pages = pages
         self.selectedIndex = selectedIndex
+        self.categories = categories
+        self.selectedCategoryID = selectedCategoryID
         self.onSelect = onSelect
         self.onPrimary = onPrimary
         self.onSecondary = onSecondary
         self.onInteractionChanged = onInteractionChanged
+        self.onSelectCategory = onSelectCategory
     }
 
     private var resolvedIndex: Int {
@@ -160,10 +169,13 @@ private struct HomeHeroV2Stage: View {
         HomeHeroV2View(
             pages: pages,
             selectedIndex: resolvedIndex,
+            categories: categories,
+            selectedCategoryID: selectedCategoryID,
             onSelect: onSelect,
             onPrimaryAction: performPrimaryAction,
             onSecondaryAction: performSecondaryAction,
-            onInteractionChanged: onInteractionChanged
+            onInteractionChanged: onInteractionChanged,
+            onSelectCategory: onSelectCategory
         )
     }
 
@@ -383,6 +395,9 @@ struct HomeView: View {
         for rawID in store.state.config.orderedSectionIDs {
             guard let resolved = modulesByRawID.removeValue(forKey: rawID)
             else { continue }
+            if PPHomeHeroFlags.UseHeroV2, resolved.module.kind == .discoveryRail {
+                continue
+            }
             rows.append(
                 HomeRenderRow(
                     id: "\(resolved.zone.rawValue)-\(resolved.module.rawID)",
@@ -440,15 +455,7 @@ struct HomeView: View {
 
         case let .marketingStage(source):
             marketingStage(source)
-                // Home Hero V2 is full-bleed: its plate bubble bleeds past the
-                // trailing screen edge, so the row drops the content margin
-                // while the flag is on. V1 keeps its card inset.
-                .padding(
-                    .horizontal,
-                    PPHomeHeroFlags.UseHeroV2
-                        ? 0
-                        : HomeVisualTokens.contentHorizontalMargin
-                )
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
         case .ecosystemLauncher:
             PPHomeEcosystemLauncher(
@@ -462,6 +469,7 @@ struct HomeView: View {
                     for: store.state,
                     plan: resolvedPlan
                 ),
+                mainKindAccent: selectedMainKindAccent,
                 onSelect: store.performPriorityAction
             )
             .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
@@ -558,10 +566,13 @@ struct HomeView: View {
                 pages: store.state.heroPages,
                 selectedIndex: store.state.selectedHeroIndex,
                 discloseCampaign: false,
+                categories: store.state.categories,
+                selectedCategoryID: store.state.selectedMainKindID,
                 onSelect: store.selectHero,
                 onPrimary: store.performHeroAction,
                 onSecondary: store.performHeroSecondaryAction,
-                onInteractionChanged: store.setHeroInteractionActive
+                onInteractionChanged: store.setHeroInteractionActive,
+                onSelectCategory: store.selectCategory
             )
 
         case .promotions:
@@ -569,10 +580,13 @@ struct HomeView: View {
                 pages: store.state.promotionPages,
                 selectedIndex: store.promotionIndex,
                 discloseCampaign: true,
+                categories: store.state.categories,
+                selectedCategoryID: store.state.selectedMainKindID,
                 onSelect: store.selectPromotion,
                 onPrimary: store.performHeroAction,
                 onSecondary: store.performHeroSecondaryAction,
-                onInteractionChanged: store.setPromotionInteractionActive
+                onInteractionChanged: store.setPromotionInteractionActive,
+                onSelectCategory: store.selectCategory
             )
 
         case .marketplace:
@@ -581,11 +595,14 @@ struct HomeView: View {
                     pages: [page],
                     selectedIndex: 0,
                     discloseCampaign: false,
+                    categories: store.state.categories,
+                    selectedCategoryID: store.state.selectedMainKindID,
                     marketplaceSignals: store.state.marketplaceSignals,
                     onSelect: { _ in },
                     onPrimary: store.performHeroAction,
                     onSecondary: store.performHeroSecondaryAction,
                     onInteractionChanged: { _ in },
+                    onSelectCategory: store.selectCategory,
                     onMarketplaceSignal: store.loadMarketplaceSignal
                 )
             }
@@ -604,11 +621,14 @@ struct HomeView: View {
         pages: [HomeHeroPage],
         selectedIndex: Int,
         discloseCampaign: Bool,
+        categories: [HomeCategoryModel] = [],
+        selectedCategoryID: Int? = nil,
         marketplaceSignals: HomeMarketplaceSignals = HomeMarketplaceSignals(),
         onSelect: @escaping (Int) -> Void,
         onPrimary: @escaping (HomeHeroPage) -> Void,
         onSecondary: @escaping (HomeHeroPage) -> Void,
         onInteractionChanged: @escaping (Bool) -> Void,
+        onSelectCategory: ((HomeCategoryModel?) -> Void)? = nil,
         onMarketplaceSignal: @escaping (HomeMarketplaceSignalKind) -> Void = { _ in }
     ) -> some View {
         if PPHomeHeroFlags.UseHeroV2 {
@@ -616,11 +636,14 @@ struct HomeView: View {
                 pages: pages,
                 selectedIndex: selectedIndex,
                 discloseCampaign: discloseCampaign,
+                categories: categories,
+                selectedCategoryID: selectedCategoryID,
                 marketplaceSignals: marketplaceSignals,
                 onSelect: onSelect,
                 onPrimary: onPrimary,
                 onSecondary: onSecondary,
                 onInteractionChanged: onInteractionChanged,
+                onSelectCategory: onSelectCategory,
                 onMarketplaceSignal: onMarketplaceSignal
             )
         } else {
@@ -847,6 +870,7 @@ struct HomeView: View {
                 featuredAction: nil,
                 featuredPet: nil,
                 actions: placeholderActions,
+                mainKindAccent: selectedMainKindAccent,
                 onSelect: { _ in }
             )
             .redacted(reason: .placeholder)
@@ -964,7 +988,7 @@ struct HomeView: View {
             return HomeVisualTokens.compactRowSpacing
         case .marketingStage:
             return PPHomeHeroFlags.UseHeroV2
-                ? PPSpace.xxs
+                ? PPSpace.md
                 : HomeVisualTokens.mediaRowSpacing
         default:
             return HomeVisualTokens.routineRowSpacing
@@ -985,8 +1009,8 @@ struct HomeView: View {
         if case let .module(prevModule) = previousRow.content,
            case .marketingStage = prevModule.kind,
            PPHomeHeroFlags.UseHeroV2 {
-            // Tighter space directly beneath Hero V2
-            return PPSpace.xs
+            // Refined breathing room directly beneath Unified Hero V2
+            return PPSpace.md
         }
         guard hasStandaloneSectionHeader(row) else {
             return verticalPadding(for: row)
@@ -1005,15 +1029,15 @@ struct HomeView: View {
             return true
         case let .module(module):
             switch module.kind {
-            case .ecosystemLauncher,
-                 .livePriorityOrder,
-                 .discoveryRail,
+            case .livePriorityOrder,
                  .commerceRail,
                  .partnerFeature,
                  .careGateway,
                  .petContext:
                 return true
-            case .discoveryPrompt,
+            case .ecosystemLauncher,
+                 .discoveryRail,
+                 .discoveryPrompt,
                  .marketingStage,
                  .livePriorityCare,
                  .adoptionGateway,

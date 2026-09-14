@@ -43,6 +43,256 @@ struct PPMarketplaceAtmosphere: View {
     }
 }
 
+// MARK: - Top Deck Metrics & Organic Wave Geometry
+
+@available(iOS 15.0, *)
+enum PPMarketplaceTopDeckMetrics {
+    /// Vertical amplitude of the organic wave bottom contour (matches 20px design reference).
+    static let waveDepth: CGFloat = 20.0
+    /// Stroke width for the delicate rose/primary wave separator line.
+    static let separatorStrokeWidth: CGFloat = 1.5
+    /// High-contrast accessible stroke width.
+    static let separatorStrokeIncreasedContrastWidth: CGFloat = 2.0
+    /// Bottom padding inside the dock to keep controls comfortably above the wave crest.
+    static let dockBottomPadding: CGFloat = waveDepth + PPSpace.xs // 24 pt
+}
+
+@available(iOS 15.0, *)
+struct PPMarketplaceTopDeckWaveShape: Shape {
+    var isRightToLeft: Bool = true
+    var waveDepth: CGFloat = PPMarketplaceTopDeckMetrics.waveDepth
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        let baseY = max(0, height - waveDepth)
+
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: width, y: 0))
+
+        if isRightToLeft {
+            // Line down right edge to wave end
+            path.addLine(to: CGPoint(x: width, y: baseY + (waveDepth * 0.25)))
+
+            // Right curve to central crest
+            path.addCurve(
+                to: CGPoint(x: width * 0.63, y: baseY + (waveDepth * 0.35)),
+                control1: CGPoint(x: width * 0.92, y: baseY + (waveDepth * 1.18)),
+                control2: CGPoint(x: width * 0.84, y: baseY + (waveDepth * 0.78))
+            )
+
+            // Crest curve to left edge
+            path.addCurve(
+                to: CGPoint(x: 0, y: baseY),
+                control1: CGPoint(x: width * 0.30, y: baseY + (waveDepth * 1.16)),
+                control2: CGPoint(x: width * 0.20, y: baseY + (waveDepth * 1.28))
+            )
+
+            // Up left edge to top
+            path.addLine(to: CGPoint(x: 0, y: 0))
+        } else {
+            // LTR mirrored
+            path.addLine(to: CGPoint(x: width, y: baseY))
+
+            path.addCurve(
+                to: CGPoint(x: width * 0.37, y: baseY + (waveDepth * 0.35)),
+                control1: CGPoint(x: width * 0.70, y: baseY + (waveDepth * 1.16)),
+                control2: CGPoint(x: width * 0.80, y: baseY + (waveDepth * 1.28))
+            )
+
+            path.addCurve(
+                to: CGPoint(x: 0, y: baseY + (waveDepth * 0.25)),
+                control1: CGPoint(x: width * 0.16, y: baseY + (waveDepth * 0.78)),
+                control2: CGPoint(x: width * 0.08, y: baseY + (waveDepth * 1.18))
+            )
+
+            path.addLine(to: CGPoint(x: 0, y: 0))
+        }
+
+        path.closeSubpath()
+        return path
+    }
+}
+
+@available(iOS 15.0, *)
+struct PPMarketplaceWaveSeparatorLine: Shape {
+    var isRightToLeft: Bool = true
+    var waveDepth: CGFloat = PPMarketplaceTopDeckMetrics.waveDepth
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        let baseY = max(0, height - waveDepth)
+
+        if isRightToLeft {
+            path.move(to: CGPoint(x: 0, y: baseY))
+
+            path.addCurve(
+                to: CGPoint(x: width * 0.63, y: baseY + (waveDepth * 0.35)),
+                control1: CGPoint(x: width * 0.20, y: baseY + (waveDepth * 1.28)),
+                control2: CGPoint(x: width * 0.30, y: baseY + (waveDepth * 1.16))
+            )
+
+            path.addCurve(
+                to: CGPoint(x: width, y: baseY + (waveDepth * 0.25)),
+                control1: CGPoint(x: width * 0.84, y: baseY + (waveDepth * 0.78)),
+                control2: CGPoint(x: width * 0.92, y: baseY + (waveDepth * 1.18))
+            )
+        } else {
+            path.move(to: CGPoint(x: 0, y: baseY + (waveDepth * 0.25)))
+
+            path.addCurve(
+                to: CGPoint(x: width * 0.37, y: baseY + (waveDepth * 0.35)),
+                control1: CGPoint(x: width * 0.08, y: baseY + (waveDepth * 1.18)),
+                control2: CGPoint(x: width * 0.16, y: baseY + (waveDepth * 0.78))
+            )
+
+            path.addCurve(
+                to: CGPoint(x: width, y: baseY),
+                control1: CGPoint(x: width * 0.70, y: baseY + (waveDepth * 1.16)),
+                control2: CGPoint(x: width * 0.80, y: baseY + (waveDepth * 1.28))
+            )
+        }
+
+        return path
+    }
+}
+
+// MARK: - Top Deck Background Views
+
+@available(iOS 15.0, *)
+struct PPMarketplaceHeroBackground: View {
+    let statusBarHeight: CGFloat
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        GeometryReader { proxy in
+            let topBleed = max(0, statusBarHeight) + 400
+            Group {
+                if reduceTransparency || contrast == .increased {
+                    Color.ppSurface
+                } else {
+                    LinearGradient(
+                        colors: [
+                            Color.ppSurface,
+                            Color.ppSurface,
+                            colorScheme == .dark
+                                ? Color.ppSurfaceOverlay.opacity(0.85)
+                                : Color.ppSurfaceOverlay.opacity(0.70)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height + topBleed)
+            .offset(y: -topBleed)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+}
+
+@available(iOS 15.0, *)
+struct PPMarketplaceCurrentDockBackground: View {
+    let isPinned: Bool
+    let statusBarHeight: CGFloat
+    let isRightToLeft: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        GeometryReader { proxy in
+            let topExtension = isPinned ? max(0, statusBarHeight) + PPCorner.hero : 0
+            let totalHeight = proxy.size.height + topExtension
+            let isIncreasedContrast = contrast == .increased
+            let waveDepth = PPMarketplaceTopDeckMetrics.waveDepth
+
+            ZStack(alignment: .bottom) {
+                // 1. Deck surface fill shaped with organic wave bottom contour
+                surfaceFill(isIncreasedContrast: isIncreasedContrast)
+                    .clipShape(
+                        PPMarketplaceTopDeckWaveShape(
+                            isRightToLeft: isRightToLeft,
+                            waveDepth: waveDepth
+                        )
+                    )
+                    // Downward soft shadow for tactile depth over scrolling cards
+                    .shadow(
+                        color: isIncreasedContrast
+                            ? .clear
+                            : Color.ppPrimary.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                        radius: 6,
+                        x: 0,
+                        y: 3
+                    )
+
+                // 2. Wave separator line stroke
+                PPMarketplaceWaveSeparatorLine(
+                    isRightToLeft: isRightToLeft,
+                    waveDepth: waveDepth
+                )
+                .stroke(
+                    strokeColor(isIncreasedContrast: isIncreasedContrast),
+                    lineWidth: isIncreasedContrast
+                        ? PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth
+                        : PPMarketplaceTopDeckMetrics.separatorStrokeWidth
+                )
+            }
+            .frame(width: proxy.size.width, height: totalHeight)
+            .offset(y: -topExtension)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private func surfaceFill(isIncreasedContrast: Bool) -> some View {
+        if reduceTransparency || isIncreasedContrast {
+            Color.ppSurface
+        } else if isPinned {
+            ZStack {
+                Rectangle().fill(.regularMaterial)
+                LinearGradient(
+                    colors: [
+                        Color.ppSurface.opacity(0.85),
+                        colorScheme == .dark
+                            ? Color.ppSurfaceOverlay.opacity(0.95)
+                            : Color.ppSurfaceOverlay
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        } else {
+            LinearGradient(
+                colors: [
+                    colorScheme == .dark
+                        ? Color.ppSurfaceOverlay.opacity(0.85)
+                        : Color.ppSurfaceOverlay.opacity(0.70),
+                    Color.ppSurfaceOverlay
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+
+    private func strokeColor(isIncreasedContrast: Bool) -> Color {
+        if isIncreasedContrast {
+            return Color.ppTextSecondary
+        }
+        return Color.ppPrimary.opacity(colorScheme == .dark ? 0.40 : 0.32)
+    }
+}
+
 @available(iOS 15.0, *)
 struct PPMarketplaceHeroControlLayoutMetrics: Equatable {
     let spacing: CGFloat
@@ -105,6 +355,7 @@ struct PPMarketplaceHero: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
     let availableWidth: CGFloat
     let showsBackControl: Bool
+    var statusBarHeight: CGFloat = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
@@ -123,7 +374,11 @@ struct PPMarketplaceHero: View {
         .padding(.top, PPSpace.xs)
         .padding(.bottom, PPSpace.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.clear)
+        .background {
+            PPMarketplaceHeroBackground(
+                statusBarHeight: statusBarHeight
+            )
+        }
         .accessibilityElement(children: .contain)
     }
 
@@ -462,39 +717,13 @@ struct PPMarketplaceCurrentDock: View {
             sectionRail
             actionRail
         }
-        .padding(.bottom, PPSpace.sm)
-        .overlay(alignment: .bottom) {
-            if showsPinnedBackControl {
-                Rectangle()
-                    .fill(contrast == .increased ? Color.ppTextSecondary : Color.ppSeparator.opacity(0.6))
-                    .frame(height: contrast == .increased ? 2 : 1)
-                    .accessibilityHidden(true)
-            }
-        }
+        .padding(.bottom, PPMarketplaceTopDeckMetrics.dockBottomPadding)
         .background {
-            GeometryReader { proxy in
-                // Extend only the pinned surface into the system top area.
-                // The bottom edge and the screen's existing pin geometry stay fixed.
-                let topExtension = showsPinnedBackControl
-                    ? max(0, statusBarHeight) + PPCorner.hero
-                    : 0
-                if showsPinnedBackControl {
-                    Group {
-                        if reduceTransparency || contrast == .increased {
-                            Rectangle().fill(Color.ppSurface)
-                        } else {
-                            ZStack {
-                                Rectangle().fill(.regularMaterial)
-                                Rectangle().fill(Color.ppSurface.opacity(0.90))
-                            }
-                        }
-                    }
-                    .frame(height: proxy.size.height + topExtension)
-                    .offset(y: -topExtension)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                }
-            }
+            PPMarketplaceCurrentDockBackground(
+                isPinned: showsPinnedBackControl,
+                statusBarHeight: statusBarHeight,
+                isRightToLeft: store.isRightToLeft
+            )
         }
         .zIndex(4)
     }

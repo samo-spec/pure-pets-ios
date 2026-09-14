@@ -362,9 +362,9 @@ willConnectToSession:(UISceneSession *)session
         type = [[PPSceneFirstScalarForKeys(meta, @[@"notificationType", @"eventType", @"type"]) lowercaseString] copy];
     }
 
-    NSString *threadID = PPSceneFirstScalarForKeys(safeUserInfo, @[@"threadID", @"threadId", @"conversationId", @"chatId", @"chatID", @"contextId"]);
+    NSString *threadID = PPSceneFirstScalarForKeys(safeUserInfo, @[@"threadID", @"threadId", @"conversationId", @"chatId", @"chatID"]);
     if (threadID.length == 0) {
-        threadID = PPSceneFirstScalarForKeys(meta, @[@"threadID", @"threadId", @"conversationId", @"chatId", @"chatID", @"contextId"]);
+        threadID = PPSceneFirstScalarForKeys(meta, @[@"threadID", @"threadId", @"conversationId", @"chatId", @"chatID"]);
     }
 
     NSString *orderId = PPSceneOrderIDFromPayload(safeUserInfo);
@@ -390,6 +390,11 @@ willConnectToSession:(UISceneSession *)session
           threadID ?: @"",
           petAdId ?: @"",
           accessoryId ?: @"");
+
+    if ([route isEqualToString:@"community"] || [route hasPrefix:@"community/"]) {
+        [self pp_navigateToCommunityRoute:route];
+        return;
+    }
 
     if (threadID.length > 0 || [type isEqualToString:@"chat"] || [type containsString:@"chat"] || [route isEqualToString:@"chat"]) {
         [ChManager sharedManager].isHandlingNotificationHandoff = YES;
@@ -439,6 +444,24 @@ willConnectToSession:(UISceneSession *)session
         if (![tabBar pp_openNotificationsInboxAnimated:YES]) {
             NSLog(@"PPLAB Scene notification route failed | route=%@", route ?: @"");
         }
+    }
+}
+
+- (void)pp_navigateToCommunityRoute:(NSString *)route {
+    PPCommunityViewController *controller = [PPCommunityViewController new];
+    controller.initialRoute = PPSceneTrimmedString(route);
+    UIWindow *window = self.window ?: UIApplication.sharedApplication.keyWindow;
+    UIViewController *root = window.rootViewController;
+    if (!root) return;
+    UIViewController *presenter = [PPOverlayCoordinator pp_resolvedPresenterFrom:root] ?: root;
+    if ([presenter isKindOfClass:UINavigationController.class]) {
+        [(UINavigationController *)presenter pushViewController:controller animated:YES];
+    } else if (presenter.navigationController) {
+        [presenter.navigationController pushViewController:controller animated:YES];
+    } else {
+        PPNavigationController *wrapper = [[PPNavigationController alloc] initWithRootViewController:controller];
+        wrapper.modalPresentationStyle = UIModalPresentationFullScreen;
+        [presenter presentViewController:wrapper animated:YES completion:nil];
     }
 }
 

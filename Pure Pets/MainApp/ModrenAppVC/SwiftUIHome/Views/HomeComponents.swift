@@ -2098,6 +2098,7 @@ private enum HomeQuickActionTone {
 struct HomePriorityGrid: View {
     let actions: [HomePriorityAction]
     let featuredPet: HomePetModel?
+    var mainKindAccent: Color = .homeBrand
     let onSelect: (HomePriorityAction) -> Void
 
     @State private var selectedDomain: PPEcosystemDomain = .provisionsAndCare
@@ -2124,7 +2125,8 @@ struct HomePriorityGrid: View {
             VStack(spacing: PPSpace.md) {
                 PPEcosystemDomainSwitcher(
                     selectedDomain: $selectedDomain,
-                    reduceMotion: reduceMotion
+                    reduceMotion: reduceMotion,
+                    mainKindAccent: mainKindAccent
                 )
 
                 switch selectedDomain {
@@ -2940,40 +2942,14 @@ struct HomeCategoryRail: View {
 
     private enum RailLayout {
         static let cellSpacing = PPSpace.md
-        static let artworkTopInset = PPSpace.sm
-        static let artworkBottomInset = PPSpace.xs
         static let screenGutter = HomeVisualTokens.contentHorizontalMargin
+        static let artworkTopInset = PPSpace.xs
+        static let artworkBottomInset = PPSpace.xs
         static let horizontalCellWidthScale: CGFloat = 0.85
     }
 
     var body: some View {
-        VStack(
-            alignment: .leading,
-            spacing: PPHomeSectionHeaderMetrics.contentSpacing
-        ) {
-            PPHomeSectionHeading(
-                title: HomeModelAdapter.localized(
-                    "home_pulse_categories_title",
-                    fallback: "Explore by pet"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "home_pulse_categories_subtitle",
-                    fallback: "The selected species shapes relevant results"
-                ),
-                titleAccent: selectedCategoryAccent,
-                actionTitle: layoutActionTitle,
-                action: toggleLayout,
-                actionIconName: isExpanded
-                    ? "chevron.up"
-                    : "chevron.forward",
-                actionAccent: selectedCategoryAccent,
-                actionAccessibilityIdentifier:
-                    "home.mainKinds.layoutToggle",
-                actionAccessibilityValue: layoutActionTitle,
-                actionGeneratesHaptic: true
-            )
-            .padding(.horizontal, RailLayout.screenGutter)
-
+        Group {
             if isExpanded {
                 expandedGrid
                     .transition(layoutTransition)
@@ -2996,7 +2972,6 @@ struct HomeCategoryRail: View {
     }
 
     private var horizontalRail: some View {
-        // Measure the title set once per rail update, not once per child.
         let cellSize = itemSize
         return GeometryReader { geometry in
             ScrollViewReader { proxy in
@@ -3033,12 +3008,72 @@ struct HomeCategoryRail: View {
                         )
                     )
                 }
+                .onChange(of: selectedID) { _ in
+                    proxy.scrollTo(
+                        selectedScrollID,
+                        anchor: semanticLeadingAnchor(
+                            viewportWidth: geometry.size.width
+                        )
+                    )
+                }
             }
         }
         .frame(
             height: cellSize.height
                 + RailLayout.artworkTopInset
                 + RailLayout.artworkBottomInset
+        )
+    }
+
+    private var selectedScrollID: String {
+        guard let selectedID,
+              let category = categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedID
+              }) else {
+            return allCategoryScrollID
+        }
+        return scrollID(for: category)
+    }
+
+    private func semanticLeadingAnchor(
+        viewportWidth: CGFloat
+    ) -> UnitPoint {
+        let availableWidth = max(viewportWidth - itemSize.width, 1)
+        let insetFraction = min(
+            max(HomeVisualTokens.contentHorizontalMargin / availableWidth, 0),
+            0.5
+        )
+        return UnitPoint(
+            x: layoutDirection == .rightToLeft
+                ? 1 - insetFraction
+                : insetFraction,
+            y: 0.5
+        )
+    }
+
+    private var itemSize: CGSize {
+        let width = viewportWidth > 1 ? viewportWidth : 390
+        let itemWidth: CGFloat
+        if dynamicTypeSize.isAccessibilitySize {
+            itemWidth = min(
+                max(176, captionFontSize * 7),
+                max(176, width - RailLayout.screenGutter * 2)
+            )
+        } else if width >= 430 {
+            itemWidth = 140 * RailLayout.horizontalCellWidthScale
+        } else if width < 375 {
+            itemWidth = 120 * RailLayout.horizontalCellWidthScale
+        } else {
+            itemWidth = 132 * RailLayout.horizontalCellWidthScale
+        }
+        return CGSize(
+            width: itemWidth,
+            height: MainKindsCellV2Layout.preferredHeight(
+                width: itemWidth,
+                titles: categoryTitles,
+                fontSize: captionFontSize,
+                expandedText: dynamicTypeSize.isAccessibilitySize
+            )
         )
     }
 
@@ -3146,32 +3181,6 @@ struct HomeCategoryRail: View {
         return Color(uiColor: category.accent)
     }
 
-    private var selectedScrollID: String {
-        guard let selectedID,
-              let category = categories.first(where: {
-                  HomeModelAdapter.mainKindID($0.raw) == selectedID
-              }) else {
-            return allCategoryScrollID
-        }
-        return scrollID(for: category)
-    }
-
-    private func semanticLeadingAnchor(
-        viewportWidth: CGFloat
-    ) -> UnitPoint {
-        let availableWidth = max(viewportWidth - itemSize.width, 1)
-        let insetFraction = min(
-            max(HomeVisualTokens.contentHorizontalMargin / availableWidth, 0),
-            0.5
-        )
-        return UnitPoint(
-            x: layoutDirection == .rightToLeft
-                ? 1 - insetFraction
-                : insetFraction,
-            y: 0.5
-        )
-    }
-
     private func scrollID(for category: HomeCategoryModel) -> String {
         "home-main-kind-\(category.id)"
     }
@@ -3240,30 +3249,6 @@ struct HomeCategoryRail: View {
         return MainKindsCellV2Layout.preferredHeight(
             width: columnWidth, titles: categoryTitles, fontSize: captionFontSize,
             expandedText: dynamicTypeSize >= .xxxLarge
-        )
-    }
-
-    private var itemSize: CGSize {
-        let width = viewportWidth > 1 ? viewportWidth : 390
-        let itemWidth: CGFloat
-        if dynamicTypeSize.isAccessibilitySize {
-            itemWidth = min(
-                max(176, captionFontSize * 7),
-                max(176, width - RailLayout.screenGutter * 2)
-            )
-        } else if width >= 430 {
-            itemWidth = 140 * RailLayout.horizontalCellWidthScale
-        } else if width < 375 {
-            itemWidth = 120 * RailLayout.horizontalCellWidthScale
-        } else {
-            itemWidth = 132 * RailLayout.horizontalCellWidthScale
-        }
-        return CGSize(
-            width: itemWidth,
-            height: MainKindsCellV2Layout.preferredHeight(
-                width: itemWidth, titles: categoryTitles, fontSize: captionFontSize,
-                expandedText: dynamicTypeSize >= .xxxLarge
-            )
         )
     }
 
@@ -5917,7 +5902,10 @@ private extension View {
 /// reticle and focus deck layout). Both branches preserve the exact same action,
 /// motion gate readiness handshake, accessibility labels and traits, and identifier.
 public enum PPHomePureLensFlags {
-    public static var UseLensCardV2: Bool = true
+    public static var UseLensCardV2: Bool {
+        get { PURE_LENS_USE_V2.boolValue }
+        set { }
+    }
 }
 
 @available(iOS 16.0, *)
@@ -5928,21 +5916,246 @@ struct HomePureLensSection: View {
     let action: () -> Void
 
     var body: some View {
-        if PPHomePureLensFlags.UseLensCardV2 {
-            HomePureLensSectionV2(
+        if PURE_LENS_USE_V2.boolValue {
+            PureLensCardV2(
                 motionReady: motionReady,
                 motionAlreadyPlayed: motionAlreadyPlayed,
                 onMotionSettled: onMotionSettled,
                 action: action
             )
         } else {
-            HomePureLensSectionV1(
+            PureLensCardV1(
                 motionReady: motionReady,
                 motionAlreadyPlayed: motionAlreadyPlayed,
                 onMotionSettled: onMotionSettled,
                 action: action
             )
         }
+    }
+}
+
+// MARK: - Preserved Pure Lens Card V1 (Neural Optical Chamber)
+
+@available(iOS 16.0, *)
+struct PureLensCardV1: View {
+    let motionReady: Bool
+    let motionAlreadyPlayed: Bool
+    let onMotionSettled: () -> Void
+    let action: () -> Void
+
+    var body: some View {
+        HomePureLensSectionV2(
+            motionReady: motionReady,
+            motionAlreadyPlayed: motionAlreadyPlayed,
+            onMotionSettled: onMotionSettled,
+            action: action
+        )
+    }
+}
+
+// MARK: - Pure Lens Card V2 (Vanguard AI Camera Portal)
+
+@available(iOS 16.0, *)
+struct PureLensCardV2: View {
+    let motionReady: Bool
+    let motionAlreadyPlayed: Bool
+    let onMotionSettled: () -> Void
+    let action: () -> Void
+
+    @State private var pulseAura: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button(action: performAction) {
+            ZStack {
+                // Background surface
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.ppSurfaceElevated,
+                                Color.ppPrimary.opacity(0.06)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        Color.ppPrimary.opacity(pulseAura ? 0.45 : 0.20),
+                                        Color.ppSurfaceBorder
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.2
+                            )
+                    )
+                    .shadow(
+                        color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.0 : 0.08),
+                        radius: 16,
+                        x: 0,
+                        y: 6
+                    )
+
+                VStack(spacing: 16) {
+                    HStack(spacing: 14) {
+                        // AI Camera Scanner Icon Plate
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.ppPrimary, Color.ppPressedAction],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 48, height: 48)
+                                .shadow(color: Color.ppPrimary.opacity(0.35), radius: 8, x: 0, y: 4)
+
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                Text(HomeModelAdapter.localized(
+                                    "pure_lens_account_title",
+                                    fallback: Language.isRTL() ? "بيورلينس" : "Pure Lens"
+                                ))
+                                .font(HomeFont.bold(19))
+                                .foregroundColor(Color.ppTextPrimary)
+
+                                Text(HomeModelAdapter.localized(
+                                    "pure_lens_account_live_vision",
+                                    fallback: Language.isRTL() ? "رؤية ذكية مباشرة" : "LIVE AI VISION"
+                                ))
+                                .font(HomeFont.bold(9.5))
+                                .foregroundColor(Color.ppPrimary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.ppPrimary.opacity(0.12)))
+                            }
+
+                            Text(HomeModelAdapter.localized(
+                                "home_pure_lens_subtitle",
+                                fallback: Language.isRTL()
+                                    ? "تعرّف على الحيوان واكتشف ما يناسبه."
+                                    : "Identify animals and discover what suits them."
+                            ))
+                            .font(HomeFont.regular(13))
+                            .foregroundColor(Color.ppTextSecondary)
+                            .lineLimit(2)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "arrow.up.forward.circle.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(Color.ppPrimary)
+                    }
+
+                    // 3-step connected recognition pipeline
+                    HStack(spacing: 6) {
+                        stepPill(
+                            symbol: "camera.fill",
+                            title: HomeModelAdapter.localized(
+                                "pure_lens_account_camera",
+                                fallback: Language.isRTL() ? "كاميرا" : "Camera"
+                            ),
+                            tint: Color.ppPrimary
+                        )
+                        connectorLine
+                        stepPill(
+                            symbol: "viewfinder",
+                            title: HomeModelAdapter.localized(
+                                "pure_lens_account_recognize",
+                                fallback: Language.isRTL() ? "تعرّف" : "Identify"
+                            ),
+                            tint: Color.ppSuccess
+                        )
+                        connectorLine
+                        stepPill(
+                            symbol: "sparkles",
+                            title: HomeModelAdapter.localized(
+                                "pure_lens_account_discover",
+                                fallback: Language.isRTL() ? "اكتشف" : "Discover"
+                            ),
+                            tint: Color.ppInfo
+                        )
+                    }
+                }
+                .padding(18)
+            }
+        }
+        .buttonStyle(PureLensCardV2ButtonStyle())
+        .onAppear {
+            if !reduceMotion {
+                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
+                    pulseAura = true
+                }
+            }
+            onMotionSettled()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(HomeModelAdapter.localized(
+            "pure_lens_account_a11y",
+            fallback: "Pure Lens. Camera, recognition, and marketplace discovery."
+        ))
+        .accessibilityHint(HomeModelAdapter.localized(
+            "pure_lens_account_hint",
+            fallback: "Opens the animal discovery camera"
+        ))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("home.pureLens.open")
+    }
+
+    private func performAction() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        action()
+    }
+
+    private func stepPill(symbol: String, title: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(tint)
+            Text(title)
+                .font(HomeFont.medium(11.5))
+                .foregroundColor(Color.ppTextSecondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .fixedSize(horizontal: true, vertical: false)
+        .background(
+            Capsule()
+                .fill(Color.ppSurfaceBase.opacity(0.85))
+                .overlay(Capsule().strokeBorder(tint.opacity(0.25), lineWidth: 0.8))
+        )
+    }
+
+    private var connectorLine: some View {
+        Rectangle()
+            .fill(Color.ppPrimary.opacity(0.2))
+            .frame(height: 1.5)
+            .frame(minWidth: 6, maxWidth: .infinity)
+    }
+}
+
+private struct PureLensCardV2ButtonStyle: ButtonStyle {
+    var scaleAmount: CGFloat = 0.975
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scaleAmount : 1.0)
+            .opacity(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.28, dampingFraction: 0.72), value: configuration.isPressed)
     }
 }
 

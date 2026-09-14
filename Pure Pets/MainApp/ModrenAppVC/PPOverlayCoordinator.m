@@ -13,6 +13,8 @@
 
 #import "PPOverlayCoordinator.h"
 #import "AccessViewerVC.h"
+#import "PPNavigationController.h"
+#import "ChatThreadModel.h"
 #import <Pure_Pets-Swift.h>
 #import "PetCare/PPPetCareVetViewrVC.h"
 #define PPLog(fmt, ...) NSLog((@"[Overlay] " fmt), ##__VA_ARGS__)

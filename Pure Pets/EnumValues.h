@@ -105,7 +105,13 @@ static NSString * const PPCollapseSystemTabBarNotification = @"PPCollapseSystemT
 static NSString * const PPRouteToSearchAccessoriesNotificationKey = @"PPRouteToSearchAccessoriesNotification";
 
 static NSString * const PPHomeSectionDividerKind = @"PPHomeSectionDividerKind";
+
+
 static BOOL const PPUSE_LEGACY_BAR = NO;
+static BOOL const PURE_LENS_USE_V2 = YES;
+
+
+
 static NSString * const kPPReusableVideoMediaFeatureFlagKey = @"PPReusableVideoMediaEnabled";
  
 static inline BOOL PPReusableVideoMediaDefaultEnabled(void) {

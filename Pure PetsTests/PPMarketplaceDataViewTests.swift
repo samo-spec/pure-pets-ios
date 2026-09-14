@@ -329,6 +329,42 @@ final class PPMarketplaceDataViewTests: XCTestCase {
         )
     }
 
+    func testTopDeckMetricsAndWaveShapes() {
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.waveDepth, 20.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeWidth, 1.5)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth, 2.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 24.0)
+
+        let testRect = CGRect(x: 0, y: 0, width: 421, height: 100)
+
+        // Verify RTL top deck wave shape produces a valid, bounded surface
+        let rtlWaveShape = PPMarketplaceTopDeckWaveShape(isRightToLeft: true, waveDepth: 20.0)
+        let rtlPath = rtlWaveShape.path(in: testRect)
+        XCTAssertFalse(rtlPath.isEmpty)
+        XCTAssertLessThanOrEqual(rtlPath.boundingRect.minY, 0)
+        XCTAssertGreaterThanOrEqual(rtlPath.boundingRect.maxY, 95)
+
+        // Verify LTR mirrored wave shape produces a valid, bounded surface
+        let ltrWaveShape = PPMarketplaceTopDeckWaveShape(isRightToLeft: false, waveDepth: 20.0)
+        let ltrPath = ltrWaveShape.path(in: testRect)
+        XCTAssertFalse(ltrPath.isEmpty)
+        XCTAssertLessThanOrEqual(ltrPath.boundingRect.minY, 0)
+        XCTAssertGreaterThanOrEqual(ltrPath.boundingRect.maxY, 95)
+
+        // Verify wave separator line stroke path
+        let rtlLineShape = PPMarketplaceWaveSeparatorLine(isRightToLeft: true, waveDepth: 20.0)
+        let rtlLinePath = rtlLineShape.path(in: testRect)
+        XCTAssertFalse(rtlLinePath.isEmpty)
+        XCTAssertGreaterThanOrEqual(rtlLinePath.boundingRect.minY, 78)
+        XCTAssertLessThanOrEqual(rtlLinePath.boundingRect.maxY, 102)
+
+        let ltrLineShape = PPMarketplaceWaveSeparatorLine(isRightToLeft: false, waveDepth: 20.0)
+        let ltrLinePath = ltrLineShape.path(in: testRect)
+        XCTAssertFalse(ltrLinePath.isEmpty)
+        XCTAssertGreaterThanOrEqual(ltrLinePath.boundingRect.minY, 78)
+        XCTAssertLessThanOrEqual(ltrLinePath.boundingRect.maxY, 102)
+    }
+
     private func makeFixture() -> (
         bridge: PPMarketplaceDataViewBridge,
         viewModel: PPDataViewVM

@@ -14,27 +14,29 @@ import UIKit
 
 @objc(AdoptPetsViewController)
 final class AdoptPetsViewController: UIViewController {
-    private var hostingController: UIHostingController<AdoptPetListScreen>?
+    private var hostingController: UIHostingController<PPCommunityGatewayScreen>?
 
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
         self.hidesBottomBarWhenPushed = true
+        self.modalPresentationStyle = .fullScreen
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         self.hidesBottomBarWhenPushed = true
+        self.modalPresentationStyle = .fullScreen
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
 
-        let listScreen = AdoptPetListScreen(
-            onSelectPet: { [weak self] pet in
+        let communityScreen = PPCommunityGatewayScreen(
+            onSelectAdoption: { [weak self] pet in
                 self?.openDetails(for: pet)
             },
-            onAddPet: { [weak self] in
+            onCreateAdoption: { [weak self] in
                 self?.openAddPetForm()
             },
             onClose: { [weak self] in
@@ -42,7 +44,7 @@ final class AdoptPetsViewController: UIViewController {
             }
         )
 
-        let hc = UIHostingController(rootView: listScreen)
+        let hc = UIHostingController(rootView: communityScreen)
         self.hostingController = hc
 
         addChild(hc)
@@ -80,7 +82,7 @@ final class AdoptPetsViewController: UIViewController {
         if let nav = navigationController {
             nav.pushViewController(detailsVC, animated: true)
         } else {
-            detailsVC.modalPresentationStyle = .pageSheet
+            detailsVC.modalPresentationStyle = .fullScreen
             present(detailsVC, animated: true)
         }
     }
@@ -91,10 +93,11 @@ final class AdoptPetsViewController: UIViewController {
             return
         }
 
-        let addVC = AddAdoptPetViewController()
-        let nav = UINavigationController(rootViewController: addVC)
-        nav.modalPresentationStyle = .formSheet
-        present(nav, animated: true)
+        let addVC = AddAdoptPetHostingController(pet: nil, onDismiss: nil, onSuccess: { [weak self] in
+            self?.dismiss(animated: true)
+        })
+        addVC.modalPresentationStyle = .fullScreen
+        present(addVC, animated: true)
     }
 
     private func handleClose() {
@@ -125,6 +128,7 @@ final class AdoptPetDetailsViewController: UIViewController {
         }()
         super.init(nibName: nil, bundle: nil)
         self.hidesBottomBarWhenPushed = true
+        self.modalPresentationStyle = .fullScreen
     }
 
     @objc(initWithModel:isOwner:)
@@ -133,6 +137,7 @@ final class AdoptPetDetailsViewController: UIViewController {
         self.isOwner = isOwner
         super.init(nibName: nil, bundle: nil)
         self.hidesBottomBarWhenPushed = true
+        self.modalPresentationStyle = .fullScreen
     }
 
     required init?(coder: NSCoder) {
@@ -140,6 +145,7 @@ final class AdoptPetDetailsViewController: UIViewController {
         self.isOwner = false
         super.init(coder: coder)
         self.hidesBottomBarWhenPushed = true
+        self.modalPresentationStyle = .fullScreen
     }
 
     override func viewDidLoad() {

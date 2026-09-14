@@ -41,16 +41,16 @@ final class AdoptPetListStore: ObservableObject {
     @Published var pets: [AdoptPetModel] = []
     @Published var filteredPets: [AdoptPetModel] = []
     @Published var searchText: String = "" {
-        didSet { applyFilters() }
+        didSet { filterDidChange() }
     }
     @Published var selectedKindID: Int = 0 { // 0 = All
-        didSet { applyFilters() }
+        didSet { filterDidChange() }
     }
     @Published var selectedGender: String = "" { // "" = All, "male", "female"
-        didSet { applyFilters() }
+        didSet { filterDidChange() }
     }
     @Published var selectedCityID: Int = 0 { // 0 = All
-        didSet { applyFilters() }
+        didSet { filterDidChange() }
     }
 
     @Published var isLoading: Bool = true
@@ -58,84 +58,47 @@ final class AdoptPetListStore: ObservableObject {
     @Published var isOffline: Bool = false
     @Published var errorMessage: String? = nil
     @Published var hasReceivedInitialSnapshot: Bool = false
+    @Published var hasMore: Bool = false
+    @Published var isLoadingMore: Bool = false
 
-    private var listenerRegistration: ListenerRegistration?
     private var observationGeneration = 0
-    private var refreshContinuation: CheckedContinuation<Void, Never>?
-    private var refreshTimeoutWorkItem: DispatchWorkItem?
+    private var nextCursor: String?
+    private var loadTask: Task<Void, Never>?
+    private var filterTask: Task<Void, Never>?
+    private var isClearingFilters = false
 
     init() {
         startObserving()
     }
 
     deinit {
-        listenerRegistration?.remove()
+        loadTask?.cancel()
+        filterTask?.cancel()
     }
 
     func startObserving() {
-        stopObserving()
-        beginObserving(showLoading: pets.isEmpty)
-    }
-
-    private func beginObserving(showLoading: Bool) {
-        observationGeneration += 1
-        let currentGeneration = observationGeneration
-
-        isLoading = showLoading
-        isOffline = false
-        errorMessage = nil
-
-        listenerRegistration = AdoptPetManager.shared().observeAllPets(update: { [weak self] updatedPets, error in
-            Task { @MainActor in
-                guard let self = self else { return }
-                guard self.observationGeneration == currentGeneration else { return }
-                self.isLoading = false
-                self.isRefreshing = false
-                self.hasReceivedInitialSnapshot = true
-
-                defer {
-                    self.finishRefreshIfNeeded()
-                }
-
-                if let error = error {
-                    let nsError = error as NSError
-                    if nsError.domain == NSURLErrorDomain || nsError.code == 14 {
-                        self.isOffline = true
-                    }
-                    self.errorMessage = error.localizedDescription
-                    if self.pets.isEmpty {
-                        self.pets = []
-                        self.filteredPets = []
-                    }
-                    return
-                }
-
-                self.isOffline = false
-                self.errorMessage = nil
-                self.pets = updatedPets ?? []
-                self.applyFilters()
-            }
-        })
+        guard loadTask == nil else { return }
+        loadTask = Task { @MainActor [weak self] in
+            await self?.loadPage(reset: true)
+            self?.loadTask = nil
+        }
     }
 
     func stopObserving() {
         observationGeneration += 1
-        listenerRegistration?.remove()
-        listenerRegistration = nil
+        loadTask?.cancel()
+        loadTask = nil
+        filterTask?.cancel()
+        filterTask = nil
         isRefreshing = false
-        finishRefreshIfNeeded()
+        isLoadingMore = false
     }
 
     func refresh() async {
         guard !isRefreshing else { return }
-
-        stopObserving()
         isRefreshing = true
-        await withCheckedContinuation { continuation in
-            refreshContinuation = continuation
-            scheduleRefreshTimeout()
-            beginObserving(showLoading: pets.isEmpty)
-        }
+        await loadPage(reset: true)
+        isRefreshing = false
     }
 
     func requestRefresh() {
@@ -148,107 +111,94 @@ final class AdoptPetListStore: ObservableObject {
         !pets.isEmpty && (isOffline || errorMessage != nil)
     }
 
-    private func scheduleRefreshTimeout() {
-        refreshTimeoutWorkItem?.cancel()
-        let timeoutWorkItem = DispatchWorkItem { [weak self] in
-            Task { @MainActor in
-                self?.handleRefreshTimeout()
-            }
-        }
-        refreshTimeoutWorkItem = timeoutWorkItem
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + 15,
-            execute: timeoutWorkItem
-        )
-    }
-
-    private func handleRefreshTimeout() {
-        guard isRefreshing else { return }
-
-        // A listener that never resolves must not leave pull-to-refresh active
-        // forever. Preserve any cached results and surface the same explicit
-        // recovery path used for an offline listener error.
-        observationGeneration += 1
-        listenerRegistration?.remove()
-        listenerRegistration = nil
-        isLoading = false
-        isRefreshing = false
-        isOffline = true
-        errorMessage = PPAdoptLang("adopt_list_refresh_timeout")
-        finishRefreshIfNeeded()
-    }
-
-    private func finishRefreshIfNeeded() {
-        refreshTimeoutWorkItem?.cancel()
-        refreshTimeoutWorkItem = nil
-        guard let refreshContinuation else { return }
-        self.refreshContinuation = nil
-        refreshContinuation.resume()
-    }
-
+    /// Retained for existing screen call sites. Filtering is authoritative on
+    /// the Community read callable, so this schedules a fresh ranked page.
     func applyFilters() {
-        let trimmedQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        filteredPets = pets.filter { pet in
-            // Visibility check: 0 = public
-            if pet.visibility != 0 {
-                return false
-            }
-
-            // Kind/Species filter
-            if selectedKindID > 0 && pet.kindID != selectedKindID {
-                return false
-            }
-
-            // Gender filter
-            if !selectedGender.isEmpty {
-                let normalizedPetGender = self.normalizeGender(pet.gender)
-                if normalizedPetGender != selectedGender {
-                    return false
-                }
-            }
-
-            // City filter
-            if selectedCityID > 0 && pet.cityID != selectedCityID {
-                return false
-            }
-
-            // Search query filter
-            if !trimmedQuery.isEmpty {
-                let nameMatch = pet.name.lowercased().contains(trimmedQuery)
-                let detailsMatch = pet.details.lowercased().contains(trimmedQuery)
-                let cityMatch = pet.mCityName.lowercased().contains(trimmedQuery)
-                let kindMatch = pet.mKindName.lowercased().contains(trimmedQuery)
-                let breedMatch = pet.mBreedName.lowercased().contains(trimmedQuery)
-
-                if !(nameMatch || detailsMatch || cityMatch || kindMatch || breedMatch) {
-                    return false
-                }
-            }
-
-            return true
-        }
+        filterDidChange()
     }
 
     func clearFilters() {
+        isClearingFilters = true
         searchText = ""
         selectedKindID = 0
         selectedGender = ""
         selectedCityID = 0
-        applyFilters()
+        isClearingFilters = false
+        scheduleFilterReload(delayNanoseconds: 0)
     }
 
-    private func normalizeGender(_ gender: String?) -> String {
-        guard let g = gender?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !g.isEmpty else {
-            return ""
+    func loadNextIfNeeded(current pet: AdoptPetModel) {
+        guard hasMore, !isLoadingMore, filteredPets.suffix(4).contains(where: { $0.documentID == pet.documentID }) else { return }
+        Task { @MainActor [weak self] in await self?.loadPage(reset: false) }
+    }
+
+    private func filterDidChange() {
+        guard !isClearingFilters else { return }
+        scheduleFilterReload(delayNanoseconds: 300_000_000)
+    }
+
+    private func scheduleFilterReload(delayNanoseconds: UInt64) {
+        filterTask?.cancel()
+        filterTask = Task { @MainActor [weak self] in
+            if delayNanoseconds > 0 { try? await Task.sleep(nanoseconds: delayNanoseconds) }
+            guard !Task.isCancelled else { return }
+            await self?.loadPage(reset: true)
+            self?.filterTask = nil
         }
-        if g.contains("female") || g.contains("انث") || g.contains("أنث") || g.contains("بنت") {
-            return "female"
+    }
+
+    private func loadPage(reset: Bool) async {
+        if reset {
+            observationGeneration += 1
+            nextCursor = nil
+            hasMore = false
+            if pets.isEmpty { isLoading = true }
+        } else {
+            guard hasMore, nextCursor != nil, !isLoadingMore else { return }
+            isLoadingMore = true
         }
-        if g.contains("male") || g.contains("ذكر") || g.contains("ولد") {
-            return "male"
+        let generation = observationGeneration
+        errorMessage = nil
+        isOffline = false
+        defer {
+            if reset { isLoading = false }
+            else { isLoadingMore = false }
         }
-        return g
+
+        do {
+            var filters: [String: Any] = [:]
+            if selectedKindID > 0 { filters["categoryId"] = selectedKindID }
+            if !selectedGender.isEmpty { filters["gender"] = selectedGender }
+            if selectedCityID > 0 { filters["cityId"] = selectedCityID }
+            let page = try await PPCommunityService.shared.browseAdoption(
+                query: searchText.trimmingCharacters(in: .whitespacesAndNewlines),
+                filters: filters,
+                cursor: reset ? nil : nextCursor,
+                limit: 24
+            )
+            guard generation == observationGeneration, !Task.isCancelled else { return }
+            let models = page.items.compactMap { item -> AdoptPetModel? in
+                let identifier = item["id"] as? String ?? ""
+                guard !identifier.isEmpty else { return nil }
+                return AdoptPetModel(dictionary: item, documentID: identifier)
+            }
+            if reset {
+                pets = models
+            } else {
+                var seen = Set(pets.map(\.documentID))
+                pets.append(contentsOf: models.filter { seen.insert($0.documentID).inserted })
+            }
+            filteredPets = pets
+            nextCursor = page.nextCursor
+            hasMore = page.hasMore && page.nextCursor != nil
+            hasReceivedInitialSnapshot = true
+        } catch {
+            guard generation == observationGeneration, !Task.isCancelled else { return }
+            let nsError = error as NSError
+            isOffline = nsError.domain == NSURLErrorDomain || nsError.code == 14
+            errorMessage = error.localizedDescription
+            if reset && pets.isEmpty { filteredPets = [] }
+        }
     }
 }
 
@@ -265,6 +215,7 @@ final class AdoptPetDetailsStore: ObservableObject {
     @Published var isUpdatingVisibility: Bool = false
     @Published var isReporting: Bool = false
     @Published var errorMessage: String? = nil
+    @Published private(set) var applicationsEnabled: Bool = false
 
     private let collectionName = "favoritesAdoptPets"
 
@@ -276,29 +227,30 @@ final class AdoptPetDetailsStore: ObservableObject {
     }
 
     func loadOwnerAndFavoriteState() {
-        // Load owner profile
-        if let cachedOwner = UserManager.userModel(forID: pet.ownerID) {
-            self.ownerUser = cachedOwner
-            self.isLoadingOwner = false
-        } else if !pet.ownerID.isEmpty {
-            self.ownerUser = nil
-            self.isLoadingOwner = true
-            UserManager.shared().getOtherUserModelFromFirestore(withUID: pet.ownerID) { [weak self] user, _ in
-                Task { @MainActor in
-                    self?.ownerUser = user
-                    self?.isLoadingOwner = false
-                }
+        // Community listings expose a bounded public owner snapshot. Do not
+        // fetch the full user record or private contact data for discovery.
+        ownerUser = nil
+        isLoadingOwner = false
+        Task { @MainActor [weak self] in
+            do {
+                let configuration = try await PPCommunityService.shared.configuration()
+                self?.applicationsEnabled = configuration.communityEnabled && configuration.adoptionEnabled && configuration.adoptionApplicationsEnabled
+            } catch {
+                self?.applicationsEnabled = false
             }
-        } else {
-            self.isLoadingOwner = false
         }
-
-        // Check favorite status
-        if let currentUID = UserManager.shared().currentUser?.id, !currentUID.isEmpty, !pet.documentID.isEmpty {
-            PetAdManager.isAdFavorited(pet.documentID, forUser: currentUID, collection: collectionName) { [weak self] favorited in
-                Task { @MainActor in
-                    self?.isFavorited = favorited
+        guard UserManager.shared().isUserLoggedIn(), !pet.documentID.isEmpty else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let saved = try await PPCommunityService.shared.savedItems()
+                self.isFavorited = saved.contains {
+                    communitySavedTargetID($0) == self.pet.documentID &&
+                    (($0["targetType"] as? String) == "adoption_listing")
                 }
+            } catch {
+                // A saved-state refresh is non-critical; the explicit save
+                // action still reports a server error if the user invokes it.
             }
         }
     }
@@ -308,19 +260,18 @@ final class AdoptPetDetailsStore: ObservableObject {
     }
 
     var canCallOwner: Bool {
-        guard !isLoadingOwner,
-              let mobile = ownerUser?.mobileNo?.trimmingCharacters(in: .whitespacesAndNewlines) else {
-            return false
-        }
-        return !mobile.isEmpty
+        false
     }
 
     var canChatOwner: Bool {
-        !isLoadingOwner && ownerUser != nil
+        false
+    }
+
+    var isApplicationAvailable: Bool {
+        !isOwner && applicationsEnabled && pet.status == "published"
     }
 
     func retryOwnerLoading() {
-        guard !pet.ownerID.isEmpty, !isLoadingOwner else { return }
         loadOwnerAndFavoriteState()
     }
 
@@ -330,8 +281,7 @@ final class AdoptPetDetailsStore: ObservableObject {
             return
         }
 
-        guard !pet.documentID.isEmpty,
-              let currentUID = UserManager.shared().currentUser?.id else { return }
+        guard !pet.documentID.isEmpty else { return }
 
         let previousState = isFavorited
         isFavorited = !previousState
@@ -339,63 +289,31 @@ final class AdoptPetDetailsStore: ObservableObject {
         let impact = UIImpactFeedbackGenerator(style: .medium)
         impact.impactOccurred()
 
-        if isFavorited {
-            PetAdManager.addFavoriteAd(withID: pet.documentID, collection: collectionName, forUserID: currentUID) { [weak self] error in
-                if error != nil {
-                    Task { @MainActor in
-                        self?.isFavorited = previousState
-                    }
-                }
-            }
-        } else {
-            PetAdManager.removeFavoriteAd(withID: pet.documentID, collection: collectionName, forUserID: currentUID) { [weak self] error in
-                if error != nil {
-                    Task { @MainActor in
-                        self?.isFavorited = previousState
-                    }
-                }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                self.isFavorited = try await PPCommunityService.shared.setSaved(
+                    self.isFavorited,
+                    targetType: "adoption_listing",
+                    targetID: self.pet.documentID
+                )
+            } catch {
+                self.isFavorited = previousState
+                self.errorMessage = error.localizedDescription
             }
         }
     }
 
     func contactOwnerByCall(from viewController: UIViewController?) {
-        guard let owner = ownerUser else {
-            presentContactUnavailable(from: viewController)
-            return
-        }
-        performCall(for: owner, from: viewController)
-    }
-
-    private func performCall(for owner: UserModel, from viewController: UIViewController?) {
-        guard let mobile = owner.mobileNo, !mobile.isEmpty else {
-            if let vc = viewController {
-                GM.showAlert(
-                    withTitle: PPAdoptLang("No Number"),
-                    message: PPAdoptLang("This user has no phone number"),
-                    imageName: "exclamationmark.triangle.fill",
-                    in: vc
-                )
-            }
-            return
-        }
-        guard let viewController else { return }
-        AppClasses.callPhoneNumber(mobile, from: viewController)
+        // Retained for compatibility with legacy callers. Public Community
+        // discovery never exposes or invokes direct phone contact.
+        presentContactUnavailable(from: viewController)
     }
 
     func contactOwnerByChat(from viewController: UIViewController?) {
-        guard let owner = ownerUser else {
-            presentContactUnavailable(from: viewController)
-            return
-        }
-
-        guard UserManager.shared().isUserLoggedIn() else {
-            UserManager.showPromptOnTopController()
-            return
-        }
-
-        guard let targetVC = viewController else { return }
-
-        ChManager.shared().startChat(with: owner, from: targetVC)
+        // Messaging is unlocked only from a server-authorized adoption
+        // application, sighting, or match context.
+        presentContactUnavailable(from: viewController)
     }
 
     private func presentContactUnavailable(from viewController: UIViewController?) {
@@ -454,26 +372,42 @@ final class AdoptPetDetailsStore: ObservableObject {
         // Reports are server-owned. The callable derives the reporter and
         // owner from authenticated/authoritative records, retains the original
         // case timestamps, and treats a repeat submission as idempotent.
-        let reportData: [String: Any] = [
-            "contentID": pet.documentID,
-            "contentType": "adopt_pet",
-            "reason": trimmedReason,
-            "platform": "ios"
-        ]
-
         isReporting = true
-        Functions.functions(region: "us-central1")
-            .httpsCallable("submitContentReport")
-            .call(reportData) { [weak self] _, error in
-                Task { @MainActor in
-                    self?.isReporting = false
-                    if let error {
-                        completion(.failure(error))
-                    } else {
-                        completion(.success(()))
-                    }
-                }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await PPCommunityService.shared.report(
+                    targetType: "adoption_listing",
+                    targetID: self.pet.documentID,
+                    reason: "incorrect_information",
+                    details: trimmedReason
+                )
+                self.isReporting = false
+                completion(.success(()))
+            } catch {
+                self.isReporting = false
+                completion(.failure(error))
             }
+        }
+    }
+
+    func presentApplication(from viewController: UIViewController?) {
+        guard !isOwner else { return }
+        guard UserManager.shared().isUserLoggedIn() else {
+            UserManager.showPromptOnTopController()
+            return
+        }
+        guard isApplicationAvailable else {
+            errorMessage = PPAdoptLang("community_application_unavailable")
+            return
+        }
+        let presenter = viewController ?? AppManager.sharedInstance().topViewController()
+        let controller = PPAdoptionApplicationHostingController(listing: pet)
+        if let sheet = controller.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        presenter.present(controller, animated: true)
     }
 
     private func reportError(code: Int) -> NSError {
@@ -518,4 +452,9 @@ final class AdoptPetDetailsStore: ObservableObject {
             }
         }
     }
+}
+
+private func communitySavedTargetID(_ wrapper: [String: Any]) -> String {
+    let item = wrapper["item"] as? [String: Any]
+    return (item?["id"] as? String) ?? ""
 }

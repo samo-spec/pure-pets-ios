@@ -508,6 +508,10 @@
 		F28CB4062E4C6902009DD547 /* AdoptPetListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */; };
 		F28CB4072E4C6903009DD547 /* AdoptPetDetailsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */; };
 		F28CB4082E4C6904009DD547 /* AdoptPetsHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */; };
+		F28CB4092E4C6905009DD547 /* AddAdoptPetScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB40A2E4C6905009DD547 /* AddAdoptPetScreen.swift */; };
+		F28CB40B2E4C6906009DD547 /* AddAdoptPetHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB40C2E4C6906009DD547 /* AddAdoptPetHostingController.swift */; };
+		F28CB40D2E4C6907009DD547 /* PPCommunityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB40E2E4C6907009DD547 /* PPCommunityService.swift */; };
+		F28CB40F2E4C6908009DD547 /* PPCommunityScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28CB4102E4C6908009DD547 /* PPCommunityScreens.swift */; };
 		F28CBB5F2D30044D002993F0 /* GSIndeterminateProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB5D2D30044D002993F0 /* GSIndeterminateProgressView.m */; };
 		F28CBB642D302899002993F0 /* JPCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB612D302899002993F0 /* JPCell.m */; };
 		F28CBB682D30298C002993F0 /* JPCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F28CBB672D30298C002993F0 /* JPCell.xib */; };
@@ -1843,6 +1847,10 @@
 		F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdoptPetListScreen.swift; sourceTree = "<group>"; };
 		F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdoptPetDetailsScreen.swift; sourceTree = "<group>"; };
 		F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdoptPetsHostingControllers.swift; sourceTree = "<group>"; };
+		F28CB40A2E4C6905009DD547 /* AddAdoptPetScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddAdoptPetScreen.swift; sourceTree = "<group>"; };
+		F28CB40C2E4C6906009DD547 /* AddAdoptPetHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddAdoptPetHostingController.swift; sourceTree = "<group>"; };
+		F28CB40E2E4C6907009DD547 /* PPCommunityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCommunityService.swift; sourceTree = "<group>"; };
+		F28CB4102E4C6908009DD547 /* PPCommunityScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCommunityScreens.swift; sourceTree = "<group>"; };
 		F28CBB5C2D30044D002993F0 /* GSIndeterminateProgressView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GSIndeterminateProgressView.h; sourceTree = "<group>"; };
 		F28CBB5D2D30044D002993F0 /* GSIndeterminateProgressView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GSIndeterminateProgressView.m; sourceTree = "<group>"; };
 		F28CBB602D302899002993F0 /* JPCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = JPCell.h; sourceTree = "<group>"; };
@@ -4128,6 +4136,10 @@
 				F28CB4022E4C6902009DD547 /* AdoptPetListScreen.swift */,
 				F28CB4032E4C6903009DD547 /* AdoptPetDetailsScreen.swift */,
 				F28CB4042E4C6904009DD547 /* AdoptPetsHostingControllers.swift */,
+				F28CB40A2E4C6905009DD547 /* AddAdoptPetScreen.swift */,
+				F28CB40C2E4C6906009DD547 /* AddAdoptPetHostingController.swift */,
+				F28CB40E2E4C6907009DD547 /* PPCommunityService.swift */,
+				F28CB4102E4C6908009DD547 /* PPCommunityScreens.swift */,
 				F28CB3882E4C683F009DD547 /* AddAdoptPetViewController.h */,
 				F28CB3892E4C6849009DD547 /* AddAdoptPetViewController.m */,
 				F28CB3822E4C6728009DD547 /* AdoptPetManager.h */,
@@ -6324,6 +6336,10 @@
 				F28CB4062E4C6902009DD547 /* AdoptPetListScreen.swift in Sources */,
 				F28CB4072E4C6903009DD547 /* AdoptPetDetailsScreen.swift in Sources */,
 				F28CB4082E4C6904009DD547 /* AdoptPetsHostingControllers.swift in Sources */,
+				F28CB4092E4C6905009DD547 /* AddAdoptPetScreen.swift in Sources */,
+				F28CB40B2E4C6906009DD547 /* AddAdoptPetHostingController.swift in Sources */,
+				F28CB40D2E4C6907009DD547 /* PPCommunityService.swift in Sources */,
+				F28CB40F2E4C6908009DD547 /* PPCommunityScreens.swift in Sources */,
 				F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */,
 				F229DCC02D3B0D070015B67D /* FileUploadManager.m in Sources */,
 				F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */,

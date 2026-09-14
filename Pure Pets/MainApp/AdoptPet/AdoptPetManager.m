@@ -2,417 +2,246 @@
 //  AdoptPetManager.m
 //  Pure Pets
 //
+//  Compatibility facade for the canonical Community backend. The legacy
+//  public API is retained for Objective-C callers, but protected Community
+//  records are read and mutated only through Cloud Functions.
+//
 
 #import "AdoptPetManager.h"
 #import "AdoptPetModel.h"
-#import "PPImageUploadValidator.h"
-#import "PPFunc.h"
-#import "PPImageCollection.h"
-@import Firebase;
-@import FirebaseStorage;
+#import "Language.h"
 
-static NSString * const kAdoptPetsCollection = @"adopt_pets";
-static NSString * const kAdoptPetsStorageRoot = @"adopt_pets";
-static NSInteger const kFirestoreInQueryLimit = 10;
+@import FirebaseAuth;
+@import FirebaseFirestore;
+@import FirebaseFunctions;
+
+static NSString * const PPCommunityManagerErrorDomain = @"com.purepets.community";
+
+@interface PPAdoptPetsRefreshToken : NSObject <FIRListenerRegistration>
+@property (atomic, assign, getter=isCancelled) BOOL cancelled;
+@end
+
+@implementation PPAdoptPetsRefreshToken
+- (void)remove { self.cancelled = YES; }
+@end
 
 @interface AdoptPetManager ()
+@property (nonatomic, strong) FIRFunctions *functions;
 @end
 
 @implementation AdoptPetManager
 
 + (instancetype)shared {
     static dispatch_once_t onceToken;
-    static AdoptPetManager *mgr = nil;
+    static AdoptPetManager *manager = nil;
     dispatch_once(&onceToken, ^{
-        mgr = [[AdoptPetManager alloc] init];
+        manager = [[AdoptPetManager alloc] init];
     });
-    return mgr;
+    return manager;
 }
 
-#pragma mark - Create
-
-- (void)createPet:(AdoptPetModel *)model
-           images:(NSArray<UIImage *> *)images
-       completion:(AdoptPetCreateCompletion)completion {
-
-    // ── Client-side image validation before upload ──
-    if (images.count > 0) {
-        NSInteger failedIndex = 0;
-        PPImageValidationResult result =
-            [PPImageUploadValidator validateImages:images failedIndex:&failedIndex];
-        if (result != PPImageValidationResultValid) {
-            if (completion) {
-                NSString *message = [PPImageUploadValidator localizedMessageForResult:result];
-                NSError *validationError =
-                    [NSError errorWithDomain:@"AdoptPetManager"
-                                        code:(NSInteger)result
-                                    userInfo:@{NSLocalizedDescriptionKey: message}];
-                completion(NO, nil, validationError);
-            }
-            return;
-        }
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _functions = [FIRFunctions functionsForRegion:@"us-central1"];
     }
-
-    FIRDocumentReference *doc = model.documentID.length > 0
-        ? [[self petsCollection] documentWithPath:model.documentID]
-        : [[self petsCollection] documentWithAutoID];
-    model.documentID = doc.documentID;
-
-    __weak typeof(self) weakSelf = self;
-    [self pp_uploadImages:images forDocumentID:doc.documentID completion:^(NSArray<NSString *> * _Nullable urls, NSError * _Nullable uploadError) {
-        __strong typeof(weakSelf) strongSelf = weakSelf ?: self;
-
-        if (uploadError) {
-            if (completion) {
-                completion(NO, nil, uploadError);
-            }
-            return;
-        }
-
-        if (urls.count > 0) {
-            model.imageURLs = urls;
-        }
-
-        [[[strongSelf petsCollection] documentWithPath:doc.documentID]
-         setData:[model toFirestoreDictionary]
-         completion:^(NSError * _Nullable error) {
-            if (completion) {
-                completion(error == nil, error ? nil : doc.documentID, error);
-            }
-        }];
-    }];
+    return self;
 }
 
-#pragma mark - Observe / Fetch
+#pragma mark - Canonical reads
 
 - (id<FIRListenerRegistration>)observeAllPetsWithUpdate:(AdoptPetListenerHandle)completion {
-    FIRQuery *query = [[self petsCollection] queryOrderedByField:@"createdAt" descending:YES];
-    return [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (!completion) {
-            return;
-        }
-
-        if (error) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(@[], error);
-            });
-            return;
-        }
-
-        NSMutableArray<AdoptPetModel *> *pets = [NSMutableArray array];
-        for (FIRDocumentSnapshot *doc in snapshot.documents) {
-            AdoptPetModel *model = [[AdoptPetModel alloc] initWithSnapshot:doc];
-            model.documentID = doc.documentID;
-            if (model.visibility == 0) {
-                [pets addObject:model];
-            }
-        }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(pets.copy, nil);
-        });
+    PPAdoptPetsRefreshToken *token = [PPAdoptPetsRefreshToken new];
+    [self pp_call:@"communityBrowse"
+          payload:@{ @"action": @"adoption_discovery", @"limit": @50 }
+       completion:^(NSDictionary * _Nullable data, NSError * _Nullable error) {
+        if (token.isCancelled || !completion) return;
+        completion(error ? @[] : [self pp_modelsFromItems:data[@"items"]], error);
     }];
+    return token;
 }
 
 - (void)fetchPetsForUserID:(NSString *)userID completion:(AdoptPetArrayCompletion)completion {
-    if (userID.length == 0) {
-        if (completion) {
-            completion(@[], nil);
-        }
+    NSString *currentUID = FIRAuth.auth.currentUser.uid ?: @"";
+    if (userID.length == 0 || ![userID isEqualToString:currentUID]) {
+        if (completion) completion(@[], nil);
         return;
     }
-
-    [[[self petsCollection] queryWhereField:@"ownerID" isEqualTo:userID]
-     getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    [self pp_call:@"communityBrowse"
+          payload:@{ @"action": @"my_activity", @"limit": @50 }
+       completion:^(NSDictionary * _Nullable data, NSError * _Nullable error) {
         if (error) {
-            if (completion) {
-                completion(nil, error);
-            }
+            if (completion) completion(nil, error);
             return;
         }
-
-        NSMutableArray<AdoptPetModel *> *pets = [NSMutableArray array];
-        for (FIRDocumentSnapshot *doc in snapshot.documents) {
-            AdoptPetModel *model = [[AdoptPetModel alloc] initWithSnapshot:doc];
-            model.documentID = doc.documentID;
-            [pets addObject:model];
-        }
-
-        if (completion) {
-            completion(pets.copy, nil);
-        }
+        NSDictionary *activity = [data[@"activity"] isKindOfClass:NSDictionary.class] ? data[@"activity"] : @{};
+        if (completion) completion([self pp_modelsFromItems:activity[@"adoptionListings"]], nil);
     }];
 }
 
 - (void)fetchPetsWithIDs:(NSArray<NSString *> *)ids completion:(AdoptPetArrayCompletion)completion {
-    NSMutableOrderedSet<NSString *> *cleanIDs = [NSMutableOrderedSet orderedSet];
-    for (NSString *identifier in ids) {
-        if (identifier.length > 0) {
-            [cleanIDs addObject:identifier];
-        }
+    NSMutableOrderedSet<NSString *> *orderedIDs = [NSMutableOrderedSet orderedSet];
+    for (id raw in ids) {
+        if ([raw isKindOfClass:NSString.class] && [raw length] > 0) [orderedIDs addObject:raw];
     }
-
-    if (cleanIDs.count == 0) {
-        if (completion) {
-            completion(@[], nil);
-        }
+    if (orderedIDs.count == 0) {
+        if (completion) completion(@[], nil);
         return;
     }
 
-    NSArray<NSString *> *orderedIDs = cleanIDs.array;
-    NSMutableArray<NSArray<NSString *> *> *chunks = [NSMutableArray array];
-    for (NSUInteger i = 0; i < orderedIDs.count; i += kFirestoreInQueryLimit) {
-        NSUInteger len = MIN(kFirestoreInQueryLimit, orderedIDs.count - i);
-        [chunks addObject:[orderedIDs subarrayWithRange:NSMakeRange(i, len)]];
-    }
-
     dispatch_group_t group = dispatch_group_create();
-    NSMutableDictionary<NSString *, AdoptPetModel *> *fetchedMap = [NSMutableDictionary dictionary];
+    NSMutableDictionary<NSString *, AdoptPetModel *> *models = [NSMutableDictionary dictionary];
     __block NSError *firstError = nil;
-
-    for (NSArray<NSString *> *chunk in chunks) {
+    for (NSString *identifier in orderedIDs.array) {
         dispatch_group_enter(group);
-        [[[self petsCollection] queryWhereField:@"documentID" in:chunk]
-         getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-            if (error && !firstError) {
-                firstError = error;
-                dispatch_group_leave(group);
-                return;
-            }
-
-            for (FIRDocumentSnapshot *doc in snapshot.documents) {
-                AdoptPetModel *model = [[AdoptPetModel alloc] initWithSnapshot:doc];
-                model.documentID = doc.documentID;
-                if (model.visibility == 0) {
-                    fetchedMap[doc.documentID] = model;
-                }
+        [self pp_call:@"communityBrowse"
+              payload:@{ @"action": @"adoption_detail", @"id": identifier }
+           completion:^(NSDictionary * _Nullable data, NSError * _Nullable error) {
+            if (error) {
+                @synchronized (models) { if (!firstError) firstError = error; }
+            } else if ([data[@"item"] isKindOfClass:NSDictionary.class]) {
+                AdoptPetModel *model = [[AdoptPetModel alloc] initWithDictionary:data[@"item"] documentID:identifier];
+                @synchronized (models) { models[identifier] = model; }
             }
             dispatch_group_leave(group);
         }];
     }
-
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        if (firstError) {
-            if (completion) {
-                completion(nil, firstError);
-            }
-            return;
+        NSMutableArray<AdoptPetModel *> *result = [NSMutableArray array];
+        for (NSString *identifier in orderedIDs.array) {
+            AdoptPetModel *model = models[identifier];
+            if (model) [result addObject:model];
         }
-
-        NSMutableArray<AdoptPetModel *> *orderedPets = [NSMutableArray arrayWithCapacity:orderedIDs.count];
-        for (NSString *identifier in orderedIDs) {
-            AdoptPetModel *model = fetchedMap[identifier];
-            if (model) {
-                [orderedPets addObject:model];
-            }
-        }
-
-        if (completion) {
-            completion(orderedPets.copy, nil);
-        }
+        if (completion) completion(result.copy, result.count == 0 ? firstError : nil);
     });
 }
 
-#pragma mark - Delete / Update
+#pragma mark - Server-owned transitions
 
 - (void)deletePetWithID:(NSString *)documentID completion:(AdoptPetCompletion)completion {
-    if (documentID.length == 0) {
-        if (completion) {
-            completion(NO, [NSError errorWithDomain:@"AdoptPetManager"
-                                               code:400
-                                           userInfo:@{NSLocalizedDescriptionKey: @"Missing document ID"}]);
-        }
-        return;
-    }
-
-    // 🗑️ Fetch image URLs before deleting so we can clean up Storage
-    [[[self petsCollection] documentWithPath:documentID]
-     getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        NSArray *imageURLs = snapshot.data[@"imageURLs"];
-        [PPImageCollection deleteEntityMediaWithEntityType:@"adoptions" entityID:documentID completion:nil];
-        
-        [[[self petsCollection] documentWithPath:documentID]
-         deleteDocumentWithCompletion:^(NSError * _Nullable deleteError) {
-            if (!deleteError && [imageURLs isKindOfClass:NSArray.class] && imageURLs.count > 0) {
-                [PPFunc pp_deleteStorageImagesForURLs:imageURLs];
-            }
-            if (completion) {
-                completion(deleteError == nil, deleteError);
-            }
-        }];
-    }];
-}
-
-- (void)updatePetWithID:(NSString *)documentID
-                   data:(NSDictionary *)data
-             completion:(AdoptPetCompletion)completion {
-    if (documentID.length == 0) {
-        if (completion) {
-            completion(NO, [NSError errorWithDomain:@"AdoptPetManager"
-                                               code:400
-                                           userInfo:@{NSLocalizedDescriptionKey: @"Missing document ID"}]);
-        }
-        return;
-    }
-
-    NSDictionary *safeData = [data isKindOfClass:NSDictionary.class] ? data : @{};
-    [[[self petsCollection] documentWithPath:documentID]
-     updateData:safeData
-     completion:^(NSError * _Nullable error) {
-        if (completion) {
-            completion(error == nil, error);
-        }
-    }];
+    [self pp_transitionListing:documentID action:@"archive" visibility:nil completion:completion];
 }
 
 - (void)updatePetVisibilityWithID:(NSString *)documentID
                        visibility:(NSInteger)visibility
                        completion:(AdoptPetCompletion)completion {
-    NSDictionary *data = @{
-        @"visibility": @(visibility == 0 ? 0 : 1),
-        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    };
-    [self updatePetWithID:documentID data:data completion:completion];
+    [self pp_transitionListing:documentID
+                        action:(visibility == 0 ? @"resume" : @"pause")
+                    visibility:@(visibility)
+                    completion:completion];
+}
+
+- (void)pp_transitionListing:(NSString *)documentID
+                       action:(NSString *)action
+                   visibility:(NSNumber * _Nullable)visibility
+                   completion:(AdoptPetCompletion)completion {
+    if (documentID.length == 0) {
+        if (completion) completion(NO, [self pp_errorWithCode:400 key:@"community_error_invalid_record"]);
+        return;
+    }
+    [self pp_call:@"communityBrowse"
+          payload:@{ @"action": @"adoption_detail", @"id": documentID }
+       completion:^(NSDictionary * _Nullable data, NSError * _Nullable readError) {
+        if (readError) {
+            if (completion) completion(NO, readError);
+            return;
+        }
+        NSDictionary *item = [data[@"item"] isKindOfClass:NSDictionary.class] ? data[@"item"] : @{};
+        NSInteger version = [item[@"version"] respondsToSelector:@selector(integerValue)] ? [item[@"version"] integerValue] : 0;
+        NSString *status = [item[@"status"] isKindOfClass:NSString.class] ? item[@"status"] : @"";
+        if (visibility != nil) {
+            if (visibility.integerValue == 0 && [status isEqualToString:@"published"]) {
+                if (completion) completion(YES, nil);
+                return;
+            }
+            if (visibility.integerValue != 0 && [status isEqualToString:@"paused"]) {
+                if (completion) completion(YES, nil);
+                return;
+            }
+        }
+        if (version < 1 || action.length == 0) {
+            if (completion) completion(NO, [self pp_errorWithCode:409 key:@"community_error_refresh_required"]);
+            return;
+        }
+        [self pp_call:@"transitionAdoptionListing"
+              payload:@{
+                  @"commandId": [self pp_commandID:@"adoption-transition"],
+                  @"listingId": documentID,
+                  @"expectedVersion": @(version),
+                  @"action": action
+              }
+           completion:^(__unused NSDictionary * _Nullable result, NSError * _Nullable transitionError) {
+            if (completion) completion(transitionError == nil, transitionError);
+        }];
+    }];
+}
+
+#pragma mark - Retained legacy signatures
+
+- (void)createPet:(AdoptPetModel *)model
+           images:(NSArray<UIImage *> *)images
+       completion:(AdoptPetCreateCompletion)completion {
+    (void)model;
+    (void)images;
+    if (completion) {
+        completion(NO, nil, [self pp_errorWithCode:426 key:@"community_error_secure_form_required"]);
+    }
+}
+
+- (void)updatePetWithID:(NSString *)documentID
+                   data:(NSDictionary *)data
+             completion:(AdoptPetCompletion)completion {
+    (void)documentID;
+    (void)data;
+    if (completion) completion(NO, [self pp_errorWithCode:426 key:@"community_error_secure_form_required"]);
 }
 
 - (void)updatePet:(AdoptPetModel *)model
            images:(NSArray<UIImage *> *)images
        completion:(AdoptPetCompletion)completion {
-    NSString *documentID = model.documentID;
-    if (documentID.length == 0) {
-        if (completion) {
-            completion(NO, [NSError errorWithDomain:@"AdoptPetManager"
-                                               code:400
-                                           userInfo:@{NSLocalizedDescriptionKey: @"Missing document ID"}]);
-        }
-        return;
-    }
+    (void)model;
+    (void)images;
+    if (completion) completion(NO, [self pp_errorWithCode:426 key:@"community_error_secure_form_required"]);
+}
 
-    // ── Client-side image validation before upload ──
-    if (images.count > 0) {
-        NSInteger failedIndex = 0;
-        PPImageValidationResult result =
-            [PPImageUploadValidator validateImages:images failedIndex:&failedIndex];
-        if (result != PPImageValidationResultValid) {
-            if (completion) {
-                NSString *message = [PPImageUploadValidator localizedMessageForResult:result];
-                NSError *validationError =
-                    [NSError errorWithDomain:@"AdoptPetManager"
-                                        code:(NSInteger)result
-                                    userInfo:@{NSLocalizedDescriptionKey: message}];
-                completion(NO, validationError);
-            }
-            return;
-        }
-    }
+#pragma mark - Helpers
 
-    // 🗑️ Capture old image URLs before uploading new ones
-    NSArray<NSString *> *previousImageURLs = [model.imageURLs copy] ?: @[];
-    
-    __weak typeof(self) weakSelf = self;
-    [self pp_uploadImages:(images ?: @[]) forDocumentID:documentID completion:^(NSArray<NSString *> * _Nullable urls, NSError * _Nullable error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf ?: self;
-
-        if (error) {
-            if (completion) {
-                completion(NO, error);
-            }
-            return;
-        }
-
-        if (urls.count > 0) {
-            model.imageURLs = urls;
-        }
-
-        [[[strongSelf petsCollection] documentWithPath:documentID]
-         setData:[model toFirestoreDictionary]
-         merge:YES
-         completion:^(NSError * _Nullable setError) {
-            if (!setError) {
-                // 🗑️ Clean up old images that were replaced
-                [PPFunc pp_deleteRemovedStorageImagesFromOldURLs:previousImageURLs
-                                                        newURLs:model.imageURLs];
-            }
-            if (completion) {
-                completion(setError == nil, setError);
-            }
-        }];
+- (void)pp_call:(NSString *)name
+         payload:(NSDictionary *)payload
+      completion:(void (^)(NSDictionary * _Nullable data, NSError * _Nullable error))completion {
+    FIRHTTPSCallable *callable = [self.functions HTTPSCallableWithName:name];
+    callable.timeoutInterval = 45.0;
+    [callable callWithObject:payload ?: @{} completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        NSDictionary *dictionary = [result.data isKindOfClass:NSDictionary.class] ? result.data : nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSError *resolvedError = error ?: (dictionary ? nil : [self pp_errorWithCode:500 key:@"community_error_invalid_response"]);
+            if (completion) completion(dictionary, resolvedError);
+        });
     }];
 }
 
-#pragma mark - Private
-
-- (FIRCollectionReference *)petsCollection {
-    return [[FIRFirestore firestore] collectionWithPath:kAdoptPetsCollection];
+- (NSArray<AdoptPetModel *> *)pp_modelsFromItems:(id)rawItems {
+    NSArray *items = [rawItems isKindOfClass:NSArray.class] ? rawItems : @[];
+    NSMutableArray<AdoptPetModel *> *models = [NSMutableArray arrayWithCapacity:items.count];
+    for (id raw in items) {
+        if (![raw isKindOfClass:NSDictionary.class]) continue;
+        NSString *identifier = [raw[@"id"] isKindOfClass:NSString.class] ? raw[@"id"] : @"";
+        AdoptPetModel *model = [[AdoptPetModel alloc] initWithDictionary:raw documentID:identifier];
+        if (model.documentID.length > 0) [models addObject:model];
+    }
+    return models.copy;
 }
 
-- (void)pp_uploadImages:(NSArray<UIImage *> *)images
-          forDocumentID:(NSString *)documentID
-             completion:(void (^)(NSArray<NSString *> * _Nullable urls, NSError * _Nullable error))completion {
-    if (images.count == 0) {
-        if (completion) {
-            completion(@[], nil);
-        }
-        return;
-    }
+- (NSString *)pp_commandID:(NSString *)prefix {
+    return [NSString stringWithFormat:@"ios-%@-%@", prefix, NSUUID.UUID.UUIDString.lowercaseString];
+}
 
-    FIRStorageReference *storageRef = [[FIRStorage storage] reference];
-    NSString *basePath = [NSString stringWithFormat:@"%@/%@", kAdoptPetsStorageRoot, documentID];
-
-    dispatch_group_t group = dispatch_group_create();
-    NSMutableArray<NSString *> *downloadURLs = [NSMutableArray arrayWithCapacity:images.count];
-    __block NSError *firstError = nil;
-
-    [images enumerateObjectsUsingBlock:^(UIImage * _Nonnull image, NSUInteger idx, BOOL * _Nonnull stop) {
-        NSData *jpeg = UIImageJPEGRepresentation(image, 0.85);
-        if (jpeg.length == 0) {
-            return;
-        }
-
-        NSString *fileName = [NSString stringWithFormat:@"image_%lu.jpg", (unsigned long)idx];
-        FIRStorageReference *fileRef = [[storageRef child:basePath] child:fileName];
-
-        dispatch_group_enter(group);
-
-        FIRStorageMetadata *meta = [FIRStorageMetadata new];
-        meta.contentType = @"image/jpeg";
-
-        [fileRef putData:jpeg metadata:meta completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable uploadError) {
-            if (uploadError) {
-                @synchronized (downloadURLs) {
-                    if (!firstError) {
-                        firstError = uploadError;
-                    }
-                }
-                dispatch_group_leave(group);
-                return;
-            }
-
-            [fileRef downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable urlError) {
-                @synchronized (downloadURLs) {
-                    if (URL.absoluteString.length > 0) {
-                        [downloadURLs addObject:URL.absoluteString];
-                    } else if (urlError && !firstError) {
-                        firstError = urlError;
-                    }
-                }
-                dispatch_group_leave(group);
-            }];
-        }];
-    }];
-
-    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        if (firstError) {
-            if (completion) {
-                completion(nil, firstError);
-            }
-            return;
-        }
-
-        if (completion) {
-            completion(downloadURLs.copy, nil);
-        }
-    });
+- (NSError *)pp_errorWithCode:(NSInteger)code key:(NSString *)key {
+    NSString *message = [Language get:key alter:key] ?: key;
+    return [NSError errorWithDomain:PPCommunityManagerErrorDomain
+                               code:code
+                           userInfo:@{ NSLocalizedDescriptionKey: message }];
 }
 
 @end
+

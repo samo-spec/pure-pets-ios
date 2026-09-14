@@ -313,11 +313,28 @@ final class PPNotificationsInboxStore: ObservableObject {
         let threadID = PPHubPayload.threadID(from: payload)
         let orderID = PPHubPayload.orderID(from: payload)
         let type = PPHubPayload.notificationType(payload, meta)
+        let route = PPHubPayload.firstString(in: payload, keys: ["route"]).lowercased().isEmpty
+            ? PPHubPayload.firstString(in: meta, keys: ["route"]).lowercased()
+            : PPHubPayload.firstString(in: payload, keys: ["route"]).lowercased()
 
         print(
             "PPLAB NotificationsHub select start | type=\(type) "
                 + "hasOrder=\(!orderID.isEmpty) hasThread=\(!threadID.isEmpty)"
         )
+
+        if route == "community" || route.hasPrefix("community/") {
+            guard let host = hostViewController else { return }
+            let controller = PPCommunityViewController()
+            controller.initialRoute = route
+            if let navigationController = host.navigationController {
+                navigationController.pushViewController(controller, animated: true)
+            } else {
+                let navigationController = PPNavigationController(rootViewController: controller)
+                navigationController.modalPresentationStyle = .fullScreen
+                host.present(navigationController, animated: true)
+            }
+            return
+        }
 
         if !threadID.isEmpty || type == "chat" {
             guard let host = hostViewController else { return }

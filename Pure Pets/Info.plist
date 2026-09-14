@@ -51,6 +51,8 @@
 	<string>Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Talk to Nova using your microphone. تحدث مع نوفا باستخدام الميكروفون.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Pure Pets uses your location to place a private missing or found pet report and shows only a coarse area publicly. يستخدم بيور بيتس موقعك لتسجيل بلاغ خاص عن حيوان مفقود أو معثور عليه، ولا يعرض للعامة إلا منطقة تقريبية.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Convert your speech into text so Nova can answer you. تحويل صوتك إلى نص لترد عليك نوفا.</string>
 	<key>UIAppFonts</key>

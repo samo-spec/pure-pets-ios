@@ -4322,7 +4322,11 @@ enum PPEcosystemDomain: String, CaseIterable, Identifiable {
 struct PPEcosystemDomainSwitcher: View {
     @Binding var selectedDomain: PPEcosystemDomain
     let reduceMotion: Bool
+    var mainKindAccent: Color = .homeBrand
     @Namespace private var segmentNamespace
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         HStack(spacing: PPSpace.xxs) {
@@ -4374,7 +4378,10 @@ struct PPEcosystemDomainSwitcher: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .stroke(Color.homeFocus.opacity(0.12), lineWidth: 1)
+                .stroke(
+                    mainKindAccent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.40 : 0.30)),
+                    lineWidth: 1
+                )
         }
     }
 
@@ -4447,8 +4454,6 @@ struct PPCommerceHeroCard: View {
                         )
                 }
 
-                Spacer(minLength: 0)
-
                 VStack(alignment: .leading, spacing: PPSpace.xxs) {
                     Text(action.title)
                         .font(HomeFont.bold(17))
@@ -4462,19 +4467,11 @@ struct PPCommerceHeroCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
-
-                HStack {
-                    Spacer(minLength: 0)
-
-                    Image(systemName: "arrow.up.forward.circle.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(accent.opacity(contrast == .increased ? 1 : 0.82))
-                        .flipsForRightToLeftLayoutDirection(true)
-                }
             }
-            .padding(PPSpace.base)
+            .padding(.top, PPSpace.base)
+            .padding(.horizontal, PPSpace.base)
+            .padding(.bottom, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 156)
             .background(Color.homeSurface)
             .clipShape(shape)
             .overlay {
@@ -5268,6 +5265,7 @@ struct PPHomeEcosystemLauncher: View {
     let featuredAction: HomePriorityAction?
     let featuredPet: HomePetModel?
     let actions: [HomePriorityAction]
+    var mainKindAccent: Color = .homeBrand
     let onSelect: (HomePriorityAction) -> Void
 
     @State private var selectedDomain: PPEcosystemDomain = .provisionsAndCare
@@ -5295,12 +5293,8 @@ struct PPHomeEcosystemLauncher: View {
     var body: some View {
         VStack(
             alignment: .leading,
-            spacing: PPHomeSectionHeaderMetrics.contentSpacing
+            spacing: 0
         ) {
-            PPHomeSectionHeading(
-                title: PPHomeZoneCopy.launcherTitle,
-                subtitle: PPHomeZoneCopy.launcherSubtitle
-            )
 
             if horizontalSizeClass == .regular {
                 // Dedicated Adaptive iPadOS Workstation
@@ -5315,7 +5309,8 @@ struct PPHomeEcosystemLauncher: View {
                 VStack(spacing: PPSpace.md) {
                     PPEcosystemDomainSwitcher(
                         selectedDomain: $selectedDomain,
-                        reduceMotion: reduceMotion
+                        reduceMotion: reduceMotion,
+                        mainKindAccent: mainKindAccent
                     )
 
                     Group {

@@ -20,8 +20,10 @@ private enum HomeHeroV2Metrics {
     /// The reference hero is edge-to-edge; the living plate supplies the visual
     /// boundary instead of an additional horizontal card inset.
     static let outerInset: CGFloat = 0
-    static let height: CGFloat = 286
-    static let maximumHeight: CGFloat = 304
+    static let height: CGFloat = 312
+    static let stageHeight: CGFloat = 246
+    static let dockHeight: CGFloat = 58
+    static let maximumHeight: CGFloat = 340
     static let accessibilityPlateHeight: CGFloat = 184
 
     static let cardRadius: CGFloat = 30
@@ -80,10 +82,13 @@ private enum HomeHeroV2Metrics {
 struct HomeHeroV2View: View {
     let pages: [HomeHeroPage]
     let selectedIndex: Int
+    var categories: [HomeCategoryModel] = []
+    var selectedCategoryID: Int? = nil
     let onSelect: (Int) -> Void
     let onPrimaryAction: () -> Void
     let onSecondaryAction: () -> Void
     let onInteractionChanged: (Bool) -> Void
+    var onSelectCategory: ((HomeCategoryModel?) -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -142,10 +147,33 @@ struct HomeHeroV2View: View {
             if dynamicTypeSize.isAccessibilitySize {
                 stackedHero(page, accent: accent)
             } else {
-                splitHero(page, accent: accent)
-                    .frame(height: resolvedHeight)
+                unifiedHero(page, accent: accent)
             }
         }
+        .background {
+            cardSurface(accent: accent)
+        }
+        .clipShape(cardShape)
+        .overlay {
+            cardShape
+                .strokeBorder(
+                    accent.opacity(
+                        contrast == .increased
+                            ? 0.50
+                            : (colorScheme == .dark ? 0.22 : 0.12)
+                    ),
+                    lineWidth: contrast == .increased ? 1.5 : 0.8
+                )
+        }
+        .shadow(
+            color: Color.black.opacity(
+                contrast == .increased
+                    ? 0
+                    : (colorScheme == .dark ? 0.26 : 0.07)
+            ),
+            radius: contrast == .increased ? 0 : 16,
+            y: contrast == .increased ? 0 : 7
+        )
         .animation(
             reduceMotion ? nil : .easeInOut(duration: 0.28),
             value: page.accentHex
@@ -182,6 +210,72 @@ struct HomeHeroV2View: View {
                 onSelect: onSelect
             )
         )
+    }
+
+    @ViewBuilder
+    private func unifiedHero(
+        _ page: HomeHeroPage,
+        accent: Color
+    ) -> some View {
+        VStack(spacing: 0) {
+            splitHero(page, accent: accent)
+                .frame(height: HomeHeroV2Metrics.stageHeight)
+
+            if !categories.isEmpty, let onSelectCategory {
+                // Living Seam Divider
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                accent.opacity(colorScheme == .dark ? 0.22 : 0.10),
+                                Color.clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 1)
+                    .padding(.horizontal, PPSpace.base)
+
+                // Living Species Dock
+                HomeHeroSpeciesDock(
+                    categories: categories,
+                    selectedCategoryID: selectedCategoryID,
+                    accent: accent,
+                    isRightToLeft: isRightToLeft,
+                    reduceMotion: reduceMotion,
+                    onSelect: onSelectCategory
+                )
+                .frame(height: HomeHeroV2Metrics.dockHeight)
+                .padding(.bottom, PPSpace.xxs)
+            }
+        }
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: HomeHeroV2Metrics.cardRadius,
+            style: .continuous
+        )
+    }
+
+    private func cardSurface(accent: Color) -> some View {
+        ZStack {
+            Color.homeRaisedSurface
+
+            if contrast != .increased && !reduceTransparency {
+                RadialGradient(
+                    colors: [
+                        accent.opacity(colorScheme == .dark ? 0.18 : 0.08),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: isRightToLeft ? 0.2 : 0.8, y: 0.35),
+                    startRadius: 20,
+                    endRadius: 280
+                )
+            }
+        }
     }
 
     /// Compact semantic split: copy owns the leading lane; the living plate and
@@ -308,6 +402,18 @@ struct HomeHeroV2View: View {
                 .accessibilityHidden(true)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
+
+            if !categories.isEmpty, let onSelectCategory {
+                HomeHeroSpeciesDock(
+                    categories: categories,
+                    selectedCategoryID: selectedCategoryID,
+                    accent: accent,
+                    isRightToLeft: isRightToLeft,
+                    reduceMotion: reduceMotion,
+                    onSelect: onSelectCategory
+                )
+                .frame(height: HomeHeroV2Metrics.dockHeight)
+            }
         }
         .padding(HomeHeroV2Metrics.cardContentInset)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1289,5 +1395,221 @@ private enum HomeHeroV2Palette {
         return (0.2126 * linear(red))
             + (0.7152 * linear(green))
             + (0.0722 * linear(blue))
+    }
+}
+
+// MARK: - Living Species Dock
+
+@available(iOS 15.0, *)
+private struct HomeHeroSpeciesDock: View {
+    let categories: [HomeCategoryModel]
+    let selectedCategoryID: Int?
+    let accent: Color
+    let isRightToLeft: Bool
+    let reduceMotion: Bool
+    let onSelect: (HomeCategoryModel?) -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: PPSpace.sm) {
+                    // "All" item
+                    speciesItem(
+                        category: nil,
+                        isSelected: selectedCategoryID == nil,
+                        proxy: proxy
+                    )
+                    .id("home-hero-species-all")
+
+                    // Category items
+                    ForEach(categories) { category in
+                        let catID = HomeModelAdapter.mainKindID(category.raw)
+                        speciesItem(
+                            category: category,
+                            isSelected: catID == selectedCategoryID,
+                            proxy: proxy
+                        )
+                        .id("home-hero-species-\(category.id)")
+                    }
+                }
+                .padding(.horizontal, PPSpace.base)
+                .padding(.vertical, PPSpace.xxs)
+            }
+            .onAppear {
+                scrollToSelection(proxy: proxy, animated: false)
+            }
+            .onChange(of: selectedCategoryID) { _ in
+                scrollToSelection(proxy: proxy, animated: !reduceMotion)
+            }
+        }
+    }
+
+    private func scrollToSelection(proxy: ScrollViewProxy, animated: Bool) {
+        let targetID: String
+        if let selectedCategoryID,
+           let cat = categories.first(where: { HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID }) {
+            targetID = "home-hero-species-\(cat.id)"
+        } else {
+            targetID = "home-hero-species-all"
+        }
+        if animated {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                proxy.scrollTo(targetID, anchor: .center)
+            }
+        } else {
+            proxy.scrollTo(targetID, anchor: .center)
+        }
+    }
+
+    @ViewBuilder
+    private func speciesItem(
+        category: HomeCategoryModel?,
+        isSelected: Bool,
+        proxy: ScrollViewProxy
+    ) -> some View {
+        let title = category?.title ?? HomeModelAdapter.localized("All", fallback: "All")
+        let itemAccent = category.map { Color(uiColor: $0.accent) } ?? accent
+
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            if reduceMotion {
+                onSelect(category)
+            } else {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.80)) {
+                    onSelect(category)
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                // Avatar Medallion
+                medallion(for: category, isSelected: isSelected, itemAccent: itemAccent)
+
+                // Label
+                Text(title)
+                    .font(HomeFont.bold(12.5))
+                    .foregroundStyle(
+                        isSelected
+                            ? (colorScheme == .dark ? Color.white : Color.ppTextPrimary)
+                            : Color.ppTextSecondary
+                    )
+                    .lineLimit(1)
+
+                if isSelected {
+                    Circle()
+                        .fill(itemAccent)
+                        .frame(width: 4.5, height: 4.5)
+                        .shadow(color: itemAccent.opacity(0.6), radius: 2)
+                }
+            }
+            .padding(.horizontal, 9)
+            .frame(height: 38)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(
+                            itemAccent.opacity(
+                                colorScheme == .dark ? 0.28 : 0.14
+                            )
+                        )
+                } else {
+                    Capsule()
+                        .fill(
+                            Color.ppSecondarySurface.opacity(
+                                colorScheme == .dark ? 0.45 : 0.65
+                            )
+                        )
+                }
+            }
+            .overlay {
+                if isSelected {
+                    Capsule()
+                        .strokeBorder(
+                            itemAccent.opacity(
+                                contrast == .increased ? 0.8 : 0.40
+                            ),
+                            lineWidth: contrast == .increased ? 1.5 : 1
+                        )
+                } else {
+                    Capsule()
+                        .strokeBorder(
+                            Color.primary.opacity(0.06),
+                            lineWidth: 0.6
+                        )
+                }
+            }
+            .scaleEffect(isSelected ? 1.02 : 1.0)
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.82),
+                value: isSelected
+            )
+        }
+        .buttonStyle(HomeHeroSpeciesItemButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
+    }
+
+    @ViewBuilder
+    private func medallion(
+        for category: HomeCategoryModel?,
+        isSelected: Bool,
+        itemAccent: Color
+    ) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    isSelected
+                        ? itemAccent.opacity(0.20)
+                        : Color.ppSecondarySurface
+                )
+                .frame(width: 26, height: 26)
+
+            if let category {
+                if let urlString = category.imageURL, !urlString.isEmpty {
+                    HomeRemoteImage(
+                        urlString: urlString,
+                        placeholder: category.localImage,
+                        contentMode: .scaleAspectFit,
+                        displaySize: CGSize(width: 52, height: 52)
+                    )
+                    .frame(width: 22, height: 22)
+                    .clipShape(Circle())
+                } else if let local = category.localImage {
+                    Image(uiImage: local)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .clipShape(Circle())
+                } else {
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(isSelected ? itemAccent : Color.ppTextSecondary)
+                }
+            } else {
+                // "All" Sanctuary Emblem
+                Image(systemName: "sparkles")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(isSelected ? itemAccent : Color.ppTextSecondary)
+            }
+        }
+        .frame(width: 26, height: 26)
+    }
+}
+
+@available(iOS 15.0, *)
+private struct HomeHeroSpeciesItemButtonStyle: ButtonStyle {
+    let reduceMotion: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.75),
+                value: configuration.isPressed
+            )
     }
 }

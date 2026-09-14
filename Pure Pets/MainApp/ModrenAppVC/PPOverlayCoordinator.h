@@ -14,6 +14,8 @@
 #import <UIKit/UIKit.h>
 
 @class PetAd;
+@class ChatThreadModel;
+@class PPNavigationController;
 
 typedef NS_ENUM(NSInteger, PPOverlayType) {
     PPOverlayTypeAddActions,

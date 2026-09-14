@@ -708,7 +708,11 @@ enum PPHubPayload {
         let type = notificationType(payload, meta)
         let thread = threadID(from: payload)
         let order = orderID(from: payload)
+        let route = firstString(in: payload, keys: ["route"]).lowercased().isEmpty
+            ? firstString(in: meta, keys: ["route"]).lowercased()
+            : firstString(in: payload, keys: ["route"]).lowercased()
 
+        if route == "community" || route.hasPrefix("community/") { return PPHubText("community_title") }
         if !thread.isEmpty || type == "chat" {
             return PPHubText("notifications_inbox_category_chat")
         }
@@ -723,7 +727,11 @@ enum PPHubPayload {
         let type = notificationType(payload, meta)
         let status = notificationStatus(payload, meta)
         let thread = threadID(from: payload)
+        let route = firstString(in: payload, keys: ["route"]).lowercased().isEmpty
+            ? firstString(in: meta, keys: ["route"]).lowercased()
+            : firstString(in: payload, keys: ["route"]).lowercased()
 
+        if route == "community" || route.hasPrefix("community/") { return .ppAdoptionAccent }
         if !thread.isEmpty || type == "chat" {
             return Color(uiColor: GM.appPrimaryColor())
         }
@@ -745,7 +753,11 @@ enum PPHubPayload {
         let thread = threadID(from: payload)
         let order = orderID(from: payload)
         let status = notificationStatus(payload, meta)
+        let route = firstString(in: payload, keys: ["route"]).lowercased().isEmpty
+            ? firstString(in: meta, keys: ["route"]).lowercased()
+            : firstString(in: payload, keys: ["route"]).lowercased()
 
+        if route == "community" || route.hasPrefix("community/") { return "pawprint.fill" }
         if !thread.isEmpty || type == "chat" {
             return "ellipsis.message.fill"
         }

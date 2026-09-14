@@ -2,14 +2,67 @@
 //  AdoptPetListScreen.swift
 //  Pure Pets
 //
-//  Production SwiftUI Adopt Pet List Experience.
-//  Redesign: First Hello - portrait-led adoption discovery.
+//  Category-defining Adoption Pet Discovery Experience.
+//  First-Principles Redesign: Dedicated iPhone and iPad architectures,
+//  exclusive Beiruti brand typography, 6-state resilience, and ADA-caliber craft.
 //
 
 import SwiftUI
 import UIKit
 
-// MARK: - Screen
+// MARK: - Exclusive Typography Engine (100% Beiruti Only)
+
+private enum AdoptFont {
+    static func bold(_ size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom("Beiruti-Bold", size: size, relativeTo: style)
+    }
+
+    static func medium(_ size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom("Beiruti-Medium", size: size, relativeTo: style)
+    }
+
+    static func regular(_ size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom("Beiruti-Regular", size: size, relativeTo: style)
+    }
+}
+
+// MARK: - Tactile Haptics
+
+private enum AdoptHaptics {
+    static func selection() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    static func impactLight() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    static func impactMedium() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    static func success() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+}
+
+// MARK: - Press Style
+
+private struct AdoptPressStyle: ButtonStyle {
+    var pressedScale: CGFloat = 0.97
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(reduceMotion || !configuration.isPressed || !isEnabled ? 1 : pressedScale)
+            .opacity(!isEnabled ? 0.46 : (configuration.isPressed ? 0.88 : 1))
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Main Root Container (Device Adaptive Routing)
 
 struct AdoptPetListScreen: View {
     @StateObject private var store = AdoptPetListStore()
@@ -25,32 +78,53 @@ struct AdoptPetListScreen: View {
     var onAddPet: () -> Void
     var onClose: (() -> Void)? = nil
 
-    @State private var contentAppeared = false
-    @FocusState private var searchIsFocused: Bool
+    @State private var hasAppeared = false
+
+    private var isPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
+
+    private var shouldUsePadArchitecture: Bool {
+        isPad && horizontalSizeClass != .compact
+    }
 
     var body: some View {
         GeometryReader { proxy in
+            let topInset = resolvedTopInset(proxy)
             ZStack {
                 Color.ppBackground
                     .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    navigationHeader(topInset: resolvedTopInset(proxy))
-                    contentView
+                Group {
+                    if shouldUsePadArchitecture {
+                        AdoptPetList_iPad(
+                            store: store,
+                            topInset: topInset,
+                            onSelectPet: onSelectPet,
+                            onAddPet: onAddPet,
+                            onClose: onClose
+                        )
+                    } else {
+                        AdoptPetList_iPhone(
+                            store: store,
+                            topInset: topInset,
+                            onSelectPet: onSelectPet,
+                            onAddPet: onAddPet,
+                            onClose: onClose
+                        )
+                    }
                 }
-                .ignoresSafeArea(edges: .top)
             }
         }
         .navigationBarHidden(true)
         .onAppear {
             store.startObserving()
-            guard !contentAppeared else { return }
-
+            guard !hasAppeared else { return }
             if reduceMotion {
-                contentAppeared = true
+                hasAppeared = true
             } else {
-                withAnimation(.easeOut(duration: 0.26)) {
-                    contentAppeared = true
+                withAnimation(.easeOut(duration: 0.28)) {
+                    hasAppeared = true
                 }
             }
         }
@@ -59,288 +133,404 @@ struct AdoptPetListScreen: View {
         }
     }
 
-    // MARK: - Navigation
-
     private func resolvedTopInset(_ proxy: GeometryProxy) -> CGFloat {
         let inset = proxy.safeAreaInsets.top
         if inset > 1 {
             return inset
         }
-
         return UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)
             .first { $0.isKeyWindow }?
-            .safeAreaInsets.top ?? 0
+            .safeAreaInsets.top ?? 44
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - iPhone Dedicated Architecture
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptPetList_iPhone: View {
+    @ObservedObject var store: AdoptPetListStore
+    let topInset: CGFloat
+    var onSelectPet: (AdoptPetModel) -> Void
+    var onAddPet: () -> Void
+    var onClose: (() -> Void)?
+
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    @FocusState private var searchIsFocused: Bool
+    @State private var pulseHeart = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            navigationHeader
+                .zIndex(2)
+
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: PPSpace.lg) {
+                    editorialHeroDeck
+
+                    discoveryCockpit
+
+                    if store.hasStaleConnectionIssue || (store.isRefreshing && !store.pets.isEmpty) {
+                        cachedConnectionBanner
+                    }
+
+                    activeStateContent
+                }
+                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.top, PPSpace.md)
+                .padding(.bottom, PPSpace.xxxxl)
+            }
+            .refreshable {
+                await store.refresh()
+            }
+        }
+        .ignoresSafeArea(edges: .top)
     }
 
-    private func navigationHeader(topInset: CGFloat) -> some View {
-        HStack(spacing: PPSpace.md) {
+    // MARK: - iPhone Navigation Bar
+
+    private var navigationHeader: some View {
+        HStack(spacing: PPSpace.sm) {
             if let onClose {
-                Button(action: onClose) {
+                Button(action: {
+                    AdoptHaptics.impactLight()
+                    onClose()
+                }) {
                     Image(systemName: layoutDirection == .rightToLeft ? "chevron.right" : "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Color.ppTextPrimary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 42, height: 42)
                         .background(Color.ppSurface, in: Circle())
                         .overlay {
                             Circle()
-                                .strokeBorder(headerBorderColor, lineWidth: headerBorderWidth)
+                                .strokeBorder(
+                                    colorSchemeContrast == .increased
+                                        ? Color.ppTextPrimary.opacity(0.6)
+                                        : Color.ppBorder.opacity(0.72),
+                                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
+                                )
                         }
                 }
-                .buttonStyle(AdoptListPressStyle())
+                .buttonStyle(AdoptPressStyle())
                 .accessibilityLabel(PPAdoptLang("Back"))
             }
 
-            HStack(spacing: PPSpace.sm) {
+            // Center Brand Badge
+            HStack(spacing: PPSpace.xs) {
                 Image(systemName: "heart.fill")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.ppQuickActionAdoption)
-                    .frame(width: 30, height: 30)
+                    .scaleEffect(pulseHeart && !reduceMotion ? 1.15 : 1.0)
+                    .animation(
+                        reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                        value: pulseHeart
+                    )
+                    .frame(width: 28, height: 28)
                     .background(Color.ppQuickActionAdoption.opacity(0.14), in: Circle())
                     .accessibilityHidden(true)
 
                 Text(PPAdoptLang("adopt_list_eyebrow"))
-                    .font(PPFont.bold(14))
+                    .font(AdoptFont.bold(16, relativeTo: .headline))
                     .foregroundStyle(Color.ppTextPrimary)
                     .lineLimit(1)
             }
-
-            Spacer(minLength: PPSpace.sm)
-
-            Button(action: onAddPet) {
-                HStack(spacing: PPSpace.xs) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .bold))
-
-                    if horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize {
-                        Text(PPAdoptLang("adopt_list_add_action"))
-                            .font(PPFont.bold(14))
-                            .lineLimit(1)
-                    }
-                }
-                .foregroundStyle(Color.ppTextPrimary)
-                .padding(.horizontal, horizontalSizeClass == .regular ? PPSpace.md : 0)
-                .frame(minWidth: 44, minHeight: 44)
-                .background(
-                    Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.20 : 0.14),
-                    in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
-                        .strokeBorder(
-                            Color.ppQuickActionAdoption.opacity(colorSchemeContrast == .increased ? 0.9 : 0.34),
-                            lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
-                        )
+            .padding(.horizontal, PPSpace.sm)
+            .padding(.vertical, 6)
+            .background(Color.ppSurface.opacity(0.9), in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(Color.ppQuickActionAdoption.opacity(0.25), lineWidth: 0.8)
+            }
+            .onAppear {
+                if !reduceMotion {
+                    pulseHeart = true
                 }
             }
-            .buttonStyle(AdoptListPressStyle())
+
+            Spacer(minLength: PPSpace.xs)
+
+            // Primary Add Action
+            Button(action: {
+                AdoptHaptics.impactMedium()
+                onAddPet()
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+
+                    Text(PPAdoptLang("adopt_list_add_action"))
+                        .font(AdoptFont.bold(14, relativeTo: .subheadline))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, PPSpace.md)
+                .frame(height: 40)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color.ppQuickActionAdoption,
+                            Color.ppQuickActionAdoption.opacity(0.88)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: Capsule()
+                )
+                .shadow(
+                    color: Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.35 : 0.25),
+                    radius: 8,
+                    y: 3
+                )
+            }
+            .buttonStyle(AdoptPressStyle())
             .accessibilityLabel(PPAdoptLang("adopt_list_add_action"))
         }
         .padding(.horizontal, PPSpace.screenMargin)
-        .padding(.top, topInset + PPSpace.sm)
+        .padding(.top, topInset + PPSpace.xs)
         .padding(.bottom, PPSpace.sm)
-        .background(Color.ppElevatedSurface)
+        .background(
+            Color.ppElevatedSurface
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 3)
+        )
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.ppSeparator.opacity(0.72))
+                .fill(Color.ppSeparator.opacity(0.6))
                 .frame(height: colorSchemeContrast == .increased ? 1 : 0.5)
-                .accessibilityHidden(true)
         }
     }
 
-    private var headerBorderColor: Color {
-        colorSchemeContrast == .increased
-            ? Color.ppTextPrimary.opacity(0.6)
-            : Color.ppBorder.opacity(0.78)
-    }
+    // MARK: - iPhone Warm Editorial Hero Deck
 
-    private var headerBorderWidth: CGFloat {
-        colorSchemeContrast == .increased ? 1.5 : 0.8
-    }
-
-    // MARK: - Content
-
-    private var contentView: some View {
-        ScrollView(showsIndicators: false) {
-            LazyVStack(alignment: .leading, spacing: PPSpace.xl) {
-                introduction
-
-                if shouldShowDiscoveryControls {
-                    discoveryControls
-                }
-
-                if store.hasStaleConnectionIssue || (store.isRefreshing && !store.pets.isEmpty) {
-                    cachedConnectionBanner
-                }
-
-                stateContent
-            }
-            .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.top, PPSpace.xl)
-            .padding(.bottom, PPSpace.xxxxl)
-            .frame(maxWidth: 1040, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .refreshable {
-            await store.refresh()
-        }
-    }
-
-    private var introduction: some View {
+    private var editorialHeroDeck: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 8, height: 8)
+
+                let availableCount = store.pets.filter { $0.visibility == 0 }.count
+                Text(String(format: PPAdoptLang("adopt_list_count_format"), availableCount))
+                    .font(AdoptFont.bold(12, relativeTo: .caption))
+                    .foregroundStyle(Color.ppQuickActionAdoption)
+
+                Spacer()
+            }
+            .padding(.horizontal, PPSpace.sm)
+            .padding(.vertical, 4)
+            .background(Color.ppQuickActionAdoption.opacity(0.12), in: Capsule())
+            .fixedSize()
+
             Text(PPAdoptLang("adopt_list_title"))
-                .font(PPFont.largeTitle())
+                .font(AdoptFont.bold(28, relativeTo: .title))
                 .foregroundStyle(Color.ppTextPrimary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                .minimumScaleFactor(0.86)
-                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.84)
                 .accessibilityAddTraits(.isHeader)
 
             Text(PPAdoptLang("adopt_list_subtitle"))
-                .font(PPFont.body())
+                .font(AdoptFont.regular(14, relativeTo: .subheadline))
                 .foregroundStyle(Color.ppTextSecondary)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: 720, alignment: .leading)
-        .opacity(contentAppeared ? 1 : 0)
-        .offset(y: contentAppeared || reduceMotion ? 0 : 8)
+        .padding(PPSpace.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.18 : 0.10),
+                            Color.ppSurface
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+                .strokeBorder(
+                    Color.ppQuickActionAdoption.opacity(colorSchemeContrast == .increased ? 0.8 : 0.22),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
+                )
+        }
     }
 
-    private var shouldShowDiscoveryControls: Bool {
-        !store.pets.isEmpty || store.hasActiveFilters
+    // MARK: - iPhone Discovery Cockpit
+
+    private var discoveryCockpit: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            AdoptSearchField(
+                searchText: $store.searchText,
+                isFocused: $searchIsFocused
+            )
+
+            speciesSelectorBar
+
+            genderSelectorBar
+
+            if store.hasActiveFilters {
+                activeFiltersBanner
+            }
+        }
     }
 
-    // MARK: - Discovery Controls
+    private var speciesSelectorBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: PPSpace.xs) {
+                // All Chip
+                speciesChip(
+                    title: PPAdoptLang("All"),
+                    symbol: "square.grid.2x2.fill",
+                    count: store.pets.filter { $0.visibility == 0 }.count,
+                    isSelected: store.selectedKindID == 0
+                ) {
+                    store.selectedKindID = 0
+                }
 
-    private var discoveryControls: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            searchField
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: PPSpace.sm) {
-                    filterChip(
-                        title: PPAdoptLang("All"),
-                        symbol: "square.grid.2x2.fill",
-                        isSelected: !store.hasActiveFilters
-                    ) {
-                        store.clearFilters()
-                    }
-
-                    filterChip(
-                        title: PPAdoptLang("Male"),
-                        symbol: "figure.stand",
-                        isSelected: store.selectedGender == "male"
-                    ) {
-                        store.selectedGender = store.selectedGender == "male" ? "" : "male"
-                    }
-
-                    filterChip(
-                        title: PPAdoptLang("Female"),
-                        symbol: "person.fill",
-                        isSelected: store.selectedGender == "female"
-                    ) {
-                        store.selectedGender = store.selectedGender == "female" ? "" : "female"
-                    }
-
-                    if let kinds = MainKindsArrayManager.shared().mainKindsArray as? [MainKindsModel] {
-                        ForEach(kinds, id: \.id) { kind in
-                            let title = kind.kindName
-                            if !title.isEmpty {
-                                filterChip(
-                                    title: title,
-                                    symbol: "pawprint.fill",
-                                    isSelected: store.selectedKindID == kind.id
-                                ) {
-                                    store.selectedKindID = store.selectedKindID == kind.id ? 0 : kind.id
-                                }
+                // Dynamic Kinds from MainKindsArrayManager
+                if let kinds = MainKindsArrayManager.shared().mainKindsArray as? [MainKindsModel] {
+                    ForEach(kinds, id: \.id) { kind in
+                        let name = kind.kindName
+                        if !name.isEmpty {
+                            let count = store.pets.filter { $0.visibility == 0 && $0.kindID == kind.id }.count
+                            speciesChip(
+                                title: name,
+                                symbol: symbolForKind(name: name),
+                                count: count,
+                                isSelected: store.selectedKindID == kind.id
+                            ) {
+                                store.selectedKindID = store.selectedKindID == kind.id ? 0 : kind.id
                             }
                         }
                     }
                 }
-                .padding(.vertical, 1)
             }
+            .padding(.vertical, 2)
         }
     }
 
-    private var searchField: some View {
-        HStack(spacing: PPSpace.sm) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.ppTextSecondary)
-                .accessibilityHidden(true)
+    private func speciesChip(
+        title: String,
+        symbol: String,
+        count: Int,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: {
+            AdoptHaptics.selection()
+            action()
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isSelected ? Color.white : Color.ppQuickActionAdoption)
 
-            TextField(PPAdoptLang("search"), text: $store.searchText)
-                .font(PPFont.callout())
-                .foregroundStyle(Color.ppTextPrimary)
-                .autocapitalization(.none)
-                .disableAutocorrection(true)
-                .submitLabel(.search)
-                .focused($searchIsFocused)
-                .onSubmit {
-                    searchIsFocused = false
-                }
-                .accessibilityLabel(PPAdoptLang("search"))
+                Text(title)
+                    .font(AdoptFont.bold(13, relativeTo: .subheadline))
+                    .foregroundStyle(isSelected ? Color.white : Color.ppTextPrimary)
 
-            if !store.searchText.isEmpty {
-                Button {
-                    store.searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.ppTextTertiary)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                if count > 0 {
+                    Text("\(count)")
+                        .font(AdoptFont.bold(11, relativeTo: .caption2))
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.ppTextSecondary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(
+                            (isSelected ? Color.black.opacity(0.18) : Color.ppSecondarySurface),
+                            in: Capsule()
+                        )
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(PPAdoptLang("adopt_list_clear_search"))
             }
+            .padding(.horizontal, PPSpace.md)
+            .frame(height: 38)
+            .background(
+                isSelected
+                    ? Color.ppQuickActionAdoption
+                    : Color.ppSurface,
+                in: Capsule()
+            )
+            .overlay {
+                Capsule()
+                    .strokeBorder(
+                        isSelected
+                            ? Color.ppQuickActionAdoption
+                            : Color.ppBorder.opacity(0.7),
+                        lineWidth: isSelected ? 1.2 : 0.8
+                    )
+            }
+            .shadow(
+                color: isSelected ? Color.ppQuickActionAdoption.opacity(0.22) : Color.clear,
+                radius: 4,
+                y: 2
+            )
         }
-        .padding(.horizontal, PPSpace.md)
-        .frame(minHeight: 50)
-        .background(
-            Color.ppSurface,
-            in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .strokeBorder(headerBorderColor, lineWidth: headerBorderWidth)
-        }
-        .accessibilityElement(children: .contain)
+        .buttonStyle(AdoptPressStyle(pressedScale: 0.96))
+        .accessibilityLabel("\(title), \(count)")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
-    private func filterChip(
+    private var genderSelectorBar: some View {
+        HStack(spacing: PPSpace.xs) {
+            genderChip(
+                title: PPAdoptLang("All"),
+                symbol: "pawprint.fill",
+                isSelected: store.selectedGender.isEmpty
+            ) {
+                store.selectedGender = ""
+            }
+
+            genderChip(
+                title: PPAdoptLang("Male"),
+                symbol: "figure.stand",
+                isSelected: store.selectedGender == "male"
+            ) {
+                store.selectedGender = store.selectedGender == "male" ? "" : "male"
+            }
+
+            genderChip(
+                title: PPAdoptLang("Female"),
+                symbol: "person.fill",
+                isSelected: store.selectedGender == "female"
+            ) {
+                store.selectedGender = store.selectedGender == "female" ? "" : "female"
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func genderChip(
         title: String,
         symbol: String,
         isSelected: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button {
-            UISelectionFeedbackGenerator().selectionChanged()
+        Button(action: {
+            AdoptHaptics.selection()
             action()
-        } label: {
-            HStack(spacing: PPSpace.xs) {
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .accessibilityHidden(true)
-                } else {
-                    Image(systemName: symbol)
-                        .font(.system(size: 11, weight: .semibold))
-                        .accessibilityHidden(true)
-                }
+        }) {
+            HStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .bold))
 
                 Text(title)
-                    .font(PPFont.bold(13))
-                    .lineLimit(1)
+                    .font(AdoptFont.medium(12, relativeTo: .caption))
             }
-            .foregroundStyle(Color.ppTextPrimary)
-            .padding(.horizontal, PPSpace.md)
-            .frame(minHeight: 44)
+            .foregroundStyle(isSelected ? Color.ppQuickActionAdoption : Color.ppTextSecondary)
+            .padding(.horizontal, PPSpace.sm)
+            .frame(height: 32)
             .background(
                 isSelected
-                    ? Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.24 : 0.16)
+                    ? Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.24 : 0.14)
                     : Color.ppSurface,
                 in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
             )
@@ -348,32 +538,101 @@ struct AdoptPetListScreen: View {
                 RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
                     .strokeBorder(
                         isSelected
-                            ? Color.ppQuickActionAdoption.opacity(colorSchemeContrast == .increased ? 1 : 0.66)
-                            : Color.ppBorder.opacity(0.82),
-                        lineWidth: isSelected || colorSchemeContrast == .increased ? 1.4 : 0.8
+                            ? Color.ppQuickActionAdoption
+                            : Color.ppBorder.opacity(0.6),
+                        lineWidth: isSelected ? 1.2 : 0.8
                     )
             }
         }
-        .buttonStyle(AdoptListPressStyle(pressedScale: 0.97))
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .animation(filterAnimation, value: isSelected)
+        .buttonStyle(AdoptPressStyle(pressedScale: 0.96))
     }
 
-    // MARK: - States
+    private var activeFiltersBanner: some View {
+        HStack(spacing: PPSpace.xs) {
+            Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Color.ppQuickActionAdoption)
+
+            Text(String(format: PPAdoptLang("adopt_list_filtered_count_format"), store.filteredPets.count))
+                .font(AdoptFont.bold(12, relativeTo: .caption))
+                .foregroundStyle(Color.ppTextPrimary)
+
+            Spacer()
+
+            Button(action: {
+                AdoptHaptics.impactLight()
+                store.clearFilters()
+            }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                    Text(PPAdoptLang("ClearFilters"))
+                        .font(AdoptFont.bold(12, relativeTo: .caption))
+                }
+                .foregroundStyle(Color.ppQuickActionAdoption)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.ppQuickActionAdoption.opacity(0.12), in: Capsule())
+            }
+            .buttonStyle(AdoptPressStyle())
+        }
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, 8)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                .strokeBorder(Color.ppQuickActionAdoption.opacity(0.3), lineWidth: 0.8)
+        }
+    }
+
+    // MARK: - iPhone Content States
 
     @ViewBuilder
-    private var stateContent: some View {
+    private var activeStateContent: some View {
         if store.isLoading && store.pets.isEmpty {
-            loadingState
+            AdoptPetSkeletonView(isPad: false)
         } else if store.isOffline && store.pets.isEmpty {
-            offlineState
-        } else if let message = store.errorMessage,
-                  store.pets.isEmpty,
-                  !store.isOffline {
-            errorState(message: message)
+            AdoptPetStatePanel(
+                symbol: "wifi.slash",
+                tint: .ppWarning,
+                title: PPAdoptLang("adopt_list_error_title"),
+                message: PPAdoptLang("adopt_list_error_subtitle"),
+                primaryTitle: PPAdoptLang("Retry"),
+                primarySymbol: "arrow.clockwise",
+                primaryAction: { store.requestRefresh() }
+            )
+        } else if let error = store.errorMessage, store.pets.isEmpty, !store.isOffline {
+            AdoptPetStatePanel(
+                symbol: "exclamationmark.triangle.fill",
+                tint: .ppError,
+                title: PPAdoptLang("adopt_list_error_title"),
+                message: error,
+                primaryTitle: PPAdoptLang("Retry"),
+                primarySymbol: "arrow.clockwise",
+                primaryAction: { store.requestRefresh() }
+            )
+        } else if store.pets.isEmpty {
+            // Platform Zero State
+            AdoptPetStatePanel(
+                symbol: "heart.circle.fill",
+                tint: .ppQuickActionAdoption,
+                title: PPAdoptLang("adopt_list_empty_title"),
+                message: PPAdoptLang("adopt_list_empty_subtitle"),
+                primaryTitle: PPAdoptLang("adopt_list_add_action"),
+                primarySymbol: "plus",
+                primaryAction: onAddPet
+            )
         } else if store.filteredPets.isEmpty {
-            emptyState
+            // Filtered Zero State
+            AdoptPetStatePanel(
+                symbol: "magnifyingglass",
+                tint: .ppQuickActionAdoption,
+                title: PPAdoptLang("adopt_list_no_results_title"),
+                message: PPAdoptLang("adopt_list_no_results_subtitle"),
+                primaryTitle: PPAdoptLang("ClearFilters"),
+                primarySymbol: "arrow.counterclockwise",
+                primaryAction: { store.clearFilters() }
+            )
         } else {
             populatedContent
         }
@@ -381,240 +640,1342 @@ struct AdoptPetListScreen: View {
 
     private var populatedContent: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
-            resultsHeading
-
+            // Curated Lead Hero Pet
             if let leadPet = store.filteredPets.first {
-                Button {
+                Button(action: {
+                    AdoptHaptics.impactLight()
                     onSelectPet(leadPet)
-                } label: {
+                }) {
                     AdoptPetLeadCard(
                         pet: leadPet,
-                        usesSplitLayout: horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+                        usesSplitLayout: false
                     )
                 }
-                .buttonStyle(AdoptListPressStyle(pressedScale: 0.99))
-                .accessibilityElement(children: .ignore)
+                .buttonStyle(AdoptPressStyle(pressedScale: 0.985))
                 .accessibilityLabel(cardAccessibilityLabel(for: leadPet))
-                .accessibilityHint(PPAdoptLang("adopt_list_open_profile_hint"))
-                .accessibilityAddTraits(.isButton)
+                .onAppear { store.loadNextIfNeeded(current: leadPet) }
             }
 
+            // Companions Feed
             if store.filteredPets.count > 1 {
-                Text(PPAdoptLang("adopt_list_more_title"))
-                    .font(PPFont.headline())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .padding(.top, PPSpace.sm)
-                    .accessibilityAddTraits(.isHeader)
+                HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
+                    Text(PPAdoptLang("adopt_list_results_title"))
+                        .font(AdoptFont.bold(18, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
 
-                LazyVGrid(columns: resultColumns, spacing: PPSpace.md) {
+                    Spacer()
+
+                    Text(String(format: PPAdoptLang("adopt_list_count_format"), store.filteredPets.count - 1))
+                        .font(AdoptFont.medium(12, relativeTo: .caption))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+                .padding(.top, PPSpace.sm)
+
+                LazyVStack(spacing: PPSpace.md) {
                     ForEach(store.filteredPets.dropFirst(), id: \.documentID) { pet in
-                        Button {
+                        Button(action: {
+                            AdoptHaptics.impactLight()
                             onSelectPet(pet)
-                        } label: {
-                            AdoptPetProfileCard(
+                        }) {
+                            AdoptPetCompanionCard(
                                 pet: pet,
-                                usesVerticalLayout: horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize
+                                isCompact: true
                             )
                         }
-                        .buttonStyle(AdoptListPressStyle(pressedScale: 0.985))
-                        .accessibilityElement(children: .ignore)
+                        .buttonStyle(AdoptPressStyle(pressedScale: 0.985))
                         .accessibilityLabel(cardAccessibilityLabel(for: pet))
-                        .accessibilityHint(PPAdoptLang("adopt_list_open_profile_hint"))
-                        .accessibilityAddTraits(.isButton)
+                        .onAppear { store.loadNextIfNeeded(current: pet) }
                     }
                 }
             }
         }
-        .opacity(contentAppeared ? 1 : 0)
-        .offset(y: contentAppeared || reduceMotion ? 0 : 10)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: contentAppeared)
-    }
-
-    private var resultColumns: [GridItem] {
-        let count = horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize ? 2 : 1
-        return Array(
-            repeating: GridItem(.flexible(), spacing: PPSpace.md, alignment: .top),
-            count: count
-        )
-    }
-
-    private var resultsHeading: some View {
-        HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                Text(PPAdoptLang("adopt_list_results_title"))
-                    .font(PPFont.title3())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .accessibilityAddTraits(.isHeader)
-
-                Text(
-                    store.hasActiveFilters
-                        ? String(format: PPAdoptLang("adopt_list_filtered_count_format"), store.filteredPets.count)
-                        : PPAdoptLang("adopt_list_results_subtitle")
-                )
-                .font(PPFont.caption1())
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: PPSpace.sm)
-
-            if store.hasActiveFilters {
-                Button {
-                    store.clearFilters()
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .frame(width: 44, height: 44)
-                        .background(Color.ppQuickActionAdoption.opacity(0.14), in: Circle())
-                }
-                .buttonStyle(AdoptListPressStyle())
-                .accessibilityLabel(PPAdoptLang("ClearFilters"))
-            }
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private var loadingState: some View {
-        AdoptPetListSkeleton(
-            usesSplitLead: horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize,
-            usesVerticalRows: horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize,
-            usesTwoColumnRows: horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(PPAdoptLang("adopt_list_loading"))
-    }
-
-    private var emptyState: some View {
-        let hasFilters = store.hasActiveFilters
-        return AdoptListStatePanel(
-            symbol: hasFilters ? "magnifyingglass" : "heart.slash",
-            tint: .ppQuickActionAdoption,
-            title: hasFilters
-                ? PPAdoptLang("adopt_list_no_results_title")
-                : PPAdoptLang("adopt_list_empty_title"),
-            message: hasFilters
-                ? PPAdoptLang("adopt_list_no_results_subtitle")
-                : PPAdoptLang("adopt_list_empty_subtitle"),
-            primaryTitle: hasFilters
-                ? PPAdoptLang("ClearFilters")
-                : PPAdoptLang("empty_retry_button"),
-            primarySymbol: hasFilters ? "line.3.horizontal.decrease" : "arrow.clockwise",
-            primaryAction: {
-                if hasFilters {
-                    store.clearFilters()
-                } else {
-                    store.requestRefresh()
-                }
-            }
-        )
-    }
-
-    private var offlineState: some View {
-        AdoptListStatePanel(
-            symbol: "wifi.slash",
-            tint: .ppWarning,
-            title: PPAdoptLang("adopt_list_error_title"),
-            message: PPAdoptLang("adopt_list_error_subtitle"),
-            primaryTitle: PPAdoptLang("Retry"),
-            primarySymbol: "arrow.clockwise",
-            primaryAction: { store.requestRefresh() }
-        )
-    }
-
-    private func errorState(message: String) -> some View {
-        AdoptListStatePanel(
-            symbol: "exclamationmark.triangle.fill",
-            tint: .ppError,
-            title: PPAdoptLang("adopt_list_error_title"),
-            message: message.isEmpty ? PPAdoptLang("adopt_list_error_subtitle") : message,
-            primaryTitle: PPAdoptLang("Retry"),
-            primarySymbol: "arrow.clockwise",
-            primaryAction: { store.requestRefresh() }
-        )
     }
 
     private var cachedConnectionBanner: some View {
-        HStack(alignment: .center, spacing: PPSpace.sm) {
-            Image(systemName: store.isOffline ? "wifi.slash" : "arrow.triangle.2.circlepath")
-                .font(.system(size: 14, weight: .semibold))
+        AdoptCachedBanner(store: store)
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - iPad Dedicated Architecture (Adaptive 2-Pane Studio)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptPetList_iPad: View {
+    @ObservedObject var store: AdoptPetListStore
+    let topInset: CGFloat
+    var onSelectPet: (AdoptPetModel) -> Void
+    var onAddPet: () -> Void
+    var onClose: (() -> Void)?
+
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    @FocusState private var searchIsFocused: Bool
+    @State private var pulseHeart = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ipadTopBar
+                .zIndex(3)
+
+            HStack(alignment: .top, spacing: 0) {
+                // Leading Cockpit & Intelligence Sidebar (~360pt)
+                AdoptPetCockpitSidebar(
+                    store: store,
+                    searchIsFocused: $searchIsFocused,
+                    onAddPet: onAddPet
+                )
+                .frame(width: 360)
+                .background(Color.ppSecondarySurface)
+                .overlay(alignment: layoutDirection == .rightToLeft ? .leading : .trailing) {
+                    Rectangle()
+                        .fill(Color.ppSeparator.opacity(0.6))
+                        .frame(width: 0.8)
+                }
+
+                // Trailing Gallery & Companion Canvas
+                AdoptPetCanvasGallery(
+                    store: store,
+                    onSelectPet: onSelectPet,
+                    onAddPet: onAddPet
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+        .keyboardShortcut("f", modifiers: .command)
+    }
+
+    // MARK: - iPad Top Studio Bar
+
+    private var ipadTopBar: some View {
+        HStack(spacing: PPSpace.md) {
+            if let onClose {
+                Button(action: {
+                    AdoptHaptics.impactLight()
+                    onClose()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: layoutDirection == .rightToLeft ? "chevron.right" : "chevron.left")
+                            .font(.system(size: 14, weight: .bold))
+                        Text(PPAdoptLang("Back"))
+                            .font(AdoptFont.bold(14, relativeTo: .subheadline))
+                    }
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .padding(.horizontal, PPSpace.md)
+                    .frame(height: 40)
+                    .background(Color.ppSurface, in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.ppBorder.opacity(0.7), lineWidth: 0.8)
+                    }
+                }
+                .buttonStyle(AdoptPressStyle())
+                .keyboardShortcut(.cancelAction)
+            }
+
+            // Brand Heart Badge
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.ppQuickActionAdoption)
+                    .scaleEffect(pulseHeart && !reduceMotion ? 1.15 : 1.0)
+                    .animation(
+                        reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                        value: pulseHeart
+                    )
+                    .frame(width: 30, height: 30)
+                    .background(Color.ppQuickActionAdoption.opacity(0.14), in: Circle())
+
+                Text(PPAdoptLang("adopt_list_eyebrow"))
+                    .font(AdoptFont.bold(18, relativeTo: .headline))
+                    .foregroundStyle(Color.ppTextPrimary)
+            }
+            .padding(.horizontal, PPSpace.md)
+            .padding(.vertical, 6)
+            .background(Color.ppSurface, in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(Color.ppQuickActionAdoption.opacity(0.24), lineWidth: 0.8)
+            }
+            .onAppear {
+                if !reduceMotion {
+                    pulseHeart = true
+                }
+            }
+
+            Spacer()
+
+            // Header Quick Stats
+            HStack(spacing: PPSpace.sm) {
+                let count = store.pets.filter { $0.visibility == 0 }.count
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
+                    Text(String(format: PPAdoptLang("adopt_list_count_format"), count))
+                        .font(AdoptFont.bold(13, relativeTo: .caption))
+                        .foregroundStyle(Color.ppQuickActionAdoption)
+                }
+                .padding(.horizontal, PPSpace.sm)
+                .padding(.vertical, 6)
+                .background(Color.ppQuickActionAdoption.opacity(0.12), in: Capsule())
+
+                // Prominent iPad Add Button
+                Button(action: {
+                    AdoptHaptics.impactMedium()
+                    onAddPet()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .bold))
+
+                        Text(PPAdoptLang("adopt_list_add_action"))
+                            .font(AdoptFont.bold(14, relativeTo: .subheadline))
+
+                        Text("⌘N")
+                            .font(AdoptFont.regular(10, relativeTo: .caption2))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.white.opacity(0.2), in: RoundedRectangle(cornerRadius: 4))
+                    }
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, PPSpace.lg)
+                    .frame(height: 42)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color.ppQuickActionAdoption,
+                                Color.ppQuickActionAdoption.opacity(0.88)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: Capsule()
+                    )
+                    .shadow(
+                        color: Color.ppQuickActionAdoption.opacity(0.28),
+                        radius: 8,
+                        y: 3
+                    )
+                }
+                .buttonStyle(AdoptPressStyle())
+                .keyboardShortcut("n", modifiers: .command)
+            }
+        }
+        .padding(.horizontal, PPSpace.xl)
+        .padding(.top, topInset + PPSpace.xs)
+        .padding(.bottom, PPSpace.sm)
+        .background(Color.ppElevatedSurface)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.ppSeparator.opacity(0.6))
+                .frame(height: 0.8)
+        }
+    }
+}
+
+// MARK: - iPad Sidebar Cockpit
+
+private struct AdoptPetCockpitSidebar: View {
+    @ObservedObject var store: AdoptPetListStore
+    var searchIsFocused: FocusState<Bool>.Binding
+    var onAddPet: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: PPSpace.xl) {
+                // Sidebar Header & Search
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
+                    Text(PPAdoptLang("search"))
+                        .font(AdoptFont.bold(14, relativeTo: .caption))
+                        .foregroundStyle(Color.ppTextSecondary)
+
+                    AdoptSearchField(
+                        searchText: $store.searchText,
+                        isFocused: searchIsFocused,
+                        shortcutHint: "⌘F"
+                    )
+                }
+
+                // Species Filter Cockpit
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
+                    HStack {
+                        Text(PPAdoptLang("Kind"))
+                            .font(AdoptFont.bold(14, relativeTo: .caption))
+                            .foregroundStyle(Color.ppTextSecondary)
+
+                        Spacer()
+
+                        if store.selectedKindID != 0 {
+                            Button(action: {
+                                AdoptHaptics.impactLight()
+                                store.selectedKindID = 0
+                            }) {
+                                Text(PPAdoptLang("All"))
+                                    .font(AdoptFont.bold(12, relativeTo: .caption2))
+                                    .foregroundStyle(Color.ppQuickActionAdoption)
+                            }
+                        }
+                    }
+
+                    speciesGrid
+                }
+
+                // Gender Filter Section
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
+                    Text(PPAdoptLang("Gender"))
+                        .font(AdoptFont.bold(14, relativeTo: .caption))
+                        .foregroundStyle(Color.ppTextSecondary)
+
+                    HStack(spacing: PPSpace.xs) {
+                        genderSidebarTile(
+                            title: PPAdoptLang("All"),
+                            symbol: "pawprint.fill",
+                            isSelected: store.selectedGender.isEmpty
+                        ) {
+                            store.selectedGender = ""
+                        }
+
+                        genderSidebarTile(
+                            title: PPAdoptLang("Male"),
+                            symbol: "figure.stand",
+                            isSelected: store.selectedGender == "male"
+                        ) {
+                            store.selectedGender = store.selectedGender == "male" ? "" : "male"
+                        }
+
+                        genderSidebarTile(
+                            title: PPAdoptLang("Female"),
+                            symbol: "person.fill",
+                            isSelected: store.selectedGender == "female"
+                        ) {
+                            store.selectedGender = store.selectedGender == "female" ? "" : "female"
+                        }
+                    }
+                }
+
+                // Adoption Intelligence & Guidance Card
+                AdoptTipsCard()
+
+                Spacer(minLength: PPSpace.xl)
+            }
+            .padding(PPSpace.lg)
+        }
+    }
+
+    private var speciesGrid: some View {
+        let kinds = (MainKindsArrayManager.shared().mainKindsArray as? [MainKindsModel]) ?? []
+        return LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: PPSpace.xs), GridItem(.flexible(), spacing: PPSpace.xs)],
+            spacing: PPSpace.xs
+        ) {
+            // All tile
+            speciesTile(
+                title: PPAdoptLang("All"),
+                symbol: "square.grid.2x2.fill",
+                count: store.pets.filter { $0.visibility == 0 }.count,
+                isSelected: store.selectedKindID == 0
+            ) {
+                store.selectedKindID = 0
+            }
+
+            ForEach(kinds, id: \.id) { kind in
+                let name = kind.kindName
+                if !name.isEmpty {
+                    let count = store.pets.filter { $0.visibility == 0 && $0.kindID == kind.id }.count
+                    speciesTile(
+                        title: name,
+                        symbol: symbolForKind(name: name),
+                        count: count,
+                        isSelected: store.selectedKindID == kind.id
+                    ) {
+                        store.selectedKindID = store.selectedKindID == kind.id ? 0 : kind.id
+                    }
+                }
+            }
+        }
+    }
+
+    private func speciesTile(
+        title: String,
+        symbol: String,
+        count: Int,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: {
+            AdoptHaptics.selection()
+            action()
+        }) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: symbol)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(isSelected ? Color.white : Color.ppQuickActionAdoption)
+
+                    Spacer()
+
+                    Text("\(count)")
+                        .font(AdoptFont.bold(11, relativeTo: .caption2))
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.ppTextSecondary)
+                }
+
+                Text(title)
+                    .font(AdoptFont.bold(13, relativeTo: .subheadline))
+                    .foregroundStyle(isSelected ? Color.white : Color.ppTextPrimary)
+                    .lineLimit(1)
+            }
+            .padding(PPSpace.sm)
+            .background(
+                isSelected
+                    ? Color.ppQuickActionAdoption
+                    : Color.ppSurface,
+                in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                    .strokeBorder(
+                        isSelected
+                            ? Color.ppQuickActionAdoption
+                            : Color.ppBorder.opacity(0.6),
+                        lineWidth: isSelected ? 1.2 : 0.8
+                    )
+            }
+        }
+        .buttonStyle(AdoptPressStyle(pressedScale: 0.97))
+    }
+
+    private func genderSidebarTile(
+        title: String,
+        symbol: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: {
+            AdoptHaptics.selection()
+            action()
+        }) {
+            HStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .bold))
+                Text(title)
+                    .font(AdoptFont.bold(12, relativeTo: .caption))
+            }
+            .foregroundStyle(isSelected ? Color.white : Color.ppTextPrimary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 36)
+            .background(
+                isSelected
+                    ? Color.ppQuickActionAdoption
+                    : Color.ppSurface,
+                in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                    .strokeBorder(
+                        isSelected ? Color.ppQuickActionAdoption : Color.ppBorder.opacity(0.6),
+                        lineWidth: isSelected ? 1.2 : 0.8
+                    )
+            }
+        }
+        .buttonStyle(AdoptPressStyle())
+    }
+}
+
+// MARK: - iPad Canvas Gallery
+
+private struct AdoptPetCanvasGallery: View {
+    @ObservedObject var store: AdoptPetListStore
+    var onSelectPet: (AdoptPetModel) -> Void
+    var onAddPet: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: PPSpace.xl) {
+                // Canvas Header
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(PPAdoptLang("adopt_list_title"))
+                            .font(AdoptFont.bold(26, relativeTo: .title))
+                            .foregroundStyle(Color.ppTextPrimary)
+
+                        Text(PPAdoptLang("adopt_list_results_subtitle"))
+                            .font(AdoptFont.regular(14, relativeTo: .subheadline))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+
+                    Spacer()
+
+                    if store.hasActiveFilters {
+                        Button(action: {
+                            AdoptHaptics.impactLight()
+                            store.clearFilters()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text(PPAdoptLang("ClearFilters"))
+                                    .font(AdoptFont.bold(13, relativeTo: .subheadline))
+                            }
+                            .foregroundStyle(Color.ppQuickActionAdoption)
+                            .padding(.horizontal, PPSpace.md)
+                            .padding(.vertical, 6)
+                            .background(Color.ppQuickActionAdoption.opacity(0.12), in: Capsule())
+                        }
+                        .buttonStyle(AdoptPressStyle())
+                    }
+                }
+                .padding(.horizontal, PPSpace.xl)
+                .padding(.top, PPSpace.xl)
+
+                if store.hasStaleConnectionIssue || (store.isRefreshing && !store.pets.isEmpty) {
+                    AdoptCachedBanner(store: store)
+                        .padding(.horizontal, PPSpace.xl)
+                }
+
+                // Grid Content States
+                Group {
+                    if store.isLoading && store.pets.isEmpty {
+                        AdoptPetSkeletonView(isPad: true)
+                            .padding(.horizontal, PPSpace.xl)
+                    } else if store.isOffline && store.pets.isEmpty {
+                        AdoptPetStatePanel(
+                            symbol: "wifi.slash",
+                            tint: .ppWarning,
+                            title: PPAdoptLang("adopt_list_error_title"),
+                            message: PPAdoptLang("adopt_list_error_subtitle"),
+                            primaryTitle: PPAdoptLang("Retry"),
+                            primarySymbol: "arrow.clockwise",
+                            primaryAction: { store.requestRefresh() }
+                        )
+                        .padding(.horizontal, PPSpace.xl)
+                    } else if store.pets.isEmpty {
+                        AdoptPetStatePanel(
+                            symbol: "heart.circle.fill",
+                            tint: .ppQuickActionAdoption,
+                            title: PPAdoptLang("adopt_list_empty_title"),
+                            message: PPAdoptLang("adopt_list_empty_subtitle"),
+                            primaryTitle: PPAdoptLang("adopt_list_add_action"),
+                            primarySymbol: "plus",
+                            primaryAction: onAddPet
+                        )
+                        .padding(.horizontal, PPSpace.xl)
+                    } else if store.filteredPets.isEmpty {
+                        AdoptPetStatePanel(
+                            symbol: "magnifyingglass",
+                            tint: .ppQuickActionAdoption,
+                            title: PPAdoptLang("adopt_list_no_results_title"),
+                            message: PPAdoptLang("adopt_list_no_results_subtitle"),
+                            primaryTitle: PPAdoptLang("ClearFilters"),
+                            primarySymbol: "arrow.counterclockwise",
+                            primaryAction: { store.clearFilters() }
+                        )
+                        .padding(.horizontal, PPSpace.xl)
+                    } else {
+                        ipadCardsGrid
+                            .padding(.horizontal, PPSpace.xl)
+                    }
+                }
+
+                Spacer(minLength: PPSpace.xxxxl)
+            }
+        }
+        .refreshable {
+            await store.refresh()
+        }
+    }
+
+    private var ipadCardsGrid: some View {
+        LazyVGrid(
+            columns: [
+                GridItem(.adaptive(minimum: 280, maximum: 400), spacing: PPSpace.lg, alignment: .top)
+            ],
+            spacing: PPSpace.lg
+        ) {
+            ForEach(store.filteredPets, id: \.documentID) { pet in
+                Button(action: {
+                    AdoptHaptics.impactLight()
+                    onSelectPet(pet)
+                }) {
+                    AdoptPetCompanionCard(
+                        pet: pet,
+                        isCompact: false
+                    )
+                }
+                .buttonStyle(AdoptPressStyle(pressedScale: 0.985))
+                .hoverEffect(.lift)
+                .accessibilityLabel(cardAccessibilityLabel(for: pet))
+                .onAppear { store.loadNextIfNeeded(current: pet) }
+            }
+        }
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: Lead Pet Card ("First Hello")
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptPetLeadCard: View {
+    let pet: AdoptPetModel
+    let usesSplitLayout: Bool
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Media Container with Floating Badges
+            ZStack(alignment: .top) {
+                AdoptPetMediaView(pet: pet)
+                    .frame(height: dynamicTypeSize.isAccessibilitySize ? 280 : 250)
+                    .frame(maxWidth: .infinity)
+
+                // Top Floating Badges
+                HStack {
+                    // Availability Status Pill
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 7, height: 7)
+                        Text(PPAdoptLang("adopt_detail_available_now"))
+                            .font(AdoptFont.bold(12, relativeTo: .caption))
+                            .foregroundStyle(Color.ppTextPrimary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.ppSurface.opacity(0.92), in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.ppBorder.opacity(0.8), lineWidth: 0.8)
+                    }
+
+                    Spacer()
+
+                    // Quick Favorite Heart Badge
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.ppQuickActionAdoption)
+                        .frame(width: 36, height: 36)
+                        .background(Color.ppSurface.opacity(0.92), in: Circle())
+                        .overlay {
+                            Circle()
+                                .strokeBorder(Color.ppBorder.opacity(0.8), lineWidth: 0.8)
+                        }
+                }
+                .padding(PPSpace.md)
+            }
+
+            // Body Info
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(adoptPetTitle(pet))
+                            .font(AdoptFont.bold(22, relativeTo: .title2))
+                            .foregroundStyle(Color.ppTextPrimary)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.ppQuickActionAdoption)
+
+                            Text(adoptPetSubtitle(pet))
+                                .font(AdoptFont.medium(14, relativeTo: .subheadline))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    Spacer()
+                }
+
+                // Facts Rail (Age, Gender, Kind)
+                let facts = adoptPetFacts(pet)
+                if !facts.isEmpty {
+                    HStack(spacing: PPSpace.xs) {
+                        ForEach(facts) { fact in
+                            HStack(spacing: 4) {
+                                Image(systemName: fact.symbol)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(Color.ppQuickActionAdoption)
+                                Text(fact.title)
+                                    .font(AdoptFont.medium(12, relativeTo: .caption))
+                                    .foregroundStyle(Color.ppTextPrimary)
+                            }
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: PPCorner.small))
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+
+                // Story Preview Snippet
+                if !pet.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(pet.details.trimmingCharacters(in: .whitespacesAndNewlines))
+                        .font(AdoptFont.regular(13, relativeTo: .footnote))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(2)
+                        .lineSpacing(2)
+                }
+
+                // Action Bar
+                HStack(spacing: 6) {
+                    Text(PPAdoptLang("adopt_list_view_profile"))
+                        .font(AdoptFont.bold(14, relativeTo: .subheadline))
+                        .foregroundStyle(Color.white)
+
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color.white)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Color.ppQuickActionAdoption, in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous))
+            }
+            .padding(PPSpace.lg)
+        }
+        .background(Color.ppSurface)
+        .clipShape(RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+                .strokeBorder(
+                    colorSchemeContrast == .increased
+                        ? Color.ppTextPrimary.opacity(0.6)
+                        : Color.ppBorder.opacity(0.78),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
+                )
+        }
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.06),
+            radius: 14,
+            y: 6
+        )
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: Companion Pet Card
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptPetCompanionCard: View {
+    let pet: AdoptPetModel
+    let isCompact: Bool
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        Group {
+            if isCompact {
+                // Horizontal Split on iPhone
+                HStack(spacing: 0) {
+                    AdoptPetMediaView(pet: pet)
+                        .frame(width: 120, height: 148)
+                        .clipped()
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(adoptPetTitle(pet))
+                            .font(AdoptFont.bold(17, relativeTo: .headline))
+                            .foregroundStyle(Color.ppTextPrimary)
+                            .lineLimit(1)
+
+                        HStack(spacing: 3) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Color.ppQuickActionAdoption)
+                            Text(adoptPetSubtitle(pet))
+                                .font(AdoptFont.medium(12, relativeTo: .caption))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .lineLimit(1)
+                        }
+
+                        let facts = adoptPetFacts(pet)
+                        if !facts.isEmpty {
+                            HStack(spacing: 4) {
+                                ForEach(facts.prefix(2)) { fact in
+                                    HStack(spacing: 3) {
+                                        Image(systemName: fact.symbol)
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(Color.ppQuickActionAdoption)
+                                        Text(fact.title)
+                                            .font(AdoptFont.medium(11, relativeTo: .caption2))
+                                    }
+                                    .foregroundStyle(Color.ppTextPrimary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.ppSecondarySurface, in: Capsule())
+                                }
+                            }
+                        }
+
+                        Spacer(minLength: 2)
+
+                        HStack(spacing: 3) {
+                            Text(PPAdoptLang("adopt_list_view_profile"))
+                                .font(AdoptFont.bold(12, relativeTo: .caption))
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundStyle(Color.ppQuickActionAdoption)
+                    }
+                    .padding(PPSpace.base)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                // Vertical Card on iPad
+                VStack(alignment: .leading, spacing: 0) {
+                    ZStack(alignment: .topTrailing) {
+                        AdoptPetMediaView(pet: pet)
+                            .frame(height: 190)
+                            .frame(maxWidth: .infinity)
+
+                        // Top Heart
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Color.ppQuickActionAdoption)
+                            .frame(width: 32, height: 32)
+                            .background(Color.ppSurface.opacity(0.9), in: Circle())
+                            .padding(PPSpace.sm)
+                    }
+
+                    VStack(alignment: .leading, spacing: PPSpace.sm) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(adoptPetTitle(pet))
+                                .font(AdoptFont.bold(18, relativeTo: .headline))
+                                .foregroundStyle(Color.ppTextPrimary)
+                                .lineLimit(1)
+
+                            HStack(spacing: 4) {
+                                Image(systemName: "mappin.and.ellipse")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(Color.ppQuickActionAdoption)
+                                Text(adoptPetSubtitle(pet))
+                                    .font(AdoptFont.medium(13, relativeTo: .subheadline))
+                                    .foregroundStyle(Color.ppTextSecondary)
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        let facts = adoptPetFacts(pet)
+                        if !facts.isEmpty {
+                            HStack(spacing: 4) {
+                                ForEach(facts) { fact in
+                                    HStack(spacing: 4) {
+                                        Image(systemName: fact.symbol)
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(Color.ppQuickActionAdoption)
+                                        Text(fact.title)
+                                            .font(AdoptFont.medium(11, relativeTo: .caption2))
+                                    }
+                                    .foregroundStyle(Color.ppTextPrimary)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 4))
+                                }
+                            }
+                        }
+
+                        if !pet.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(pet.details.trimmingCharacters(in: .whitespacesAndNewlines))
+                                .font(AdoptFont.regular(12, relativeTo: .caption))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .lineLimit(2)
+                        }
+
+                        HStack(spacing: 4) {
+                            Text(PPAdoptLang("adopt_list_view_profile"))
+                                .font(AdoptFont.bold(13, relativeTo: .subheadline))
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundStyle(Color.ppQuickActionAdoption)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .padding(PPSpace.base)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color.ppSurface)
+        .clipShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .strokeBorder(
+                    colorSchemeContrast == .increased
+                        ? Color.ppTextPrimary.opacity(0.6)
+                        : Color.ppBorder.opacity(0.74),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
+                )
+        }
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.16 : 0.04),
+            radius: 8,
+            y: 3
+        )
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: Media View with Studio Illustrated Fallback
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptPetMediaView: View {
+    let pet: AdoptPetModel
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        GeometryReader { proxy in
+            Group {
+                if let source = adoptPetCoverSource(pet) {
+                    PPPetAdRemoteImageView(
+                        urlString: source.urlString,
+                        blurHash: source.blurHash,
+                        contentMode: .fill,
+                        accessibilityLabel: adoptPetTitle(pet),
+                        showsRetryOnFailure: false,
+                        cacheKey: source.cacheKey,
+                        displaySize: proxy.size,
+                        usesPetFocus: true
+                    )
+                } else {
+                    // Studio Illustrated Warm Fallback Art
+                    ZStack {
+                        LinearGradient(
+                            colors: [
+                                Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.22 : 0.12),
+                                Color.ppSecondarySurface
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+
+                        Circle()
+                            .fill(Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.16 : 0.08))
+                            .frame(width: 130, height: 130)
+                            .blur(radius: 16)
+
+                        VStack(spacing: 8) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.ppSurface.opacity(0.85))
+                                    .frame(width: 56, height: 56)
+                                    .overlay {
+                                        Circle()
+                                            .strokeBorder(Color.ppQuickActionAdoption.opacity(0.24), lineWidth: 1)
+                                    }
+
+                                Image(systemName: "pawprint.fill")
+                                    .font(.system(size: 26, weight: .semibold))
+                                    .foregroundStyle(Color.ppQuickActionAdoption)
+                            }
+
+                            HStack(spacing: 4) {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(Color.ppQuickActionAdoption)
+                                Text(PPAdoptLang("adopt_detail_available_now"))
+                                    .font(AdoptFont.medium(11, relativeTo: .caption2))
+                                    .foregroundStyle(Color.ppTextSecondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.ppSurface.opacity(0.7), in: Capsule())
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .clipped()
+        .accessibilityHidden(true)
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: Search Field
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptSearchField: View {
+    @Binding var searchText: String
+    var isFocused: FocusState<Bool>.Binding
+    var shortcutHint: String? = nil
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.ppTextSecondary)
+
+            TextField(PPAdoptLang("search"), text: $searchText)
+                .font(AdoptFont.regular(15, relativeTo: .body))
                 .foregroundStyle(Color.ppTextPrimary)
-                .frame(width: 34, height: 34)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+                .submitLabel(.search)
+                .focused(isFocused)
+                .onSubmit {
+                    isFocused.wrappedValue = false
+                }
+
+            if !searchText.isEmpty {
+                Button(action: {
+                    AdoptHaptics.impactLight()
+                    searchText = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.ppTextTertiary)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+            } else if let shortcutHint {
+                Text(shortcutHint)
+                    .font(AdoptFont.bold(10, relativeTo: .caption2))
+                    .foregroundStyle(Color.ppTextTertiary)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 4))
+            }
+        }
+        .padding(.horizontal, PPSpace.md)
+        .frame(height: 46)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .strokeBorder(
+                    isFocused.wrappedValue
+                        ? Color.ppQuickActionAdoption
+                        : Color.ppBorder.opacity(0.7),
+                    lineWidth: isFocused.wrappedValue || colorSchemeContrast == .increased ? 1.4 : 0.8
+                )
+        }
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: Adoption Guidance Tips (iPad Sidebar)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptTipsCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color.ppQuickActionAdoption)
+
+                Text(PPAdoptLang("adopt_detail_section_facts"))
+                    .font(AdoptFont.bold(14, relativeTo: .headline))
+                    .foregroundStyle(Color.ppTextPrimary)
+            }
+
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                tipRow(
+                    symbol: "house.fill",
+                    title: "البيئة المناسبة",
+                    desc: "جهّز مساحة هادئة وآمنة تساعد رفيقك الجديد على الاستقرار."
+                )
+
+                tipRow(
+                    symbol: "cross.case.fill",
+                    title: "السجل الطبي",
+                    desc: "تحقق من جدول التطعيمات والفحوصات البيطرية السابقة."
+                )
+
+                tipRow(
+                    symbol: "heart.text.square.fill",
+                    title: "بناء الثقة",
+                    desc: "امنح الحيوان وقتاً كافياً للتأقلم وتكوين الألفة مع عائلتك."
+                )
+            }
+        }
+        .padding(PPSpace.base)
+        .background(
+            Color.ppQuickActionAdoption.opacity(colorScheme == .dark ? 0.14 : 0.08),
+            in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .strokeBorder(Color.ppQuickActionAdoption.opacity(0.2), lineWidth: 0.8)
+        }
+    }
+
+    private func tipRow(symbol: String, title: String, desc: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Color.ppQuickActionAdoption)
+                .frame(width: 22, height: 22)
+                .background(Color.ppSurface, in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(AdoptFont.bold(12, relativeTo: .caption))
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                Text(desc)
+                    .font(AdoptFont.regular(11, relativeTo: .caption2))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineSpacing(2)
+            }
+        }
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: Shimmer Skeleton View (Loading State)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptPetSkeletonView: View {
+    let isPad: Bool
+
+    @State private var shimmerPhase: CGFloat = -1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            if !isPad {
+                // Lead Card Skeleton
+                VStack(alignment: .leading, spacing: 0) {
+                    skeletonBox(height: 220)
+                    VStack(alignment: .leading, spacing: PPSpace.sm) {
+                        skeletonBox(width: 140, height: 18)
+                        skeletonBox(width: 100, height: 14)
+                        HStack(spacing: 8) {
+                            skeletonBox(width: 60, height: 22)
+                            skeletonBox(width: 60, height: 22)
+                        }
+                    }
+                    .padding(PPSpace.lg)
+                }
+                .skeletonCard(cornerRadius: PPCorner.hero)
+
+                // Row Skeletons
+                ForEach(0..<3, id: \.self) { _ in
+                    HStack(spacing: 0) {
+                        skeletonBox(width: 120, height: 130)
+                        VStack(alignment: .leading, spacing: PPSpace.xs) {
+                            skeletonBox(width: 120, height: 16)
+                            skeletonBox(width: 80, height: 12)
+                            Spacer()
+                            skeletonBox(width: 90, height: 12)
+                        }
+                        .padding(PPSpace.base)
+                    }
+                    .skeletonCard(cornerRadius: PPCorner.card)
+                }
+            } else {
+                // iPad Multi-Column Skeletons
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 280, maximum: 400), spacing: PPSpace.lg)],
+                    spacing: PPSpace.lg
+                ) {
+                    ForEach(0..<6, id: \.self) { _ in
+                        VStack(alignment: .leading, spacing: 0) {
+                            skeletonBox(height: 180)
+                            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                                skeletonBox(width: 130, height: 18)
+                                skeletonBox(width: 90, height: 13)
+                                HStack(spacing: 6) {
+                                    skeletonBox(width: 50, height: 20)
+                                    skeletonBox(width: 50, height: 20)
+                                }
+                            }
+                            .padding(PPSpace.base)
+                        }
+                        .skeletonCard(cornerRadius: PPCorner.card)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                shimmerPhase = 1.5
+            }
+        }
+    }
+
+    private func skeletonBox(width: CGFloat? = nil, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: min(height / 2, 8), style: .continuous)
+            .fill(Color.ppMineralBeige.opacity(0.72))
+            .frame(maxWidth: width ?? .infinity)
+            .frame(height: height)
+    }
+}
+
+private extension View {
+    func skeletonCard(cornerRadius: CGFloat) -> some View {
+        background(Color.ppSurface)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(Color.ppBorder.opacity(0.7), lineWidth: 0.8)
+            }
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: State Panel (Empty & Error)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptPetStatePanel: View {
+    let symbol: String
+    let tint: Color
+    let title: String
+    let message: String
+    let primaryTitle: String
+    let primarySymbol: String
+    let primaryAction: () -> Void
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        VStack(spacing: PPSpace.base) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.12))
+                    .frame(width: 84, height: 84)
+
+                Image(systemName: symbol)
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(Color.ppTextPrimary)
+            }
+
+            VStack(spacing: 6) {
+                Text(title)
+                    .font(AdoptFont.bold(19, relativeTo: .title3))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .multilineTextAlignment(.center)
+
+                Text(message)
+                    .font(AdoptFont.regular(14, relativeTo: .subheadline))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button(action: {
+                AdoptHaptics.impactMedium()
+                primaryAction()
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: primarySymbol)
+                        .font(.system(size: 14, weight: .bold))
+
+                    Text(primaryTitle)
+                        .font(AdoptFont.bold(15, relativeTo: .headline))
+                }
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, PPSpace.xl)
+                .frame(height: 48)
+                .background(
+                    Color.ppQuickActionAdoption,
+                    in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                )
+                .overlay {
+                    if colorSchemeContrast == .increased {
+                        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                            .strokeBorder(Color.white, lineWidth: 1.5)
+                    }
+                }
+            }
+            .buttonStyle(AdoptPressStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, PPSpace.xl)
+        .padding(.vertical, PPSpace.xxxl)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+                .strokeBorder(
+                    colorSchemeContrast == .increased
+                        ? Color.ppTextPrimary.opacity(0.6)
+                        : Color.ppBorder.opacity(0.76),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
+                )
+        }
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Components: Cached Connection Banner
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private struct AdoptCachedBanner: View {
+    @ObservedObject var store: AdoptPetListStore
+
+    var body: some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: store.isOffline ? "wifi.slash" : "arrow.triangle.2.circlepath")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.ppTextPrimary)
+                .frame(width: 32, height: 32)
                 .background(
                     (store.isOffline ? Color.ppWarning : Color.ppQuickActionAdoption).opacity(0.16),
                     in: Circle()
                 )
-                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(PPAdoptLang("adopt_list_cached_title"))
-                    .font(PPFont.medium(13))
+                    .font(AdoptFont.bold(13, relativeTo: .caption))
                     .foregroundStyle(Color.ppTextPrimary)
 
-                Text(
-                    store.isRefreshing
-                        ? PPAdoptLang("adopt_list_refreshing")
-                        : PPAdoptLang("adopt_list_cached_subtitle")
-                )
-                .font(PPFont.caption2())
-                .foregroundStyle(Color.ppTextSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(store.isRefreshing ? PPAdoptLang("adopt_list_refreshing") : PPAdoptLang("adopt_list_cached_subtitle"))
+                    .font(AdoptFont.regular(11, relativeTo: .caption2))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(1)
             }
 
-            Spacer(minLength: PPSpace.xs)
+            Spacer()
 
             if store.isRefreshing {
                 ProgressView()
                     .controlSize(.small)
-                    .accessibilityLabel(PPAdoptLang("adopt_list_refreshing"))
             } else {
-                Button {
+                Button(action: {
+                    AdoptHaptics.impactLight()
                     store.requestRefresh()
-                } label: {
+                }) {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.ppTextPrimary)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                        .frame(width: 36, height: 36)
                 }
-                .buttonStyle(AdoptListPressStyle())
-                .accessibilityLabel(PPAdoptLang("Retry"))
+                .buttonStyle(AdoptPressStyle())
             }
         }
         .padding(PPSpace.md)
-        .background(
-            Color.ppSecondarySurface,
-            in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-        )
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .strokeBorder(headerBorderColor, lineWidth: headerBorderWidth)
+                .strokeBorder(Color.ppBorder.opacity(0.7), lineWidth: 0.8)
         }
-        .accessibilityElement(children: .contain)
-    }
-
-    // MARK: - Helpers
-
-    private var filterAnimation: Animation? {
-        reduceMotion ? nil : .easeOut(duration: 0.18)
-    }
-
-    private func cardAccessibilityLabel(for pet: AdoptPetModel) -> String {
-        var parts = [adoptPetTitle(pet)]
-        if adoptPetCoverSource(pet) == nil {
-            parts.append(PPAdoptLang("adopt_detail_media_unavailable"))
-        }
-        let subtitle = adoptPetSubtitle(pet)
-        if subtitle != PPAdoptLang("adopt_list_profile_fallback") {
-            parts.append(subtitle)
-        }
-        parts.append(contentsOf: adoptPetFacts(pet).map(\.title))
-        return parts.joined(separator: ", ")
     }
 }
 
-// MARK: - Store Helpers
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - Helpers & Data Mapping
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 private extension AdoptPetListStore {
     var hasActiveFilters: Bool {
@@ -624,8 +1985,6 @@ private extension AdoptPetListStore {
             || selectedCityID != 0
     }
 }
-
-// MARK: - Profile Content
 
 private struct AdoptListFact: Identifiable, Hashable {
     let id: String
@@ -662,316 +2021,41 @@ private func adoptPetSubtitle(_ pet: AdoptPetModel) -> String {
 private func adoptPetFacts(_ pet: AdoptPetModel) -> [AdoptListFact] {
     var facts: [AdoptListFact] = []
     let gender = PPAdoptGenderLabel(pet.gender)
-
     if !gender.isEmpty {
-        facts.append(AdoptListFact(id: "gender", title: gender, symbol: "person.fill"))
+        facts.append(AdoptListFact(id: "gender", title: gender, symbol: "figure.stand"))
     }
 
     if pet.ageMonths > 0 {
-        facts.append(
-            AdoptListFact(
-                id: "age",
-                title: String(format: PPAdoptLang("%ld Months"), pet.ageMonths),
-                symbol: "calendar"
-            )
-        )
+        let ageString: String
+        if pet.ageMonths >= 12 {
+            let years = pet.ageMonths / 12
+            let months = pet.ageMonths % 12
+            if months == 0 {
+                ageString = "\(years) " + PPAdoptLang("Years")
+            } else {
+                ageString = "\(years) " + PPAdoptLang("Years") + " " + "\(months) " + PPAdoptLang("Months")
+            }
+        } else {
+            ageString = String(format: PPAdoptLang("%ld Months"), pet.ageMonths)
+        }
+        facts.append(AdoptListFact(id: "age", title: ageString, symbol: "calendar"))
     }
 
     return facts
 }
 
-// MARK: - Lead Profile
-
-private struct AdoptPetLeadCard: View {
-    let pet: AdoptPetModel
-    let usesSplitLayout: Bool
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    var body: some View {
-        Group {
-            if usesSplitLayout {
-                HStack(spacing: 0) {
-                    AdoptPetListMedia(pet: pet)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 286)
-
-                    profileCopy
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .frame(minHeight: 286, alignment: .leading)
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    AdoptPetListMedia(pet: pet)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: dynamicTypeSize.isAccessibilitySize ? 238 : 252)
-
-                    profileCopy
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .background(Color.ppSurface)
-        .clipShape(RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
-                .strokeBorder(cardBorderColor, lineWidth: cardBorderWidth)
-        }
-        .shadow(
-            color: colorSchemeContrast == .increased
-                ? .clear
-                : Color.black.opacity(colorScheme == .dark ? 0.16 : 0.055),
-            radius: 14,
-            y: 6
-        )
-        .contentShape(RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous))
+private func symbolForKind(name: String) -> String {
+    let lower = name.lowercased()
+    if lower.contains("طير") || lower.contains("طيور") || lower.contains("bird") || lower.contains("صقر") || lower.contains("صقور") {
+        return "bird.fill"
+    } else if lower.contains("سمك") || lower.contains("اسماك") || lower.contains("fish") {
+        return "fish.fill"
+    } else if lower.contains("أرنب") || lower.contains("ارانب") || lower.contains("rabbit") {
+        return "hare.fill"
+    } else if lower.contains("سلحفاة") || lower.contains("سلاحف") || lower.contains("turtle") {
+        return "tortoise.fill"
     }
-
-    private var profileCopy: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(alignment: .top, spacing: PPSpace.sm) {
-                VStack(alignment: .leading, spacing: PPSpace.xs) {
-                    Text(adoptPetTitle(pet))
-                        .font(PPFont.title1())
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(adoptPetSubtitle(pet))
-                        .font(PPFont.subheadline())
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: PPSpace.xs)
-
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.ppQuickActionAdoption)
-                    .frame(width: 34, height: 34)
-                    .background(Color.ppQuickActionAdoption.opacity(0.14), in: Circle())
-                    .accessibilityHidden(true)
-            }
-
-            factRail
-
-            HStack(spacing: PPSpace.xs) {
-                Text(PPAdoptLang("adopt_list_view_profile"))
-                    .font(PPFont.bold(14))
-                    .foregroundStyle(Color.ppTextPrimary)
-
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(PPSpace.lg)
-    }
-
-    @ViewBuilder
-    private var factRail: some View {
-        let facts = adoptPetFacts(pet)
-        if !facts.isEmpty {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: PPSpace.sm) {
-                    ForEach(facts) { fact in
-                        factView(fact)
-                    }
-                }
-            } else {
-                HStack(spacing: PPSpace.md) {
-                    ForEach(facts) { fact in
-                        factView(fact)
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-        }
-    }
-
-    private func factView(_ fact: AdoptListFact) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: fact.symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.ppQuickActionAdoption)
-                .accessibilityHidden(true)
-            Text(fact.title)
-                .font(PPFont.medium(13))
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-        }
-    }
-
-    private var cardBorderColor: Color {
-        colorSchemeContrast == .increased
-            ? Color.ppTextPrimary.opacity(0.62)
-            : Color.ppBorder.opacity(0.84)
-    }
-
-    private var cardBorderWidth: CGFloat {
-        colorSchemeContrast == .increased ? 1.5 : 0.8
-    }
-}
-
-// MARK: - Supporting Profiles
-
-private struct AdoptPetProfileCard: View {
-    let pet: AdoptPetModel
-    let usesVerticalLayout: Bool
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    var body: some View {
-        Group {
-            if usesVerticalLayout {
-                VStack(alignment: .leading, spacing: 0) {
-                    AdoptPetListMedia(pet: pet)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: dynamicTypeSize.isAccessibilitySize ? 220 : 182)
-
-                    profileCopy
-                }
-            } else {
-                HStack(spacing: 0) {
-                    AdoptPetListMedia(pet: pet)
-                        .frame(width: 124, height: 164)
-
-                    profileCopy
-                        .frame(minHeight: 164)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .background(Color.ppSurface)
-        .clipShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .strokeBorder(
-                    colorSchemeContrast == .increased
-                        ? Color.ppTextPrimary.opacity(0.62)
-                        : Color.ppBorder.opacity(0.84),
-                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
-                )
-        }
-        .shadow(
-            color: colorSchemeContrast == .increased
-                ? .clear
-                : Color.black.opacity(colorScheme == .dark ? 0.12 : 0.04),
-            radius: 10,
-            y: 4
-        )
-        .contentShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
-    }
-
-    private var profileCopy: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-            VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                Text(adoptPetTitle(pet))
-                    .font(PPFont.headline())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(adoptPetSubtitle(pet))
-                    .font(PPFont.caption1())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            let facts = adoptPetFacts(pet)
-            if !facts.isEmpty {
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: PPSpace.sm) {
-                        ForEach(facts) { fact in
-                            profileFact(fact)
-                        }
-                    }
-                } else {
-                    HStack(spacing: PPSpace.md) {
-                        ForEach(facts) { fact in
-                            profileFact(fact)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                }
-            }
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: PPSpace.xs) {
-                Text(PPAdoptLang("adopt_list_view_profile"))
-                    .font(PPFont.bold(13))
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 10, weight: .bold))
-                    .accessibilityHidden(true)
-            }
-            .foregroundStyle(Color.ppTextPrimary)
-        }
-        .padding(PPSpace.base)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func profileFact(_ fact: AdoptListFact) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: fact.symbol)
-                .font(.system(size: 10, weight: .semibold))
-                .accessibilityHidden(true)
-            Text(fact.title)
-                .font(PPFont.medium(12))
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-        }
-        .foregroundStyle(Color.ppTextSecondary)
-    }
-}
-
-// MARK: - Media
-
-private struct AdoptPetListMedia: View {
-    let pet: AdoptPetModel
-
-    var body: some View {
-        GeometryReader { proxy in
-            Group {
-                if let source = adoptPetCoverSource(pet) {
-                    PPPetAdRemoteImageView(
-                        urlString: source.urlString,
-                        blurHash: source.blurHash,
-                        contentMode: .fill,
-                        accessibilityLabel: adoptPetTitle(pet),
-                        showsRetryOnFailure: false,
-                        cacheKey: source.cacheKey,
-                        displaySize: proxy.size,
-                        usesPetFocus: true
-                    )
-                } else {
-                    ZStack {
-                        Color.ppSecondarySurface
-
-                        VStack(spacing: PPSpace.sm) {
-                            Image(systemName: "pawprint.fill")
-                                .font(.system(size: 34, weight: .semibold))
-                                .foregroundStyle(Color.ppQuickActionAdoption.opacity(0.62))
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(Color.ppTextTertiary)
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
-        .accessibilityHidden(true)
-    }
+    return "pawprint.fill"
 }
 
 private struct AdoptPetCoverSource {
@@ -1009,7 +2093,6 @@ private func adoptPetCoverSource(_ pet: AdoptPetModel) -> AdoptPetCoverSource? {
 
 private func adoptPetMetadataString(_ metadata: NSDictionary?, keys: [String]) -> String? {
     guard let metadata else { return nil }
-
     for key in keys {
         guard let value = metadata[key] as? String else { continue }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1017,231 +2100,18 @@ private func adoptPetMetadataString(_ metadata: NSDictionary?, keys: [String]) -
             return trimmed
         }
     }
-
     return nil
 }
 
-// MARK: - Loading
-
-private struct AdoptPetListSkeleton: View {
-    let usesSplitLead: Bool
-    let usesVerticalRows: Bool
-    let usesTwoColumnRows: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack {
-                skeletonLine(width: 168, height: 20)
-                Spacer()
-            }
-
-            leadPlaceholder
-
-            HStack {
-                skeletonLine(width: 128, height: 16)
-                Spacer()
-            }
-            .padding(.top, PPSpace.sm)
-
-            LazyVGrid(
-                columns: usesTwoColumnRows
-                    ? [GridItem(.flexible()), GridItem(.flexible())]
-                    : [GridItem(.flexible())],
-                spacing: PPSpace.md
-            ) {
-                ForEach(0..<4, id: \.self) { _ in
-                    rowPlaceholder
-                }
-            }
-        }
+private func cardAccessibilityLabel(for pet: AdoptPetModel) -> String {
+    var parts = [adoptPetTitle(pet)]
+    if adoptPetCoverSource(pet) == nil {
+        parts.append(PPAdoptLang("adopt_detail_media_unavailable"))
     }
-
-    @ViewBuilder
-    private var leadPlaceholder: some View {
-        if usesSplitLead {
-            HStack(spacing: 0) {
-                mediaBlock
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 286)
-                copyBlock
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 286)
-            }
-            .skeletonCard(cornerRadius: PPCorner.hero)
-        } else {
-            VStack(alignment: .leading, spacing: 0) {
-                mediaBlock
-                    .frame(height: 252)
-                copyBlock
-            }
-            .skeletonCard(cornerRadius: PPCorner.hero)
-        }
+    let subtitle = adoptPetSubtitle(pet)
+    if subtitle != PPAdoptLang("adopt_list_profile_fallback") {
+        parts.append(subtitle)
     }
-
-    @ViewBuilder
-    private var rowPlaceholder: some View {
-        if usesVerticalRows {
-            VStack(alignment: .leading, spacing: 0) {
-                mediaBlock
-                    .frame(height: 182)
-                copyBlock
-            }
-            .skeletonCard(cornerRadius: PPCorner.card)
-        } else {
-            HStack(spacing: 0) {
-                mediaBlock
-                    .frame(width: 124, height: 164)
-                copyBlock
-                    .frame(minHeight: 164)
-            }
-            .skeletonCard(cornerRadius: PPCorner.card)
-        }
-    }
-
-    private var mediaBlock: some View {
-        Rectangle()
-            .fill(Color.ppSecondarySurface)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var copyBlock: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-            skeletonLine(width: 132, height: 16)
-            skeletonLine(width: 102, height: 12)
-            skeletonLine(width: 156, height: 12)
-            Spacer(minLength: PPSpace.sm)
-            skeletonLine(width: 88, height: 12)
-        }
-        .padding(PPSpace.base)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func skeletonLine(width: CGFloat, height: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: min(height / 2, 6), style: .continuous)
-            .fill(Color.ppMineralBeige.opacity(0.82))
-            .frame(maxWidth: width)
-            .frame(height: height)
-    }
-}
-
-private extension View {
-    func skeletonCard(cornerRadius: CGFloat) -> some View {
-        background(Color.ppSurface)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(Color.ppBorder.opacity(0.74), lineWidth: 0.8)
-            }
-    }
-}
-
-// MARK: - Empty / Error
-
-private struct AdoptListStatePanel: View {
-    let symbol: String
-    let tint: Color
-    let title: String
-    let message: String
-    let primaryTitle: String
-    let primarySymbol: String
-    let primaryAction: () -> Void
-
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    var body: some View {
-        VStack(spacing: PPSpace.base) {
-            ZStack {
-                Circle()
-                    .fill(tint.opacity(0.14))
-                    .frame(width: 88, height: 88)
-                Image(systemName: symbol)
-                    .font(.system(size: 32, weight: .semibold))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .symbolRenderingMode(.hierarchical)
-            }
-            .accessibilityHidden(true)
-
-            VStack(spacing: PPSpace.sm) {
-                Text(title)
-                    .font(PPFont.title3())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.center)
-                    .accessibilityAddTraits(.isHeader)
-
-                Text(message)
-                    .font(PPFont.subheadline())
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Button(action: primaryAction) {
-                HStack(spacing: PPSpace.sm) {
-                    Image(systemName: primarySymbol)
-                        .font(.system(size: 14, weight: .bold))
-                    Text(primaryTitle)
-                        .font(PPFont.bold(15))
-                        .lineLimit(2)
-                }
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, PPSpace.xl)
-                .frame(minHeight: 48)
-                .background(
-                    Color.ppPrimary,
-                    in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                )
-                .overlay {
-                    if colorSchemeContrast == .increased {
-                        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                            .strokeBorder(Color.white, lineWidth: 1.5)
-                    }
-                }
-            }
-            .buttonStyle(AdoptListPressStyle())
-            .accessibilityLabel(primaryTitle)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, PPSpace.xl)
-        .padding(.vertical, PPSpace.xxxl)
-        .background(
-            Color.ppSurface,
-            in: RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
-                .strokeBorder(
-                    colorSchemeContrast == .increased
-                        ? Color.ppTextPrimary.opacity(0.62)
-                        : Color.ppBorder.opacity(0.82),
-                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 0.8
-                )
-        }
-    }
-}
-
-// MARK: - Press Style
-
-private struct AdoptListPressStyle: ButtonStyle {
-    var pressedScale: CGFloat = 0.97
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(
-                reduceMotion || !configuration.isPressed || !isEnabled
-                    ? 1
-                    : pressedScale
-            )
-            .opacity(
-                !isEnabled
-                    ? 0.46
-                    : (configuration.isPressed ? 0.88 : 1)
-            )
-            .animation(
-                reduceMotion ? nil : .easeOut(duration: 0.14),
-                value: configuration.isPressed
-            )
-    }
+    parts.append(contentsOf: adoptPetFacts(pet).map(\.title))
+    return parts.joined(separator: ", ")
 }

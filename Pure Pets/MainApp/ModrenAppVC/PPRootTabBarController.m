@@ -71,7 +71,7 @@ static BOOL const PPShowsRootCenterAddButton = NO;
 static CGFloat const PPRootTabSelectionMarkerPhoneWidth = 22.0;
 static CGFloat const PPRootTabSelectionMarkerPadWidth = 26.0;
 static CGFloat const PPRootTabSelectionMarkerHeight = 3.0;
-static CGFloat const PPRootCenterActionSize = PPButtonHeightMD;
+static CGFloat const PPRootCenterActionSize = PPButtonHeightMD * 0.90f;
 
 @class PPPremiumDockBarDelegate;
 @class PPCartFloatingBarCoordinator;
@@ -3939,12 +3939,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     showAddMenuButton.translatesAutoresizingMaskIntoConstraints = NO;
 
     UIImageSymbolConfiguration *symbolConfig =
-    [UIImageSymbolConfiguration configurationWithPointSize:21.0
+    [UIImageSymbolConfiguration configurationWithPointSize:19.0
                                                      weight:UIImageSymbolWeightSemibold
                                                       scale:UIImageSymbolScaleMedium];
 
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    UIImage *icon = [[[UIImage systemImageNamed:@"plus" withConfiguration:symbolConfig] imageWithTintColor:UIColor.whiteColor]
+    UIImage *rawImage = [UIImage imageNamed:@"pawprint"];
+    if (!rawImage) {
+        rawImage = [UIImage systemImageNamed:@"pawprint.fill" withConfiguration:symbolConfig];
+    }
+    UIImage *icon = [[rawImage imageWithTintColor:UIColor.whiteColor]
                      imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 
     if (@available(iOS 26.0, *)) {

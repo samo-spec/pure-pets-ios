@@ -28,13 +28,26 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *gender;           // "Male" / "Female"
 @property (nonatomic) NSInteger cityID;
 @property (nonatomic, copy) NSString *details;
+@property (nonatomic, copy) NSString *adoptionReason;
 @property (nonatomic, strong) NSArray<NSString *> *imageURLs;
 @property (nonatomic, copy, nullable) NSArray<NSDictionary *> *imageMeta;
 @property (nonatomic, strong) NSDate *createdAt;
 /// 0 = public, 1 = hidden by owner. Missing legacy values default to public.
 @property (nonatomic) NSInteger visibility;
+/// Canonical Community listing lifecycle and optimistic-concurrency version.
+@property (nonatomic, copy) NSString *status;
+@property (nonatomic) NSInteger version;
+@property (nonatomic, copy) NSString *petID;
+@property (nonatomic, copy) NSString *organizationID;
+@property (nonatomic, copy) NSString *organizationName;
+@property (nonatomic) BOOL organizationVerified;
+@property (nonatomic, copy) NSString *ownerDisplayName;
+@property (nonatomic, copy) NSString *locationDisplayName;
+@property (nonatomic, copy) NSArray<NSString *> *mediaAssetIDs;
 
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot;
+- (instancetype)initWithDictionary:(NSDictionary *)dictionary
+                         documentID:(NSString *)documentID;
 - (NSDictionary *)toFirestoreDictionary;
 
 

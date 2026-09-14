@@ -103,7 +103,7 @@ public struct PPCommandDeckTheme {
         surface: Color = .ppSurfaceElevated,
         selectedSurface: Color = .ppSoftRose,
         inactiveInk: Color = .ppTextSecondary,
-        border: Color = .ppSurfaceBorder
+        border: Color = .ppForeground.opacity(0.75)
     ) {
         self.accent = accent
         self.createTint = createTint
@@ -153,8 +153,9 @@ private enum PPCommandDeckMetrics {
 
     /// The visible command is smaller than the capsule while its equal-width
     /// slot remains a full native hit target.
-    static let createDiameter: CGFloat = 50
-    static let createIconPointSize: CGFloat = 21
+    /// Decreased by 10% (50 -> 45 pt, icon 21 -> 19 pt).
+    static let createDiameter: CGFloat = 45
+    static let createIconPointSize: CGFloat = 19
 
     static var tileHeight: CGFloat { deckHeight - 10 }
     static var createTopInset: CGFloat {
@@ -303,8 +304,8 @@ public struct PPCommandDeckTabBar: View {
                 deckShape.strokeBorder(
                     LinearGradient(
                         colors: [
-                            deckBorderColor.opacity(colorScheme == .dark ? 0.9 : 0.7),
-                            deckBorderColor.opacity(0.2)
+                            deckBorderColor,
+                            deckBorderColor.opacity(colorScheme == .dark ? 0.35 : 0.22)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -366,12 +367,12 @@ public struct PPCommandDeckTabBar: View {
 
     private var deckBorderColor: Color {
         contrast == .increased
-            ? Color.ppTextPrimary.opacity(0.45)
-            : theme.border.opacity(colorScheme == .dark ? 0.82 : 0.54)
+            ? Color.ppTextPrimary.opacity(0.75)
+            : Color.ppForeground.opacity(0.75)
     }
 
     private var deckBorderWidth: CGFloat {
-        contrast == .increased ? 1.4 : 0.8
+        contrast == .increased ? 1.4 : 0.75
     }
 
     private var deckShadowColor: Color {
@@ -397,16 +398,17 @@ public struct PPCommandDeckTabBar: View {
                             contrast == .increased
                                 ? Color.white.opacity(0.90)
                                 : Color.white.opacity(0.18),
-                            lineWidth: contrast == .increased ? 1.4 : 0.8
+                            lineWidth: contrast == .increased ? 1.4 : 0.75
                         )
                     }
 
-                Image(systemName: "plus")
-                    .font(
-                        .system(
-                            size: PPCommandDeckMetrics.createIconPointSize,
-                            weight: .semibold
-                        )
+                Image("pawprint")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(
+                        width: PPCommandDeckMetrics.createIconPointSize,
+                        height: PPCommandDeckMetrics.createIconPointSize
                     )
                     .foregroundStyle(Color.white)
             }

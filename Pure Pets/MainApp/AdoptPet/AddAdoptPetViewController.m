@@ -12,6 +12,7 @@
 #import "PPSelectOptionViewController.h"
 #import "PPFormEngine.h"
 #import "CitiesManager.h"
+#import "Pure_Pets-Swift.h"
 
 #ifdef DEBUG
 #define PPAdoptLog(fmt, ...) NSLog((@"[AdoptPetForm] " fmt), ##__VA_ARGS__)
@@ -111,10 +112,21 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 @implementation AddAdoptPetViewController
 
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        self.modalPresentationStyle = UIModalPresentationFullScreen;
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
 - (instancetype)initWithPet:(AdoptPetModel *)pet {
     self = [super init];
     if (self) {
         _editingPet = pet;
+        self.modalPresentationStyle = UIModalPresentationFullScreen;
+        self.hidesBottomBarWhenPushed = YES;
     }
     return self;
 }
@@ -127,24 +139,28 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = AppBackgroundClr;
-    self.isHydratingFormData = YES;
-    self.hasUserModifiedForm = NO;
-
-    [self setNavButtons];
-    [self pp_buildTableView];
-    [self setupImageCollection];
-    [self setupPrefillLoadingUI];
-    if (![self restoreDraftIfNeeded]) {
-        [self preloadFormIfEditing];
+    self.modalPresentationStyle = UIModalPresentationFullScreen;
+    if (self.navigationController) {
+        self.navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
     }
-    self.isHydratingFormData = NO;
-    [self pp_refreshTitle];
-    [self pp_refreshFormHero];
-    [self pp_prepareFormEntranceStateIfNeeded];
 
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
-    tap.cancelsTouchesInView = NO;
-    [self.view addGestureRecognizer:tap];
+    __weak typeof(self) weakSelf = self;
+    AddAdoptPetHostingController *host = [[AddAdoptPetHostingController alloc] initWithPet:self.editingPet
+                                                                                 onDismiss:^{
+        [weakSelf pp_dismissForm];
+    } onSuccess:^{
+        [weakSelf pp_dismissForm];
+    }];
+    [self addChildViewController:host];
+    host.view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:host.view];
+    [NSLayoutConstraint activateConstraints:@[
+        [host.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [host.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [host.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [host.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
+    [host didMoveToParentViewController:self];
 }
 
 - (void)pp_dismissKeyboard {
@@ -153,14 +169,12 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
-    [self pp_refreshTitle];
-    [self pp_prepareFormEntranceStateIfNeeded];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    [self pp_runFormEntranceAnimationIfNeeded];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {

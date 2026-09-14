@@ -328,7 +328,7 @@ struct PPPureLensVanguardCard: View {
                     }
 
                     // 3-step connected recognition pipeline
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         stepPill(symbol: "camera.fill", titleKey: "pure_lens_account_camera", tint: Color.ppPrimary)
                         connectorLine
                         stepPill(symbol: "viewfinder", titleKey: "pure_lens_account_recognize", tint: Color.ppSuccess)
@@ -357,9 +357,11 @@ struct PPPureLensVanguardCard: View {
             Text(NSLocalizedString(titleKey, comment: ""))
                 .font(PPUserMenuFont.medium(size: 11.5, relativeTo: .caption))
                 .foregroundColor(Color.ppTextSecondary)
+                .lineLimit(1)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
+        .fixedSize(horizontal: true, vertical: false)
         .background(
             Capsule()
                 .fill(Color.ppSurfaceBase.opacity(0.85))
@@ -371,7 +373,7 @@ struct PPPureLensVanguardCard: View {
         Rectangle()
             .fill(Color.ppPrimary.opacity(0.2))
             .frame(height: 1.5)
-            .frame(maxWidth: .infinity)
+            .frame(minWidth: 6, maxWidth: .infinity)
     }
 }
 
