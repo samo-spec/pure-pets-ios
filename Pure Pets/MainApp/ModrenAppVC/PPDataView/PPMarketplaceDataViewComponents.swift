@@ -47,14 +47,16 @@ struct PPMarketplaceAtmosphere: View {
 
 @available(iOS 15.0, *)
 enum PPMarketplaceTopDeckMetrics {
-    /// Vertical amplitude of the organic wave bottom contour (matches 20px design reference).
-    static let waveDepth: CGFloat = 20.0
+    /// Radius of the center X half-circle container for the current category icon (0 = clean straight separator).
+    static let halfCircleRadius: CGFloat = 0.0
+    /// Vertical amplitude of the organic wave bottom contour (retained for backward compatibility).
+    static let waveDepth: CGFloat = 10.0
     /// Stroke width for the delicate rose/primary wave separator line.
     static let separatorStrokeWidth: CGFloat = 1.5
     /// High-contrast accessible stroke width.
     static let separatorStrokeIncreasedContrastWidth: CGFloat = 2.0
-    /// Bottom padding inside the dock to keep controls comfortably above the wave crest.
-    static let dockBottomPadding: CGFloat = waveDepth + PPSpace.xs // 24 pt
+    /// Bottom padding inside the dock to give controls vertical breathing room comfortably above the separator.
+    static let dockBottomPadding: CGFloat = 10.0
 }
 
 @available(iOS 15.0, *)
@@ -77,16 +79,16 @@ struct PPMarketplaceTopDeckWaveShape: Shape {
 
             // Right curve to central crest
             path.addCurve(
-                to: CGPoint(x: width * 0.63, y: baseY + (waveDepth * 0.35)),
-                control1: CGPoint(x: width * 0.92, y: baseY + (waveDepth * 1.18)),
-                control2: CGPoint(x: width * 0.84, y: baseY + (waveDepth * 0.78))
+                to: CGPoint(x: width * 0.60, y: baseY + (waveDepth * 0.30)),
+                control1: CGPoint(x: width * 0.88, y: baseY + (waveDepth * 0.95)),
+                control2: CGPoint(x: width * 0.76, y: baseY + (waveDepth * 0.65))
             )
 
             // Crest curve to left edge
             path.addCurve(
                 to: CGPoint(x: 0, y: baseY),
-                control1: CGPoint(x: width * 0.30, y: baseY + (waveDepth * 1.16)),
-                control2: CGPoint(x: width * 0.20, y: baseY + (waveDepth * 1.28))
+                control1: CGPoint(x: width * 0.35, y: baseY + (waveDepth * 0.90)),
+                control2: CGPoint(x: width * 0.18, y: baseY + (waveDepth * 0.95))
             )
 
             // Up left edge to top
@@ -96,15 +98,15 @@ struct PPMarketplaceTopDeckWaveShape: Shape {
             path.addLine(to: CGPoint(x: width, y: baseY))
 
             path.addCurve(
-                to: CGPoint(x: width * 0.37, y: baseY + (waveDepth * 0.35)),
-                control1: CGPoint(x: width * 0.70, y: baseY + (waveDepth * 1.16)),
-                control2: CGPoint(x: width * 0.80, y: baseY + (waveDepth * 1.28))
+                to: CGPoint(x: width * 0.40, y: baseY + (waveDepth * 0.30)),
+                control1: CGPoint(x: width * 0.82, y: baseY + (waveDepth * 0.95)),
+                control2: CGPoint(x: width * 0.65, y: baseY + (waveDepth * 0.90))
             )
 
             path.addCurve(
                 to: CGPoint(x: 0, y: baseY + (waveDepth * 0.25)),
-                control1: CGPoint(x: width * 0.16, y: baseY + (waveDepth * 0.78)),
-                control2: CGPoint(x: width * 0.08, y: baseY + (waveDepth * 1.18))
+                control1: CGPoint(x: width * 0.24, y: baseY + (waveDepth * 0.65)),
+                control2: CGPoint(x: width * 0.12, y: baseY + (waveDepth * 0.95))
             )
 
             path.addLine(to: CGPoint(x: 0, y: 0))
@@ -119,43 +121,139 @@ struct PPMarketplaceTopDeckWaveShape: Shape {
 struct PPMarketplaceWaveSeparatorLine: Shape {
     var isRightToLeft: Bool = true
     var waveDepth: CGFloat = PPMarketplaceTopDeckMetrics.waveDepth
+    var time: TimeInterval = 0.0
+
+    var animatableData: Double {
+        get { time }
+        set { time = newValue }
+    }
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let width = rect.width
         let height = rect.height
+        guard width > 0, height > 0 else { return path }
+
         let baseY = max(0, height - waveDepth)
+        let segments = 48
+        let dx = width / CGFloat(segments)
 
-        if isRightToLeft {
-            path.move(to: CGPoint(x: 0, y: baseY))
+        var points: [CGPoint] = []
+        points.reserveCapacity(segments + 1)
 
-            path.addCurve(
-                to: CGPoint(x: width * 0.63, y: baseY + (waveDepth * 0.35)),
-                control1: CGPoint(x: width * 0.20, y: baseY + (waveDepth * 1.28)),
-                control2: CGPoint(x: width * 0.30, y: baseY + (waveDepth * 1.16))
-            )
+        let direction: CGFloat = isRightToLeft ? 1.0 : -1.0
 
-            path.addCurve(
-                to: CGPoint(x: width, y: baseY + (waveDepth * 0.25)),
-                control1: CGPoint(x: width * 0.84, y: baseY + (waveDepth * 0.78)),
-                control2: CGPoint(x: width * 0.92, y: baseY + (waveDepth * 1.18))
-            )
-        } else {
-            path.move(to: CGPoint(x: 0, y: baseY + (waveDepth * 0.25)))
+        for i in 0...segments {
+            let x = CGFloat(i) * dx
+            let rawU = x / width
+            let u = isRightToLeft ? rawU : (1.0 - rawU)
 
-            path.addCurve(
-                to: CGPoint(x: width * 0.37, y: baseY + (waveDepth * 0.35)),
-                control1: CGPoint(x: width * 0.08, y: baseY + (waveDepth * 1.18)),
-                control2: CGPoint(x: width * 0.16, y: baseY + (waveDepth * 0.78))
-            )
+            // Progressive traveling wave harmonics (authentic liquid wave physics)
+            let phase1 = (u * 1.35 * .pi * 2.0) + (direction * CGFloat(time) * 1.40)
+            let phase2 = (u * 2.70 * .pi * 2.0) - (direction * CGFloat(time) * 0.90) + 1.2
+            let phase3 = (u * 0.85 * .pi * 2.0) + (direction * CGFloat(time) * 0.55) + 2.4
 
-            path.addCurve(
-                to: CGPoint(x: width, y: baseY),
-                control1: CGPoint(x: width * 0.70, y: baseY + (waveDepth * 1.16)),
-                control2: CGPoint(x: width * 0.80, y: baseY + (waveDepth * 1.28))
-            )
+            // Boundary envelope anchoring edges cleanly while permitting natural fluid motion across dock
+            let envelope = 0.35 + (0.65 * sin(rawU * .pi))
+
+            let baseDip = sin(rawU * .pi) * (waveDepth * 0.58)
+            let wave1 = sin(phase1) * (waveDepth * 0.18)
+            let wave2 = cos(phase2) * (waveDepth * 0.08)
+            let wave3 = sin(phase3) * (waveDepth * 0.05)
+
+            let totalWaveMotion = (wave1 + wave2 + wave3) * envelope
+            let y = baseY + baseDip + totalWaveMotion
+            points.append(CGPoint(x: x, y: y))
         }
 
+        guard let first = points.first else { return path }
+        path.move(to: first)
+
+        for i in 1..<points.count {
+            let p0 = points[i - 1]
+            let p1 = points[i]
+            let mid = CGPoint(x: (p0.x + p1.x) / 2.0, y: (p0.y + p1.y) / 2.0)
+            path.addQuadCurve(to: mid, control: p0)
+        }
+
+        if let last = points.last {
+            path.addLine(to: last)
+        }
+
+        return path
+    }
+}
+
+@available(iOS 15.0, *)
+struct PPMarketplaceTopDeckStraightShape: Shape {
+    var halfCircleRadius: CGFloat = PPMarketplaceTopDeckMetrics.halfCircleRadius
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        guard width > 0, height > 0 else { return path }
+
+        let r = min(halfCircleRadius, min(width / 4.0, height))
+        guard r > 0 else {
+            path.addRect(rect)
+            return path
+        }
+        let baseY = max(0, height - r)
+        let midX = width / 2.0
+
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: width, y: 0))
+        path.addLine(to: CGPoint(x: width, y: baseY))
+        path.addLine(to: CGPoint(x: midX + r, y: baseY))
+
+        // Center X downward half circle (right to left through bottom)
+        path.addArc(
+            center: CGPoint(x: midX, y: baseY),
+            radius: r,
+            startAngle: .degrees(0),
+            endAngle: .degrees(180),
+            clockwise: false
+        )
+
+        path.addLine(to: CGPoint(x: 0, y: baseY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+@available(iOS 15.0, *)
+struct PPMarketplaceDeckSeparatorShape: Shape {
+    var halfCircleRadius: CGFloat = PPMarketplaceTopDeckMetrics.halfCircleRadius
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        guard width > 0, height > 0 else { return path }
+
+        let r = min(halfCircleRadius, min(width / 4.0, height))
+        guard r > 0 else {
+            path.move(to: CGPoint(x: 0, y: height))
+            path.addLine(to: CGPoint(x: width, y: height))
+            return path
+        }
+        let baseY = max(0, height - r)
+        let midX = width / 2.0
+
+        path.move(to: CGPoint(x: 0, y: baseY))
+        path.addLine(to: CGPoint(x: midX - r, y: baseY))
+
+        // Center X downward half circle (left to right through bottom)
+        path.addArc(
+            center: CGPoint(x: midX, y: baseY),
+            radius: r,
+            startAngle: .degrees(180),
+            endAngle: .degrees(0),
+            clockwise: true
+        )
+
+        path.addLine(to: CGPoint(x: width, y: baseY))
         return path
     }
 }
@@ -173,10 +271,11 @@ struct PPMarketplaceHeroBackground: View {
     var body: some View {
         GeometryReader { proxy in
             let topBleed = max(0, statusBarHeight) + 400
-            Group {
-                if reduceTransparency || contrast == .increased {
-                    Color.ppSurface
-                } else {
+            ZStack {
+                // Solid surface background ensures no scroll content bleeds through
+                Color.ppSurface
+
+                if !reduceTransparency && contrast != .increased {
                     LinearGradient(
                         colors: [
                             Color.ppSurface,
@@ -203,48 +302,133 @@ struct PPMarketplaceCurrentDockBackground: View {
     let isPinned: Bool
     let statusBarHeight: CGFloat
     let isRightToLeft: Bool
+    var categoryIconName: String = "sparkles.rectangle.stack"
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { proxy in
             let topExtension = isPinned ? max(0, statusBarHeight) + PPCorner.hero : 0
             let totalHeight = proxy.size.height + topExtension
             let isIncreasedContrast = contrast == .increased
-            let waveDepth = PPMarketplaceTopDeckMetrics.waveDepth
+            let r = PPMarketplaceTopDeckMetrics.halfCircleRadius
+            let width = proxy.size.width
+            let midX = width / 2.0
+            let baseY = max(0, totalHeight - r)
 
             ZStack(alignment: .bottom) {
-                // 1. Deck surface fill shaped with organic wave bottom contour
+                // 1. Static floating vector elevation shadow following the straight line + center half circle
+                if !isIncreasedContrast {
+                    PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
+                        .fill(Color.ppSurface)
+                        .shadow(
+                            color: Color.black.opacity(colorScheme == .dark ? 0.32 : 0.07),
+                            radius: 8,
+                            x: 0,
+                            y: 4
+                        )
+                        .shadow(
+                            color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.18 : 0.06),
+                            radius: 3,
+                            x: 0,
+                            y: 1
+                        )
+                }
+
+                // 2. Static deck surface fill strictly clipped to straight shape + half circle (100% opaque base guarantees separation)
                 surfaceFill(isIncreasedContrast: isIncreasedContrast)
                     .clipShape(
-                        PPMarketplaceTopDeckWaveShape(
-                            isRightToLeft: isRightToLeft,
-                            waveDepth: waveDepth
+                        PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
+                    )
+
+                // 3. Delicate ambient glow along the straight line and center half circle
+                if !isIncreasedContrast {
+                    PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
+                        .stroke(
+                            Color.ppPrimary.opacity(colorScheme == .dark ? 0.24 : 0.14),
+                            style: StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round)
+                        )
+                        .blur(radius: 1.5)
+                }
+
+                // 4. Primary straight separator line with faded sides and center half circle
+                PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
+                    .stroke(
+                        straightSeparatorGradient(isIncreasedContrast: isIncreasedContrast),
+                        style: StrokeStyle(
+                            lineWidth: isIncreasedContrast
+                                ? PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth
+                                : PPMarketplaceTopDeckMetrics.separatorStrokeWidth,
+                            lineCap: .round,
+                            lineJoin: .round
                         )
                     )
-                    // Downward soft shadow for tactile depth over scrolling cards
                     .shadow(
                         color: isIncreasedContrast
                             ? .clear
-                            : Color.ppPrimary.opacity(colorScheme == .dark ? 0.12 : 0.08),
-                        radius: 6,
+                            : Color.ppPrimary.opacity(colorScheme == .dark ? 0.35 : 0.18),
+                        radius: 2.0,
                         x: 0,
-                        y: 3
+                        y: 1
                     )
 
-                // 2. Wave separator line stroke
-                PPMarketplaceWaveSeparatorLine(
-                    isRightToLeft: isRightToLeft,
-                    waveDepth: waveDepth
-                )
-                .stroke(
-                    strokeColor(isIncreasedContrast: isIncreasedContrast),
-                    lineWidth: isIncreasedContrast
-                        ? PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth
-                        : PPMarketplaceTopDeckMetrics.separatorStrokeWidth
-                )
+                // 5. Center X half-circle category container with current category icon (only if r > 0)
+                if r > 0 {
+                    ZStack {
+                        // Subtle luminous inner radial tint inside the half-circle dome
+                        if !isIncreasedContrast {
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [
+                                            Color.ppPrimary.opacity(colorScheme == .dark ? 0.18 : 0.09),
+                                            Color.ppPrimary.opacity(colorScheme == .dark ? 0.04 : 0.02),
+                                            Color.clear
+                                        ],
+                                        center: .center,
+                                        startRadius: 1,
+                                        endRadius: r * 0.95
+                                    )
+                                )
+                                .frame(width: r * 2.0, height: r * 2.0)
+                                .position(x: midX, y: baseY)
+                                .clipShape(
+                                    PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
+                                )
+                        }
+
+                        // Current category icon
+                        Image(systemName: categoryIconName)
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(
+                                isIncreasedContrast
+                                    ? Color.ppTextPrimary
+                                    : (colorScheme == .dark ? Color.ppPrimaryShiner : Color.ppPrimary)
+                            )
+                            .shadow(
+                                color: isIncreasedContrast
+                                    ? .clear
+                                    : Color.ppPrimary.opacity(colorScheme == .dark ? 0.40 : 0.22),
+                                radius: 2,
+                                x: 0,
+                                y: 1
+                            )
+                            .id(categoryIconName)
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .scale(scale: 0.82).combined(with: .opacity)
+                            )
+                            .position(x: midX, y: baseY + (r * 0.46))
+                    }
+                    .animation(
+                        reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82),
+                        value: categoryIconName
+                    )
+                }
             }
             .frame(width: proxy.size.width, height: totalHeight)
             .offset(y: -topExtension)
@@ -255,41 +439,64 @@ struct PPMarketplaceCurrentDockBackground: View {
 
     @ViewBuilder
     private func surfaceFill(isIncreasedContrast: Bool) -> some View {
-        if reduceTransparency || isIncreasedContrast {
+        ZStack {
+            // Uncompromising solid base: guarantees zero bleed-through of underlying scrolling cards
             Color.ppSurface
-        } else if isPinned {
-            ZStack {
-                Rectangle().fill(.regularMaterial)
-                LinearGradient(
-                    colors: [
-                        Color.ppSurface.opacity(0.85),
-                        colorScheme == .dark
-                            ? Color.ppSurfaceOverlay.opacity(0.95)
-                            : Color.ppSurfaceOverlay
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+
+            if !reduceTransparency && !isIncreasedContrast {
+                if isPinned {
+                    Rectangle().fill(.ultraThickMaterial)
+                    LinearGradient(
+                        colors: [
+                            Color.ppSurface.opacity(0.92),
+                            colorScheme == .dark
+                                ? Color.ppSurfaceOverlay.opacity(0.96)
+                                : Color.ppSurfaceOverlay
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                } else {
+                    LinearGradient(
+                        colors: [
+                            colorScheme == .dark
+                                ? Color.ppSurfaceOverlay.opacity(0.88)
+                                : Color.ppSurfaceOverlay.opacity(0.78),
+                            Color.ppSurfaceOverlay
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
             }
-        } else {
-            LinearGradient(
-                colors: [
-                    colorScheme == .dark
-                        ? Color.ppSurfaceOverlay.opacity(0.85)
-                        : Color.ppSurfaceOverlay.opacity(0.70),
-                    Color.ppSurfaceOverlay
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
         }
     }
 
-    private func strokeColor(isIncreasedContrast: Bool) -> Color {
+    private func straightSeparatorGradient(isIncreasedContrast: Bool) -> LinearGradient {
         if isIncreasedContrast {
-            return Color.ppTextSecondary
+            return LinearGradient(
+                colors: [Color.ppTextPrimary, Color.ppTextPrimary],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
         }
-        return Color.ppPrimary.opacity(colorScheme == .dark ? 0.40 : 0.32)
+        let leadColor = Color.ppPrimary.opacity(colorScheme == .dark ? 0.35 : 0.20)
+        let crestColor = Color.ppPrimary.opacity(colorScheme == .dark ? 0.95 : 0.85)
+        let centerColor = Color.ppPrimaryShiner.opacity(colorScheme == .dark ? 0.98 : 0.95)
+
+        return LinearGradient(
+            stops: [
+                .init(color: Color.clear, location: 0.0),
+                .init(color: leadColor, location: 0.14),
+                .init(color: crestColor, location: 0.35),
+                .init(color: centerColor, location: 0.50),
+                .init(color: crestColor, location: 0.65),
+                .init(color: leadColor, location: 0.86),
+                .init(color: Color.clear, location: 1.0)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 }
 
@@ -722,7 +929,8 @@ struct PPMarketplaceCurrentDock: View {
             PPMarketplaceCurrentDockBackground(
                 isPinned: showsPinnedBackControl,
                 statusBarHeight: statusBarHeight,
-                isRightToLeft: store.isRightToLeft
+                isRightToLeft: store.isRightToLeft,
+                categoryIconName: store.currentSectionDescriptor.iconName
             )
         }
         .zIndex(4)
@@ -897,18 +1105,30 @@ struct PPMarketplaceCurrentDock: View {
         .accessibilityLabel(PPMarketplaceText.localized("marketplace_browse_controls"))
     }
 
+    private var filterButtonVisualSize: CGFloat {
+        showsPinnedBackControl ? 36 : 40
+    }
+
+    private var filterButtonIconSize: CGFloat {
+        showsPinnedBackControl ? 15 : 17
+    }
+
+    private var filterButtonCornerRadius: CGFloat {
+        showsPinnedBackControl ? 12 : PPCorner.medium
+    }
+
     private var filtersControl: some View {
         Button(action: store.beginFilterEditing) {
             Image(systemName: "slider.horizontal.3")
-                .font(.system(size: 17, weight: .bold))
+                .font(.system(size: filterButtonIconSize, weight: .bold))
                 .foregroundStyle(store.activeFilterCount > 0 ? Color.white : Color.ppTextPrimary)
-                .frame(width: 40, height: 40)
+                .frame(width: filterButtonVisualSize, height: filterButtonVisualSize)
                 .background(
                     store.activeFilterCount > 0 ? Color.ppPrimary : Color.ppSurface,
-                    in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: filterButtonCornerRadius, style: .continuous)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    RoundedRectangle(cornerRadius: filterButtonCornerRadius, style: .continuous)
                         .strokeBorder(
                             store.activeFilterCount > 0
                                 ? Color.clear
@@ -928,7 +1148,7 @@ struct PPMarketplaceCurrentDock: View {
                     }
                 }
                 .frame(width: 44, height: 44)
-                .contentShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: filterButtonCornerRadius, style: .continuous))
         }
         .buttonStyle(PPMarketplacePressStyle(reduceMotion: interactionMotionIsDisabled))
         .disabled(store.isReplacingContext)

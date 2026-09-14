@@ -440,7 +440,17 @@ struct PPHomeMarketingStage: View {
         }
         .animation(pageAnimation, value: page.id)
         .frame(maxWidth: .infinity, alignment: frameAlignment)
-        .background(Color.homeRaisedSurface)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.25 : 0.40),
+                    Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.72 : 0.80),
+                    Color.homeRaisedSurface
+                ],
+                startPoint: .bottom,
+                endPoint: .top
+            )
+        )
         .clipShape(shape)
         .overlay {
             shape.strokeBorder(
@@ -4395,88 +4405,165 @@ struct PPEcosystemDomainSwitcher: View {
     }
 }
 
-/// Retail Commerce Hero Card (Shop & Food)
+enum PPProvisionsCareLayout {
+    static let featuredActionID = "shop"
+    static let gridColumns = [["food", "pharmacy"], ["vet", "services"]]
+    static let compactRowCount = 2
+    static let compactCardHeight: CGFloat = 94
+    static let featuredCorner: CGFloat = 24
+    static let compactCorner: CGFloat = 20
+
+    // Preserve the featured card's original one-third width contract while
+    // allowing the 2x2 quick-action section to breathe at 8pt internally.
+    static let baselineColumnSpacing: CGFloat = PPSpace.xs
+    static let featuredToGridSpacing: CGFloat = 8
+    static let innerSectionSpacing: CGFloat = 8
+    static let rowSpacing: CGFloat = innerSectionSpacing
+
+    // Living Commerce Portal: use local resource Shop2.json for zero-latency
+    // instant rendering from the main app bundle.
+    static let featuredLottieResourceName = "Shop2.json"
+    static let featuredLottieStoragePath = "Shop2.json"
+    static let featuredLottieFallbackName = "Shop2.json"
+    static let featuredPrefersFirebaseSource = false
+    static let featuredArtworkSide: CGFloat = 80
+
+    static func preservedFeaturedCardWidth(totalWidth: CGFloat) -> CGFloat {
+        max(0, (totalWidth - (baselineColumnSpacing * 2)) / 3)
+    }
+
+    static func compactCardWidth(totalWidth: CGFloat) -> CGFloat {
+        let featuredWidth = preservedFeaturedCardWidth(totalWidth: totalWidth)
+        let availableForGrid = max(0, totalWidth - featuredWidth - featuredToGridSpacing)
+        return max(0, (availableForGrid - innerSectionSpacing) / 2)
+    }
+
+    static var featuredCardHeight: CGFloat {
+        (compactCardHeight * CGFloat(compactRowCount))
+            + (rowSpacing * CGFloat(max(0, compactRowCount - 1)))
+    }
+}
+
+/// Featured retail action. The narrow one-third lane is treated as a living
+/// commerce portal rather than a stretched compact tile: cue → animated shop
+/// identity → anchored copy, all inside the category-defining card geometry.
 @available(iOS 15.0, *)
 struct PPCommerceHeroCard: View {
     let action: HomePriorityAction
     let accent: Color
     let cueText: String
+    var fixedHeight: CGFloat? = nil
     let onTap: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @State private var livePulse = false
+
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+        RoundedRectangle(cornerRadius: PPProvisionsCareLayout.featuredCorner, style: .continuous)
     }
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                HStack(alignment: .top) {
-                    // Icon Medallion
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onTap()
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                // Top Live Express Pill
+                HStack(spacing: 5) {
+                    // Live beacon dot
                     ZStack {
-                        RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
-                            .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.12))
-                            .frame(width: 44, height: 44)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
-                                    .stroke(accent.opacity(contrast == .increased ? 0.55 : 0.18), lineWidth: 1)
-                            }
+                        Circle()
+                            .fill(Color(red: 0.16, green: 0.82, blue: 0.55).opacity(livePulse ? 0.35 : 0.15))
+                            .frame(width: 10, height: 10)
+                            .scaleEffect(livePulse ? 1.3 : 0.85)
 
-                        if action.id == "food" || action.systemImage == "pet-food" {
-                            Image("pet-food")
-                                .renderingMode(.template)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 20, height: 20)
-                                .foregroundStyle(accent)
-                        } else {
-                            Image(systemName: action.systemImage)
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundStyle(accent)
-                        }
+                        Circle()
+                            .fill(Color(red: 0.16, green: 0.82, blue: 0.55))
+                            .frame(width: 5.5, height: 5.5)
                     }
 
-                    Spacer(minLength: PPSpace.xs)
-
-                    // Direction / Delivery Cue Pill
                     Text(cueText)
-                        .font(HomeFont.bold(10))
-                        .foregroundStyle(accent)
-                        .padding(.horizontal, PPSpace.xs + 2)
-                        .padding(.vertical, 3)
-                        .background(
-                            Capsule()
-                                .fill(accent.opacity(colorScheme == .dark ? 0.20 : 0.10))
-                        )
-                }
-
-                VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                    Text(action.title)
-                        .font(HomeFont.bold(17))
+                        .font(HomeFont.bold(10.5))
                         .foregroundStyle(Color.homeTextPrimary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                        .minimumScaleFactor(0.75)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4.5)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(accent.opacity(colorScheme == .dark ? 0.20 : 0.08))
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(accent.opacity(colorScheme == .dark ? 0.32 : 0.16), lineWidth: 0.8)
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer(minLength: 4)
+
+                // Living Portal Artwork
+                PPFeaturedCommerceArtwork(accent: accent)
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                Spacer(minLength: 4)
+
+                // Title & Forward Portal Affordance
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .center, spacing: 4) {
+                        Text(action.title)
+                            .font(HomeFont.bold(17.5))
+                            .foregroundStyle(Color.homeTextPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.80)
+
+                        Spacer(minLength: 0)
+
+                        // Circular directional portal indicator
+                        ZStack {
+                            Circle()
+                                .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.10))
+                                .frame(width: 22, height: 22)
+
+                            Image(systemName: "arrow.up.forward")
+                                .font(.system(size: 9.5, weight: .bold))
+                                .foregroundStyle(accent)
+                                .flipsForRightToLeftLayoutDirection(true)
+                        }
+                        .accessibilityHidden(true)
+                    }
 
                     Text(action.subtitle)
-                        .font(HomeFont.medium(12))
+                        .font(HomeFont.medium(11))
                         .foregroundStyle(Color.homeTextSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.80)
                 }
             }
-            .padding(.top, PPSpace.base)
-            .padding(.horizontal, PPSpace.base)
-            .padding(.bottom, 8)
+            .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.homeSurface)
+            .frame(height: fixedHeight, alignment: .topLeading)
+            .background {
+                ZStack {
+                    Color.homeSurface
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
+                            accent.opacity(colorScheme == .dark ? 0.04 : 0.01),
+                            Color.clear,
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
             .clipShape(shape)
             .overlay {
                 shape.stroke(
-                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.26 : 0.14)),
                     lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
                 )
             }
@@ -4484,6 +4571,12 @@ struct PPCommerceHeroCard: View {
         }
         .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
         .hoverEffect(.highlight)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                livePulse = true
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(action.title), \(action.subtitle), \(cueText)")
         .accessibilityHint(action.subtitle)
@@ -4491,7 +4584,65 @@ struct PPCommerceHeroCard: View {
     }
 }
 
-/// Clinical & Care Service Card (Vet, Pharmacy, Services)
+@available(iOS 15.0, *)
+private struct PPFeaturedCommerceArtwork: View {
+    let accent: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
+    @State private var isBreathing = false
+
+    private let side = PPProvisionsCareLayout.featuredArtworkSide
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            accent.opacity(colorScheme == .dark ? 0.22 : 0.12),
+                            accent.opacity(colorScheme == .dark ? 0.08 : 0.035),
+                            Color.clear,
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: side * 0.52
+                    )
+                )
+                .frame(width: side, height: side)
+
+            if reduceMotion {
+                Image(systemName: "bag.fill")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: side, height: side)
+            } else {
+                HomeHeroLottieRepresentable(
+                    animationName: PPProvisionsCareLayout.featuredLottieResourceName,
+                    loadsFromFirebase: false,
+                    playbackEnabled: true,
+                    tintColor: UIColor(accent),
+                    prefersFirebaseSource:
+                        PPProvisionsCareLayout.featuredPrefersFirebaseSource
+                )
+                .frame(width: side, height: side)
+                .scaleEffect(isBreathing ? 1.20 : 1.15)
+            }
+        }
+        .frame(width: side, height: side)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                isBreathing = true
+            }
+        }
+    }
+}
+
+/// Clinical & Care Service Card (Food, Vet, Pharmacy, Services)
 @available(iOS 15.0, *)
 struct PPClinicalServiceCard: View {
     let action: HomePriorityAction
@@ -4504,57 +4655,106 @@ struct PPClinicalServiceCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+        RoundedRectangle(cornerRadius: PPProvisionsCareLayout.compactCorner, style: .continuous)
     }
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onTap()
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header: Jewel icon platter + micro directional indicator
                 HStack(alignment: .center) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: PPCorner.small - 2, style: .continuous)
-                            .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.12))
-                            .frame(width: 36, height: 36)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        accent.opacity(colorScheme == .dark ? 0.28 : 0.16),
+                                        accent.opacity(colorScheme == .dark ? 0.16 : 0.08),
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 38, height: 38)
                             .overlay {
-                                RoundedRectangle(cornerRadius: PPCorner.small - 2, style: .continuous)
-                                    .stroke(accent.opacity(contrast == .increased ? 0.55 : 0.16), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(
+                                        accent.opacity(contrast == .increased ? 0.60 : (colorScheme == .dark ? 0.35 : 0.20)),
+                                        lineWidth: 1
+                                    )
                             }
+                            .shadow(color: accent.opacity(colorScheme == .dark ? 0.25 : 0.10), radius: 6, x: 0, y: 2)
 
-                        Image(systemName: action.systemImage)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(accent)
+                        if action.id == "food" || action.systemImage == "pet-food" {
+                            Image("pet-food")
+                                .renderingMode(.template)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 19, height: 19)
+                                .foregroundStyle(accent)
+                        } else {
+                            Image(systemName: iconName(for: action))
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(accent)
+                        }
                     }
 
                     Spacer(minLength: 0)
 
-                    Image(systemName: "chevron.forward")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.homeTextSecondary.opacity(0.6))
-                        .flipsForRightToLeftLayoutDirection(true)
+                    // Directional micro indicator
+                    ZStack {
+                        Circle()
+                            .fill(accent.opacity(colorScheme == .dark ? 0.14 : 0.07))
+                            .frame(width: 22, height: 22)
+
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(accent.opacity(0.80))
+                            .flipsForRightToLeftLayoutDirection(true)
+                    }
+                    .accessibilityHidden(true)
                 }
 
+                Spacer(minLength: 6)
+
+                // Title & Subtitle
                 VStack(alignment: .leading, spacing: 2) {
                     Text(action.title)
-                        .font(HomeFont.bold(13))
+                        .font(HomeFont.bold(14))
                         .foregroundStyle(Color.homeTextPrimary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.80)
+                        .minimumScaleFactor(0.82)
 
                     Text(action.subtitle)
-                        .font(HomeFont.medium(10))
+                        .font(HomeFont.medium(10.5))
                         .foregroundStyle(Color.homeTextSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.80)
                 }
             }
-            .padding(PPSpace.sm)
+            .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 92)
-            .background(Color.homeSurface)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : PPProvisionsCareLayout.compactCardHeight)
+            .background {
+                ZStack {
+                    Color.homeSurface
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(colorScheme == .dark ? 0.12 : 0.05),
+                            accent.opacity(colorScheme == .dark ? 0.03 : 0.01),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
             .clipShape(shape)
             .overlay {
                 shape.stroke(
-                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.24 : 0.12)),
                     lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
                 )
             }
@@ -4567,9 +4767,18 @@ struct PPClinicalServiceCard: View {
         .accessibilityHint(action.subtitle)
         .accessibilityAddTraits(.isButton)
     }
+
+    private func iconName(for action: HomePriorityAction) -> String {
+        switch action.id {
+        case "vet": return "cross.case.fill"
+        case "pharmacy": return "pills.fill"
+        case "services": return "sparkles"
+        default: return action.systemImage
+        }
+    }
 }
 
-/// Provisions & Care Native Architecture (Commerce Gateway & Clinical Suite)
+/// Provisions & Care Native Architecture (Featured Action + 2x2 Quick Grid)
 @available(iOS 15.0, *)
 struct PPProvisionsCareArchitectureView: View {
     let actions: [HomePriorityAction]
@@ -4578,144 +4787,110 @@ struct PPProvisionsCareArchitectureView: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private var shopAction: HomePriorityAction? {
-        actions.first(where: { $0.id == "shop" })
+    private func action(id: String) -> HomePriorityAction? {
+        actions.first(where: { $0.id == id })
     }
 
-    private var foodAction: HomePriorityAction? {
-        actions.first(where: { $0.id == "food" })
-    }
-
-    private var vetAction: HomePriorityAction? {
-        actions.first(where: { $0.id == "vet" })
-    }
-
-    private var pharmacyAction: HomePriorityAction? {
-        actions.first(where: { $0.id == "pharmacy" })
-    }
-
-    private var servicesAction: HomePriorityAction? {
-        actions.first(where: { $0.id == "services" })
+    private func accent(for action: HomePriorityAction) -> Color {
+        switch action.id {
+        case "food":
+            return Color.ppQuickActionFood
+        case "vet":
+            return Color.ppQuickActionCommunity
+        case "pharmacy":
+            return Color(red: 0.06, green: 0.72, blue: 0.51)
+        case "services":
+            return Color.ppQuickActionServices
+        default:
+            return HomeSemanticTone.brand
+        }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            // Dual-Pillar Retail Commerce Stage
+        Group {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: PPSpace.sm) {
-                    if let shopAction {
-                        PPCommerceHeroCard(
-                            action: shopAction,
-                            accent: HomeSemanticTone.brand,
-                            cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
-                            onTap: { onSelect(shopAction) }
-                        )
-                    }
-
-                    if let foodAction {
-                        PPCommerceHeroCard(
-                            action: foodAction,
-                            accent: HomeSemanticTone.care,
-                            cueText: PPHomeZoneCopy.launcherBalancedNutritionCue,
-                            onTap: { onSelect(foodAction) }
-                        )
-                    }
-                }
+                accessibilityStack
             } else {
-                HStack(spacing: PPSpace.sm) {
-                    if let shopAction {
-                        PPCommerceHeroCard(
-                            action: shopAction,
-                            accent: HomeSemanticTone.brand,
-                            cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
-                            onTap: { onSelect(shopAction) }
-                        )
-                    }
+                featuredGrid
+            }
+        }
+    }
 
-                    if let foodAction {
-                        PPCommerceHeroCard(
-                            action: foodAction,
-                            accent: HomeSemanticTone.care,
-                            cueText: PPHomeZoneCopy.launcherBalancedNutritionCue,
-                            onTap: { onSelect(foodAction) }
-                        )
-                    }
+    private var featuredGrid: some View {
+        GeometryReader { proxy in
+            HStack(alignment: .top, spacing: PPProvisionsCareLayout.featuredToGridSpacing) {
+                if let shopAction = action(id: PPProvisionsCareLayout.featuredActionID) {
+                    PPCommerceHeroCard(
+                        action: shopAction,
+                        accent: HomeSemanticTone.brand,
+                        cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
+                        fixedHeight: PPProvisionsCareLayout.featuredCardHeight,
+                        onTap: { onSelect(shopAction) }
+                    )
+                    .frame(width: PPProvisionsCareLayout.preservedFeaturedCardWidth(totalWidth: proxy.size.width))
+                    .accessibilityIdentifier("home_launcher_provisions")
+                }
+
+                HStack(alignment: .top, spacing: PPProvisionsCareLayout.innerSectionSpacing) {
+                    compactColumn(ids: PPProvisionsCareLayout.gridColumns[0])
+                        .frame(maxWidth: .infinity)
+
+                    compactColumn(ids: PPProvisionsCareLayout.gridColumns[1])
+                        .frame(maxWidth: .infinity)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: PPProvisionsCareLayout.featuredCardHeight)
+    }
+
+    private func compactColumn(ids: [String]) -> some View {
+        VStack(spacing: PPProvisionsCareLayout.rowSpacing) {
+            ForEach(ids, id: \.self) { id in
+                if let compactAction = action(id: id) {
+                    PPClinicalServiceCard(
+                        action: compactAction,
+                        accent: accent(for: compactAction),
+                        onTap: { onSelect(compactAction) }
+                    )
+                    .accessibilityIdentifier(accessibilityIdentifier(for: compactAction))
                 }
             }
+        }
+    }
 
-            // Clinical & Grooming Suite Header
-            HStack(spacing: PPSpace.xs) {
-                Text(PPHomeZoneCopy.launcherClinicalTitle)
-                    .font(HomeFont.bold(13))
-                    .foregroundStyle(Color.homeTextPrimary)
-
-                Text("•")
-                    .font(HomeFont.medium(12))
-                    .foregroundStyle(Color.homeTextSecondary.opacity(0.5))
-
-                Text(PPHomeZoneCopy.launcherClinicalSubtitle)
-                    .font(HomeFont.medium(11))
-                    .foregroundStyle(Color.homeTextSecondary)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
+    private var accessibilityStack: some View {
+        VStack(spacing: PPSpace.sm) {
+            if let shopAction = action(id: PPProvisionsCareLayout.featuredActionID) {
+                PPCommerceHeroCard(
+                    action: shopAction,
+                    accent: HomeSemanticTone.brand,
+                    cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
+                    onTap: { onSelect(shopAction) }
+                )
+                .accessibilityIdentifier("home_launcher_provisions")
             }
-            .padding(.top, PPSpace.xxs)
 
-            // Clinical Suite Trio
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: PPSpace.xs) {
-                    if let vetAction {
-                        PPClinicalServiceCard(
-                            action: vetAction,
-                            accent: HomeSemanticTone.health,
-                            onTap: { onSelect(vetAction) }
-                        )
-                    }
-
-                    if let pharmacyAction {
-                        PPClinicalServiceCard(
-                            action: pharmacyAction,
-                            accent: HomeSemanticTone.health,
-                            onTap: { onSelect(pharmacyAction) }
-                        )
-                    }
-
-                    if let servicesAction {
-                        PPClinicalServiceCard(
-                            action: servicesAction,
-                            accent: Color.ppQuickActionServices,
-                            onTap: { onSelect(servicesAction) }
-                        )
-                    }
-                }
-            } else {
-                HStack(spacing: PPSpace.xs) {
-                    if let vetAction {
-                        PPClinicalServiceCard(
-                            action: vetAction,
-                            accent: HomeSemanticTone.health,
-                            onTap: { onSelect(vetAction) }
-                        )
-                    }
-
-                    if let pharmacyAction {
-                        PPClinicalServiceCard(
-                            action: pharmacyAction,
-                            accent: HomeSemanticTone.health,
-                            onTap: { onSelect(pharmacyAction) }
-                        )
-                    }
-
-                    if let servicesAction {
-                        PPClinicalServiceCard(
-                            action: servicesAction,
-                            accent: Color.ppQuickActionServices,
-                            onTap: { onSelect(servicesAction) }
-                        )
-                    }
+            ForEach(PPProvisionsCareLayout.gridColumns.flatMap { $0 }, id: \.self) { id in
+                if let compactAction = action(id: id) {
+                    PPClinicalServiceCard(
+                        action: compactAction,
+                        accent: accent(for: compactAction),
+                        onTap: { onSelect(compactAction) }
+                    )
+                    .accessibilityIdentifier(accessibilityIdentifier(for: compactAction))
                 }
             }
+        }
+    }
+
+    private func accessibilityIdentifier(for action: HomePriorityAction) -> String {
+        switch action.id {
+        case "food": return "home_launcher_food"
+        case "vet": return "home_launcher_vet"
+        case "pharmacy": return "home_launcher_pharmacy"
+        case "services": return "home_launcher_services"
+        default: return "home_launcher_\(action.id)"
         }
     }
 }
@@ -5293,8 +5468,12 @@ struct PPHomeEcosystemLauncher: View {
     var body: some View {
         VStack(
             alignment: .leading,
-            spacing: 0
+            spacing: PPHomeSectionHeaderMetrics.contentSpacing
         ) {
+            PPHomeSectionHeading(
+                title: PPHomeZoneCopy.launcherTitle,
+                subtitle: PPHomeZoneCopy.launcherSubtitle
+            )
 
             if horizontalSizeClass == .regular {
                 // Dedicated Adaptive iPadOS Workstation
@@ -5307,11 +5486,12 @@ struct PPHomeEcosystemLauncher: View {
             } else {
                 // Dedicated iPhone One-Handed Segmented Architecture
                 VStack(spacing: PPSpace.md) {
-                    PPEcosystemDomainSwitcher(
-                        selectedDomain: $selectedDomain,
-                        reduceMotion: reduceMotion,
-                        mainKindAccent: mainKindAccent
-                    )
+                    // Temporarily hidden per user request:
+                    // PPEcosystemDomainSwitcher(
+                    //     selectedDomain: $selectedDomain,
+                    //     reduceMotion: reduceMotion,
+                    //     mainKindAccent: mainKindAccent
+                    // )
 
                     Group {
                         switch selectedDomain {

@@ -109,4 +109,39 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
         location.longitude = CLLocationDegrees(51.5310)
         XCTAssertTrue(location.hasCoordinate)
     }
+
+    func testProvisionsCareLayoutKeepsShopFeaturedBesideTwoByTwoActionGrid() {
+        XCTAssertEqual(PPProvisionsCareLayout.featuredActionID, "shop")
+        XCTAssertEqual(
+            PPProvisionsCareLayout.gridColumns,
+            [["food", "pharmacy"], ["vet", "services"]]
+        )
+        XCTAssertEqual(PPProvisionsCareLayout.compactRowCount, 2)
+        XCTAssertEqual(PPProvisionsCareLayout.innerSectionSpacing, 8)
+        XCTAssertEqual(PPProvisionsCareLayout.featuredToGridSpacing, 8)
+        XCTAssertEqual(
+            PPProvisionsCareLayout.preservedFeaturedCardWidth(totalWidth: 320),
+            104,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PPProvisionsCareLayout.compactCardWidth(totalWidth: 320),
+            100,
+            accuracy: 0.001
+        )
+    }
+
+    func testFeaturedShopUsesLivingCommercePortalAnimationContract() {
+        XCTAssertEqual(
+            PPProvisionsCareLayout.featuredLottieResourceName,
+            "Shop2.json"
+        )
+        XCTAssertEqual(
+            PPProvisionsCareLayout.featuredLottieStoragePath,
+            "Shop2.json"
+        )
+        XCTAssertEqual(PPProvisionsCareLayout.featuredLottieFallbackName, "Shop2.json")
+        XCTAssertFalse(PPProvisionsCareLayout.featuredPrefersFirebaseSource)
+        XCTAssertEqual(PPProvisionsCareLayout.featuredArtworkSide, 84)
+    }
 }

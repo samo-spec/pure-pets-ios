@@ -7,23 +7,10 @@ struct PPMarketplaceCategorySheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        Group {
-            if #available(iOS 16.0, *) {
-                navigationContent
-                    .presentationDetents([.fraction(0.75), .large])
-                    .presentationDragIndicator(.visible)
-            } else {
-                navigationContent
-            }
-        }
-        .environment(
-            \.layoutDirection,
-            store.isRightToLeft ? .rightToLeft : .leftToRight
-        )
-    }
+        VStack(spacing: 0) {
+            navigationBar
+                .zIndex(2)
 
-    private var navigationContent: some View {
-        NavigationView {
             ZStack(alignment: .bottom) {
                 Color.ppMarketplaceCanvas
                     .ignoresSafeArea()
@@ -92,19 +79,54 @@ struct PPMarketplaceCategorySheet: View {
 
                 categoryActionBar
             }
-            .navigationTitle(
-                PPMarketplaceText.localized("marketplace_category_title")
-            )
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(PPMarketplaceText.localized("cancel")) {
-                        store.cancelCategoryEditing()
-                    }
-                }
-            }
         }
-        .navigationViewStyle(.stack)
+        .environment(
+            \.layoutDirection,
+            store.isRightToLeft ? .rightToLeft : .leftToRight
+        )
+    }
+
+    private var navigationBar: some View {
+        HStack(spacing: PPSpace.sm) {
+            Button {
+                store.cancelCategoryEditing()
+            } label: {
+                Text(PPMarketplaceText.localized("cancel"))
+                    .font(HomeFont.bold(14))
+                    .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Color.ppMarketplaceSurface,
+                        in: Capsule()
+                    )
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.ppMarketplaceSeparator.opacity(0.35), lineWidth: 0.8)
+                    }
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: PPSpace.xs)
+
+            Text(PPMarketplaceText.localized("marketplace_category_title"))
+                .font(HomeFont.bold(17))
+                .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                .lineLimit(1)
+
+            Spacer(minLength: PPSpace.xs)
+
+            Color.clear
+                .frame(width: 58, height: 36)
+        }
+        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(
+            Color.ppMarketplaceSurface
+                .ignoresSafeArea(edges: .top)
+                .overlay(Divider(), alignment: .bottom)
+        )
     }
 
     private var categoryIdentity: some View {
@@ -445,23 +467,10 @@ struct PPMarketplaceFilterSheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        Group {
-            if #available(iOS 16.0, *) {
-                navigationContent
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            } else {
-                navigationContent
-            }
-        }
-        .environment(
-            \.layoutDirection,
-            store.isRightToLeft ? .rightToLeft : .leftToRight
-        )
-    }
+        VStack(spacing: 0) {
+            navigationBar
+                .zIndex(2)
 
-    private var navigationContent: some View {
-        NavigationView {
             ZStack(alignment: .bottom) {
                 Color.ppMarketplaceCanvas
                     .ignoresSafeArea()
@@ -494,24 +503,75 @@ struct PPMarketplaceFilterSheet: View {
 
                 applyBar
             }
-            .navigationTitle(PPMarketplaceText.localized("marketplace_filters_title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(PPMarketplaceText.localized("cancel")) {
-                        store.cancelFilterEditing()
-                    }
-                }
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button(PPMarketplaceText.localized("marketplace_reset")) {
-                        store.resetFilterDraft()
-                    }
-                    .disabled(store.filterDraft == nil)
-                }
-            }
         }
-        .navigationViewStyle(.stack)
+        .environment(
+            \.layoutDirection,
+            store.isRightToLeft ? .rightToLeft : .leftToRight
+        )
+    }
+
+    private var navigationBar: some View {
+        HStack(spacing: PPSpace.sm) {
+            Button {
+                store.cancelFilterEditing()
+            } label: {
+                Text(PPMarketplaceText.localized("cancel"))
+                    .font(HomeFont.bold(14))
+                    .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Color.ppMarketplaceSurface,
+                        in: Capsule()
+                    )
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.ppMarketplaceSeparator.opacity(0.35), lineWidth: 0.8)
+                    }
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: PPSpace.xs)
+
+            Text(PPMarketplaceText.localized("marketplace_filters_title"))
+                .font(HomeFont.bold(17))
+                .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                .lineLimit(1)
+
+            Spacer(minLength: PPSpace.xs)
+
+            Button {
+                store.resetFilterDraft()
+            } label: {
+                Text(PPMarketplaceText.localized("marketplace_reset"))
+                    .font(HomeFont.bold(14))
+                    .foregroundStyle(
+                        store.filterDraft != nil
+                            ? Color(uiColor: store.accentColor)
+                            : Color.ppMarketplaceTextSecondary.opacity(0.4)
+                    )
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Color.ppMarketplaceSurface,
+                        in: Capsule()
+                    )
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.ppMarketplaceSeparator.opacity(0.35), lineWidth: 0.8)
+                    }
+            }
+            .buttonStyle(.plain)
+            .disabled(store.filterDraft == nil)
+        }
+        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(
+            Color.ppMarketplaceSurface
+                .ignoresSafeArea(edges: .top)
+                .overlay(Divider(), alignment: .bottom)
+        )
     }
 
     private var filterIdentity: some View {
@@ -530,10 +590,14 @@ struct PPMarketplaceFilterSheet: View {
                 Text(store.contextAccessibilityLabel)
                     .font(HomeFont.headline())
                     .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(PPMarketplaceText.localized("marketplace_filters_subtitle"))
                     .font(HomeFont.subheadline())
                     .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -559,19 +623,14 @@ struct PPMarketplaceFilterSheet: View {
                     Text(PPMarketplaceText.localized("marketplace_apply_filters"))
                         .font(HomeFont.bold(17))
                     Spacer(minLength: PPSpace.sm)
-                    Text(
-                        PPMarketplaceText.formatted(
-                            "marketplace_preview_count_format",
-                            store.filterPreviewCount
+                    Text(store.filterPreviewCountText)
+                        .font(HomeFont.bold(14))
+                        .padding(.horizontal, PPSpace.sm)
+                        .padding(.vertical, PPSpace.xs)
+                        .background(
+                            store.accentPalette.onAccent.opacity(0.16),
+                            in: Capsule()
                         )
-                    )
-                    .font(HomeFont.bold(14))
-                    .padding(.horizontal, PPSpace.sm)
-                    .padding(.vertical, PPSpace.xs)
-                    .background(
-                        store.accentPalette.onAccent.opacity(0.16),
-                        in: Capsule()
-                    )
                 }
                 .foregroundStyle(store.accentPalette.onAccent)
                 .padding(.horizontal, PPSpace.base)
@@ -616,6 +675,8 @@ private struct PPMarketplaceFilterGroupView: View {
                 Text(group.title)
                     .font(HomeFont.title2())
                     .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
             }
 
@@ -714,23 +775,10 @@ struct PPMarketplaceProviderSheet: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
 
     var body: some View {
-        Group {
-            if #available(iOS 16.0, *) {
-                navigationContent
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            } else {
-                navigationContent
-            }
-        }
-        .environment(
-            \.layoutDirection,
-            store.isRightToLeft ? .rightToLeft : .leftToRight
-        )
-    }
+        VStack(spacing: 0) {
+            navigationBar
+                .zIndex(2)
 
-    private var navigationContent: some View {
-        NavigationView {
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: PPSpace.sm) {
                     providerRow(
@@ -755,17 +803,54 @@ struct PPMarketplaceProviderSheet: View {
                 .padding(.vertical, PPSpace.base)
             }
             .background(Color.ppMarketplaceCanvas.ignoresSafeArea())
-            .navigationTitle(PPMarketplaceText.localized("marketplace_providers_title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(PPMarketplaceText.localized("Done")) {
-                        store.dismissActiveSheet()
-                    }
-                }
-            }
         }
-        .navigationViewStyle(.stack)
+        .environment(
+            \.layoutDirection,
+            store.isRightToLeft ? .rightToLeft : .leftToRight
+        )
+    }
+
+    private var navigationBar: some View {
+        HStack(spacing: PPSpace.sm) {
+            Button {
+                store.dismissActiveSheet()
+            } label: {
+                Text(PPMarketplaceText.localized("Done"))
+                    .font(HomeFont.bold(14))
+                    .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Color.ppMarketplaceSurface,
+                        in: Capsule()
+                    )
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.ppMarketplaceSeparator.opacity(0.35), lineWidth: 0.8)
+                    }
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: PPSpace.xs)
+
+            Text(PPMarketplaceText.localized("marketplace_providers_title"))
+                .font(HomeFont.bold(17))
+                .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                .lineLimit(1)
+
+            Spacer(minLength: PPSpace.xs)
+
+            Color.clear
+                .frame(width: 58, height: 36)
+        }
+        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(
+            Color.ppMarketplaceSurface
+                .ignoresSafeArea(edges: .top)
+                .overlay(Divider(), alignment: .bottom)
+        )
     }
 
     private func providerRow(
@@ -786,6 +871,8 @@ struct PPMarketplaceProviderSheet: View {
                     Text(title)
                         .font(HomeFont.headline())
                         .foregroundStyle(Color.ppMarketplaceTextPrimary)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .lineLimit(2)
                     Text(
                         PPMarketplaceText.formatted(
@@ -795,6 +882,8 @@ struct PPMarketplaceProviderSheet: View {
                     )
                     .font(HomeFont.footnote())
                     .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Spacer(minLength: PPSpace.sm)

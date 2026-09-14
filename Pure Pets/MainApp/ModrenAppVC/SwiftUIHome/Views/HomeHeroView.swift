@@ -145,7 +145,7 @@ struct HomeHeroView: View {
             )
         )
         .clipShape(
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+            RoundedRectangle(cornerRadius: 0, style: .continuous)
         )
         .overlay {
             HomeHeroBorder(
@@ -164,7 +164,7 @@ struct HomeHeroView: View {
             y: HomeVisualTokens.heroShadowOffsetY
         )
         .contentShape(
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+            RoundedRectangle(cornerRadius: 0, style: .continuous)
         )
         .modifier(
             HomeHeroPagingGestureModifier(
@@ -1102,7 +1102,7 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         let increasedContrast: Bool
         let cornerGlowOpacityScale: Double
         var isAnimated: Bool = true
-        var cornerRadius: CGFloat = PPCorner.hero
+        var cornerRadius: CGFloat = 0
         
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @Environment(\.colorScheme) private var colorScheme
@@ -1114,7 +1114,7 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
             increasedContrast: Bool,
             cornerGlowOpacityScale: Double,
             isAnimated: Bool = true,
-            cornerRadius: CGFloat = PPCorner.hero
+            cornerRadius: CGFloat = 0
         ) {
             self.accent = accent
             self.increasedContrast = increasedContrast
@@ -1133,16 +1133,18 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.homeRaisedSurface,
+                                Color.homeSurface.opacity(
+                                    colorScheme == .dark ? 0.30 : 0.42
+                                ),
                                 increasedContrast
                                 ? Color.homeSectionBand
-                                : Color.homeSurface,
-                                Color.homeSurface.opacity(
-                                    colorScheme == .dark ? 0.96 : 0.86
+                                : Color.homeSurface.opacity(
+                                    colorScheme == .dark ? 0.75 : 0.82
                                 ),
+                                Color.homeRaisedSurface,
                             ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                            startPoint: .bottom,
+                            endPoint: .top
                         )
                     )
                 
@@ -1405,7 +1407,7 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         }
         
         private var heroShape: RoundedRectangle {
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+            RoundedRectangle(cornerRadius: 0, style: .continuous)
         }
         
         private var borderStyle: AnyShapeStyle {
@@ -1438,13 +1440,15 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         let loadsFromFirebase: Bool
         let playbackEnabled: Bool
         var tintColor: UIColor? = nil
+        var prefersFirebaseSource: Bool = false
         
         func makeUIView(context: Context) -> PPHomeHeroAnimationView {
             let view = PPHomeHeroAnimationView(
                 animationName: animationName,
-                loadsFromFirebase: loadsFromFirebase
+                loadsFromFirebase: loadsFromFirebase,
+                prefersFirebaseSource: prefersFirebaseSource
             )
-            view.isPlaybackEnabled = true
+            view.isPlaybackEnabled = playbackEnabled
             if let tintColor {
                 view.customTintColor = tintColor
             }
@@ -1455,7 +1459,7 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
             _ uiView: PPHomeHeroAnimationView,
             context: Context
         ) {
-            uiView.isPlaybackEnabled = true
+            uiView.isPlaybackEnabled = playbackEnabled
             if let tintColor {
                 uiView.customTintColor = tintColor
             }
@@ -1475,7 +1479,7 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
         @State private var faded = false
         
         var body: some View {
-            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+            RoundedRectangle(cornerRadius: 0, style: .continuous)
                 .fill(Color.ppSecondarySurface)
                 .overlay(alignment: .leading) {
                     VStack(alignment: .leading, spacing: PPSpace.md) {

@@ -29,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSArray<NSString *> *mutedBy;
 @property (nonatomic, copy) NSArray<NSString *> *binnedBy;
 @property (nonatomic, copy) NSArray<NSString *> *reportedBy;
+@property (nonatomic, copy) NSArray<NSString *> *blockedBy;
 @property (nonatomic, copy) NSString *conversationType;
 @property (nonatomic, copy) NSString *threadType;
 @property (nonatomic, assign) BOOL supportThread;
@@ -48,6 +49,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL isMuted;
 @property (nonatomic, assign) BOOL isBinned;
 @property (nonatomic, assign) BOOL isReportedByMe;
+@property (nonatomic, assign) BOOL isBlockedByMe;
+@property (nonatomic, assign) BOOL isConversationBlocked;
 
 #pragma mark - Init
 

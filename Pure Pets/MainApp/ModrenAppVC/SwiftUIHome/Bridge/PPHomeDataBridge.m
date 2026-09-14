@@ -3,6 +3,7 @@
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
 @import FirebaseAuth;
+@import FirebaseStorage;
 #import <float.h>
 #import <math.h>
 
@@ -80,11 +81,13 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
 @property (nonatomic, strong) LOTColorValueCallback *colorValueCallback;
 @property (nonatomic, copy) NSString *animationName;
 @property (nonatomic, assign) BOOL loadsFromFirebase;
+@property (nonatomic, assign) BOOL prefersFirebaseSource;
 @property (nonatomic, assign) BOOL animationLoaded;
 @property (nonatomic, assign) BOOL animationLoading;
 
 - (BOOL)pp_usesExactStoragePathForAnimationName;
 - (void)pp_loadExactStorageAnimation;
+- (void)pp_loadPreferredFirebaseAnimation;
 - (void)pp_applyCustomTintIfNeeded;
 
 @end
@@ -100,12 +103,22 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
 - (instancetype)initWithAnimationName:(NSString *)animationName
                     loadsFromFirebase:(BOOL)loadsFromFirebase
 {
+    return [self initWithAnimationName:animationName
+                     loadsFromFirebase:loadsFromFirebase
+                prefersFirebaseSource:NO];
+}
+
+- (instancetype)initWithAnimationName:(NSString *)animationName
+                    loadsFromFirebase:(BOOL)loadsFromFirebase
+               prefersFirebaseSource:(BOOL)prefersFirebaseSource
+{
     self = [super initWithFrame:CGRectZero];
     if (!self) {
         return nil;
     }
     _animationName = [animationName copy] ?: @"";
     _loadsFromFirebase = loadsFromFirebase;
+    _prefersFirebaseSource = prefersFirebaseSource;
     [self pp_buildMarketplaceAnimation];
     [self pp_loadMarketplaceAnimationIfNeeded];
     return self;
@@ -256,6 +269,11 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
 
     self.animationLoading = YES;
 
+    if (self.loadsFromFirebase && self.prefersFirebaseSource) {
+        [self pp_loadPreferredFirebaseAnimation];
+        return;
+    }
+
     NSString *lowercaseExtension = self.animationName.pathExtension.lowercaseString;
     BOOL isDotLottieArchive = [lowercaseExtension isEqualToString:@"lottie"];
     LOTComposition *composition = nil;
@@ -264,6 +282,21 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
         composition =
             [LOTComposition animationNamed:self.animationName inBundle:NSBundle.mainBundle] ?:
             [LOTComposition animationNamed:sansExt inBundle:NSBundle.mainBundle];
+
+        if (!composition) {
+            NSString *filePath = [NSBundle.mainBundle pathForResource:sansExt ofType:@"json"] ?:
+                                 [NSBundle.mainBundle pathForResource:self.animationName ofType:nil] ?:
+                                 [NSBundle.mainBundle pathForResource:self.animationName.lastPathComponent ofType:nil];
+            if (filePath) {
+                NSData *data = [NSData dataWithContentsOfFile:filePath];
+                if (data) {
+                    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                    if ([json isKindOfClass:NSDictionary.class]) {
+                        composition = [LOTComposition animationFromJSON:json];
+                    }
+                }
+            }
+        }
     }
 
     if (composition) {
@@ -304,6 +337,76 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
     }];
 }
 
+- (void)pp_loadPreferredFirebaseAnimation
+{
+    NSString *storagePath = [self pp_usesExactStoragePathForAnimationName]
+        ? self.animationName
+        : [@"LottieAnimations" stringByAppendingPathComponent:
+            [self.animationName stringByAppendingPathExtension:@"json"]];
+
+    static NSCache<NSString *, NSDictionary *> *remoteJSONCache = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        remoteJSONCache = [[NSCache alloc] init];
+        remoteJSONCache.countLimit = 8;
+    });
+
+    NSDictionary *cachedJSON = [remoteJSONCache objectForKey:storagePath];
+    if ([cachedJSON isKindOfClass:NSDictionary.class]) {
+        LOTComposition *cachedComposition = [LOTComposition animationFromJSON:cachedJSON];
+        self.animationLoading = NO;
+        self.animationLoaded = cachedComposition != nil;
+        if (cachedComposition) {
+            [self.animationView setSceneModel:cachedComposition];
+        }
+        [self pp_applyLoadedAnimationState];
+        return;
+    }
+
+    FIRStorageReference *reference = [[FIRStorage storage] referenceWithPath:storagePath];
+    __weak typeof(self) weakSelf = self;
+    [reference dataWithMaxSize:(20 * 1024 * 1024)
+                    completion:^(NSData *data, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                return;
+            }
+
+            LOTComposition *loadedComposition = nil;
+            if (!error && data.length > 0) {
+                NSError *jsonError = nil;
+                id object = [NSJSONSerialization JSONObjectWithData:data
+                                                            options:kNilOptions
+                                                              error:&jsonError];
+                if (!jsonError && [object isKindOfClass:NSDictionary.class]) {
+                    NSDictionary *json = (NSDictionary *)object;
+                    [remoteJSONCache setObject:json forKey:storagePath];
+                    loadedComposition = [LOTComposition animationFromJSON:json];
+                }
+            }
+
+            // The feature is remote-preferred, not remote-fragile. If Storage
+            // is unavailable or the object is malformed, preserve the shipped
+            // Shop2 identity rather than collapsing the action into empty UI.
+            if (!loadedComposition) {
+                NSString *fileName = strongSelf.animationName.lastPathComponent;
+                NSString *sansExtension = fileName.stringByDeletingPathExtension;
+                loadedComposition =
+                    [LOTComposition animationNamed:fileName inBundle:NSBundle.mainBundle] ?:
+                    [LOTComposition animationNamed:sansExtension inBundle:NSBundle.mainBundle];
+            }
+
+            strongSelf.animationLoading = NO;
+            strongSelf.animationLoaded = loadedComposition != nil;
+            if (loadedComposition) {
+                [strongSelf.animationView setSceneModel:loadedComposition];
+            }
+            [strongSelf pp_applyLoadedAnimationState];
+        });
+    }];
+}
+
 - (BOOL)pp_usesExactStoragePathForAnimationName
 {
     NSString *safeName = self.animationName ?: @"";
@@ -321,8 +424,11 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
 - (BOOL)pp_isMarketplaceAnimationName
 {
     NSString *assetName = self.animationName.lastPathComponent.lowercaseString;
+    NSString *sansExt = assetName.stringByDeletingPathExtension;
     return [assetName isEqualToString:@"shop2.json"] ||
-        [assetName isEqualToString:@"bag2.json"];
+        [assetName isEqualToString:@"bag2.json"] ||
+        [sansExt isEqualToString:@"shop2"] ||
+        [sansExt isEqualToString:@"bag2"];
 }
 
 - (BOOL)pp_isBagAnimationName
@@ -409,9 +515,23 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
         return;
     }
 
+    if (!self.playbackEnabled || UIAccessibilityIsReduceMotionEnabled()) {
+        if (self.animationView.isAnimationPlaying) {
+            [self.animationView pause];
+        }
+        return;
+    }
+
+    if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
+        if (self.animationView.isAnimationPlaying) {
+            [self.animationView pause];
+        }
+        return;
+    }
+
     self.animationView.loopAnimation = YES;
     if (!self.animationView.isAnimationPlaying) {
-        [self.animationView playWithCompletion:nil];
+        [self.animationView play];
     }
 }
 

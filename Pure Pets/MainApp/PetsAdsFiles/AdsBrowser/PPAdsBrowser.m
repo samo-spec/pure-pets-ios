@@ -11,6 +11,7 @@
 #import "PPAdSharingHelper.h"
 #import "YYWebImageManager.h"
 #import "YYWebImageOperation.h"
+#import "PPUniversalCellHelper.h"
 
 
 #define SCREEN_WIDTH [UIScreen mainScreen].bounds.size.width
@@ -19,7 +20,7 @@
 
 static CGFloat const PPAdsBrowserPinterestOuterInset = 14.0;
 static CGFloat const PPAdsBrowserPinterestInnerSpacing = 12.0;
-static CGFloat const PPAdsBrowserPinterestButtonHeight = 34.0;
+static CGFloat const PPAdsBrowserPinterestButtonHeight = 32.0;
 static CGFloat const PPAdsBrowserPinterestCompactTitleHeight = 24.0;
 static CGFloat const PPAdsBrowserPinterestCompactPriceHeight = 26.0;
 static CGFloat const PPAdsBrowserPinterestCardHorizontalInset = 2.0;
@@ -72,11 +73,23 @@ static CGFloat PPAdsBrowserPinterestHeightForViewModel(PPUniversalCellViewModel 
     CGFloat contentWidth = PPAdsBrowserPinterestInnerImageWidth(cellWidth);
     CGFloat imageHeight = ceil(contentWidth * PPAdsBrowserPinterestAspectRatio(vm));
     CGFloat titleHeight = PPAdsBrowserPinterestMeasuredTitleHeight(vm.title ?: @"", contentWidth);
+    
+    BOOL isAd = NO;
+    if ([vm isKindOfClass:[PPUniversalCellViewModel class]]) {
+        if (vm.cellSection == CellSectionAds ||
+            vm.modelContext == PPCellForAds ||
+            vm.modelContext == PPCellForHomeAds) {
+            isAd = YES;
+        } else if ([PPUniversalCellSwiftUIBridge respondsToSelector:@selector(isAdvertisementViewModel:)]) {
+            isAd = [PPUniversalCellSwiftUIBridge isAdvertisementViewModel:vm];
+        }
+    }
+    
+    CGFloat actionAndSpacing = isAd ? 0.0 : (PPAdsBrowserPinterestPriceToActionSpacing + PPAdsBrowserPinterestButtonHeight);
     CGFloat bodyHeight = ceil(titleHeight +
                               PPAdsBrowserPinterestTitleToPriceSpacing +
                               PPAdsBrowserPinterestCompactPriceHeight +
-                              PPAdsBrowserPinterestPriceToActionSpacing +
-                              PPAdsBrowserPinterestButtonHeight);
+                              actionAndSpacing);
     CGFloat verticalChrome = (PPAdsBrowserPinterestCardVerticalInset * 2.0) +
                              (PPAdsBrowserPinterestOuterInset * 2.0) +
                              (PPAdsBrowserPinterestInnerSpacing * 0.5);

@@ -20,15 +20,24 @@ private enum HomeHeroV2Metrics {
     /// The reference hero is edge-to-edge; the living plate supplies the visual
     /// boundary instead of an additional horizontal card inset.
     static let outerInset: CGFloat = 0
-    static let height: CGFloat = 312
-    static let stageHeight: CGFloat = 246
-    static let dockHeight: CGFloat = 58
-    static let maximumHeight: CGFloat = 340
+    static let referenceStageHeight: CGFloat = 246
+    static let stageHeight: CGFloat = 216
+    static let dockHeight: CGFloat = 78
+    static let height: CGFloat = 294
+    static let maximumHeight: CGFloat = 326
     static let accessibilityPlateHeight: CGFloat = 184
 
-    static let cardRadius: CGFloat = 30
+    static let cardRadius: CGFloat = 0
     static let cardContentInset: CGFloat = PPSpace.base
     static let copyLeadingInset: CGFloat = PPSpace.xl
+    /// Top anchor inset for the leading strings group, anchoring the eyebrow
+    /// safely and cleanly below the hero card's top rounded border.
+    static let copyTopInset: CGFloat = 18
+    /// Vertical spacing rhythm within the leading strings group.
+    static let copyEyebrowToTitleSpacing: CGFloat = 6
+    static let copyTitleToSubtitleSpacing: CGFloat = 4
+    static let copySubtitleToPrimarySpacing: CGFloat = 10
+    static let copyPrimaryToSecondarySpacing: CGFloat = 6
     static let contentGap: CGFloat = PPSpace.sm
     static let copyWidthRatio: CGFloat = 0.45
     static let minimumCopyWidth: CGFloat = 150
@@ -55,6 +64,9 @@ private enum HomeHeroV2Metrics {
     /// Keeps the V2 liquid form branded without letting the primary hue compete
     /// with the category portrait or the full-strength primary CTA.
     static let blobAccentOpacity: Double = 0.72
+    /// Vertical offset to position the living plate and category artwork stage
+    /// as one unified group comfortably down inside the hero card.
+    static let plateArtworkGroupVerticalOffset: CGFloat = 18
 
     /// Quiet edge affordance for horizontal paging.
     static let gripWidth: CGFloat = 14
@@ -222,23 +234,7 @@ struct HomeHeroV2View: View {
                 .frame(height: HomeHeroV2Metrics.stageHeight)
 
             if !categories.isEmpty, let onSelectCategory {
-                // Living Seam Divider
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.clear,
-                                accent.opacity(colorScheme == .dark ? 0.22 : 0.10),
-                                Color.clear
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(height: 1)
-                    .padding(.horizontal, PPSpace.base)
-
-                // Living Species Dock
+                // Categories Section Strip
                 HomeHeroSpeciesDock(
                     categories: categories,
                     selectedCategoryID: selectedCategoryID,
@@ -248,7 +244,6 @@ struct HomeHeroV2View: View {
                     onSelect: onSelectCategory
                 )
                 .frame(height: HomeHeroV2Metrics.dockHeight)
-                .padding(.bottom, PPSpace.xxs)
             }
         }
     }
@@ -262,7 +257,19 @@ struct HomeHeroV2View: View {
 
     private func cardSurface(accent: Color) -> some View {
         ZStack {
-            Color.homeRaisedSurface
+            if contrast == .increased {
+                Color.homeRaisedSurface
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.25 : 0.40),
+                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.72 : 0.80),
+                        Color.homeRaisedSurface
+                    ],
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
+            }
 
             if contrast != .increased && !reduceTransparency {
                 RadialGradient(
@@ -291,7 +298,7 @@ struct HomeHeroV2View: View {
             let height = proxy.size.height
             let plateInk = min(
                 HomeHeroV2Metrics.plateInk,
-                height - (HomeHeroV2Metrics.cardContentInset * 2)
+                HomeHeroV2Metrics.referenceStageHeight - (HomeHeroV2Metrics.cardContentInset * 2)
             )
             let plateFrame = plateInk / HomeHeroV2Metrics.blobInkRatio
             let plateOverflow = min(
@@ -322,6 +329,8 @@ struct HomeHeroV2View: View {
 
             let artworkSide = min(HomeHeroV2Metrics.artworkSide, plateInk - PPSpace.base)
             let blobCenterX = plateCenterX + 80
+            let contentCenterY = height - (HomeHeroV2Metrics.referenceStageHeight / 2)
+            let plateArtworkCenterY = contentCenterY + HomeHeroV2Metrics.plateArtworkGroupVerticalOffset
             ZStack(alignment: .topLeading) {
                 // Living blob plate shifted trailing by +80
                 plateStage(
@@ -331,7 +340,7 @@ struct HomeHeroV2View: View {
                     plateInk: plateInk,
                     artworkSide: artworkSide
                 )
-                .position(x: blobCenterX, y: height / 2)
+                .position(x: blobCenterX, y: plateArtworkCenterY)
                 .zIndex(0)
 
                 // Category image in front of the living blob on hero card (preserved position)
@@ -341,14 +350,16 @@ struct HomeHeroV2View: View {
                     plateFrame: plateFrame,
                     artworkSide: artworkSide
                 )
-                .position(x: plateCenterX, y: height / 2)
+                .position(x: plateCenterX, y: plateArtworkCenterY)
                 .zIndex(1)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
 
                 heroCopy(page, accent: accent)
                     .frame(width: copyWidth, alignment: .leading)
-                    .position(x: copyCenterX, y: height / 2)
+                    .padding(.leading, HomeHeroV2Metrics.copyLeadingInset)
+                    .padding(.top, HomeHeroV2Metrics.copyTopInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .zIndex(2)
 
                 if allowsPaging {
@@ -357,7 +368,7 @@ struct HomeHeroV2View: View {
                         reduceTransparency: reduceTransparency
                             || contrast == .increased
                     )
-                    .position(x: gripCenterX, y: height / 2)
+                    .position(x: gripCenterX, y: contentCenterY)
                     .zIndex(3)
                 }
             }
@@ -403,7 +414,7 @@ struct HomeHeroV2View: View {
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
 
-            if !categories.isEmpty, let onSelectCategory {
+            if let onSelectCategory {
                 HomeHeroSpeciesDock(
                     categories: categories,
                     selectedCategoryID: selectedCategoryID,
@@ -600,7 +611,7 @@ struct HomeHeroV2View: View {
                 .allowsTightening(true)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, PPSpace.sm)
+                .padding(.top, HomeHeroV2Metrics.copyEyebrowToTitleSpacing)
                 .accessibilityAddTraits(.isHeader)
 
             Text(page.subtitle)
@@ -610,13 +621,13 @@ struct HomeHeroV2View: View {
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 6 : 2)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, PPSpace.xs)
+                .padding(.top, HomeHeroV2Metrics.copyTitleToSubtitleSpacing)
 
             ZStack(alignment: .leading) {
                 primaryButton(page, accent: accent)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, PPSpace.md)
+            .padding(.top, HomeHeroV2Metrics.copySubtitleToPrimarySpacing)
 
             if let secondaryTitle = page.secondaryTitle,
                !secondaryTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -625,7 +636,7 @@ struct HomeHeroV2View: View {
                     secondaryButton(secondaryTitle, accent: accent)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, PPSpace.sm)
+                .padding(.top, HomeHeroV2Metrics.copyPrimaryToSecondarySpacing)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1398,7 +1409,7 @@ private enum HomeHeroV2Palette {
     }
 }
 
-// MARK: - Living Species Dock
+// MARK: - Living Species Dock NextGen (Category-Defining Multi-Platform Architecture)
 
 @available(iOS 15.0, *)
 private struct HomeHeroSpeciesDock: View {
@@ -1409,207 +1420,14 @@ private struct HomeHeroSpeciesDock: View {
     let reduceMotion: Bool
     let onSelect: (HomeCategoryModel?) -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
-
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: PPSpace.sm) {
-                    // "All" item
-                    speciesItem(
-                        category: nil,
-                        isSelected: selectedCategoryID == nil,
-                        proxy: proxy
-                    )
-                    .id("home-hero-species-all")
-
-                    // Category items
-                    ForEach(categories) { category in
-                        let catID = HomeModelAdapter.mainKindID(category.raw)
-                        speciesItem(
-                            category: category,
-                            isSelected: catID == selectedCategoryID,
-                            proxy: proxy
-                        )
-                        .id("home-hero-species-\(category.id)")
-                    }
-                }
-                .padding(.horizontal, PPSpace.base)
-                .padding(.vertical, PPSpace.xxs)
-            }
-            .onAppear {
-                scrollToSelection(proxy: proxy, animated: false)
-            }
-            .onChange(of: selectedCategoryID) { _ in
-                scrollToSelection(proxy: proxy, animated: !reduceMotion)
-            }
-        }
-    }
-
-    private func scrollToSelection(proxy: ScrollViewProxy, animated: Bool) {
-        let targetID: String
-        if let selectedCategoryID,
-           let cat = categories.first(where: { HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID }) {
-            targetID = "home-hero-species-\(cat.id)"
-        } else {
-            targetID = "home-hero-species-all"
-        }
-        if animated {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                proxy.scrollTo(targetID, anchor: .center)
-            }
-        } else {
-            proxy.scrollTo(targetID, anchor: .center)
-        }
-    }
-
-    @ViewBuilder
-    private func speciesItem(
-        category: HomeCategoryModel?,
-        isSelected: Bool,
-        proxy: ScrollViewProxy
-    ) -> some View {
-        let title = category?.title ?? HomeModelAdapter.localized("All", fallback: "All")
-        let itemAccent = category.map { Color(uiColor: $0.accent) } ?? accent
-
-        Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            if reduceMotion {
-                onSelect(category)
-            } else {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.80)) {
-                    onSelect(category)
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                // Avatar Medallion
-                medallion(for: category, isSelected: isSelected, itemAccent: itemAccent)
-
-                // Label
-                Text(title)
-                    .font(HomeFont.bold(12.5))
-                    .foregroundStyle(
-                        isSelected
-                            ? (colorScheme == .dark ? Color.white : Color.ppTextPrimary)
-                            : Color.ppTextSecondary
-                    )
-                    .lineLimit(1)
-
-                if isSelected {
-                    Circle()
-                        .fill(itemAccent)
-                        .frame(width: 4.5, height: 4.5)
-                        .shadow(color: itemAccent.opacity(0.6), radius: 2)
-                }
-            }
-            .padding(.horizontal, 9)
-            .frame(height: 38)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(
-                            itemAccent.opacity(
-                                colorScheme == .dark ? 0.28 : 0.14
-                            )
-                        )
-                } else {
-                    Capsule()
-                        .fill(
-                            Color.ppSecondarySurface.opacity(
-                                colorScheme == .dark ? 0.45 : 0.65
-                            )
-                        )
-                }
-            }
-            .overlay {
-                if isSelected {
-                    Capsule()
-                        .strokeBorder(
-                            itemAccent.opacity(
-                                contrast == .increased ? 0.8 : 0.40
-                            ),
-                            lineWidth: contrast == .increased ? 1.5 : 1
-                        )
-                } else {
-                    Capsule()
-                        .strokeBorder(
-                            Color.primary.opacity(0.06),
-                            lineWidth: 0.6
-                        )
-                }
-            }
-            .scaleEffect(isSelected ? 1.02 : 1.0)
-            .animation(
-                reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.82),
-                value: isSelected
-            )
-        }
-        .buttonStyle(HomeHeroSpeciesItemButtonStyle(reduceMotion: reduceMotion))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
-    }
-
-    @ViewBuilder
-    private func medallion(
-        for category: HomeCategoryModel?,
-        isSelected: Bool,
-        itemAccent: Color
-    ) -> some View {
-        ZStack {
-            Circle()
-                .fill(
-                    isSelected
-                        ? itemAccent.opacity(0.20)
-                        : Color.ppSecondarySurface
-                )
-                .frame(width: 26, height: 26)
-
-            if let category {
-                if let urlString = category.imageURL, !urlString.isEmpty {
-                    HomeRemoteImage(
-                        urlString: urlString,
-                        placeholder: category.localImage,
-                        contentMode: .scaleAspectFit,
-                        displaySize: CGSize(width: 52, height: 52)
-                    )
-                    .frame(width: 22, height: 22)
-                    .clipShape(Circle())
-                } else if let local = category.localImage {
-                    Image(uiImage: local)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 22, height: 22)
-                        .clipShape(Circle())
-                } else {
-                    Image(systemName: "pawprint.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(isSelected ? itemAccent : Color.ppTextSecondary)
-                }
-            } else {
-                // "All" Sanctuary Emblem
-                Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(isSelected ? itemAccent : Color.ppTextSecondary)
-            }
-        }
-        .frame(width: 26, height: 26)
-    }
-}
-
-@available(iOS 15.0, *)
-private struct HomeHeroSpeciesItemButtonStyle: ButtonStyle {
-    let reduceMotion: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1.0)
-            .opacity(configuration.isPressed ? 0.85 : 1.0)
-            .animation(
-                reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.75),
-                value: configuration.isPressed
-            )
+        HomeCategoriesStripView(
+            categories: categories,
+            selectedCategoryID: selectedCategoryID,
+            accent: accent,
+            isRightToLeft: isRightToLeft,
+            reduceMotion: reduceMotion,
+            onSelect: onSelect
+        )
     }
 }

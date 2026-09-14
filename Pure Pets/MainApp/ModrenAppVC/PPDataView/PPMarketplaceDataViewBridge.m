@@ -1260,12 +1260,13 @@ static NSString *PPMarketplaceTrimmedString(id value)
             [NSString stringWithFormat:activeCountFormat, (long)activeCount]];
     }
 
+    NSString *separator = Language.isRTL ? @" ، " : @", ";
     return [[PPMarketplaceNavigationContext alloc]
         initWithTitle:title
              subtitle:subtitle
       systemImageName:[self pp_navigationIconNameForSection:section
                                          selectedProviderID:selectedProviderID]
-   accessibilityLabel:[accessibilityParts componentsJoinedByString:@", "]];
+   accessibilityLabel:[accessibilityParts componentsJoinedByString:separator]];
 }
 
 - (NSArray<PPUniversalCellViewModel *> *)items:(NSArray<PPUniversalCellViewModel *> *)items

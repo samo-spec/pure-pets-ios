@@ -2346,6 +2346,40 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }];
 }
 
+- (void)setPeerBlockedForThread:(ChatThreadModel *)thread
+                        blocked:(BOOL)blocked
+                     completion:(void (^)(NSError * _Nullable error))completion
+{
+    NSString *myUID = [self pp_authenticatedUIDForRequestedUID:nil];
+    NSString *targetUID = @"";
+    for (NSString *candidateUID in thread.memberIDs) {
+        if (candidateUID.length > 0 && ![candidateUID isEqualToString:myUID]) {
+            targetUID = candidateUID;
+            break;
+        }
+    }
+    if (!thread.ID.length || !myUID.length || !targetUID.length ||
+        [ChatThreadModel isSupportThread:thread]) {
+        if (completion) completion([NSError errorWithDomain:@"ChManager"
+                                                       code:400
+                                                   userInfo:@{NSLocalizedDescriptionKey:
+                                                                  kLang(@"SomethingWentWrong")}]);
+        return;
+    }
+
+    [self pp_invokeChatCallableNamed:@"chatMessageCommand"
+                             payload:@{
+                                 @"action": @"set_blocked",
+                                 @"threadId": thread.ID,
+                                 @"targetUid": targetUID,
+                                 @"enabled": @(blocked),
+                             }
+                          completion:^(__unused NSDictionary * _Nullable data,
+                                       NSError * _Nullable error) {
+        if (completion) completion(error);
+    }];
+}
+
 // MARK: - startChatWith SelectUser
 - (void)startChatWith:(UserModel *)user fromController:(UIViewController *)controller {
     //NSString *userID = UserManager.sharedManager.currentUser.ID;

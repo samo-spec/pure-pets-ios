@@ -159,6 +159,10 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         [dict[@"reportedBy"] isKindOfClass:NSArray.class]
         ? dict[@"reportedBy"]
         : @[];
+    _blockedBy =
+        [dict[@"blockedBy"] isKindOfClass:NSArray.class]
+        ? dict[@"blockedBy"]
+        : @[];
     _conversationType = PPChatTrimmedString(dict[@"conversationType"]);
     _threadType = PPChatTrimmedString(dict[@"threadType"]);
     _supportThread = PPChatBoolValue(dict[@"supportThread"]);
@@ -190,6 +194,8 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     _isMuted = [_mutedBy containsObject:myUID];
     _isBinned = [_binnedBy containsObject:myUID];
     _isReportedByMe = [_reportedBy containsObject:myUID];
+    _isBlockedByMe = [_blockedBy containsObject:myUID];
+    _isConversationBlocked = _blockedBy.count > 0;
 
     for (NSString *uid in _memberIDs) {
         if (![uid isEqualToString:myUID]) {
@@ -225,6 +231,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     [coder encodeObject:self.mutedBy forKey:@"mutedBy"];
     [coder encodeObject:self.binnedBy forKey:@"binnedBy"];
     [coder encodeObject:self.reportedBy forKey:@"reportedBy"];
+    [coder encodeObject:self.blockedBy forKey:@"blockedBy"];
     [coder encodeObject:self.conversationType forKey:@"conversationType"];
     [coder encodeObject:self.threadType forKey:@"threadType"];
     [coder encodeBool:self.supportThread forKey:@"supportThread"];
@@ -269,6 +276,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     self.mutedBy = [coder decodeObjectOfClass:NSArray.class forKey:@"mutedBy"] ?: @[];
     self.binnedBy = [coder decodeObjectOfClass:NSArray.class forKey:@"binnedBy"] ?: @[];
     self.reportedBy = [coder decodeObjectOfClass:NSArray.class forKey:@"reportedBy"] ?: @[];
+    self.blockedBy = [coder decodeObjectOfClass:NSArray.class forKey:@"blockedBy"] ?: @[];
     self.conversationType = [coder decodeObjectOfClass:NSString.class forKey:@"conversationType"] ?: @"";
     self.threadType = [coder decodeObjectOfClass:NSString.class forKey:@"threadType"] ?: @"";
     self.supportThread = [coder decodeBoolForKey:@"supportThread"];
@@ -289,6 +297,8 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     self.isMuted = [self.mutedBy containsObject:myUID];
     self.isBinned = [self.binnedBy containsObject:myUID];
     self.isReportedByMe = [self.reportedBy containsObject:myUID];
+    self.isBlockedByMe = [self.blockedBy containsObject:myUID];
+    self.isConversationBlocked = self.blockedBy.count > 0;
 
     return self;
 }

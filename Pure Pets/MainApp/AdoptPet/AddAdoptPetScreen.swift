@@ -145,6 +145,10 @@ final class AddAdoptPetStore: ObservableObject {
     var isEditing: Bool { editingPet != nil }
     private var hasUserModifiedForm: Bool = false
     private var isHydrating: Bool = false
+    // A create command must retain the same aggregate identity across an
+    // uncertain response or relaunch. The callable's command ledger can only
+    // deduplicate a request when the client preserves this value.
+    private var creationListingID: String = ""
 
     // Persistence Keys
     private let draftPrefix = "pp.add_adopt_pet.draft"
@@ -156,8 +160,22 @@ final class AddAdoptPetStore: ObservableObject {
         return "\(draftPrefix).create.\(uid)"
     }
 
+    private var creationIdentityDefaultsKey: String {
+        let uid = UserManager.shared().currentUser?.id ?? "guest"
+        return "\(draftPrefix).create-identity.\(uid)"
+    }
+
     init(pet: AdoptPetModel? = nil) {
         self.editingPet = pet
+        if let existingID = pet?.documentID, !existingID.isEmpty {
+            self.creationListingID = existingID
+        } else {
+            let uid = UserManager.shared().currentUser?.id ?? "guest"
+            let identityKey = "pp.add_adopt_pet.draft.create-identity.\(uid)"
+            let persisted = UserDefaults.standard.string(forKey: identityKey)
+            self.creationListingID = (persisted?.isEmpty == false ? persisted : nil) ?? UUID().uuidString.lowercased()
+            UserDefaults.standard.set(self.creationListingID, forKey: identityKey)
+        }
         loadDomainData()
         if pet != nil {
             hydrateFromEditingPet()
@@ -256,6 +274,10 @@ final class AddAdoptPetStore: ObservableObject {
         if let g = data["gender"] as? String { self.selectedGender = g }
         if let d = data["details"] as? String { self.details = d }
         if let reason = data["adoptionReason"] as? String { self.adoptionReason = reason }
+        if !isEditing, let listingID = data["creationListingID"] as? String, !listingID.isEmpty {
+            self.creationListingID = listingID
+            UserDefaults.standard.set(listingID, forKey: creationIdentityDefaultsKey)
+        }
 
         if let kID = data["kindID"] as? Int,
            let kind = availableKinds.first(where: { $0.id == kID }) {
@@ -273,11 +295,14 @@ final class AddAdoptPetStore: ObservableObject {
 
         // Restore cached local images
         if let paths = data["imagePaths"] as? [String] {
+            let assetIDs = data["imageAssetIDs"] as? [String] ?? []
             var restoredItems: [AdoptMediaItem] = []
-            for path in paths {
+            for (index, path) in paths.enumerated() {
                 if FileManager.default.fileExists(atPath: path),
                    let img = UIImage(contentsOfFile: path) {
-                    restoredItems.append(AdoptMediaItem(id: UUID().uuidString, image: img))
+                    let savedAssetID = assetIDs.indices.contains(index) ? assetIDs[index] : ""
+                    let assetID = savedAssetID.isEmpty ? nil : savedAssetID
+                    restoredItems.append(AdoptMediaItem(id: UUID().uuidString, image: img, assetID: assetID))
                 }
             }
             if !restoredItems.isEmpty {
@@ -297,12 +322,17 @@ final class AddAdoptPetStore: ObservableObject {
     }
 
     func saveDraft() {
+        persistDraft(showSuccessFeedback: true)
+    }
+
+    private func persistDraft(showSuccessFeedback: Bool) {
         var dict: [String: Any] = [
             "name": name,
             "age": ageMonths,
             "gender": selectedGender,
             "details": details,
             "adoptionReason": adoptionReason,
+            "creationListingID": creationListingID,
             "timestamp": Date().timeIntervalSince1970
         ]
         if let k = selectedKind { dict["kindID"] = k.id }
@@ -314,22 +344,27 @@ final class AddAdoptPetStore: ObservableObject {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
 
         var imagePaths: [String] = []
+        var imageAssetIDs: [String] = []
         for (idx, item) in mediaItems.enumerated() {
             if let img = item.image, let pngData = img.jpegData(compressionQuality: 0.75) {
                 let filePath = (tempDir as NSString).appendingPathComponent("draft_\(idx).jpg")
                 try? pngData.write(to: URL(fileURLWithPath: filePath))
                 imagePaths.append(filePath)
+                imageAssetIDs.append(item.assetID ?? "")
             }
         }
         dict["imagePaths"] = imagePaths
+        dict["imageAssetIDs"] = imageAssetIDs
 
         UserDefaults.standard.set(dict, forKey: draftDefaultsKey)
+        if !isEditing { UserDefaults.standard.set(creationListingID, forKey: creationIdentityDefaultsKey) }
         hasSavedDraft = true
-        AdoptHaptics.success()
+        if showSuccessFeedback { AdoptHaptics.success() }
     }
 
     func clearDraft() {
         UserDefaults.standard.removeObject(forKey: draftDefaultsKey)
+        if !isEditing { UserDefaults.standard.removeObject(forKey: creationIdentityDefaultsKey) }
         hasSavedDraft = false
     }
 
@@ -465,30 +500,42 @@ final class AddAdoptPetStore: ObservableObject {
         errorMessage = nil
         submissionStepText = isEditing ? PPAdoptLang("adopt_form_save_changes") : PPAdoptLang("adopt_form_publish_action")
 
-        let listingID = editingPet?.documentID.isEmpty == false ? editingPet!.documentID : UUID().uuidString.lowercased()
+        let listingID = editingPet?.documentID.isEmpty == false ? editingPet!.documentID : creationListingID
         let petID = editingPet?.petID.isEmpty == false ? editingPet!.petID : listingID
 
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 self.submissionStepText = PPAdoptLang("adopt_form_media_studio_title")
-                var sources: [PPCommunityMediaSource] = []
-                for item in self.mediaItems where item.remoteURL == nil {
+                var pendingMedia: [(index: Int, source: PPCommunityMediaSource)] = []
+                for index in self.mediaItems.indices {
+                    let item = self.mediaItems[index]
+                    guard item.remoteURL == nil, item.assetID == nil else { continue }
                     if item.isVideo, let url = item.videoURL {
-                        sources.append(try PPCommunityMediaSource(videoURL: url))
+                        pendingMedia.append((index, try PPCommunityMediaSource(videoURL: url)))
                     } else if let image = item.image {
-                        sources.append(try PPCommunityMediaSource(image: image))
+                        pendingMedia.append((index, try PPCommunityMediaSource(image: image)))
+                    } else {
+                        throw PPCommunityError.missingMedia
                     }
                 }
 
                 var assetIDs = self.mediaItems.compactMap(\.assetID)
-                if !sources.isEmpty {
+                if !pendingMedia.isEmpty {
                     let media = try await PPCommunityService.shared.uploadMedia(
-                        sources,
+                        pendingMedia.map(\.source),
                         contextType: "adoption_listing",
                         contextID: listingID
                     )
-                    assetIDs.append(contentsOf: media.assetIDs)
+                    guard media.assetIDs.count == pendingMedia.count else { throw PPCommunityError.invalidResponse }
+                    for (offset, pending) in pendingMedia.enumerated() {
+                        self.mediaItems[pending.index].assetID = media.assetIDs[offset]
+                    }
+                    // Persist the processed asset identities before the listing
+                    // write. A timeout after media finalization can then retry
+                    // the same listing payload rather than uploading duplicates.
+                    self.persistDraft(showSuccessFeedback: false)
+                    assetIDs = self.mediaItems.compactMap(\.assetID)
                 }
                 var seenAssetIDs = Set<String>()
                 assetIDs = Array(assetIDs.filter { seenAssetIDs.insert($0).inserted }.prefix(8))

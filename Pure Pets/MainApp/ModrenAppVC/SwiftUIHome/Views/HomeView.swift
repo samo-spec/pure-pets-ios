@@ -233,7 +233,7 @@ struct HomeView: View {
                             .accessibilityHidden(true)
 
                         content
-                            .padding(.top, 0)
+                            .padding(.top, HomeVisualTokens.heroTopBreezeSpacing)
                             .padding(.bottom, bottomPadding)
                     }
                 }
@@ -455,7 +455,7 @@ struct HomeView: View {
 
         case let .marketingStage(source):
             marketingStage(source)
-                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                .padding(.horizontal, 0)
 
         case .ecosystemLauncher:
             PPHomeEcosystemLauncher(
@@ -1033,10 +1033,10 @@ struct HomeView: View {
                  .commerceRail,
                  .partnerFeature,
                  .careGateway,
-                 .petContext:
+                 .petContext,
+                 .ecosystemLauncher:
                 return true
-            case .ecosystemLauncher,
-                 .discoveryRail,
+            case .discoveryRail,
                  .discoveryPrompt,
                  .marketingStage,
                  .livePriorityCare,

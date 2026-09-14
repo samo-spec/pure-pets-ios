@@ -116,7 +116,7 @@ public struct AnimatedAddToCartButton: View {
                 removeAccessibilityIdentifier
             self.isEnabled = isEnabled
             self.canRemove = canRemove
-            let safeControlHeight = max(36, controlHeight)
+            let safeControlHeight = max(32, controlHeight)
             self.controlHeight = safeControlHeight
             self.minimumHitHeight = max(
                 safeControlHeight,

@@ -965,6 +965,8 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
             isMuted: thread.isMuted,
             isBinned: thread.isBinned,
             isReported: thread.isReportedByMe,
+            isBlockedByMe: thread.isBlockedByMe,
+            isConversationBlocked: thread.isConversationBlocked,
             onPin: delegate == nil ? nil : { [weak self] in
                 self?.delegate?.messagingHostDidRequestAction(
                     PPMessagingAction.pin.rawValue,
@@ -982,6 +984,9 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
             },
             onReport: thread.isReportedByMe ? nil : { [weak self] in
                 self?.presentReportConfirmation()
+            },
+            onBlock: ChatThreadModel.isSupportThread(thread) ? nil : { [weak self] in
+                self?.presentBlockConfirmation()
             },
             onBin: { [weak self] in
                 self?.confirmBinThread()
@@ -1189,6 +1194,74 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                 }
                 self.screenState.isReported = true
                 PPHUD.showSuccess(self.ppLocalized("chat.report.success"))
+            }
+        }
+    }
+
+    private func presentBlockConfirmation() {
+        guard let thread = chatThread,
+              !ChatThreadModel.isSupportThread(thread) else { return }
+        if thread.isBlockedByMe {
+            updatePeerBlock(thread: thread, blocked: false)
+            return
+        }
+
+        PPAlertHelper.showConfirmation(
+            in: self,
+            title: ppLocalized("chat.block.confirm.title"),
+            subtitle: ppLocalized("chat.block.confirm.message"),
+            confirmButton: ppLocalized("chat.block.confirm.action"),
+            cancelButton: ppLocalized("chat.cancel"),
+            icon: UIImage(systemName: "hand.raised.fill"),
+            confirmBlock: { [weak self] _, didConfirm in
+                guard didConfirm else { return }
+                self?.updatePeerBlock(thread: thread, blocked: true)
+            },
+            cancelBlock: nil
+        )
+    }
+
+    private func updatePeerBlock(thread: ChatThreadModel, blocked: Bool) {
+        PPHUD.showLoading()
+        ChManager.shared().setPeerBlocked(
+            for: thread,
+            blocked: blocked
+        ) { [weak self] error in
+            self?.onMain {
+                guard let self else { return }
+                PPHUD.dismiss()
+                if error != nil {
+                    PPHUD.showError(self.ppLocalized("SomethingWentWrong"))
+                    return
+                }
+
+                let currentUserID = UserManager.shared().currentUser?.id ?? ""
+                var blockedBy = thread.blockedBy
+                if blocked {
+                    if !currentUserID.isEmpty && !blockedBy.contains(currentUserID) {
+                        blockedBy.append(currentUserID)
+                    }
+                } else {
+                    blockedBy.removeAll { $0 == currentUserID }
+                }
+                thread.blockedBy = blockedBy
+                thread.isBlockedByMe = blocked
+                thread.isConversationBlocked = !blockedBy.isEmpty
+                self.screenState.isBlockedByMe = blocked
+                self.screenState.isConversationBlocked = !blockedBy.isEmpty
+                if blocked {
+                    self.screenState.clearReplyComposer()
+                    self.screenState.composerState.message = ""
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil,
+                        from: nil,
+                        for: nil
+                    )
+                }
+                PPHUD.showSuccess(
+                    self.ppLocalized(blocked ? "chat.blocked" : "chat.unblocked")
+                )
             }
         }
     }
@@ -1896,6 +1969,8 @@ private final class PPMessagingScreenState: ObservableObject {
     @Published var isMuted = false
     @Published var isBinned = false
     @Published var isReported = false
+    @Published var isBlockedByMe = false
+    @Published var isConversationBlocked = false
     @Published var isSupportThread = false
     @Published var supportThreadID = ""
     @Published var supportDisplayName = ""
@@ -2027,6 +2102,8 @@ private final class PPMessagingScreenState: ObservableObject {
         self.isMuted = isMuted
         self.isBinned = isBinned
         self.isReported = isReported
+        self.isBlockedByMe = false
+        self.isConversationBlocked = false
         self.isSupportThread = supportThread
         self.supportThreadID = supportThreadID
         self.supportDisplayName = supportDisplayName
@@ -2081,6 +2158,8 @@ private final class PPMessagingScreenState: ObservableObject {
         participantRestricted =
             (user?.isEffectivelyBlocked ?? false) ||
             (user?.isChatEffectivelyBlocked ?? false)
+        isBlockedByMe = thread.isBlockedByMe
+        isConversationBlocked = thread.isConversationBlocked
         participantPlan = user?.subscriptionPlan ?? ""
         providerRatingValue = user?.providerRatingValue ?? 0
         providerReviewCount = max(0, user?.providerReviewCount ?? 0)
@@ -2760,10 +2839,13 @@ private struct PPMessagingConversationActionsSheet: View {
     let isMuted: Bool
     let isBinned: Bool
     let isReported: Bool
+    let isBlockedByMe: Bool
+    let isConversationBlocked: Bool
     let onPin: (() -> Void)?
     let onMute: () -> Void
     let onBackground: (() -> Void)?
     let onReport: (() -> Void)?
+    let onBlock: (() -> Void)?
     let onBin: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -2934,6 +3016,19 @@ private struct PPMessagingConversationActionsSheet: View {
                     : nil,
                 action: onReport
             )
+
+            if let onBlock {
+                groupDivider
+
+                actionRow(
+                    title: localized(isBlockedByMe ? "chat.unblock" : "chat.block"),
+                    systemName: isBlockedByMe ? "hand.raised.slash.fill" : "hand.raised.fill",
+                    role: isBlockedByMe ? nil : .destructive, accessibilityValue: isConversationBlocked
+                    ? localized("chat.blocked.state")
+                    : nil,
+                    action: onBlock
+                )
+            }
 
             groupDivider
 
@@ -3125,36 +3220,7 @@ private struct PPMessagingScreen: View {
                         perform: handleMeasuredHeaderHeightChange
                     )
 
-                ChatBarView(
-                    state: state.composerState,
-                    presentation: .messaging,
-                    chatBarHeight: 54,
-                    onSendText: { relay.sendText($0) },
-                    onCameraTap: { relay.tapCamera() },
-                    onVideoTap: { relay.tapVideo() },
-                    onContactTap: { relay.tapContact() },
-                    onStickerTap: { relay.selectSticker($0) },
-                    onSendAudio: { url, duration in
-                        relay.sendAudio(url: url, duration: duration)
-                    },
-                    onCancelReply: {
-                        relay.request(.composerCancelledReply)
-                    }
-                )
-                .accessibilityIdentifier("pp.messaging.composer")
-                .onReceive(state.composerState.$message.dropFirst()) { text in
-                    relay.delegate?.messagingHostDidChangeText(text)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(
-                    .bottom,
-                    state.keyboardIsPresented ? 8 : 22
-                )
-                .animation(reduceMotion ? nil : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22), value: state.keyboardIsPresented)
-                .background {
-                    PPMessagingComposerBackdrop()
-                }
+                composerRegion
             }
             .ignoresSafeArea(.container, edges: .bottom)
             .background {
@@ -3201,6 +3267,60 @@ private struct PPMessagingScreen: View {
                 presentedMedia = nil
             } onSave: {
                 relay.request(.saveMedia, messageID: message.id)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var composerRegion: some View {
+        if state.isConversationBlocked {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: "hand.raised.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(PPMessagingPalette.failure)
+                    .accessibilityHidden(true)
+
+                Text(localized("chat.blocked.message"))
+                    .font(Font.ppBeirutiSemiBold(size: 15, relativeTo: .body))
+                    .foregroundStyle(PPMessagingPalette.primaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .background(PPMessagingComposerBackdrop())
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("pp.messaging.composer.blocked")
+        } else {
+            ChatBarView(
+                state: state.composerState,
+                presentation: .messaging,
+                chatBarHeight: 54,
+                onSendText: { relay.sendText($0) },
+                onCameraTap: { relay.tapCamera() },
+                onVideoTap: { relay.tapVideo() },
+                onContactTap: { relay.tapContact() },
+                onStickerTap: { relay.selectSticker($0) },
+                onSendAudio: { url, duration in
+                    relay.sendAudio(url: url, duration: duration)
+                },
+                onCancelReply: {
+                    relay.request(.composerCancelledReply)
+                }
+            )
+            .accessibilityIdentifier("pp.messaging.composer")
+            .onReceive(state.composerState.$message.dropFirst()) { text in
+                relay.delegate?.messagingHostDidChangeText(text)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, state.keyboardIsPresented ? 8 : 22)
+            .animation(
+                reduceMotion ? nil : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22),
+                value: state.keyboardIsPresented
+            )
+            .background {
+                PPMessagingComposerBackdrop()
             }
         }
     }

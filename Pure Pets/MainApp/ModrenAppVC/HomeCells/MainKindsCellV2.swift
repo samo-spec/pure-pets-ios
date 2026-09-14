@@ -960,7 +960,7 @@ public final class MainKindsCellV2: UICollectionViewCell {
 
 public struct MainKindsCellV2Layout {
     public static let captionPointSize: CGFloat = 17
-    public static let cardCornerRadius: CGFloat = PPCorner.card
+    public static let cardCornerRadius: CGFloat = PPCorner.card - 4
 
     public let cardFrame: CGRect
     public let stageFrame: CGRect

@@ -132,6 +132,10 @@ typedef void (^ChMessageObservationCompletion)(NSArray<ChatMessageModel *> *mess
 - (void)reportThread:(ChatThreadModel *)thread
               reason:(nullable NSString *)reason
           completion:(void (^)(NSError * _Nullable error))completion;
+- (void)setPeerBlockedForThread:(ChatThreadModel *)thread
+                        blocked:(BOOL)blocked
+                     completion:(void (^)(NSError * _Nullable error))completion
+    NS_SWIFT_NAME(setPeerBlocked(for:blocked:completion:));
 
 + (void)setOnline:(BOOL)online orText:(NSString *)TXT onLabel:(UILabel *)label;
 

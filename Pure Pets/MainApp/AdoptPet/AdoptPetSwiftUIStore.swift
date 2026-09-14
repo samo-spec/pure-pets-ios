@@ -379,7 +379,7 @@ final class AdoptPetDetailsStore: ObservableObject {
                 try await PPCommunityService.shared.report(
                     targetType: "adoption_listing",
                     targetID: self.pet.documentID,
-                    reason: "incorrect_information",
+                    reason: "fake_adoption_listing",
                     details: trimmedReason
                 )
                 self.isReporting = false

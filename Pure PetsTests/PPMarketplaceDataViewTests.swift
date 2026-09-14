@@ -330,39 +330,75 @@ final class PPMarketplaceDataViewTests: XCTestCase {
     }
 
     func testTopDeckMetricsAndWaveShapes() {
-        XCTAssertEqual(PPMarketplaceTopDeckMetrics.waveDepth, 20.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.waveDepth, 10.0)
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeWidth, 1.5)
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth, 2.0)
-        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 24.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 10.0)
 
         let testRect = CGRect(x: 0, y: 0, width: 421, height: 100)
 
         // Verify RTL top deck wave shape produces a valid, bounded surface
-        let rtlWaveShape = PPMarketplaceTopDeckWaveShape(isRightToLeft: true, waveDepth: 20.0)
+        let rtlWaveShape = PPMarketplaceTopDeckWaveShape(isRightToLeft: true, waveDepth: 10.0)
         let rtlPath = rtlWaveShape.path(in: testRect)
         XCTAssertFalse(rtlPath.isEmpty)
         XCTAssertLessThanOrEqual(rtlPath.boundingRect.minY, 0)
         XCTAssertGreaterThanOrEqual(rtlPath.boundingRect.maxY, 95)
 
         // Verify LTR mirrored wave shape produces a valid, bounded surface
-        let ltrWaveShape = PPMarketplaceTopDeckWaveShape(isRightToLeft: false, waveDepth: 20.0)
+        let ltrWaveShape = PPMarketplaceTopDeckWaveShape(isRightToLeft: false, waveDepth: 10.0)
         let ltrPath = ltrWaveShape.path(in: testRect)
         XCTAssertFalse(ltrPath.isEmpty)
         XCTAssertLessThanOrEqual(ltrPath.boundingRect.minY, 0)
         XCTAssertGreaterThanOrEqual(ltrPath.boundingRect.maxY, 95)
 
         // Verify wave separator line stroke path
-        let rtlLineShape = PPMarketplaceWaveSeparatorLine(isRightToLeft: true, waveDepth: 20.0)
+        let rtlLineShape = PPMarketplaceWaveSeparatorLine(isRightToLeft: true, waveDepth: 10.0)
         let rtlLinePath = rtlLineShape.path(in: testRect)
         XCTAssertFalse(rtlLinePath.isEmpty)
-        XCTAssertGreaterThanOrEqual(rtlLinePath.boundingRect.minY, 78)
-        XCTAssertLessThanOrEqual(rtlLinePath.boundingRect.maxY, 102)
+        XCTAssertGreaterThanOrEqual(rtlLinePath.boundingRect.minY, 88)
+        XCTAssertLessThanOrEqual(rtlLinePath.boundingRect.maxY, 101)
 
-        let ltrLineShape = PPMarketplaceWaveSeparatorLine(isRightToLeft: false, waveDepth: 20.0)
+        let ltrLineShape = PPMarketplaceWaveSeparatorLine(isRightToLeft: false, waveDepth: 10.0)
         let ltrLinePath = ltrLineShape.path(in: testRect)
         XCTAssertFalse(ltrLinePath.isEmpty)
-        XCTAssertGreaterThanOrEqual(ltrLinePath.boundingRect.minY, 78)
-        XCTAssertLessThanOrEqual(ltrLinePath.boundingRect.maxY, 102)
+        XCTAssertGreaterThanOrEqual(ltrLinePath.boundingRect.minY, 88)
+        XCTAssertLessThanOrEqual(ltrLinePath.boundingRect.maxY, 101)
+    }
+
+    func testTopDeckStraightSeparatorWithCenterHalfCircle() {
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.halfCircleRadius, 0.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeWidth, 1.5)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth, 2.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 10.0)
+
+        let testRect = CGRect(x: 0, y: 0, width: 421, height: 100)
+
+        // Verify straight deck shape bounding box with clean straight separator (r = 0)
+        let straightDeckShape = PPMarketplaceTopDeckStraightShape(halfCircleRadius: 0.0)
+        let deckPath = straightDeckShape.path(in: testRect)
+        XCTAssertFalse(deckPath.isEmpty)
+        XCTAssertEqual(deckPath.boundingRect.minX, 0, accuracy: 0.1)
+        XCTAssertEqual(deckPath.boundingRect.maxX, 421, accuracy: 0.1)
+        XCTAssertEqual(deckPath.boundingRect.minY, 0, accuracy: 0.1)
+        XCTAssertEqual(deckPath.boundingRect.maxY, 100, accuracy: 0.1)
+
+        // Verify straight separator line shape without center half-circle (r = 0)
+        let cleanSeparatorShape = PPMarketplaceDeckSeparatorShape(halfCircleRadius: 0.0)
+        let cleanLinePath = cleanSeparatorShape.path(in: testRect)
+        XCTAssertFalse(cleanLinePath.isEmpty)
+        XCTAssertEqual(cleanLinePath.boundingRect.minX, 0, accuracy: 0.1)
+        XCTAssertEqual(cleanLinePath.boundingRect.maxX, 421, accuracy: 0.1)
+        XCTAssertEqual(cleanLinePath.boundingRect.minY, 100, accuracy: 0.1)
+        XCTAssertEqual(cleanLinePath.boundingRect.maxY, 100, accuracy: 0.1)
+
+        // Verify backward compatibility when halfCircleRadius is explicitly configured
+        let domeSeparatorShape = PPMarketplaceDeckSeparatorShape(halfCircleRadius: 16.0)
+        let domeLinePath = domeSeparatorShape.path(in: testRect)
+        XCTAssertFalse(domeLinePath.isEmpty)
+        XCTAssertEqual(domeLinePath.boundingRect.minX, 0, accuracy: 0.1)
+        XCTAssertEqual(domeLinePath.boundingRect.maxX, 421, accuracy: 0.1)
+        XCTAssertEqual(domeLinePath.boundingRect.minY, 84, accuracy: 0.1)
+        XCTAssertEqual(domeLinePath.boundingRect.maxY, 100, accuracy: 0.1)
     }
 
     private func makeFixture() -> (

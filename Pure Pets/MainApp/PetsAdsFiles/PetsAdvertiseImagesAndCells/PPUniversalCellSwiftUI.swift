@@ -672,6 +672,10 @@ public struct PPUniversalCardView: View {
             }
     }
 
+    private var isAdsMode: Bool {
+        store.context.isAdvertisement || store.isSuggestionsAd
+    }
+
     private var minimumHeight: CGFloat {
         if store.layout == .focus {
             return dynamicTypeSize.isAccessibilitySize ? 780 : 500
@@ -680,12 +684,15 @@ public struct PPUniversalCardView: View {
             return dynamicTypeSize.isAccessibilitySize ? 540 : 184
         }
         if store.isHomePresentation {
-            return HomeVisualTokens.universalCardHeight
+            return isAdsMode
+                ? max(250, HomeVisualTokens.universalCardHeight - 42)
+                : HomeVisualTokens.universalCardHeight
         }
         if store.model.isSkeleton && store.context.isCatalogCommerce {
             return 280
         }
-        return dynamicTypeSize.isAccessibilitySize ? 508 : 328
+        let baseHeight: CGFloat = dynamicTypeSize.isAccessibilitySize ? 508 : 328
+        return isAdsMode ? (baseHeight - 42) : baseHeight
     }
 
     private var legacySourceSignature: String {
@@ -2085,15 +2092,17 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
 
     private var cardRadius: CGFloat {
-        store.isHomePresentation ? HomeVisualTokens.cardCorner : 23
+        32
     }
-    private let mediaBottomRadius: CGFloat = 8
+    private let mediaBottomRadius: CGFloat = 16
 
     init(store: PPUniversalCardStore) {
         self.store = store
     }
 
-    private let mediaTopRadius: CGFloat = 21.5
+    private var mediaTopRadius: CGFloat {
+        max(0, cardRadius - mediaContentInset)
+    }
 
     var body: some View {
         Group {
@@ -2549,7 +2558,7 @@ private struct PPUniversalCardRenderer: View {
             Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
 
             if store.model.usesQuantityControl || store.context.isAdvertisement || store.context.isServiceLike {
-                if !store.isNearbyAdsSection && !store.isContextFocused {
+                if !store.isNearbyAdsSection && !store.isContextFocused && !isAdsMode {
                     bottomCTA
                         .padding(.bottom, 2)
                 }
@@ -2575,7 +2584,7 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, 6)
             }
 
-            if showsBottomCTA && !store.isContextFocused {
+            if showsBottomCTA && !store.isContextFocused && !isAdsMode {
                 bottomCTA
                     .padding(.top, 8)
                     .padding(.bottom, 2)
@@ -2603,15 +2612,17 @@ private struct PPUniversalCardRenderer: View {
 
             Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 12 : 8)
 
-            if store.model.usesQuantityControl ||
-                store.context.isAdvertisement ||
-                store.context.isServiceLike {
-                if !store.isNearbyAdsSection && !store.isContextFocused {
-                    bottomCTA
-                        .padding(.bottom, 2)
+            if !isAdsMode {
+                if store.model.usesQuantityControl ||
+                    store.context.isAdvertisement ||
+                    store.context.isServiceLike {
+                    if !store.isNearbyAdsSection && !store.isContextFocused {
+                        bottomCTA
+                            .padding(.bottom, 2)
+                    }
+                } else {
+                    detailsFooter
                 }
-            } else {
-                detailsFooter
             }
         }
         .frame(
@@ -2718,25 +2729,27 @@ private struct PPUniversalCardRenderer: View {
                 }
             )
 
-            Color.clear
-                .frame(height: store.isContextFocused ? 0 : metrics.priceToActionSpacing)
+            if !isAdsMode {
+                Color.clear
+                    .frame(height: store.isContextFocused ? 0 : metrics.priceToActionSpacing)
 
-            Group {
-                if showsBottomCTA && !store.isContextFocused {
-                    bottomCTA
-                } else {
-                    Color.clear
-                        .accessibilityHidden(true)
+                Group {
+                    if showsBottomCTA && !store.isContextFocused {
+                        bottomCTA
+                    } else {
+                        Color.clear
+                            .accessibilityHidden(true)
+                    }
                 }
-            }
-            .frame(
-                maxWidth: .infinity,
-                minHeight: store.isContextFocused ? 0 : metrics.actionHeight,
-                maxHeight: store.isContextFocused ? 0 : metrics.actionHeight
-            )
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: store.isContextFocused ? 0 : metrics.actionHeight,
+                    maxHeight: store.isContextFocused ? 0 : metrics.actionHeight
+                )
 
-            Color.clear
-                .frame(height: store.isContextFocused ? 0 : metrics.actionToMetadataSpacing)
+                Color.clear
+                    .frame(height: store.isContextFocused ? 0 : metrics.actionToMetadataSpacing)
+            }
 
             scopedCardNavigationTarget(
                 Group {
@@ -2976,7 +2989,7 @@ private struct PPUniversalCardRenderer: View {
 
     @ViewBuilder
     private var bottomCTA: some View {
-        if showsBottomCTA {
+        if showsBottomCTA && !isAdsMode {
             if usesPrimaryActionForBottomStack {
                 if !store.isNearbyAdsSection {
                     primaryAction
@@ -2988,6 +3001,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var showsBottomCTA: Bool {
+        if isAdsMode {
+            return false
+        }
         return usesPrimaryActionForBottomStack
             ? !store.isNearbyAdsSection
             : true
@@ -3239,7 +3255,7 @@ private struct PPUniversalCardRenderer: View {
         // action an independent HIG-sized interaction frame.
         .frame(
             maxWidth: .infinity,
-            minHeight: HomeVisualTokens.minimumTouchTarget
+            minHeight: homeCartActionHeight
         )
         .contentShape(Rectangle())
     }
@@ -3870,17 +3886,14 @@ private struct PPUniversalCardRenderer: View {
             ? (accessibility ? 40 : 30)
             : 0
         let actionHeight: CGFloat = accessibility
-            ? 52
-            : max(
-                HomeVisualTokens.minimumTouchTarget,
-                homeCartActionHeight
-            )
+            ? (isAdsMode ? 0 : 52)
+            : (isAdsMode ? 0 : (store.model.usesQuantityControl ? homeCartActionHeight : standardActionHeight))
         let metadataHeight: CGFloat = accessibility ? 36 : 28
         let titleToPriceSpacing: CGFloat = accessibility
             ? 8
             : HomeVisualTokens.productTitleToPriceSpacing
-        let priceToActionSpacing: CGFloat = accessibility ? 10 : 8
-        let actionToMetadataSpacing: CGFloat = accessibility ? 10 : 8
+        let priceToActionSpacing: CGFloat = isAdsMode ? 0 : (accessibility ? 10 : 8)
+        let actionToMetadataSpacing: CGFloat = isAdsMode ? 0 : (accessibility ? 10 : 8)
         let informationVerticalInset: CGFloat = accessibility ? 24 : 20
         let reservedInformationHeight =
             titleHeight +
@@ -4080,9 +4093,12 @@ private struct PPUniversalCardRenderer: View {
         return .clear
     }
 
+    private var isAdsMode: Bool {
+        store.context.isAdvertisement || store.isSuggestionsAd
+    }
+
     private var isAdAction: Bool {
-        (store.context.isAdvertisement || store.isSuggestionsAd) &&
-            !store.model.usesQuantityControl
+        isAdsMode && !store.model.usesQuantityControl
     }
 
     private var usesAdsModeCTAGradient: Bool {
@@ -4137,7 +4153,7 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var standardActionHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 52 : HomeVisualTokens.minimumTouchTarget
+        dynamicTypeSize.isAccessibilitySize ? 52 : (HomeVisualTokens.minimumTouchTarget - 4)
     }
 
     /// Only the in-stock Home cart CTA adopts the compact visual treatment.
@@ -5484,9 +5500,14 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
     }
 }
 
-private struct PPUniversalMediaRoundedShape: Shape {
+struct PPUniversalMediaRoundedShape: Shape {
     let topRadius: CGFloat
     let bottomRadius: CGFloat
+
+    init(topRadius: CGFloat, bottomRadius: CGFloat) {
+        self.topRadius = topRadius
+        self.bottomRadius = bottomRadius
+    }
 
     func path(in rect: CGRect) -> Path {
         guard rect.width > 0, rect.height > 0 else {
@@ -5524,8 +5545,12 @@ private struct PPUniversalMediaRoundedShape: Shape {
     }
 }
 
-private struct PPUniversalTopRoundedShape: Shape {
+struct PPUniversalTopRoundedShape: Shape {
     let radius: CGFloat
+
+    init(radius: CGFloat) {
+        self.radius = radius
+    }
 
     func path(in rect: CGRect) -> Path {
         Path(

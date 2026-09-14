@@ -1651,7 +1651,7 @@ final class HomeStore: ObservableObject {
             primaryTitle: marketplacePrimaryTitle,
             secondaryTitle: HomeModelAdapter.localized(
                 "home_pulse_find_services",
-                fallback: "Find services"
+                fallback: "discover by category"
             ),
             // Hero-specific artwork wins inside the living blob. Existing
             // MainKinds documents remain compatible through the category image.

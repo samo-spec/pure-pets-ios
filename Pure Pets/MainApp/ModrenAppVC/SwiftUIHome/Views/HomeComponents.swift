@@ -10,6 +10,8 @@ enum HomeVisualTokens {
     static let compactRowSpacing = PPSpace.sm
     static let mediaRowSpacing = PPSpace.md
     static let sectionVerticalSpacing = PPSpace.lg
+    /// Breeze spacing between the top command surface and the leading hero card.
+    static let heroTopBreezeSpacing = PPSpace.md
     static let minimumTouchTarget: CGFloat = 44
     /// The shared Home marketplace shelf is six points tighter than the
     /// legacy universal-card footprint.
@@ -17,6 +19,7 @@ enum HomeVisualTokens {
 
     // Shared surfaces
     static let cardCorner = PPCorner.card
+    static let universalCardCorner: CGFloat = 32
     static let compactCardCorner = PPCorner.medium
     static let iconContainerSize: CGFloat = 44
     static let compactIconContainerSize: CGFloat = 36
@@ -40,9 +43,9 @@ enum HomeVisualTokens {
     static let productTitleToPriceSpacing = PPSpace.xs + PPSpace.xxs
     static let productPriceRowSpacing = PPSpace.xs + PPSpace.xxs
     /// The Home cart surface is visually lighter while non-commerce actions
-    /// keep their existing action geometry.
-    static let universalCartActionVisualHeight: CGFloat = minimumTouchTarget - PPSpace.xxs
-    static let advertisementActionVisualHeight: CGFloat = 40
+    /// keep their existing action geometry. Decreased by -2pt.
+    static let universalCartActionVisualHeight: CGFloat = (minimumTouchTarget - PPSpace.sm) - 2
+    static let advertisementActionVisualHeight: CGFloat = 38
     static let primaryActionCorner = PPCorner.small + PPSpace.xs
     static let advertisementActionCorner = primaryActionCorner
 
@@ -2926,6 +2929,178 @@ private struct HomeMainKindHabitatEntrance: ViewModifier {
     }
 }
 
+// MARK: - Home Categories Strip (Exact UI Pattern with Brand Typography)
+
+@available(iOS 15.0, *)
+struct HomeCategoriesStripView: View {
+    let categories: [HomeCategoryModel]
+    let selectedCategoryID: Int?
+    let accent: Color?
+    let isRightToLeft: Bool
+    let reduceMotion: Bool
+    let onSelect: (HomeCategoryModel?) -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var hairlineColor: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.14)
+            : Color(red: 228/255.0, green: 228/255.0, blue: 232/255.0)
+    }
+
+    private var headerTitle: String {
+        HomeModelAdapter.localized(
+            "home_browse_by_category",
+            fallback: isRightToLeft ? "تصفح حسب النوع" : "Browse by category"
+        )
+    }
+
+    private var indicatorColor: Color {
+        accent ?? Color(red: 14/255.0, green: 135/255.0, blue: 143/255.0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Top full-width hairline divider
+            Rectangle()
+                .fill(hairlineColor)
+                .frame(height: 0.5)
+
+            // Section Header Label "تصفح حسب النوع"
+            HStack(spacing: 0) {
+                Text(headerTitle)
+                    .font(HomeFont.medium(12.5))
+                    .foregroundStyle(
+                        colorScheme == .dark
+                            ? Color(white: 0.65)
+                            : Color(red: 142/255.0, green: 142/255.0, blue: 147/255.0)
+                    )
+                    .lineLimit(1)
+                Spacer()
+            }
+            .padding(.horizontal, PPSpace.base)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+
+            // Horizontal Category Items Strip
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        // "All" / "الكل" Sanctuary Item
+                        categoryCell(
+                            nil,
+                            title: Language.get("all", alter: nil) ?? (isRightToLeft ? "الكل" : "All"),
+                            isSelected: selectedCategoryID == nil
+                        )
+                        .id("cat-strip-all")
+
+                        // Live Categories with vertical dividers between each
+                        ForEach(categories) { category in
+                            let catID = HomeModelAdapter.mainKindID(category.raw)
+                            let isSelected = (catID == selectedCategoryID)
+
+                            // Vertical hairline divider
+                            Rectangle()
+                                .fill(hairlineColor)
+                                .frame(width: 0.5, height: 24)
+
+                            categoryCell(
+                                category,
+                                title: category.title,
+                                isSelected: isSelected
+                            )
+                            .id("cat-strip-\(category.id)")
+                        }
+                    }
+                    .padding(.horizontal, PPSpace.xs)
+                }
+                .onAppear {
+                    scrollToSelection(proxy: proxy, animated: false)
+                }
+                .onChange(of: selectedCategoryID) { _ in
+                    scrollToSelection(proxy: proxy, animated: !reduceMotion)
+                }
+            }
+            .frame(height: 46)
+
+            // Bottom full-width hairline divider
+            Rectangle()
+                .fill(hairlineColor)
+                .frame(height: 0.5)
+        }
+    }
+
+    private func categoryCell(
+        _ category: HomeCategoryModel?,
+        title: String,
+        isSelected: Bool
+    ) -> some View {
+        Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            if reduceMotion {
+                onSelect(category)
+            } else {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                    onSelect(category)
+                }
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(isSelected ? HomeFont.bold(16.5) : HomeFont.medium(16))
+                    .foregroundStyle(
+                        isSelected
+                            ? (colorScheme == .dark ? Color.white : Color(red: 28/255.0, green: 28/255.0, blue: 30/255.0))
+                            : (colorScheme == .dark ? Color(white: 0.68) : Color(red: 108/255.0, green: 108/255.0, blue: 112/255.0))
+                    )
+                    .lineLimit(1)
+
+                // Teal underline indicator pill under selected category
+                if isSelected {
+                    Capsule()
+                        .fill(indicatorColor)
+                        .frame(width: 32, height: 3.5)
+                        .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
+                } else {
+                    Capsule()
+                        .fill(Color.clear)
+                        .frame(width: 32, height: 3.5)
+                }
+            }
+            .padding(.horizontal, 18)
+            .frame(minWidth: 62)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            isSelected
+                ? "\(title), \(HomeModelAdapter.localized("Selected", fallback: "Selected"))"
+                : title
+        )
+        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
+    }
+
+    private func scrollToSelection(proxy: ScrollViewProxy, animated: Bool) {
+        let targetID: String
+        if let selectedCategoryID,
+           let cat = categories.first(where: { HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID }) {
+            targetID = "cat-strip-\(cat.id)"
+        } else {
+            targetID = "cat-strip-all"
+        }
+        if animated {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                proxy.scrollTo(targetID, anchor: .center)
+            }
+        } else {
+            proxy.scrollTo(targetID, anchor: .center)
+        }
+    }
+}
+
 @available(iOS 15.0, *)
 struct HomeCategoryRail: View {
     let categories: [HomeCategoryModel]
@@ -2949,27 +3124,16 @@ struct HomeCategoryRail: View {
     }
 
     var body: some View {
-        Group {
-            if isExpanded {
-                expandedGrid
-                    .transition(layoutTransition)
-            } else {
-                horizontalRail
-                    .transition(layoutTransition)
-            }
-        }
-        .background {
-            GeometryReader { geometry in
-                Color.clear
-                    .onAppear {
-                        updateViewportWidth(geometry.size.width)
-                    }
-                    .onChange(of: geometry.size.width) { width in
-                        updateViewportWidth(width)
-                    }
-            }
-        }
+        HomeCategoriesStripView(
+            categories: categories,
+            selectedCategoryID: selectedID,
+            accent: Color.ppPrimary,
+            isRightToLeft: layoutDirection == .rightToLeft,
+            reduceMotion: reduceMotion,
+            onSelect: onSelect
+        )
     }
+
 
     private var horizontalRail: some View {
         let cellSize = itemSize
@@ -3346,7 +3510,7 @@ private enum HomeMainKindHabitat {
 
     // MARK: Habitat card
 
-    static let cardRadius: CGFloat = PPCorner.card
+    static let cardRadius: CGFloat = PPCorner.card - 4
     /// Interior breathing room the habitat keeps away from the card edge.
     static let cardContentInset: CGFloat = PPSpace.sm
 
@@ -5242,8 +5406,7 @@ struct HomeFeedSection: View {
                 GeometryReader { geometry in
                     HomeCardSkeletonRail(
                         cardWidth: cardWidth(
-                            in: geometry.size.width,
-                            itemCount: 4
+                            in: geometry.size.width
                         )
                     )
                 }
@@ -5251,8 +5414,7 @@ struct HomeFeedSection: View {
             case let .content(cards):
                 GeometryReader { geometry in
                     let resolvedCardWidth = cardWidth(
-                        in: geometry.size.width,
-                        itemCount: cards.count
+                        in: geometry.size.width
                     )
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: PPSpace.md) {
@@ -5310,7 +5472,7 @@ struct HomeFeedSection: View {
 
     private func cardWidth(
         in viewportWidth: CGFloat,
-        itemCount: Int
+        itemCount: Int = 0
     ) -> CGFloat {
         // Reserve the semantic leading margin inside the scroll content so
         // every universal-card section starts aligned with its section title.
@@ -5323,33 +5485,21 @@ struct HomeFeedSection: View {
         let usesReadableSingleCard =
             dynamicTypeSize.isAccessibilitySize || viewportWidth < 350
 
-        let standardWidth: CGFloat
         if usesReadableSingleCard {
-            standardWidth = max(
+            return max(
                 0,
                 (availableWidth - spacing)
                     / (1 + thirdCardPeekFraction)
             )
         } else {
-            standardWidth = max(
+            // Leading margin + two complete cards + two gaps + 12% of the third.
+            // All universal cells across all HomeView sections share this identical width.
+            return max(
                 0,
                 (availableWidth - (spacing * 2))
                     / (2 + thirdCardPeekFraction)
             )
         }
-
-        guard itemCount > 1 else { return standardWidth }
-
-        if usesReadableSingleCard {
-            return standardWidth
-        }
-
-        guard itemCount > 2 else {
-            return max(0, (availableWidth - spacing) / 2)
-        }
-
-        // Leading margin + two complete cards + two gaps + 12% of the third.
-        return standardWidth
     }
 }
 
@@ -5550,14 +5700,14 @@ private struct HomeCardSkeletonRail: View {
                         HomeSkeletonShimmer(phaseOffset: Double(index) * 0.18)
                             .clipShape(
                                 RoundedRectangle(
-                                    cornerRadius: PPCorner.card,
+                                    cornerRadius: HomeVisualTokens.universalCardCorner,
                                     style: .continuous
                                 )
                             )
                     }
                     .clipShape(
                         RoundedRectangle(
-                            cornerRadius: PPCorner.card,
+                            cornerRadius: HomeVisualTokens.universalCardCorner,
                             style: .continuous
                         )
                     )
@@ -5986,13 +6136,13 @@ struct PureLensCardV2: View {
                             .strokeBorder(
                                 LinearGradient(
                                     colors: [
-                                        Color.ppPrimary.opacity(pulseAura ? 0.45 : 0.20),
+                                        Color.ppPrimary.opacity(pulseAura ? 0.10 : 0.05),
                                         Color.ppSurfaceBorder
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 1.2
+                                lineWidth: 1.0
                             )
                     )
                     .shadow(

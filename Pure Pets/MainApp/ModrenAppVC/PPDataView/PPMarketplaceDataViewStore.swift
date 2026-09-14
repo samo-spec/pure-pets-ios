@@ -426,19 +426,55 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     }
 
     var resultCountText: String {
-        PPMarketplaceText.formatted(
+        let count = records.count
+        if isRightToLeft {
+            if count == 0 {
+                return PPMarketplaceText.localized("marketplace_results_count_zero")
+            } else if count == 1 {
+                return PPMarketplaceText.localized("marketplace_results_count_one")
+            } else if count == 2 {
+                return PPMarketplaceText.localized("marketplace_results_count_two")
+            } else if count >= 3 && count <= 10 {
+                return PPMarketplaceText.formatted("marketplace_results_count_few", count)
+            } else {
+                return PPMarketplaceText.formatted("marketplace_results_count_many", count)
+            }
+        }
+        return PPMarketplaceText.formatted(
             "marketplace_results_count_format",
-            records.count
+            count
+        )
+    }
+
+    var filterPreviewCountText: String {
+        let count = filterPreviewCount
+        if isRightToLeft {
+            if count == 0 {
+                return PPMarketplaceText.localized("marketplace_preview_count_zero")
+            } else if count == 1 {
+                return PPMarketplaceText.localized("marketplace_preview_count_one")
+            } else if count == 2 {
+                return PPMarketplaceText.localized("marketplace_preview_count_two")
+            } else if count >= 3 && count <= 10 {
+                return PPMarketplaceText.formatted("marketplace_preview_count_few", count)
+            } else {
+                return PPMarketplaceText.formatted("marketplace_preview_count_many", count)
+            }
+        }
+        return PPMarketplaceText.formatted(
+            "marketplace_preview_count_format",
+            count
         )
     }
 
     var contextAccessibilityLabel: String {
-        [
+        let separator = isRightToLeft ? " ، " : ", "
+        return [
             navigationContext.accessibilityLabel,
             resultCountText
         ]
         .filter { !$0.isEmpty }
-        .joined(separator: ", ")
+        .joined(separator: separator)
     }
 
     func start() {

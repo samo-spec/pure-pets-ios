@@ -173,6 +173,10 @@ typedef void (^PPHomeExactCountCompletion)(NSInteger count,
 - (instancetype)initWithAnimationName:(NSString *)animationName
                     loadsFromFirebase:(BOOL)loadsFromFirebase;
 
+- (instancetype)initWithAnimationName:(NSString *)animationName
+                    loadsFromFirebase:(BOOL)loadsFromFirebase
+               prefersFirebaseSource:(BOOL)prefersFirebaseSource;
+
 @property (nonatomic, assign, getter=isPlaybackEnabled) BOOL playbackEnabled;
 @property (nonatomic, strong, nullable) UIColor *customTintColor;
 

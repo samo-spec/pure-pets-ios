@@ -94,7 +94,12 @@ private struct HomeUniversalCompatibilityCard: View {
                     )
                     .frame(maxWidth: .infinity)
                     .frame(height: 166)
-                    .clipped()
+                    .clipShape(
+                        PPUniversalMediaRoundedShape(
+                            topRadius: 9.5,
+                            bottomRadius: 8
+                        )
+                    )
 
                     if !viewModel.badgeText.isEmpty {
                         Text(viewModel.badgeText)
@@ -140,9 +145,9 @@ private struct HomeUniversalCompatibilityCard: View {
                 action
         }
         .padding(.bottom, PPSpace.md)
-        .ppElevation(.raised, cornerRadius: PPCorner.card)
+        .ppElevation(.raised, cornerRadius: 12)
         .contentShape(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
         )
         .onTapGesture(perform: onTap)
         .accessibilityElement(children: .contain)
@@ -249,7 +254,7 @@ private struct HomeUniversalCompatibilityCard: View {
                     .font(HomeFont.bold(14))
                     .frame(
                         maxWidth: .infinity,
-                        minHeight: HomeVisualTokens.minimumTouchTarget
+                        minHeight: HomeVisualTokens.minimumTouchTarget - 2
                     )
                     .foregroundStyle(Color.white)
                     .background(Color.ppPrimary, in: Capsule())
@@ -266,7 +271,7 @@ private struct HomeUniversalCompatibilityCard: View {
             )
             .font(HomeFont.bold(14))
             .foregroundStyle(Color.ppPrimary)
-            .frame(maxWidth: .infinity, minHeight: 46)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .background(Color.ppSoftRose.opacity(0.72), in: Capsule())
         }
     }

@@ -97,6 +97,7 @@ struct PPCommunityConfiguration {
     let messagingEnabled: Bool
     let organizationsEnabled: Bool
     let rolloutStage: String
+    let rolloutAvailable: Bool
     let adoptionQuestions: [PPCommunityQuestion]
 
     init(dictionary: [String: Any]) {
@@ -110,6 +111,7 @@ struct PPCommunityConfiguration {
         messagingEnabled = dictionary["communityMessagingEnabled"] as? Bool ?? false
         organizationsEnabled = dictionary["organizationsEnabled"] as? Bool ?? false
         rolloutStage = dictionary["rolloutStage"] as? String ?? "internal"
+        rolloutAvailable = dictionary["rolloutAvailable"] as? Bool ?? false
         let adoptionPolicy = dictionary["adoptionPolicy"] as? [String: Any] ?? [:]
         adoptionQuestions = (adoptionPolicy["questions"] as? [[String: Any]] ?? []).compactMap(PPCommunityQuestion.init)
     }
@@ -126,6 +128,14 @@ struct PPCommunityLostFoundPage {
     let missing: PPCommunityPage
     let found: PPCommunityPage
     let featureDisabled: Bool
+}
+
+struct PPCommunityAdoptionApplicationDetail {
+    let item: [String: Any]
+    /// This is presentation metadata only. The callable remains the source of
+    /// truth for every transition and validates the actor again in its
+    /// transaction.
+    let accessRole: String
 }
 
 struct PPCommunityMediaSource {
@@ -160,6 +170,12 @@ struct PPCommunityMediaSource {
 struct PPCommunityMediaResult {
     let assetIDs: [String]
     let requiresManualReview: Bool
+}
+
+private enum PPCommunityMediaLimits {
+    static let maximumAssetCount = 8
+    static let maximumVideoCount = 1
+    static let maximumSessionBytes = 80 * 1024 * 1024
 }
 
 /// Persists only an opaque request fingerprint and command identifier. If a
@@ -300,6 +316,22 @@ final class PPCommunityService {
         return enriched
     }
 
+    func matchDetail(id: String) async throws -> [String: Any] {
+        try await detail(action: "match_detail", id: id)
+    }
+
+    func adoptionApplicationDetail(id: String) async throws -> PPCommunityAdoptionApplicationDetail {
+        let result = try await call("communityBrowse", payload: ["action": "adoption_application_detail", "id": id])
+        guard let item = result["item"] as? [String: Any] else {
+            throw PPCommunityError.invalidResponse
+        }
+        let role = (result["accessRole"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard ["applicant", "listing_owner", "organization_operator"].contains(role) else {
+            throw PPCommunityError.invalidResponse
+        }
+        return PPCommunityAdoptionApplicationDetail(item: item, accessRole: role)
+    }
+
     func activity() async throws -> [String: [[String: Any]]] {
         let result = try await call("communityBrowse", payload: ["action": "my_activity", "limit": 50])
         guard let activity = result["activity"] as? [String: Any] else {
@@ -332,7 +364,13 @@ final class PPCommunityService {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
             throw PPCommunityError.signInRequired
         }
-        guard sources.count <= 8 else { throw PPCommunityError.mediaTooLarge }
+        guard sources.count <= PPCommunityMediaLimits.maximumAssetCount else { throw PPCommunityError.mediaTooLarge }
+        let videoCount = sources.filter { $0.contentType.hasPrefix("video/") }.count
+        let totalBytes = sources.reduce(0) { $0 + $1.data.count }
+        guard videoCount <= PPCommunityMediaLimits.maximumVideoCount,
+              totalBytes <= PPCommunityMediaLimits.maximumSessionBytes else {
+            throw PPCommunityError.mediaTooLarge
+        }
         for source in sources {
             let maximum = source.contentType.hasPrefix("video/") ? (60 * 1024 * 1024) - 1 : (12 * 1024 * 1024) - 1
             guard source.data.count > 0, source.data.count <= maximum else {
@@ -380,7 +418,7 @@ final class PPCommunityService {
             "finalizeCommunityMediaUpload",
             payload: ["sessionId": sessionID],
             prefix: "media-finalize",
-            timeout: 120
+            timeout: 180
         )
         if finalized["rejected"] as? Bool == true { throw PPCommunityError.mediaRejected }
         let assets = finalized["assets"] as? [[String: Any]] ?? []
@@ -429,6 +467,24 @@ final class PPCommunityService {
                 "questionAnswers": questionAnswers
             ],
             prefix: "application-draft"
+        )
+    }
+
+    func transitionAdoptionApplication(
+        applicationID: String,
+        expectedVersion: Int,
+        action: String,
+        reason: String = ""
+    ) async throws -> [String: Any] {
+        try await command(
+            "transitionAdoptionApplication",
+            payload: [
+                "applicationId": applicationID,
+                "expectedVersion": expectedVersion,
+                "action": action,
+                "reason": reason
+            ],
+            prefix: "application-transition"
         )
     }
 

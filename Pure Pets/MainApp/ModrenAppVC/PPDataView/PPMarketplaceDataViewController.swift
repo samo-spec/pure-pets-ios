@@ -25,6 +25,7 @@ final class PPMarketplaceDataViewController: UIViewController {
         super.init(nibName: nil, bundle: nil)
         bridge.presentingViewController = self
         hidesBottomBarWhenPushed = true
+        modalPresentationStyle = .fullScreen
     }
 
     @available(*, unavailable)

@@ -189,7 +189,7 @@ struct PPMarketplaceDataViewScreen: View {
             \.layoutDirection,
             store.isRightToLeft ? .rightToLeft : .leftToRight
         )
-        .sheet(
+        .fullScreenCover(
             item: $store.activeSheet,
             onDismiss: store.sheetDidDismiss
         ) { sheet in
