@@ -1066,6 +1066,7 @@ struct HomeView: View {
     }
 
     private var selectedMainKindAccent: Color {
+        guard isCategoryAccentEnabled else { return .homeBrand }
         guard let selectedID = store.state.selectedMainKindID,
               let category = store.state.categories.first(where: {
                   HomeModelAdapter.mainKindID($0.raw) == selectedID

@@ -215,15 +215,12 @@
         }
         case PPUserMenuActionTypeSwitchLanguage: {
             NSInteger currentLanguage = [Language languageVal];
-            if (currentLanguage == 1) {
-                [Language userSelectedLanguage:@"en"];
-            } else {
-                [Language userSelectedLanguage:@"ar"];
-            }
+            NSString *targetLang = (currentLanguage == 1) ? @"en" : @"ar";
+            [Language userSelectedLanguage:targetLang];
             [PPFunc triggerLightHaptic];
             [self.hostingController refreshState];
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [PPHUD showSuccess:kLang(currentLanguage == 1 ? @"quick_access_lang_en_toast" : @"quick_access_lang_ar_toast")];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [PPHUD showSuccess:kLang([targetLang isEqualToString:@"en"] ? @"quick_access_lang_en_toast" : @"quick_access_lang_ar_toast")];
             });
             break;
         }

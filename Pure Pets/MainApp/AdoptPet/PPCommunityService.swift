@@ -187,13 +187,17 @@ private final class PPCommunityCommandLedger {
     private let lock = NSLock()
     private let maximumAge: TimeInterval = 7 * 24 * 60 * 60
 
-    func commandID(callable: String, uid: String, payload: [String: Any], prefix: String) -> (key: String, id: String) {
+    func fingerprintKey(callable: String, uid: String, payload: [String: Any]) -> String {
         var normalized = payload
         normalized.removeValue(forKey: "commandId")
         let body = (try? JSONSerialization.data(withJSONObject: normalized, options: [.sortedKeys])) ?? Data()
         var fingerprintInput = Data("\(uid)|\(callable)|".utf8)
         fingerprintInput.append(body)
-        let key = SHA256.hash(data: fingerprintInput).map { String(format: "%02x", $0) }.joined()
+        return SHA256.hash(data: fingerprintInput).map { String(format: "%02x", $0) }.joined()
+    }
+
+    func commandID(callable: String, uid: String, payload: [String: Any], prefix: String) -> (key: String, id: String) {
+        let key = fingerprintKey(callable: callable, uid: uid, payload: payload)
 
         lock.lock()
         defer { lock.unlock() }
@@ -235,6 +239,37 @@ final class PPCommunityService {
 
     private init() {}
 
+    /// A retained create/update command is essential after an uncertain
+    /// transport result, but it must not turn a server-confirmed validation or
+    /// version rejection into an uneditable local draft. These error codes are
+    /// returned by a callable transaction before it commits; every other
+    /// condition stays conservative and preserves the exact pending payload.
+    static func shouldRetainPendingSubmission(after error: Error) -> Bool {
+        if let communityError = error as? PPCommunityError {
+            switch communityError {
+            case .invalidResponse:
+                return true
+            case .signInRequired, .featureUnavailable, .mediaRejected, .mediaTooLarge, .missingMedia:
+                return false
+            }
+        }
+
+        let nsError = error as NSError
+        guard nsError.domain == FunctionsErrorDomain,
+              let code = FunctionsErrorCode(rawValue: nsError.code) else {
+            // Non-callable errors include timeouts, connectivity failures, and
+            // SDK decoding faults. The server may already own the command.
+            return true
+        }
+
+        switch code {
+        case .invalidArgument, .failedPrecondition, .aborted, .outOfRange:
+            return false
+        default:
+            return true
+        }
+    }
+
     func call(_ name: String, payload: [String: Any], timeout: TimeInterval = 30) async throws -> [String: Any] {
         try await withCheckedThrowingContinuation { continuation in
             let callable = functions.httpsCallable(name)
@@ -244,7 +279,8 @@ final class PPCommunityService {
                     continuation.resume(throwing: error)
                     return
                 }
-                guard let dictionary = result?.data as? [String: Any] else {
+                guard let dictionary = result?.data as? [String: Any],
+                      dictionary["ok"] as? Bool == true else {
                     continuation.resume(throwing: PPCommunityError.invalidResponse)
                     return
                 }
@@ -381,18 +417,32 @@ final class PPCommunityService {
         let descriptors = sources.map {
             ["contentType": $0.contentType, "byteSize": $0.data.count, "sha256": $0.sha256] as [String: Any]
         }
+        let preparePayload: [String: Any] = [
+            "contextType": contextType,
+            "contextId": contextID,
+            "media": descriptors
+        ]
+        // Keep the prepare command alive through the whole upload/finalize
+        // lifecycle. A lost Storage acknowledgement must retry the exact
+        // server-created asset/session paths, not reserve a second session.
+        let prepareLedgerKey = PPCommunityCommandLedger.shared.fingerprintKey(
+            callable: "prepareCommunityMediaUpload",
+            uid: uid,
+            payload: preparePayload
+        )
         let prepared = try await command(
             "prepareCommunityMediaUpload",
-            payload: [
-                "contextType": contextType,
-                "contextId": contextID,
-                "media": descriptors
-            ],
-            prefix: "media-prepare"
+            payload: preparePayload,
+            prefix: "media-prepare",
+            retainPendingCommand: true
         )
         guard let sessionID = prepared["sessionId"] as? String,
               let remoteAssets = prepared["assets"] as? [[String: Any]],
               remoteAssets.count == sources.count else {
+            // A malformed prepare receipt cannot safely be resumed. Drop only
+            // this client-side pointer; the server still owns and audits the
+            // original immutable receipt.
+            PPCommunityCommandLedger.shared.complete(key: prepareLedgerKey)
             throw PPCommunityError.invalidResponse
         }
 
@@ -401,6 +451,7 @@ final class PPCommunityService {
             let remote = remoteAssets[index]
             guard let assetID = remote["assetId"] as? String,
                   let storagePath = remote["storagePath"] as? String else {
+                PPCommunityCommandLedger.shared.complete(key: prepareLedgerKey)
                 throw PPCommunityError.invalidResponse
             }
             let metadata = StorageMetadata()
@@ -414,16 +465,43 @@ final class PPCommunityService {
             try await put(source.data, at: storage.reference(withPath: storagePath), metadata: metadata)
         }
 
+        let finalizePayload: [String: Any] = ["sessionId": sessionID]
+        let finalizeLedgerKey = PPCommunityCommandLedger.shared.fingerprintKey(
+            callable: "finalizeCommunityMediaUpload",
+            uid: uid,
+            payload: finalizePayload
+        )
         let finalized = try await command(
             "finalizeCommunityMediaUpload",
-            payload: ["sessionId": sessionID],
+            payload: finalizePayload,
             prefix: "media-finalize",
-            timeout: 180
+            // The server's bounded video processor has a five-minute ceiling.
+            // Keep the client alive slightly longer so a healthy transcode
+            // returns its durable command receipt instead of becoming an
+            // avoidable lease-reclaim retry.
+            timeout: 330,
+            // Do not discard the deterministic finalize command until the
+            // client has validated that its terminal receipt is structurally
+            // usable. A malformed decoded response must retry this same
+            // session, never reserve a replacement upload session.
+            retainPendingCommand: true
         )
-        if finalized["rejected"] as? Bool == true { throw PPCommunityError.mediaRejected }
+        if finalized["rejected"] as? Bool == true {
+            // Rejection is a terminal server result even though it has no
+            // attachable media asset. Release both local retry receipts only
+            // after recognizing that explicit terminal outcome.
+            PPCommunityCommandLedger.shared.complete(key: finalizeLedgerKey)
+            PPCommunityCommandLedger.shared.complete(key: prepareLedgerKey)
+            throw PPCommunityError.mediaRejected
+        }
         let assets = finalized["assets"] as? [[String: Any]] ?? []
         let assetIDs = assets.compactMap { $0["assetId"] as? String }
         guard assetIDs.count == sources.count else { throw PPCommunityError.invalidResponse }
+        // A validated final receipt is authoritative terminal evidence for
+        // this attempt (including manual-review outcomes). Only now may a
+        // future explicit upload create a new prepare command.
+        PPCommunityCommandLedger.shared.complete(key: finalizeLedgerKey)
+        PPCommunityCommandLedger.shared.complete(key: prepareLedgerKey)
         return PPCommunityMediaResult(
             assetIDs: assetIDs,
             requiresManualReview: finalized["requiresManualReview"] as? Bool ?? false
@@ -559,14 +637,20 @@ final class PPCommunityService {
         )
     }
 
-    private func command(_ callable: String, payload: [String: Any], prefix: String, timeout: TimeInterval = 30) async throws -> [String: Any] {
+    private func command(
+        _ callable: String,
+        payload: [String: Any],
+        prefix: String,
+        timeout: TimeInterval = 30,
+        retainPendingCommand: Bool = false
+    ) async throws -> [String: Any] {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { throw PPCommunityError.signInRequired }
         var request = payload
         if request["commandId"] != nil { return try await call(callable, payload: request, timeout: timeout) }
         let pending = PPCommunityCommandLedger.shared.commandID(callable: callable, uid: uid, payload: payload, prefix: prefix)
         request["commandId"] = pending.id
         let result = try await call(callable, payload: request, timeout: timeout)
-        PPCommunityCommandLedger.shared.complete(key: pending.key)
+        if !retainPendingCommand { PPCommunityCommandLedger.shared.complete(key: pending.key) }
         return result
     }
 

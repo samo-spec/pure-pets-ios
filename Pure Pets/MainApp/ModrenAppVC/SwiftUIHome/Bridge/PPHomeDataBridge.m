@@ -394,7 +394,8 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
                 NSString *sansExtension = fileName.stringByDeletingPathExtension;
                 loadedComposition =
                     [LOTComposition animationNamed:fileName inBundle:NSBundle.mainBundle] ?:
-                    [LOTComposition animationNamed:sansExtension inBundle:NSBundle.mainBundle];
+                    [LOTComposition animationNamed:sansExtension inBundle:NSBundle.mainBundle] ?:
+                    [LOTComposition animationNamed:@"Shop2" inBundle:NSBundle.mainBundle];
             }
 
             strongSelf.animationLoading = NO;
@@ -426,8 +427,10 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
     NSString *assetName = self.animationName.lastPathComponent.lowercaseString;
     NSString *sansExt = assetName.stringByDeletingPathExtension;
     return [assetName isEqualToString:@"shop2.json"] ||
+        [assetName isEqualToString:@"shop.json"] ||
         [assetName isEqualToString:@"bag2.json"] ||
         [sansExt isEqualToString:@"shop2"] ||
+        [sansExt isEqualToString:@"shop"] ||
         [sansExt isEqualToString:@"bag2"];
 }
 
@@ -491,15 +494,28 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
     }
     self.animationView.tintColor = resolvedTint;
 
-    LOTColorValueCallback *callback =
-        [LOTColorValueCallback withCGColor:resolvedTint.CGColor];
-    self.colorValueCallback = callback;
-    [self.animationView setValueDelegate:callback
-                               forKeypath:[LOTKeypath keypathWithString:@"**.Stroke 1.Color"]];
-    [self.animationView setValueDelegate:callback
-                               forKeypath:[LOTKeypath keypathWithString:@"**.Fill 1.Color"]];
-    [self.animationView setValueDelegate:callback
-                               forKeypath:[LOTKeypath keypathWithString:@"**.Color"]];
+    // Shop animations (Shop.json, Shop2.json) have their own authored multi-color palette
+    // (gate, roof, building). Overriding all their internal stroke/fill colors flattens them
+    // and causes Lottie keypath traversal issues on unnamed shapes. Only monochrome glyph
+    // animations like bag2.json require layer-level color callbacks.
+    NSString *safeName = self.animationName.lowercaseString ?: @"";
+    if ([safeName containsString:@"shop"]) {
+        return;
+    }
+
+    @try {
+        LOTColorValueCallback *callback =
+            [LOTColorValueCallback withCGColor:resolvedTint.CGColor];
+        self.colorValueCallback = callback;
+        [self.animationView setValueDelegate:callback
+                                   forKeypath:[LOTKeypath keypathWithString:@"**.Stroke 1.Color"]];
+        [self.animationView setValueDelegate:callback
+                                   forKeypath:[LOTKeypath keypathWithString:@"**.Fill 1.Color"]];
+        [self.animationView setValueDelegate:callback
+                                   forKeypath:[LOTKeypath keypathWithString:@"**.Color"]];
+    } @catch (NSException *exception) {
+        NSLog(@"⚠️ [PPHomeHeroAnimationView] Lottie tint delegate exception caught: %@", exception.reason);
+    }
 }
 
 - (void)pp_marketplaceEnvironmentDidChange:(NSNotification *)notification

@@ -9,6 +9,18 @@ struct HomeUniversalCard: View {
     let entrancePresented: Bool
     let entranceOrdinal: Int
 
+    private var isAdsCard: Bool {
+        card.kind == .advertisement ||
+            card.context == .forAds ||
+            card.context == .forHomeAds
+    }
+
+    private var cardHeight: CGFloat {
+        isAdsCard
+            ? HomeVisualTokens.universalAdsCardHeight
+            : HomeVisualTokens.universalCardHeight
+    }
+
     var body: some View {
         Group {
             if #available(iOS 16.0, *) {
@@ -26,7 +38,7 @@ struct HomeUniversalCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: HomeVisualTokens.universalCardHeight)
+        .frame(height: cardHeight)
         .ppUniversalHomeShelfEntrance(
             isPresented: entrancePresented,
             ordinal: entranceOrdinal

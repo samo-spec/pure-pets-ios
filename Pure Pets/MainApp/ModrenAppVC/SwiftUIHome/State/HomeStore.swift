@@ -6,7 +6,7 @@ import UIKit
 /// Stable raw values from the legacy `PPHomeSection` contract. Swift imports
 /// that Objective-C enum differently across toolchains, while HomeConfig
 /// persists these exact numeric identifiers.
-private enum HomeLegacySectionID: Int, CaseIterable {
+enum HomeLegacySectionID: Int, CaseIterable {
     case hero = 0
     case quickActions = 1
     case currentOrders = 2
@@ -113,6 +113,7 @@ final class HomeStore: ObservableObject {
     private var refreshUpdatedSectionIDs = Set<Int>()
     private var refreshTimeoutTask: Task<Void, Never>?
     private var refreshSignpostID: OSSignpostID?
+    private var pendingCategoryNavigationWorkItem: DispatchWorkItem?
 
     private static let selectedMainKindKey = "PPHome.lastSelectedMainKindID.v1"
     private static let selectedPetKey = "pp.home.selectedPetID.v2"
@@ -165,6 +166,7 @@ final class HomeStore: ObservableObject {
         heroRotationTask?.cancel()
         promotionRotationTask?.cancel()
         refreshTimeoutTask?.cancel()
+        pendingCategoryNavigationWorkItem?.cancel()
         observers.forEach(NotificationCenter.default.removeObserver)
     }
 
@@ -189,6 +191,10 @@ final class HomeStore: ObservableObject {
         promotionPauseGeneration += 1
         heroInteractionActive = false
         promotionInteractionActive = false
+        if !value {
+            pendingCategoryNavigationWorkItem?.cancel()
+            pendingCategoryNavigationWorkItem = nil
+        }
         visible = value
         if value {
             state.bottomContentClearance = router.bottomContentClearance()
@@ -434,9 +440,16 @@ final class HomeStore: ObservableObject {
         // Its selection is persisted before rebuilding so it remains the sole
         // marketplace scope through future Home refreshes.
         initialMainKindID = nil
+
+        // Cancel any pending category push from rapid category switching
+        pendingCategoryNavigationWorkItem?.cancel()
+        pendingCategoryNavigationWorkItem = nil
+
+        let wasAlreadySelected: Bool
         if let category {
             let identifier = HomeModelAdapter.mainKindID(category.raw)
             guard identifier > 0 else { return }
+            wasAlreadySelected = (state.selectedMainKindID == identifier)
             state.selectedMainKindID = identifier
             UserDefaults.standard.set(
                 identifier,
@@ -450,10 +463,21 @@ final class HomeStore: ObservableObject {
                 )
             )
             UISelectionFeedbackGenerator().selectionChanged()
-            router.openCategory(category)
+
+            // Allow the selection change spring animation (response: 0.30s - 0.32s)
+            // to complete and settle before pushing to the category marketplace list.
+            let delay: TimeInterval = reduceMotion ? 0.05 : (wasAlreadySelected ? 0.08 : 0.32)
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.pendingCategoryNavigationWorkItem = nil
+                self.router.openCategory(category)
+            }
+            pendingCategoryNavigationWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
         } else {
             // The explicit All selection is distinct from an unset scope. Its
             // sentinel must prevent a default pet from silently re-scoping Home.
+            wasAlreadySelected = (state.selectedMainKindID == nil)
             state.selectedMainKindID = nil
             UserDefaults.standard.set(-1, forKey: Self.selectedMainKindKey)
             rebuildState()
@@ -464,7 +488,15 @@ final class HomeStore: ObservableObject {
                 )
             )
             UISelectionFeedbackGenerator().selectionChanged()
-            router.openAllCategories()
+
+            let delay: TimeInterval = reduceMotion ? 0.05 : (wasAlreadySelected ? 0.08 : 0.32)
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.pendingCategoryNavigationWorkItem = nil
+                self.router.openAllCategories()
+            }
+            pendingCategoryNavigationWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
         }
     }
 
@@ -663,11 +695,14 @@ final class HomeStore: ObservableObject {
         selectedPet
     }
 
-    var resolvedCategoryAccentColor: UIColor? {
-        let usesCategoryColors = UserDefaults.standard.bool(
+    var usesCategoryAccentColors: Bool {
+        UserDefaults.standard.bool(
             forKey: "pp.marketplace.usesMainKindAccentColors"
         )
-        guard usesCategoryColors else { return nil }
+    }
+
+    var resolvedCategoryAccentColor: UIColor? {
+        guard usesCategoryAccentColors else { return nil }
         guard let selectedID = state.selectedMainKindID,
               let category = state.categories.first(where: {
                   HomeModelAdapter.mainKindID($0.raw) == selectedID
@@ -1999,7 +2034,7 @@ final class HomeStore: ObservableObject {
                 )
             case HomeLegacySectionID.suggestionAds.rawValue:
                 section = makeSection(
-                    kind: .recommendations,
+                    kind: .advertisements,
                     rawID: rawID,
                     copy: advertisementCopy,
                     cards: suggestionAdCards,
@@ -2522,6 +2557,7 @@ final class HomeStore: ObservableObject {
     }
 
     private var selectedCategoryHex: String {
+        guard usesCategoryAccentColors else { return "CB2654" }
         guard let category = selectedCategory else { return "CB2654" }
         let presentation =
             PPHomeDataBridge.categoryPresentation(for: category.raw)

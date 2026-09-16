@@ -4420,12 +4420,12 @@ enum PPProvisionsCareLayout {
     static let innerSectionSpacing: CGFloat = 8
     static let rowSpacing: CGFloat = innerSectionSpacing
 
-    // Living Commerce Portal: use local resource Shop2.json for zero-latency
-    // instant rendering from the main app bundle.
-    static let featuredLottieResourceName = "Shop2.json"
-    static let featuredLottieStoragePath = "Shop2.json"
+    // Living Commerce Portal: network-backed retail portal from Firebase Storage
+    // (LottieAnimations/Shop.json) with graceful bundle fallback (Shop2.json).
+    static let featuredLottieResourceName = "LottieAnimations/Shop.json"
+    static let featuredLottieStoragePath = "LottieAnimations/Shop.json"
     static let featuredLottieFallbackName = "Shop2.json"
-    static let featuredPrefersFirebaseSource = false
+    static let featuredPrefersFirebaseSource = true
     static let featuredArtworkSide: CGFloat = 80
 
     static func preservedFeaturedCardWidth(totalWidth: CGFloat) -> CGFloat {
@@ -4595,6 +4595,9 @@ private struct PPFeaturedCommerceArtwork: View {
 
     private let side = PPProvisionsCareLayout.featuredArtworkSide
 
+    /// Directive: pause/hide toggle for featured quick action Lottie animation.
+    private static let pauseAndHideFeaturedLottie = false
+
     var body: some View {
         ZStack {
             Circle()
@@ -4612,7 +4615,9 @@ private struct PPFeaturedCommerceArtwork: View {
                 )
                 .frame(width: side, height: side)
 
-            if reduceMotion {
+            if Self.pauseAndHideFeaturedLottie {
+                marketplaceArtwork
+            } else if reduceMotion {
                 Image(systemName: "bag.fill")
                     .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(accent)
@@ -4620,7 +4625,8 @@ private struct PPFeaturedCommerceArtwork: View {
             } else {
                 HomeHeroLottieRepresentable(
                     animationName: PPProvisionsCareLayout.featuredLottieResourceName,
-                    loadsFromFirebase: false,
+                    loadsFromFirebase:
+                        PPProvisionsCareLayout.featuredPrefersFirebaseSource,
                     playbackEnabled: true,
                     tintColor: UIColor(accent),
                     prefersFirebaseSource:
@@ -4639,6 +4645,31 @@ private struct PPFeaturedCommerceArtwork: View {
                 isBreathing = true
             }
         }
+    }
+
+    @ViewBuilder
+    private var marketplaceArtwork: some View {
+        Group {
+            if UIImage(named: "marketplace_icon") != nil {
+                Image("marketplace_icon")
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48, height: 48)
+                    .foregroundStyle(accent)
+            } else if let _ = UIImage(systemName: "storefront.fill") {
+                Image(systemName: "storefront.fill")
+                    .font(.system(size: 42, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: 48, height: 48)
+            } else {
+                Image(systemName: "bag.fill")
+                    .font(.system(size: 40, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: 48, height: 48)
+            }
+        }
+        .scaleEffect(reduceMotion ? 1.0 : (isBreathing ? 1.06 : 1.0))
     }
 }
 

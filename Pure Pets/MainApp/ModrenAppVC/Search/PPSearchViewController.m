@@ -28,6 +28,8 @@
 #import "PPPermissionHelper.h"
 #import "PPImageSearchService.h"
 #import "PPNovaChatViewController.h"
+#import "PPHomeHelper.h"
+#import <PhotosUI/PhotosUI.h>
 
 #if __has_include(<Lottie/Lottie.h>)
 #import <Lottie/Lottie.h>
@@ -65,7 +67,121 @@ static NSInteger const kPPSearchSegmentTitleTag = 9102;
 static NSInteger const kPPSearchSegmentCountTag = 9103;
 static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
 static BOOL const kPPImageSearchUseLegacyLoadingCAAnimations = NO;
-static NSString * const kPPImageSearchLoadingLottiePath = @"SearchingLottile.lottie";
+static NSString * const kPPImageSearchLoadingLottiePath = @"LottieAnimations/Shop.json";
+
+#pragma mark - Lottie Retinting Helpers
+
+static NSArray<NSNumber *> *PPImageSearchLottieRGBA(UIColor *color) {
+    UIColor *resolved = color ?: UIColor.labelColor;
+    CGFloat r = 0.0, g = 0.0, b = 0.0, a = 1.0;
+    if (![resolved getRed:&r green:&g blue:&b alpha:&a]) {
+        const CGFloat *components = CGColorGetComponents(resolved.CGColor);
+        size_t count = CGColorGetNumberOfComponents(resolved.CGColor);
+        if (components && count >= 3) {
+            r = components[0];
+            g = components[1];
+            b = components[2];
+            a = (count >= 4) ? components[3] : 1.0;
+        } else if (components && count >= 2) {
+            r = components[0];
+            g = components[0];
+            b = components[0];
+            a = components[1];
+        }
+    }
+    return @[@(r), @(g), @(b), @(a)];
+}
+
+static BOOL PPImageSearchLottieColorArrayIsLight(NSArray *colorArray) {
+    if (![colorArray isKindOfClass:NSArray.class] || colorArray.count < 3) {
+        return NO;
+    }
+    CGFloat r = [colorArray[0] doubleValue];
+    CGFloat g = [colorArray[1] doubleValue];
+    CGFloat b = [colorArray[2] doubleValue];
+    return ((r + g + b) / 3.0) > 0.86;
+}
+
+static void PPImageSearchApplyLottieRGBA(NSMutableArray *colorArray, NSArray<NSNumber *> *rgba) {
+    if (![colorArray isKindOfClass:NSMutableArray.class] || colorArray.count < 3) {
+        return;
+    }
+    colorArray[0] = rgba[0];
+    colorArray[1] = rgba[1];
+    colorArray[2] = rgba[2];
+}
+
+static void PPImageSearchRetintLottieColorObject(NSMutableDictionary *colorObject,
+                                                 NSArray<NSNumber *> *primaryRGBA,
+                                                 NSArray<NSNumber *> *highlightRGBA) {
+    if (![colorObject isKindOfClass:NSMutableDictionary.class]) {
+        return;
+    }
+
+    id k = colorObject[@"k"];
+    if ([k isKindOfClass:NSMutableArray.class]) {
+        NSMutableArray *array = (NSMutableArray *)k;
+        if (array.count >= 3 && [array[0] isKindOfClass:NSNumber.class]) {
+            PPImageSearchApplyLottieRGBA(array, PPImageSearchLottieColorArrayIsLight(array) ? highlightRGBA : primaryRGBA);
+            return;
+        }
+
+        for (id frame in array) {
+            if (![frame isKindOfClass:NSMutableDictionary.class]) {
+                continue;
+            }
+            NSMutableDictionary *frameDict = (NSMutableDictionary *)frame;
+            for (NSString *key in @[@"s", @"e", @"k"]) {
+                id value = frameDict[key];
+                if ([value isKindOfClass:NSMutableArray.class]) {
+                    NSMutableArray *colorArray = (NSMutableArray *)value;
+                    PPImageSearchApplyLottieRGBA(colorArray, PPImageSearchLottieColorArrayIsLight(colorArray) ? highlightRGBA : primaryRGBA);
+                }
+            }
+        }
+    }
+}
+
+static void PPImageSearchRetintLottieNode(id node,
+                                         NSArray<NSNumber *> *primaryRGBA,
+                                         NSArray<NSNumber *> *highlightRGBA) {
+    if ([node isKindOfClass:NSMutableDictionary.class]) {
+        NSMutableDictionary *dict = (NSMutableDictionary *)node;
+        NSString *type = [dict[@"ty"] isKindOfClass:NSString.class] ? dict[@"ty"] : nil;
+        if (([type isEqualToString:@"fl"] || [type isEqualToString:@"st"]) &&
+            [dict[@"c"] isKindOfClass:NSMutableDictionary.class]) {
+            PPImageSearchRetintLottieColorObject(dict[@"c"], primaryRGBA, highlightRGBA);
+        }
+        for (id value in dict.allValues) {
+            PPImageSearchRetintLottieNode(value, primaryRGBA, highlightRGBA);
+        }
+    } else if ([node isKindOfClass:NSMutableArray.class]) {
+        for (id value in (NSMutableArray *)node) {
+            PPImageSearchRetintLottieNode(value, primaryRGBA, highlightRGBA);
+        }
+    }
+}
+
+static NSDictionary *PPImageSearchRetintedLottieJSON(NSDictionary *jsonDict, UIColor *primaryColor) {
+    if (![jsonDict isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    NSData *data = [NSJSONSerialization dataWithJSONObject:jsonDict options:0 error:nil];
+    if (!data) {
+        return jsonDict;
+    }
+    id mutableJSON = [NSJSONSerialization JSONObjectWithData:data
+                                                     options:NSJSONReadingMutableContainers
+                                                       error:nil];
+    if (![mutableJSON isKindOfClass:NSMutableDictionary.class]) {
+        return jsonDict;
+    }
+
+    UIColor *primary = primaryColor ?: AppPrimaryClr ?: [UIColor systemPinkColor];
+    UIColor *highlight = UIColor.whiteColor;
+    PPImageSearchRetintLottieNode(mutableJSON, PPImageSearchLottieRGBA(primary), PPImageSearchLottieRGBA(highlight));
+    return mutableJSON;
+}
 
 @interface PPSearchRankedResult : NSObject
 
@@ -85,7 +201,8 @@ UICollectionViewDelegate,
 UICollectionViewDelegateFlowLayout,
 PPUniversalCellDelegate,
 UIImagePickerControllerDelegate,
-UINavigationControllerDelegate>
+UINavigationControllerDelegate,
+PHPickerViewControllerDelegate>
 
 @property (nonatomic, strong) UIView *searchBarContainerView;
 @property (nonatomic, strong) UIView *searchFieldChromeView;
@@ -222,6 +339,9 @@ UINavigationControllerDelegate>
     [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
                                                                                  screen:@"search"];
     [self pp_activatePendingSearchFieldFocusIfPossible];
+    if (self.imageSearchLoadingVisible) {
+        [self pp_startImageSearchLoadingAnimations];
+    }
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -296,6 +416,11 @@ UINavigationControllerDelegate>
                                    cornerRadius:self.imageSearchLoadingCardView.layer.cornerRadius].CGPath;
     self.imageSearchLoadingOrbGradientLayer.frame = self.imageSearchLoadingOrbView.bounds;
     self.imageSearchLoadingOrbView.layer.cornerRadius = CGRectGetWidth(self.imageSearchLoadingOrbView.bounds) * 0.5;
+#if PPSEARCH_HAS_LOTTIE
+    if (self.imageSearchLoadingLottieView) {
+        [self.imageSearchLoadingLottieView setNeedsLayout];
+    }
+#endif
     self.primaryGlowView.layer.cornerRadius = CGRectGetWidth(self.primaryGlowView.bounds) * 0.5;
     self.secondaryGlowView.layer.cornerRadius = CGRectGetWidth(self.secondaryGlowView.bounds) * 0.5;
     [self pp_updateBottomSearchFadeLayer];
@@ -314,6 +439,7 @@ UINavigationControllerDelegate>
             [self pp_updateSegmentButtonsSelectionAnimated:NO];
             [self pp_applyNovaNavigationButtonStyle];
             [self updateHeaderStateAnimated:NO];
+            [self pp_applyImageSearchLoadingLottieVisualState];
         }
     }
 }
@@ -961,16 +1087,23 @@ UINavigationControllerDelegate>
     }
 
     if (@available(iOS 18.0, *)) {
-        Class wiggleClass = NSClassFromString(@"NSSymbolWiggleEffect");
-        if (![wiggleClass respondsToSelector:@selector(effect)]) {
-            return;
-        }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        id effect = [wiggleClass performSelector:@selector(effect)];
-#pragma clang diagnostic pop
-        if (effect) {
-            [button.imageView addSymbolEffect: [[NSSymbolWiggleEffect effect] effectWithByLayer] options: [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:3.0]]];
+        @try {
+            if (![button.imageView respondsToSelector:@selector(addSymbolEffect:options:)]) {
+                return;
+            }
+            Class wiggleClass = NSClassFromString(@"NSSymbolWiggleEffect");
+            if (![wiggleClass respondsToSelector:@selector(effect)]) {
+                return;
+            }
+            NSSymbolWiggleEffect *wiggle = [NSSymbolWiggleEffect effect];
+            if ([wiggle respondsToSelector:@selector(effectWithByLayer)]) {
+                wiggle = [wiggle effectWithByLayer];
+            }
+            NSSymbolEffectOptions *options =
+                [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:3.0]];
+            [button.imageView addSymbolEffect:wiggle options:options];
+        } @catch (NSException *exception) {
+            NSLog(@"[PPSearchViewController] Symbol effect exception: %@", exception);
         }
     }
 }
@@ -1555,7 +1688,9 @@ UINavigationControllerDelegate>
 
     UIView *orbView = [UIView new];
     orbView.translatesAutoresizingMaskIntoConstraints = NO;
-    orbView.clipsToBounds = YES;
+    orbView.clipsToBounds = NO;
+    orbView.layer.masksToBounds = NO;
+    orbView.layer.cornerRadius = 48.0;
 
     CAGradientLayer *orbGradient = [CAGradientLayer layer];
     orbGradient.colors = @[
@@ -1664,10 +1799,10 @@ UINavigationControllerDelegate>
 
 #if PPSEARCH_HAS_LOTTIE
     [NSLayoutConstraint activateConstraints:@[
-        [lottieView.centerXAnchor constraintEqualToAnchor:orbView.centerXAnchor],
-        [lottieView.centerYAnchor constraintEqualToAnchor:orbView.centerYAnchor],
-        [lottieView.widthAnchor constraintEqualToAnchor:orbView.widthAnchor multiplier:1.0],
-        [lottieView.heightAnchor constraintEqualToAnchor:orbView.heightAnchor multiplier:1.0]
+        [lottieView.topAnchor constraintEqualToAnchor:orbView.topAnchor],
+        [lottieView.leadingAnchor constraintEqualToAnchor:orbView.leadingAnchor],
+        [lottieView.trailingAnchor constraintEqualToAnchor:orbView.trailingAnchor],
+        [lottieView.bottomAnchor constraintEqualToAnchor:orbView.bottomAnchor]
     ]];
 #endif
 
@@ -3206,7 +3341,9 @@ UINavigationControllerDelegate>
         UIAlertAction *cameraAction = [UIAlertAction actionWithTitle:kLang(@"ImageSearchTakePhoto")
                                                                style:UIAlertActionStyleDefault
                                                              handler:^(__unused UIAlertAction *action) {
-            [weakSelf pp_openImageSearchCamera];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [weakSelf pp_openImageSearchCamera];
+            });
         }];
         [sheet addAction:cameraAction];
     }
@@ -3214,7 +3351,9 @@ UINavigationControllerDelegate>
     UIAlertAction *libraryAction = [UIAlertAction actionWithTitle:kLang(@"ImageSearchChoosePhoto")
                                                             style:UIAlertActionStyleDefault
                                                           handler:^(__unused UIAlertAction *action) {
-        [weakSelf pp_openImageSearchPhotoLibrary];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [weakSelf pp_openImageSearchPhotoLibrary];
+        });
     }];
     [sheet addAction:libraryAction];
 
@@ -3230,7 +3369,7 @@ UINavigationControllerDelegate>
         popover.permittedArrowDirections = UIPopoverArrowDirectionAny;
     }
 
-    [self presentViewController:sheet animated:YES completion:nil];
+    [PPHomeHelper presentViewControllerSafely:sheet from:self animated:YES completion:nil];
 }
 
 - (void)pp_openImageSearchCamera
@@ -3257,6 +3396,16 @@ UINavigationControllerDelegate>
 
 - (void)pp_openImageSearchPhotoLibrary
 {
+    if (@available(iOS 14.0, *)) {
+        PHPickerConfiguration *config = [[PHPickerConfiguration alloc] init];
+        config.selectionLimit = 1;
+        config.filter = [PHPickerFilter imagesFilter];
+        PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config];
+        picker.delegate = self;
+        [PPHomeHelper presentViewControllerSafely:picker from:self animated:YES completion:nil];
+        return;
+    }
+
     if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypePhotoLibrary]) {
         [AppMgr showSnakBar:kLang(@"ImageSearchPhotoLibraryUnavailable")
                   withColor:nil
@@ -3291,17 +3440,24 @@ UINavigationControllerDelegate>
     picker.delegate = self;
     picker.sourceType = sourceType;
     picker.allowsEditing = NO;
-    picker.modalPresentationStyle = UIModalPresentationFullScreen;
 
-    if (sourceType == UIImagePickerControllerSourceTypePhotoLibrary &&
-        UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad &&
-        picker.popoverPresentationController) {
-        picker.popoverPresentationController.sourceView = self.imageSearchButton ?: self.view;
-        picker.popoverPresentationController.sourceRect = self.imageSearchButton ? self.imageSearchButton.bounds : self.view.bounds;
-        picker.popoverPresentationController.permittedArrowDirections = UIPopoverArrowDirectionAny;
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        if (sourceType == UIImagePickerControllerSourceTypePhotoLibrary) {
+            picker.modalPresentationStyle = UIModalPresentationPopover;
+            UIPopoverPresentationController *popover = picker.popoverPresentationController;
+            if (popover) {
+                popover.sourceView = self.imageSearchButton ?: self.view;
+                popover.sourceRect = self.imageSearchButton ? self.imageSearchButton.bounds : self.view.bounds;
+                popover.permittedArrowDirections = UIPopoverArrowDirectionAny;
+            }
+        } else {
+            picker.modalPresentationStyle = UIModalPresentationFullScreen;
+        }
+    } else {
+        picker.modalPresentationStyle = UIModalPresentationFullScreen;
     }
 
-    [self presentViewController:picker animated:YES completion:nil];
+    [PPHomeHelper presentViewControllerSafely:picker from:self animated:YES completion:nil];
 }
 
 - (void)imagePickerController:(UIImagePickerController *)picker
@@ -3314,13 +3470,37 @@ UINavigationControllerDelegate>
 
     __weak typeof(self) weakSelf = self;
     [picker dismissViewControllerAnimated:YES completion:^{
-        [weakSelf runDirectImageSearch:image];
+        if (image) {
+            [weakSelf runDirectImageSearch:image];
+        }
     }];
 }
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker
 {
     [picker dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark - PHPickerViewControllerDelegate
+
+- (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results API_AVAILABLE(ios(14.0))
+{
+    [picker dismissViewControllerAnimated:YES completion:nil];
+    PHPickerResult *result = results.firstObject;
+    if (!result) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [result.itemProvider loadObjectOfClass:[UIImage class]
+                         completionHandler:^(__kindof id<NSItemProviderReading> _Nullable object, NSError * _Nullable error) {
+        if (![object isKindOfClass:[UIImage class]]) {
+            return;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf runDirectImageSearch:(UIImage *)object];
+        });
+    }];
 }
 
 - (nullable NSDictionary *)pp_dictionaryFromObject:(id)object
@@ -3939,6 +4119,7 @@ UINavigationControllerDelegate>
 
     if (visible) {
         hostView.hidden = NO;
+        [hostView layoutIfNeeded];
         [self pp_startImageSearchLoadingAnimations];
 
         if (!animated || reduceMotion) {
@@ -3994,39 +4175,33 @@ UINavigationControllerDelegate>
 {
 #if PPSEARCH_HAS_LOTTIE
     LOTAnimationView *lottieView = self.imageSearchLoadingLottieView;
-    if (!lottieView || self.imageSearchLoadingLottieRequested) {
+    if (!lottieView) {
         return;
     }
 
-    self.imageSearchLoadingLottieRequested = YES;
-    self.imageSearchLoadingLottieUnavailable = NO;
-    [self pp_applyImageSearchLoadingLottieVisualState];
-    __weak typeof(self) weakSelf = self;
-    __weak LOTAnimationView *weakLottieView = lottieView;
-    [AppClasses fetchLottieJSONFromFirebasePath:kPPImageSearchLoadingLottiePath
-                                     completion:^(NSDictionary *jsonDict, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            LOTAnimationView *lottieView = weakLottieView;
-            if (!self || !lottieView) {
-                return;
-            }
+    BOOL (^applyLottieDict)(NSDictionary *, BOOL) = ^BOOL(NSDictionary *jsonDict, BOOL retint) {
+        if (![jsonDict isKindOfClass:NSDictionary.class] || jsonDict.count == 0) {
+            return NO;
+        }
 
-            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
-                self.imageSearchLoadingLottieReady = NO;
-                self.imageSearchLoadingLottieUnavailable = YES;
-                [self pp_applyImageSearchLoadingLottieVisualState];
-                return;
-            }
+        NSDictionary *effectiveJSON = jsonDict;
+        if (retint) {
+            effectiveJSON = PPImageSearchRetintedLottieJSON(jsonDict, AppPrimaryClr) ?: jsonDict;
+        }
 
-            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
-            if (!composition) {
-                self.imageSearchLoadingLottieReady = NO;
-                self.imageSearchLoadingLottieUnavailable = YES;
-                [self pp_applyImageSearchLoadingLottieVisualState];
-                return;
-            }
+        LOTComposition *composition = nil;
+        @try {
+            composition = [LOTComposition animationFromJSON:effectiveJSON];
+        } @catch (NSException *exception) {
+            NSLog(@"[PPSearchViewController] Lottie composition parsing exception: %@", exception);
+            composition = nil;
+        }
 
+        if (!composition) {
+            return NO;
+        }
+
+        @try {
             [lottieView setSceneModel:composition];
             lottieView.loopAnimation = YES;
             lottieView.animationSpeed = 1.0;
@@ -4037,6 +4212,68 @@ UINavigationControllerDelegate>
             self.imageSearchLoadingLottieUnavailable = NO;
             [self pp_applyImageSearchLoadingLottieVisualState];
             [self pp_updateImageSearchLoadingLottiePlayback];
+            return YES;
+        } @catch (NSException *exception) {
+            NSLog(@"[PPSearchViewController] Lottie setSceneModel exception: %@", exception);
+            return NO;
+        }
+    };
+
+    // 1. FAST-PATH: Load bundled Shop2.json immediately (0ms synchronous latency)
+    if (!self.imageSearchLoadingLottieReady) {
+        NSString *bundledPath = [[NSBundle mainBundle] pathForResource:@"Shop2" ofType:@"json"];
+        if (bundledPath.length > 0) {
+            NSData *bundledData = [NSData dataWithContentsOfFile:bundledPath];
+            if (bundledData.length > 0) {
+                NSDictionary *bundledDict = [NSJSONSerialization JSONObjectWithData:bundledData options:0 error:nil];
+                if ([bundledDict isKindOfClass:NSDictionary.class]) {
+                    applyLottieDict(bundledDict, YES);
+                }
+            }
+        }
+    }
+
+    // 2. REMOTE / CACHED PATH: Asynchronously fetch user-requested LottieAnimations/Shop.json
+    if (self.imageSearchLoadingLottieRequested) {
+        return;
+    }
+    self.imageSearchLoadingLottieRequested = YES;
+
+    __weak typeof(self) weakSelf = self;
+    __weak LOTAnimationView *weakLottieView = lottieView;
+    [AppClasses fetchLottieJSONFromFirebasePath:kPPImageSearchLoadingLottiePath
+                                     completion:^(NSDictionary *jsonDict, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || !weakLottieView) {
+                return;
+            }
+
+            if (jsonDict && [jsonDict isKindOfClass:NSDictionary.class]) {
+                if (applyLottieDict(jsonDict, YES)) {
+                    return;
+                }
+            }
+
+            // Fallback: If Firebase fetch failed or was invalid, ensure bundled Shop2.json is applied
+            if (!self.imageSearchLoadingLottieReady) {
+                NSString *fallbackPath = [[NSBundle mainBundle] pathForResource:@"Shop2" ofType:@"json"];
+                if (fallbackPath.length > 0) {
+                    NSData *fallbackData = [NSData dataWithContentsOfFile:fallbackPath];
+                    if (fallbackData.length > 0) {
+                        NSDictionary *fallbackDict = [NSJSONSerialization JSONObjectWithData:fallbackData options:0 error:nil];
+                        if ([fallbackDict isKindOfClass:NSDictionary.class]) {
+                            if (applyLottieDict(fallbackDict, YES)) {
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                self.imageSearchLoadingLottieReady = NO;
+                self.imageSearchLoadingLottieUnavailable = YES;
+                [self pp_applyImageSearchLoadingLottieVisualState];
+            }
         });
     }];
 #endif
@@ -4045,10 +4282,22 @@ UINavigationControllerDelegate>
 - (void)pp_applyImageSearchLoadingLottieVisualState
 {
     BOOL showLottie = self.imageSearchLoadingLottieReady;
-    BOOL showLegacyCircle = self.imageSearchLoadingLottieUnavailable && !showLottie;
+    BOOL showLegacyCircle = !showLottie;
     self.imageSearchLoadingOrbGradientLayer.hidden = !showLegacyCircle;
     self.imageSearchLoadingOrbInnerGlowView.hidden = !showLegacyCircle;
     self.imageSearchLoadingIconView.alpha = showLottie ? 0.0 : 1.0;
+
+    if (showLottie) {
+        self.imageSearchLoadingOrbView.backgroundColor = [(AppPrimaryClr ?: [UIColor systemPinkColor]) colorWithAlphaComponent:0.08];
+        self.imageSearchLoadingOrbView.layer.borderColor = [(AppPrimaryClr ?: [UIColor systemPinkColor]) colorWithAlphaComponent:0.20].CGColor;
+        self.imageSearchLoadingOrbView.layer.borderWidth = 1.0;
+        self.imageSearchLoadingOrbView.clipsToBounds = NO;
+    } else {
+        self.imageSearchLoadingOrbView.backgroundColor = UIColor.clearColor;
+        self.imageSearchLoadingOrbView.layer.borderWidth = 0.0;
+        self.imageSearchLoadingOrbView.clipsToBounds = YES;
+    }
+
 #if PPSEARCH_HAS_LOTTIE
     self.imageSearchLoadingLottieView.hidden = !showLottie;
     self.imageSearchLoadingLottieView.alpha = showLottie ? 1.0 : 0.0;
@@ -4066,16 +4315,31 @@ UINavigationControllerDelegate>
     BOOL shouldPlay =
         self.imageSearchLoadingVisible &&
         self.imageSearchLoadingView.hidden == NO &&
-        self.view.window != nil &&
         !UIAccessibilityIsReduceMotionEnabled();
 
     if (shouldPlay) {
-        [lottieView play];
+        @try {
+            [lottieView setNeedsLayout];
+            [lottieView layoutIfNeeded];
+            lottieView.loopAnimation = YES;
+            if (!lottieView.isAnimationPlaying) {
+                [lottieView play];
+            }
+        } @catch (NSException *exception) {
+            NSLog(@"[PPSearchViewController] Lottie play exception: %@", exception);
+            self.imageSearchLoadingLottieReady = NO;
+            self.imageSearchLoadingLottieUnavailable = YES;
+            [self pp_applyImageSearchLoadingLottieVisualState];
+        }
         return;
     }
 
-    [lottieView stop];
-    lottieView.animationProgress = 0.0;
+    @try {
+        [lottieView stop];
+        lottieView.animationProgress = 0.0;
+    } @catch (NSException *exception) {
+        NSLog(@"[PPSearchViewController] Lottie stop exception: %@", exception);
+    }
 #endif
 }
 
@@ -4092,7 +4356,12 @@ UINavigationControllerDelegate>
 {
     [self pp_pauseLegacyImageSearchLoadingCAAnimations];
     [self pp_prepareImageSearchLoadingLottieIfNeeded];
+    [self pp_applyImageSearchLoadingLottieVisualState];
     [self pp_updateImageSearchLoadingLottiePlayback];
+
+    if (self.imageSearchLoadingLottieReady) {
+        return;
+    }
 
     if (!kPPImageSearchUseLegacyLoadingCAAnimations) {
         return;
@@ -4100,7 +4369,7 @@ UINavigationControllerDelegate>
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.imageSearchLoadingOrbView.transform = CGAffineTransformIdentity;
-        self.imageSearchLoadingIconView.alpha = self.imageSearchLoadingLottieReady ? 0.0 : 1.0;
+        self.imageSearchLoadingIconView.alpha = 1.0;
         return;
     }
 
@@ -4145,8 +4414,6 @@ UINavigationControllerDelegate>
     if (!button.enabled || UIAccessibilityIsReduceMotionEnabled()) {
         return;
     }
-
-    [self pp_applyImageSearchButtonSymbolEffectIfAvailable:button];
 
     [UIView animateWithDuration:0.12
                           delay:0.0

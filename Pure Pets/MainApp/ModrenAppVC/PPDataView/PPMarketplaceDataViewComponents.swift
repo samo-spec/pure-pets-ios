@@ -263,6 +263,8 @@ struct PPMarketplaceDeckSeparatorShape: Shape {
 @available(iOS 15.0, *)
 struct PPMarketplaceHeroBackground: View {
     let statusBarHeight: CGFloat
+    var accent: Color = Color.ppPrimary
+    var isRightToLeft: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -272,17 +274,44 @@ struct PPMarketplaceHeroBackground: View {
         GeometryReader { proxy in
             let topBleed = max(0, statusBarHeight) + 400
             ZStack {
-                // Solid surface background ensures no scroll content bleeds through
+                // Solid surface background ensures zero scroll content bleed-through
                 Color.ppSurface
 
                 if !reduceTransparency && contrast != .increased {
-                    LinearGradient(
+                    // Atmospheric domain bloom positioned behind prominent action hub (RTL/LTR directional)
+                    RadialGradient(
                         colors: [
-                            Color.ppSurface,
-                            Color.ppSurface,
-                            colorScheme == .dark
-                                ? Color.ppSurfaceOverlay.opacity(0.85)
-                                : Color.ppSurfaceOverlay.opacity(0.70)
+                            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
+                            accent.opacity(colorScheme == .dark ? 0.04 : 0.015),
+                            Color.clear
+                        ],
+                        center: UnitPoint(x: isRightToLeft ? 0.12 : 0.88, y: 0.18),
+                        startRadius: 10,
+                        endRadius: 260
+                    )
+
+                    // Secondary whisper aura for balanced ambient warmth
+                    RadialGradient(
+                        colors: [
+                            accent.opacity(colorScheme == .dark ? 0.06 : 0.03),
+                            Color.clear
+                        ],
+                        center: UnitPoint(x: isRightToLeft ? 0.88 : 0.12, y: 0.28),
+                        startRadius: 10,
+                        endRadius: 200
+                    )
+
+                    // Silky vertical tonal gradient grounding the hero seamlessly into the dock
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.ppSurface, location: 0.0),
+                            .init(color: Color.ppSurface, location: 0.55),
+                            .init(
+                                color: colorScheme == .dark
+                                    ? Color.ppSurfaceOverlay.opacity(0.85)
+                                    : Color.ppSurfaceOverlay.opacity(0.70),
+                                location: 1.0
+                            )
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -303,6 +332,7 @@ struct PPMarketplaceCurrentDockBackground: View {
     let statusBarHeight: CGFloat
     let isRightToLeft: Bool
     var categoryIconName: String = "sparkles.rectangle.stack"
+    var accent: Color = Color.ppPrimary
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -320,62 +350,85 @@ struct PPMarketplaceCurrentDockBackground: View {
             let baseY = max(0, totalHeight - r)
 
             ZStack(alignment: .bottom) {
-                // 1. Static floating vector elevation shadow following the straight line + center half circle
+                // 1. Physically authentic spatial drop shadow lifting dock cleanly above scrolling feed
                 if !isIncreasedContrast {
                     PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
                         .fill(Color.ppSurface)
                         .shadow(
-                            color: Color.black.opacity(colorScheme == .dark ? 0.32 : 0.07),
-                            radius: 8,
+                            color: Color.black.opacity(colorScheme == .dark ? 0.30 : 0.05),
+                            radius: 8.0,
                             x: 0,
-                            y: 4
+                            y: 4.0
                         )
                         .shadow(
-                            color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.18 : 0.06),
-                            radius: 3,
+                            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.03),
+                            radius: 2.0,
                             x: 0,
-                            y: 1
+                            y: 1.0
                         )
                 }
 
-                // 2. Static deck surface fill strictly clipped to straight shape + half circle (100% opaque base guarantees separation)
+                // 2. Monolithic surface fill strictly clipped to top deck geometry (100% opaque base)
                 surfaceFill(isIncreasedContrast: isIncreasedContrast)
                     .clipShape(
                         PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
                     )
 
-                // 3. Delicate ambient glow along the straight line and center half circle
+                // 3. Sub-pixel specular bevel catch (top directional light reflection)
                 if !isIncreasedContrast {
                     PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
                         .stroke(
-                            Color.ppPrimary.opacity(colorScheme == .dark ? 0.24 : 0.14),
-                            style: StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round)
+                            colorScheme == .dark
+                                ? Color.white.opacity(0.08)
+                                : Color.white.opacity(0.75),
+                            lineWidth: 0.5
                         )
-                        .blur(radius: 1.5)
+                        .offset(y: -0.5)
                 }
 
-                // 4. Primary straight separator line with faded sides and center half circle
+                // 4. Razor-sharp structural baseline keyline (zero blur, zero bleed)
                 PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
                     .stroke(
-                        straightSeparatorGradient(isIncreasedContrast: isIncreasedContrast),
+                        baselineColor(isIncreasedContrast: isIncreasedContrast),
                         style: StrokeStyle(
                             lineWidth: isIncreasedContrast
                                 ? PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth
-                                : PPMarketplaceTopDeckMetrics.separatorStrokeWidth,
-                            lineCap: .round,
-                            lineJoin: .round
+                                : 0.5,
+                            lineCap: .butt
                         )
                     )
-                    .shadow(
-                        color: isIncreasedContrast
-                            ? .clear
-                            : Color.ppPrimary.opacity(colorScheme == .dark ? 0.35 : 0.18),
-                        radius: 2.0,
-                        x: 0,
-                        y: 1
+
+                // 5. Living chromatic filament carrying dynamic category accent
+                PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
+                    .stroke(
+                        chromaticFilamentGradient(isIncreasedContrast: isIncreasedContrast),
+                        style: StrokeStyle(
+                            lineWidth: isIncreasedContrast ? 1.5 : 1.0,
+                            lineCap: .round
+                        )
                     )
 
-                // 5. Center X half-circle category container with current category icon (only if r > 0)
+                // 6. Micro-jewel optical axis mark (centered precision jewel when r == 0)
+                if r == 0.0 && !isIncreasedContrast {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color.clear, location: 0.0),
+                                    .init(color: accent.opacity(colorScheme == .dark ? 0.65 : 0.45), location: 0.20),
+                                    .init(color: colorScheme == .dark ? Color.ppPrimaryShiner : Color.white.opacity(0.95), location: 0.50),
+                                    .init(color: accent.opacity(colorScheme == .dark ? 0.65 : 0.45), location: 0.80),
+                                    .init(color: Color.clear, location: 1.0)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: 36, height: 1.5)
+                        .position(x: midX, y: baseY)
+                }
+
+                // 7. Center X half-circle category container with current category icon (only if r > 0)
                 if r > 0 {
                     ZStack {
                         // Subtle luminous inner radial tint inside the half-circle dome
@@ -384,8 +437,8 @@ struct PPMarketplaceCurrentDockBackground: View {
                                 .fill(
                                     RadialGradient(
                                         colors: [
-                                            Color.ppPrimary.opacity(colorScheme == .dark ? 0.18 : 0.09),
-                                            Color.ppPrimary.opacity(colorScheme == .dark ? 0.04 : 0.02),
+                                            accent.opacity(colorScheme == .dark ? 0.18 : 0.09),
+                                            accent.opacity(colorScheme == .dark ? 0.04 : 0.02),
                                             Color.clear
                                         ],
                                         center: .center,
@@ -406,12 +459,12 @@ struct PPMarketplaceCurrentDockBackground: View {
                             .foregroundStyle(
                                 isIncreasedContrast
                                     ? Color.ppTextPrimary
-                                    : (colorScheme == .dark ? Color.ppPrimaryShiner : Color.ppPrimary)
+                                    : (colorScheme == .dark ? Color.ppPrimaryShiner : accent)
                             )
                             .shadow(
                                 color: isIncreasedContrast
                                     ? .clear
-                                    : Color.ppPrimary.opacity(colorScheme == .dark ? 0.40 : 0.22),
+                                    : accent.opacity(colorScheme == .dark ? 0.35 : 0.18),
                                 radius: 2,
                                 x: 0,
                                 y: 1
@@ -448,21 +501,29 @@ struct PPMarketplaceCurrentDockBackground: View {
                     Rectangle().fill(.ultraThickMaterial)
                     LinearGradient(
                         colors: [
-                            Color.ppSurface.opacity(0.92),
+                            Color.ppSurface.opacity(colorScheme == .dark ? 0.94 : 0.90),
                             colorScheme == .dark
                                 ? Color.ppSurfaceOverlay.opacity(0.96)
-                                : Color.ppSurfaceOverlay
+                                : Color.ppSurfaceOverlay.opacity(0.92)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
                     )
                 } else {
                     LinearGradient(
-                        colors: [
-                            colorScheme == .dark
-                                ? Color.ppSurfaceOverlay.opacity(0.88)
-                                : Color.ppSurfaceOverlay.opacity(0.78),
-                            Color.ppSurfaceOverlay
+                        stops: [
+                            .init(
+                                color: colorScheme == .dark
+                                    ? Color.ppSurfaceOverlay.opacity(0.85)
+                                    : Color.ppSurfaceOverlay.opacity(0.70),
+                                location: 0.0
+                            ),
+                            .init(
+                                color: colorScheme == .dark
+                                    ? Color.ppSurfaceOverlay.opacity(0.95)
+                                    : Color.ppSurfaceOverlay.opacity(0.85),
+                                location: 1.0
+                            )
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -472,26 +533,39 @@ struct PPMarketplaceCurrentDockBackground: View {
         }
     }
 
-    private func straightSeparatorGradient(isIncreasedContrast: Bool) -> LinearGradient {
+    private func baselineColor(isIncreasedContrast: Bool) -> Color {
+        if isIncreasedContrast {
+            return Color.ppTextPrimary
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.ppSeparator.opacity(0.40)
+    }
+
+    private func chromaticFilamentGradient(isIncreasedContrast: Bool) -> LinearGradient {
         if isIncreasedContrast {
             return LinearGradient(
-                colors: [Color.ppTextPrimary, Color.ppTextPrimary],
+                colors: [Color.clear, accent, Color.clear],
                 startPoint: .leading,
                 endPoint: .trailing
             )
         }
-        let leadColor = Color.ppPrimary.opacity(colorScheme == .dark ? 0.35 : 0.20)
-        let crestColor = Color.ppPrimary.opacity(colorScheme == .dark ? 0.95 : 0.85)
-        let centerColor = Color.ppPrimaryShiner.opacity(colorScheme == .dark ? 0.98 : 0.95)
+        let subtleAccent = accent.opacity(colorScheme == .dark ? 0.45 : 0.30)
+        let peakAccent = accent.opacity(colorScheme == .dark ? 0.92 : 0.75)
+        let highlightShine = colorScheme == .dark
+            ? Color.ppPrimaryShiner.opacity(0.85)
+            : Color.white.opacity(0.65)
 
         return LinearGradient(
             stops: [
                 .init(color: Color.clear, location: 0.0),
-                .init(color: leadColor, location: 0.14),
-                .init(color: crestColor, location: 0.35),
-                .init(color: centerColor, location: 0.50),
-                .init(color: crestColor, location: 0.65),
-                .init(color: leadColor, location: 0.86),
+                .init(color: Color.clear, location: 0.06),
+                .init(color: subtleAccent, location: 0.18),
+                .init(color: peakAccent, location: 0.42),
+                .init(color: highlightShine, location: 0.50),
+                .init(color: peakAccent, location: 0.58),
+                .init(color: subtleAccent, location: 0.82),
+                .init(color: Color.clear, location: 0.94),
                 .init(color: Color.clear, location: 1.0)
             ],
             startPoint: .leading,
@@ -499,6 +573,7 @@ struct PPMarketplaceCurrentDockBackground: View {
         )
     }
 }
+
 
 @available(iOS 15.0, *)
 struct PPMarketplaceHeroControlLayoutMetrics: Equatable {
@@ -583,7 +658,9 @@ struct PPMarketplaceHero: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             PPMarketplaceHeroBackground(
-                statusBarHeight: statusBarHeight
+                statusBarHeight: statusBarHeight,
+                accent: Color(uiColor: store.accentColor),
+                isRightToLeft: store.isRightToLeft
             )
         }
         .accessibilityElement(children: .contain)
@@ -930,7 +1007,8 @@ struct PPMarketplaceCurrentDock: View {
                 isPinned: showsPinnedBackControl,
                 statusBarHeight: statusBarHeight,
                 isRightToLeft: store.isRightToLeft,
-                categoryIconName: store.currentSectionDescriptor.iconName
+                categoryIconName: store.currentSectionDescriptor.iconName,
+                accent: Color(uiColor: store.accentColor)
             )
         }
         .zIndex(4)

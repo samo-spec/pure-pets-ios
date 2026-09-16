@@ -478,6 +478,11 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 self?.stopAllMotion()
             }
         )
+        observers.append(
+            center.addObserver(forName: Notification.Name("PPMarketplaceAccentColorPreferenceDidChangeNotification"), object: nil, queue: .main) { [weak self] _ in
+                self?.environmentDidChange(refreshLocalizedContent: false)
+            }
+        )
     }
 
     private func environmentDidChange(refreshLocalizedContent: Bool) {
@@ -943,12 +948,17 @@ private struct PPMainKindsContent {
         localImage = presentation["localImage"] as? UIImage
         assetName = model?.kindImageNamed ?? ""
         iconName = model?.kindIconName ?? ""
-        accent = (presentation["accent"] as? UIColor) ?? .ppPrimary
+        let usesCategoryColors = UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+        accent = usesCategoryColors
+            ? ((presentation["accent"] as? UIColor) ?? .ppPrimary)
+            : .ppPrimary
         let documentID = presentation["id"] as? String ?? ""
         let stableIdentity = documentID.isEmpty
             ? "main-kind-\(numericID)"
             : documentID
-        cellID = [stableIdentity, imageURL].joined(separator: "|")
+        cellID = [stableIdentity, imageURL, "\(usesCategoryColors)"].joined(separator: "|")
     }
 }
 

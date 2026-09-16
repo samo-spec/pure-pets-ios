@@ -344,6 +344,7 @@ public final class PPRootStore: ObservableObject {
             ) { [weak self] _ in
                 Task { @MainActor in
                     self?.languageCode = Language.currentLanguageCode() ?? "ar"
+                    self?.refreshAllState()
                 }
             }
         }

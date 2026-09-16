@@ -50,8 +50,14 @@ struct HomeHeroView: View {
         .accessibilityElement(children: .contain)
     }
     
+    private var isCategoryAccentEnabled: Bool {
+        UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+    }
+
     private func hero(_ page: HomeHeroPage) -> some View {
-        let accent = Color(hex: page.accentHex)
+        let accent = isCategoryAccentEnabled ? Color(hex: page.accentHex) : Color.ppPrimary
         return ZStack {
             HomeHeroField(
                 accent: accent,
@@ -1133,15 +1139,16 @@ private struct HomeHeroPageMotionModifier: ViewModifier {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.homeSurface.opacity(
-                                    colorScheme == .dark ? 0.30 : 0.42
-                                ),
+                                Color.homeRaisedSurface,
                                 increasedContrast
                                 ? Color.homeSectionBand
                                 : Color.homeSurface.opacity(
-                                    colorScheme == .dark ? 0.75 : 0.82
+                                    colorScheme == .dark ? 0.70 : 0.78
                                 ),
-                                Color.homeRaisedSurface,
+                                Color.homeSurface.opacity(
+                                    colorScheme == .dark ? 0.22 : 0.28
+                                ),
+                                Color.homeSurface.opacity(0),
                             ],
                             startPoint: .bottom,
                             endPoint: .top

@@ -598,33 +598,23 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
         return NO;
     }
 
+    if (viewController.presentingViewController || viewController.parentViewController) {
+        return NO;
+    }
+
     UIViewController *presenter = [self pp_topMostPresenterFrom:sourceVC];
     if (!presenter || presenter.isBeingPresented || presenter.isBeingDismissed) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kPPNavRetryDelay * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
-            UIViewController *retryPresenter = [self pp_topMostPresenterFrom:sourceVC];
-            if (!retryPresenter || retryPresenter.isBeingPresented || retryPresenter.isBeingDismissed) {
-                return;
-            }
-            if (viewController.presentingViewController || viewController.parentViewController) {
-                return;
-            }
-            [retryPresenter presentViewController:viewController animated:animated completion:completion];
+            [self presentViewControllerSafely:viewController from:sourceVC animated:animated completion:completion];
         });
         return NO;
     }
 
-    if (presenter.presentedViewController && !presenter.presentedViewController.isBeingDismissed) {
+    if (presenter.presentedViewController) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kPPNavRetryDelay * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
-            UIViewController *retryPresenter = [self pp_topMostPresenterFrom:sourceVC];
-            if (!retryPresenter || retryPresenter.presentedViewController) {
-                return;
-            }
-            if (viewController.presentingViewController || viewController.parentViewController) {
-                return;
-            }
-            [retryPresenter presentViewController:viewController animated:animated completion:completion];
+            [self presentViewControllerSafely:viewController from:sourceVC animated:animated completion:completion];
         });
         return NO;
     }

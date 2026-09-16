@@ -74,7 +74,8 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
 
     // Notify app
     [[NSNotificationCenter defaultCenter] postNotificationName:kLanguageDidChangeNotification object:nil];
-    DLog(@"[Language] posted %@ (isRTL=%d)", kLanguageDidChangeNotification, (int)[self isRTL]);
+    [[NSNotificationCenter defaultCenter] postNotificationName:PPLanguageDidChangeNotification object:nil];
+    DLog(@"[Language] posted %@ and %@ (isRTL=%d)", kLanguageDidChangeNotification, PPLanguageDidChangeNotification, (int)[self isRTL]);
 }
 
 + (void)setLanguage:(NSString *)language {

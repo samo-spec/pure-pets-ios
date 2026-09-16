@@ -100,10 +100,10 @@ public struct PPCommandDeckTheme {
     public init(
         accent: Color = .ppPrimary,
         createTint: Color = .ppPrimary,
-        surface: Color = .ppSurfaceElevated,
+        surface: Color = .white,
         selectedSurface: Color = .ppSoftRose,
         inactiveInk: Color = .ppTextSecondary,
-        border: Color = .ppForeground.opacity(0.75)
+        border: Color = .white.opacity(0.85)
     ) {
         self.accent = accent
         self.createTint = createTint
@@ -143,21 +143,23 @@ public struct PPCommandDeckCopy {
 private enum PPCommandDeckMetrics {
     /// Capsule height drives the hosted content clearance, so it is the single
     /// source of vertical truth for the whole bottom system.
-    static let deckHeight: CGFloat = 70
+    /// Refined height: 62 pt (decreased from 70 pt for a sleeker profile).
+    static let deckHeight: CGFloat = 62
     static let deckHorizontalPadding: CGFloat = 5
-    static let tileCornerRadius: CGFloat = 24
+    static let tileCornerRadius: CGFloat = 20
     static var deckCornerRadius: CGFloat { deckHeight * 0.5 }
-    static let iconPointSize: CGFloat = 22
-    static let labelPointSize: CGFloat = 11
-    static let labelSpacing: CGFloat = 3
+    /// Decreased items icon point size (18.5 pt, down from 22 pt) for balanced proportions.
+    static let iconPointSize: CGFloat = 18.5
+    static let labelPointSize: CGFloat = 10.5
+    static let labelSpacing: CGFloat = 2
 
     /// The visible command is smaller than the capsule while its equal-width
     /// slot remains a full native hit target.
-    /// Decreased by 10% (50 -> 45 pt, icon 21 -> 19 pt).
+    /// PRESERVED: plus button diameter and icon size remain exactly 45 pt and 19 pt.
     static let createDiameter: CGFloat = 45
     static let createIconPointSize: CGFloat = 19
 
-    static var tileHeight: CGFloat { deckHeight - 10 }
+    static var tileHeight: CGFloat { deckHeight - 8 }
     static var createTopInset: CGFloat {
         (deckHeight - createDiameter) * 0.5
     }
@@ -294,8 +296,18 @@ public struct PPCommandDeckTabBar: View {
         deckContent
             .background {
                 deckShape
-                    .fill(theme.surface.opacity(colorScheme == .dark ? 0.38 : 0.50))
-                    .background(deckShape.fill(.ultraThinMaterial))
+                    .fill(
+                        colorScheme == .dark
+                            ? theme.surface.opacity(0.42)
+                            : Color.white.opacity(0.92)
+                    )
+                    .background(
+                        deckShape.fill(
+                            colorScheme == .dark
+                                ? .ultraThinMaterial
+                                : .regularMaterial
+                        )
+                    )
             }
             .background {
                 deckGlowLayer
@@ -305,7 +317,9 @@ public struct PPCommandDeckTabBar: View {
                     LinearGradient(
                         colors: [
                             deckBorderColor,
-                            deckBorderColor.opacity(colorScheme == .dark ? 0.35 : 0.22)
+                            colorScheme == .dark
+                                ? deckBorderColor.opacity(0.35)
+                                : Color.white.opacity(0.40)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -323,7 +337,9 @@ public struct PPCommandDeckTabBar: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            theme.surface.opacity(colorScheme == .dark ? 0.28 : 0.18),
+                            (colorScheme == .dark
+                                ? theme.surface.opacity(0.28)
+                                : Color.white.opacity(0.50)),
                             Color.clear
                         ],
                         startPoint: .bottom,
@@ -338,7 +354,9 @@ public struct PPCommandDeckTabBar: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            theme.surface.opacity(colorScheme == .dark ? 0.22 : 0.14),
+                            (colorScheme == .dark
+                                ? theme.surface.opacity(0.22)
+                                : Color.white.opacity(0.35)),
                             Color.clear
                         ],
                         center: .bottom,
@@ -354,7 +372,7 @@ public struct PPCommandDeckTabBar: View {
 
     private var opaqueDeck: some View {
         deckContent
-            .background(deckShape.fill(theme.surface))
+            .background(deckShape.fill(colorScheme == .dark ? theme.surface : Color.white))
             .overlay {
                 deckShape.strokeBorder(deckBorderColor, lineWidth: deckBorderWidth)
             }
@@ -366,9 +384,12 @@ public struct PPCommandDeckTabBar: View {
     }
 
     private var deckBorderColor: Color {
-        contrast == .increased
-            ? Color.ppTextPrimary.opacity(0.75)
-            : Color.ppForeground.opacity(0.75)
+        if contrast == .increased {
+            return Color.ppTextPrimary.opacity(0.75)
+        }
+        return colorScheme == .dark
+            ? Color.ppForeground.opacity(0.75)
+            : Color.white.opacity(0.92)
     }
 
     private var deckBorderWidth: CGFloat {
@@ -379,7 +400,7 @@ public struct PPCommandDeckTabBar: View {
         Color.black.opacity(
             contrast == .increased
                 ? 0.0
-                : (colorScheme == .dark ? 0.28 : 0.08)
+                : (colorScheme == .dark ? 0.28 : 0.06)
         )
     }
 
@@ -561,15 +582,15 @@ private struct PPCommandDeckTile: View {
     private var icon: some View {
         iconBase
             .contentTransition(.opacity)
-            .frame(height: 27)
+            .frame(height: 23)
             .overlay(alignment: .topTrailing) {
                 if tab == .chats, unreadChats > 0 {
                     PPCommandDeckUnreadBadge(
                         count: unreadChats,
                         tint: theme.accent
                     )
-                    .alignmentGuide(.top) { $0[.top] + 6 }
-                    .alignmentGuide(.trailing) { $0[.trailing] - 7 }
+                    .alignmentGuide(.top) { $0[.top] + 4 }
+                    .alignmentGuide(.trailing) { $0[.trailing] - 5 }
                     .transition(
                         reduceMotion
                             ? .opacity
@@ -594,18 +615,19 @@ private struct PPCommandDeckTile: View {
     }
 
     private var accessibilityValue: Text {
+        let selectedTitle = Language.get("a11y_command_deck_selected", alter: "selected") ?? "selected"
         if tab == .chats, unreadChats > 0 {
-            let unreadFormat = NSLocalizedString(
+            let unreadFormat = Language.get(
                 "a11y_command_deck_unread_count",
-                comment: "Unread chat count in the Command Deck"
-            )
+                alter: "%d unread chats"
+            ) ?? "%d unread chats"
             let unread = Text(verbatim: String.localizedStringWithFormat(
                 unreadFormat,
                 unreadChats
             ))
 
             if isSelected {
-                return Text("a11y_command_deck_selected")
+                return Text(verbatim: selectedTitle)
                     + Text(verbatim: ", ")
                     + unread
             }
@@ -614,7 +636,7 @@ private struct PPCommandDeckTile: View {
         }
 
         if isSelected {
-            return Text("a11y_command_deck_selected")
+            return Text(verbatim: selectedTitle)
         }
 
         return Text(verbatim: "")

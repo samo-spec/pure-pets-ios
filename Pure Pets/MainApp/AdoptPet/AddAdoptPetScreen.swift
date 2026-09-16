@@ -149,39 +149,82 @@ final class AddAdoptPetStore: ObservableObject {
     // uncertain response or relaunch. The callable's command ledger can only
     // deduplicate a request when the client preserves this value.
     private var creationListingID: String = ""
+    // Once a submission reaches the server boundary, preserve the complete
+    // normalized payload as well as its listing identity. Reconstructing it
+    // from editable fields after an unknown response changes the callable
+    // fingerprint and can turn a safe retry into a duplicate command.
+    private var lockedSubmissionPayload: [String: Any]?
+    // Freeze the owner at presentation time. Reading UserManager dynamically
+    // for a persisted draft lets an already-visible form follow a later
+    // logout/account switch and cross an account boundary on the same device.
+    private let draftOwnerUID: String
+    private let draftPersistenceEnabled: Bool
 
     // Persistence Keys
     private let draftPrefix = "pp.add_adopt_pet.draft"
     private var draftDefaultsKey: String {
-        let uid = UserManager.shared().currentUser?.id ?? "guest"
         if let editingDocID = editingPet?.documentID, !editingDocID.isEmpty {
-            return "\(draftPrefix).edit.\(editingDocID).\(uid)"
+            return "\(draftPrefix).edit.\(editingDocID).\(draftOwnerUID)"
         }
-        return "\(draftPrefix).create.\(uid)"
+        return "\(draftPrefix).create.\(draftOwnerUID)"
     }
 
     private var creationIdentityDefaultsKey: String {
-        let uid = UserManager.shared().currentUser?.id ?? "guest"
-        return "\(draftPrefix).create-identity.\(uid)"
+        return "\(draftPrefix).create-identity.\(draftOwnerUID)"
+    }
+
+    // Draft media must be scoped to the same account/form identity as the
+    // UserDefaults payload. A shared `draft_0.jpg` path could otherwise let a
+    // second account on the same device overwrite—or later see—the first
+    // account's unfinished local media.
+    private var draftMediaDirectoryURL: URL {
+        let scope = Data(draftDefaultsKey.utf8).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("AdoptPetDrafts", isDirectory: true)
+            .appendingPathComponent(scope, isDirectory: true)
+    }
+
+    private func isOwnedDraftMediaPath(_ rawPath: String) -> Bool {
+        guard rawPath.hasPrefix("/") else { return false }
+        let fileURL = URL(fileURLWithPath: rawPath).standardizedFileURL
+        let directoryPath = draftMediaDirectoryURL.standardizedFileURL.path + "/"
+        return fileURL.path.hasPrefix(directoryPath)
+    }
+
+    private func removeOwnedDraftMedia() {
+        // The target is a deterministic child of the application's temporary
+        // directory and contains only this account/form's cache namespace.
+        try? FileManager.default.removeItem(at: draftMediaDirectoryURL)
     }
 
     init(pet: AdoptPetModel? = nil) {
         self.editingPet = pet
+        let currentUID = (UserManager.shared().currentUser?.id ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // A guest may still view this form, but its local media/draft payload
+        // must not be written under a device-wide "guest" namespace.
+        self.draftOwnerUID = currentUID.isEmpty ? UUID().uuidString.lowercased() : currentUID
+        self.draftPersistenceEnabled = !currentUID.isEmpty
         if let existingID = pet?.documentID, !existingID.isEmpty {
             self.creationListingID = existingID
-        } else {
-            let uid = UserManager.shared().currentUser?.id ?? "guest"
-            let identityKey = "pp.add_adopt_pet.draft.create-identity.\(uid)"
-            let persisted = UserDefaults.standard.string(forKey: identityKey)
+        } else if draftPersistenceEnabled {
+            let persisted = UserDefaults.standard.string(forKey: creationIdentityDefaultsKey)
             self.creationListingID = (persisted?.isEmpty == false ? persisted : nil) ?? UUID().uuidString.lowercased()
-            UserDefaults.standard.set(self.creationListingID, forKey: identityKey)
+            UserDefaults.standard.set(self.creationListingID, forKey: creationIdentityDefaultsKey)
+        } else {
+            self.creationListingID = UUID().uuidString.lowercased()
         }
         loadDomainData()
         if pet != nil {
             hydrateFromEditingPet()
-        } else {
-            checkAndRestoreDraft()
         }
+        // Edit drafts use an account-and-listing-scoped key, so restoring one
+        // after the live model hydration is safe and lets an uncertain update
+        // retry the exact same versioned payload after an app relaunch.
+        checkAndRestoreDraft()
     }
 
     // MARK: - Domain Data
@@ -261,7 +304,8 @@ final class AddAdoptPetStore: ObservableObject {
     // MARK: - Draft Engine
 
     private func checkAndRestoreDraft() {
-        guard let data = UserDefaults.standard.dictionary(forKey: draftDefaultsKey) else {
+        guard draftPersistenceEnabled,
+              let data = UserDefaults.standard.dictionary(forKey: draftDefaultsKey) else {
             hasSavedDraft = false
             return
         }
@@ -293,12 +337,54 @@ final class AddAdoptPetStore: ObservableObject {
             self.selectedCity = city
         }
 
-        // Restore cached local images
-        if let paths = data["imagePaths"] as? [String] {
+        // New drafts retain the complete media order and every finalized
+        // server asset identity. That lets an interrupted create retry its
+        // original immutable media payload, including a video whose local
+        // picker URL is no longer available after relaunch.
+        if let manifest = data["mediaManifest"] as? [[String: Any]] {
+            let restoredItems = manifest.prefix(8).compactMap { entry -> AdoptMediaItem? in
+                let assetID = (entry["assetID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let remoteURL = (entry["remoteURL"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let isVideo = entry["isVideo"] as? Bool ?? false
+                let image: UIImage?
+                if let path = entry["imagePath"] as? String,
+                   self.isOwnedDraftMediaPath(path),
+                   FileManager.default.fileExists(atPath: path) {
+                    image = UIImage(contentsOfFile: path)
+                } else {
+                    image = nil
+                }
+
+                let hasAsset = !(assetID ?? "").isEmpty
+                let hasRemoteURL = !(remoteURL ?? "").isEmpty
+                // Unprocessed videos cannot safely survive a picker session:
+                // retaining only their thumbnail would accidentally upload an
+                // image in place of the original video on retry.
+                guard image != nil || hasAsset || hasRemoteURL,
+                      !(isVideo && !hasAsset && !hasRemoteURL) else {
+                    return nil
+                }
+                let storedID = (entry["id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let itemID = (storedID?.isEmpty == false ? storedID : nil) ?? UUID().uuidString
+                return AdoptMediaItem(
+                    id: itemID,
+                    image: image,
+                    remoteURL: hasRemoteURL ? remoteURL : nil,
+                    assetID: hasAsset ? assetID : nil,
+                    isVideo: isVideo
+                )
+            }
+            if !restoredItems.isEmpty {
+                self.mediaItems = restoredItems
+            }
+        } else if let paths = data["imagePaths"] as? [String] {
+            // Compatibility for drafts saved before the complete media
+            // manifest was introduced.
             let assetIDs = data["imageAssetIDs"] as? [String] ?? []
             var restoredItems: [AdoptMediaItem] = []
             for (index, path) in paths.enumerated() {
-                if FileManager.default.fileExists(atPath: path),
+                if isOwnedDraftMediaPath(path),
+                   FileManager.default.fileExists(atPath: path),
                    let img = UIImage(contentsOfFile: path) {
                     let savedAssetID = assetIDs.indices.contains(index) ? assetIDs[index] : ""
                     let assetID = savedAssetID.isEmpty ? nil : savedAssetID
@@ -308,6 +394,11 @@ final class AddAdoptPetStore: ObservableObject {
             if !restoredItems.isEmpty {
                 self.mediaItems = restoredItems
             }
+        }
+
+        if let lockedPayload = data["lockedSubmissionPayload"] as? [String: Any],
+           JSONSerialization.isValidJSONObject(lockedPayload) {
+            self.lockedSubmissionPayload = lockedPayload
         }
 
         isHydrating = false
@@ -325,7 +416,15 @@ final class AddAdoptPetStore: ObservableObject {
         persistDraft(showSuccessFeedback: true)
     }
 
-    private func persistDraft(showSuccessFeedback: Bool) {
+    private func persistDraft(
+        showSuccessFeedback: Bool,
+        submissionPayload: [String: Any]? = nil
+    ) {
+        guard draftPersistenceEnabled else { return }
+        if let submissionPayload,
+           JSONSerialization.isValidJSONObject(submissionPayload) {
+            lockedSubmissionPayload = submissionPayload
+        }
         var dict: [String: Any] = [
             "name": name,
             "age": ageMonths,
@@ -340,21 +439,35 @@ final class AddAdoptPetStore: ObservableObject {
         if let c = selectedCity { dict["cityID"] = c.cityID }
 
         // Cache local images
-        let tempDir = (NSTemporaryDirectory() as NSString).appendingPathComponent("AdoptPetDrafts")
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
+        let tempDirectory = draftMediaDirectoryURL
+        try? FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
 
         var imagePaths: [String] = []
         var imageAssetIDs: [String] = []
+        var mediaManifest: [[String: Any]] = []
         for (idx, item) in mediaItems.enumerated() {
+            var entry: [String: Any] = [
+                "id": item.id,
+                "assetID": item.assetID ?? "",
+                "remoteURL": item.remoteURL ?? "",
+                "isVideo": item.isVideo
+            ]
             if let img = item.image, let pngData = img.jpegData(compressionQuality: 0.75) {
-                let filePath = (tempDir as NSString).appendingPathComponent("draft_\(idx).jpg")
-                try? pngData.write(to: URL(fileURLWithPath: filePath))
-                imagePaths.append(filePath)
+                let fileURL = tempDirectory.appendingPathComponent("draft_\(idx).jpg")
+                try? pngData.write(to: fileURL)
+                imagePaths.append(fileURL.path)
                 imageAssetIDs.append(item.assetID ?? "")
+                entry["imagePath"] = fileURL.path
             }
+            mediaManifest.append(entry)
         }
         dict["imagePaths"] = imagePaths
         dict["imageAssetIDs"] = imageAssetIDs
+        dict["mediaManifest"] = mediaManifest
+        if let lockedSubmissionPayload,
+           JSONSerialization.isValidJSONObject(lockedSubmissionPayload) {
+            dict["lockedSubmissionPayload"] = lockedSubmissionPayload
+        }
 
         UserDefaults.standard.set(dict, forKey: draftDefaultsKey)
         if !isEditing { UserDefaults.standard.set(creationListingID, forKey: creationIdentityDefaultsKey) }
@@ -363,9 +476,26 @@ final class AddAdoptPetStore: ObservableObject {
     }
 
     func clearDraft() {
-        UserDefaults.standard.removeObject(forKey: draftDefaultsKey)
-        if !isEditing { UserDefaults.standard.removeObject(forKey: creationIdentityDefaultsKey) }
+        removeOwnedDraftMedia()
+        lockedSubmissionPayload = nil
+        if draftPersistenceEnabled {
+            UserDefaults.standard.removeObject(forKey: draftDefaultsKey)
+            if !isEditing { UserDefaults.standard.removeObject(forKey: creationIdentityDefaultsKey) }
+        }
         hasSavedDraft = false
+    }
+
+    private func unlockDefinitivelyRejectedSubmission(after error: Error?) {
+        guard let error,
+              lockedSubmissionPayload != nil,
+              !PPCommunityService.shouldRetainPendingSubmission(after: error) else {
+            return
+        }
+        // The callable confirmed that this payload did not commit. Keep the
+        // user's form and processed media, but let the next submit build a
+        // corrected request rather than silently resending stale input.
+        lockedSubmissionPayload = nil
+        persistDraft(showSuccessFeedback: false)
     }
 
     private func onFieldModified() {
@@ -430,7 +560,7 @@ final class AddAdoptPetStore: ObservableObject {
     }
 
     var isFormReadyToSubmit: Bool {
-        completedCheckpointsCount == 9
+        lockedSubmissionPayload != nil || completedCheckpointsCount == 9
     }
 
     var readinessFraction: Double {
@@ -496,6 +626,17 @@ final class AddAdoptPetStore: ObservableObject {
             return
         }
 
+        let currentUID = (UserManager.shared().currentUser?.id ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard draftPersistenceEnabled, currentUID == draftOwnerUID else {
+            // Do not submit an already-visible draft through a different
+            // account after a session transition. The opening account retains
+            // its own local draft; reopening under the active account starts
+            // a new, isolated form.
+            errorMessage = PPAdoptLang("community_error_sign_in_required")
+            return
+        }
+
         isSubmitting = true
         errorMessage = nil
         submissionStepText = isEditing ? PPAdoptLang("adopt_form_save_changes") : PPAdoptLang("adopt_form_publish_action")
@@ -506,73 +647,85 @@ final class AddAdoptPetStore: ObservableObject {
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                self.submissionStepText = PPAdoptLang("adopt_form_media_studio_title")
-                var pendingMedia: [(index: Int, source: PPCommunityMediaSource)] = []
-                for index in self.mediaItems.indices {
-                    let item = self.mediaItems[index]
-                    guard item.remoteURL == nil, item.assetID == nil else { continue }
-                    if item.isVideo, let url = item.videoURL {
-                        pendingMedia.append((index, try PPCommunityMediaSource(videoURL: url)))
-                    } else if let image = item.image {
-                        pendingMedia.append((index, try PPCommunityMediaSource(image: image)))
-                    } else {
-                        throw PPCommunityError.missingMedia
+                let payload: [String: Any]
+                if let lockedSubmissionPayload = self.lockedSubmissionPayload {
+                    payload = lockedSubmissionPayload
+                } else {
+                    self.submissionStepText = PPAdoptLang("adopt_form_media_studio_title")
+                    var pendingMedia: [(index: Int, source: PPCommunityMediaSource)] = []
+                    for index in self.mediaItems.indices {
+                        let item = self.mediaItems[index]
+                        guard item.remoteURL == nil, item.assetID == nil else { continue }
+                        if item.isVideo, let url = item.videoURL {
+                            pendingMedia.append((index, try PPCommunityMediaSource(videoURL: url)))
+                        } else if let image = item.image {
+                            pendingMedia.append((index, try PPCommunityMediaSource(image: image)))
+                        } else {
+                            throw PPCommunityError.missingMedia
+                        }
                     }
-                }
 
-                var assetIDs = self.mediaItems.compactMap(\.assetID)
-                if !pendingMedia.isEmpty {
-                    let media = try await PPCommunityService.shared.uploadMedia(
-                        pendingMedia.map(\.source),
-                        contextType: "adoption_listing",
-                        contextID: listingID
-                    )
-                    guard media.assetIDs.count == pendingMedia.count else { throw PPCommunityError.invalidResponse }
-                    for (offset, pending) in pendingMedia.enumerated() {
-                        self.mediaItems[pending.index].assetID = media.assetIDs[offset]
+                    var assetIDs = self.mediaItems.compactMap(\.assetID)
+                    if !pendingMedia.isEmpty {
+                        let media = try await PPCommunityService.shared.uploadMedia(
+                            pendingMedia.map(\.source),
+                            contextType: "adoption_listing",
+                            contextID: listingID
+                        )
+                        guard media.assetIDs.count == pendingMedia.count else { throw PPCommunityError.invalidResponse }
+                        for (offset, pending) in pendingMedia.enumerated() {
+                            self.mediaItems[pending.index].assetID = media.assetIDs[offset]
+                        }
+                        // Persist the processed asset identities before the listing
+                        // write. A timeout after media finalization can then retry
+                        // the same listing payload rather than uploading duplicates.
+                        self.persistDraft(showSuccessFeedback: false)
+                        assetIDs = self.mediaItems.compactMap(\.assetID)
                     }
-                    // Persist the processed asset identities before the listing
-                    // write. A timeout after media finalization can then retry
-                    // the same listing payload rather than uploading duplicates.
-                    self.persistDraft(showSuccessFeedback: false)
-                    assetIDs = self.mediaItems.compactMap(\.assetID)
-                }
-                var seenAssetIDs = Set<String>()
-                assetIDs = Array(assetIDs.filter { seenAssetIDs.insert($0).inserted }.prefix(8))
-                guard !assetIDs.isEmpty else { throw PPCommunityError.missingMedia }
+                    var seenAssetIDs = Set<String>()
+                    assetIDs = Array(assetIDs.filter { seenAssetIDs.insert($0).inserted }.prefix(8))
+                    guard !assetIDs.isEmpty else { throw PPCommunityError.missingMedia }
 
-                let cityName = self.selectedCity?.name ?? self.selectedCity?.enName ?? ""
-                let countryCode = self.selectedCity?.country?.iso ?? self.selectedCity?.country?.countryCode ?? CountryModel.safeCurrentCountryISOCode() ?? ""
-                let payload: [String: Any] = [
-                    "listingId": listingID,
-                    "petId": petID,
-                    "expectedVersion": self.editingPet?.version ?? 0,
-                    "title": self.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                    "description": self.details.trimmingCharacters(in: .whitespacesAndNewlines),
-                    "adoptionReason": self.adoptionReason.trimmingCharacters(in: .whitespacesAndNewlines),
-                    "requirements": [],
-                    "location": ["countryCode": countryCode, "city": cityName, "district": ""],
-                    "story": self.details.trimmingCharacters(in: .whitespacesAndNewlines),
-                    "medicalNotes": "",
-                    "organizationId": self.editingPet?.organizationID ?? "",
-                    "mediaAssetIds": assetIDs,
-                    "compatibility": [
-                        "children": "unknown", "dogs": "unknown", "cats": "unknown",
-                        "apartment": "unknown", "experienceLevel": "unknown"
-                    ],
-                    "profile": [
-                        "name": self.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                        "categoryId": self.selectedKind?.id ?? 0,
-                        "breedId": self.selectedBreed?.id ?? 0,
-                        "breed": self.selectedBreed?.subKindNameAr ?? self.selectedBreed?.subKindNameEn ?? "",
-                        "cityId": self.selectedCity?.cityID ?? 0,
-                        "ageInMonths": self.ageMonths,
-                        "gender": self.selectedGender.lowercased(),
-                        "size": "",
-                        "colors": [],
-                        "distinctiveMarks": ""
+                    let cityName = self.selectedCity?.name ?? self.selectedCity?.enName ?? ""
+                    let countryCode = self.selectedCity?.country?.iso ?? self.selectedCity?.country?.countryCode ?? CountryModel.safeCurrentCountryISOCode() ?? ""
+                    payload = [
+                        "listingId": listingID,
+                        "petId": petID,
+                        "expectedVersion": self.editingPet?.version ?? 0,
+                        "title": self.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "description": self.details.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "adoptionReason": self.adoptionReason.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "requirements": [],
+                        "location": ["countryCode": countryCode, "city": cityName, "district": ""],
+                        "story": self.details.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "medicalNotes": "",
+                        "organizationId": self.editingPet?.organizationID ?? "",
+                        "mediaAssetIds": assetIDs,
+                        "compatibility": [
+                            "children": "unknown", "dogs": "unknown", "cats": "unknown",
+                            "apartment": "unknown", "experienceLevel": "unknown"
+                        ],
+                        "profile": [
+                            "name": self.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                            "categoryId": self.selectedKind?.id ?? 0,
+                            "breedId": self.selectedBreed?.id ?? 0,
+                            "breed": self.selectedBreed?.subKindNameAr ?? self.selectedBreed?.subKindNameEn ?? "",
+                            "cityId": self.selectedCity?.cityID ?? 0,
+                            "ageInMonths": self.ageMonths,
+                            "gender": self.selectedGender.lowercased(),
+                            "size": "",
+                            "colors": [],
+                            "distinctiveMarks": ""
+                        ]
                     ]
-                ]
+                    // Persist the complete, normalized request before the
+                    // callable. If its acknowledgement is lost, a retry uses
+                    // the same command fingerprint and immutable media order.
+                    self.persistDraft(
+                        showSuccessFeedback: false,
+                        submissionPayload: payload
+                    )
+                }
 
                 self.submissionStepText = self.isEditing ? PPAdoptLang("adopt_form_save_changes") : PPAdoptLang("adopt_form_publish_action")
                 if self.isEditing {
@@ -594,6 +747,7 @@ final class AddAdoptPetStore: ObservableObject {
             AdoptHaptics.success()
             completion(true)
         } else {
+            self.unlockDefinitivelyRejectedSubmission(after: error)
             self.errorMessage = error?.localizedDescription ?? PPAdoptLang("unknownError")
             AdoptHaptics.error()
             completion(false)
@@ -2423,6 +2577,13 @@ private struct AdoptMediaThumbnailCard: View {
                             Color.gray.opacity(0.2)
                         }
                     }
+                } else if item.assetID != nil {
+                    ZStack {
+                        Color.gray.opacity(0.2)
+                        Image(systemName: item.isVideo ? "video.badge.checkmark" : "photo.badge.checkmark")
+                            .font(.system(size: 25, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
                 } else {
                     Color.gray.opacity(0.2)
                 }
@@ -2629,8 +2790,12 @@ private struct AdoptPhotoLibraryPicker: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration()
-        config.selectionLimit = 15
-        config.filter = .any(of: [.images, .videos])
+        // This intake surface intentionally exposes photo-library and camera
+        // choices only. Keep its picker aligned with the visible contract and
+        // its eight-item form capacity instead of silently dropping videos or
+        // loading more images than the form can retain.
+        config.selectionLimit = 8
+        config.filter = .images
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
         return picker

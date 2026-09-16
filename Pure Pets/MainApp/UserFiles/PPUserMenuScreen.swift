@@ -28,6 +28,15 @@ public enum PPUserMenuFont {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MARK: - 1.1 DYNAMIC LOCALIZATION HELPER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@inline(__always)
+private func loc(_ key: String, alter: String? = nil) -> String {
+    Language.get(key, alter: alter ?? key) ?? (alter ?? key)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MARK: - 2. ACTION ENUM & PROTOCOL
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -74,6 +83,7 @@ public final class PPUserMenuState: ObservableObject {
     @Published public var appearanceIcon: String = "moon.fill"
     @Published public var appearanceTint: Color = .indigo
     @Published public var isArabic: Bool = true
+    @Published public var languageCode: String = "ar"
     @Published public var languageTitleKey: String = "English"
     @Published public var notificationsAuthorized: Bool = false
     @Published public var countryCode: String = "QA"
@@ -85,7 +95,12 @@ public final class PPUserMenuState: ObservableObject {
     @Published public var recentOrderStep: Int = 2 // 0: Placed, 1: Confirmed, 2: Preparing, 3: In Transit, 4: Delivered
     @Published public var hasActiveInFlightOrder: Bool = true
 
-    public init() {}
+    public init() {
+        let arabic = Language.isRTL()
+        self.isArabic = arabic
+        self.languageCode = Language.currentLanguageCode() ?? (arabic ? "ar" : "en")
+        self.languageTitleKey = arabic ? "English" : "Arabic"
+    }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -302,11 +317,11 @@ struct PPPureLensVanguardCard: View {
 
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
-                                Text(NSLocalizedString("pure_lens_account_title", comment: ""))
+                                Text(loc("pure_lens_account_title"))
                                     .font(PPUserMenuFont.bold(size: 19, relativeTo: .title3))
                                     .foregroundColor(Color.ppTextPrimary)
 
-                                Text(NSLocalizedString("pure_lens_account_live_vision", comment: ""))
+                                Text(loc("pure_lens_account_live_vision"))
                                     .font(PPUserMenuFont.bold(size: 9.5, relativeTo: .caption2))
                                     .foregroundColor(Color.ppPrimary)
                                     .padding(.horizontal, 6)
@@ -314,7 +329,7 @@ struct PPPureLensVanguardCard: View {
                                     .background(Capsule().fill(Color.ppPrimary.opacity(0.12)))
                             }
 
-                            Text(NSLocalizedString("home_pure_lens_subtitle", comment: ""))
+                            Text(loc("home_pure_lens_subtitle"))
                                 .font(PPUserMenuFont.regular(size: 13, relativeTo: .footnote))
                                 .foregroundColor(Color.ppTextSecondary)
                                 .lineLimit(2)
@@ -354,7 +369,7 @@ struct PPPureLensVanguardCard: View {
             Image(systemName: symbol)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(tint)
-            Text(NSLocalizedString(titleKey, comment: ""))
+            Text(loc(titleKey))
                 .font(PPUserMenuFont.medium(size: 11.5, relativeTo: .caption))
                 .foregroundColor(Color.ppTextSecondary)
                 .lineLimit(1)
@@ -407,12 +422,12 @@ struct PPActivityMenuRow: View {
 
                 // Title & Subtitle Stack
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(NSLocalizedString(titleKey, comment: ""))
+                    Text(loc(titleKey))
                         .font(PPUserMenuFont.bold(size: 16, relativeTo: .headline))
                         .foregroundColor(isDestructive ? Color.ppError : Color.ppTextPrimary)
                         .lineLimit(1)
 
-                    Text(NSLocalizedString(subtitleKey, comment: ""))
+                    Text(loc(subtitleKey))
                         .font(PPUserMenuFont.regular(size: 12.5, relativeTo: .footnote))
                         .foregroundColor(isDestructive ? Color.ppError.opacity(0.7) : Color.ppTextSecondary)
                         .lineLimit(1)
@@ -480,11 +495,11 @@ struct PPUserMenuPhoneView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "wifi.slash")
                             .font(.system(size: 13, weight: .semibold))
-                        Text(NSLocalizedString("user_menu_offline_pill", comment: ""))
+                        Text(loc("user_menu_offline_pill"))
                             .font(PPUserMenuFont.medium(size: 12.5, relativeTo: .caption))
                         Spacer()
                         Button(action: { onAction(.profile) }) {
-                            Text(NSLocalizedString("user_menu_retry_action", comment: ""))
+                            Text(loc("user_menu_retry_action"))
                                 .font(PPUserMenuFont.bold(size: 12, relativeTo: .caption))
                                 .underline()
                         }
@@ -559,14 +574,14 @@ struct PPUserMenuPhoneView: View {
                         // Eyebrow & Member Status Chip
                         HStack(spacing: 6) {
                             Text(state.isLoggedIn
-                                 ? NSLocalizedString("user_menu_signed_in_eyebrow", comment: "")
-                                 : NSLocalizedString("user_menu_guest_eyebrow", comment: ""))
+                                 ? loc("user_menu_signed_in_eyebrow")
+                                 : loc("user_menu_guest_eyebrow"))
                                 .font(PPUserMenuFont.bold(size: 11.5, relativeTo: .caption))
                                 .foregroundColor(Color.ppTextSecondary)
 
                             Text(state.isLoggedIn
-                                 ? NSLocalizedString("user_menu_member_verified", comment: "")
-                                 : NSLocalizedString("user_menu_member_guest", comment: ""))
+                                 ? loc("user_menu_member_verified")
+                                 : loc("user_menu_member_guest"))
                                 .font(PPUserMenuFont.bold(size: 10, relativeTo: .caption2))
                                 .foregroundColor(state.isLoggedIn ? Color.ppPrimary : Color.ppWarning)
                                 .padding(.horizontal, 7)
@@ -587,8 +602,8 @@ struct PPUserMenuPhoneView: View {
                         // Meta subtitle
                         Text(state.metaInfo.isEmpty
                              ? (state.isLoggedIn
-                                ? NSLocalizedString("user_menu_subtitle", comment: "")
-                                : NSLocalizedString("user_menu_guest_subtitle", comment: ""))
+                                ? loc("user_menu_subtitle")
+                                : loc("user_menu_guest_subtitle"))
                              : state.metaInfo)
                             .font(PPUserMenuFont.regular(size: 12.5, relativeTo: .footnote))
                             .foregroundColor(Color.ppTextSecondary)
@@ -610,13 +625,13 @@ struct PPUserMenuPhoneView: View {
                             .font(.system(size: 15, weight: .bold))
 
                         Text(state.isLoggedIn
-                             ? NSLocalizedString("user_menu_profile_action", comment: "")
-                             : NSLocalizedString("user_menu_login_action", comment: ""))
+                             ? loc("user_menu_profile_action")
+                             : loc("user_menu_login_action"))
                             .font(PPUserMenuFont.bold(size: 15, relativeTo: .subheadline))
 
                         Spacer()
 
-                        Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
+                        Image(systemName: state.isArabic ? "chevron.left" : "chevron.right")
                             .font(.system(size: 13, weight: .bold))
                             .opacity(0.8)
                     }
@@ -643,7 +658,7 @@ struct PPUserMenuPhoneView: View {
     // Quick Access 2x2 Matrix
     private var quickAccessMatrix: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(NSLocalizedString("user_menu_quick_access_title", comment: ""))
+            Text(loc("user_menu_quick_access_title"))
                 .font(PPUserMenuFont.bold(size: 14, relativeTo: .footnote))
                 .foregroundColor(Color.ppTextSecondary)
                 .padding(.horizontal, 24)
@@ -652,8 +667,8 @@ struct PPUserMenuPhoneView: View {
                 // Appearance Tile
                 PPQuickAccessTile(
                     icon: state.appearanceIcon,
-                    title: NSLocalizedString(state.appearanceTitleKey, comment: ""),
-                    subtitle: NSLocalizedString("quick_access_desc_appearance", comment: ""),
+                    title: loc(state.appearanceTitleKey),
+                    subtitle: loc("quick_access_desc_appearance"),
                     tint: state.appearanceTint
                 ) {
                     onAction(.toggleAppearance)
@@ -662,8 +677,8 @@ struct PPUserMenuPhoneView: View {
                 // Language Tile
                 PPQuickAccessTile(
                     icon: "globe.central.south.asia",
-                    title: NSLocalizedString(state.languageTitleKey, comment: ""),
-                    subtitle: NSLocalizedString("quick_access_desc_language", comment: ""),
+                    title: loc(state.languageTitleKey),
+                    subtitle: loc("quick_access_desc_language"),
                     tint: state.isArabic ? Color.ppInfo : Color.ppSuccess
                 ) {
                     onAction(.switchLanguage)
@@ -672,8 +687,8 @@ struct PPUserMenuPhoneView: View {
                 // Notifications Tile
                 PPQuickAccessTile(
                     icon: "bell.fill",
-                    title: NSLocalizedString("Allow Alerts", comment: ""),
-                    subtitle: NSLocalizedString("quick_access_desc_notifications", comment: ""),
+                    title: loc("user_menu_quick_access_alerts", alter: "Allow Alerts"),
+                    subtitle: loc("quick_access_desc_notifications"),
                     tint: Color.ppError
                 ) {
                     onAction(.requestNotifications)
@@ -683,7 +698,7 @@ struct PPUserMenuPhoneView: View {
                 PPQuickAccessTile(
                     icon: "location.fill",
                     title: "\(state.countryFlag) \(state.countryCode)",
-                    subtitle: NSLocalizedString("quick_access_desc_location", comment: ""),
+                    subtitle: loc("quick_access_desc_location"),
                     tint: Color.ppCareAccent
                 ) {
                     onAction(.requestLocation)
@@ -696,7 +711,7 @@ struct PPUserMenuPhoneView: View {
     // Activity Section
     private var activitySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(NSLocalizedString("user_menu_activity_section", comment: ""))
+            Text(loc("user_menu_activity_section"))
                 .font(PPUserMenuFont.bold(size: 14, relativeTo: .footnote))
                 .foregroundColor(Color.ppTextSecondary)
                 .padding(.horizontal, 24)
@@ -775,7 +790,7 @@ struct PPUserMenuPhoneView: View {
     // Tools & Security Section
     private var toolsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(NSLocalizedString("user_menu_tools_section", comment: ""))
+            Text(loc("user_menu_tools_section"))
                 .font(PPUserMenuFont.bold(size: 14, relativeTo: .footnote))
                 .foregroundColor(Color.ppTextSecondary)
                 .padding(.horizontal, 24)
@@ -859,7 +874,7 @@ struct PPUserMenuPadView: View {
                 Rectangle()
                     .fill(Color.ppSurfaceBorder)
                     .frame(width: 1),
-                alignment: Language.isRTL() ? .leading : .trailing
+                alignment: state.isArabic ? .leading : .trailing
             )
 
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -870,11 +885,11 @@ struct PPUserMenuPadView: View {
                     // Header Bar
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(NSLocalizedString("user_menu_ipad_dashboard_title", comment: ""))
+                            Text(loc("user_menu_ipad_dashboard_title"))
                                 .font(PPUserMenuFont.bold(size: 28, relativeTo: .title))
                                 .foregroundColor(Color.ppTextPrimary)
 
-                            Text(NSLocalizedString("user_menu_ipad_dashboard_subtitle", comment: ""))
+                            Text(loc("user_menu_ipad_dashboard_subtitle"))
                                 .font(PPUserMenuFont.regular(size: 14, relativeTo: .subheadline))
                                 .foregroundColor(Color.ppTextSecondary)
                         }
@@ -886,8 +901,8 @@ struct PPUserMenuPadView: View {
                                 .fill(state.isOffline ? Color.ppWarning : Color.ppSuccess)
                                 .frame(width: 8, height: 8)
                             Text(state.isOffline
-                                 ? NSLocalizedString("user_menu_offline_pill", comment: "")
-                                 : NSLocalizedString("user_menu_profile_status_ready", comment: ""))
+                                 ? loc("user_menu_offline_pill")
+                                 : loc("user_menu_profile_status_ready"))
                                 .font(PPUserMenuFont.medium(size: 12, relativeTo: .caption))
                                 .foregroundColor(Color.ppTextSecondary)
                         }
@@ -922,7 +937,7 @@ struct PPUserMenuPadView: View {
 
                     // 3. Marketplace & Activity Navigation Deck (2-Column Grid)
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(NSLocalizedString("user_menu_activity_section", comment: ""))
+                        Text(loc("user_menu_activity_section"))
                             .font(PPUserMenuFont.bold(size: 18, relativeTo: .headline))
                             .foregroundColor(Color.ppTextPrimary)
 
@@ -1023,8 +1038,8 @@ struct PPUserMenuPadView: View {
                         .multilineTextAlignment(.center)
 
                     Text(state.isLoggedIn
-                         ? NSLocalizedString("user_menu_member_verified", comment: "")
-                         : NSLocalizedString("user_menu_member_guest", comment: ""))
+                         ? loc("user_menu_member_verified")
+                         : loc("user_menu_member_guest"))
                         .font(PPUserMenuFont.bold(size: 11, relativeTo: .caption))
                         .foregroundColor(state.isLoggedIn ? Color.ppPrimary : Color.ppWarning)
                         .padding(.horizontal, 10)
@@ -1035,8 +1050,8 @@ struct PPUserMenuPadView: View {
 
                     Text(state.metaInfo.isEmpty
                          ? (state.isLoggedIn
-                            ? NSLocalizedString("user_menu_subtitle", comment: "")
-                            : NSLocalizedString("user_menu_guest_subtitle", comment: ""))
+                            ? loc("user_menu_subtitle")
+                            : loc("user_menu_guest_subtitle"))
                          : state.metaInfo)
                         .font(PPUserMenuFont.regular(size: 12.5, relativeTo: .footnote))
                         .foregroundColor(Color.ppTextSecondary)
@@ -1052,8 +1067,8 @@ struct PPUserMenuPadView: View {
                         Image(systemName: state.isLoggedIn ? "square.and.pencil" : "person.crop.circle.badge.plus")
                             .font(.system(size: 14, weight: .bold))
                         Text(state.isLoggedIn
-                             ? NSLocalizedString("user_menu_profile_action", comment: "")
-                             : NSLocalizedString("user_menu_login_action", comment: ""))
+                             ? loc("user_menu_profile_action")
+                             : loc("user_menu_login_action"))
                             .font(PPUserMenuFont.bold(size: 14, relativeTo: .subheadline))
                     }
                     .foregroundColor(.white)
@@ -1078,15 +1093,15 @@ struct PPUserMenuPadView: View {
     // iPad Quick Access Matrix
     private var padQuickAccessMatrix: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(NSLocalizedString("user_menu_quick_access_title", comment: ""))
+            Text(loc("user_menu_quick_access_title"))
                 .font(PPUserMenuFont.bold(size: 13, relativeTo: .footnote))
                 .foregroundColor(Color.ppTextSecondary)
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 PPQuickAccessTile(
                     icon: state.appearanceIcon,
-                    title: NSLocalizedString(state.appearanceTitleKey, comment: ""),
-                    subtitle: NSLocalizedString("quick_access_desc_appearance", comment: ""),
+                    title: loc(state.appearanceTitleKey),
+                    subtitle: loc("quick_access_desc_appearance"),
                     tint: state.appearanceTint
                 ) {
                     onAction(.toggleAppearance)
@@ -1095,8 +1110,8 @@ struct PPUserMenuPadView: View {
 
                 PPQuickAccessTile(
                     icon: "globe.central.south.asia",
-                    title: NSLocalizedString(state.languageTitleKey, comment: ""),
-                    subtitle: NSLocalizedString("quick_access_desc_language", comment: ""),
+                    title: loc(state.languageTitleKey),
+                    subtitle: loc("quick_access_desc_language"),
                     tint: state.isArabic ? Color.ppInfo : Color.ppSuccess
                 ) {
                     onAction(.switchLanguage)
@@ -1105,8 +1120,8 @@ struct PPUserMenuPadView: View {
 
                 PPQuickAccessTile(
                     icon: "bell.fill",
-                    title: NSLocalizedString("Allow Alerts", comment: ""),
-                    subtitle: NSLocalizedString("quick_access_desc_notifications", comment: ""),
+                    title: loc("user_menu_quick_access_alerts", alter: "Allow Alerts"),
+                    subtitle: loc("quick_access_desc_notifications"),
                     tint: Color.ppError
                 ) {
                     onAction(.requestNotifications)
@@ -1116,7 +1131,7 @@ struct PPUserMenuPadView: View {
                 PPQuickAccessTile(
                     icon: "location.fill",
                     title: "\(state.countryFlag) \(state.countryCode)",
-                    subtitle: NSLocalizedString("quick_access_desc_location", comment: ""),
+                    subtitle: loc("quick_access_desc_location"),
                     tint: Color.ppCareAccent
                 ) {
                     onAction(.requestLocation)
@@ -1191,7 +1206,7 @@ struct PPUserMenuPadView: View {
                         .font(PPUserMenuFont.bold(size: 26, relativeTo: .title))
                         .foregroundColor(Color.ppTextPrimary)
 
-                    Text(NSLocalizedString(titleKey, comment: ""))
+                    Text(loc(titleKey))
                         .font(PPUserMenuFont.medium(size: 13, relativeTo: .footnote))
                         .foregroundColor(Color.ppTextSecondary)
                 }
@@ -1229,7 +1244,7 @@ struct PPUserMenuPadView: View {
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(Color.ppPrimary)
 
-                        Text(NSLocalizedString("user_menu_order_tracker_title", comment: ""))
+                        Text(loc("user_menu_order_tracker_title"))
                             .font(PPUserMenuFont.bold(size: 17, relativeTo: .headline))
                             .foregroundColor(Color.ppTextPrimary)
                     }
@@ -1237,7 +1252,7 @@ struct PPUserMenuPadView: View {
                     Spacer()
 
                     Button(action: { onAction(.orders) }) {
-                        Text(NSLocalizedString("user_menu_orders_subtitle", comment: ""))
+                        Text(loc("user_menu_orders_subtitle"))
                             .font(PPUserMenuFont.medium(size: 12.5, relativeTo: .footnote))
                             .foregroundColor(Color.ppPrimary)
                     }
@@ -1258,7 +1273,7 @@ struct PPUserMenuPadView: View {
                     }
                 } else {
                     HStack {
-                        Text(NSLocalizedString("user_menu_order_tracker_empty", comment: ""))
+                        Text(loc("user_menu_order_tracker_empty"))
                             .font(PPUserMenuFont.regular(size: 13, relativeTo: .footnote))
                             .foregroundColor(Color.ppTextSecondary)
                         Spacer()
@@ -1286,7 +1301,7 @@ struct PPUserMenuPadView: View {
                 }
             }
 
-            Text(NSLocalizedString(titleKey, comment: ""))
+            Text(loc(titleKey))
                 .font(PPUserMenuFont.medium(size: 11, relativeTo: .caption2))
                 .foregroundColor(isDone ? Color.ppTextPrimary : Color.ppTextTertiary)
         }
@@ -1317,11 +1332,11 @@ struct PPUserMenuPadView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(NSLocalizedString(titleKey, comment: ""))
+                    Text(loc(titleKey))
                         .font(PPUserMenuFont.bold(size: 17, relativeTo: .headline))
                         .foregroundColor(Color.ppTextPrimary)
 
-                    Text(NSLocalizedString(subtitleKey, comment: ""))
+                    Text(loc(subtitleKey))
                         .font(PPUserMenuFont.regular(size: 13, relativeTo: .footnote))
                         .foregroundColor(Color.ppTextSecondary)
                         .lineLimit(1)
@@ -1338,7 +1353,7 @@ struct PPUserMenuPadView: View {
                         .background(Capsule().fill(tint))
                 }
 
-                Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
+                Image(systemName: state.isArabic ? "chevron.left" : "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(Color.ppTextTertiary)
             }
@@ -1381,6 +1396,7 @@ public struct PPUserMenuRootView: View {
                 PPUserMenuPhoneView(state: state, onAction: onAction)
             }
         }
+        .id(state.languageCode)
         .environment(\.layoutDirection, state.isArabic ? .rightToLeft : .leftToRight)
     }
 }
@@ -1418,7 +1434,35 @@ public final class PPUserMenuHostingController: UIViewController {
         hosting.didMove(toParent: self)
         self.hostingController = hosting
 
+        registerLanguageNotifications()
         refreshState()
+    }
+
+    private func registerLanguageNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLanguageDidChange),
+            name: NSNotification.Name("LanguageDidChangeNotification"),
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLanguageDidChange),
+            name: NSNotification.Name("PPLanguageDidChangeNotification"),
+            object: nil
+        )
+    }
+
+    @objc private func handleLanguageDidChange() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.refreshState()
+            self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage()
+        }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @objc public func refreshState() {
@@ -1464,8 +1508,10 @@ public final class PPUserMenuHostingController: UIViewController {
         }
 
         // Language
-        state.isArabic = Language.isRTL()
-        state.languageTitleKey = state.isArabic ? "English" : "Arabic"
+        let isArabic = Language.isRTL()
+        state.isArabic = isArabic
+        state.languageCode = Language.currentLanguageCode() ?? (isArabic ? "ar" : "en")
+        state.languageTitleKey = isArabic ? "English" : "Arabic"
 
         // Country
         if let code = CountryModel.safeCurrentCountryISOCode(), !code.isEmpty {

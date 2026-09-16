@@ -134,14 +134,14 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
     func testFeaturedShopUsesLivingCommercePortalAnimationContract() {
         XCTAssertEqual(
             PPProvisionsCareLayout.featuredLottieResourceName,
-            "Shop2.json"
+            "LottieAnimations/Shop.json"
         )
         XCTAssertEqual(
             PPProvisionsCareLayout.featuredLottieStoragePath,
-            "Shop2.json"
+            "LottieAnimations/Shop.json"
         )
         XCTAssertEqual(PPProvisionsCareLayout.featuredLottieFallbackName, "Shop2.json")
-        XCTAssertFalse(PPProvisionsCareLayout.featuredPrefersFirebaseSource)
-        XCTAssertEqual(PPProvisionsCareLayout.featuredArtworkSide, 84)
+        XCTAssertTrue(PPProvisionsCareLayout.featuredPrefersFirebaseSource)
+        XCTAssertEqual(PPProvisionsCareLayout.featuredArtworkSide, 80)
     }
 }

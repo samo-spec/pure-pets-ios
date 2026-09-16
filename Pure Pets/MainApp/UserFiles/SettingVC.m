@@ -1665,6 +1665,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
             [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:6.0],
             [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6.0],
             [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-10.0],
+            [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.iconView.bottomAnchor constant:8.0],
 
             [self.checkBadgeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6.0],
             [self.checkBadgeView.topAnchor constraintEqualToAnchor:self.topAnchor constant:6.0],
@@ -1739,7 +1740,7 @@ static UIColor *PPSettingsV6BrandWashColor(void)
             [self.miniPreviewView addSubview:rightHalf];
         }
     } else {
-        self.minHeightConstraint.constant = 52.0;
+        self.minHeightConstraint.constant = 70.0;
         self.miniPreviewView.hidden = YES;
         self.iconView.hidden = NO;
         self.iconView.image = img;
@@ -4604,7 +4605,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     if (row.type == PPSettingsRowTypeThemePicker) return 132.0;
     if (row.type == PPSettingsRowTypeAccentStudio) return 144.0;
     if (row.type == PPSettingsRowTypeStorageMeter) return 144.0;
-    if (row.type == PPSettingsRowTypeLanguage) return 114.0;
+    if (row.type == PPSettingsRowTypeLanguage) return 132.0;
     return 60.0;
 }
 

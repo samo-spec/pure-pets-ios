@@ -685,14 +685,14 @@ public struct PPUniversalCardView: View {
         }
         if store.isHomePresentation {
             return isAdsMode
-                ? max(250, HomeVisualTokens.universalCardHeight - 42)
-                : HomeVisualTokens.universalCardHeight
+                ? (dynamicTypeSize.isAccessibilitySize ? 320 : HomeVisualTokens.universalAdsCardHeight)
+                : (dynamicTypeSize.isAccessibilitySize ? 508 : HomeVisualTokens.universalCardHeight)
         }
         if store.model.isSkeleton && store.context.isCatalogCommerce {
             return 280
         }
         let baseHeight: CGFloat = dynamicTypeSize.isAccessibilitySize ? 508 : 328
-        return isAdsMode ? (baseHeight - 42) : baseHeight
+        return isAdsMode ? (baseHeight - 62) : baseHeight
     }
 
     private var legacySourceSignature: String {
@@ -2092,9 +2092,9 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
 
     private var cardRadius: CGFloat {
-        32
+        24
     }
-    private let mediaBottomRadius: CGFloat = 16
+    private let mediaBottomRadius: CGFloat = 12
 
     init(store: PPUniversalCardStore) {
         self.store = store
@@ -2268,7 +2268,7 @@ private struct PPUniversalCardRenderer: View {
                         homeVerticalInformationGrid(metrics: metrics)
                             .frame(
                                 maxWidth: .infinity,
-                                maxHeight: store.isContextFocused ? nil : .infinity,
+                                maxHeight: (store.isContextFocused || isAdsMode) ? nil : .infinity,
                                 alignment: .top
                             )
                             .padding(.horizontal, 11)
@@ -2555,18 +2555,20 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, 6)
             }
 
-            Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
+            if !isAdsMode {
+                Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
 
-            if store.model.usesQuantityControl || store.context.isAdvertisement || store.context.isServiceLike {
-                if !store.isNearbyAdsSection && !store.isContextFocused && !isAdsMode {
-                    bottomCTA
-                        .padding(.bottom, 2)
+                if store.model.usesQuantityControl || store.context.isAdvertisement || store.context.isServiceLike {
+                    if !store.isNearbyAdsSection && !store.isContextFocused {
+                        bottomCTA
+                            .padding(.bottom, 2)
+                    }
+                } else {
+                    detailsFooter
                 }
-            } else {
-                detailsFooter
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: isAdsMode ? nil : .infinity)
     }
 
     private var bottomAnchoredInformation: some View {
@@ -2749,6 +2751,9 @@ private struct PPUniversalCardRenderer: View {
 
                 Color.clear
                     .frame(height: store.isContextFocused ? 0 : metrics.actionToMetadataSpacing)
+            } else {
+                Color.clear
+                    .frame(height: 5)
             }
 
             scopedCardNavigationTarget(
@@ -2764,7 +2769,7 @@ private struct PPUniversalCardRenderer: View {
                     maxWidth: .infinity,
                     minHeight: metrics.metadataHeight,
                     maxHeight: metrics.metadataHeight,
-                    alignment: .center
+                    alignment: isAdsMode ? .leading : .center
                 )
             )
         }
@@ -3345,8 +3350,6 @@ private struct PPUniversalCardRenderer: View {
             (hasText ? 1 : 0) +
             (hasGender ? 1 : 0) +
             (hasBadge ? 1 : 0)
-        let fillsAvailableWidth = hasText && (hasMeta || hasGender || hasBadge)
-
         return HStack(spacing: 6) {
             if let badgeText = store.model.badgeText, !badgeText.isEmpty {
                 PPUniversalPill(
@@ -3361,6 +3364,7 @@ private struct PPUniversalCardRenderer: View {
                         semanticAccent,
                         semanticOpacity: 0.24
                     ),
+                    fillWidth: hasText && !hasMeta,
                     calm: store.context.isCatalogCommerce
                 )
             }
@@ -3400,7 +3404,7 @@ private struct PPUniversalCardRenderer: View {
                         availabilityForeground(availability.tone),
                         semanticOpacity: 0.18
                     ),
-                    fillWidth: fillsAvailableWidth,
+                    fillWidth: false,
                     calm: store.context.isCatalogCommerce
                 )
             }
@@ -3422,7 +3426,7 @@ private struct PPUniversalCardRenderer: View {
                 )
             }
 
-            if activeBadgeCount < 2 {
+            if isAdsMode || activeBadgeCount < 2 {
                 Spacer(minLength: 0)
             }
         }
@@ -3894,6 +3898,7 @@ private struct PPUniversalCardRenderer: View {
             : HomeVisualTokens.productTitleToPriceSpacing
         let priceToActionSpacing: CGFloat = isAdsMode ? 0 : (accessibility ? 10 : 8)
         let actionToMetadataSpacing: CGFloat = isAdsMode ? 0 : (accessibility ? 10 : 8)
+        let adsPriceToMetadataSpacing: CGFloat = isAdsMode ? 5 : 0
         let informationVerticalInset: CGFloat = accessibility ? 24 : 20
         let reservedInformationHeight =
             titleHeight +
@@ -3904,12 +3909,13 @@ private struct PPUniversalCardRenderer: View {
             titleToPriceSpacing +
             priceToActionSpacing +
             actionToMetadataSpacing +
+            adsPriceToMetadataSpacing +
             informationVerticalInset
         let availableMediaHeight = max(
-            accessibility ? 132 : 126,
+            accessibility ? 120 : (isAdsMode ? 116 : 126),
             size.height - 8 - reservedInformationHeight
         )
-        let maximumMediaHeight = max(126, size.width - 8)
+        let maximumMediaHeight = max(isAdsMode ? 116 : 126, size.width - 8)
 
         return PPUniversalHomeCardGridMetrics(
             mediaHeight: min(availableMediaHeight, maximumMediaHeight),

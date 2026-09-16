@@ -46,6 +46,7 @@ typedef void (^PPCartFloatingBarOpenHandler)(void);
     NS_SWIFT_NAME(pp_openListingDraft(prefill:));
 
 - (void)pp_setCustomAccentColor:(nullable UIColor *)accentColor;
+- (void)pp_refreshBottomTabBarForLanguageChange;
 @end
 
 

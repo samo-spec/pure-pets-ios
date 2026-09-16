@@ -23,18 +23,18 @@ public enum PPRootTab: Int, CaseIterable, Identifiable, Sendable {
     public var title: String {
         switch self {
         case .home:
-            return NSLocalizedString("MainPage", comment: "Main Page / Home Tab")
+            return Language.get("MainPage", alter: "MainPage") ?? "MainPage"
         case .myAds:
-            let ordersTitle = NSLocalizedString("menu_action_orders", comment: "My Orders")
-            return (ordersTitle.isEmpty || ordersTitle == "menu_action_orders")
-                ? NSLocalizedString("OrderHistory", comment: "Order History")
-                : ordersTitle
+            let ordersTitle = Language.get("menu_action_orders", alter: "menu_action_orders")
+            return (ordersTitle == nil || ordersTitle == "menu_action_orders")
+                ? (Language.get("OrderHistory", alter: "Order History") ?? "Order History")
+                : ordersTitle!
         case .create:
-            return NSLocalizedString("Add", comment: "Add / Create New Post")
+            return Language.get("Add", alter: "Add") ?? "Add"
         case .chats:
-            return NSLocalizedString("chatsTitle", comment: "Chats & Notifications")
+            return Language.get("chatsTitle", alter: "chatsTitle") ?? "chatsTitle"
         case .menu:
-            return NSLocalizedString("user_menu_tab_title", comment: "User Menu / Profile")
+            return Language.get("user_menu_tab_title", alter: "user_menu_tab_title") ?? "user_menu_tab_title"
         }
     }
     
@@ -64,15 +64,15 @@ public enum PPRootTab: Int, CaseIterable, Identifiable, Sendable {
     public var accessibilityLabel: String {
         switch self {
         case .home:
-            return NSLocalizedString("a11y_tab_home", value: "Home tab", comment: "")
+            return Language.get("a11y_tab_home", alter: "Home tab") ?? "Home tab"
         case .myAds:
-            return NSLocalizedString("a11y_tab_orders", value: title, comment: "")
+            return Language.get("a11y_tab_orders", alter: title) ?? title
         case .create:
-            return NSLocalizedString("a11y_tab_add", value: "Add new post tab", comment: "")
+            return Language.get("a11y_tab_add", alter: "Add new post tab") ?? "Add new post tab"
         case .chats:
-            return NSLocalizedString("a11y_tab_notifications", value: title, comment: "")
+            return Language.get("a11y_tab_notifications", alter: title) ?? title
         case .menu:
-            return NSLocalizedString("a11y_tab_user_menu", value: title, comment: "")
+            return Language.get("a11y_tab_user_menu", alter: title) ?? title
         }
     }
     
@@ -80,15 +80,15 @@ public enum PPRootTab: Int, CaseIterable, Identifiable, Sendable {
     public var accessibilityHint: String {
         switch self {
         case .home:
-            return NSLocalizedString("a11y_tab_home_hint", value: "Browse pet ads and services", comment: "")
+            return Language.get("a11y_tab_home_hint", alter: "Browse pet ads and services") ?? "Browse pet ads and services"
         case .myAds:
-            return NSLocalizedString("a11y_tab_orders_hint", value: "View your active orders and history", comment: "")
+            return Language.get("a11y_tab_orders_hint", alter: "View your active orders and history") ?? "View your active orders and history"
         case .create:
-            return NSLocalizedString("a11y_btn_add_new_hint", value: "Create a new pet ad, accessory listing, or adoption post", comment: "")
+            return Language.get("a11y_btn_add_new_hint", alter: "Create a new pet ad, accessory listing, or adoption post") ?? "Create a new pet ad, accessory listing, or adoption post"
         case .chats:
-            return NSLocalizedString("a11y_tab_notifications_hint", value: "View your chats and notifications", comment: "")
+            return Language.get("a11y_tab_notifications_hint", alter: "View your chats and notifications") ?? "View your chats and notifications"
         case .menu:
-            return NSLocalizedString("a11y_tab_user_menu_hint", value: "Access profile, settings, and account management", comment: "")
+            return Language.get("a11y_tab_user_menu_hint", alter: "Access profile, settings, and account management") ?? "Access profile, settings, and account management"
         }
     }
 }

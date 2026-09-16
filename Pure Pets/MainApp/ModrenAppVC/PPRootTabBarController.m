@@ -3607,7 +3607,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         // `Language.userSelectedLanguage:` normally replaces the root. This
         // in-place refresh also covers any live notification path, without
         // changing the selected tab, navigation stacks, or bottom-surface owner.
-        if (!self.isViewLoaded || self.view.window.rootViewController != self) {
+        if (!self.isViewLoaded) {
             return;
         }
         [self pp_refreshBottomTabBarForLanguageChange];
@@ -3641,6 +3641,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         }
 
         self.viewControllers[index].tabBarItem.title = title;
+        if (index < self.tabBar.items.count) {
+            self.tabBar.items[index].title = title;
+        }
         for (UITabBarItem *item in self.premiumTabItems) {
             if (item.tag == (NSInteger)index) {
                 item.title = title;

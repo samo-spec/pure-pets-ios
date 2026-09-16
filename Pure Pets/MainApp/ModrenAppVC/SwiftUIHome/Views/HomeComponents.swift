@@ -16,10 +16,11 @@ enum HomeVisualTokens {
     /// The shared Home marketplace shelf is six points tighter than the
     /// legacy universal-card footprint.
     static let universalCardHeight: CGFloat = 310
+    static let universalAdsCardHeight: CGFloat = 248
 
     // Shared surfaces
     static let cardCorner = PPCorner.card
-    static let universalCardCorner: CGFloat = 32
+    static let universalCardCorner: CGFloat = 24
     static let compactCardCorner = PPCorner.medium
     static let iconContainerSize: CGFloat = 44
     static let compactIconContainerSize: CGFloat = 36
@@ -2956,8 +2957,17 @@ struct HomeCategoriesStripView: View {
         )
     }
 
+    private var isCategoryAccentEnabled: Bool {
+        UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+    }
+
     private var indicatorColor: Color {
-        accent ?? Color(red: 14/255.0, green: 135/255.0, blue: 143/255.0)
+        guard isCategoryAccentEnabled else {
+            return Color.ppPrimary
+        }
+        return accent ?? Color.ppPrimary
     }
 
     var body: some View {
@@ -3123,11 +3133,17 @@ struct HomeCategoryRail: View {
         static let horizontalCellWidthScale: CGFloat = 0.85
     }
 
+    private var isCategoryAccentEnabled: Bool {
+        UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+    }
+
     var body: some View {
         HomeCategoriesStripView(
             categories: categories,
             selectedCategoryID: selectedID,
-            accent: Color.ppPrimary,
+            accent: isCategoryAccentEnabled ? selectedCategoryAccent : Color.ppPrimary,
             isRightToLeft: layoutDirection == .rightToLeft,
             reduceMotion: reduceMotion,
             onSelect: onSelect
@@ -3336,6 +3352,9 @@ struct HomeCategoryRail: View {
     }
 
     private var selectedCategoryAccent: Color {
+        guard isCategoryAccentEnabled else {
+            return Color.ppPrimary
+        }
         guard let selectedID,
               let category = categories.first(where: {
                   HomeModelAdapter.mainKindID($0.raw) == selectedID
@@ -5382,8 +5401,32 @@ struct HomeFeedSection: View {
 
     private let thirdCardPeekFraction: CGFloat = 0.12
 
+    private var isAdsSection: Bool {
+        if section.kind == .advertisements || section.kind == .nearbyAdvertisements {
+            return true
+        }
+        if section.rawConfigSectionID == HomeLegacySectionID.suggestionAds.rawValue ||
+           section.rawConfigSectionID == HomeLegacySectionID.adsNearby.rawValue {
+            return true
+        }
+        if case let .content(cards) = section.state, let first = cards.first {
+            return first.kind == .advertisement ||
+                   first.context == .forAds ||
+                   first.context == .forHomeAds
+        }
+        return false
+    }
+
+    private var targetCardHeight: CGFloat {
+        isAdsSection
+            ? HomeVisualTokens.universalAdsCardHeight
+            : HomeVisualTokens.universalCardHeight
+    }
+
     private var cardRailHeight: CGFloat {
-        HomeVisualTokens.universalCardHeight + (PPSpace.xs * 2)
+        isAdsSection
+            ? targetCardHeight
+            : targetCardHeight + (PPSpace.xs * 2)
     }
 
     var body: some View {
@@ -5407,7 +5450,8 @@ struct HomeFeedSection: View {
                     HomeCardSkeletonRail(
                         cardWidth: cardWidth(
                             in: geometry.size.width
-                        )
+                        ),
+                        cardHeight: targetCardHeight
                     )
                 }
                 .frame(height: cardRailHeight)
@@ -5440,7 +5484,7 @@ struct HomeFeedSection: View {
                             }
                         }
                         .padding(.leading, PPSpace.screenMargin)
-                        .padding(.vertical, PPSpace.xs)
+                        .padding(.vertical, isAdsSection ? 0 : PPSpace.xs)
                     }
                     .contentMarginsCompat()
                 }
@@ -5670,30 +5714,34 @@ private struct HomeCardSkeletonRail: View {
     ]
 
     let cardWidth: CGFloat
+    var cardHeight: CGFloat = HomeVisualTokens.universalCardHeight
 
     var body: some View {
+        let isCompact = cardHeight < HomeVisualTokens.universalCardHeight
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: PPSpace.md) {
                 ForEach(Array(Self.skeletonIDs.enumerated()), id: \.element) { index, _ in
                     VStack(alignment: .leading, spacing: PPSpace.sm) {
                         RoundedRectangle(cornerRadius: PPCorner.medium)
                             .fill(Color.ppSeparator.opacity(0.7))
-                            .frame(height: 166)
+                            .frame(height: isCompact ? 132 : 166)
                         Capsule().fill(Color.ppSeparator).frame(height: 16)
                         Capsule()
                             .fill(Color.ppSeparator)
                             .frame(width: 100, height: 13)
-                        Spacer()
-                        Capsule()
-                            .fill(Color.ppSoftRose)
-                            .frame(
-                                height: HomeVisualTokens.universalCartActionVisualHeight
-                            )
+                        if !isCompact {
+                            Spacer()
+                            Capsule()
+                                .fill(Color.ppSoftRose)
+                                .frame(
+                                    height: HomeVisualTokens.universalCartActionVisualHeight
+                                )
+                        }
                     }
                     .padding(PPSpace.sm)
                     .frame(
                         width: cardWidth,
-                        height: HomeVisualTokens.universalCardHeight
+                        height: cardHeight
                     )
                     .background(Color.ppSurfaceRaised)
                     .overlay {

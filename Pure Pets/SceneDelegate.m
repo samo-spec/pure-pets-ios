@@ -138,7 +138,10 @@ static NSString *PPSceneNotificationIDFromPayload(NSDictionary *payload)
 
 - (UIViewController *)pp_buildRootViewControllerForLanguageReloadFrom:(nullable UIViewController *)currentRootViewController
 {
+    UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
     PPRootTabBarController *rootViewController = [[PPRootTabBarController alloc] init];
+    rootViewController.view.semanticContentAttribute = semantic;
+    rootViewController.tabBar.semanticContentAttribute = semantic;
     [rootViewController view];
     NSInteger selectedIndex = [self pp_preservedSelectedTabIndexFromRootViewController:currentRootViewController];
     if (selectedIndex != NSNotFound &&
@@ -147,7 +150,9 @@ static NSString *PPSceneNotificationIDFromPayload(NSDictionary *payload)
         rootViewController.selectedIndex = selectedIndex;
     }
 
-    rootViewController.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    rootViewController.view.semanticContentAttribute = semantic;
+    rootViewController.tabBar.semanticContentAttribute = semantic;
+    [rootViewController pp_refreshBottomTabBarForLanguageChange];
     return rootViewController;
 }
 
@@ -612,8 +617,15 @@ willConnectToSession:(UISceneSession *)session
         }
 
         UIViewController *currentRootViewController = window.rootViewController;
-        if ([currentRootViewController isKindOfClass:[PPRootTabBarController class]]) {
-            PPRootTabBarController *rootTab = (PPRootTabBarController *)currentRootViewController;
+        if (currentRootViewController.presentedViewController) {
+            [currentRootViewController dismissViewControllerAnimated:NO completion:nil];
+        }
+        UIViewController *candidate = currentRootViewController;
+        if ([candidate isKindOfClass:[UINavigationController class]]) {
+            candidate = [(UINavigationController *)candidate topViewController];
+        }
+        if ([candidate isKindOfClass:[PPRootTabBarController class]]) {
+            PPRootTabBarController *rootTab = (PPRootTabBarController *)candidate;
             if (rootTab.swiftCoordinator) {
                 [rootTab.swiftCoordinator stop];
                 rootTab.swiftCoordinator = nil;
@@ -632,7 +644,10 @@ willConnectToSession:(UISceneSession *)session
             [self pp_applyCurrentLanguageSemanticToWindow:window];
             [window makeKeyAndVisible];
             [UIView setAnimationsEnabled:wereAnimationsEnabled];
-        } completion:nil];
+        } completion:^(BOOL finished) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"LanguageDidChangeNotification" object:nil];
+            [[NSNotificationCenter defaultCenter] postNotificationName:PPLanguageDidChangeNotification object:nil];
+        }];
     });
 
  }

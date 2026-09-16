@@ -929,6 +929,13 @@ public final class MainKindsCellV2: UICollectionViewCell {
         observers.append(center.addObserver(
             forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.stopAllMotion() })
+        observers.append(center.addObserver(
+            forName: Notification.Name("PPMarketplaceAccentColorPreferenceDidChangeNotification"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.environmentDidChange(refreshLocalizedContent: false)
+        })
     }
 
     public override func traitCollectionDidChange(_ previous: UITraitCollection?) {
@@ -1172,10 +1179,15 @@ private struct MainKindsV2Content {
         localImage = presentation["localImage"] as? UIImage
         assetName = model?.kindImageNamed ?? ""
         iconName = model?.kindIconName ?? ""
-        accent = (presentation["accent"] as? UIColor) ?? .ppPrimary
+        let usesCategoryColors = UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+        accent = usesCategoryColors
+            ? ((presentation["accent"] as? UIColor) ?? .ppPrimary)
+            : .ppPrimary
         let documentID = presentation["id"] as? String ?? ""
         let stableIdentity = documentID.isEmpty ? "main-kind-\(numericID)" : documentID
-        cellID = [stableIdentity, imageURL].joined(separator: "|")
+        cellID = [stableIdentity, imageURL, "\(usesCategoryColors)"].joined(separator: "|")
     }
 
     func hasSameArtwork(as other: Self) -> Bool {
@@ -1218,24 +1230,32 @@ private enum MainKindsV2Palette {
         let elevated = UIColor.ppElevatedSurface.resolvedColor(with: traits)
         let text = UIColor.ppTextPrimary.resolvedColor(with: traits)
 
+        let usesCategoryColors = UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
         let identityColor: UIColor
         let surfaceAmount: CGFloat
-        switch numericID {
-        case 5: // Cats — blush habitat from the approved concept.
-            identityColor = UIColor.ppSoftRose.resolvedColor(with: traits)
-            surfaceAmount = isDark ? 0.42 : 0.72
-        case 1: // Birds — quiet botanical/sage signal.
-            identityColor = UIColor.ppQuickActionServices.resolvedColor(with: traits)
-            surfaceAmount = isDark ? 0.18 : 0.14
-        case 11: // Falcons — mineral/desert warmth.
-            identityColor = UIColor.ppMineralBeige.resolvedColor(with: traits)
-            surfaceAmount = isDark ? 0.46 : 0.74
-        case 0: // All — neutral Pure Pets porcelain with a faint brand wash.
-            identityColor = UIColor.ppPrimary.resolvedColor(with: traits)
-            surfaceAmount = isDark ? 0.10 : 0.06
-        default:
+        if !usesCategoryColors {
             identityColor = resolvedAccent
-            surfaceAmount = isDark ? 0.13 : 0.09
+            surfaceAmount = isDark ? 0.10 : 0.06
+        } else {
+            switch numericID {
+            case 5: // Cats — blush habitat from the approved concept.
+                identityColor = UIColor.ppSoftRose.resolvedColor(with: traits)
+                surfaceAmount = isDark ? 0.42 : 0.72
+            case 1: // Birds — quiet botanical/sage signal.
+                identityColor = UIColor.ppQuickActionServices.resolvedColor(with: traits)
+                surfaceAmount = isDark ? 0.18 : 0.14
+            case 11: // Falcons — mineral/desert warmth.
+                identityColor = UIColor.ppMineralBeige.resolvedColor(with: traits)
+                surfaceAmount = isDark ? 0.46 : 0.74
+            case 0: // All — neutral Pure Pets porcelain with a faint brand wash.
+                identityColor = UIColor.ppPrimary.resolvedColor(with: traits)
+                surfaceAmount = isDark ? 0.10 : 0.06
+            default:
+                identityColor = resolvedAccent
+                surfaceAmount = isDark ? 0.13 : 0.09
+            }
         }
 
         let cardSurface = blend(identityColor, over: porcelain, amount: surfaceAmount)

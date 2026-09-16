@@ -92,7 +92,7 @@ public struct AnimatedAddToCartButton: View {
             removeAccessibilityIdentifier: String? = nil,
             isEnabled: Bool = true,
             canRemove: Bool = true,
-            controlHeight: CGFloat = 44,
+            controlHeight: CGFloat = 40,
             minimumHitHeight: CGFloat? = nil,
             onIncrement: @escaping @MainActor () -> Void,
             onDecrement: @escaping @MainActor () -> Void,
@@ -116,7 +116,7 @@ public struct AnimatedAddToCartButton: View {
                 removeAccessibilityIdentifier
             self.isEnabled = isEnabled
             self.canRemove = canRemove
-            let safeControlHeight = max(32, controlHeight)
+            let safeControlHeight = max(34, controlHeight)
             self.controlHeight = safeControlHeight
             self.minimumHitHeight = max(
                 safeControlHeight,
@@ -175,7 +175,7 @@ public struct AnimatedAddToCartButton: View {
         tint: Color = .ppPrimary,
         itemSymbol: String = "shippingbox.fill",
         isEnabled: Bool = true,
-        cornerRadius: CGFloat = 13,
+        cornerRadius: CGFloat = 20,
         presentationStyle: PresentationStyle = .standard,
         onCartTap: (() -> Void)? = nil,
         quantityMode: QuantityMode? = nil,
@@ -391,9 +391,8 @@ public struct AnimatedAddToCartButton: View {
             }
             .frame(
                 maxWidth: signature ? .infinity : nil,
-                minHeight: signature
-                    ? signatureControlHeight
-                    : legacyControlHeight
+                minHeight: signature ? signatureControlHeight : legacyControlHeight,
+                maxHeight: signature ? signatureControlHeight : nil
             )
             .contentShape(buttonShape)
         }
@@ -502,10 +501,10 @@ public struct AnimatedAddToCartButton: View {
     }
 
     private var signatureControlHeight: CGFloat {
-        let preferredHeight = quantityMode?.controlHeight ?? 44
+        let preferredHeight = quantityMode?.controlHeight ?? 40
         let accessibilityMinimum: CGFloat = dynamicTypeSize.isAccessibilitySize
             ? 52
-            : 36
+            : 32
 
         return max(preferredHeight, accessibilityMinimum)
     }
@@ -515,7 +514,7 @@ public struct AnimatedAddToCartButton: View {
             ?? signatureControlHeight
         let accessibilityMinimum: CGFloat = dynamicTypeSize.isAccessibilitySize
             ? 52
-            : 44
+            : 38
         return max(preferredHeight, accessibilityMinimum)
     }
 
@@ -1155,7 +1154,7 @@ public struct AnimatedAddToCartButton: View {
             Circle()
                 .strokeBorder(
                     buttonForeground.opacity(
-                        phase == .success ? 0.44 : 0.16
+                        phase == .success ? 0.40 : 0.16
                     ),
                     lineWidth: 0.75
                 )
@@ -1168,7 +1167,7 @@ public struct AnimatedAddToCartButton: View {
                             ? "plus"
                             : "cart.badge.plus"
                     )
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
 
                 case .processing, .flying:
                     ProgressView()
@@ -1177,11 +1176,11 @@ public struct AnimatedAddToCartButton: View {
 
                 case .success:
                     Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
 
                 case .failure:
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                 }
             }
             .id(phase.visualID)
@@ -1191,7 +1190,7 @@ public struct AnimatedAddToCartButton: View {
                     : .scale(scale: 0.58).combined(with: .opacity)
             )
         }
-        .frame(width: 32, height: 32)
+        .frame(width: 28, height: 28)
         .scaleEffect(
             reduceMotion || phase != .success ? 1 : 1.06
         )
@@ -1278,12 +1277,12 @@ public struct AnimatedAddToCartButton: View {
             let progress = max(0, min(1, flightProgress))
             let startPoint = flightPoint(
                 for: anchors[.addIcon],
-                fallback: fallbackPoint(leading: 34, vertical: size.height / 2, in: size.width),
+                fallback: fallbackPoint(leading: 32, vertical: size.height / 2, in: size.width),
                 proxy: proxy
             )
             let endPoint = flightPoint(
                 for: anchors[.cart],
-                fallback: fallbackPoint(leading: size.width - 34, vertical: size.height / 2, in: size.width),
+                fallback: fallbackPoint(leading: size.width - 32, vertical: size.height / 2, in: size.width),
                 proxy: proxy
             )
 
@@ -1308,10 +1307,10 @@ public struct AnimatedAddToCartButton: View {
                     .fill(Color.white)
 
                 Image(systemName: itemSymbol)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(tint)
             }
-            .frame(width: 30, height: 30)
+            .frame(width: 28, height: 28)
             .scaleEffect(1 - (0.12 * progress))
             .rotationEffect(.degrees(Double(progress * 18 * direction)))
             .position(currentPoint)

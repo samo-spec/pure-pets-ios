@@ -69,7 +69,12 @@ private enum CommunityDraftVault {
             kSecAttrService: service,
             kSecAttrAccount: account
         ]
-        SecItemDelete(identity as CFDictionary)
+        let attributesToUpdate: [CFString: Any] = [kSecValueData: data]
+        let updateStatus = SecItemUpdate(identity as CFDictionary, attributesToUpdate as CFDictionary)
+        // Do not delete a recoverable private draft before proving that a new
+        // Keychain write can succeed. This matters when storage is transiently
+        // unavailable or the device has just changed lock state.
+        guard updateStatus == errSecItemNotFound else { return }
         var insert = identity
         insert[kSecValueData] = data
         insert[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
@@ -118,6 +123,34 @@ private func communityDouble(_ value: Any?, fallback: Double = 0) -> Double {
     if let number = value as? Double { return number }
     if let string = value as? String, let number = Double(string) { return number }
     return fallback
+}
+
+private func communityCoordinate(from payload: [String: Any]) -> CLLocationCoordinate2D? {
+    let location = communityDictionary(payload["location"])
+    let latitude = communityDouble(location["latitude"], fallback: .nan)
+    let longitude = communityDouble(location["longitude"], fallback: .nan)
+    guard latitude.isFinite, longitude.isFinite,
+          (-90...90).contains(latitude), (-180...180).contains(longitude) else {
+        return nil
+    }
+    return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+}
+
+/// Preserves server-issued asset order while dropping malformed or duplicate
+/// identifiers. Ordering is part of the submit payload: the first item can be
+/// used as the cover, and changing it on a network retry would change the
+/// durable command fingerprint.
+private func communityOrderedUniqueStrings(_ values: [String], maximum: Int) -> [String] {
+    guard maximum > 0 else { return [] }
+    var seen = Set<String>()
+    var result: [String] = []
+    for rawValue in values {
+        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, seen.insert(value).inserted else { continue }
+        result.append(value)
+        if result.count == maximum { break }
+    }
+    return result
 }
 
 private func communityID(_ item: [String: Any]) -> String {
@@ -960,15 +993,24 @@ private final class CommunityCaseFormStore: ObservableObject {
     @Published var errorMessage: String?
     @Published var success = false
 
+    private let draftOwnerUID: String
+    private let draftPersistenceEnabled: Bool
     private var pendingCoordinate: CLLocationCoordinate2D?
+    private var submissionPayloadLocked = false
+    // A stable record ID by itself does not make a create retry idempotent: a
+    // changed field produces a different command fingerprint. Keep the exact
+    // serializable request body once a create is about to leave the device.
+    private var lockedSubmissionPayload: [String: Any]?
 
     private var draftKey: String {
-        let uid = UserManager.shared().currentUser?.id ?? "guest"
-        return "case-form.\(kind.rawValue).\(uid)"
+        "case-form.\(kind.rawValue).\(draftOwnerUID)"
     }
 
     init(kind: CommunityCaseKind) {
         self.kind = kind
+        let currentUID = communityString(UserManager.shared().currentUser?.id)
+        self.draftOwnerUID = currentUID.isEmpty ? UUID().uuidString.lowercased() : currentUID
+        self.draftPersistenceEnabled = !currentUID.isEmpty
         self.recordID = UUID().uuidString.lowercased()
         restoreDraft()
     }
@@ -988,6 +1030,7 @@ private final class CommunityCaseFormStore: ObservableObject {
     }
 
     var canSubmit: Bool {
+        if lockedSubmissionPayload != nil { return true }
         let common = !descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && mediaAttachmentCount > 0
         if kind == .missing { return common && !selectedPetID.isEmpty }
@@ -996,16 +1039,39 @@ private final class CommunityCaseFormStore: ObservableObject {
 
     var mediaAttachmentCount: Int { min(8, uploadedMediaAssetIDs.count + media.count) }
     var restoredCoordinate: CLLocationCoordinate2D? { pendingCoordinate }
+    func submissionLocationIsAvailable(_ liveCoordinate: CLLocationCoordinate2D?) -> Bool {
+        coordinateForSubmission(liveCoordinate) != nil
+    }
+
+    private var activeSessionOwnsDraft: Bool {
+        draftPersistenceEnabled && communityString(UserManager.shared().currentUser?.id) == draftOwnerUID
+    }
 
     func coordinateForSubmission(_ liveCoordinate: CLLocationCoordinate2D?) -> CLLocationCoordinate2D? {
         // Preserve the exact coordinate tied to a pending command until that
         // command reaches a receipt. A fresh location would otherwise change
         // the command fingerprint after an interrupted submission.
-        pendingCoordinate ?? liveCoordinate
+        if let lockedSubmissionPayload,
+           let lockedCoordinate = communityCoordinate(from: lockedSubmissionPayload) {
+            return lockedCoordinate
+        }
+        return submissionPayloadLocked ? (pendingCoordinate ?? liveCoordinate) : (liveCoordinate ?? pendingCoordinate)
     }
 
-    func persistDraft(coordinate: CLLocationCoordinate2D? = nil) {
+    func persistDraft(
+        coordinate: CLLocationCoordinate2D? = nil,
+        lockSubmissionPayload: Bool = false,
+        submissionPayload: [String: Any]? = nil
+    ) {
+        guard draftPersistenceEnabled else { return }
         if let coordinate { pendingCoordinate = coordinate }
+        if let submissionPayload,
+           JSONSerialization.isValidJSONObject(submissionPayload) {
+            lockedSubmissionPayload = submissionPayload
+            submissionPayloadLocked = true
+        } else if lockSubmissionPayload {
+            submissionPayloadLocked = true
+        }
         var payload: [String: Any] = [
             "recordID": recordID,
             "selectedPetID": selectedPetID,
@@ -1025,8 +1091,12 @@ private final class CommunityCaseFormStore: ObservableObject {
             "eventDate": eventDate.timeIntervalSince1970,
             "rewardOffered": rewardOffered,
             "custodyStatus": custodyStatus,
-            "uploadedMediaAssetIDs": uploadedMediaAssetIDs
+            "uploadedMediaAssetIDs": uploadedMediaAssetIDs,
+            "submissionPayloadLocked": submissionPayloadLocked
         ]
+        if let lockedSubmissionPayload {
+            payload["lockedSubmissionPayload"] = lockedSubmissionPayload
+        }
         if let coordinate = pendingCoordinate {
             payload["latitude"] = coordinate.latitude
             payload["longitude"] = coordinate.longitude
@@ -1035,7 +1105,8 @@ private final class CommunityCaseFormStore: ObservableObject {
     }
 
     private func restoreDraft() {
-        guard let payload = CommunityDraftVault.dictionary(for: draftKey) else { return }
+        guard draftPersistenceEnabled,
+              let payload = CommunityDraftVault.dictionary(for: draftKey) else { return }
         let storedID = communityString(payload["recordID"])
         if !storedID.isEmpty { recordID = storedID }
         selectedPetID = communityString(payload["selectedPetID"])
@@ -1057,9 +1128,20 @@ private final class CommunityCaseFormStore: ObservableObject {
         }
         rewardOffered = payload["rewardOffered"] as? Bool ?? false
         custodyStatus = communityString(payload["custodyStatus"], fallback: "unknown")
-        uploadedMediaAssetIDs = Array(Set((payload["uploadedMediaAssetIDs"] as? [String] ?? [])
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty })).prefix(8).map { $0 }
+        if let locked = payload["lockedSubmissionPayload"] as? [String: Any],
+           JSONSerialization.isValidJSONObject(locked) {
+            lockedSubmissionPayload = locked
+            submissionPayloadLocked = true
+        } else {
+            // Drafts written before the request-body snapshot was introduced
+            // remain editable instead of being incorrectly treated as a safe
+            // retry of an unknown command.
+            submissionPayloadLocked = false
+        }
+        uploadedMediaAssetIDs = communityOrderedUniqueStrings(
+            payload["uploadedMediaAssetIDs"] as? [String] ?? [],
+            maximum: 8
+        )
         let latitude = communityDouble(payload["latitude"], fallback: .nan)
         let longitude = communityDouble(payload["longitude"], fallback: .nan)
         if latitude.isFinite, longitude.isFinite, (-90...90).contains(latitude), (-180...180).contains(longitude) {
@@ -1068,12 +1150,38 @@ private final class CommunityCaseFormStore: ObservableObject {
     }
 
     func clearDraft() {
-        CommunityDraftVault.remove(draftKey)
+        if draftPersistenceEnabled { CommunityDraftVault.remove(draftKey) }
         pendingCoordinate = nil
+        submissionPayloadLocked = false
+        lockedSubmissionPayload = nil
         uploadedMediaAssetIDs = []
     }
 
+    private func unlockDefinitivelyRejectedSubmission(after error: Error) {
+        guard lockedSubmissionPayload != nil,
+              !PPCommunityService.shouldRetainPendingSubmission(after: error) else {
+            return
+        }
+        // Retain the user's fields, location, and processed media identities;
+        // only the server-rejected command body is discarded.
+        submissionPayloadLocked = false
+        lockedSubmissionPayload = nil
+        persistDraft()
+    }
+
+    private func submit(_ payload: [String: Any]) async throws {
+        if kind == .missing {
+            _ = try await PPCommunityService.shared.createMissingCase(payload: payload)
+        } else {
+            _ = try await PPCommunityService.shared.createFoundReport(payload: payload)
+        }
+    }
+
     func submit(coordinate: CLLocationCoordinate2D?) async {
+        guard activeSessionOwnsDraft else {
+            errorMessage = PPAdoptLang("community_error_sign_in_required")
+            return
+        }
         guard canSubmit, let coordinate = coordinateForSubmission(coordinate) else {
             errorMessage = PPAdoptLang("community_location_required")
             return
@@ -1081,57 +1189,71 @@ private final class CommunityCaseFormStore: ObservableObject {
         submitting = true
         errorMessage = nil
         do {
-            persistDraft(coordinate: coordinate)
-            let context = kind == .missing ? "missing_case" : "found_report"
-            var assetIDs = uploadedMediaAssetIDs
-            if !media.isEmpty {
-                let uploaded = try await PPCommunityService.shared.uploadMedia(media, contextType: context, contextID: recordID)
-                uploadedMediaAssetIDs = Array(Set(uploadedMediaAssetIDs + uploaded.assetIDs)).prefix(8).map { $0 }
-                media.removeAll()
-                assetIDs = uploadedMediaAssetIDs
-                persistDraft(coordinate: coordinate)
-            }
-            guard !assetIDs.isEmpty else { throw PPCommunityError.missingMedia }
-            let area: [String: Any] = [
-                "countryCode": CountryModel.safeCurrentCountryISOCode() ?? "",
-                "city": city.trimmingCharacters(in: .whitespacesAndNewlines),
-                "district": district.trimmingCharacters(in: .whitespacesAndNewlines)
-            ]
-            let location: [String: Any] = ["latitude": coordinate.latitude, "longitude": coordinate.longitude]
-            if kind == .missing {
-                guard let pet = pets.first(where: { $0.petID == selectedPetID }) else { throw PPCommunityError.invalidResponse }
-                let appearance: [String: Any] = [
-                    "speciesId": communityString(pet.categoryName).isEmpty ? String(pet.categoryId) : communityString(pet.categoryName),
-                    "breed": communityString(pet.breed), "sex": sex, "size": size,
-                    "colors": colorValues, "distinctiveMarks": distinctiveMarks
-                ]
-                _ = try await PPCommunityService.shared.createMissingCase(payload: [
-                    "caseId": recordID, "petId": pet.petID,
-                    "lostAt": PPCommunityService.shared.isoString(eventDate),
-                    "location": location, "area": area, "appearance": appearance,
-                    "description": descriptionText, "wearing": wearing,
-                    "microchipped": microchipped,
-                    "identification": ["microchipId": microchipID, "ringTag": ringTag],
-                    "rewardOffered": rewardOffered, "contactMode": "in_app",
-                    "mediaAssetIds": assetIDs
-                ])
+            if let lockedSubmissionPayload {
+                try await submit(lockedSubmissionPayload)
             } else {
-                let appearance: [String: Any] = [
-                    "speciesId": species, "breed": breed, "sex": sex, "size": size,
-                    "colors": colorValues, "distinctiveMarks": distinctiveMarks
+                let context = kind == .missing ? "missing_case" : "found_report"
+                var assetIDs = uploadedMediaAssetIDs
+                if !media.isEmpty {
+                    let uploaded = try await PPCommunityService.shared.uploadMedia(media, contextType: context, contextID: recordID)
+                    uploadedMediaAssetIDs = communityOrderedUniqueStrings(
+                        uploadedMediaAssetIDs + uploaded.assetIDs,
+                        maximum: 8
+                    )
+                    media.removeAll()
+                    assetIDs = uploadedMediaAssetIDs
+                    persistDraft(coordinate: coordinate)
+                }
+                guard !assetIDs.isEmpty else { throw PPCommunityError.missingMedia }
+                let area: [String: Any] = [
+                    "countryCode": CountryModel.safeCurrentCountryISOCode() ?? "",
+                    "city": city.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "district": district.trimmingCharacters(in: .whitespacesAndNewlines)
                 ]
-                _ = try await PPCommunityService.shared.createFoundReport(payload: [
-                    "reportId": recordID,
-                    "foundAt": PPCommunityService.shared.isoString(eventDate),
-                    "location": location, "area": area, "appearance": appearance,
-                    "identification": ["microchipId": microchipID, "ringTag": ringTag],
-                    "description": descriptionText, "custodyStatus": custodyStatus,
-                    "contactMode": "in_app", "mediaAssetIds": assetIDs
-                ])
+                let location: [String: Any] = ["latitude": coordinate.latitude, "longitude": coordinate.longitude]
+                let submissionPayload: [String: Any]
+                if kind == .missing {
+                    guard let pet = pets.first(where: { $0.petID == selectedPetID }) else { throw PPCommunityError.invalidResponse }
+                    let appearance: [String: Any] = [
+                        "speciesId": communityString(pet.categoryName).isEmpty ? String(pet.categoryId) : communityString(pet.categoryName),
+                        "breed": communityString(pet.breed), "sex": sex, "size": size,
+                        "colors": colorValues, "distinctiveMarks": distinctiveMarks
+                    ]
+                    submissionPayload = [
+                        "caseId": recordID, "petId": pet.petID,
+                        "lostAt": PPCommunityService.shared.isoString(eventDate),
+                        "location": location, "area": area, "appearance": appearance,
+                        "description": descriptionText, "wearing": wearing,
+                        "microchipped": microchipped,
+                        "identification": ["microchipId": microchipID, "ringTag": ringTag],
+                        "rewardOffered": rewardOffered, "contactMode": "in_app",
+                        "mediaAssetIds": assetIDs
+                    ]
+                } else {
+                    let appearance: [String: Any] = [
+                        "speciesId": species, "breed": breed, "sex": sex, "size": size,
+                        "colors": colorValues, "distinctiveMarks": distinctiveMarks
+                    ]
+                    submissionPayload = [
+                        "reportId": recordID,
+                        "foundAt": PPCommunityService.shared.isoString(eventDate),
+                        "location": location, "area": area, "appearance": appearance,
+                        "identification": ["microchipId": microchipID, "ringTag": ringTag],
+                        "description": descriptionText, "custodyStatus": custodyStatus,
+                        "contactMode": "in_app", "mediaAssetIds": assetIDs
+                    ]
+                }
+                persistDraft(
+                    coordinate: coordinate,
+                    lockSubmissionPayload: true,
+                    submissionPayload: submissionPayload
+                )
+                try await submit(submissionPayload)
             }
             success = true
             clearDraft()
         } catch {
+            unlockDefinitivelyRejectedSubmission(after: error)
             errorMessage = error.localizedDescription
         }
         submitting = false
@@ -1194,12 +1316,25 @@ private struct CommunityCaseFormScreen: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .onAppear { store.loadPets() }
-        .onChange(of: store.success) { succeeded in if succeeded { onFinished() } }
-        .sheet(isPresented: $showsMediaPicker) {
-            CommunityMediaPicker(maximumCount: max(1, 8 - store.media.count)) { sources in
-                store.media.append(contentsOf: sources.prefix(max(0, 8 - store.media.count)))
+        .onAppear {
+            store.loadPets()
+            if location.coordinate == nil, let restored = store.restoredCoordinate {
+                location.coordinate = restored
+                location.state = .ready
             }
+        }
+        .onChange(of: store.success) { succeeded in if succeeded { onFinished() } }
+        .onDisappear {
+            guard !store.success else { return }
+            store.persistDraft(coordinate: store.coordinateForSubmission(location.coordinate))
+        }
+        .sheet(isPresented: $showsMediaPicker) {
+            let remaining = max(0, 8 - store.mediaAttachmentCount)
+            CommunityMediaPicker(
+                maximumCount: max(1, remaining),
+                completion: { sources in store.media.append(contentsOf: sources.prefix(remaining)) },
+                failure: { error in store.errorMessage = error.localizedDescription }
+            )
         }
     }
 
@@ -1315,7 +1450,7 @@ private struct CommunityCaseFormScreen: View {
         CommunityFormCard(symbol: "photo.stack.fill", tint: .indigo, title: PPAdoptLang("community_media_title"), message: PPAdoptLang("community_media_privacy")) {
             VStack(spacing: 10) {
                 mediaHeader
-                if !store.media.isEmpty {
+                if store.mediaAttachmentCount > 0 {
                     HStack { Image(systemName: "checkmark.shield.fill").foregroundStyle(CommunityPalette.safe); Text(PPAdoptLang("community_media_selected")).font(CommunityFont.regular(13)); Spacer() }
                 }
             }
@@ -1377,12 +1512,12 @@ private struct CommunityCaseFormScreen: View {
 
     @ViewBuilder
     private var mediaHeader: some View {
-        let count = Text(String(format: PPAdoptLang("community_media_count"), store.media.count, 8))
+        let count = Text(String(format: PPAdoptLang("community_media_count"), store.mediaAttachmentCount, 8))
             .font(CommunityFont.medium(13))
             .foregroundStyle(Color.ppTextSecondary)
         let add = Button(PPAdoptLang("community_add_media")) { showsMediaPicker = true }
             .font(CommunityFont.bold(14))
-            .disabled(store.media.count >= 8)
+            .disabled(store.mediaAttachmentCount >= 8)
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 8) { count; add }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1403,7 +1538,7 @@ private struct CommunityCaseFormScreen: View {
                 .background(kind == .missing ? CommunityPalette.missing : CommunityPalette.found, in: RoundedRectangle(cornerRadius: 18))
         }
         .buttonStyle(CommunityPressStyle())
-        .disabled(!store.canSubmit || location.coordinate == nil || store.submitting)
+        .disabled(!store.canSubmit || !store.submissionLocationIsAvailable(location.coordinate) || store.submitting)
         .accessibilityHint(PPAdoptLang("community_submit_review_hint"))
     }
 }
@@ -1456,8 +1591,19 @@ private struct CommunityField: View {
 private struct CommunityMediaPicker: UIViewControllerRepresentable {
     let maximumCount: Int
     let completion: ([PPCommunityMediaSource]) -> Void
+    let failure: (PPCommunityError) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(completion: completion) }
+    init(
+        maximumCount: Int,
+        completion: @escaping ([PPCommunityMediaSource]) -> Void,
+        failure: @escaping (PPCommunityError) -> Void
+    ) {
+        self.maximumCount = maximumCount
+        self.completion = completion
+        self.failure = failure
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(completion: completion, failure: failure) }
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration(photoLibrary: .shared())
@@ -1473,14 +1619,32 @@ private struct CommunityMediaPicker: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, PHPickerViewControllerDelegate {
         let completion: ([PPCommunityMediaSource]) -> Void
-        init(completion: @escaping ([PPCommunityMediaSource]) -> Void) { self.completion = completion }
+        let failure: (PPCommunityError) -> Void
+
+        init(
+            completion: @escaping ([PPCommunityMediaSource]) -> Void,
+            failure: @escaping (PPCommunityError) -> Void
+        ) {
+            self.completion = completion
+            self.failure = failure
+        }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             picker.dismiss(animated: true)
             guard !results.isEmpty else { completion([]); return }
+            let videoResultCount = results.filter {
+                !$0.itemProvider.canLoadObject(ofClass: UIImage.self)
+            }.count
+            // Mirror the server and service contract before loading large file
+            // representations into memory. A mixed batch permits one video.
+            guard videoResultCount <= 1 else {
+                failure(.mediaTooLarge)
+                return
+            }
             let group = DispatchGroup()
             let lock = NSLock()
             var indexed: [(Int, PPCommunityMediaSource)] = []
+            var didFailToLoad = false
             for (index, result) in results.enumerated() {
                 let provider = result.itemProvider
                 group.enter()
@@ -1488,21 +1652,47 @@ private struct CommunityMediaPicker: UIViewControllerRepresentable {
                     provider.loadObject(ofClass: UIImage.self) { object, _ in
                         if let image = object as? UIImage, let source = try? PPCommunityMediaSource(image: image) {
                             lock.lock(); indexed.append((index, source)); lock.unlock()
+                        } else {
+                            lock.lock(); didFailToLoad = true; lock.unlock()
                         }
                         group.leave()
                     }
                 } else {
                     let typeIdentifier = provider.hasItemConformingToTypeIdentifier(UTType.quickTimeMovie.identifier) ? UTType.quickTimeMovie.identifier : UTType.movie.identifier
                     provider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, _ in
-                        if let url, let data = try? Data(contentsOf: url),
+                        let fileSize: Int
+                        if let url,
+                           let values = try? url.resourceValues(forKeys: [.fileSizeKey]),
+                           let size = values.fileSize {
+                            fileSize = size
+                        } else {
+                            fileSize = 0
+                        }
+                        if let url,
+                           fileSize > 0,
+                           fileSize <= (60 * 1024 * 1024) - 1,
+                           let data = try? Data(contentsOf: url, options: [.mappedIfSafe]),
                            let source = try? PPCommunityMediaSource(data: data, contentType: typeIdentifier == UTType.quickTimeMovie.identifier ? "video/quicktime" : "video/mp4") {
                             lock.lock(); indexed.append((index, source)); lock.unlock()
+                        } else {
+                            lock.lock(); didFailToLoad = true; lock.unlock()
                         }
                         group.leave()
                     }
                 }
             }
-            group.notify(queue: .main) { self.completion(indexed.sorted { $0.0 < $1.0 }.map(\.1)) }
+            group.notify(queue: .main) {
+                lock.lock()
+                let sources = indexed.sorted { $0.0 < $1.0 }.map(\.1)
+                let failed = didFailToLoad || sources.count != results.count ||
+                    sources.reduce(0) { $0 + $1.data.count } > 80 * 1024 * 1024
+                lock.unlock()
+                if failed {
+                    self.failure(.mediaTooLarge)
+                } else {
+                    self.completion(sources)
+                }
+            }
         }
     }
 }
@@ -1680,33 +1870,186 @@ private struct CommunityLostFoundDetailScreen: View {
 @MainActor
 private final class CommunitySightingStore: ObservableObject {
     let caseID: String
-    let sightingID = UUID().uuidString.lowercased()
+    private(set) var sightingID: String
     @Published var descriptionText = ""
     @Published var seenAt = Date()
     @Published var confidence = 0.7
     @Published var media: [PPCommunityMediaSource] = []
+    @Published private(set) var uploadedMediaAssetIDs: [String] = []
     @Published var submitting = false
     @Published var errorMessage: String?
     @Published var success = false
-    init(caseID: String) { self.caseID = caseID }
+    private let draftOwnerUID: String
+    private let draftPersistenceEnabled: Bool
+    private var pendingCoordinate: CLLocationCoordinate2D?
+    private var submissionPayloadLocked = false
+    private var lockedSubmissionPayload: [String: Any]?
+
+    private var draftKey: String {
+        "sighting-form.\(caseID).\(draftOwnerUID)"
+    }
+
+    init(caseID: String) {
+        self.caseID = caseID
+        let currentUID = communityString(UserManager.shared().currentUser?.id)
+        self.draftOwnerUID = currentUID.isEmpty ? UUID().uuidString.lowercased() : currentUID
+        self.draftPersistenceEnabled = !currentUID.isEmpty
+        self.sightingID = UUID().uuidString.lowercased()
+        restoreDraft()
+    }
+
+    var mediaAttachmentCount: Int { min(6, uploadedMediaAssetIDs.count + media.count) }
+    var restoredCoordinate: CLLocationCoordinate2D? { pendingCoordinate }
+    var canSubmit: Bool {
+        lockedSubmissionPayload != nil || !descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    func submissionLocationIsAvailable(_ liveCoordinate: CLLocationCoordinate2D?) -> Bool {
+        coordinateForSubmission(liveCoordinate) != nil
+    }
+
+    private var activeSessionOwnsDraft: Bool {
+        draftPersistenceEnabled && communityString(UserManager.shared().currentUser?.id) == draftOwnerUID
+    }
+
+    func coordinateForSubmission(_ liveCoordinate: CLLocationCoordinate2D?) -> CLLocationCoordinate2D? {
+        // A retry must preserve the coordinate that was part of the original
+        // durable command payload rather than silently sampling a new one.
+        if let lockedSubmissionPayload,
+           let lockedCoordinate = communityCoordinate(from: lockedSubmissionPayload) {
+            return lockedCoordinate
+        }
+        return submissionPayloadLocked ? (pendingCoordinate ?? liveCoordinate) : (liveCoordinate ?? pendingCoordinate)
+    }
+
+    func persistDraft(
+        coordinate: CLLocationCoordinate2D? = nil,
+        lockSubmissionPayload: Bool = false,
+        submissionPayload: [String: Any]? = nil
+    ) {
+        guard draftPersistenceEnabled else { return }
+        if let coordinate { pendingCoordinate = coordinate }
+        if let submissionPayload,
+           JSONSerialization.isValidJSONObject(submissionPayload) {
+            lockedSubmissionPayload = submissionPayload
+            submissionPayloadLocked = true
+        } else if lockSubmissionPayload {
+            submissionPayloadLocked = true
+        }
+        var payload: [String: Any] = [
+            "sightingID": sightingID,
+            "descriptionText": descriptionText,
+            "seenAt": seenAt.timeIntervalSince1970,
+            "confidence": confidence,
+            "uploadedMediaAssetIDs": uploadedMediaAssetIDs,
+            "submissionPayloadLocked": submissionPayloadLocked
+        ]
+        if let lockedSubmissionPayload {
+            payload["lockedSubmissionPayload"] = lockedSubmissionPayload
+        }
+        if let coordinate = pendingCoordinate {
+            payload["latitude"] = coordinate.latitude
+            payload["longitude"] = coordinate.longitude
+        }
+        CommunityDraftVault.save(payload, for: draftKey)
+    }
+
+    private func restoreDraft() {
+        guard draftPersistenceEnabled,
+              let payload = CommunityDraftVault.dictionary(for: draftKey) else { return }
+        let storedID = communityString(payload["sightingID"])
+        if !storedID.isEmpty { sightingID = storedID }
+        descriptionText = communityString(payload["descriptionText"])
+        if let seenTime = payload["seenAt"] as? Double, seenTime > 0 {
+            seenAt = min(Date(), Date(timeIntervalSince1970: seenTime))
+        }
+        confidence = min(1, max(0, communityDouble(payload["confidence"], fallback: confidence)))
+        if let locked = payload["lockedSubmissionPayload"] as? [String: Any],
+           JSONSerialization.isValidJSONObject(locked) {
+            lockedSubmissionPayload = locked
+            submissionPayloadLocked = true
+        } else {
+            submissionPayloadLocked = false
+        }
+        uploadedMediaAssetIDs = communityOrderedUniqueStrings(
+            payload["uploadedMediaAssetIDs"] as? [String] ?? [],
+            maximum: 6
+        )
+        let latitude = communityDouble(payload["latitude"], fallback: .nan)
+        let longitude = communityDouble(payload["longitude"], fallback: .nan)
+        if latitude.isFinite, longitude.isFinite, (-90...90).contains(latitude), (-180...180).contains(longitude) {
+            pendingCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        }
+    }
+
+    private func clearDraft() {
+        if draftPersistenceEnabled { CommunityDraftVault.remove(draftKey) }
+        pendingCoordinate = nil
+        submissionPayloadLocked = false
+        lockedSubmissionPayload = nil
+        uploadedMediaAssetIDs = []
+    }
+
+    private func unlockDefinitivelyRejectedSubmission(after error: Error) {
+        guard lockedSubmissionPayload != nil,
+              !PPCommunityService.shouldRetainPendingSubmission(after: error) else {
+            return
+        }
+        submissionPayloadLocked = false
+        lockedSubmissionPayload = nil
+        persistDraft()
+    }
 
     func submit(coordinate: CLLocationCoordinate2D?) async {
-        guard let coordinate, !descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { errorMessage = PPAdoptLang("community_location_required"); return }
+        guard activeSessionOwnsDraft else {
+            errorMessage = PPAdoptLang("community_error_sign_in_required")
+            return
+        }
+        guard canSubmit,
+              let coordinate = coordinateForSubmission(coordinate) else {
+            errorMessage = PPAdoptLang("community_location_required")
+            return
+        }
         submitting = true
+        errorMessage = nil
         do {
-            var assetIDs: [String] = []
-            if !media.isEmpty {
-                assetIDs = try await PPCommunityService.shared.uploadMedia(media, contextType: "sighting", contextID: "\(caseID)~\(sightingID)").assetIDs
+            if let lockedSubmissionPayload {
+                _ = try await PPCommunityService.shared.submitSighting(payload: lockedSubmissionPayload)
+            } else {
+                var assetIDs = uploadedMediaAssetIDs
+                if !media.isEmpty {
+                    let uploaded = try await PPCommunityService.shared.uploadMedia(
+                        media,
+                        contextType: "sighting",
+                        contextID: "\(caseID)~\(sightingID)"
+                    )
+                    uploadedMediaAssetIDs = communityOrderedUniqueStrings(
+                        uploadedMediaAssetIDs + uploaded.assetIDs,
+                        maximum: 6
+                    )
+                    media.removeAll()
+                    assetIDs = uploadedMediaAssetIDs
+                    persistDraft(coordinate: coordinate)
+                }
+                let submissionPayload: [String: Any] = [
+                    "caseId": caseID, "sightingId": sightingID,
+                    "seenAt": PPCommunityService.shared.isoString(seenAt),
+                    "location": ["latitude": coordinate.latitude, "longitude": coordinate.longitude],
+                    "description": descriptionText, "confidence": confidence,
+                    "mediaAssetIds": assetIDs
+                ]
+                persistDraft(
+                    coordinate: coordinate,
+                    lockSubmissionPayload: true,
+                    submissionPayload: submissionPayload
+                )
+                _ = try await PPCommunityService.shared.submitSighting(payload: submissionPayload)
             }
-            _ = try await PPCommunityService.shared.submitSighting(payload: [
-                "caseId": caseID, "sightingId": sightingID,
-                "seenAt": PPCommunityService.shared.isoString(seenAt),
-                "location": ["latitude": coordinate.latitude, "longitude": coordinate.longitude],
-                "description": descriptionText, "confidence": confidence,
-                "mediaAssetIds": assetIDs
-            ])
             success = true
-        } catch { errorMessage = error.localizedDescription }
+            clearDraft()
+        } catch {
+            unlockDefinitivelyRejectedSubmission(after: error)
+            errorMessage = error.localizedDescription
+        }
         submitting = false
     }
 }
@@ -1731,18 +2074,47 @@ private struct CommunitySightingFormScreen: View {
                     Text(PPAdoptLang("community_location_privacy")).font(CommunityFont.regular(12)).foregroundStyle(Color.ppTextSecondary)
                 }
                 Section(header: Text(PPAdoptLang("community_media_title"))) {
-                    Button(PPAdoptLang("community_add_optional_media")) { picker = true }.disabled(store.media.count >= 6)
-                    if !store.media.isEmpty { Text(String(format: PPAdoptLang("community_media_count"), store.media.count, 6)) }
+                    Button(PPAdoptLang("community_add_optional_media")) { picker = true }
+                        .disabled(store.mediaAttachmentCount >= 6)
+                    if store.mediaAttachmentCount > 0 {
+                        Text(String(format: PPAdoptLang("community_media_count"), store.mediaAttachmentCount, 6))
+                    }
                 }
                 if let error = store.errorMessage { Section { Text(error).foregroundStyle(.red) } }
-                Section { Button(PPAdoptLang("community_submit_sighting")) { Task { await store.submit(coordinate: location.coordinate) } }.disabled(store.submitting || location.coordinate == nil || store.descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+                Section {
+                    Button(PPAdoptLang("community_submit_sighting")) {
+                        Task { await store.submit(coordinate: location.coordinate) }
+                    }
+                    .disabled(
+                        store.submitting ||
+                        !store.submissionLocationIsAvailable(location.coordinate) ||
+                        !store.canSubmit
+                    )
+                }
             }
             .navigationTitle(PPAdoptLang("community_submit_sighting"))
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(PPAdoptLang("Cancel")) { presentationMode.wrappedValue.dismiss() } } }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear {
+            if location.coordinate == nil, let restored = store.restoredCoordinate {
+                location.coordinate = restored
+                location.state = .ready
+            }
+        }
         .onChange(of: store.success) { if $0 { onFinished() } }
-        .sheet(isPresented: $picker) { CommunityMediaPicker(maximumCount: max(1, 6 - store.media.count)) { store.media.append(contentsOf: $0.prefix(max(0, 6 - store.media.count))) } }
+        .onDisappear {
+            guard !store.success else { return }
+            store.persistDraft(coordinate: store.coordinateForSubmission(location.coordinate))
+        }
+        .sheet(isPresented: $picker) {
+            let remaining = max(0, 6 - store.mediaAttachmentCount)
+            CommunityMediaPicker(
+                maximumCount: max(1, remaining),
+                completion: { sources in store.media.append(contentsOf: sources.prefix(remaining)) },
+                failure: { error in store.errorMessage = error.localizedDescription }
+            )
+        }
     }
 }
 

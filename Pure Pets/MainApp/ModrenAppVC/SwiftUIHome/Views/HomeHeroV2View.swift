@@ -169,10 +169,22 @@ struct HomeHeroV2View: View {
         .overlay {
             cardShape
                 .strokeBorder(
-                    accent.opacity(
-                        contrast == .increased
-                            ? 0.50
-                            : (colorScheme == .dark ? 0.22 : 0.12)
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(
+                                contrast == .increased
+                                    ? 0.50
+                                    : (colorScheme == .dark ? 0.22 : 0.12)
+                            ),
+                            accent.opacity(
+                                contrast == .increased
+                                    ? 0.25
+                                    : (colorScheme == .dark ? 0.10 : 0.05)
+                            ),
+                            Color.clear
+                        ],
+                        startPoint: .bottom,
+                        endPoint: .top
                     ),
                     lineWidth: contrast == .increased ? 1.5 : 0.8
                 )
@@ -258,13 +270,21 @@ struct HomeHeroV2View: View {
     private func cardSurface(accent: Color) -> some View {
         ZStack {
             if contrast == .increased {
-                Color.homeRaisedSurface
+                LinearGradient(
+                    colors: [
+                        Color.homeRaisedSurface,
+                        Color.homeRaisedSurface.opacity(0)
+                    ],
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
             } else {
                 LinearGradient(
                     colors: [
-                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.25 : 0.40),
-                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.72 : 0.80),
-                        Color.homeRaisedSurface
+                        Color.homeRaisedSurface,
+                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.70 : 0.80),
+                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.25 : 0.30),
+                        Color.homeRaisedSurface.opacity(0)
                     ],
                     startPoint: .bottom,
                     endPoint: .top
@@ -274,12 +294,23 @@ struct HomeHeroV2View: View {
             if contrast != .increased && !reduceTransparency {
                 RadialGradient(
                     colors: [
-                        accent.opacity(colorScheme == .dark ? 0.18 : 0.08),
+                        accent.opacity(colorScheme == .dark ? 0.16 : 0.08),
                         Color.clear
                     ],
-                    center: UnitPoint(x: isRightToLeft ? 0.2 : 0.8, y: 0.35),
+                    center: UnitPoint(x: isRightToLeft ? 0.2 : 0.8, y: 0.60),
                     startRadius: 20,
                     endRadius: 280
+                )
+                .mask(
+                    LinearGradient(
+                        colors: [
+                            Color.black,
+                            Color.black.opacity(0.6),
+                            Color.clear
+                        ],
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
                 )
             }
         }
@@ -559,11 +590,20 @@ struct HomeHeroV2View: View {
 
     // MARK: Identity accent
 
+    private var isCategoryAccentEnabled: Bool {
+        UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
+        )
+    }
+
     /// Resolves the page's category color into an accent that is legible in the
     /// roles V2 gives it: eyebrow text on the card surface, a filled CTA behind
     /// a white label, and the plate's tint. Falls back through the brand ladder
     /// rather than accepting a low-contrast category value.
     private func heroAccent(for page: HomeHeroPage) -> Color {
+        guard isCategoryAccentEnabled else {
+            return Color.ppPrimary
+        }
         let candidate = UIColor(Color(hex: page.accentHex))
         return Color(
             uiColor: HomeHeroV2Palette.identityAccent(

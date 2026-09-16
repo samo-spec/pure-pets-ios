@@ -142,7 +142,8 @@ private struct PPRootCommandDeck: View {
     var body: some View {
         let deckTheme = PPCommandDeckTheme(
             accent: store.customAccentColor ?? .ppPrimary,
-            createTint: store.customAccentColor ?? .ppPrimary
+            createTint: store.customAccentColor ?? .ppPrimary,
+            surface: .white
         )
         PPCommandDeckTabBar(
             selection: Binding(

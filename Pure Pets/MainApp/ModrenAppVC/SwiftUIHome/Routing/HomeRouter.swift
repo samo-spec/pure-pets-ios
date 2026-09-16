@@ -25,8 +25,16 @@ final class HomeRouter: NSObject {
         guard let object = card.viewModel.modelObject else { return }
         performOnce("details:\(card.id)") { [weak self] in self?.owner?.pp_homeOpenObject(object) }
     }
-    func openCategory(_ category: HomeCategoryModel) { owner?.pp_homeOpenMainKind(category.raw) }
-    func openAllCategories() { owner?.pp_homeOpenDeepLinkTarget(.allCategories, mainKind: nil, source: .homeMainKindsSection) }
+    func openCategory(_ category: HomeCategoryModel) {
+        performOnce("category:\(category.id)") { [weak self] in
+            self?.owner?.pp_homeOpenMainKind(category.raw)
+        }
+    }
+    func openAllCategories() {
+        performOnce("allCategories") { [weak self] in
+            self?.owner?.pp_homeOpenDeepLinkTarget(.allCategories, mainKind: nil, source: .homeMainKindsSection)
+        }
+    }
     func openPetProfiles() { owner?.pp_homeOpenPetProfiles() }
 
     func openPureLens(pet: HomePetModel? = nil) {
