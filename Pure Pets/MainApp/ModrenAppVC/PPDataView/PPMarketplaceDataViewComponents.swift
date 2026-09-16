@@ -43,7 +43,7 @@ struct PPMarketplaceAtmosphere: View {
     }
 }
 
-// MARK: - Top Deck Metrics & Organic Wave Geometry
+// MARK: - Top Deck Metrics & Field Geometry
 
 @available(iOS 15.0, *)
 enum PPMarketplaceTopDeckMetrics {
@@ -51,12 +51,165 @@ enum PPMarketplaceTopDeckMetrics {
     static let halfCircleRadius: CGFloat = 0.0
     /// Vertical amplitude of the organic wave bottom contour (retained for backward compatibility).
     static let waveDepth: CGFloat = 10.0
-    /// Stroke width for the delicate rose/primary wave separator line.
+    /// Depth of the living horizon where the results canvas rises into the top deck.
+    static let horizonDepth: CGFloat = 16.0
+    /// Stroke width for the semantic accent carried by the horizon.
     static let separatorStrokeWidth: CGFloat = 1.5
     /// High-contrast accessible stroke width.
     static let separatorStrokeIncreasedContrastWidth: CGFloat = 2.0
-    /// Bottom padding inside the dock to give controls vertical breathing room comfortably above the separator.
-    static let dockBottomPadding: CGFloat = 10.0
+    /// Keeps every dock control clear of the highest point of the horizon.
+    static let dockBottomPadding: CGFloat = 18.0
+}
+
+/// A semantic-trailing focus bay behind the marketplace action side. The
+/// shape mirrors as geometry rather than relying on an image transform, so its
+/// visual reading order remains intentional in Arabic and English.
+@available(iOS 15.0, *)
+struct PPMarketplaceTopDeckFocusFieldShape: Shape {
+    var isRightToLeft: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard rect.width > 0, rect.height > 0 else { return path }
+
+        func semanticX(_ progress: CGFloat) -> CGFloat {
+            let clamped = min(1, max(0, progress))
+            return isRightToLeft
+                ? rect.maxX - (rect.width * clamped)
+                : rect.minX + (rect.width * clamped)
+        }
+
+        path.move(to: CGPoint(x: semanticX(0.46), y: rect.minY))
+        path.addCurve(
+            to: CGPoint(x: semanticX(0.64), y: rect.minY + (rect.height * 0.34)),
+            control1: CGPoint(x: semanticX(0.50), y: rect.minY + (rect.height * 0.10)),
+            control2: CGPoint(x: semanticX(0.69), y: rect.minY + (rect.height * 0.20))
+        )
+        path.addCurve(
+            to: CGPoint(x: semanticX(0.54), y: rect.minY + (rect.height * 0.76)),
+            control1: CGPoint(x: semanticX(0.58), y: rect.minY + (rect.height * 0.49)),
+            control2: CGPoint(x: semanticX(0.48), y: rect.minY + (rect.height * 0.60))
+        )
+        path.addCurve(
+            to: CGPoint(x: semanticX(0.68), y: rect.maxY),
+            control1: CGPoint(x: semanticX(0.60), y: rect.minY + (rect.height * 0.88)),
+            control2: CGPoint(x: semanticX(0.65), y: rect.minY + (rect.height * 0.94))
+        )
+        path.addLine(to: CGPoint(x: semanticX(1), y: rect.maxY))
+        path.addLine(to: CGPoint(x: semanticX(1), y: rect.minY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+@available(iOS 15.0, *)
+enum PPMarketplaceDeckHorizonGeometry {
+    static func linePath(
+        in rect: CGRect,
+        isRightToLeft: Bool,
+        depth: CGFloat
+    ) -> Path {
+        var path = Path()
+        guard rect.width > 0, rect.height > 0 else { return path }
+
+        let resolvedDepth = min(max(0, depth), rect.height)
+
+        func semanticPoint(_ progress: CGFloat, lift: CGFloat) -> CGPoint {
+            let clampedProgress = min(1, max(0, progress))
+            let x = isRightToLeft
+                ? rect.maxX - (rect.width * clampedProgress)
+                : rect.minX + (rect.width * clampedProgress)
+            return CGPoint(
+                x: x,
+                y: rect.maxY - (resolvedDepth * min(1, max(0, lift)))
+            )
+        }
+
+        path.move(to: semanticPoint(0, lift: 0.78))
+        path.addCurve(
+            to: semanticPoint(0.44, lift: 0.32),
+            control1: semanticPoint(0.12, lift: 0.84),
+            control2: semanticPoint(0.29, lift: 0.26)
+        )
+        path.addCurve(
+            to: semanticPoint(1, lift: 0.56),
+            control1: semanticPoint(0.68, lift: 0.40),
+            control2: semanticPoint(0.88, lift: 0.62)
+        )
+        return path
+    }
+
+    static func endpoint(
+        progress: CGFloat,
+        lift: CGFloat,
+        in rect: CGRect,
+        isRightToLeft: Bool,
+        depth: CGFloat
+    ) -> CGPoint {
+        let resolvedDepth = min(max(0, depth), rect.height)
+        let clampedProgress = min(1, max(0, progress))
+        let x = isRightToLeft
+            ? rect.maxX - (rect.width * clampedProgress)
+            : rect.minX + (rect.width * clampedProgress)
+        return CGPoint(
+            x: x,
+            y: rect.maxY - (resolvedDepth * min(1, max(0, lift)))
+        )
+    }
+}
+
+/// The single authored boundary between browse controls and marketplace
+/// results. Its path is traversed from semantic leading to semantic trailing,
+/// allowing the accent signal to follow each language's reading direction.
+@available(iOS 15.0, *)
+struct PPMarketplaceDeckHorizonShape: Shape {
+    var isRightToLeft: Bool
+    var depth: CGFloat = PPMarketplaceTopDeckMetrics.horizonDepth
+
+    func path(in rect: CGRect) -> Path {
+        PPMarketplaceDeckHorizonGeometry.linePath(
+            in: rect,
+            isRightToLeft: isRightToLeft,
+            depth: depth
+        )
+    }
+}
+
+/// Opaque results-canvas underlay below the horizon. This prevents cards or
+/// scrolling content from bleeding into the pinned deck while preserving the
+/// spatial impression that results rise toward the controls.
+@available(iOS 15.0, *)
+struct PPMarketplaceDeckHorizonBandShape: Shape {
+    var isRightToLeft: Bool
+    var depth: CGFloat = PPMarketplaceTopDeckMetrics.horizonDepth
+
+    func path(in rect: CGRect) -> Path {
+        var path = PPMarketplaceDeckHorizonGeometry.linePath(
+            in: rect,
+            isRightToLeft: isRightToLeft,
+            depth: depth
+        )
+        guard rect.width > 0, rect.height > 0 else { return path }
+
+        let trailing = PPMarketplaceDeckHorizonGeometry.endpoint(
+            progress: 1,
+            lift: 0.56,
+            in: rect,
+            isRightToLeft: isRightToLeft,
+            depth: depth
+        )
+        let leading = PPMarketplaceDeckHorizonGeometry.endpoint(
+            progress: 0,
+            lift: 0.78,
+            in: rect,
+            isRightToLeft: isRightToLeft,
+            depth: depth
+        )
+        path.addLine(to: CGPoint(x: trailing.x, y: rect.maxY))
+        path.addLine(to: CGPoint(x: leading.x, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
 }
 
 @available(iOS 15.0, *)
@@ -261,8 +414,7 @@ struct PPMarketplaceDeckSeparatorShape: Shape {
 // MARK: - Top Deck Background Views
 
 @available(iOS 15.0, *)
-struct PPMarketplaceHeroBackground: View {
-    let statusBarHeight: CGFloat
+struct PPMarketplaceTopDeckBackground: View {
     var accent: Color = Color.ppPrimary
     var isRightToLeft: Bool = false
 
@@ -272,57 +424,60 @@ struct PPMarketplaceHeroBackground: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let topBleed = max(0, statusBarHeight) + 400
-            ZStack {
-                // Solid surface background ensures zero scroll content bleed-through
+            ZStack(alignment: .top) {
+                // This is the deck's only surface owner. Hero, section and
+                // filter content all reveal this same uninterrupted field.
                 Color.ppSurface
 
                 if !reduceTransparency && contrast != .increased {
-                    // Atmospheric domain bloom positioned behind prominent action hub (RTL/LTR directional)
-                    RadialGradient(
-                        colors: [
-                            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
-                            accent.opacity(colorScheme == .dark ? 0.04 : 0.015),
-                            Color.clear
-                        ],
-                        center: UnitPoint(x: isRightToLeft ? 0.12 : 0.88, y: 0.18),
-                        startRadius: 10,
-                        endRadius: 260
-                    )
-
-                    // Secondary whisper aura for balanced ambient warmth
-                    RadialGradient(
-                        colors: [
-                            accent.opacity(colorScheme == .dark ? 0.06 : 0.03),
-                            Color.clear
-                        ],
-                        center: UnitPoint(x: isRightToLeft ? 0.88 : 0.12, y: 0.28),
-                        startRadius: 10,
-                        endRadius: 200
-                    )
-
-                    // Silky vertical tonal gradient grounding the hero seamlessly into the dock
+                    // A restrained tonal descent makes the deck read as one
+                    // authored field instead of stacked white containers.
                     LinearGradient(
                         stops: [
                             .init(color: Color.ppSurface, location: 0.0),
-                            .init(color: Color.ppSurface, location: 0.55),
+                            .init(color: Color.ppSurface, location: 0.42),
                             .init(
                                 color: colorScheme == .dark
-                                    ? Color.ppSurfaceOverlay.opacity(0.85)
-                                    : Color.ppSurfaceOverlay.opacity(0.70),
+                                    ? Color.ppSurfaceOverlay.opacity(0.88)
+                                    : Color.ppSurfaceOverlay.opacity(0.76),
                                 location: 1.0
                             )
                         ],
                         startPoint: .top,
                         endPoint: .bottom
                     )
+
+                    // The focus bay sits behind semantic trailing—the search
+                    // side in both Arabic and English—and mirrors structurally.
+                    PPMarketplaceTopDeckFocusFieldShape(
+                        isRightToLeft: isRightToLeft
+                    )
+                    .fill(focusFieldGradient)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
                 }
             }
-            .frame(width: proxy.size.width, height: proxy.size.height + topBleed)
-            .offset(y: -topBleed)
+            .frame(width: proxy.size.width, height: proxy.size.height)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
+    }
+
+    private var focusFieldGradient: LinearGradient {
+        LinearGradient(
+            stops: [
+                .init(
+                    color: accent.opacity(colorScheme == .dark ? 0.18 : 0.11),
+                    location: 0
+                ),
+                .init(
+                    color: accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
+                    location: 0.48
+                ),
+                .init(color: Color.clear, location: 1)
+            ],
+            startPoint: isRightToLeft ? .leading : .trailing,
+            endPoint: isRightToLeft ? .trailing : .leading
+        )
     }
 }
 
@@ -331,156 +486,70 @@ struct PPMarketplaceCurrentDockBackground: View {
     let isPinned: Bool
     let statusBarHeight: CGFloat
     let isRightToLeft: Bool
-    var categoryIconName: String = "sparkles.rectangle.stack"
     var accent: Color = Color.ppPrimary
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { proxy in
             let topExtension = isPinned ? max(0, statusBarHeight) + PPCorner.hero : 0
             let totalHeight = proxy.size.height + topExtension
             let isIncreasedContrast = contrast == .increased
-            let r = PPMarketplaceTopDeckMetrics.halfCircleRadius
-            let width = proxy.size.width
-            let midX = width / 2.0
-            let baseY = max(0, totalHeight - r)
+            let horizon = PPMarketplaceDeckHorizonShape(
+                isRightToLeft: isRightToLeft
+            )
 
             ZStack(alignment: .bottom) {
-                // 1. Physically authentic spatial drop shadow lifting dock cleanly above scrolling feed
-                if !isIncreasedContrast {
-                    PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
-                        .fill(Color.ppSurface)
-                        .shadow(
-                            color: Color.black.opacity(colorScheme == .dark ? 0.30 : 0.05),
-                            radius: 8.0,
-                            x: 0,
-                            y: 4.0
-                        )
-                        .shadow(
-                            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.03),
-                            radius: 2.0,
-                            x: 0,
-                            y: 1.0
-                        )
-                }
+                // At rest the rails are genuinely transparent and reveal the
+                // one deck field installed behind the hero + dock. Once the
+                // header pins, it becomes the local surface owner so results
+                // can never show through the controls or status bar.
+                surfaceFill
 
-                // 2. Monolithic surface fill strictly clipped to top deck geometry (100% opaque base)
-                surfaceFill(isIncreasedContrast: isIncreasedContrast)
-                    .clipShape(
-                        PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
-                    )
+                // The results canvas rises into the control surface along one
+                // shallow authored horizon rather than a generic straight rule.
+                PPMarketplaceDeckHorizonBandShape(
+                    isRightToLeft: isRightToLeft
+                )
+                .fill(Color.ppBackground)
 
-                // 3. Sub-pixel specular bevel catch (top directional light reflection)
                 if !isIncreasedContrast {
-                    PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
+                    // A restrained contact shadow makes the pinned boundary
+                    // legible without surrounding the whole header in a card.
+                    horizon
                         .stroke(
-                            colorScheme == .dark
-                                ? Color.white.opacity(0.08)
-                                : Color.white.opacity(0.75),
-                            lineWidth: 0.5
+                            Color.black.opacity(colorScheme == .dark ? 0.24 : 0.08),
+                            style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
                         )
-                        .offset(y: -0.5)
+                        .offset(y: 2)
                 }
 
-                // 4. Razor-sharp structural baseline keyline (zero blur, zero bleed)
-                PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
+                // A non-color keyline always carries the structural boundary.
+                horizon
                     .stroke(
                         baselineColor(isIncreasedContrast: isIncreasedContrast),
                         style: StrokeStyle(
                             lineWidth: isIncreasedContrast
                                 ? PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth
-                                : 0.5,
-                            lineCap: .butt
+                                : 0.75,
+                            lineCap: .round,
+                            lineJoin: .round
                         )
                     )
 
-                // 5. Living chromatic filament carrying dynamic category accent
-                PPMarketplaceDeckSeparatorShape(halfCircleRadius: r)
-                    .stroke(
-                        chromaticFilamentGradient(isIncreasedContrast: isIncreasedContrast),
-                        style: StrokeStyle(
-                            lineWidth: isIncreasedContrast ? 1.5 : 1.0,
-                            lineCap: .round
-                        )
-                    )
-
-                // 6. Micro-jewel optical axis mark (centered precision jewel when r == 0)
-                if r == 0.0 && !isIncreasedContrast {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: Color.clear, location: 0.0),
-                                    .init(color: accent.opacity(colorScheme == .dark ? 0.65 : 0.45), location: 0.20),
-                                    .init(color: colorScheme == .dark ? Color.ppPrimaryShiner : Color.white.opacity(0.95), location: 0.50),
-                                    .init(color: accent.opacity(colorScheme == .dark ? 0.65 : 0.45), location: 0.80),
-                                    .init(color: Color.clear, location: 1.0)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                if !isIncreasedContrast {
+                    // The section accent begins at semantic leading and
+                    // dissolves along the locale's natural reading direction.
+                    horizon
+                        .stroke(
+                            horizonSignalGradient,
+                            style: StrokeStyle(
+                                lineWidth: PPMarketplaceTopDeckMetrics.separatorStrokeWidth,
+                                lineCap: .round,
+                                lineJoin: .round
                             )
                         )
-                        .frame(width: 36, height: 1.5)
-                        .position(x: midX, y: baseY)
-                }
-
-                // 7. Center X half-circle category container with current category icon (only if r > 0)
-                if r > 0 {
-                    ZStack {
-                        // Subtle luminous inner radial tint inside the half-circle dome
-                        if !isIncreasedContrast {
-                            Circle()
-                                .fill(
-                                    RadialGradient(
-                                        colors: [
-                                            accent.opacity(colorScheme == .dark ? 0.18 : 0.09),
-                                            accent.opacity(colorScheme == .dark ? 0.04 : 0.02),
-                                            Color.clear
-                                        ],
-                                        center: .center,
-                                        startRadius: 1,
-                                        endRadius: r * 0.95
-                                    )
-                                )
-                                .frame(width: r * 2.0, height: r * 2.0)
-                                .position(x: midX, y: baseY)
-                                .clipShape(
-                                    PPMarketplaceTopDeckStraightShape(halfCircleRadius: r)
-                                )
-                        }
-
-                        // Current category icon
-                        Image(systemName: categoryIconName)
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundStyle(
-                                isIncreasedContrast
-                                    ? Color.ppTextPrimary
-                                    : (colorScheme == .dark ? Color.ppPrimaryShiner : accent)
-                            )
-                            .shadow(
-                                color: isIncreasedContrast
-                                    ? .clear
-                                    : accent.opacity(colorScheme == .dark ? 0.35 : 0.18),
-                                radius: 2,
-                                x: 0,
-                                y: 1
-                            )
-                            .id(categoryIconName)
-                            .transition(
-                                reduceMotion
-                                    ? .opacity
-                                    : .scale(scale: 0.82).combined(with: .opacity)
-                            )
-                            .position(x: midX, y: baseY + (r * 0.46))
-                    }
-                    .animation(
-                        reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82),
-                        value: categoryIconName
-                    )
                 }
             }
             .frame(width: proxy.size.width, height: totalHeight)
@@ -491,45 +560,14 @@ struct PPMarketplaceCurrentDockBackground: View {
     }
 
     @ViewBuilder
-    private func surfaceFill(isIncreasedContrast: Bool) -> some View {
-        ZStack {
-            // Uncompromising solid base: guarantees zero bleed-through of underlying scrolling cards
-            Color.ppSurface
-
-            if !reduceTransparency && !isIncreasedContrast {
-                if isPinned {
-                    Rectangle().fill(.ultraThickMaterial)
-                    LinearGradient(
-                        colors: [
-                            Color.ppSurface.opacity(colorScheme == .dark ? 0.94 : 0.90),
-                            colorScheme == .dark
-                                ? Color.ppSurfaceOverlay.opacity(0.96)
-                                : Color.ppSurfaceOverlay.opacity(0.92)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                } else {
-                    LinearGradient(
-                        stops: [
-                            .init(
-                                color: colorScheme == .dark
-                                    ? Color.ppSurfaceOverlay.opacity(0.85)
-                                    : Color.ppSurfaceOverlay.opacity(0.70),
-                                location: 0.0
-                            ),
-                            .init(
-                                color: colorScheme == .dark
-                                    ? Color.ppSurfaceOverlay.opacity(0.95)
-                                    : Color.ppSurfaceOverlay.opacity(0.85),
-                                location: 1.0
-                            )
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
-            }
+    private var surfaceFill: some View {
+        if isPinned {
+            PPMarketplaceTopDeckBackground(
+                accent: accent,
+                isRightToLeft: isRightToLeft
+            )
+        } else {
+            Color.clear
         }
     }
 
@@ -538,42 +576,30 @@ struct PPMarketplaceCurrentDockBackground: View {
             return Color.ppTextPrimary
         }
         return colorScheme == .dark
-            ? Color.white.opacity(0.12)
-            : Color.ppSeparator.opacity(0.40)
+            ? Color.white.opacity(0.18)
+            : Color.ppSeparator.opacity(0.68)
     }
 
-    private func chromaticFilamentGradient(isIncreasedContrast: Bool) -> LinearGradient {
-        if isIncreasedContrast {
-            return LinearGradient(
-                colors: [Color.clear, accent, Color.clear],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        }
-        let subtleAccent = accent.opacity(colorScheme == .dark ? 0.45 : 0.30)
-        let peakAccent = accent.opacity(colorScheme == .dark ? 0.92 : 0.75)
-        let highlightShine = colorScheme == .dark
-            ? Color.ppPrimaryShiner.opacity(0.85)
-            : Color.white.opacity(0.65)
-
-        return LinearGradient(
+    private var horizonSignalGradient: LinearGradient {
+        LinearGradient(
             stops: [
-                .init(color: Color.clear, location: 0.0),
-                .init(color: Color.clear, location: 0.06),
-                .init(color: subtleAccent, location: 0.18),
-                .init(color: peakAccent, location: 0.42),
-                .init(color: highlightShine, location: 0.50),
-                .init(color: peakAccent, location: 0.58),
-                .init(color: subtleAccent, location: 0.82),
-                .init(color: Color.clear, location: 0.94),
-                .init(color: Color.clear, location: 1.0)
+                .init(
+                    color: accent.opacity(colorScheme == .dark ? 0.96 : 0.88),
+                    location: 0
+                ),
+                .init(
+                    color: accent.opacity(colorScheme == .dark ? 0.62 : 0.48),
+                    location: 0.28
+                ),
+                .init(color: accent.opacity(0.14), location: 0.60),
+                .init(color: Color.clear, location: 0.84),
+                .init(color: Color.clear, location: 1)
             ],
-            startPoint: .leading,
-            endPoint: .trailing
+            startPoint: isRightToLeft ? .trailing : .leading,
+            endPoint: isRightToLeft ? .leading : .trailing
         )
     }
 }
-
 
 @available(iOS 15.0, *)
 struct PPMarketplaceHeroControlLayoutMetrics: Equatable {
@@ -637,7 +663,6 @@ struct PPMarketplaceHero: View {
     @ObservedObject var store: PPMarketplaceDataViewStore
     let availableWidth: CGFloat
     let showsBackControl: Bool
-    var statusBarHeight: CGFloat = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
@@ -656,13 +681,6 @@ struct PPMarketplaceHero: View {
         .padding(.top, PPSpace.xs)
         .padding(.bottom, PPSpace.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            PPMarketplaceHeroBackground(
-                statusBarHeight: statusBarHeight,
-                accent: Color(uiColor: store.accentColor),
-                isRightToLeft: store.isRightToLeft
-            )
-        }
         .accessibilityElement(children: .contain)
     }
 
@@ -1007,7 +1025,6 @@ struct PPMarketplaceCurrentDock: View {
                 isPinned: showsPinnedBackControl,
                 statusBarHeight: statusBarHeight,
                 isRightToLeft: store.isRightToLeft,
-                categoryIconName: store.currentSectionDescriptor.iconName,
                 accent: Color(uiColor: store.accentColor)
             )
         }
@@ -1031,29 +1048,21 @@ struct PPMarketplaceCurrentDock: View {
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(PPMarketplaceText.localized(descriptor.titleKey))
                         .foregroundStyle(selected ? Color.ppPrimary : Color.ppTextSecondary)
                         .padding(.horizontal, PPSpace.xs)
                         .padding(.vertical, PPSpace.sm)
                         .frame(minHeight: 44)
                         .overlay(alignment: .bottom) {
                             if selected {
-                                Capsule(style: .continuous)
-                                    .fill(contrast == .increased
-                                          ? Color.ppTextPrimary
-                                          : Color.ppPrimary)
-                                    .frame(height: contrast == .increased ? 3 : 2)
-                                    .matchedGeometryEffect(
-                                        id: "marketplace.section.selection",
-                                        in: sectionSelection
-                                    )
-                                    .accessibilityHidden(true)
+                                sectionSelectionIndicator
                             }
                         }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .disabled(store.isReplacingContext)
-                    .accessibilityLabel(PPMarketplaceText.localized(descriptor.titleKey))
                     .accessibilityHint(PPMarketplaceText.localized("marketplace_section_select_hint"))
                     .accessibilityAddTraits(selected ? .isSelected : [])
                     .accessibilityIdentifier("pp.marketplace.section.\(descriptor.rawValue)")
@@ -1072,6 +1081,33 @@ struct PPMarketplaceCurrentDock: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var sectionSelectionIndicator: some View {
+        if reduceMotion
+            || switchControlEnabled
+            || voiceOverEnabled
+            || scenePhase != .active {
+            sectionSelectionMark
+        } else {
+            sectionSelectionMark
+                .matchedGeometryEffect(
+                    id: "marketplace.section.selection",
+                    in: sectionSelection
+                )
+        }
+    }
+
+    private var sectionSelectionMark: some View {
+        Capsule(style: .continuous)
+            .fill(
+                contrast == .increased
+                    ? Color.ppTextPrimary
+                    : Color.ppPrimary
+            )
+            .frame(height: contrast == .increased ? 3 : 2)
+            .accessibilityHidden(true)
     }
 
     private var actionRail: some View {
@@ -1216,7 +1252,7 @@ struct PPMarketplaceCurrentDock: View {
                 }
                 .overlay(alignment: .topTrailing) {
                     if store.activeFilterCount > 0 {
-                        Text("\(store.activeFilterCount)")
+                        Text(verbatim: "\(store.activeFilterCount)")
                             .font(HomeFont.bold(10))
                             .foregroundStyle(Color.white)
                             .padding(.horizontal, 4)

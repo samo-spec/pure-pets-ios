@@ -2581,14 +2581,15 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, store.model.subtitle == nil ? 5 : 3)
             }
 
-            if hasBottomBadges {
-                bottomBadgesRow
-                    .padding(.top, 6)
-            }
-
             if showsBottomCTA && !store.isContextFocused && !isAdsMode {
                 bottomCTA
                     .padding(.top, 8)
+                    .padding(.bottom, hasBottomBadges ? 0 : 2)
+            }
+
+            if hasBottomBadges {
+                bottomBadgesRow
+                    .padding(.top, 6)
                     .padding(.bottom, 2)
             }
         }
@@ -2607,24 +2608,27 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, store.model.subtitle == nil ? 7 : 5)
             }
 
-            if hasBottomBadges {
-                bottomBadgesRow
-                    .padding(.top, 6)
-            }
-
-            Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 12 : 8)
-
             if !isAdsMode {
                 if store.model.usesQuantityControl ||
                     store.context.isAdvertisement ||
                     store.context.isServiceLike {
                     if !store.isNearbyAdsSection && !store.isContextFocused {
                         bottomCTA
-                            .padding(.bottom, 2)
+                            .padding(.top, 8)
+                            .padding(.bottom, hasBottomBadges ? 0 : 2)
                     }
                 } else {
                     detailsFooter
+                        .padding(.top, 8)
+                        .padding(.bottom, hasBottomBadges ? 0 : 2)
                 }
+            }
+
+            Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 12 : 8)
+
+            if hasBottomBadges {
+                bottomBadgesRow
+                    .padding(.bottom, 2)
             }
         }
         .frame(

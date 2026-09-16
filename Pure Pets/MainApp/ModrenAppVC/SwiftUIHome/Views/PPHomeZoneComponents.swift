@@ -4595,9 +4595,6 @@ private struct PPFeaturedCommerceArtwork: View {
 
     private let side = PPProvisionsCareLayout.featuredArtworkSide
 
-    /// Directive: pause/hide toggle for featured quick action Lottie animation.
-    private static let pauseAndHideFeaturedLottie = false
-
     var body: some View {
         ZStack {
             Circle()
@@ -4615,26 +4612,12 @@ private struct PPFeaturedCommerceArtwork: View {
                 )
                 .frame(width: side, height: side)
 
-            if Self.pauseAndHideFeaturedLottie {
-                marketplaceArtwork
-            } else if reduceMotion {
-                Image(systemName: "bag.fill")
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(accent)
-                    .frame(width: side, height: side)
-            } else {
-                HomeHeroLottieRepresentable(
-                    animationName: PPProvisionsCareLayout.featuredLottieResourceName,
-                    loadsFromFirebase:
-                        PPProvisionsCareLayout.featuredPrefersFirebaseSource,
-                    playbackEnabled: true,
-                    tintColor: UIColor(accent),
-                    prefersFirebaseSource:
-                        PPProvisionsCareLayout.featuredPrefersFirebaseSource
-                )
+            Image(systemName: "storefront.fill")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(accent)
+                .shadow(color: accent.opacity(colorScheme == .dark ? 0.35 : 0.18), radius: 6, y: 2)
                 .frame(width: side, height: side)
-                .scaleEffect(isBreathing ? 1.20 : 1.15)
-            }
+                .scaleEffect(reduceMotion ? 1.0 : (isBreathing ? 1.06 : 1.0))
         }
         .frame(width: side, height: side)
         .allowsHitTesting(false)
@@ -4645,31 +4628,6 @@ private struct PPFeaturedCommerceArtwork: View {
                 isBreathing = true
             }
         }
-    }
-
-    @ViewBuilder
-    private var marketplaceArtwork: some View {
-        Group {
-            if UIImage(named: "marketplace_icon") != nil {
-                Image("marketplace_icon")
-                    .renderingMode(.template)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 48, height: 48)
-                    .foregroundStyle(accent)
-            } else if let _ = UIImage(systemName: "storefront.fill") {
-                Image(systemName: "storefront.fill")
-                    .font(.system(size: 42, weight: .semibold))
-                    .foregroundStyle(accent)
-                    .frame(width: 48, height: 48)
-            } else {
-                Image(systemName: "bag.fill")
-                    .font(.system(size: 40, weight: .semibold))
-                    .foregroundStyle(accent)
-                    .frame(width: 48, height: 48)
-            }
-        }
-        .scaleEffect(reduceMotion ? 1.0 : (isBreathing ? 1.06 : 1.0))
     }
 }
 

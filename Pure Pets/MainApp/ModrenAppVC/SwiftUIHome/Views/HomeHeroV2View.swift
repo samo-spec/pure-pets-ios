@@ -91,6 +91,24 @@ private enum HomeHeroV2Metrics {
 }
 
 @available(iOS 15.0, *)
+private enum HomeHeroSpeciesDockMetrics {
+    static func height(for dynamicTypeSize: DynamicTypeSize) -> CGFloat {
+        if dynamicTypeSize >= .accessibility3 { return 144 }
+        if dynamicTypeSize.isAccessibilitySize { return 124 }
+        if dynamicTypeSize >= .xxLarge { return 96 }
+        return HomeHeroV2Metrics.dockHeight
+    }
+
+    static let seamHeight: CGFloat = 5
+    static let headerHorizontalInset: CGFloat = PPSpace.base
+    static let railHorizontalInset: CGFloat = PPSpace.sm
+    static let itemSpacing: CGFloat = PPSpace.xs
+    static let identitySeedFrame: CGFloat = 20
+    static let minimumItemWidth: CGFloat = 62
+    static let minimumItemHeight: CGFloat = 44
+}
+
+@available(iOS 15.0, *)
 struct HomeHeroV2View: View {
     let pages: [HomeHeroPage]
     let selectedIndex: Int
@@ -252,10 +270,13 @@ struct HomeHeroV2View: View {
                     selectedCategoryID: selectedCategoryID,
                     accent: accent,
                     isRightToLeft: isRightToLeft,
-                    reduceMotion: reduceMotion,
                     onSelect: onSelectCategory
                 )
-                .frame(height: HomeHeroV2Metrics.dockHeight)
+                .frame(
+                    height: HomeHeroSpeciesDockMetrics.height(
+                        for: dynamicTypeSize
+                    )
+                )
             }
         }
     }
@@ -445,16 +466,19 @@ struct HomeHeroV2View: View {
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
 
-            if let onSelectCategory {
+            if !categories.isEmpty, let onSelectCategory {
                 HomeHeroSpeciesDock(
                     categories: categories,
                     selectedCategoryID: selectedCategoryID,
                     accent: accent,
                     isRightToLeft: isRightToLeft,
-                    reduceMotion: reduceMotion,
                     onSelect: onSelectCategory
                 )
-                .frame(height: HomeHeroV2Metrics.dockHeight)
+                .frame(
+                    height: HomeHeroSpeciesDockMetrics.height(
+                        for: dynamicTypeSize
+                    )
+                )
             }
         }
         .padding(HomeHeroV2Metrics.cardContentInset)
@@ -1449,7 +1473,32 @@ private enum HomeHeroV2Palette {
     }
 }
 
-// MARK: - Living Species Dock NextGen (Category-Defining Multi-Platform Architecture)
+// MARK: - Living Species Dock
+
+@available(iOS 15.0, *)
+private struct HomeHeroSpeciesPressStyle: ButtonStyle {
+    let assistiveMotionIsDisabled: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(
+                configuration.isPressed
+                    && !reduceMotion
+                    && !assistiveMotionIsDisabled
+                    ? 0.975
+                    : 1
+            )
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(
+                reduceMotion || assistiveMotionIsDisabled
+                    ? nil
+                    : .easeOut(duration: 0.12),
+                value: configuration.isPressed
+            )
+    }
+}
 
 @available(iOS 15.0, *)
 private struct HomeHeroSpeciesDock: View {
@@ -1457,17 +1506,368 @@ private struct HomeHeroSpeciesDock: View {
     let selectedCategoryID: Int?
     let accent: Color
     let isRightToLeft: Bool
-    let reduceMotion: Bool
     let onSelect: (HomeCategoryModel?) -> Void
 
-    var body: some View {
-        HomeCategoriesStripView(
-            categories: categories,
-            selectedCategoryID: selectedCategoryID,
-            accent: accent,
-            isRightToLeft: isRightToLeft,
-            reduceMotion: reduceMotion,
-            onSelect: onSelect
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Namespace private var focusNamespace
+
+    private var motionIsDisabled: Bool {
+        reduceMotion || switchControlEnabled || voiceOverEnabled
+    }
+
+    private var isCategoryAccentEnabled: Bool {
+        UserDefaults.standard.bool(
+            forKey: "pp.marketplace.usesMainKindAccentColors"
         )
+    }
+
+    private var headerTitle: String {
+        HomeModelAdapter.localized(
+            "home_browse_by_category",
+            fallback: ""
+        )
+    }
+
+    private var allTitle: String {
+        Language.get("All", alter: nil) ?? ""
+    }
+
+    private var selectedAccessibilityValue: String {
+        Language.get("Selected", alter: nil) ?? ""
+    }
+
+    private var resolvedSelectedCategoryID: Int? {
+        guard let selectedCategoryID,
+              categories.contains(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
+              }) else {
+            return nil
+        }
+        return selectedCategoryID
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            habitatCurrent
+            scopeHeader
+            speciesRail
+        }
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .top
+        )
+        .background {
+            dockAtmosphere
+        }
+        .environment(
+            \.layoutDirection,
+            isRightToLeft ? .rightToLeft : .leftToRight
+        )
+        .accessibilityElement(children: .contain)
+    }
+
+    private var habitatCurrent: some View {
+        Rectangle()
+            .fill(
+                contrast == .increased
+                    ? Color.ppTextPrimary
+                    : accent.opacity(colorScheme == .dark ? 0.30 : 0.18)
+            )
+            .frame(height: contrast == .increased ? 1.5 : 0.5)
+            .frame(
+                height: HomeHeroSpeciesDockMetrics.seamHeight,
+                alignment: .center
+            )
+            .padding(.horizontal, HomeHeroSpeciesDockMetrics.headerHorizontalInset)
+            .accessibilityHidden(true)
+    }
+
+    private var scopeHeader: some View {
+        HStack(spacing: PPSpace.sm) {
+            ZStack {
+                Circle()
+                    .stroke(
+                        contrast == .increased
+                            ? Color.ppTextPrimary
+                            : accent.opacity(colorScheme == .dark ? 0.58 : 0.34),
+                        lineWidth: contrast == .increased ? 1.5 : 0.8
+                    )
+                Circle()
+                    .fill(accent)
+                    .padding(3)
+            }
+            .frame(width: 10, height: 10)
+            .accessibilityHidden(true)
+
+            Text(headerTitle)
+                .font(HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 14 : 12.5))
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, HomeHeroSpeciesDockMetrics.headerHorizontalInset)
+        .padding(.top, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 1)
+        .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private var speciesRail: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: HomeHeroSpeciesDockMetrics.itemSpacing) {
+                    speciesButton(
+                        category: nil,
+                        title: allTitle,
+                        isSelected: resolvedSelectedCategoryID == nil
+                    )
+                    .id(allScrollID)
+
+                    ForEach(categories) { category in
+                        let categoryID = HomeModelAdapter.mainKindID(category.raw)
+                        speciesButton(
+                            category: category,
+                            title: category.title,
+                            isSelected: categoryID == resolvedSelectedCategoryID
+                        )
+                        .id(scrollID(for: category))
+                    }
+                }
+                .padding(.horizontal, HomeHeroSpeciesDockMetrics.railHorizontalInset)
+                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.sm : PPSpace.xs)
+                .animation(
+                    reduceMotion || switchControlEnabled || voiceOverEnabled
+                        ? nil
+                        : .spring(response: 0.34, dampingFraction: 0.86),
+                    value: resolvedSelectedCategoryID
+                )
+            }
+            .onAppear {
+                scrollToSelection(proxy: proxy, animated: false)
+            }
+            .onChange(of: selectedCategoryID) { _ in
+                scrollToSelection(
+                    proxy: proxy,
+                    animated: !motionIsDisabled
+                )
+            }
+        }
+    }
+
+    private func speciesButton(
+        category: HomeCategoryModel?,
+        title: String,
+        isSelected: Bool
+    ) -> some View {
+        let itemAccent = isSelected && isCategoryAccentEnabled
+            ? accent
+            : identityAccent(for: category)
+
+        return Button {
+            let feedback = UISelectionFeedbackGenerator()
+            feedback.prepare()
+            feedback.selectionChanged()
+
+            if motionIsDisabled {
+                onSelect(category)
+            } else {
+                withAnimation(
+                    .spring(response: 0.34, dampingFraction: 0.86)
+                ) {
+                    onSelect(category)
+                }
+            }
+        } label: {
+            HStack(spacing: PPSpace.xs) {
+                if isSelected {
+                    selectionBeacon(accent: itemAccent)
+                } else {
+                    identitySeed(accent: itemAccent)
+                }
+
+                Text(title)
+                    .font(
+                        isSelected
+                            ? HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 18 : 16)
+                            : HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 17 : 15.5)
+                    )
+                    .foregroundStyle(
+                        isSelected
+                            ? Color.ppTextPrimary
+                            : Color.ppTextSecondary
+                    )
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .padding(.horizontal, PPSpace.sm)
+            .frame(
+                minWidth: HomeHeroSpeciesDockMetrics.minimumItemWidth,
+                minHeight: HomeHeroSpeciesDockMetrics.minimumItemHeight
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(
+            HomeHeroSpeciesPressStyle(
+                assistiveMotionIsDisabled: switchControlEnabled
+                    || voiceOverEnabled
+            )
+        )
+        .hoverEffect(.highlight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(
+            isSelected ? selectedAccessibilityValue : ""
+        )
+        .accessibilityAddTraits(
+            isSelected ? [.isSelected, .isButton] : [.isButton]
+        )
+        .accessibilityIdentifier(
+            category.map { "home.hero.mainKind.\($0.id)" }
+                ?? "home.hero.mainKind.all"
+        )
+    }
+
+    @ViewBuilder
+    private func selectionBeacon(accent: Color) -> some View {
+        if motionIsDisabled {
+            selectionBeaconBody(accent: accent)
+        } else {
+            selectionBeaconBody(accent: accent)
+                .matchedGeometryEffect(
+                    id: "home.hero.species.selection-beacon",
+                    in: focusNamespace
+                )
+        }
+    }
+
+    private func selectionBeaconBody(accent: Color) -> some View {
+        ZStack {
+            if !reduceTransparency && contrast != .increased {
+                Circle()
+                    .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.12))
+                    .frame(width: 20, height: 20)
+            }
+
+            Circle()
+                .stroke(
+                    contrast == .increased
+                        ? Color.ppTextPrimary
+                        : accent.opacity(colorScheme == .dark ? 0.92 : 0.72),
+                    lineWidth: contrast == .increased ? 2 : 1.25
+                )
+                .frame(width: 17, height: 17)
+
+            Circle()
+                .fill(
+                    contrast == .increased
+                        ? Color.ppTextPrimary
+                        : accent
+                )
+                .frame(width: 12, height: 12)
+
+            Image(systemName: "checkmark")
+                .font(.system(size: 7, weight: .heavy, design: .rounded))
+                .foregroundStyle(
+                    contrast == .increased && colorScheme == .dark
+                        ? Color.black
+                        : Color.white
+                )
+        }
+        .frame(
+            width: HomeHeroSpeciesDockMetrics.identitySeedFrame,
+            height: HomeHeroSpeciesDockMetrics.identitySeedFrame
+        )
+        .shadow(
+            color: reduceTransparency || contrast == .increased
+                ? Color.clear
+                : accent.opacity(colorScheme == .dark ? 0.28 : 0.16),
+            radius: 4,
+            y: 1
+        )
+        .accessibilityHidden(true)
+    }
+
+    private func identitySeed(accent: Color) -> some View {
+        Circle()
+            .fill(accent.opacity(colorScheme == .dark ? 0.60 : 0.46))
+            .frame(width: 5, height: 5)
+            .frame(
+                width: HomeHeroSpeciesDockMetrics.identitySeedFrame,
+                height: HomeHeroSpeciesDockMetrics.identitySeedFrame
+            )
+            .accessibilityHidden(true)
+    }
+
+    private var dockAtmosphere: some View {
+        ZStack {
+            Color.clear
+
+            if !reduceTransparency && contrast != .increased {
+                LinearGradient(
+                    colors: [
+                        accent.opacity(colorScheme == .dark ? 0.08 : 0.045),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func identityAccent(
+        for category: HomeCategoryModel?
+    ) -> Color {
+        guard isCategoryAccentEnabled, let category else {
+            return Color.ppPrimary
+        }
+        return Color(uiColor: category.accent)
+    }
+
+    private var allScrollID: String {
+        "home-hero-main-kind-all"
+    }
+
+    private var selectedScrollID: String {
+        guard let selectedCategoryID = resolvedSelectedCategoryID,
+              let category = categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
+              }) else {
+            return allScrollID
+        }
+        return scrollID(for: category)
+    }
+
+    private func scrollID(for category: HomeCategoryModel) -> String {
+        "home-hero-main-kind-\(category.id)"
+    }
+
+    private func scrollToSelection(
+        proxy: ScrollViewProxy,
+        animated: Bool
+    ) {
+        let update = {
+            proxy.scrollTo(selectedScrollID, anchor: .center)
+        }
+
+        if animated {
+            withAnimation(
+                .spring(response: 0.34, dampingFraction: 0.86)
+            ) {
+                update()
+            }
+        } else {
+            update()
+        }
     }
 }

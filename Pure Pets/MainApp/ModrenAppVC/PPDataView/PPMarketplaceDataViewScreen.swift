@@ -29,8 +29,7 @@ struct PPMarketplaceDataViewScreen: View {
                             PPMarketplaceHero(
                                 store: store,
                                 availableWidth: proxy.size.width,
-                                showsBackControl: !dockIsPinned,
-                                statusBarHeight: proxy.safeAreaInsets.top
+                                showsBackControl: !dockIsPinned
                             )
                             .ppMarketplaceEntrance(
                                 isPresented: hasPresentedEntrance
@@ -107,8 +106,40 @@ struct PPMarketplaceDataViewScreen: View {
                                         )
                                     }
                                 }
+                                .anchorPreference(
+                                    key: PPMarketplaceTopDeckBoundsPreferenceKey.self,
+                                    value: .bounds
+                                ) { $0 }
                                 .zIndex(6)
                             }
+                        }
+                        .backgroundPreferenceValue(
+                            PPMarketplaceTopDeckBoundsPreferenceKey.self
+                        ) { dockBounds in
+                            GeometryReader { deckProxy in
+                                if let dockBounds {
+                                    // Resolve the live dock boundary rather
+                                    // than guessing a height: the same field
+                                    // therefore spans the status area, hero,
+                                    // sections and filters in every locale and
+                                    // Dynamic Type size.
+                                    let dockFrame = deckProxy[dockBounds]
+                                    let safeAreaTop = max(0, proxy.safeAreaInsets.top)
+
+                                    PPMarketplaceTopDeckBackground(
+                                        accent: Color(uiColor: store.accentColor),
+                                        isRightToLeft: store.isRightToLeft
+                                    )
+                                    .frame(
+                                        width: deckProxy.size.width,
+                                        height: max(0, dockFrame.maxY) + safeAreaTop
+                                    )
+                                    .offset(y: -safeAreaTop)
+                                    .frame(maxHeight: .infinity, alignment: .top)
+                                }
+                            }
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                         }
                         .background {
                             GeometryReader { contentProxy in
@@ -352,6 +383,18 @@ private struct PPMarketplaceDockMinYPreferenceKey: PreferenceKey {
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = min(value, nextValue())
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPMarketplaceTopDeckBoundsPreferenceKey: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? = nil
+
+    static func reduce(
+        value: inout Anchor<CGRect>?,
+        nextValue: () -> Anchor<CGRect>?
+    ) {
+        value = value ?? nextValue()
     }
 }
 

@@ -3834,6 +3834,7 @@
 "user_menu_member_guest" = "Guest Explorer";
 "user_menu_guest_cta_desc" = "Join the PurePets community for complete care of your beloved pets.";
 "user_menu_quick_access_title" = "Quick Access";
+"user_menu_quick_access_alerts" = "Allow Alerts";
 "user_menu_order_step_placed" = "Placed";
 "user_menu_order_step_confirmed" = "Confirmed";
 "user_menu_order_step_preparing" = "Preparing";

@@ -3810,6 +3810,7 @@
 "user_menu_member_guest" = "زائر بيور بيتس";
 "user_menu_guest_cta_desc" = "انضم إلى مجتمع بيور بيتس للاستمتاع بتجربة رعاية متكاملة لحيوانك الأليف.";
 "user_menu_quick_access_title" = "الوصول السريع";
+"user_menu_quick_access_alerts" = "تفعيل التنبيهات";
 "user_menu_order_step_placed" = "تم الطلب";
 "user_menu_order_step_confirmed" = "تم التأكيد";
 "user_menu_order_step_preparing" = "قيد التجهيز";

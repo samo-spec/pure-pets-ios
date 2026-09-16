@@ -138,12 +138,18 @@ public struct PPRootBottomOverlayView: View {
 @available(iOS 17.0, *)
 private struct PPRootCommandDeck: View {
     @ObservedObject var store: PPRootStore
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let deckTheme = PPCommandDeckTheme(
             accent: store.customAccentColor ?? .ppPrimary,
             createTint: store.customAccentColor ?? .ppPrimary,
-            surface: .white
+            surface: colorScheme == .dark
+                ? Color(red: 0.10, green: 0.10, blue: 0.12)
+                : .white,
+            inactiveInk: colorScheme == .dark
+                ? Color(red: 0.65, green: 0.66, blue: 0.72).opacity(0.82)
+                : .ppTextSecondary
         )
         PPCommandDeckTabBar(
             selection: Binding(

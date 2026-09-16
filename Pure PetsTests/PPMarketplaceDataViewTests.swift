@@ -331,9 +331,10 @@ final class PPMarketplaceDataViewTests: XCTestCase {
 
     func testTopDeckMetricsAndWaveShapes() {
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.waveDepth, 10.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.horizonDepth, 16.0)
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeWidth, 1.5)
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth, 2.0)
-        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 10.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 18.0)
 
         let testRect = CGRect(x: 0, y: 0, width: 421, height: 100)
 
@@ -365,11 +366,70 @@ final class PPMarketplaceDataViewTests: XCTestCase {
         XCTAssertLessThanOrEqual(ltrLinePath.boundingRect.maxY, 101)
     }
 
+    func testTopDeckFocusFieldAndHorizonMirrorSemanticDirection() {
+        let testRect = CGRect(x: 0, y: 0, width: 421, height: 100)
+
+        let ltrFocusPath = PPMarketplaceTopDeckFocusFieldShape(
+            isRightToLeft: false
+        ).path(in: testRect)
+        let rtlFocusPath = PPMarketplaceTopDeckFocusFieldShape(
+            isRightToLeft: true
+        ).path(in: testRect)
+
+        XCTAssertFalse(ltrFocusPath.isEmpty)
+        XCTAssertFalse(rtlFocusPath.isEmpty)
+        XCTAssertGreaterThan(ltrFocusPath.boundingRect.minX, testRect.midX * 0.8)
+        XCTAssertEqual(ltrFocusPath.boundingRect.maxX, testRect.maxX, accuracy: 0.1)
+        XCTAssertEqual(rtlFocusPath.boundingRect.minX, testRect.minX, accuracy: 0.1)
+        XCTAssertLessThan(rtlFocusPath.boundingRect.maxX, testRect.midX * 1.2)
+        XCTAssertEqual(
+            ltrFocusPath.boundingRect.width,
+            rtlFocusPath.boundingRect.width,
+            accuracy: 0.1
+        )
+
+        let ltrHorizonPath = PPMarketplaceDeckHorizonShape(
+            isRightToLeft: false
+        ).path(in: testRect)
+        let rtlHorizonPath = PPMarketplaceDeckHorizonShape(
+            isRightToLeft: true
+        ).path(in: testRect)
+
+        XCTAssertFalse(ltrHorizonPath.isEmpty)
+        XCTAssertFalse(rtlHorizonPath.isEmpty)
+        XCTAssertEqual(ltrHorizonPath.boundingRect.minX, testRect.minX, accuracy: 0.1)
+        XCTAssertEqual(ltrHorizonPath.boundingRect.maxX, testRect.maxX, accuracy: 0.1)
+        XCTAssertEqual(rtlHorizonPath.boundingRect.minX, testRect.minX, accuracy: 0.1)
+        XCTAssertEqual(rtlHorizonPath.boundingRect.maxX, testRect.maxX, accuracy: 0.1)
+        XCTAssertEqual(
+            ltrHorizonPath.boundingRect.height,
+            rtlHorizonPath.boundingRect.height,
+            accuracy: 0.1
+        )
+        XCTAssertGreaterThan(ltrHorizonPath.boundingRect.minY, 80)
+        XCTAssertLessThan(ltrHorizonPath.boundingRect.maxY, testRect.maxY)
+
+        let ltrBandPath = PPMarketplaceDeckHorizonBandShape(
+            isRightToLeft: false
+        ).path(in: testRect)
+        let rtlBandPath = PPMarketplaceDeckHorizonBandShape(
+            isRightToLeft: true
+        ).path(in: testRect)
+
+        XCTAssertEqual(ltrBandPath.boundingRect.minX, testRect.minX, accuracy: 0.1)
+        XCTAssertEqual(ltrBandPath.boundingRect.maxX, testRect.maxX, accuracy: 0.1)
+        XCTAssertEqual(ltrBandPath.boundingRect.maxY, testRect.maxY, accuracy: 0.1)
+        XCTAssertEqual(rtlBandPath.boundingRect.minX, testRect.minX, accuracy: 0.1)
+        XCTAssertEqual(rtlBandPath.boundingRect.maxX, testRect.maxX, accuracy: 0.1)
+        XCTAssertEqual(rtlBandPath.boundingRect.maxY, testRect.maxY, accuracy: 0.1)
+    }
+
     func testTopDeckStraightSeparatorWithCenterHalfCircle() {
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.halfCircleRadius, 0.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.horizonDepth, 16.0)
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeWidth, 1.5)
         XCTAssertEqual(PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth, 2.0)
-        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 10.0)
+        XCTAssertEqual(PPMarketplaceTopDeckMetrics.dockBottomPadding, 18.0)
 
         let testRect = CGRect(x: 0, y: 0, width: 421, height: 100)
 

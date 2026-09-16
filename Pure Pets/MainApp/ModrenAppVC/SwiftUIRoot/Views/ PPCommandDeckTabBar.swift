@@ -298,7 +298,7 @@ public struct PPCommandDeckTabBar: View {
                 deckShape
                     .fill(
                         colorScheme == .dark
-                            ? theme.surface.opacity(0.42)
+                            ? Color(red: 0.10, green: 0.10, blue: 0.12).opacity(0.72)
                             : Color.white.opacity(0.92)
                     )
                     .background(
@@ -308,6 +308,20 @@ public struct PPCommandDeckTabBar: View {
                                 : .regularMaterial
                         )
                     )
+                    .overlay {
+                        if colorScheme == .dark {
+                            deckShape.fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.06),
+                                        Color.clear
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .center
+                                )
+                            )
+                        }
+                    }
             }
             .background {
                 deckGlowLayer
@@ -318,7 +332,7 @@ public struct PPCommandDeckTabBar: View {
                         colors: [
                             deckBorderColor,
                             colorScheme == .dark
-                                ? deckBorderColor.opacity(0.35)
+                                ? Color.white.opacity(0.04)
                                 : Color.white.opacity(0.40)
                         ],
                         startPoint: .top,
@@ -327,54 +341,79 @@ public struct PPCommandDeckTabBar: View {
                     lineWidth: deckBorderWidth
                 )
             }
-            .shadow(color: deckShadowColor, radius: 16, y: 6)
+            .shadow(
+                color: deckShadowColor,
+                radius: colorScheme == .dark ? 20 : 16,
+                y: colorScheme == .dark ? 8 : 6
+            )
     }
 
     private var deckGlowLayer: some View {
         ZStack {
-            // Soft atmospheric bloom fading upwards
-            deckShape
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            (colorScheme == .dark
-                                ? theme.surface.opacity(0.28)
-                                : Color.white.opacity(0.50)),
-                            Color.clear
-                        ],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                )
-                .blur(radius: 16)
-                .padding(-6)
+            if colorScheme == .dark {
+                // Soft deep ambient occluder behind the dark glass dock (eliminates milky white halo)
+                deckShape
+                    .fill(Color.black.opacity(0.55))
+                    .blur(radius: 18)
+                    .offset(y: 6)
 
-            // Dynamic ambient aura
-            deckShape
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            (colorScheme == .dark
-                                ? theme.surface.opacity(0.22)
-                                : Color.white.opacity(0.35)),
-                            Color.clear
-                        ],
-                        center: .bottom,
-                        startRadius: 8,
-                        endRadius: 80
+                // Delicate ambient floor reflection of the brand accent
+                deckShape
+                    .fill(theme.accent.opacity(0.05))
+                    .blur(radius: 24)
+                    .offset(y: 4)
+            } else {
+                // Soft atmospheric bloom fading upwards (light mode)
+                deckShape
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.50),
+                                Color.clear
+                            ],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
                     )
-                )
-                .blur(radius: 20)
-                .offset(y: 4)
+                    .blur(radius: 16)
+                    .padding(-6)
+
+                // Dynamic ambient aura (light mode)
+                deckShape
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.white.opacity(0.35),
+                                Color.clear
+                            ],
+                            center: .bottom,
+                            startRadius: 8,
+                            endRadius: 80
+                        )
+                    )
+                    .blur(radius: 20)
+                    .offset(y: 4)
+            }
         }
         .allowsHitTesting(false)
     }
 
     private var opaqueDeck: some View {
         deckContent
-            .background(deckShape.fill(colorScheme == .dark ? theme.surface : Color.white))
+            .background(
+                deckShape.fill(
+                    colorScheme == .dark
+                        ? Color(red: 0.12, green: 0.12, blue: 0.14)
+                        : Color.white
+                )
+            )
             .overlay {
-                deckShape.strokeBorder(deckBorderColor, lineWidth: deckBorderWidth)
+                deckShape.strokeBorder(
+                    colorScheme == .dark
+                        ? Color.white.opacity(contrast == .increased ? 0.35 : 0.12)
+                        : deckBorderColor,
+                    lineWidth: deckBorderWidth
+                )
             }
             .shadow(
                 color: deckShadowColor,
@@ -385,10 +424,12 @@ public struct PPCommandDeckTabBar: View {
 
     private var deckBorderColor: Color {
         if contrast == .increased {
-            return Color.ppTextPrimary.opacity(0.75)
+            return colorScheme == .dark
+                ? Color.white.opacity(0.50)
+                : Color.ppTextPrimary.opacity(0.75)
         }
         return colorScheme == .dark
-            ? Color.ppForeground.opacity(0.75)
+            ? Color.white.opacity(0.18)
             : Color.white.opacity(0.92)
     }
 
@@ -400,7 +441,7 @@ public struct PPCommandDeckTabBar: View {
         Color.black.opacity(
             contrast == .increased
                 ? 0.0
-                : (colorScheme == .dark ? 0.28 : 0.06)
+                : (colorScheme == .dark ? 0.50 : 0.06)
         )
     }
 
@@ -418,7 +459,7 @@ public struct PPCommandDeckTabBar: View {
                         Circle().strokeBorder(
                             contrast == .increased
                                 ? Color.white.opacity(0.90)
-                                : Color.white.opacity(0.18),
+                                : Color.white.opacity(colorScheme == .dark ? 0.28 : 0.18),
                             lineWidth: contrast == .increased ? 1.4 : 0.75
                         )
                     }
@@ -441,10 +482,10 @@ public struct PPCommandDeckTabBar: View {
                 color: theme.createTint.opacity(
                     contrast == .increased
                         ? 0.0
-                        : (colorScheme == .dark ? 0.34 : 0.24)
+                        : (colorScheme == .dark ? 0.40 : 0.24)
                 ),
-                radius: 12,
-                y: 5
+                radius: colorScheme == .dark ? 10 : 12,
+                y: colorScheme == .dark ? 4 : 5
             )
             .frame(
                 maxWidth: .infinity,
@@ -498,6 +539,9 @@ private struct PPCommandDeckTile: View {
     let unreadChats: Int
     let theme: PPCommandDeckTheme
     let onTap: () -> Void
+
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     @Environment(\.colorSchemeContrast)
     private var contrast
@@ -609,9 +653,13 @@ private struct PPCommandDeckTile: View {
         if isSelected {
             return theme.accent
         }
-        return contrast == .increased
-            ? Color.ppTextPrimary
-            : theme.inactiveInk
+        if contrast == .increased {
+            return colorScheme == .dark ? Color.white : Color.ppTextPrimary
+        }
+        if colorScheme == .dark {
+            return Color(red: 0.65, green: 0.66, blue: 0.72).opacity(0.82)
+        }
+        return theme.inactiveInk
     }
 
     private var accessibilityValue: Text {
