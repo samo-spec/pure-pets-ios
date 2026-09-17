@@ -102,10 +102,10 @@ private enum HomeHeroSpeciesDockMetrics {
     static let seamHeight: CGFloat = 5
     static let headerHorizontalInset: CGFloat = PPSpace.base
     static let railHorizontalInset: CGFloat = PPSpace.sm
-    static let itemSpacing: CGFloat = PPSpace.xs
+    static let itemSpacing: CGFloat = 6
     static let identitySeedFrame: CGFloat = 20
-    static let minimumItemWidth: CGFloat = 62
-    static let minimumItemHeight: CGFloat = 44
+    static let minimumItemWidth: CGFloat = 58
+    static let minimumItemHeight: CGFloat = 40
 }
 
 @available(iOS 15.0, *)
@@ -290,27 +290,7 @@ struct HomeHeroV2View: View {
 
     private func cardSurface(accent: Color) -> some View {
         ZStack {
-            if contrast == .increased {
-                LinearGradient(
-                    colors: [
-                        Color.homeRaisedSurface,
-                        Color.homeRaisedSurface.opacity(0)
-                    ],
-                    startPoint: .bottom,
-                    endPoint: .top
-                )
-            } else {
-                LinearGradient(
-                    colors: [
-                        Color.homeRaisedSurface,
-                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.70 : 0.80),
-                        Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.25 : 0.30),
-                        Color.homeRaisedSurface.opacity(0)
-                    ],
-                    startPoint: .bottom,
-                    endPoint: .top
-                )
-            }
+            Color.homeSurface
 
             if contrast != .increased && !reduceTransparency {
                 RadialGradient(
@@ -318,23 +298,23 @@ struct HomeHeroV2View: View {
                         accent.opacity(colorScheme == .dark ? 0.16 : 0.08),
                         Color.clear
                     ],
-                    center: UnitPoint(x: isRightToLeft ? 0.2 : 0.8, y: 0.60),
-                    startRadius: 20,
-                    endRadius: 280
-                )
-                .mask(
-                    LinearGradient(
-                        colors: [
-                            Color.black,
-                            Color.black.opacity(0.6),
-                            Color.clear
-                        ],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
+                    center: isRightToLeft ? .topLeading : .topTrailing,
+                    startRadius: 0,
+                    endRadius: 360
                 )
             }
         }
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0.0),
+                    .init(color: .black, location: 0.5),
+                    .init(color: .black, location: 1.0)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 
     /// Compact semantic split: copy owns the leading lane; the living plate and
@@ -1487,10 +1467,10 @@ private struct HomeHeroSpeciesPressStyle: ButtonStyle {
                 configuration.isPressed
                     && !reduceMotion
                     && !assistiveMotionIsDisabled
-                    ? 0.975
+                    ? 0.95
                     : 1
             )
-            .opacity(configuration.isPressed ? 0.86 : 1)
+            .opacity(configuration.isPressed ? 0.88 : 1)
             .animation(
                 reduceMotion || assistiveMotionIsDisabled
                     ? nil
@@ -1517,6 +1497,8 @@ private struct HomeHeroSpeciesDock: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Namespace private var focusNamespace
 
+    @State private var isBeaconPulsing = false
+
     private var motionIsDisabled: Bool {
         reduceMotion || switchControlEnabled || voiceOverEnabled
     }
@@ -1530,16 +1512,16 @@ private struct HomeHeroSpeciesDock: View {
     private var headerTitle: String {
         HomeModelAdapter.localized(
             "home_browse_by_category",
-            fallback: ""
+            fallback: isRightToLeft ? "تصفح حسب النوع" : "Browse by category"
         )
     }
 
     private var allTitle: String {
-        Language.get("All", alter: nil) ?? ""
+        Language.get("All", alter: nil) ?? Language.get("all", alter: nil) ?? (isRightToLeft ? "الكل" : "All")
     }
 
     private var selectedAccessibilityValue: String {
-        Language.get("Selected", alter: nil) ?? ""
+        Language.get("Selected", alter: nil) ?? (isRightToLeft ? "محدد" : "Selected")
     }
 
     private var resolvedSelectedCategoryID: Int? {
@@ -1552,9 +1534,15 @@ private struct HomeHeroSpeciesDock: View {
         return selectedCategoryID
     }
 
+    private var resolvedSelectedCategory: HomeCategoryModel? {
+        guard let resolvedSelectedCategoryID else { return nil }
+        return categories.first {
+            HomeModelAdapter.mainKindID($0.raw) == resolvedSelectedCategoryID
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            habitatCurrent
             scopeHeader
             speciesRail
         }
@@ -1563,9 +1551,6 @@ private struct HomeHeroSpeciesDock: View {
             maxHeight: .infinity,
             alignment: .top
         )
-        .background {
-            dockAtmosphere
-        }
         .environment(
             \.layoutDirection,
             isRightToLeft ? .rightToLeft : .leftToRight
@@ -1573,51 +1558,68 @@ private struct HomeHeroSpeciesDock: View {
         .accessibilityElement(children: .contain)
     }
 
-    private var habitatCurrent: some View {
-        Rectangle()
-            .fill(
-                contrast == .increased
-                    ? Color.ppTextPrimary
-                    : accent.opacity(colorScheme == .dark ? 0.30 : 0.18)
-            )
-            .frame(height: contrast == .increased ? 1.5 : 0.5)
-            .frame(
-                height: HomeHeroSpeciesDockMetrics.seamHeight,
-                alignment: .center
-            )
-            .padding(.horizontal, HomeHeroSpeciesDockMetrics.headerHorizontalInset)
-            .accessibilityHidden(true)
-    }
-
     private var scopeHeader: some View {
         HStack(spacing: PPSpace.sm) {
-            ZStack {
-                Circle()
-                    .stroke(
-                        contrast == .increased
-                            ? Color.ppTextPrimary
-                            : accent.opacity(colorScheme == .dark ? 0.58 : 0.34),
-                        lineWidth: contrast == .increased ? 1.5 : 0.8
-                    )
-                Circle()
-                    .fill(accent)
-                    .padding(3)
-            }
-            .frame(width: 10, height: 10)
-            .accessibilityHidden(true)
+            HStack(spacing: 7) {
+                // Dual-layer Living Jewel Beacon
+                ZStack {
+                    if !motionIsDisabled && contrast != .increased {
+                        Circle()
+                            .fill(accent.opacity(isBeaconPulsing ? 0.36 : 0.10))
+                            .frame(width: 15, height: 15)
+                            .scaleEffect(isBeaconPulsing ? 1.25 : 0.85)
+                            .blur(radius: 2.2)
+                    }
 
-            Text(headerTitle)
-                .font(HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 14 : 12.5))
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                    Circle()
+                        .stroke(
+                            contrast == .increased
+                                ? Color.ppTextPrimary
+                                : accent.opacity(colorScheme == .dark ? 0.45 : 0.28),
+                            lineWidth: contrast == .increased ? 1.5 : 0.85
+                        )
+                        .frame(width: 11, height: 11)
+                        .scaleEffect(!motionIsDisabled && isBeaconPulsing ? 1.06 : 1.0)
+
+                    Circle()
+                        .fill(
+                            contrast == .increased
+                                ? Color.ppTextPrimary
+                                : accent
+                        )
+                        .frame(width: 5.5, height: 5.5)
+                        .scaleEffect(!motionIsDisabled && isBeaconPulsing ? 1.15 : 1.0)
+                }
+                .accessibilityHidden(true)
+
+                Text(headerTitle)
+                    .font(HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 14 : 12.5))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(1)
+            }
+
+            HomeMainKindsScopeThread(
+                accent: accent,
+                selectedCategoryID: resolvedSelectedCategoryID,
+                isRightToLeft: isRightToLeft
+            )
         }
         .padding(.horizontal, HomeHeroSpeciesDockMetrics.headerHorizontalInset)
-        .padding(.top, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 1)
-        .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 0)
+        .padding(.top, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 2)
+        .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 2)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+        .onAppear {
+            guard !motionIsDisabled else { return }
+            if !isBeaconPulsing {
+                withAnimation(
+                    .easeInOut(duration: 2.2)
+                        .repeatForever(autoreverses: true)
+                ) {
+                    isBeaconPulsing = true
+                }
+            }
+        }
     }
 
     private var speciesRail: some View {
@@ -1642,11 +1644,12 @@ private struct HomeHeroSpeciesDock: View {
                     }
                 }
                 .padding(.horizontal, HomeHeroSpeciesDockMetrics.railHorizontalInset)
-                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.sm : PPSpace.xs)
+                .padding(.top, 4)
+                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.sm : 6)
                 .animation(
-                    reduceMotion || switchControlEnabled || voiceOverEnabled
+                    motionIsDisabled
                         ? nil
-                        : .spring(response: 0.34, dampingFraction: 0.86),
+                        : .spring(response: 0.36, dampingFraction: 0.82),
                     value: resolvedSelectedCategoryID
                 )
             }
@@ -1680,15 +1683,15 @@ private struct HomeHeroSpeciesDock: View {
                 onSelect(category)
             } else {
                 withAnimation(
-                    .spring(response: 0.34, dampingFraction: 0.86)
+                    .spring(response: 0.36, dampingFraction: 0.82)
                 ) {
                     onSelect(category)
                 }
             }
         } label: {
-            HStack(spacing: PPSpace.xs) {
+            HStack(spacing: isSelected ? 6 : 5) {
                 if isSelected {
-                    selectionBeacon(accent: itemAccent)
+                    pawGem(accent: itemAccent)
                 } else {
                     identitySeed(accent: itemAccent)
                 }
@@ -1696,23 +1699,28 @@ private struct HomeHeroSpeciesDock: View {
                 Text(title)
                     .font(
                         isSelected
-                            ? HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 18 : 16)
-                            : HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 17 : 15.5)
+                            ? HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 17.5 : 15.5)
+                            : HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 16 : 14.5)
                     )
                     .foregroundStyle(
                         isSelected
-                            ? Color.ppTextPrimary
+                            ? (colorScheme == .dark ? Color.white : Color.black)
                             : Color.ppTextSecondary
                     )
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .padding(.horizontal, PPSpace.sm)
+            .padding(.horizontal, isSelected ? 12 : 9)
             .frame(
                 minWidth: HomeHeroSpeciesDockMetrics.minimumItemWidth,
                 minHeight: HomeHeroSpeciesDockMetrics.minimumItemHeight
             )
-            .contentShape(Rectangle())
+            .background {
+                if isSelected {
+                    activeCapsuleBackground(accent: itemAccent)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(
             HomeHeroSpeciesPressStyle(
@@ -1736,93 +1744,72 @@ private struct HomeHeroSpeciesDock: View {
     }
 
     @ViewBuilder
-    private func selectionBeacon(accent: Color) -> some View {
+    private func activeCapsuleBackground(accent: Color) -> some View {
         if motionIsDisabled {
-            selectionBeaconBody(accent: accent)
+            capsuleSurface(accent: accent)
         } else {
-            selectionBeaconBody(accent: accent)
+            capsuleSurface(accent: accent)
                 .matchedGeometryEffect(
-                    id: "home.hero.species.selection-beacon",
+                    id: "home.hero.species.active-capsule",
                     in: focusNamespace
                 )
         }
     }
 
-    private func selectionBeaconBody(accent: Color) -> some View {
+    private func capsuleSurface(accent: Color) -> some View {
         ZStack {
-            if !reduceTransparency && contrast != .increased {
-                Circle()
-                    .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.12))
-                    .frame(width: 20, height: 20)
-            }
-
-            Circle()
-                .stroke(
-                    contrast == .increased
-                        ? Color.ppTextPrimary
-                        : accent.opacity(colorScheme == .dark ? 0.92 : 0.72),
-                    lineWidth: contrast == .increased ? 2 : 1.25
-                )
-                .frame(width: 17, height: 17)
-
-            Circle()
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(
+                    reduceTransparency
+                        ? (colorScheme == .dark ? Color(white: 0.18) : Color.white)
+                        : (colorScheme == .dark
+                            ? Color.white.opacity(0.14)
+                            : Color.white.opacity(0.92))
+                )
+
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(
                     contrast == .increased
                         ? Color.ppTextPrimary
-                        : accent
-                )
-                .frame(width: 12, height: 12)
-
-            Image(systemName: "checkmark")
-                .font(.system(size: 7, weight: .heavy, design: .rounded))
-                .foregroundStyle(
-                    contrast == .increased && colorScheme == .dark
-                        ? Color.black
-                        : Color.white
+                        : (colorScheme == .dark
+                            ? Color.white.opacity(0.20)
+                            : accent.opacity(0.28)),
+                    lineWidth: contrast == .increased ? 1.5 : 0.75
                 )
         }
-        .frame(
-            width: HomeHeroSpeciesDockMetrics.identitySeedFrame,
-            height: HomeHeroSpeciesDockMetrics.identitySeedFrame
-        )
         .shadow(
             color: reduceTransparency || contrast == .increased
                 ? Color.clear
-                : accent.opacity(colorScheme == .dark ? 0.28 : 0.16),
-            radius: 4,
-            y: 1
+                : (colorScheme == .dark
+                    ? Color.black.opacity(0.35)
+                    : accent.opacity(0.18)),
+            radius: 6,
+            x: 0,
+            y: 2
         )
-        .accessibilityHidden(true)
+    }
+
+    private func pawGem(accent: Color) -> some View {
+        Image(systemName: "pawprint.fill")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(
+                contrast == .increased
+                    ? Color.ppTextPrimary
+                    : accent
+            )
+            .frame(width: 20, height: 20)
+            .accessibilityHidden(true)
     }
 
     private func identitySeed(accent: Color) -> some View {
         Circle()
-            .fill(accent.opacity(colorScheme == .dark ? 0.60 : 0.46))
-            .frame(width: 5, height: 5)
+            .fill(accent.opacity(colorScheme == .dark ? 0.52 : 0.38))
+            .frame(width: 4.5, height: 4.5)
             .frame(
-                width: HomeHeroSpeciesDockMetrics.identitySeedFrame,
-                height: HomeHeroSpeciesDockMetrics.identitySeedFrame
+                width: 12,
+                height: 12
             )
             .accessibilityHidden(true)
-    }
-
-    private var dockAtmosphere: some View {
-        ZStack {
-            Color.clear
-
-            if !reduceTransparency && contrast != .increased {
-                LinearGradient(
-                    colors: [
-                        accent.opacity(colorScheme == .dark ? 0.08 : 0.045),
-                        Color.clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 
     private func identityAccent(
@@ -1862,7 +1849,7 @@ private struct HomeHeroSpeciesDock: View {
 
         if animated {
             withAnimation(
-                .spring(response: 0.34, dampingFraction: 0.86)
+                .spring(response: 0.36, dampingFraction: 0.82)
             ) {
                 update()
             }

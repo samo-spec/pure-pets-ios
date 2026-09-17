@@ -75,6 +75,7 @@ public final class AddAdoptPetHostingController: UIViewController {
         ])
 
         hc.didMove(toParent: self)
+        setupKeyboardDismissTap()
     }
 
     public override func viewWillAppear(_ animated: Bool) {
@@ -112,5 +113,31 @@ public final class AddAdoptPetHostingController: UIViewController {
         } else {
             dismiss(animated: true)
         }
+    }
+}
+
+// MARK: - Keyboard Dismiss On Tap Outside
+
+extension AddAdoptPetHostingController: UIGestureRecognizerDelegate {
+    private func setupKeyboardDismissTap() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleBackgroundTapDismiss))
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func handleBackgroundTapDismiss() {
+        view.endEditing(true)
+    }
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        var targetView: UIView? = touch.view
+        while let current = targetView {
+            if current is UITextField || current is UITextView {
+                return false
+            }
+            targetView = current.superview
+        }
+        return true
     }
 }

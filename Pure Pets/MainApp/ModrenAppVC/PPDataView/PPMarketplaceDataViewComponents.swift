@@ -601,6 +601,195 @@ struct PPMarketplaceCurrentDockBackground: View {
     }
 }
 
+// MARK: - Reusable Top Deck Horizon Separator
+
+@available(iOS 15.0, *)
+struct PPMarketplaceDeckHorizonSeparator: View {
+    let accent: Color
+    let isRightToLeft: Bool
+    var depth: CGFloat = PPMarketplaceTopDeckMetrics.horizonDepth
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var isBreathing = false
+    @State private var wavePhase: CGFloat = 0.0
+
+    var body: some View {
+        let isIncreasedContrast = contrast == .increased
+        let horizon = PPMarketplaceDeckHorizonShape(
+            isRightToLeft: isRightToLeft,
+            depth: depth
+        )
+
+        ZStack(alignment: .center) {
+            if !isIncreasedContrast {
+                // A restrained contact shadow makes the pinned boundary
+                // legible without surrounding the whole header in a card.
+                horizon
+                    .stroke(
+                        Color.black.opacity(colorScheme == .dark ? 0.24 : 0.08),
+                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
+                    )
+                    .offset(y: 1.5)
+
+                // Living Radiant Bloom (Ambient Aura behind the line)
+                if !reduceMotion {
+                    horizon
+                        .stroke(
+                            accent.opacity(isBreathing ? (colorScheme == .dark ? 0.50 : 0.30) : (colorScheme == .dark ? 0.18 : 0.09)),
+                            style: StrokeStyle(
+                                lineWidth: isBreathing ? 3.4 : 1.8,
+                                lineCap: .round,
+                                lineJoin: .round
+                            )
+                        )
+                        .blur(radius: isBreathing ? 3.0 : 1.2)
+                }
+            }
+
+            // A non-color keyline always carries the structural boundary.
+            horizon
+                .stroke(
+                    baselineColor(isIncreasedContrast: isIncreasedContrast),
+                    style: StrokeStyle(
+                        lineWidth: isIncreasedContrast
+                            ? PPMarketplaceTopDeckMetrics.separatorStrokeIncreasedContrastWidth
+                            : 0.75,
+                        lineCap: .round,
+                        lineJoin: .round
+                    )
+                )
+
+            if !isIncreasedContrast {
+                // The section accent begins at semantic leading and
+                // dissolves along the locale's natural reading direction.
+                horizon
+                    .stroke(
+                        horizonSignalGradient,
+                        style: StrokeStyle(
+                            lineWidth: !reduceMotion && isBreathing ? 1.65 : PPMarketplaceTopDeckMetrics.separatorStrokeWidth,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
+                    )
+                    .opacity(!reduceMotion && isBreathing ? 1.0 : 0.78)
+
+                // Dynamic Living Photon Shimmer Wave
+                if !reduceMotion {
+                    GeometryReader { proxy in
+                        let width = proxy.size.width
+                        let height = proxy.size.height
+
+                        if width > 0, height > 0 {
+                            let beamWidth: CGFloat = max(60, min(140, width * 0.40))
+                            let startX: CGFloat = isRightToLeft ? (width + beamWidth * 0.6) : (-beamWidth * 0.6)
+                            let endX: CGFloat = isRightToLeft ? (-beamWidth * 0.6) : (width + beamWidth * 0.6)
+                            let currentX = startX + (endX - startX) * wavePhase
+
+                            ZStack {
+                                // Photon ambient halo
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: Color.clear, location: 0),
+                                        .init(color: accent.opacity(colorScheme == .dark ? 0.70 : 0.45), location: 0.5),
+                                        .init(color: Color.clear, location: 1.0)
+                                    ],
+                                    startPoint: isRightToLeft ? .trailing : .leading,
+                                    endPoint: isRightToLeft ? .leading : .trailing
+                                )
+                                .frame(width: beamWidth * 1.3, height: height)
+                                .position(x: currentX, y: height / 2)
+                                .blur(radius: 3.5)
+
+                                // Photon core brilliance
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: Color.clear, location: 0),
+                                        .init(color: accent.opacity(0.40), location: 0.22),
+                                        .init(color: Color.white.opacity(colorScheme == .dark ? 0.95 : 0.88), location: 0.5),
+                                        .init(color: accent.opacity(0.85), location: 0.72),
+                                        .init(color: Color.clear, location: 1.0)
+                                    ],
+                                    startPoint: isRightToLeft ? .trailing : .leading,
+                                    endPoint: isRightToLeft ? .leading : .trailing
+                                )
+                                .frame(width: beamWidth, height: height)
+                                .position(x: currentX, y: height / 2)
+                                .blur(radius: 0.8)
+                            }
+                            .mask(
+                                horizon.stroke(
+                                    Color.white,
+                                    style: StrokeStyle(
+                                        lineWidth: 2.2,
+                                        lineCap: .round,
+                                        lineJoin: .round
+                                    )
+                                )
+                            )
+                            .opacity(isBreathing ? 0.95 : 0.70)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: max(depth + 2, 16))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onAppear {
+            guard !reduceMotion else { return }
+            if !isBreathing {
+                withAnimation(
+                    .easeInOut(duration: 2.6)
+                        .repeatForever(autoreverses: true)
+                ) {
+                    isBreathing = true
+                }
+            }
+            if wavePhase == 0 {
+                withAnimation(
+                    .easeInOut(duration: 3.2)
+                        .repeatForever(autoreverses: false)
+                ) {
+                    wavePhase = 1.0
+                }
+            }
+        }
+    }
+
+    private func baselineColor(isIncreasedContrast: Bool) -> Color {
+        if isIncreasedContrast {
+            return Color.ppTextPrimary
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.18)
+            : Color.ppSeparator.opacity(0.68)
+    }
+
+    private var horizonSignalGradient: LinearGradient {
+        LinearGradient(
+            stops: [
+                .init(
+                    color: accent.opacity(colorScheme == .dark ? 0.96 : 0.88),
+                    location: 0
+                ),
+                .init(
+                    color: accent.opacity(colorScheme == .dark ? 0.62 : 0.48),
+                    location: 0.28
+                ),
+                .init(color: accent.opacity(0.14), location: 0.60),
+                .init(color: Color.clear, location: 0.84),
+                .init(color: Color.clear, location: 1)
+            ],
+            startPoint: isRightToLeft ? .trailing : .leading,
+            endPoint: isRightToLeft ? .leading : .trailing
+        )
+    }
+}
+
 @available(iOS 15.0, *)
 struct PPMarketplaceHeroControlLayoutMetrics: Equatable {
     let spacing: CGFloat
@@ -730,7 +919,7 @@ struct PPMarketplaceHero: View {
             HStack(alignment: .center, spacing: PPSpace.xs) {
                 Image(systemName: "arrow.turn.down.right")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.ppPrimary.opacity(0.8))
+                    .foregroundStyle(Color(uiColor: store.accentColor).opacity(0.8))
                     .scaleEffect(x: store.isRightToLeft ? -1 : 1, y: 1)
                     .frame(width: PPSpace.md)
                     .accessibilityHidden(true)
@@ -852,14 +1041,14 @@ struct PPMarketplaceHero: View {
             }
             .foregroundStyle(Color.white)
             .background(
-                Color.ppPrimary,
+                Color(uiColor: store.accentColor),
                 in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
             }
-            .shadow(color: Color.ppPrimary.opacity(0.16), radius: 4, x: 0, y: 2)
+            .shadow(color: Color(uiColor: store.accentColor).opacity(0.16), radius: 4, x: 0, y: 2)
             .contentShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
         }
         .buttonStyle(PPMarketplacePressStyle(
@@ -962,7 +1151,7 @@ private struct PPMarketplaceSmartContextPill: View {
                       ? store.currentSectionDescriptor.iconName
                       : context.systemImageName)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.ppPrimary)
+                    .foregroundStyle(Color(uiColor: store.accentColor))
                     .accessibilityHidden(true)
 
                 Image(systemName: "chevron.down")
@@ -1050,7 +1239,7 @@ struct PPMarketplaceCurrentDock: View {
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(PPMarketplaceText.localized(descriptor.titleKey))
-                        .foregroundStyle(selected ? Color.ppPrimary : Color.ppTextSecondary)
+                        .foregroundStyle(selected ? Color(uiColor: store.accentColor) : Color.ppTextSecondary)
                         .padding(.horizontal, PPSpace.xs)
                         .padding(.vertical, PPSpace.sm)
                         .frame(minHeight: 44)
@@ -1104,7 +1293,7 @@ struct PPMarketplaceCurrentDock: View {
             .fill(
                 contrast == .increased
                     ? Color.ppTextPrimary
-                    : Color.ppPrimary
+                    : Color(uiColor: store.accentColor)
             )
             .frame(height: contrast == .increased ? 3 : 2)
             .accessibilityHidden(true)
@@ -1148,7 +1337,8 @@ struct PPMarketplaceCurrentDock: View {
                             PPMarketplaceRefinementLabel(
                                 icon: group.chipIconName ?? "slider.horizontal.3",
                                 title: filterChipTitle(group),
-                                selected: group.isActive()
+                                selected: group.isActive(),
+                                accent: Color(uiColor: store.accentColor)
                             )
                         }
                         .disabled(store.isReplacingContext)
@@ -1163,7 +1353,8 @@ struct PPMarketplaceCurrentDock: View {
                             PPMarketplaceRefinementLabel(
                                 icon: "storefront.fill",
                                 title: selectedProviderTitle,
-                                selected: store.selectedProviderID != nil
+                                selected: store.selectedProviderID != nil,
+                                accent: Color(uiColor: store.accentColor)
                             )
                         }
                         .buttonStyle(.plain)
@@ -1188,7 +1379,8 @@ struct PPMarketplaceCurrentDock: View {
                         PPMarketplaceRefinementLabel(
                             icon: store.layout.iconName,
                             title: PPMarketplaceText.localized(store.layout.titleKey),
-                            selected: false
+                            selected: false,
+                            accent: Color(uiColor: store.accentColor)
                         )
                     }
                     .disabled(store.isReplacingContext)
@@ -1204,7 +1396,7 @@ struct PPMarketplaceCurrentDock: View {
 
                     if store.isRefreshing {
                         ProgressView()
-                            .tint(Color.ppPrimary)
+                            .tint(Color(uiColor: store.accentColor))
                             .frame(width: 40, height: 40)
                             .accessibilityLabel(PPMarketplaceText.localized("marketplace_refreshing"))
                     }
@@ -1238,7 +1430,7 @@ struct PPMarketplaceCurrentDock: View {
                 .foregroundStyle(store.activeFilterCount > 0 ? Color.white : Color.ppTextPrimary)
                 .frame(width: filterButtonVisualSize, height: filterButtonVisualSize)
                 .background(
-                    store.activeFilterCount > 0 ? Color.ppPrimary : Color.ppSurface,
+                    store.activeFilterCount > 0 ? Color(uiColor: store.accentColor) : Color.ppSurface,
                     in: RoundedRectangle(cornerRadius: filterButtonCornerRadius, style: .continuous)
                 )
                 .overlay {
@@ -1257,7 +1449,7 @@ struct PPMarketplaceCurrentDock: View {
                             .foregroundStyle(Color.white)
                             .padding(.horizontal, 4)
                             .frame(minWidth: 16, minHeight: 16)
-                            .background(Color.ppPrimaryDarker, in: Capsule())
+                            .background(store.accentPalette.darker, in: Capsule())
                             .offset(x: store.isRightToLeft ? -2 : 2, y: -2)
                     }
                 }
@@ -1307,6 +1499,7 @@ private struct PPMarketplaceRefinementLabel: View {
     let icon: String
     let title: String
     let selected: Bool
+    var accent: Color = Color.ppPrimary
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var contrast
@@ -1326,13 +1519,13 @@ private struct PPMarketplaceRefinementLabel: View {
                 .opacity(0.7)
                 .accessibilityHidden(true)
         }
-        .foregroundStyle(selected ? Color.ppPrimary : Color.ppTextPrimary)
+        .foregroundStyle(selected ? accent : Color.ppTextPrimary)
         .padding(.horizontal, PPSpace.md)
         .padding(.vertical, 8)
         .frame(minHeight: 44)
         .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 240 : nil)
         .background(
-            selected ? Color.ppPrimary.opacity(0.08) : Color.clear,
+            selected ? accent.opacity(0.08) : Color.clear,
             in: Capsule(style: .continuous)
         )
         .overlay {
@@ -1340,7 +1533,7 @@ private struct PPMarketplaceRefinementLabel: View {
                 .strokeBorder(
                     contrast == .increased
                         ? Color.ppTextPrimary
-                        : (selected ? Color.ppPrimary.opacity(0.24) : Color.clear),
+                        : (selected ? accent.opacity(0.24) : Color.clear),
                     lineWidth: contrast == .increased ? 1 : 0.5
                 )
         }

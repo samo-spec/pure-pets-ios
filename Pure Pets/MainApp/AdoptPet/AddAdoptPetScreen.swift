@@ -135,6 +135,8 @@ final class AddAdoptPetStore: ObservableObject {
     @Published var isSubmitting: Bool = false
     @Published var submissionStepText: String = ""
     @Published var errorMessage: String? = nil
+    @Published var isCommunityAdoptionActive: Bool = true
+    @Published var communityNotice: String? = nil
     @Published var hasSavedDraft: Bool = false
     @Published var showDraftRestoredBanner: Bool = false
     @Published var showValidationShake: Bool = false
@@ -225,6 +227,30 @@ final class AddAdoptPetStore: ObservableObject {
         // after the live model hydration is safe and lets an uncertain update
         // retry the exact same versioned payload after an app relaunch.
         checkAndRestoreDraft()
+        checkCommunityConfiguration()
+    }
+
+    // MARK: - Community Feature Preflight
+
+    func checkCommunityConfiguration() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let config = try await PPCommunityService.shared.configuration()
+                if !config.communityEnabled || !config.adoptionEnabled {
+                    self.isCommunityAdoptionActive = false
+                    self.communityNotice = PPAdoptLang("community_error_feature_unavailable")
+                } else if !config.rolloutAvailable {
+                    self.isCommunityAdoptionActive = false
+                    self.communityNotice = PPAdoptLang("community_unavailable_message")
+                } else {
+                    self.isCommunityAdoptionActive = true
+                    self.communityNotice = nil
+                }
+            } catch {
+                // Keep default state during offline drafting
+            }
+        }
     }
 
     // MARK: - Domain Data
@@ -637,6 +663,12 @@ final class AddAdoptPetStore: ObservableObject {
             return
         }
 
+        guard isCommunityAdoptionActive else {
+            errorMessage = communityNotice ?? PPAdoptLang("community_error_feature_unavailable")
+            AdoptHaptics.error()
+            return
+        }
+
         isSubmitting = true
         errorMessage = nil
         submissionStepText = isEditing ? PPAdoptLang("adopt_form_save_changes") : PPAdoptLang("adopt_form_publish_action")
@@ -748,7 +780,7 @@ final class AddAdoptPetStore: ObservableObject {
             completion(true)
         } else {
             self.unlockDefinitivelyRejectedSubmission(after: error)
-            self.errorMessage = error?.localizedDescription ?? PPAdoptLang("unknownError")
+            self.errorMessage = PPCommunityService.userFacingErrorMessage(for: error)
             AdoptHaptics.error()
             completion(false)
         }
@@ -801,6 +833,9 @@ struct AddAdoptPetScreen: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(100)
             }
+        }
+        .onAppear {
+            store.checkCommunityConfiguration()
         }
         .alert(isPresented: $store.showUnsavedChangesDialog) {
             Alert(
@@ -942,6 +977,10 @@ private struct iPhoneAddAdoptPetDeck: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
+                    if !store.isCommunityAdoptionActive, let notice = store.communityNotice {
+                        communityUnavailableNoticeCard(notice)
+                    }
+
                     // Mission Hero Card
                     missionHeroCard
 
@@ -966,10 +1005,18 @@ private struct iPhoneAddAdoptPetDeck: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 12)
             }
+            .scrollDismissesKeyboardCompat()
         }
         .overlay(alignment: .bottom) {
             floatingActionDock
         }
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+        )
         .sheet(isPresented: $showBreedPicker) {
             AdoptBreedPickerSheet(
                 breeds: store.availableBreeds,
@@ -1007,6 +1054,34 @@ private struct iPhoneAddAdoptPetDeck: View {
             }
             Button(PPAdoptLang("Cancel"), role: .cancel) {}
         }
+    }
+
+    private func communityUnavailableNoticeCard(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(Color(hex: 0xF59E0B))
+                .font(.system(size: 18, weight: .bold))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(text)
+                    .font(AdoptFont.bold(14))
+                    .foregroundColor(.primary)
+                Text(PPAdoptLang("community_unavailable_message"))
+                    .font(AdoptFont.regular(12))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(hex: 0xFEF3C7).opacity(0.9))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color(hex: 0xF59E0B).opacity(0.3), lineWidth: 1)
+                )
+        )
     }
 
     // MARK: - Apex Header
@@ -1607,6 +1682,16 @@ private struct iPhoneAddAdoptPetDeck: View {
                 .fill(Color(UIColor.secondarySystemGroupedBackground))
                 .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         )
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(PPAdoptLang("Done")) {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .font(AdoptFont.bold(14))
+                .foregroundColor(Color(hex: 0xC41E3A))
+            }
+        }
     }
 
     // MARK: - Floating Action Dock
@@ -1735,6 +1820,27 @@ private struct iPadAddAdoptPetCockpit: View {
                 // RIGHT COLUMN (58%): Structured Intake Studio Deck
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 22) {
+                        if !store.isCommunityAdoptionActive, let notice = store.communityNotice {
+                            communityUnavailableNoticeCard(notice)
+                        }
+
+                        if let err = store.errorMessage {
+                            HStack(spacing: 10) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(Color(hex: 0xC41E3A))
+                                    .font(.system(size: 16, weight: .bold))
+                                Text(err)
+                                    .font(AdoptFont.bold(14))
+                                    .foregroundColor(Color(hex: 0xC41E3A))
+                                Spacer()
+                            }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color(hex: 0xFFF1F2))
+                            )
+                        }
+
                         // Media Studio Section
                         iPadMediaStudioSection
 
@@ -1750,10 +1856,18 @@ private struct iPadAddAdoptPetCockpit: View {
                         Spacer().frame(height: 40)
                     }
                 }
+                .scrollDismissesKeyboardCompat()
             }
             .padding(.horizontal, 28)
             .padding(.top, 16)
         }
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+        )
         .sheet(isPresented: $showBreedPicker) {
             AdoptBreedPickerSheet(
                 breeds: store.availableBreeds,
@@ -1791,6 +1905,34 @@ private struct iPadAddAdoptPetCockpit: View {
             }
             Button(PPAdoptLang("Cancel"), role: .cancel) {}
         }
+    }
+
+    private func communityUnavailableNoticeCard(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(Color(hex: 0xF59E0B))
+                .font(.system(size: 18, weight: .bold))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(text)
+                    .font(AdoptFont.bold(14))
+                    .foregroundColor(.primary)
+                Text(PPAdoptLang("community_unavailable_message"))
+                    .font(AdoptFont.regular(12))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(hex: 0xFEF3C7).opacity(0.9))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color(hex: 0xF59E0B).opacity(0.3), lineWidth: 1)
+                )
+        )
     }
 
     // MARK: - iPad Toolbar
@@ -2304,6 +2446,16 @@ private struct iPadAddAdoptPetCockpit: View {
                 .fill(Color(UIColor.secondarySystemGroupedBackground))
                 .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
         )
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(PPAdoptLang("Done")) {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .font(AdoptFont.bold(14))
+                .foregroundColor(Color(hex: 0xC41E3A))
+            }
+        }
     }
 
     // MARK: - Trust & Best Practices Card
@@ -2879,3 +3031,4 @@ private struct AdoptCameraPicker: UIViewControllerRepresentable {
         }
     }
 }
+

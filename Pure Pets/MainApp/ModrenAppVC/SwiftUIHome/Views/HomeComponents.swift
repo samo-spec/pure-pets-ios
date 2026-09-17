@@ -2930,7 +2930,117 @@ private struct HomeMainKindHabitatEntrance: ViewModifier {
     }
 }
 
-// MARK: - Home Categories Strip (Exact UI Pattern with Brand Typography)
+// MARK: - Home MainKinds Scope Thread
+
+/// A quiet reading-direction cue. It responds once to a new browsing scope;
+/// it does not run a perpetual loading-like shimmer while Home is idle.
+@available(iOS 15.0, *)
+struct HomeMainKindsScopeThread: View {
+    let accent: Color
+    let selectedCategoryID: Int?
+    let isRightToLeft: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var travel: CGFloat = 0
+
+    private var shouldAnimate: Bool {
+        scenePhase == .active
+            && !reduceMotion
+            && !voiceOverEnabled
+            && !switchControlEnabled
+            && contrast != .increased
+    }
+
+    private var animationKey: String {
+        let scope = selectedCategoryID.map { String($0) } ?? "all"
+        return "\(scope):\(isRightToLeft):\(shouldAnimate)"
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let signalWidth = min(28, max(12, width * 0.18))
+            let startX = isRightToLeft
+                ? width + signalWidth / 2
+                : -signalWidth / 2
+            let endX = isRightToLeft
+                ? -signalWidth / 2
+                : width + signalWidth / 2
+
+            ZStack {
+                Rectangle()
+                    .fill(
+                        contrast == .increased
+                            ? Color.ppTextPrimary
+                            : Color.ppSeparator.opacity(colorScheme == .dark ? 0.66 : 0.72)
+                    )
+                    .frame(height: contrast == .increased ? 2 : 1)
+
+                if contrast != .increased {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: accent.opacity(0.68), location: 0),
+                                    .init(color: accent.opacity(0.22), location: 0.28),
+                                    .init(color: .clear, location: 0.72)
+                                ],
+                                startPoint: isRightToLeft ? .trailing : .leading,
+                                endPoint: isRightToLeft ? .leading : .trailing
+                            )
+                        )
+                        .frame(height: 1)
+                }
+
+                if shouldAnimate && width > 0 {
+                    Capsule(style: .continuous)
+                        .fill(accent)
+                        .frame(width: signalWidth, height: 2)
+                        .shadow(
+                            color: reduceTransparency ? .clear : accent.opacity(0.30),
+                            radius: reduceTransparency ? 0 : 3
+                        )
+                        .position(
+                            x: startX + (endX - startX) * travel,
+                            y: 8
+                        )
+                }
+            }
+            .frame(width: width, height: 16)
+            .clipped()
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 16)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .task(id: animationKey) {
+            withTransaction(Transaction(animation: nil)) {
+                travel = 0
+            }
+            guard shouldAnimate else { return }
+
+            do {
+                try await Task.sleep(nanoseconds: 40_000_000)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+
+            withAnimation(.easeOut(duration: 0.72)) {
+                travel = 1
+            }
+        }
+    }
+}
+
+// MARK: - Home Categories Strip (Living Habitat Ribbon with Brand Typography)
 
 @available(iOS 15.0, *)
 struct HomeCategoriesStripView: View {
@@ -2942,13 +3052,12 @@ struct HomeCategoriesStripView: View {
     let onSelect: (HomeCategoryModel?) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Namespace private var focusNamespace
 
-    private var hairlineColor: Color {
-        colorScheme == .dark
-            ? Color.white.opacity(0.14)
-            : Color(red: 228/255.0, green: 228/255.0, blue: 232/255.0)
-    }
+    @State private var isBeaconPulsing = false
 
     private var headerTitle: String {
         HomeModelAdapter.localized(
@@ -2957,87 +3066,148 @@ struct HomeCategoriesStripView: View {
         )
     }
 
+    private var allTitle: String {
+        Language.get("All", alter: nil) ?? Language.get("all", alter: nil) ?? (isRightToLeft ? "الكل" : "All")
+    }
+
     private var isCategoryAccentEnabled: Bool {
         UserDefaults.standard.bool(
             forKey: "pp.marketplace.usesMainKindAccentColors"
         )
     }
 
-    private var indicatorColor: Color {
+    private var effectiveAccent: Color {
         guard isCategoryAccentEnabled else {
             return Color.ppPrimary
         }
         return accent ?? Color.ppPrimary
     }
 
+    private var resolvedSelectedCategory: HomeCategoryModel? {
+        guard let selectedCategoryID else { return nil }
+        return categories.first {
+            HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Top full-width hairline divider
-            Rectangle()
-                .fill(hairlineColor)
-                .frame(height: 0.5)
+            // Scope Compass Header
+            scopeHeader
 
-            // Section Header Label "تصفح حسب النوع"
-            HStack(spacing: 0) {
-                Text(headerTitle)
-                    .font(HomeFont.medium(12.5))
-                    .foregroundStyle(
-                        colorScheme == .dark
-                            ? Color(white: 0.65)
-                            : Color(red: 142/255.0, green: 142/255.0, blue: 147/255.0)
-                    )
-                    .lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, PPSpace.base)
-            .padding(.top, 8)
-            .padding(.bottom, 6)
+            // Living Habitat Species Ribbon
+            speciesRail
+        }
+        .environment(
+            \.layoutDirection,
+            isRightToLeft ? .rightToLeft : .leftToRight
+        )
+        .accessibilityElement(children: .contain)
+    }
 
-            // Horizontal Category Items Strip
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
-                        // "All" / "الكل" Sanctuary Item
-                        categoryCell(
-                            nil,
-                            title: Language.get("all", alter: nil) ?? (isRightToLeft ? "الكل" : "All"),
-                            isSelected: selectedCategoryID == nil
-                        )
-                        .id("cat-strip-all")
-
-                        // Live Categories with vertical dividers between each
-                        ForEach(categories) { category in
-                            let catID = HomeModelAdapter.mainKindID(category.raw)
-                            let isSelected = (catID == selectedCategoryID)
-
-                            // Vertical hairline divider
-                            Rectangle()
-                                .fill(hairlineColor)
-                                .frame(width: 0.5, height: 24)
-
-                            categoryCell(
-                                category,
-                                title: category.title,
-                                isSelected: isSelected
-                            )
-                            .id("cat-strip-\(category.id)")
-                        }
+    private var scopeHeader: some View {
+        HStack(spacing: PPSpace.sm) {
+            HStack(spacing: 7) {
+                // Dual-layer Living Jewel Beacon
+                ZStack {
+                    if !reduceMotion && contrast != .increased {
+                        Circle()
+                            .fill(effectiveAccent.opacity(isBeaconPulsing ? 0.36 : 0.10))
+                            .frame(width: 15, height: 15)
+                            .scaleEffect(isBeaconPulsing ? 1.25 : 0.85)
+                            .blur(radius: 2.2)
                     }
-                    .padding(.horizontal, PPSpace.xs)
+
+                    Circle()
+                        .stroke(
+                            contrast == .increased
+                                ? Color.ppTextPrimary
+                                : effectiveAccent.opacity(colorScheme == .dark ? 0.45 : 0.28),
+                            lineWidth: contrast == .increased ? 1.5 : 0.85
+                        )
+                        .frame(width: 11, height: 11)
+                        .scaleEffect(!reduceMotion && isBeaconPulsing ? 1.06 : 1.0)
+
+                    Circle()
+                        .fill(
+                            contrast == .increased
+                                ? Color.ppTextPrimary
+                                : effectiveAccent
+                        )
+                        .frame(width: 5.5, height: 5.5)
+                        .scaleEffect(!reduceMotion && isBeaconPulsing ? 1.15 : 1.0)
                 }
-                .onAppear {
-                    scrollToSelection(proxy: proxy, animated: false)
-                }
-                .onChange(of: selectedCategoryID) { _ in
-                    scrollToSelection(proxy: proxy, animated: !reduceMotion)
+                .accessibilityHidden(true)
+
+                Text(headerTitle)
+                    .font(HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 14 : 12.5))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(1)
+            }
+
+            HomeMainKindsScopeThread(
+                accent: effectiveAccent,
+                selectedCategoryID: selectedCategoryID,
+                isRightToLeft: isRightToLeft
+            )
+        }
+        .padding(.horizontal, PPSpace.base)
+        .padding(.top, 4)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .onAppear {
+            guard !reduceMotion else { return }
+            if !isBeaconPulsing {
+                withAnimation(
+                    .easeInOut(duration: 2.2)
+                        .repeatForever(autoreverses: true)
+                ) {
+                    isBeaconPulsing = true
                 }
             }
-            .frame(height: 46)
+        }
+    }
 
-            // Bottom full-width hairline divider
-            Rectangle()
-                .fill(hairlineColor)
-                .frame(height: 0.5)
+    private var speciesRail: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    categoryCell(
+                        nil,
+                        title: allTitle,
+                        isSelected: selectedCategoryID == nil
+                    )
+                    .id("cat-strip-all")
+
+                    ForEach(categories) { category in
+                        let catID = HomeModelAdapter.mainKindID(category.raw)
+                        let isSelected = (catID == selectedCategoryID)
+
+                        categoryCell(
+                            category,
+                            title: category.title,
+                            isSelected: isSelected
+                        )
+                        .id("cat-strip-\(category.id)")
+                    }
+                }
+                .padding(.horizontal, PPSpace.sm)
+                .padding(.top, 4)
+                .padding(.bottom, 6)
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .spring(response: 0.36, dampingFraction: 0.82),
+                    value: selectedCategoryID
+                )
+            }
+            .onAppear {
+                scrollToSelection(proxy: proxy, animated: false)
+            }
+            .onChange(of: selectedCategoryID) { _ in
+                scrollToSelection(proxy: proxy, animated: !reduceMotion)
+            }
         }
     }
 
@@ -3046,51 +3216,132 @@ struct HomeCategoriesStripView: View {
         title: String,
         isSelected: Bool
     ) -> some View {
-        Button {
+        let itemAccent: Color = {
+            if isSelected {
+                return effectiveAccent
+            }
+            if isCategoryAccentEnabled, let category {
+                return Color(uiColor: category.accent)
+            }
+            return Color.ppPrimary
+        }()
+
+        return Button {
             UISelectionFeedbackGenerator().selectionChanged()
             if reduceMotion {
                 onSelect(category)
             } else {
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.82)) {
                     onSelect(category)
                 }
             }
         } label: {
-            VStack(spacing: 4) {
+            HStack(spacing: isSelected ? 6 : 5) {
+                if isSelected {
+                    pawGem(accent: itemAccent)
+                } else {
+                    identitySeed(accent: itemAccent)
+                }
+
                 Text(title)
-                    .font(isSelected ? HomeFont.bold(16.5) : HomeFont.medium(16))
+                    .font(
+                        isSelected
+                            ? HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 17.5 : 15.5)
+                            : HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 16 : 14.5)
+                    )
                     .foregroundStyle(
                         isSelected
-                            ? (colorScheme == .dark ? Color.white : Color(red: 28/255.0, green: 28/255.0, blue: 30/255.0))
-                            : (colorScheme == .dark ? Color(white: 0.68) : Color(red: 108/255.0, green: 108/255.0, blue: 112/255.0))
+                            ? (colorScheme == .dark ? Color.white : Color.black)
+                            : Color.ppTextSecondary
                     )
                     .lineLimit(1)
-
-                // Teal underline indicator pill under selected category
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .padding(.horizontal, isSelected ? 12 : 9)
+            .frame(minWidth: 58, minHeight: 40)
+            .background {
                 if isSelected {
-                    Capsule()
-                        .fill(indicatorColor)
-                        .frame(width: 32, height: 3.5)
-                        .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
-                } else {
-                    Capsule()
-                        .fill(Color.clear)
-                        .frame(width: 32, height: 3.5)
+                    activeCapsuleBackground(accent: itemAccent)
                 }
             }
-            .padding(.horizontal, 18)
-            .frame(minWidth: 62)
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainButtonStyle())
         .hoverEffect(.highlight)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(
             isSelected
-                ? "\(title), \(HomeModelAdapter.localized("Selected", fallback: "Selected"))"
-                : title
+                ? (Language.get("Selected", alter: nil) ?? (isRightToLeft ? "محدد" : "Selected"))
+                : ""
         )
         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
+    }
+
+    @ViewBuilder
+    private func activeCapsuleBackground(accent: Color) -> some View {
+        if reduceMotion {
+            capsuleSurface(accent: accent)
+        } else {
+            capsuleSurface(accent: accent)
+                .matchedGeometryEffect(
+                    id: "cat_strip_active_capsule",
+                    in: focusNamespace
+                )
+        }
+    }
+
+    private func capsuleSurface(accent: Color) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    reduceTransparency
+                        ? (colorScheme == .dark ? Color(white: 0.18) : Color.white)
+                        : (colorScheme == .dark
+                            ? Color.white.opacity(0.14)
+                            : Color.white.opacity(0.92))
+                )
+
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(
+                    contrast == .increased
+                        ? Color.ppTextPrimary
+                        : (colorScheme == .dark
+                            ? Color.white.opacity(0.20)
+                            : accent.opacity(0.28)),
+                    lineWidth: contrast == .increased ? 1.5 : 0.75
+                )
+        }
+        .shadow(
+            color: reduceTransparency || contrast == .increased
+                ? Color.clear
+                : (colorScheme == .dark
+                    ? Color.black.opacity(0.35)
+                    : accent.opacity(0.18)),
+            radius: 6,
+            x: 0,
+            y: 2
+        )
+    }
+
+    private func pawGem(accent: Color) -> some View {
+        Image(systemName: "pawprint.fill")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(
+                contrast == .increased
+                    ? Color.ppTextPrimary
+                    : accent
+            )
+            .frame(width: 20, height: 20)
+            .accessibilityHidden(true)
+    }
+
+    private func identitySeed(accent: Color) -> some View {
+        Circle()
+            .fill(accent.opacity(colorScheme == .dark ? 0.52 : 0.38))
+            .frame(width: 4.5, height: 4.5)
+            .frame(width: 12, height: 12)
+            .accessibilityHidden(true)
     }
 
     private func scrollToSelection(proxy: ScrollViewProxy, animated: Bool) {
@@ -3102,7 +3353,7 @@ struct HomeCategoriesStripView: View {
             targetID = "cat-strip-all"
         }
         if animated {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.82)) {
                 proxy.scrollTo(targetID, anchor: .center)
             }
         } else {
@@ -4563,12 +4814,12 @@ private struct HomeMainKindScopeMark: View {
     /// White is the only foreground that holds AA contrast on `ppPrimary` in
     /// both appearances; the palette exposes no on-primary token.
     private var glyph: some View {
-        Image(systemName: "checkmark")
+        Image(systemName: "pawprint.fill")
             .font(
                 .system(
                     size: HomeMainKindHabitat.scopeMarkDiameter
                         * HomeMainKindHabitat.scopeMarkGlyphScale,
-                    weight: .bold
+                    weight: .semibold
                 )
             )
             .foregroundColor(.white)

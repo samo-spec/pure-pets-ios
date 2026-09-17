@@ -88,10 +88,9 @@ struct PPMarketplaceDataViewScreen: View {
                                         contentRevision: store.contentRevision,
                                         naturalContentHeight: measuredScrollContentHeight,
                                         onRestorationCompleted: {
-                                            guard !store.isReplacingContext else {
-                                                return
+                                            DispatchQueue.main.async {
+                                                retainedScrollContentHeight = 0
                                             }
-                                            retainedScrollContentHeight = 0
                                         }
                                     )
                                     .accessibilityHidden(true)
@@ -183,8 +182,10 @@ struct PPMarketplaceDataViewScreen: View {
                                 retainedScrollContentHeight,
                                 measuredScrollContentHeight
                             )
-                        } else if !dockIsPinned {
-                            retainedScrollContentHeight = 0
+                        } else {
+                            DispatchQueue.main.async {
+                                retainedScrollContentHeight = 0
+                            }
                         }
                     }
                     .onChange(of: dockIsPinned) { isPinned in
@@ -283,22 +284,21 @@ struct PPMarketplaceDataViewScreen: View {
     private func resolvedBottomBreathingRoom(
         availableHeight: CGFloat
     ) -> CGFloat {
-        let base = max(
-            store.bottomClearance + PPSpace.lg,
-            dynamicTypeSize.isAccessibilitySize ? 128 : 96
-        )
-        switch store.loadState {
-        case .empty, .offline, .failed, .loading, .content:
-            return base
+        if store.bottomClearance > 0 {
+            let clearancePadding: CGFloat = dynamicTypeSize.isAccessibilitySize ? PPSpace.base : PPSpace.md
+            return store.bottomClearance + clearancePadding
+        } else {
+            return dynamicTypeSize.isAccessibilitySize ? PPSpace.xl : PPSpace.base
         }
     }
 
     private var bottomNavigationFade: some View {
         GeometryReader { proxy in
+            let extraFade: CGFloat = store.bottomClearance > 0 ? PPSpace.base : PPSpace.xs
             let fadeHeight = max(
                 store.bottomClearance,
                 proxy.safeAreaInsets.bottom
-            ) + PPSpace.xxxl
+            ) + extraFade
 
             LinearGradient(
                 colors: [
@@ -782,13 +782,22 @@ private struct PPMarketplaceContent: View {
         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82), value: store.contentRevision)
         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82), value: store.currentSection.rawValue)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: store.loadState)
-        // A viewport-tall results surface keeps the pinned Section header
-        // alive while the bridge swaps a long grid for its loading/empty state.
         .frame(
             maxWidth: .infinity,
-            minHeight: max(availableHeight, 1),
+            minHeight: contentMinHeight,
             alignment: .top
         )
+    }
+
+    private var contentMinHeight: CGFloat? {
+        if store.isReplacingContext {
+            // Retain surface height during active context replacement transitions
+            // to keep the pinned section header stable before new items settle.
+            return max(availableHeight, 1)
+        }
+        // Allow content, skeleton loading, and empty states to size naturally
+        // without creating an excessive blank void at the bottom of the screen.
+        return nil
     }
 
     private var stateTransition: AnyTransition {

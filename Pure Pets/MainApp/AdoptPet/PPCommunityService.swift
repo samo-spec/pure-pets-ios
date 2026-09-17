@@ -38,6 +38,69 @@ enum PPCommunityError: LocalizedError {
             return PPAdoptLang("community_error_media_required")
         }
     }
+
+    static func userFacingErrorMessage(for error: Error?) -> String {
+        guard let error else { return PPAdoptLang("unknownError") }
+        if let communityError = error as? PPCommunityError {
+            return communityError.errorDescription ?? PPAdoptLang("unknownError")
+        }
+        let nsError = error as NSError
+        let message = nsError.localizedDescription
+
+        if message.localizedCaseInsensitiveContains("feature is currently unavailable") ||
+           message.localizedCaseInsensitiveContains("feature is unavailable") ||
+           message.localizedCaseInsensitiveContains("feature contract") {
+            return PPAdoptLang("community_error_feature_unavailable")
+        }
+        if message.localizedCaseInsensitiveContains("rollout is not available") ||
+           message.localizedCaseInsensitiveContains("not available for this account or region") {
+            return PPAdoptLang("community_unavailable_message")
+        }
+        if message.localizedCaseInsensitiveContains("processed pet image is required") ||
+           message.localizedCaseInsensitiveContains("image is required") ||
+           message.localizedCaseInsensitiveContains("media required") {
+            return PPAdoptLang("community_error_media_required")
+        }
+        if message.localizedCaseInsensitiveContains("draft changed") ||
+           message.localizedCaseInsensitiveContains("reload before submitting") {
+            return PPAdoptLang("community_error_refresh_required")
+        }
+        if message.localizedCaseInsensitiveContains("already exists") {
+            return PPAdoptLang("community_error_invalid_record")
+        }
+        if message.localizedCaseInsensitiveContains("sign in") ||
+           message.localizedCaseInsensitiveContains("unauthenticated") ||
+           message.localizedCaseInsensitiveContains("unauthorized") {
+            return PPAdoptLang("community_error_sign_in_required")
+        }
+
+        if nsError.domain == FunctionsErrorDomain {
+            if let code = FunctionsErrorCode(rawValue: nsError.code) {
+                switch code {
+                case .unauthenticated:
+                    return PPAdoptLang("community_error_sign_in_required")
+                case .permissionDenied:
+                    return PPAdoptLang("community_unavailable_message")
+                case .unavailable:
+                    return PPAdoptLang("community_error_feature_unavailable")
+                case .failedPrecondition:
+                    return PPAdoptLang("community_error_feature_unavailable")
+                default:
+                    break
+                }
+            }
+        }
+
+        // Defensive guard: if in RTL/Arabic, prevent raw English leak from server
+        if Language.isRTL() {
+            let containsArabic = message.range(of: "\\p{Arabic}", options: .regularExpression) != nil
+            if !containsArabic && !message.isEmpty {
+                return PPAdoptLang("community_error_feature_unavailable")
+            }
+        }
+
+        return message.isEmpty ? PPAdoptLang("unknownError") : message
+    }
 }
 
 struct PPCommunityQuestionOption: Identifiable, Equatable {
@@ -228,6 +291,10 @@ private typealias SystemISO8601DateFormatter = Foundation.ISO8601DateFormatter
 
 final class PPCommunityService {
     static let shared = PPCommunityService()
+
+    static func userFacingErrorMessage(for error: Error?) -> String {
+        PPCommunityError.userFacingErrorMessage(for: error)
+    }
 
     private let functions = Functions.functions(region: "us-central1")
     private let storage = Storage.storage()

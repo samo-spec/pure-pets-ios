@@ -995,6 +995,9 @@ private struct PPSectionHeaderRootView: View {
     let actionButton: UIButton
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    @State private var isMarkAlive = false
 
     var body: some View {
         VStack(alignment: store.state.rightToLeft ? .trailing : .leading,
@@ -1069,6 +1072,18 @@ private struct PPSectionHeaderRootView: View {
 
     private var sectionMark: some View {
         ZStack(alignment: store.state.rightToLeft ? .trailing : .leading) {
+            // Ambient living aura
+            if !reduceMotion && contrast != .increased {
+                Capsule(style: .continuous)
+                    .fill(Color(uiColor: store.state.headingAccentColor))
+                    .opacity(isMarkAlive ? 0.36 : 0.08)
+                    .frame(
+                        width: PPSectionHeaderMetrics.identityMarkWidth + (isMarkAlive ? 4 : 0),
+                        height: PPSectionHeaderMetrics.identityMarkHeight + (isMarkAlive ? 2 : 0)
+                    )
+                    .blur(radius: isMarkAlive ? 3.0 : 1.0)
+            }
+
             Capsule(style: .continuous)
                 .fill(Color(uiColor: store.state.headingAccentColor)
                     .opacity(store.state.surfaceDecorationActive ? 0.16 : 0.10))
@@ -1080,12 +1095,23 @@ private struct PPSectionHeaderRootView: View {
                     .opacity(store.state.surfaceDecorationActive ? 0.88 : 0.58))
                 .frame(width: store.state.expanded
                         ? PPSectionHeaderMetrics.identityExpandedWidth
-                        : PPSectionHeaderMetrics.identityCoreWidth,
+                        : (isMarkAlive && store.state.usesMainKindsPresentation ? 11 : PPSectionHeaderMetrics.identityCoreWidth),
                        height: PPSectionHeaderMetrics.identityMarkHeight)
         }
         .frame(width: PPSectionHeaderMetrics.identityMarkWidth,
                height: PPSectionHeaderMetrics.titleTouchHeight)
         .accessibilityHidden(true)
+        .onAppear {
+            guard !reduceMotion else { return }
+            if !isMarkAlive {
+                withAnimation(
+                    .easeInOut(duration: 2.2)
+                        .repeatForever(autoreverses: true)
+                ) {
+                    isMarkAlive = true
+                }
+            }
+        }
     }
 
     private var titleToActionSpacing: CGFloat {
