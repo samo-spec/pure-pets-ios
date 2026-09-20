@@ -161,9 +161,10 @@ struct PPCommunityConfiguration {
     let organizationsEnabled: Bool
     let rolloutStage: String
     let rolloutAvailable: Bool
+    let supportedCountryCodes: [String]
     let adoptionQuestions: [PPCommunityQuestion]
 
-    init(dictionary: [String: Any]) {
+    init(dictionary: [String: Any] = [:]) {
         communityEnabled = dictionary["communityEnabled"] as? Bool ?? false
         adoptionEnabled = dictionary["adoptionEnabled"] as? Bool ?? false
         adoptionApplicationsEnabled = dictionary["adoptionApplicationsEnabled"] as? Bool ?? false
@@ -175,10 +176,24 @@ struct PPCommunityConfiguration {
         organizationsEnabled = dictionary["organizationsEnabled"] as? Bool ?? false
         rolloutStage = dictionary["rolloutStage"] as? String ?? "internal"
         rolloutAvailable = dictionary["rolloutAvailable"] as? Bool ?? false
+        supportedCountryCodes = dictionary["supportedCountryCodes"] as? [String] ?? []
         let adoptionPolicy = dictionary["adoptionPolicy"] as? [String: Any] ?? [:]
         adoptionQuestions = (adoptionPolicy["questions"] as? [[String: Any]] ?? []).compactMap(PPCommunityQuestion.init)
     }
+
+    var isAdoptionActive: Bool {
+        communityEnabled && adoptionEnabled
+    }
+
+    var isMissingActive: Bool {
+        communityEnabled && missingPetsEnabled
+    }
+
+    var isFoundActive: Bool {
+        communityEnabled && foundPetReportsEnabled
+    }
 }
+
 
 struct PPCommunityPage {
     let items: [[String: Any]]

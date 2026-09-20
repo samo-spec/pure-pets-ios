@@ -136,6 +136,10 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     [self pp_cancelSaveTimeout];
 }
 
+- (UIModalPresentationStyle)modalPresentationStyle {
+    return UIModalPresentationFullScreen;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = AppBackgroundClr;

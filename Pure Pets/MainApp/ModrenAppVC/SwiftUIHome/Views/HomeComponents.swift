@@ -3106,7 +3106,7 @@ struct HomeCategoriesStripView: View {
     }
 
     private var scopeHeader: some View {
-        HStack(spacing: PPSpace.sm) {
+        HStack(spacing: PPSpace.md) {
             HStack(spacing: 7) {
                 // Dual-layer Living Jewel Beacon
                 ZStack {
@@ -3172,7 +3172,7 @@ struct HomeCategoriesStripView: View {
     private var speciesRail: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     categoryCell(
                         nil,
                         title: allTitle,
@@ -3238,7 +3238,7 @@ struct HomeCategoriesStripView: View {
         } label: {
             HStack(spacing: isSelected ? 6 : 5) {
                 if isSelected {
-                    pawGem(accent: itemAccent)
+                    pawGem(for: category, accent: itemAccent)
                 } else {
                     identitySeed(accent: itemAccent)
                 }
@@ -3257,7 +3257,8 @@ struct HomeCategoriesStripView: View {
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .padding(.horizontal, isSelected ? 12 : 9)
+            .padding(.leading, isSelected ? 12 : 9)
+            .padding(.trailing, isSelected ? 22 : 9)
             .frame(minWidth: 58, minHeight: 40)
             .background {
                 if isSelected {
@@ -3324,16 +3325,21 @@ struct HomeCategoriesStripView: View {
         )
     }
 
-    private func pawGem(accent: Color) -> some View {
-        Image(systemName: "pawprint.fill")
+    private func pawGem(for category: HomeCategoryModel?, accent: Color) -> some View {
+        let symbol = HomeCategoryModel.indicatorSymbol(for: category)
+        return Image(systemName: symbol)
             .font(.system(size: 10, weight: .bold))
             .foregroundStyle(
                 contrast == .increased
                     ? Color.ppTextPrimary
                     : accent
             )
-            .frame(width: 20, height: 20)
+            .frame(width: 12, height: 12)
             .accessibilityHidden(true)
+    }
+
+    private func pawGem(accent: Color) -> some View {
+        pawGem(for: nil, accent: accent)
     }
 
     private func identitySeed(accent: Color) -> some View {

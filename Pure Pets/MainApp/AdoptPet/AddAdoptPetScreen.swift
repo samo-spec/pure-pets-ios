@@ -14,6 +14,62 @@ import UIKit
 import PhotosUI
 import Combine
 
+// MARK: - Model Localization & Icon Helpers
+
+extension MainKindsModel {
+    var localizedName: String {
+        let isRTL = Language.isRTL()
+        let primary = isRTL ? (kindNameAr ?? kindName ?? "") : (kindNameEn ?? kindName ?? "")
+        let fallback = isRTL ? (kindNameEn ?? kindName ?? "") : (kindNameAr ?? kindName ?? "")
+        let result = primary.isEmpty ? (fallback.isEmpty ? (kindName ?? "") : fallback) : primary
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+extension SubKindModel {
+    var localizedName: String {
+        let isRTL = Language.isRTL()
+        let primary = isRTL ? (subKindNameAr ?? subKindName ?? "") : (subKindNameEn ?? subKindName ?? "")
+        let fallback = isRTL ? (subKindNameEn ?? subKindName ?? "") : (subKindNameAr ?? subKindName ?? "")
+        let result = primary.isEmpty ? (fallback.isEmpty ? (subKindName ?? "") : fallback) : primary
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+extension CityModel {
+    var localizedName: String {
+        let isRTL = Language.isRTL()
+        let primary = isRTL ? (arName ?? name ?? "") : (enName ?? name ?? "")
+        let fallback = isRTL ? (enName ?? name ?? "") : (arName ?? name ?? "")
+        let result = primary.isEmpty ? (fallback.isEmpty ? (name ?? "") : fallback) : primary
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+extension StateModel {
+    var localizedName: String {
+        let isRTL = Language.isRTL()
+        let primary = isRTL ? (arName ?? "") : (enName ?? "")
+        let fallback = isRTL ? (enName ?? "") : (arName ?? "")
+        return primary.isEmpty ? fallback : primary
+    }
+}
+
+private func PPKindIcon(for name: String) -> String {
+    let lower = name.lowercased()
+    if lower.contains("قطط") || lower.contains("cat") { return "cat.fill" }
+    if lower.contains("كلاب") || lower.contains("dog") { return "dog.fill" }
+    if lower.contains("طيور") || lower.contains("bird") { return "bird.fill" }
+    if lower.contains("أرانب") || lower.contains("rabbit") { return "hare.fill" }
+    if lower.contains("أسماك") || lower.contains("fish") { return "fish.fill" }
+    return "pawprint.fill"
+}
+
+private func PPKindIcon(for kind: MainKindsModel?) -> String {
+    guard let kind else { return "pawprint.fill" }
+    return PPKindIcon(for: kind.kindNameAr ?? kind.kindName ?? kind.localizedName)
+}
+
 // MARK: - Exclusive Typography Engine (100% Beiruti Only)
 
 private enum AdoptFont {
@@ -113,6 +169,12 @@ final class AddAdoptPetStore: ObservableObject {
         didSet { onFieldModified() }
     }
     @Published var selectedCity: CityModel? = nil {
+        didSet {
+            selectedArea = nil
+            onFieldModified()
+        }
+    }
+    @Published var selectedArea: StateModel? = nil {
         didSet { onFieldModified() }
     }
     @Published var details: String = "" {
@@ -130,6 +192,7 @@ final class AddAdoptPetStore: ObservableObject {
     // Available Data
     @Published var availableKinds: [MainKindsModel] = []
     @Published var availableCities: [CityModel] = []
+    private var cancellables = Set<AnyCancellable>()
 
     // 6-State Status
     @Published var isSubmitting: Bool = false
@@ -219,6 +282,20 @@ final class AddAdoptPetStore: ObservableObject {
         } else {
             self.creationListingID = UUID().uuidString.lowercased()
         }
+        NotificationCenter.default.publisher(for: NSNotification.Name("CitiesManagerDidUpdateNotification"))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshCities()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: NSNotification.Name("MainKindsUpdatedNotification"))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshKinds()
+            }
+            .store(in: &cancellables)
+
         loadDomainData()
         if pet != nil {
             hydrateFromEditingPet()
@@ -241,14 +318,17 @@ final class AddAdoptPetStore: ObservableObject {
                     self.isCommunityAdoptionActive = false
                     self.communityNotice = PPAdoptLang("community_error_feature_unavailable")
                 } else if !config.rolloutAvailable {
-                    self.isCommunityAdoptionActive = false
+                    // Advisory notice: rollout stage is constrained, but allow drafting and server evaluation
+                    self.isCommunityAdoptionActive = true
                     self.communityNotice = PPAdoptLang("community_unavailable_message")
                 } else {
                     self.isCommunityAdoptionActive = true
                     self.communityNotice = nil
                 }
             } catch {
-                // Keep default state during offline drafting
+                // Keep resilient default state during offline drafting
+                self.isCommunityAdoptionActive = true
+                self.communityNotice = nil
             }
         }
     }
@@ -256,22 +336,37 @@ final class AddAdoptPetStore: ObservableObject {
     // MARK: - Domain Data
 
     func loadDomainData() {
-        if let kinds = MainKindsArrayManager.shared().mainKindsArray as? [MainKindsModel] {
-            self.availableKinds = kinds
-        } else {
-            self.availableKinds = []
+        refreshKinds()
+        refreshCities()
+        if availableCities.isEmpty {
+            CitiesManager.shared().loadData()
         }
+    }
 
-        if let cities = CitiesManager.shared().citiesForCurrentCountry() as? [CityModel] {
-            self.availableCities = cities
-        } else {
-            self.availableCities = []
-        }
+    func refreshKinds() {
+        let kinds = (MainKindsArrayManager.shared().visibleMainKindsSnapshot() as? [MainKindsModel])
+            ?? (MainKindsArrayManager.shared().mainKindsArray as? [MainKindsModel])
+            ?? []
+        self.availableKinds = kinds
+    }
+
+    func refreshCities() {
+        let cities = (CitiesManager.shared().citiesForCurrentCountry() as? [CityModel])
+            ?? (CitiesManager.shared().qatarCountry()?.cities as? [CityModel])
+            ?? []
+        self.availableCities = cities
     }
 
     var availableBreeds: [SubKindModel] {
         guard let kind = selectedKind else { return [] }
-        return (kind.subKindsArray as? [SubKindModel]) ?? []
+        let fromKind = (kind.subKindsArray as? [SubKindModel]) ?? []
+        if !fromKind.isEmpty { return fromKind }
+        return (MainKindsArrayManager.shared().getSubKindArray(kind.id) as? [SubKindModel]) ?? []
+    }
+
+    var availableAreas: [StateModel] {
+        guard let city = selectedCity else { return [] }
+        return (city.states as? [StateModel]) ?? []
     }
 
     // MARK: - Hydration
@@ -303,11 +398,17 @@ final class AddAdoptPetStore: ObservableObject {
             }
         }
 
-        // Find City
+        // Find City & Area
         if let cityMatch = availableCities.first(where: { $0.cityID == pet.cityID }) {
             self.selectedCity = cityMatch
         } else if pet.cityID > 0 {
             self.selectedCity = CitiesManager.shared().city(byID: pet.cityID)
+        }
+        if let city = selectedCity, let states = city.states as? [StateModel] {
+            let loc = pet.locationDisplayName ?? ""
+            if let match = states.first(where: { loc.contains($0.arName ?? "") || loc.contains($0.enName ?? "") }) {
+                self.selectedArea = match
+            }
         }
 
         // Existing Images
@@ -361,6 +462,10 @@ final class AddAdoptPetStore: ObservableObject {
         if let cID = data["cityID"] as? Int,
            let city = availableCities.first(where: { $0.cityID == cID }) {
             self.selectedCity = city
+            if let aID = data["areaID"] as? Int,
+               let area = (city.states as? [StateModel])?.first(where: { $0.stateID == aID }) {
+                self.selectedArea = area
+            }
         }
 
         // New drafts retain the complete media order and every finalized
@@ -463,6 +568,7 @@ final class AddAdoptPetStore: ObservableObject {
         if let k = selectedKind { dict["kindID"] = k.id }
         if let b = selectedBreed { dict["breedID"] = b.id }
         if let c = selectedCity { dict["cityID"] = c.cityID }
+        if let a = selectedArea { dict["areaID"] = a.stateID }
 
         // Cache local images
         let tempDirectory = draftMediaDirectoryURL
@@ -559,6 +665,10 @@ final class AddAdoptPetStore: ObservableObject {
         selectedCity != nil
     }
 
+    var hasArea: Bool {
+        availableAreas.isEmpty || selectedArea != nil
+    }
+
     var hasMedia: Bool {
         !mediaItems.isEmpty
     }
@@ -571,6 +681,10 @@ final class AddAdoptPetStore: ObservableObject {
         !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var totalCheckpointsCount: Int {
+        availableAreas.isEmpty ? 9 : 10
+    }
+
     var completedCheckpointsCount: Int {
         var count = 0
         if hasName { count += 1 }
@@ -579,6 +693,7 @@ final class AddAdoptPetStore: ObservableObject {
         if hasAge { count += 1 }
         if hasGender { count += 1 }
         if hasCity { count += 1 }
+        if !availableAreas.isEmpty && hasArea { count += 1 }
         if hasMedia { count += 1 }
         if hasDetails { count += 1 }
         if hasAdoptionReason { count += 1 }
@@ -586,11 +701,11 @@ final class AddAdoptPetStore: ObservableObject {
     }
 
     var isFormReadyToSubmit: Bool {
-        lockedSubmissionPayload != nil || completedCheckpointsCount == 9
+        lockedSubmissionPayload != nil || completedCheckpointsCount == totalCheckpointsCount
     }
 
     var readinessFraction: Double {
-        Double(completedCheckpointsCount) / 9.0
+        Double(completedCheckpointsCount) / Double(totalCheckpointsCount)
     }
 
     // MARK: - Media Actions
@@ -663,12 +778,6 @@ final class AddAdoptPetStore: ObservableObject {
             return
         }
 
-        guard isCommunityAdoptionActive else {
-            errorMessage = communityNotice ?? PPAdoptLang("community_error_feature_unavailable")
-            AdoptHaptics.error()
-            return
-        }
-
         isSubmitting = true
         errorMessage = nil
         submissionStepText = isEditing ? PPAdoptLang("adopt_form_save_changes") : PPAdoptLang("adopt_form_publish_action")
@@ -718,7 +827,8 @@ final class AddAdoptPetStore: ObservableObject {
                     assetIDs = Array(assetIDs.filter { seenAssetIDs.insert($0).inserted }.prefix(8))
                     guard !assetIDs.isEmpty else { throw PPCommunityError.missingMedia }
 
-                    let cityName = self.selectedCity?.name ?? self.selectedCity?.enName ?? ""
+                    let cityName = self.selectedCity?.localizedName ?? self.selectedCity?.name ?? ""
+                    let districtName = self.selectedArea?.localizedName ?? self.selectedArea?.arName ?? ""
                     let countryCode = self.selectedCity?.country?.iso ?? self.selectedCity?.country?.countryCode ?? CountryModel.safeCurrentCountryISOCode() ?? ""
                     payload = [
                         "listingId": listingID,
@@ -728,7 +838,7 @@ final class AddAdoptPetStore: ObservableObject {
                         "description": self.details.trimmingCharacters(in: .whitespacesAndNewlines),
                         "adoptionReason": self.adoptionReason.trimmingCharacters(in: .whitespacesAndNewlines),
                         "requirements": [],
-                        "location": ["countryCode": countryCode, "city": cityName, "district": ""],
+                        "location": ["countryCode": countryCode, "city": cityName, "district": districtName],
                         "story": self.details.trimmingCharacters(in: .whitespacesAndNewlines),
                         "medicalNotes": "",
                         "organizationId": self.editingPet?.organizationID ?? "",
@@ -743,6 +853,8 @@ final class AddAdoptPetStore: ObservableObject {
                             "breedId": self.selectedBreed?.id ?? 0,
                             "breed": self.selectedBreed?.subKindNameAr ?? self.selectedBreed?.subKindNameEn ?? "",
                             "cityId": self.selectedCity?.cityID ?? 0,
+                            "stateId": self.selectedArea?.stateID ?? 0,
+                            "district": districtName,
                             "ageInMonths": self.ageMonths,
                             "gender": self.selectedGender.lowercased(),
                             "size": "",
@@ -957,6 +1069,82 @@ struct AddAdoptPetScreen: View {
     }
 }
 
+// MARK: - Reusable Form Picker Row
+
+private struct AdoptFormPickerRow: View {
+    let title: String
+    let value: String?
+    let placeholder: String
+    let icon: String
+    var iconTint: Color = Color(hex: 0xC41E3A)
+    var isEnabled: Bool = true
+    var isRequired: Bool = true
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(AdoptFont.medium(13))
+                    .foregroundColor(.secondary)
+
+                if isRequired {
+                    Text("*")
+                        .font(AdoptFont.bold(13))
+                        .foregroundColor(Color(hex: 0xC41E3A))
+                }
+            }
+
+            Button(action: {
+                if isEnabled {
+                    AdoptHaptics.selection()
+                    action()
+                } else {
+                    AdoptHaptics.error()
+                }
+            }) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(iconTint.opacity(0.12))
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(iconTint)
+                    }
+
+                    Text(value ?? placeholder)
+                        .font(value != nil ? AdoptFont.bold(15) : AdoptFont.medium(15))
+                        .foregroundColor(value != nil ? .primary : .secondary)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(value != nil ? iconTint.opacity(0.2) : Color.clear, lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(AdoptPressStyle())
+            .opacity(isEnabled ? 1.0 : 0.55)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title): \(value ?? placeholder)")
+            .accessibilityHint(isEnabled ? PPAdoptLang("Tap to change selection") : placeholder)
+        }
+    }
+}
+
 // MARK: - iPhone Architecture (`iPhoneAddAdoptPetDeck`)
 
 private struct iPhoneAddAdoptPetDeck: View {
@@ -964,8 +1152,11 @@ private struct iPhoneAddAdoptPetDeck: View {
     var onDismiss: () -> Void
     var onSuccess: () -> Void
 
+    @State private var showSpeciesPicker: Bool = false
     @State private var showBreedPicker: Bool = false
+    @State private var showGenderPicker: Bool = false
     @State private var showCityPicker: Bool = false
+    @State private var showAreaPicker: Bool = false
     @State private var showMediaPickerSheet: Bool = false
     @State private var showPhotoLibrary: Bool = false
     @State private var showCamera: Bool = false
@@ -977,8 +1168,25 @@ private struct iPhoneAddAdoptPetDeck: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
-                    if !store.isCommunityAdoptionActive, let notice = store.communityNotice {
+                    if let notice = store.communityNotice {
                         communityUnavailableNoticeCard(notice)
+                    }
+
+                    if let err = store.errorMessage {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(Color(hex: 0xC41E3A))
+                                .font(.system(size: 16, weight: .bold))
+                            Text(err)
+                                .font(AdoptFont.bold(14))
+                                .foregroundColor(Color(hex: 0xC41E3A))
+                            Spacer()
+                        }
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color(hex: 0xFFF1F2))
+                        )
                     }
 
                     // Mission Hero Card
@@ -987,16 +1195,13 @@ private struct iPhoneAddAdoptPetDeck: View {
                     // 1. Media Studio Tray
                     mediaStudioSection
 
-                    // 2. Species Visual Cards
-                    speciesSection
-
-                    // 3. Identity & Breed
+                    // 2. Identity & Lineage (Name, Species, Breed)
                     identitySection
 
-                    // 4. Demographics (Age, Gender, City)
+                    // 3. Demographics & Location (Age, Gender, City, Area)
                     demographicsSection
 
-                    // 5. Adoption Story & Notes
+                    // 4. Adoption Story & Notes
                     storySection
 
                     // Spacer for Floating Action Bar
@@ -1017,16 +1222,36 @@ private struct iPhoneAddAdoptPetDeck: View {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
         )
+        .sheet(isPresented: $showSpeciesPicker) {
+            AdoptSpeciesPickerSheet(
+                kinds: store.availableKinds,
+                selectedKind: $store.selectedKind,
+                selectedBreed: $store.selectedBreed
+            )
+        }
         .sheet(isPresented: $showBreedPicker) {
             AdoptBreedPickerSheet(
                 breeds: store.availableBreeds,
                 selectedBreed: $store.selectedBreed
             )
         }
+        .sheet(isPresented: $showGenderPicker) {
+            AdoptGenderPickerSheet(
+                selectedGender: $store.selectedGender
+            )
+        }
         .sheet(isPresented: $showCityPicker) {
             AdoptCityPickerSheet(
                 cities: store.availableCities,
-                selectedCity: $store.selectedCity
+                selectedCity: $store.selectedCity,
+                selectedArea: $store.selectedArea
+            )
+        }
+        .sheet(isPresented: $showAreaPicker) {
+            AdoptAreaPickerSheet(
+                areas: store.availableAreas,
+                cityName: store.selectedCity?.localizedName ?? "",
+                selectedArea: $store.selectedArea
             )
         }
         .sheet(isPresented: $showPhotoLibrary) {
@@ -1058,25 +1283,22 @@ private struct iPhoneAddAdoptPetDeck: View {
 
     private func communityUnavailableNoticeCard(_ text: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(Color(hex: 0xF59E0B))
-                .font(.system(size: 18, weight: .bold))
+            Image(systemName: "info.circle.fill")
+                .foregroundColor(Color(hex: 0xD97706))
+                .font(.system(size: 18, weight: .semibold))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(text)
-                    .font(AdoptFont.bold(14))
-                    .foregroundColor(.primary)
-                Text(PPAdoptLang("community_unavailable_message"))
-                    .font(AdoptFont.regular(12))
-                    .foregroundColor(.secondary)
-            }
+            Text(text)
+                .font(AdoptFont.medium(13))
+                .foregroundColor(Color(hex: 0x92400E))
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
 
             Spacer()
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(hex: 0xFEF3C7).opacity(0.9))
+                .fill(Color(hex: 0xFEF3C7).opacity(0.95))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(Color(hex: 0xF59E0B).opacity(0.3), lineWidth: 1)
@@ -1117,7 +1339,7 @@ private struct iPhoneAddAdoptPetDeck: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(readinessBadgeTint)
 
-                Text(String(format: PPAdoptLang("adopt_form_progress_format"), store.completedCheckpointsCount, 8))
+                Text(String(format: PPAdoptLang("adopt_form_progress_format"), store.completedCheckpointsCount, store.totalCheckpointsCount))
                     .font(AdoptFont.bold(13))
                     .foregroundColor(readinessBadgeTint)
             }
@@ -1267,76 +1489,6 @@ private struct iPhoneAddAdoptPetDeck: View {
         )
     }
 
-    // MARK: - Species Visual Section
-
-    private var speciesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label {
-                Text(PPAdoptLang("adopt_form_species_label"))
-                    .font(AdoptFont.bold(16))
-            } icon: {
-                Image(systemName: "pawprint.fill")
-                    .foregroundColor(Color(hex: 0xC41E3A))
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(store.availableKinds, id: \.id) { kind in
-                        let isSelected = store.selectedKind?.id == kind.id
-                        Button(action: {
-                            AdoptHaptics.selection()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                store.selectedKind = kind
-                            }
-                        }) {
-                            VStack(spacing: 8) {
-                                ZStack {
-                                    Circle()
-                                        .fill(isSelected ? Color(hex: 0xC41E3A) : Color(UIColor.tertiarySystemGroupedBackground))
-                                        .frame(width: 50, height: 50)
-
-                                    Image(systemName: kindIcon(for: kind))
-                                        .font(.system(size: 22))
-                                        .foregroundColor(isSelected ? .white : .primary)
-                                }
-
-                                Text(kind.kindNameAr ?? "")
-                                    .font(isSelected ? AdoptFont.bold(14) : AdoptFont.medium(13))
-                                    .foregroundColor(isSelected ? Color(hex: 0xC41E3A) : .primary)
-                            }
-                            .frame(width: 85, height: 100)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(isSelected ? Color(hex: 0xC41E3A).opacity(0.08) : Color(UIColor.secondarySystemGroupedBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(isSelected ? Color(hex: 0xC41E3A) : Color.primary.opacity(0.06), lineWidth: isSelected ? 1.5 : 1)
-                                    )
-                            )
-                        }
-                        .buttonStyle(AdoptPressStyle())
-                    }
-                }
-            }
-        }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(UIColor.secondarySystemGroupedBackground))
-                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-        )
-    }
-
-    private func kindIcon(for kind: MainKindsModel) -> String {
-        let name = (kind.kindNameAr ?? "").lowercased()
-        if name.contains("قطط") || name.contains("cat") { return "cat.fill" }
-        if name.contains("كلاب") || name.contains("dog") { return "dog.fill" }
-        if name.contains("طيور") || name.contains("bird") { return "bird.fill" }
-        if name.contains("أرانب") || name.contains("rabbit") { return "hare.fill" }
-        if name.contains("أسماك") || name.contains("fish") { return "fish.fill" }
-        return "pawprint.fill"
-    }
-
     // MARK: - Identity & Breed Section
 
     private var identitySection: some View {
@@ -1351,9 +1503,14 @@ private struct iPhoneAddAdoptPetDeck: View {
 
             // Pet Name Field
             VStack(alignment: .leading, spacing: 6) {
-                Text(PPAdoptLang("adopt_form_pet_name_label"))
-                    .font(AdoptFont.medium(13))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    Text(PPAdoptLang("adopt_form_pet_name_label"))
+                        .font(AdoptFont.medium(13))
+                        .foregroundColor(.secondary)
+                    Text("*")
+                        .font(AdoptFont.bold(13))
+                        .foregroundColor(Color(hex: 0xC41E3A))
+                }
 
                 HStack {
                     TextField(PPAdoptLang("adopt_form_pet_name_placeholder"), text: $store.name)
@@ -1374,39 +1531,30 @@ private struct iPhoneAddAdoptPetDeck: View {
                 )
             }
 
-            // Breed Selector Chip
-            VStack(alignment: .leading, spacing: 6) {
-                Text(PPAdoptLang("adopt_form_breed_label"))
-                    .font(AdoptFont.medium(13))
-                    .foregroundColor(.secondary)
+            // Species Picker Row
+            AdoptFormPickerRow(
+                title: PPAdoptLang("adopt_form_species_label"),
+                value: store.selectedKind?.localizedName,
+                placeholder: PPAdoptLang("adopt_form_select_species"),
+                icon: PPKindIcon(for: store.selectedKind?.localizedName ?? ""),
+                iconTint: speciesPickerTint,
+                isEnabled: true,
+                isRequired: true
+            ) {
+                showSpeciesPicker = true
+            }
 
-                Button(action: {
-                    if store.selectedKind == nil {
-                        AdoptHaptics.error()
-                        return
-                    }
-                    AdoptHaptics.selection()
-                    showBreedPicker = true
-                }) {
-                    HStack {
-                        Text(store.selectedBreed?.subKindNameAr ?? (store.selectedKind == nil ? PPAdoptLang("adopt_form_select_species") : PPAdoptLang("adopt_form_select_breed")))
-                            .font(AdoptFont.bold(15))
-                            .foregroundColor(store.selectedBreed == nil ? .secondary : .primary)
-
-                        Spacer()
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                    )
-                }
-                .buttonStyle(AdoptPressStyle())
-                .disabled(store.selectedKind == nil)
+            // Breed Picker Row
+            AdoptFormPickerRow(
+                title: PPAdoptLang("adopt_form_breed_label"),
+                value: store.selectedBreed?.localizedName,
+                placeholder: store.selectedKind == nil ? PPAdoptLang("adopt_form_select_species_first") : PPAdoptLang("adopt_form_select_breed"),
+                icon: "tag.fill",
+                iconTint: Color(hex: 0xC41E3A),
+                isEnabled: store.selectedKind != nil,
+                isRequired: true
+            ) {
+                showBreedPicker = true
             }
         }
         .padding(18)
@@ -1417,7 +1565,22 @@ private struct iPhoneAddAdoptPetDeck: View {
         )
     }
 
-    // MARK: - Demographics Section (Age, Gender, City)
+    private var speciesPickerTint: Color {
+        guard let kind = store.selectedKind else {
+            return Color(hex: 0xC41E3A)
+        }
+        let kName = (kind.kindNameAr ?? "").lowercased()
+        if kName.contains("قطط") || kName.contains("cat") {
+            return Color(hex: 0xF59E0B)
+        } else if kName.contains("كلاب") || kName.contains("dog") {
+            return Color(hex: 0x3B82F6)
+        } else if kName.contains("طيور") || kName.contains("bird") {
+            return Color(hex: 0x10B981)
+        }
+        return Color(hex: 0x8B5CF6)
+    }
+
+    // MARK: - Demographics Section (Age, Gender, City, Area)
 
     private var demographicsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1432,9 +1595,14 @@ private struct iPhoneAddAdoptPetDeck: View {
             // Age Stepper & Presets
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(PPAdoptLang("adopt_form_age_label"))
-                        .font(AdoptFont.medium(13))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text(PPAdoptLang("adopt_form_age_label"))
+                            .font(AdoptFont.medium(13))
+                            .foregroundColor(.secondary)
+                        Text("*")
+                            .font(AdoptFont.bold(13))
+                            .foregroundColor(Color(hex: 0xC41E3A))
+                    }
 
                     Spacer()
 
@@ -1496,62 +1664,45 @@ private struct iPhoneAddAdoptPetDeck: View {
 
             Divider()
 
-            // Gender Dual Cards
-            VStack(alignment: .leading, spacing: 8) {
-                Text(PPAdoptLang("adopt_form_gender_label"))
-                    .font(AdoptFont.medium(13))
-                    .foregroundColor(.secondary)
-
-                HStack(spacing: 12) {
-                    genderCard(
-                        title: PPAdoptLang("adopt_form_gender_male"),
-                        icon: "figure.walk",
-                        value: "Male",
-                        accent: Color(hex: 0x3B82F6)
-                    )
-
-                    genderCard(
-                        title: PPAdoptLang("adopt_form_gender_female"),
-                        icon: "heart.circle.fill",
-                        value: "Female",
-                        accent: Color(hex: 0xEC4899)
-                    )
-                }
+            // Gender Picker Row
+            AdoptFormPickerRow(
+                title: PPAdoptLang("adopt_form_gender_label"),
+                value: store.selectedGender.isEmpty ? nil : (store.selectedGender.lowercased() == "male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female")),
+                placeholder: PPAdoptLang("adopt_form_select_gender"),
+                icon: store.selectedGender.lowercased() == "female" ? "heart.circle.fill" : "figure.walk",
+                iconTint: store.selectedGender.lowercased() == "female" ? Color(hex: 0xEC4899) : Color(hex: 0x3B82F6),
+                isEnabled: true,
+                isRequired: true
+            ) {
+                showGenderPicker = true
             }
 
             Divider()
 
-            // City Selector Chip
-            VStack(alignment: .leading, spacing: 6) {
-                Text(PPAdoptLang("adopt_form_city_label"))
-                    .font(AdoptFont.medium(13))
-                    .foregroundColor(.secondary)
+            // City Picker Row
+            AdoptFormPickerRow(
+                title: PPAdoptLang("adopt_form_city_label"),
+                value: store.selectedCity?.localizedName,
+                placeholder: PPAdoptLang("adopt_form_select_city"),
+                icon: "mappin.circle.fill",
+                iconTint: Color(hex: 0xC41E3A),
+                isEnabled: true,
+                isRequired: true
+            ) {
+                showCityPicker = true
+            }
 
-                Button(action: {
-                    AdoptHaptics.selection()
-                    showCityPicker = true
-                }) {
-                    HStack {
-                        Image(systemName: "mappin.and.ellipse")
-                            .foregroundColor(Color(hex: 0xC41E3A))
-
-                        Text(store.selectedCity?.name ?? PPAdoptLang("adopt_form_select_city"))
-                            .font(AdoptFont.bold(15))
-                            .foregroundColor(store.selectedCity == nil ? .secondary : .primary)
-
-                        Spacer()
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                    )
-                }
-                .buttonStyle(AdoptPressStyle())
+            // Area / District Picker Row
+            AdoptFormPickerRow(
+                title: PPAdoptLang("adopt_form_area_label"),
+                value: store.selectedArea?.localizedName,
+                placeholder: store.selectedCity == nil ? PPAdoptLang("adopt_form_select_city_first") : (store.availableAreas.isEmpty ? PPAdoptLang("adopt_form_no_areas_available") : PPAdoptLang("adopt_form_select_area")),
+                icon: "building.2.crop.circle.fill",
+                iconTint: Color(hex: 0x10B981),
+                isEnabled: store.selectedCity != nil && !store.availableAreas.isEmpty,
+                isRequired: !store.availableAreas.isEmpty
+            ) {
+                showAreaPicker = true
             }
         }
         .padding(18)
@@ -1579,36 +1730,6 @@ private struct iPhoneAddAdoptPetDeck: View {
                     Capsule()
                         .fill(isSelected ? Color(hex: 0xC41E3A) : Color(UIColor.tertiarySystemGroupedBackground))
                 )
-        }
-        .buttonStyle(AdoptPressStyle())
-    }
-
-    private func genderCard(title: String, icon: String, value: String, accent: Color) -> some View {
-        let isSelected = store.selectedGender.lowercased() == value.lowercased()
-        return Button(action: {
-            AdoptHaptics.selection()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                store.selectedGender = value
-            }
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(isSelected ? accent : .secondary)
-
-                Text(title)
-                    .font(AdoptFont.bold(15))
-                    .foregroundColor(isSelected ? accent : .primary)
-            }
-            .frame(maxWidth: .infinity, minHeight: 46)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? accent.opacity(0.12) : Color(UIColor.tertiarySystemGroupedBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(isSelected ? accent : Color.clear, lineWidth: 1.5)
-                    )
-            )
         }
         .buttonStyle(AdoptPressStyle())
     }
@@ -1789,8 +1910,11 @@ private struct iPadAddAdoptPetCockpit: View {
     var onDismiss: () -> Void
     var onSuccess: () -> Void
 
+    @State private var showSpeciesPicker: Bool = false
     @State private var showBreedPicker: Bool = false
+    @State private var showGenderPicker: Bool = false
     @State private var showCityPicker: Bool = false
+    @State private var showAreaPicker: Bool = false
     @State private var showMediaPickerSheet: Bool = false
     @State private var showPhotoLibrary: Bool = false
     @State private var showCamera: Bool = false
@@ -1820,7 +1944,7 @@ private struct iPadAddAdoptPetCockpit: View {
                 // RIGHT COLUMN (58%): Structured Intake Studio Deck
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 22) {
-                        if !store.isCommunityAdoptionActive, let notice = store.communityNotice {
+                        if let notice = store.communityNotice {
                             communityUnavailableNoticeCard(notice)
                         }
 
@@ -1868,16 +1992,36 @@ private struct iPadAddAdoptPetCockpit: View {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
         )
+        .sheet(isPresented: $showSpeciesPicker) {
+            AdoptSpeciesPickerSheet(
+                kinds: store.availableKinds,
+                selectedKind: $store.selectedKind,
+                selectedBreed: $store.selectedBreed
+            )
+        }
         .sheet(isPresented: $showBreedPicker) {
             AdoptBreedPickerSheet(
                 breeds: store.availableBreeds,
                 selectedBreed: $store.selectedBreed
             )
         }
+        .sheet(isPresented: $showGenderPicker) {
+            AdoptGenderPickerSheet(
+                selectedGender: $store.selectedGender
+            )
+        }
         .sheet(isPresented: $showCityPicker) {
             AdoptCityPickerSheet(
                 cities: store.availableCities,
-                selectedCity: $store.selectedCity
+                selectedCity: $store.selectedCity,
+                selectedArea: $store.selectedArea
+            )
+        }
+        .sheet(isPresented: $showAreaPicker) {
+            AdoptAreaPickerSheet(
+                areas: store.availableAreas,
+                cityName: store.selectedCity?.localizedName ?? "",
+                selectedArea: $store.selectedArea
             )
         }
         .sheet(isPresented: $showPhotoLibrary) {
@@ -1909,25 +2053,22 @@ private struct iPadAddAdoptPetCockpit: View {
 
     private func communityUnavailableNoticeCard(_ text: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(Color(hex: 0xF59E0B))
-                .font(.system(size: 18, weight: .bold))
+            Image(systemName: "info.circle.fill")
+                .foregroundColor(Color(hex: 0xD97706))
+                .font(.system(size: 18, weight: .semibold))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(text)
-                    .font(AdoptFont.bold(14))
-                    .foregroundColor(.primary)
-                Text(PPAdoptLang("community_unavailable_message"))
-                    .font(AdoptFont.regular(12))
-                    .foregroundColor(.secondary)
-            }
+            Text(text)
+                .font(AdoptFont.medium(13))
+                .foregroundColor(Color(hex: 0x92400E))
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
 
             Spacer()
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(hex: 0xFEF3C7).opacity(0.9))
+                .fill(Color(hex: 0xFEF3C7).opacity(0.95))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(Color(hex: 0xF59E0B).opacity(0.3), lineWidth: 1)
@@ -2114,100 +2255,59 @@ private struct iPadAddAdoptPetCockpit: View {
                 Text(PPAdoptLang("adopt_form_identity_title"))
                     .font(AdoptFont.bold(17))
             } icon: {
-                Image(systemName: "pawprint.fill")
+                Image(systemName: "tag.fill")
                     .foregroundColor(Color(hex: 0xC41E3A))
             }
 
-            // Species Grid
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(store.availableKinds, id: \.id) { kind in
-                        let isSelected = store.selectedKind?.id == kind.id
-                        Button(action: {
-                            AdoptHaptics.selection()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                store.selectedKind = kind
-                            }
-                        }) {
-                            VStack(spacing: 8) {
-                                ZStack {
-                                    Circle()
-                                        .fill(isSelected ? Color(hex: 0xC41E3A) : Color(UIColor.tertiarySystemGroupedBackground))
-                                        .frame(width: 52, height: 52)
-
-                                    Image(systemName: kindIcon(for: kind))
-                                        .font(.system(size: 24))
-                                        .foregroundColor(isSelected ? .white : .primary)
-                                }
-
-                                Text(kind.kindNameAr ?? "")
-                                    .font(isSelected ? AdoptFont.bold(14) : AdoptFont.medium(13))
-                                    .foregroundColor(isSelected ? Color(hex: 0xC41E3A) : .primary)
-                            }
-                            .frame(width: 95, height: 110)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(isSelected ? Color(hex: 0xC41E3A).opacity(0.08) : Color(UIColor.secondarySystemGroupedBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(isSelected ? Color(hex: 0xC41E3A) : Color.primary.opacity(0.06), lineWidth: isSelected ? 1.5 : 1)
-                                    )
-                            )
-                        }
-                        .buttonStyle(AdoptPressStyle())
-                        .hoverEffect(.highlight)
-                    }
-                }
-            }
-
-            HStack(spacing: 16) {
-                // Name Field
-                VStack(alignment: .leading, spacing: 6) {
+            // Name Field
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
                     Text(PPAdoptLang("adopt_form_pet_name_label"))
                         .font(AdoptFont.medium(13))
                         .foregroundColor(.secondary)
-
-                    TextField(PPAdoptLang("adopt_form_pet_name_placeholder"), text: $store.name)
-                        .font(AdoptFont.bold(15))
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                        )
+                    Text("*")
+                        .font(AdoptFont.bold(13))
+                        .foregroundColor(Color(hex: 0xC41E3A))
                 }
 
-                // Breed Selector
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(PPAdoptLang("adopt_form_breed_label"))
-                        .font(AdoptFont.medium(13))
-                        .foregroundColor(.secondary)
+                TextField(PPAdoptLang("adopt_form_pet_name_placeholder"), text: $store.name)
+                    .font(AdoptFont.bold(15))
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                    )
+            }
 
-                    Button(action: {
-                        if store.selectedKind != nil {
-                            showBreedPicker = true
-                        }
-                    }) {
-                        HStack {
-                            Text(store.selectedBreed?.subKindNameAr ?? (store.selectedKind == nil ? PPAdoptLang("adopt_form_select_species") : PPAdoptLang("adopt_form_select_breed")))
-                                .font(AdoptFont.bold(15))
-                                .foregroundColor(store.selectedBreed == nil ? .secondary : .primary)
-
-                            Spacer()
-
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                        )
-                    }
-                    .buttonStyle(AdoptPressStyle())
-                    .hoverEffect(.highlight)
-                    .disabled(store.selectedKind == nil)
+            // Species and Breed 2-Column Row
+            HStack(spacing: 16) {
+                // Species Picker
+                AdoptFormPickerRow(
+                    title: PPAdoptLang("adopt_form_species_label"),
+                    value: store.selectedKind?.localizedName,
+                    placeholder: PPAdoptLang("adopt_form_select_species"),
+                    icon: PPKindIcon(for: store.selectedKind?.localizedName ?? ""),
+                    iconTint: speciesPickerTint,
+                    isEnabled: true,
+                    isRequired: true
+                ) {
+                    showSpeciesPicker = true
                 }
+                .frame(maxWidth: .infinity)
+
+                // Breed Picker
+                AdoptFormPickerRow(
+                    title: PPAdoptLang("adopt_form_breed_label"),
+                    value: store.selectedBreed?.localizedName,
+                    placeholder: store.selectedKind == nil ? PPAdoptLang("adopt_form_select_species_first") : PPAdoptLang("adopt_form_select_breed"),
+                    icon: "tag.fill",
+                    iconTint: Color(hex: 0xC41E3A),
+                    isEnabled: store.selectedKind != nil,
+                    isRequired: true
+                ) {
+                    showBreedPicker = true
+                }
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(22)
@@ -2218,17 +2318,23 @@ private struct iPadAddAdoptPetCockpit: View {
         )
     }
 
-    private func kindIcon(for kind: MainKindsModel) -> String {
-        let name = (kind.kindNameAr ?? "").lowercased()
-        if name.contains("قطط") || name.contains("cat") { return "cat.fill" }
-        if name.contains("كلاب") || name.contains("dog") { return "dog.fill" }
-        if name.contains("طيور") || name.contains("bird") { return "bird.fill" }
-        if name.contains("أرانب") || name.contains("rabbit") { return "hare.fill" }
-        return "pawprint.fill"
+    private var speciesPickerTint: Color {
+        guard let kind = store.selectedKind else {
+            return Color(hex: 0xC41E3A)
+        }
+        let kName = (kind.kindNameAr ?? "").lowercased()
+        if kName.contains("قطط") || kName.contains("cat") {
+            return Color(hex: 0xF59E0B)
+        } else if kName.contains("كلاب") || kName.contains("dog") {
+            return Color(hex: 0x3B82F6)
+        } else if kName.contains("طيور") || kName.contains("bird") {
+            return Color(hex: 0x10B981)
+        }
+        return Color(hex: 0x8B5CF6)
     }
 
     private var iPadDemographicsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             Label {
                 Text(PPAdoptLang("adopt_form_physical_title"))
                     .font(AdoptFont.bold(17))
@@ -2237,13 +2343,19 @@ private struct iPadAddAdoptPetCockpit: View {
                     .foregroundColor(Color(hex: 0xC41E3A))
             }
 
-            HStack(spacing: 20) {
+            // Row 1: Age & Gender
+            HStack(alignment: .top, spacing: 18) {
                 // Age Column
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(PPAdoptLang("adopt_form_age_label"))
-                            .font(AdoptFont.medium(13))
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            Text(PPAdoptLang("adopt_form_age_label"))
+                                .font(AdoptFont.medium(13))
+                                .foregroundColor(.secondary)
+                            Text("*")
+                                .font(AdoptFont.bold(13))
+                                .foregroundColor(Color(hex: 0xC41E3A))
+                        }
                         Spacer()
                         Text("\(store.ageMonths) " + PPAdoptLang("%ld Months"))
                             .font(AdoptFont.bold(14))
@@ -2288,44 +2400,49 @@ private struct iPadAddAdoptPetCockpit: View {
                 .frame(maxWidth: .infinity)
 
                 // Gender Column
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(PPAdoptLang("adopt_form_gender_label"))
-                        .font(AdoptFont.medium(13))
-                        .foregroundColor(.secondary)
+                AdoptFormPickerRow(
+                    title: PPAdoptLang("adopt_form_gender_label"),
+                    value: store.selectedGender.isEmpty ? nil : (store.selectedGender.lowercased() == "male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female")),
+                    placeholder: PPAdoptLang("adopt_form_select_gender"),
+                    icon: store.selectedGender.lowercased() == "female" ? "heart.circle.fill" : "figure.walk",
+                    iconTint: store.selectedGender.lowercased() == "female" ? Color(hex: 0xEC4899) : Color(hex: 0x3B82F6),
+                    isEnabled: true,
+                    isRequired: true
+                ) {
+                    showGenderPicker = true
+                }
+                .frame(maxWidth: .infinity)
+            }
 
-                    HStack(spacing: 10) {
-                        iPadGenderCard(title: PPAdoptLang("adopt_form_gender_male"), value: "Male", accent: Color(hex: 0x3B82F6))
-                        iPadGenderCard(title: PPAdoptLang("adopt_form_gender_female"), value: "Female", accent: Color(hex: 0xEC4899))
-                    }
+            Divider()
+
+            // Row 2: City & Area
+            HStack(spacing: 18) {
+                // City Column
+                AdoptFormPickerRow(
+                    title: PPAdoptLang("adopt_form_city_label"),
+                    value: store.selectedCity?.localizedName,
+                    placeholder: PPAdoptLang("adopt_form_select_city"),
+                    icon: "mappin.circle.fill",
+                    iconTint: Color(hex: 0xC41E3A),
+                    isEnabled: true,
+                    isRequired: true
+                ) {
+                    showCityPicker = true
                 }
                 .frame(maxWidth: .infinity)
 
-                // City Column
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(PPAdoptLang("adopt_form_city_label"))
-                        .font(AdoptFont.medium(13))
-                        .foregroundColor(.secondary)
-
-                    Button(action: { showCityPicker = true }) {
-                        HStack {
-                            Image(systemName: "mappin.and.ellipse")
-                                .foregroundColor(Color(hex: 0xC41E3A))
-                            Text(store.selectedCity?.name ?? PPAdoptLang("adopt_form_select_city"))
-                                .font(AdoptFont.bold(14))
-                                .foregroundColor(store.selectedCity == nil ? .secondary : .primary)
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                        )
-                    }
-                    .buttonStyle(AdoptPressStyle())
-                    .hoverEffect(.highlight)
+                // Area Column
+                AdoptFormPickerRow(
+                    title: PPAdoptLang("adopt_form_area_label"),
+                    value: store.selectedArea?.localizedName,
+                    placeholder: store.selectedCity == nil ? PPAdoptLang("adopt_form_select_city_first") : (store.availableAreas.isEmpty ? PPAdoptLang("adopt_form_no_areas_available") : PPAdoptLang("adopt_form_select_area")),
+                    icon: "building.2.crop.circle.fill",
+                    iconTint: Color(hex: 0x10B981),
+                    isEnabled: store.selectedCity != nil && !store.availableAreas.isEmpty,
+                    isRequired: !store.availableAreas.isEmpty
+                ) {
+                    showAreaPicker = true
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -2354,29 +2471,6 @@ private struct iPadAddAdoptPetCockpit: View {
                 )
         }
         .buttonStyle(AdoptPressStyle())
-    }
-
-    private func iPadGenderCard(title: String, value: String, accent: Color) -> some View {
-        let isSelected = store.selectedGender.lowercased() == value.lowercased()
-        return Button(action: {
-            AdoptHaptics.selection()
-            store.selectedGender = value
-        }) {
-            Text(title)
-                .font(AdoptFont.bold(14))
-                .foregroundColor(isSelected ? accent : .primary)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isSelected ? accent.opacity(0.12) : Color(UIColor.tertiarySystemGroupedBackground))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(isSelected ? accent : Color.clear, lineWidth: 1.5)
-                        )
-                )
-        }
-        .buttonStyle(AdoptPressStyle())
-        .hoverEffect(.highlight)
     }
 
     private var iPadStorySection: some View {
@@ -2585,19 +2679,23 @@ private struct AdoptLiveListingPreviewCard: View {
                     }
                 }
 
-                // Traits Pills (Breed, Age, Gender, City)
+                // Traits Pills (Species, Breed, Age, Gender, City / Area)
                 HStack(spacing: 6) {
+                    if let kind = store.selectedKind {
+                        previewTraitPill(icon: PPKindIcon(for: kind.localizedName), text: kind.localizedName)
+                    }
                     if let breed = store.selectedBreed {
-                        previewTraitPill(icon: "tag.fill", text: breed.subKindNameAr ?? "")
+                        previewTraitPill(icon: "tag.fill", text: breed.localizedName)
                     }
                     if store.hasAge {
                         previewTraitPill(icon: "calendar", text: "\(store.ageMonths) " + PPAdoptLang("%ld Months"))
                     }
                     if store.hasGender {
-                        previewTraitPill(icon: "heart.fill", text: store.selectedGender == "Male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female"))
+                        previewTraitPill(icon: store.selectedGender.lowercased() == "female" ? "heart.fill" : "figure.walk", text: store.selectedGender.lowercased() == "male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female"))
                     }
                     if let city = store.selectedCity {
-                        previewTraitPill(icon: "mappin.circle.fill", text: city.name ?? "")
+                        let locText = store.selectedArea.map { "\($0.localizedName)، \(city.localizedName)" } ?? city.localizedName
+                        previewTraitPill(icon: "mappin.circle.fill", text: locText)
                     }
                 }
 
@@ -2636,7 +2734,7 @@ private struct AdoptLiveListingPreviewCard: View {
     }
 }
 
-// MARK: - Readiness Radar Card (iPad 7 Checkpoints)
+// MARK: - Readiness Radar Card (iPad Checkpoints)
 
 private struct AdoptReadinessRadarCard: View {
     @ObservedObject var store: AddAdoptPetStore
@@ -2679,6 +2777,9 @@ private struct AdoptReadinessRadarCard: View {
                 radarCheckRow(title: PPAdoptLang("adopt_form_check_age"), isComplete: store.hasAge)
                 radarCheckRow(title: PPAdoptLang("adopt_form_check_gender"), isComplete: store.hasGender)
                 radarCheckRow(title: PPAdoptLang("adopt_form_check_city"), isComplete: store.hasCity)
+                if !store.availableAreas.isEmpty {
+                    radarCheckRow(title: PPAdoptLang("adopt_form_check_area"), isComplete: store.hasArea)
+                }
                 radarCheckRow(title: PPAdoptLang("adopt_form_check_media"), isComplete: store.hasMedia)
             }
         }
@@ -2783,6 +2884,101 @@ private struct AdoptMediaThumbnailCard: View {
     }
 }
 
+// MARK: - Species Picker Bottom Sheet
+
+private struct AdoptSpeciesPickerSheet: View {
+    let kinds: [MainKindsModel]
+    @Binding var selectedKind: MainKindsModel?
+    @Binding var selectedBreed: SubKindModel?
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var searchText: String = ""
+
+    var filteredKinds: [MainKindsModel] {
+        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return kinds
+        }
+        return kinds.filter {
+            $0.localizedName.localizedCaseInsensitiveContains(searchText) ||
+            ($0.kindNameAr ?? "").localizedCaseInsensitiveContains(searchText) ||
+            ($0.kindNameEn ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 12) {
+                // Search Field
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField(PPAdoptLang("adopt_form_search_species"), text: $searchText)
+                        .font(AdoptFont.medium(15))
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+
+                List(filteredKinds, id: \.id) { kind in
+                    let isSelected = selectedKind?.id == kind.id
+                    Button(action: {
+                        if selectedKind?.id != kind.id {
+                            selectedKind = kind
+                            selectedBreed = nil
+                        }
+                        AdoptHaptics.selection()
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(isSelected ? Color(hex: 0xC41E3A).opacity(0.12) : Color(UIColor.tertiarySystemGroupedBackground))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: PPKindIcon(for: kind.localizedName))
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(isSelected ? Color(hex: 0xC41E3A) : .secondary)
+                            }
+
+                            Text(kind.localizedName)
+                                .font(isSelected ? AdoptFont.bold(16) : AdoptFont.medium(15))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            if isSelected {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(Color(hex: 0xC41E3A))
+                            }
+                        }
+                        .padding(.vertical, 6)
+                    }
+                }
+                .listStyle(PlainListStyle())
+            }
+            .navigationTitle(PPAdoptLang("adopt_form_select_species"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPAdoptLang("Cancel")) {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .font(AdoptFont.medium(15))
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Breed Picker Bottom Sheet
 
 private struct AdoptBreedPickerSheet: View {
@@ -2796,6 +2992,7 @@ private struct AdoptBreedPickerSheet: View {
             return breeds
         }
         return breeds.filter {
+            $0.localizedName.localizedCaseInsensitiveContains(searchText) ||
             ($0.subKindNameAr ?? "").localizedCaseInsensitiveContains(searchText) ||
             ($0.subKindNameEn ?? "").localizedCaseInsensitiveContains(searchText)
         }
@@ -2804,46 +3001,152 @@ private struct AdoptBreedPickerSheet: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 12) {
-                // Search Field
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField(PPAdoptLang("adopt_form_search_breed"), text: $searchText)
-                        .font(AdoptFont.medium(15))
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
+                if breeds.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "tag.slash.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.secondary.opacity(0.6))
+                        Text(PPAdoptLang("adopt_form_no_breeds_available"))
+                            .font(AdoptFont.medium(15))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+                } else {
+                    // Search Field
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        TextField(PPAdoptLang("adopt_form_search_breed"), text: $searchText)
+                            .font(AdoptFont.medium(15))
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
 
-                List(filteredBreeds, id: \.id) { breed in
+                    List(filteredBreeds, id: \.id) { breed in
+                        let isSelected = selectedBreed?.id == breed.id
+                        Button(action: {
+                            selectedBreed = breed
+                            AdoptHaptics.selection()
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            HStack {
+                                Text(breed.localizedName)
+                                    .font(isSelected ? AdoptFont.bold(16) : AdoptFont.medium(15))
+                                    .foregroundColor(.primary)
+
+                                Spacer()
+
+                                if isSelected {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(Color(hex: 0xC41E3A))
+                                }
+                            }
+                            .padding(.vertical, 6)
+                        }
+                    }
+                    .listStyle(PlainListStyle())
+                }
+            }
+            .navigationTitle(PPAdoptLang("adopt_form_select_breed"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPAdoptLang("Cancel")) {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .font(AdoptFont.medium(15))
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Gender Picker Bottom Sheet
+
+private struct AdoptGenderPickerSheet: View {
+    @Binding var selectedGender: String
+    @Environment(\.presentationMode) private var presentationMode
+
+    private struct GenderOption {
+        let key: String
+        let titleKey: String
+        let icon: String
+        let color: Color
+    }
+
+    private let options = [
+        GenderOption(key: "Male", titleKey: "adopt_form_gender_male", icon: "figure.walk", color: Color(hex: 0x3B82F6)),
+        GenderOption(key: "Female", titleKey: "adopt_form_gender_female", icon: "heart.circle.fill", color: Color(hex: 0xEC4899))
+    ]
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 16) {
+                ForEach(options, id: \.key) { opt in
+                    let isSelected = selectedGender.lowercased() == opt.key.lowercased()
                     Button(action: {
-                        selectedBreed = breed
+                        selectedGender = opt.key
                         AdoptHaptics.selection()
                         presentationMode.wrappedValue.dismiss()
                     }) {
-                        HStack {
-                            Text(breed.subKindNameAr ?? "")
-                                .font(AdoptFont.bold(15))
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(opt.color.opacity(0.12))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: opt.icon)
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(opt.color)
+                            }
+
+                            Text(PPAdoptLang(opt.titleKey))
+                                .font(isSelected ? AdoptFont.bold(17) : AdoptFont.medium(16))
                                 .foregroundColor(.primary)
 
                             Spacer()
 
-                            if selectedBreed?.id == breed.id {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(Color(hex: 0xC41E3A))
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(opt.color)
+                            } else {
+                                Circle()
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1.5)
+                                    .frame(width: 20, height: 20)
                             }
                         }
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(isSelected ? opt.color.opacity(0.08) : Color(UIColor.secondarySystemGroupedBackground))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(isSelected ? opt.color : Color.primary.opacity(0.06), lineWidth: isSelected ? 1.5 : 1)
+                                )
+                                .shadow(color: .black.opacity(0.03), radius: 6, y: 2)
+                        )
                     }
+                    .buttonStyle(AdoptPressStyle())
                 }
-                .listStyle(PlainListStyle())
+
+                Spacer()
             }
-            .navigationTitle(PPAdoptLang("adopt_form_select_breed"))
+            .padding(20)
+            .navigationTitle(PPAdoptLang("adopt_form_select_gender"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2862,6 +3165,7 @@ private struct AdoptBreedPickerSheet: View {
 private struct AdoptCityPickerSheet: View {
     let cities: [CityModel]
     @Binding var selectedCity: CityModel?
+    @Binding var selectedArea: StateModel?
     @Environment(\.presentationMode) private var presentationMode
     @State private var searchText: String = ""
 
@@ -2870,6 +3174,7 @@ private struct AdoptCityPickerSheet: View {
             return cities
         }
         return cities.filter {
+            $0.localizedName.localizedCaseInsensitiveContains(searchText) ||
             ($0.name ?? "").localizedCaseInsensitiveContains(searchText) ||
             ($0.arName ?? "").localizedCaseInsensitiveContains(searchText) ||
             ($0.enName ?? "").localizedCaseInsensitiveContains(searchText)
@@ -2880,11 +3185,17 @@ private struct AdoptCityPickerSheet: View {
         NavigationView {
             VStack(spacing: 12) {
                 // Search Field
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
                     TextField(PPAdoptLang("adopt_form_search_city"), text: $searchText)
                         .font(AdoptFont.medium(15))
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
                 .padding(12)
                 .background(
@@ -2895,22 +3206,32 @@ private struct AdoptCityPickerSheet: View {
                 .padding(.top, 10)
 
                 List(filteredCities, id: \.cityID) { city in
+                    let isSelected = selectedCity?.cityID == city.cityID
                     Button(action: {
-                        selectedCity = city
+                        if selectedCity?.cityID != city.cityID {
+                            selectedCity = city
+                            selectedArea = nil
+                        }
                         AdoptHaptics.selection()
                         presentationMode.wrappedValue.dismiss()
                     }) {
-                        HStack {
-                            Image(systemName: "mappin.circle.fill")
-                                .foregroundColor(Color(hex: 0xC41E3A))
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(isSelected ? Color(hex: 0xC41E3A).opacity(0.12) : Color(UIColor.tertiarySystemGroupedBackground))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "mappin.circle.fill")
+                                    .foregroundColor(Color(hex: 0xC41E3A))
+                                    .font(.system(size: 16))
+                            }
 
-                            Text(city.name ?? "")
-                                .font(AdoptFont.bold(15))
+                            Text(city.localizedName)
+                                .font(isSelected ? AdoptFont.bold(16) : AdoptFont.medium(15))
                                 .foregroundColor(.primary)
 
                             Spacer()
 
-                            if selectedCity?.cityID == city.cityID {
+                            if isSelected {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundColor(Color(hex: 0xC41E3A))
@@ -2922,6 +3243,111 @@ private struct AdoptCityPickerSheet: View {
                 .listStyle(PlainListStyle())
             }
             .navigationTitle(PPAdoptLang("adopt_form_select_city"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPAdoptLang("Cancel")) {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .font(AdoptFont.medium(15))
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Area / District Picker Bottom Sheet
+
+private struct AdoptAreaPickerSheet: View {
+    let areas: [StateModel]
+    let cityName: String
+    @Binding var selectedArea: StateModel?
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var searchText: String = ""
+
+    var filteredAreas: [StateModel] {
+        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return areas
+        }
+        return areas.filter {
+            $0.localizedName.localizedCaseInsensitiveContains(searchText) ||
+            ($0.arName ?? "").localizedCaseInsensitiveContains(searchText) ||
+            ($0.enName ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 12) {
+                if areas.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "building.2.crop.circle")
+                            .font(.system(size: 40))
+                            .foregroundColor(.secondary.opacity(0.6))
+                        Text(PPAdoptLang("adopt_form_no_areas_available"))
+                            .font(AdoptFont.medium(15))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+                } else {
+                    // Search Field
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        TextField(PPAdoptLang("adopt_form_search_area"), text: $searchText)
+                            .font(AdoptFont.medium(15))
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+
+                    List(filteredAreas, id: \.stateID) { area in
+                        let isSelected = selectedArea?.stateID == area.stateID
+                        Button(action: {
+                            selectedArea = area
+                            AdoptHaptics.selection()
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(isSelected ? Color(hex: 0x10B981).opacity(0.12) : Color(UIColor.tertiarySystemGroupedBackground))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "building.2.crop.circle.fill")
+                                        .foregroundColor(Color(hex: 0x10B981))
+                                        .font(.system(size: 16))
+                                }
+
+                                Text(area.localizedName)
+                                    .font(isSelected ? AdoptFont.bold(16) : AdoptFont.medium(15))
+                                    .foregroundColor(.primary)
+
+                                Spacer()
+
+                                if isSelected {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(Color(hex: 0x10B981))
+                                }
+                            }
+                            .padding(.vertical, 6)
+                        }
+                    }
+                    .listStyle(PlainListStyle())
+                }
+            }
+            .navigationTitle(cityName.isEmpty ? PPAdoptLang("adopt_form_select_area") : "\(PPAdoptLang("adopt_form_select_area")) (\(cityName))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

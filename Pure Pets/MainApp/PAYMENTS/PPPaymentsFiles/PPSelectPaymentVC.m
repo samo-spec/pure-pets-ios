@@ -225,6 +225,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 @property (nonatomic, strong) PPCheckoutCoordinator *checkoutCoordinator;
 @property (nonatomic, copy, nullable) NSArray<CartItem *> *explicitCheckoutItems;
 @property (nonatomic, assign) BOOL isCheckoutInProgress;
+@property (nonatomic, assign) BOOL isAwaitingCheckoutCancellation;
+@property (nonatomic, strong, nullable) PPOrder *pendingCheckoutCancellationOrder;
 @property (nonatomic, strong) id<FIRListenerRegistration> addressesListener;
 @property (nonatomic, strong) PPAddressPickerView *locView;
 @property (nonatomic, strong) UIStackView *navTitleSubtitleStack;
@@ -2237,6 +2239,11 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 /// so the backend safely deduplicates order creation on retry.
 - (void)pp_startCheckoutWithPaymentMethodId:(NSString *)paymentMethodId
 {
+    if (self.isAwaitingCheckoutCancellation) {
+        [self pp_presentCheckoutCancellationPendingPromptForOrder:self.pendingCheckoutCancellationOrder];
+        return;
+    }
+
     self.isCheckoutInProgress = YES;
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
     [self.summaryView setCheckoutLoading:YES];
@@ -2258,6 +2265,40 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
                                           error:error
                                 paymentMethodId:paymentMethodId];
         });
+    }];
+}
+
+- (void)pp_presentCheckoutCancellationPendingPromptForOrder:(PPOrder * _Nullable)order
+{
+    PPOrder *orderToResolve = order ?: self.pendingCheckoutCancellationOrder;
+    if (!orderToResolve || !self.checkoutCoordinator) {
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"checkout_payment_cancellation_pending_title")
+                          subtitle:kLang(@"checkout_payment_cancellation_pending_message")];
+        return;
+    }
+
+    self.pendingCheckoutCancellationOrder = orderToResolve;
+    __weak typeof(self) weakSelf = self;
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"checkout_payment_cancellation_pending_title")
+                             subtitle:kLang(@"checkout_payment_cancellation_pending_message")
+                        confirmButton:kLang(@"checkout_payment_cancellation_retry")
+                         cancelButton:kLang(@"view_order_status")
+                                 icon:nil
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.isCheckoutInProgress = YES;
+        [strongSelf.summaryView setCheckoutLoading:YES];
+        [strongSelf.checkoutCoordinator retryCancellationForOrder:orderToResolve];
+    }
+                              cancelBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf pp_openOrderDetailsForOrder:orderToResolve
+                                  successMessage:kLang(@"checkout_payment_cancellation_pending_message")
+                               presentationState:PPOrderDetailsEntryPresentationStateVerificationPending];
     }];
 }
 
@@ -2322,9 +2363,26 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
                             presentationState:PPOrderDetailsEntryPresentationStateVerificationPending];
         }
 
+    } else if (result == PPCheckoutResultCancellationPending) {
+        // Do not permit a second method while the server still owns an unpaid
+        // QIB order. The customer can retry the abandonment or inspect its
+        // real state, but cannot create a duplicate checkout from this screen.
+        self.isAwaitingCheckoutCancellation = YES;
+        self.pendingCheckoutCancellationOrder = order;
+        PPORDERLog(@"Checkout cancellation is not yet server-confirmed | orderId=%@ | error=%@",
+                   order.orderId ?: @"",
+                   error.localizedDescription ?: @"");
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+        [self pp_presentCheckoutCancellationPendingPromptForOrder:order];
+
     } else if (result == PPCheckoutResultCancelled) {
         PPORDERLog(@"Payment cancelled by user | orderId=%@", order.orderId ?: @"");
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+        self.isAwaitingCheckoutCancellation = NO;
+        self.pendingCheckoutCancellationOrder = nil;
+        // The abandoned order cannot be replayed for cash or another card.
+        // Create a new coordinator only after its server cancellation succeeds.
+        self.checkoutCoordinator = nil;
 
         // Return user to the payment screen with a clear choice:
         // choose another payment method or cancel the order entirely.

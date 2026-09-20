@@ -179,6 +179,9 @@ static NSString *PPMissionMoneyText(double value, NSString *currency)
 static NSString *PPMissionOrderStatusTitle(NSString *statusKey)
 {
     NSString *key = PPMissionNormalizedKey(statusKey);
+    if ([key isEqualToString:@"checkout_card_payment_pending"]) return kLang(@"checkout_card_payment_pending_title");
+    if ([key isEqualToString:@"checkout_card_payment_cancelled"]) return kLang(@"checkout_card_payment_cancelled_title");
+    if ([key isEqualToString:@"checkout_card_payment_failed"]) return kLang(@"checkout_card_payment_failed_title");
     if ([key isEqualToString:@"pending"]) return kLang(@"order_placed_title");
     if ([key isEqualToString:@"preparing_for_shipment"]) return kLang(@"Preparing for Shipment");
     if ([key isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
@@ -196,6 +199,9 @@ static NSString *PPMissionOrderStatusTitle(NSString *statusKey)
 static NSString *PPMissionOrderStatusHint(NSString *statusKey)
 {
     NSString *key = PPMissionNormalizedKey(statusKey);
+    if ([key isEqualToString:@"checkout_card_payment_pending"]) return kLang(@"checkout_card_payment_pending_hint");
+    if ([key isEqualToString:@"checkout_card_payment_cancelled"]) return kLang(@"checkout_card_payment_cancelled_hint");
+    if ([key isEqualToString:@"checkout_card_payment_failed"]) return kLang(@"checkout_card_payment_failed_hint");
     if ([key isEqualToString:@"pending"]) return kLang(@"order_delivery_hint_waiting_acceptance");
     if ([key isEqualToString:@"preparing_for_shipment"]) return kLang(@"order_delivery_hint_preparing");
     if ([key isEqualToString:@"ready_for_delivery"]) return kLang(@"order_delivery_hint_ready");
@@ -212,6 +218,9 @@ static NSString *PPMissionOrderStatusHint(NSString *statusKey)
 
 static NSString *PPMissionStatusSymbol(NSString *statusKey)
 {
+    if ([PPMissionNormalizedKey(statusKey) isEqualToString:@"checkout_card_payment_pending"]) {
+        return @"creditcard.fill";
+    }
     switch (PPOrderStatusVisualPhaseForKey(statusKey)) {
         case PPOrderStatusVisualPhasePlaced: return @"checkmark.seal";
         case PPOrderStatusVisualPhasePaymentConfirmed: return @"creditcard.fill";
@@ -232,6 +241,7 @@ static NSString *PPMissionStatusSymbol(NSString *statusKey)
 static double PPMissionStatusProgress(NSString *statusKey)
 {
     NSString *key = PPMissionNormalizedKey(statusKey);
+    if ([key hasPrefix:@"checkout_card_payment_"]) return 0.08;
     NSArray<NSString *> *steps = @[
         @"pending", @"preparing_for_shipment", @"ready_for_delivery",
         @"delivery_partner_assigned", @"on_the_way", @"delivered", @"completed"

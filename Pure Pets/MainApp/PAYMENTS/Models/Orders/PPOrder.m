@@ -228,6 +228,52 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     return @"pending";
 }
 
+/// A QIB hosted-session binding is concrete evidence that a pending order is a
+/// payment attempt, not an order that has reached provider fulfillment. Keep
+/// this narrower than `paymentMethodId == qib`: older documents normalize an
+/// omitted method to QIB for compatibility.
+static BOOL PPOrderHasActiveQIBCheckoutBinding(PPOrder *order)
+{
+    if (!order || [order isCashOnDelivery] || [order hasCapturedPayment]) return NO;
+    BOOL usesQIB = [order.paymentMethodId isEqualToString:@"qib"] ||
+        [order.paymentProvider.lowercaseString containsString:@"qib"];
+    if (!usesQIB) return NO;
+    return order.qibSessionId.length > 0 || order.paymentAttemptId.length > 0;
+}
+
+static BOOL PPOrderIsUncapturedQIBCheckoutPending(PPOrder *order)
+{
+    if (!PPOrderHasActiveQIBCheckoutBinding(order)) return NO;
+    NSString *raw = PPOrderNormalizedStatusString(order.rawStatus);
+    return [order.paymentStatus isEqualToString:@"pending"] &&
+        (PPOrderStatusContainsToken(raw, @"pending") ||
+         PPOrderStatusContainsToken(raw, @"created") ||
+         PPOrderStatusContainsToken(raw, @"waiting"));
+}
+
+static BOOL PPOrderIsUncapturedQIBCheckoutFailure(PPOrder *order)
+{
+    if (!PPOrderHasActiveQIBCheckoutBinding(order)) return NO;
+    NSString *raw = PPOrderNormalizedStatusString(order.rawStatus);
+    return [order.paymentStatus isEqualToString:@"failed"] ||
+        [order.verificationStatus isEqualToString:@"failed"] ||
+        PPOrderStatusContainsToken(raw, @"failed") ||
+        PPOrderStatusContainsToken(raw, @"declined") ||
+        PPOrderStatusContainsToken(raw, @"rejected") ||
+        PPOrderStatusContainsToken(raw, @"error");
+}
+
+static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
+{
+    if (!order || [order isCashOnDelivery] || [order hasCapturedPayment]) return NO;
+    BOOL usesQIB = [order.paymentMethodId isEqualToString:@"qib"] ||
+        [order.paymentProvider.lowercaseString containsString:@"qib"];
+    if (!usesQIB) return NO;
+    NSString *raw = PPOrderNormalizedStatusString(order.rawStatus);
+    return [order.paymentStatus isEqualToString:@"cancelled"] ||
+        PPOrderStatusContainsToken(raw, @"abandoned");
+}
+
 @implementation PPOrder
 
 + (instancetype)orderFromSnapshot:(FIRDocumentSnapshot *)snapshot
@@ -508,6 +554,19 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     NSString *rawDelivery = PPOrderNormalizedStatusString(self.deliveryStatus);
     NSString *explicitDelivery = PPOrderNormalizedDeliveryStatusString(self.deliveryStatus);
     NSString *raw = PPOrderNormalizedStatusString(self.rawStatus);
+
+    // QIB creates a payment-gated parent record before a provider can see or
+    // accept it. Never present that record as a provider order until payment
+    // is captured and the backend advances the fulfillment state.
+    if (PPOrderIsUncapturedQIBCheckoutCancellation(self)) {
+        return @"checkout_card_payment_cancelled";
+    }
+    if (PPOrderIsUncapturedQIBCheckoutFailure(self)) {
+        return @"checkout_card_payment_failed";
+    }
+    if (PPOrderIsUncapturedQIBCheckoutPending(self)) {
+        return @"checkout_card_payment_pending";
+    }
 
     if ([delivery isEqualToString:@"delivery_cancelled"] ||
         PPOrderStatusContainsToken(raw, @"cancelled") ||

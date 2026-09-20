@@ -144,4 +144,54 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
         XCTAssertTrue(PPProvisionsCareLayout.featuredPrefersFirebaseSource)
         XCTAssertEqual(PPProvisionsCareLayout.featuredArtworkSide, 80)
     }
+
+    func testHomeCategoryIndicatorSymbolResolvesPetSFSymbolWithFallback() {
+        func makeCategory(title: String, raw: NSObject = NSObject()) -> HomeCategoryModel {
+            HomeCategoryModel(
+                id: "test-\(title)",
+                title: title,
+                imageURL: nil,
+                heroImageURL: nil,
+                localImage: nil,
+                accent: .ppPrimary,
+                raw: raw
+            )
+        }
+
+        // Nil category ("All" selection) falls back to pawprint.fill
+        XCTAssertEqual(HomeCategoryModel.indicatorSymbol(for: nil), "pawprint.fill")
+
+        // Dogs (English and Arabic) resolve to dog.fill
+        let dogCategoryEn = makeCategory(title: "Dogs")
+        let dogCategoryAr = makeCategory(title: "الكلاب")
+        XCTAssertEqual(dogCategoryEn.indicatorSymbol, "dog.fill")
+        XCTAssertEqual(dogCategoryAr.indicatorSymbol, "dog.fill")
+        XCTAssertEqual(HomeCategoryModel.indicatorSymbol(for: dogCategoryEn), "dog.fill")
+
+        // Cats (English and Arabic) resolve to cat.fill
+        let catCategoryEn = makeCategory(title: "Cats")
+        let catCategoryAr = makeCategory(title: "القطط")
+        XCTAssertEqual(catCategoryEn.indicatorSymbol, "cat.fill")
+        XCTAssertEqual(catCategoryAr.indicatorSymbol, "cat.fill")
+
+        // Birds (English and Arabic) resolve to bird.fill
+        let birdCategoryEn = makeCategory(title: "Birds")
+        let birdCategoryAr = makeCategory(title: "الطيور")
+        XCTAssertEqual(birdCategoryEn.indicatorSymbol, "bird.fill")
+        XCTAssertEqual(birdCategoryAr.indicatorSymbol, "bird.fill")
+
+        // Fish (English and Arabic) resolve to fish.fill
+        let fishCategoryEn = makeCategory(title: "Fish")
+        let fishCategoryAr = makeCategory(title: "الأسماك")
+        XCTAssertEqual(fishCategoryEn.indicatorSymbol, "fish.fill")
+        XCTAssertEqual(fishCategoryAr.indicatorSymbol, "fish.fill")
+
+        // Rabbits resolve to hare.fill
+        let rabbitCategory = makeCategory(title: "أرانب")
+        XCTAssertEqual(rabbitCategory.indicatorSymbol, "hare.fill")
+
+        // Unknown category gracefully falls back to pawprint.fill
+        let unknownCategory = makeCategory(title: "Miscellaneous")
+        XCTAssertEqual(unknownCategory.indicatorSymbol, "pawprint.fill")
+    }
 }

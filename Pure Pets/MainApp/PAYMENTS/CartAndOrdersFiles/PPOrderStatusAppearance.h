@@ -320,6 +320,10 @@ NS_INLINE BOOL PPOrderStatusVisualPhaseIsFailure(PPOrderStatusVisualPhase phase)
 
 NS_INLINE NSString *PPOrderStatusSymbolNameForKey(NSString * _Nullable statusKey)
 {
+    NSString *key = PPOrderStatusAppearanceNormalizedKey(statusKey);
+    if ([key isEqualToString:@"checkout_card_payment_pending"]) {
+        return @"creditcard.fill";
+    }
     switch (PPOrderStatusVisualPhaseForKey(statusKey)) {
         case PPOrderStatusVisualPhasePlaced: return @"clock.fill";
         case PPOrderStatusVisualPhasePaymentConfirmed: return @"creditcard.fill";

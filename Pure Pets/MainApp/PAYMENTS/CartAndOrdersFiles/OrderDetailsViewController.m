@@ -86,6 +86,9 @@ static NSString *PPOrderCustomerVisibleTimelineStatusKey(NSString *statusKey)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
     if (normalized.length == 0) return @"preparing_for_shipment";
+    if ([normalized hasPrefix:@"checkout_card_payment_"]) {
+        return normalized;
+    }
     if ([normalized isEqualToString:@"delivery_cancelled"] ||
         [normalized containsString:@"cancelled"] ||
         [normalized containsString:@"canceled"]) {
@@ -137,6 +140,9 @@ static NSString *PPOrderCustomerVisibleTimelineStatusKey(NSString *statusKey)
 static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"checkout_card_payment_pending"]) return kLang(@"checkout_card_payment_pending_title");
+    if ([normalized isEqualToString:@"checkout_card_payment_cancelled"]) return kLang(@"checkout_card_payment_cancelled_title");
+    if ([normalized isEqualToString:@"checkout_card_payment_failed"]) return kLang(@"checkout_card_payment_failed_title");
     if ([normalized isEqualToString:@"pending"]) return kLang(@"order_placed_title");
     if ([normalized isEqualToString:@"preparing_for_shipment"]) return kLang(@"Preparing for Shipment");
     if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
@@ -154,6 +160,9 @@ static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
 static NSString *PPOrderCustomerVisibleStatusHint(NSString *statusKey)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"checkout_card_payment_pending"]) return kLang(@"checkout_card_payment_pending_hint");
+    if ([normalized isEqualToString:@"checkout_card_payment_cancelled"]) return kLang(@"checkout_card_payment_cancelled_hint");
+    if ([normalized isEqualToString:@"checkout_card_payment_failed"]) return kLang(@"checkout_card_payment_failed_hint");
     if ([normalized isEqualToString:@"pending"]) return kLang(@"order_delivery_hint_waiting_acceptance");
     if ([normalized isEqualToString:@"preparing_for_shipment"]) return kLang(@"order_delivery_hint_preparing");
     if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"order_delivery_hint_ready");
@@ -2618,9 +2627,14 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
                                                     showsFailure:(BOOL *)showsFailure
 {
     NSString *statusKey = [self customerDisplayStatusKeyForOrder:order];
+    BOOL isCardPaymentCheckoutState = [statusKey hasPrefix:@"checkout_card_payment_"];
     BOOL failure = [self isFailureStatusKey:statusKey];
     NSMutableArray<NSString *> *stepKeys = [NSMutableArray array];
-    if (failure) {
+    if (isCardPaymentCheckoutState) {
+        // The QIB session has not reached provider fulfillment. Render only
+        // its payment state, never a false provider/order journey.
+        [stepKeys addObject:statusKey];
+    } else if (failure) {
         [stepKeys addObject:@"pending"];
         [stepKeys addObject:statusKey.length > 0 ? statusKey : @"delivery_delayed"];
     } else {
@@ -2635,7 +2649,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         ]];
     }
 
-    NSInteger resolvedIndex = failure ? 1 : [self progressTimelineIndexForStatusKey:statusKey];
+    NSInteger resolvedIndex = isCardPaymentCheckoutState ? 0 : (failure ? 1 : [self progressTimelineIndexForStatusKey:statusKey]);
     if (currentIndex) *currentIndex = resolvedIndex;
     if (showsFailure) *showsFailure = failure;
 

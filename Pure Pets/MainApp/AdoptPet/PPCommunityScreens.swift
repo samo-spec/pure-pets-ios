@@ -964,6 +964,87 @@ private final class CommunityLocationProvider: NSObject, ObservableObject, CLLoc
     }
 }
 
+// MARK: - Community Haptics & Media Extension
+
+private enum CommunityHaptics {
+    static func selection() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+    static func light() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+    static func medium() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+    static func success() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+    static func error() {
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+    }
+}
+
+private extension PPCommunityMediaSource {
+    var previewImage: UIImage? {
+        if contentType.contains("image"), let img = UIImage(data: data) {
+            return img
+        }
+        return nil
+    }
+    var isVideo: Bool {
+        contentType.contains("video")
+    }
+}
+
+private struct CommunitySpeciesQuickOption: Identifiable {
+    let id: String
+    let symbol: String
+    let nameAr: String
+    let nameEn: String
+
+    var localizedName: String {
+        Language.isRTL() ? nameAr : nameEn
+    }
+}
+
+private struct CommunityColorOption: Identifiable {
+    let id: String
+    let nameAr: String
+    let nameEn: String
+    let color: Color
+    let isLight: Bool
+
+    var localizedName: String {
+        Language.isRTL() ? nameAr : nameEn
+    }
+}
+
+private struct CommunityCustodyOption: Identifiable {
+    let id: String
+    let symbol: String
+    let tint: Color
+    let titleKey: String
+    let descKey: String
+}
+
+private enum CommunityFormSheetType: Identifiable {
+    case media
+    case city
+    case district
+    case species
+    case breed
+
+    var id: String {
+        switch self {
+        case .media: return "media"
+        case .city: return "city"
+        case .district: return "district"
+        case .species: return "species"
+        case .breed: return "breed"
+        }
+    }
+}
+
 @MainActor
 private final class CommunityCaseFormStore: ObservableObject {
     let kind: CommunityCaseKind
@@ -993,6 +1074,15 @@ private final class CommunityCaseFormStore: ObservableObject {
     @Published var errorMessage: String?
     @Published var success = false
 
+    // Domain models & sync
+    @Published var availableKinds: [MainKindsModel] = []
+    @Published var availableCities: [CityModel] = []
+    @Published var selectedKind: MainKindsModel? = nil
+    @Published var selectedBreed: SubKindModel? = nil
+    @Published var selectedCityModel: CityModel? = nil
+    @Published var selectedAreaModel: StateModel? = nil
+    @Published var selectedColors: Set<String> = []
+
     private let draftOwnerUID: String
     private let draftPersistenceEnabled: Bool
     private var pendingCoordinate: CLLocationCoordinate2D?
@@ -1013,6 +1103,7 @@ private final class CommunityCaseFormStore: ObservableObject {
         self.draftPersistenceEnabled = !currentUID.isEmpty
         self.recordID = UUID().uuidString.lowercased()
         restoreDraft()
+        loadDomainData()
     }
 
     func loadPets() {
@@ -1023,9 +1114,158 @@ private final class CommunityCaseFormStore: ObservableObject {
                 guard let self else { return }
                 self.loadingPets = false
                 self.pets = pets ?? []
-                if self.selectedPetID.isEmpty { self.selectedPetID = self.pets.first?.petID ?? "" }
+                if self.selectedPetID.isEmpty, let firstPet = self.pets.first {
+                    self.selectPetProfile(firstPet)
+                }
                 if let error { self.errorMessage = error.localizedDescription }
             }
+        }
+    }
+
+    func selectPetProfile(_ pet: PPPetProfile) {
+        selectedPetID = pet.petID
+        if let cat = pet.categoryName, !cat.isEmpty { species = cat }
+        if let br = pet.breed, !br.isEmpty { breed = br }
+    }
+
+    // MARK: - Domain Data
+
+    func loadDomainData() {
+        refreshKinds()
+        refreshCities()
+        if availableCities.isEmpty {
+            CitiesManager.shared().loadData()
+        }
+        syncDomainModelsFromCurrentStrings()
+    }
+
+    func refreshKinds() {
+        let kinds = (MainKindsArrayManager.shared().visibleMainKindsSnapshot() as? [MainKindsModel])
+            ?? (MainKindsArrayManager.shared().mainKindsArray as? [MainKindsModel])
+            ?? []
+        self.availableKinds = kinds
+    }
+
+    func refreshCities() {
+        let cities = (CitiesManager.shared().citiesForCurrentCountry() as? [CityModel])
+            ?? (CitiesManager.shared().qatarCountry()?.cities as? [CityModel])
+            ?? []
+        self.availableCities = cities
+    }
+
+    var availableBreeds: [SubKindModel] {
+        guard let kind = selectedKind else { return [] }
+        let fromKind = (kind.subKindsArray as? [SubKindModel]) ?? []
+        if !fromKind.isEmpty { return fromKind }
+        return (MainKindsArrayManager.shared().getSubKindArray(kind.id) as? [SubKindModel]) ?? []
+    }
+
+    var availableAreas: [StateModel] {
+        guard let city = selectedCityModel else { return [] }
+        return (city.states as? [StateModel]) ?? []
+    }
+
+    func selectKind(_ kindModel: MainKindsModel?) {
+        self.selectedKind = kindModel
+        if let km = kindModel {
+            self.species = km.localizedName
+        }
+        self.selectedBreed = nil
+        self.breed = ""
+    }
+
+    func selectBreed(_ breedModel: SubKindModel?) {
+        self.selectedBreed = breedModel
+        if let bm = breedModel {
+            self.breed = bm.localizedName
+        }
+    }
+
+    func selectCityModel(_ cityModel: CityModel?) {
+        self.selectedCityModel = cityModel
+        if let cm = cityModel {
+            self.city = cm.localizedName
+        }
+        self.selectedAreaModel = nil
+        self.district = ""
+    }
+
+    func selectAreaModel(_ areaModel: StateModel?) {
+        self.selectedAreaModel = areaModel
+        if let am = areaModel {
+            self.district = am.localizedName
+        }
+    }
+
+    func toggleColor(_ colorName: String) {
+        if selectedColors.contains(colorName) {
+            selectedColors.remove(colorName)
+        } else {
+            selectedColors.insert(colorName)
+        }
+        colors = selectedColors.sorted().joined(separator: ", ")
+    }
+
+    func removeMedia(at index: Int) {
+        guard index >= 0 && index < media.count else { return }
+        media.remove(at: index)
+    }
+
+    func removeUploadedMedia(at index: Int) {
+        guard index >= 0 && index < uploadedMediaAssetIDs.count else { return }
+        uploadedMediaAssetIDs.remove(at: index)
+    }
+
+    func readinessPercentage(_ liveCoordinate: CLLocationCoordinate2D?) -> Int {
+        var score = 0
+        if mediaAttachmentCount > 0 { score += 30 }
+        let hasSpecies = kind == .missing ? !selectedPetID.isEmpty : !species.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasSpecies { score += 25 }
+        if submissionLocationIsAvailable(liveCoordinate) { score += 15 }
+        if !city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { score += 15 }
+        if !descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { score += 15 }
+        return min(100, score)
+    }
+
+    func missingFieldNotice(_ liveCoordinate: CLLocationCoordinate2D?) -> String? {
+        if mediaAttachmentCount == 0 {
+            return PPAdoptLang("community_readiness_needs_media")
+        }
+        let hasSpecies = kind == .missing ? !selectedPetID.isEmpty : !species.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if !hasSpecies {
+            return PPAdoptLang("community_readiness_needs_species")
+        }
+        if city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return PPAdoptLang("community_readiness_needs_city")
+        }
+        if !submissionLocationIsAvailable(liveCoordinate) {
+            return PPAdoptLang("community_location_required")
+        }
+        if descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return PPAdoptLang("community_readiness_needs_details")
+        }
+        return nil
+    }
+
+    func syncDomainModelsFromCurrentStrings() {
+        if !species.isEmpty && selectedKind == nil {
+            selectedKind = availableKinds.first(where: {
+                $0.localizedName == species || $0.kindName == species || $0.kindNameAr == species || $0.kindNameEn == species
+            })
+        }
+        if !city.isEmpty && selectedCityModel == nil {
+            selectedCityModel = availableCities.first(where: {
+                $0.localizedName == city || $0.name == city
+            })
+        }
+        if let selectedCityModel, !district.isEmpty, selectedAreaModel == nil {
+            selectedAreaModel = (selectedCityModel.states as? [StateModel])?.first(where: {
+                $0.localizedName == district || $0.arName == district || $0.enName == district
+            })
+        }
+        if !colors.isEmpty && selectedColors.isEmpty {
+            let splitColors = colors.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            selectedColors = Set(splitColors)
         }
     }
 
@@ -1147,6 +1387,7 @@ private final class CommunityCaseFormStore: ObservableObject {
         if latitude.isFinite, longitude.isFinite, (-90...90).contains(latitude), (-180...180).contains(longitude) {
             pendingCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         }
+        syncDomainModelsFromCurrentStrings()
     }
 
     func clearDraft() {
@@ -1270,9 +1511,10 @@ private struct CommunityCaseFormScreen: View {
     let onFinished: () -> Void
     @StateObject private var store: CommunityCaseFormStore
     @StateObject private var location = CommunityLocationProvider()
-    @State private var showsMediaPicker = false
+    @State private var activeSheet: CommunityFormSheetType? = nil
     @Environment(\.presentationMode) private var presentationMode
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.layoutDirection) private var layoutDirection
 
     init(kind: CommunityCaseKind, onFinished: @escaping () -> Void) {
         self.kind = kind
@@ -1282,38 +1524,71 @@ private struct CommunityCaseFormScreen: View {
 
     var body: some View {
         NavigationView {
-            ZStack {
+            ZStack(alignment: .bottom) {
                 Color.ppBackground.ignoresSafeArea()
+
+                // Case-reactive ambient backdrop glow
+                VStack {
+                    LinearGradient(
+                        colors: [
+                            (kind == .missing ? CommunityPalette.missing : CommunityPalette.found).opacity(0.12),
+                            Color.ppBackground.opacity(0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 240)
+                    .ignoresSafeArea()
+                    Spacer()
+                }
+
                 ScrollView {
-                    VStack(spacing: 16) {
-                        introCard
-                        if kind == .missing { petSelector }
-                        appearanceCard
-                        identificationCard
-                        storyCard
-                        locationCard
-                        mediaCard
-                        if let error = store.errorMessage { errorCard(error) }
-                        submitButton
+                    VStack(spacing: 18) {
+                        apexHeader
+                        readinessRadarCard
+                        evidenceStudioCard
+                        if kind == .missing {
+                            petSelectorCard
+                        }
+                        petDnaCard
+                        if kind == .found {
+                            custodyDossierCard
+                        }
+                        geospatialRadarCard
+                        timelineStoryCard
+                        identificationVaultCard
+                        if let error = store.errorMessage {
+                            errorBanner(error)
+                        }
+                        // Bottom inset spacing for fixed floating dock
+                        Spacer()
+                            .frame(height: 110)
                     }
-                    .frame(maxWidth: 760)
-                    .padding(18)
+                    .frame(maxWidth: 720)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 14)
+                    .padding(.bottom, 24)
                 }
+
+                // Floating Studio Action Dock
+                floatingActionDock
+
                 if store.submitting {
-                    Color.black.opacity(0.22).ignoresSafeArea()
-                    ProgressView(PPAdoptLang("community_submitting"))
-                        .font(CommunityFont.bold(16))
-                        .padding(24)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                    Color.black.opacity(0.35).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(Color.white)
+                        Text(PPAdoptLang("community_submitting"))
+                            .font(CommunityFont.bold(16))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(28)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.15), radius: 16)
                 }
             }
-            .navigationTitle(PPAdoptLang(kind == .missing ? "community_report_missing" : "community_report_found"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(PPAdoptLang("Cancel")) { presentationMode.wrappedValue.dismiss() }
-                }
-            }
+            .navigationBarHidden(true)
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
@@ -1328,112 +1603,955 @@ private struct CommunityCaseFormScreen: View {
             guard !store.success else { return }
             store.persistDraft(coordinate: store.coordinateForSubmission(location.coordinate))
         }
-        .sheet(isPresented: $showsMediaPicker) {
-            let remaining = max(0, 8 - store.mediaAttachmentCount)
-            CommunityMediaPicker(
-                maximumCount: max(1, remaining),
-                completion: { sources in store.media.append(contentsOf: sources.prefix(remaining)) },
-                failure: { error in store.errorMessage = error.localizedDescription }
-            )
+        .sheet(item: $activeSheet) { sheetType in
+            switch sheetType {
+            case .media:
+                let remaining = max(0, 8 - store.mediaAttachmentCount)
+                CommunityMediaPicker(
+                    maximumCount: max(1, remaining),
+                    completion: { sources in store.media.append(contentsOf: sources.prefix(remaining)) },
+                    failure: { error in store.errorMessage = error.localizedDescription }
+                )
+            case .city:
+                CommunityCityPickerSheet(
+                    cities: store.availableCities,
+                    selectedCity: $store.selectedCityModel,
+                    onSelect: { city in store.selectCityModel(city) }
+                )
+            case .district:
+                CommunityDistrictPickerSheet(
+                    areas: store.availableAreas,
+                    selectedArea: $store.selectedAreaModel,
+                    onSelect: { area in store.selectAreaModel(area) },
+                    manualDistrict: $store.district
+                )
+            case .species:
+                CommunitySpeciesPickerSheet(
+                    kinds: store.availableKinds,
+                    selectedKind: $store.selectedKind,
+                    speciesString: $store.species,
+                    onSelect: { kind in store.selectKind(kind) }
+                )
+            case .breed:
+                CommunityBreedPickerSheet(
+                    breeds: store.availableBreeds,
+                    selectedBreed: $store.selectedBreed,
+                    breedString: $store.breed,
+                    onSelect: { breed in store.selectBreed(breed) }
+                )
+            }
         }
     }
 
-    private var introCard: some View {
-        CommunityFormCard(
-            symbol: kind == .missing ? "exclamationmark.magnifyingglass" : "hand.raised.fill",
-            tint: kind == .missing ? CommunityPalette.missing : CommunityPalette.found,
-            title: PPAdoptLang(kind == .missing ? "community_missing_form_title" : "community_found_form_title"),
-            message: PPAdoptLang("community_form_privacy_message")
-        ) { EmptyView() }
-    }
+    // MARK: - Subviews
 
-    private var petSelector: some View {
-        CommunityFormCard(symbol: "pawprint.fill", tint: CommunityPalette.adoption, title: PPAdoptLang("community_select_pet"), message: PPAdoptLang("community_select_pet_message")) {
-            if store.loadingPets {
-                ProgressView()
-            } else if store.pets.isEmpty {
-                Text(PPAdoptLang("community_no_pet_profiles"))
-                    .font(CommunityFont.regular(14)).foregroundStyle(Color.ppTextSecondary)
-            } else {
-                Picker(PPAdoptLang("community_select_pet"), selection: $store.selectedPetID) {
-                    ForEach(store.pets, id: \.petID) { pet in Text(pet.name).tag(pet.petID) }
+    private var apexHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: kind == .missing ? "exclamationmark.triangle.fill" : "shield.checkered")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(kind == .missing ? CommunityPalette.missing : CommunityPalette.found)
+                    Text(PPAdoptLang(kind == .missing ? "community_missing_form_title" : "community_found_form_title"))
+                        .font(CommunityFont.bold(12))
+                        .foregroundStyle(kind == .missing ? CommunityPalette.missing : CommunityPalette.found)
                 }
-                .pickerStyle(.menu)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(
+                    (kind == .missing ? CommunityPalette.missing : CommunityPalette.found).opacity(0.12),
+                    in: Capsule()
+                )
 
-    private var appearanceCard: some View {
-        CommunityFormCard(symbol: "sparkles", tint: .purple, title: PPAdoptLang("community_appearance_title"), message: PPAdoptLang("community_appearance_message")) {
-            VStack(spacing: 12) {
-                if kind == .found { CommunityField(title: PPAdoptLang("community_species"), text: $store.species) }
-                CommunityField(title: PPAdoptLang("Breed"), text: $store.breed)
-                appearanceFieldPair
-                CommunityField(title: PPAdoptLang("community_colors"), text: $store.colors)
-                CommunityField(title: PPAdoptLang("community_marks"), text: $store.distinctiveMarks)
+                Text(PPAdoptLang(kind == .missing ? "community_report_missing" : "community_report_found"))
+                    .font(CommunityFont.bold(22, relativeTo: .title3))
+                    .foregroundStyle(Color.ppTextPrimary)
             }
-        }
-    }
 
-    private var storyCard: some View {
-        CommunityFormCard(symbol: "text.alignleft", tint: .blue, title: PPAdoptLang("community_details_title"), message: PPAdoptLang("community_details_message")) {
-            VStack(spacing: 12) {
-                DatePicker(PPAdoptLang(kind == .missing ? "community_lost_at" : "community_found_at"), selection: $store.eventDate, in: ...Date())
-                    .font(CommunityFont.medium(14))
-                TextEditor(text: $store.descriptionText)
-                    .font(CommunityFont.regular(15))
-                    .frame(minHeight: 110)
-                    .padding(8)
-                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14))
-                    .accessibilityLabel(PPAdoptLang("community_details_title"))
-                if kind == .missing {
-                    CommunityField(title: PPAdoptLang("community_wearing"), text: $store.wearing)
-                    Toggle(PPAdoptLang("community_reward"), isOn: $store.rewardOffered).font(CommunityFont.medium(14))
-                } else {
-                    custodyPicker
-                }
-            }
-        }
-    }
+            Spacer()
 
-    private var identificationCard: some View {
-        CommunityFormCard(
-            symbol: "number.square.fill",
-            tint: CommunityPalette.safe,
-            title: PPAdoptLang("community_identification_title"),
-            message: PPAdoptLang("community_identification_privacy")
-        ) {
-            VStack(spacing: 12) {
-                if kind == .missing {
-                    Toggle(PPAdoptLang("community_microchipped"), isOn: $store.microchipped)
+            Button {
+                CommunityHaptics.light()
+                presentationMode.wrappedValue.dismiss()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                    Text(PPAdoptLang("Cancel"))
                         .font(CommunityFont.medium(14))
                 }
-                if kind == .found || store.microchipped {
-                    CommunityField(title: PPAdoptLang("community_microchip_optional"), text: $store.microchipID)
+                .foregroundStyle(Color.ppTextSecondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Color.ppSurface, in: Capsule())
+                .overlay(Capsule().stroke(Color.ppBorder.opacity(0.7), lineWidth: 0.8))
+                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
+            }
+            .buttonStyle(CommunityPressStyle())
+        }
+        .padding(.bottom, 2)
+    }
+
+    private var readinessRadarCard: some View {
+        let readiness = store.readinessPercentage(location.coordinate)
+        let tintColor = kind == .missing ? CommunityPalette.missing : CommunityPalette.found
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .stroke(tintColor.opacity(0.16), lineWidth: 4.5)
+                        .frame(width: 46, height: 46)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(readiness) / 100.0)
+                        .stroke(
+                            AngularGradient(
+                                colors: [tintColor, CommunityPalette.safe],
+                                center: .center
+                            ),
+                            style: StrokeStyle(lineWidth: 4.5, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 46, height: 46)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: readiness)
+
+                    Text("\(readiness)%")
+                        .font(CommunityFont.bold(12))
+                        .foregroundStyle(Color.ppTextPrimary)
                 }
-                CommunityField(title: PPAdoptLang("community_ring_tag_optional"), text: $store.ringTag)
-                Label(PPAdoptLang("community_identification_not_public"), systemImage: "lock.shield.fill")
-                    .font(CommunityFont.regular(12))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(PPAdoptLang("community_match_radar_badge"))
+                            .font(CommunityFont.bold(14))
+                            .foregroundStyle(Color.ppTextPrimary)
+
+                        if readiness >= 100 {
+                            HStack(spacing: 3) {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .font(.system(size: 10))
+                                Text(PPAdoptLang("community_readiness_complete"))
+                                    .font(CommunityFont.medium(11))
+                            }
+                            .foregroundStyle(CommunityPalette.safe)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(CommunityPalette.safe.opacity(0.12), in: Capsule())
+                        }
+                    }
+
+                    if let notice = store.missingFieldNotice(location.coordinate) {
+                        Text(notice)
+                            .font(CommunityFont.regular(12))
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(PPAdoptLang("community_readiness_complete"))
+                            .font(CommunityFont.medium(12))
+                            .foregroundStyle(CommunityPalette.safe)
+                    }
+                }
+
+                Spacer()
+            }
+        }
+        .padding(14)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(tintColor.opacity(readiness >= 100 ? 0.35 : 0.18), lineWidth: 1)
+        )
+    }
+
+    private var evidenceStudioCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.stack.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.indigo)
+                        .frame(width: 34, height: 34)
+                        .background(Color.indigo.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(PPAdoptLang("community_media_title"))
+                            .font(CommunityFont.bold(16, relativeTo: .headline))
+                            .foregroundStyle(Color.ppTextPrimary)
+                        Text(PPAdoptLang("community_media_privacy"))
+                            .font(CommunityFont.regular(11))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+                }
+
+                Spacer()
+
+                Text(String(format: PPAdoptLang("community_media_count"), store.mediaAttachmentCount, 8))
+                    .font(CommunityFont.bold(12))
+                    .foregroundStyle(store.mediaAttachmentCount > 0 ? CommunityPalette.safe : Color.ppTextSecondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(
+                        (store.mediaAttachmentCount > 0 ? CommunityPalette.safe : Color.ppTextSecondary).opacity(0.12),
+                        in: Capsule()
+                    )
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    // Add Media Hero Button
+                    Button {
+                        CommunityHaptics.light()
+                        activeSheet = .media
+                    } label: {
+                        VStack(spacing: 8) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.indigo.opacity(0.12))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(Color.indigo)
+                            }
+                            Text(PPAdoptLang("community_add_media"))
+                                .font(CommunityFont.bold(12))
+                                .foregroundStyle(Color.indigo)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                        }
+                        .frame(width: 104, height: 116)
+                        .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(Color.indigo.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                        )
+                    }
+                    .buttonStyle(CommunityPressStyle())
+                    .disabled(store.mediaAttachmentCount >= 8)
+                    .opacity(store.mediaAttachmentCount >= 8 ? 0.45 : 1)
+
+                    // Local Media Thumbnails
+                    ForEach(Array(store.media.enumerated()), id: \.offset) { index, source in
+                        ZStack(alignment: .topTrailing) {
+                            ZStack(alignment: .bottomLeading) {
+                                if let img = source.previewImage {
+                                    Image(uiImage: img)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 104, height: 116)
+                                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                } else {
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .fill(Color.black.opacity(0.85))
+                                        .frame(width: 104, height: 116)
+                                        .overlay(
+                                            Image(systemName: "play.circle.fill")
+                                                .font(.system(size: 32))
+                                                .foregroundStyle(.white)
+                                        )
+                                }
+
+                                if index == 0 {
+                                    Text(PPAdoptLang("community_media_cover_badge"))
+                                        .font(CommunityFont.bold(9))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.black.opacity(0.65), in: Capsule())
+                                        .padding(6)
+                                }
+
+                                if source.isVideo {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "video.fill")
+                                            .font(.system(size: 8))
+                                        Text(PPAdoptLang("community_media_video_badge"))
+                                            .font(CommunityFont.bold(9))
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Color.black.opacity(0.65), in: Capsule())
+                                    .padding(6)
+                                }
+                            }
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(Color.ppBorder.opacity(0.8), lineWidth: 0.8)
+                            )
+
+                            // Remove Button
+                            Button {
+                                CommunityHaptics.medium()
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                    store.removeMedia(at: index)
+                                }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 20))
+                                    .symbolRenderingMode(.palette)
+                                    .foregroundStyle(.white, Color.red)
+                                    .shadow(color: Color.black.opacity(0.25), radius: 2)
+                            }
+                            .offset(x: 5, y: -5)
+                        }
+                    }
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 2)
+            }
+
+            HStack(alignment: .center, spacing: 6) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(CommunityPalette.safe)
+                Text(PPAdoptLang("community_media_safe_inspection"))
+                    .font(CommunityFont.regular(11))
                     .foregroundStyle(Color.ppTextSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(18)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8))
+    }
+
+    private var petSelectorHeader: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(CommunityPalette.adoption)
+                .frame(width: 34, height: 34)
+                .background(CommunityPalette.adoption.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(PPAdoptLang("community_select_pet"))
+                    .font(CommunityFont.bold(16, relativeTo: .headline))
+                    .foregroundStyle(Color.ppTextPrimary)
+                Text(PPAdoptLang("community_select_pet_message"))
+                    .font(CommunityFont.regular(11))
+                    .foregroundStyle(Color.ppTextSecondary)
             }
         }
     }
 
-    private var locationCard: some View {
-        CommunityFormCard(symbol: "location.fill", tint: CommunityPalette.missing, title: PPAdoptLang("community_location_title"), message: PPAdoptLang("community_location_privacy")) {
-            VStack(spacing: 12) {
-                locationFieldPair
-                Button { location.request() } label: {
-                    Label(locationTitle, systemImage: location.coordinate == nil ? "location" : "checkmark.circle.fill")
-                        .font(CommunityFont.bold(15)).foregroundStyle(location.coordinate == nil ? CommunityPalette.missing : CommunityPalette.safe)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 15))
+    @ViewBuilder
+    private func petProfileChip(for pet: PPPetProfile, isSelected: Bool) -> some View {
+        let bgFill: Color = isSelected ? CommunityPalette.adoption.opacity(0.1) : Color.ppSecondarySurface
+        let borderColor: Color = isSelected ? CommunityPalette.adoption : Color.clear
+
+        Button {
+            CommunityHaptics.selection()
+            store.selectPetProfile(pet)
+        } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(CommunityPalette.adoption.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(CommunityPalette.adoption)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pet.name)
+                        .font(CommunityFont.bold(14))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    if let breed = pet.breed, !breed.isEmpty {
+                        Text(breed)
+                            .font(CommunityFont.regular(11))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+                }
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(CommunityPalette.adoption)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                bgFill,
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(CommunityPressStyle())
+    }
+
+    private var petSelectorCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            petSelectorHeader
+
+            if store.loadingPets {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 10)
+            } else if store.pets.isEmpty {
+                Text(PPAdoptLang("community_no_pet_profiles"))
+                    .font(CommunityFont.regular(14))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .padding(.vertical, 8)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(store.pets, id: \.petID) { pet in
+                            let isSelected = store.selectedPetID == pet.petID
+                            petProfileChip(for: pet, isSelected: isSelected)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .padding(18)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8))
+    }
+
+    private var petDnaCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.purple)
+                    .frame(width: 34, height: 34)
+                    .background(Color.purple.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(PPAdoptLang("community_appearance_title"))
+                        .font(CommunityFont.bold(16, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Text(PPAdoptLang("community_appearance_message"))
+                        .font(CommunityFont.regular(11))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+            }
+
+            if kind == .found {
+                // Species Quick Selector
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(PPAdoptLang("community_species"))
+                            .font(CommunityFont.bold(13))
+                            .foregroundStyle(Color.ppTextPrimary)
+                        Spacer()
+                        Button {
+                            CommunityHaptics.light()
+                            activeSheet = .species
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(PPAdoptLang("community_species_other"))
+                                    .font(CommunityFont.medium(12))
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundStyle(CommunityPalette.found)
+                        }
+                    }
+
+                    let quickSpecies: [CommunitySpeciesQuickOption] = [
+                        CommunitySpeciesQuickOption(id: "cat", symbol: "cat.fill", nameAr: "قطط", nameEn: "Cats"),
+                        CommunitySpeciesQuickOption(id: "dog", symbol: "dog.fill", nameAr: "كلاب", nameEn: "Dogs"),
+                        CommunitySpeciesQuickOption(id: "bird", symbol: "bird.fill", nameAr: "طيور", nameEn: "Birds"),
+                        CommunitySpeciesQuickOption(id: "rabbit", symbol: "hare.fill", nameAr: "أرانب", nameEn: "Rabbits"),
+                        CommunitySpeciesQuickOption(id: "other", symbol: "sparkles", nameAr: "أخرى", nameEn: "Other")
+                    ]
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(quickSpecies) { opt in
+                                let isSelected = isSpeciesQuickOptionSelected(opt, all: quickSpecies)
+                                Button {
+                                    CommunityHaptics.selection()
+                                    if opt.id == "other" {
+                                        activeSheet = .species
+                                    } else {
+                                        store.species = Language.isRTL() ? opt.nameAr : opt.nameEn
+                                        store.selectedKind = store.availableKinds.first(where: {
+                                            $0.localizedName.contains(opt.nameAr) || $0.localizedName.contains(opt.nameEn)
+                                        })
+                                        store.selectedBreed = nil
+                                        store.breed = ""
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: opt.symbol)
+                                            .font(.system(size: 13, weight: .semibold))
+                                        Text(opt.localizedName)
+                                            .font(CommunityFont.bold(13))
+                                    }
+                                    .foregroundStyle(isSelected ? .white : Color.ppTextPrimary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 9)
+                                    .background(
+                                        isSelected ? CommunityPalette.found : Color.ppSecondarySurface,
+                                        in: Capsule()
+                                    )
+                                    .overlay(
+                                        Capsule().stroke(isSelected ? Color.clear : Color.ppBorder.opacity(0.6), lineWidth: 0.8)
+                                    )
+                                }
+                                .buttonStyle(CommunityPressStyle())
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+
+                // Breed Selector Card
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(PPAdoptLang("Breed"))
+                        .font(CommunityFont.bold(13))
+                        .foregroundStyle(Color.ppTextPrimary)
+
+                    Button {
+                        CommunityHaptics.light()
+                        activeSheet = .breed
+                    } label: {
+                        HStack {
+                            Text(store.breed.isEmpty ? PPAdoptLang("Breed") : store.breed)
+                                .font(CommunityFont.medium(14))
+                                .foregroundStyle(store.breed.isEmpty ? Color.ppTextSecondary : Color.ppTextPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color.ppTextSecondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .frame(height: 44)
+                        .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    }
+                    .buttonStyle(CommunityPressStyle())
+                }
+            }
+
+            // Gender Twin Cards
+            VStack(alignment: .leading, spacing: 6) {
+                Text(PPAdoptLang("Gender"))
+                    .font(CommunityFont.bold(13))
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                HStack(spacing: 8) {
+                    let genders = [
+                        (id: "male", nameKey: "community_gender_male", symbol: "figure.stand", tint: Color.blue),
+                        (id: "female", nameKey: "community_gender_female", symbol: "figure.stand.dress", tint: Color.pink),
+                        (id: "unknown", nameKey: "community_gender_unknown", symbol: "questionmark", tint: Color.gray)
+                    ]
+
+                    ForEach(genders, id: \.id) { g in
+                        let isSelected = store.sex.lowercased() == g.id || store.sex == PPAdoptLang(g.nameKey)
+                        Button {
+                            CommunityHaptics.selection()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                store.sex = PPAdoptLang(g.nameKey)
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: g.symbol)
+                                    .font(.system(size: 13, weight: .bold))
+                                Text(PPAdoptLang(g.nameKey))
+                                    .font(CommunityFont.bold(13))
+                            }
+                            .foregroundStyle(isSelected ? .white : Color.ppTextPrimary)
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .background(
+                                isSelected ? g.tint : Color.ppSecondarySurface,
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(isSelected ? Color.clear : Color.ppBorder.opacity(0.5), lineWidth: 0.8)
+                            )
+                        }
+                        .buttonStyle(CommunityPressStyle())
+                    }
+                }
+            }
+
+            // Size 3-Tier Pill
+            VStack(alignment: .leading, spacing: 6) {
+                Text(PPAdoptLang("community_size"))
+                    .font(CommunityFont.bold(13))
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                HStack(spacing: 8) {
+                    let sizes = [
+                        (id: "small", nameKey: "community_size_small"),
+                        (id: "medium", nameKey: "community_size_medium"),
+                        (id: "large", nameKey: "community_size_large")
+                    ]
+
+                    ForEach(sizes, id: \.id) { s in
+                        let isSelected = store.size.lowercased() == s.id || store.size == PPAdoptLang(s.nameKey)
+                        Button {
+                            CommunityHaptics.selection()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                store.size = PPAdoptLang(s.nameKey)
+                            }
+                        } label: {
+                            Text(PPAdoptLang(s.nameKey))
+                                .font(CommunityFont.bold(13))
+                                .foregroundStyle(isSelected ? .white : Color.ppTextPrimary)
+                                .frame(maxWidth: .infinity, minHeight: 38)
+                                .background(
+                                    isSelected ? CommunityPalette.found : Color.ppSecondarySurface,
+                                    in: Capsule()
+                                )
+                                .overlay(
+                                    Capsule().stroke(isSelected ? Color.clear : Color.ppBorder.opacity(0.5), lineWidth: 0.8)
+                                )
+                        }
+                        .buttonStyle(CommunityPressStyle())
+                    }
+                }
+            }
+
+            // Visual Color Swatches
+            VStack(alignment: .leading, spacing: 8) {
+                Text(PPAdoptLang("community_colors"))
+                    .font(CommunityFont.bold(13))
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                let colorOptions: [CommunityColorOption] = [
+                    CommunityColorOption(id: "white", nameAr: "أبيض", nameEn: "White", color: Color.white, isLight: true),
+                    CommunityColorOption(id: "black", nameAr: "أسود", nameEn: "Black", color: Color(white: 0.15), isLight: false),
+                    CommunityColorOption(id: "brown", nameAr: "بني", nameEn: "Brown", color: Color(red: 0.52, green: 0.32, blue: 0.18), isLight: false),
+                    CommunityColorOption(id: "beige", nameAr: "بيج / ذهبي", nameEn: "Beige / Gold", color: Color(red: 0.91, green: 0.78, blue: 0.62), isLight: true),
+                    CommunityColorOption(id: "gray", nameAr: "رمادي", nameEn: "Gray", color: Color.gray, isLight: false),
+                    CommunityColorOption(id: "orange", nameAr: "مشمشي / برتقالي", nameEn: "Ginger / Orange", color: Color.orange, isLight: false),
+                    CommunityColorOption(id: "pattern", nameAr: "مرقش / تايجر", nameEn: "Patterned / Tabby", color: Color.purple, isLight: false)
+                ]
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(colorOptions) { opt in
+                            let name = opt.localizedName
+                            let isSelected = store.selectedColors.contains(name) || store.selectedColors.contains(opt.nameAr) || store.selectedColors.contains(opt.nameEn)
+                            Button {
+                                CommunityHaptics.selection()
+                                store.toggleColor(name)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(opt.color)
+                                        .frame(width: 14, height: 14)
+                                        .overlay(Circle().stroke(Color.gray.opacity(0.4), lineWidth: 0.8))
+                                    Text(name)
+                                        .font(CommunityFont.medium(12))
+                                        .foregroundStyle(isSelected ? .white : Color.ppTextPrimary)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    isSelected ? CommunityPalette.found : Color.ppSecondarySurface,
+                                    in: Capsule()
+                                )
+                                .overlay(
+                                    Capsule().stroke(isSelected ? Color.clear : Color.ppBorder.opacity(0.6), lineWidth: 0.8)
+                                )
+                            }
+                            .buttonStyle(CommunityPressStyle())
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+
+                // Custom Color Tag Field
+                TextField(PPAdoptLang("community_colors"), text: $store.colors)
+                    .font(CommunityFont.regular(13))
+                    .padding(.horizontal, 12)
+                    .frame(height: 38)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            }
+
+            // Distinctive Marks
+            VStack(alignment: .leading, spacing: 6) {
+                Text(PPAdoptLang("community_marks"))
+                    .font(CommunityFont.bold(13))
+                    .foregroundStyle(Color.ppTextPrimary)
+                TextField(PPAdoptLang("community_marks"), text: $store.distinctiveMarks)
+                    .font(CommunityFont.regular(14))
+                    .padding(.horizontal, 12)
+                    .frame(height: 44)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }
+        }
+        .padding(18)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8))
+    }
+
+    private func isSpeciesQuickOptionSelected(_ opt: CommunitySpeciesQuickOption, all: [CommunitySpeciesQuickOption]) -> Bool {
+        if store.species == opt.nameAr || store.species == opt.nameEn {
+            return true
+        }
+        if opt.id == "other" && !store.species.isEmpty {
+            let isKnownStandard = all.prefix(4).contains(where: {
+                store.species == $0.nameAr || store.species == $0.nameEn
+            })
+            return !isKnownStandard
+        }
+        return false
+    }
+
+    private var custodyDossierCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "house.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(CommunityPalette.found)
+                    .frame(width: 34, height: 34)
+                    .background(CommunityPalette.found.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(PPAdoptLang("community_custody"))
+                        .font(CommunityFont.bold(16, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Text(PPAdoptLang("community_details_message"))
+                        .font(CommunityFont.regular(11))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+            }
+
+            VStack(spacing: 10) {
+                let custodyOptions: [CommunityCustodyOption] = [
+                    CommunityCustodyOption(
+                        id: "with_reporter",
+                        symbol: "house.fill",
+                        tint: CommunityPalette.safe,
+                        titleKey: "community_custody_with_me",
+                        descKey: "community_custody_with_me_desc"
+                    ),
+                    CommunityCustodyOption(
+                        id: "safe_location",
+                        symbol: "cross.case.fill",
+                        tint: Color.blue,
+                        titleKey: "community_custody_safe_place",
+                        descKey: "community_custody_safe_place_desc"
+                    ),
+                    CommunityCustodyOption(
+                        id: "unknown",
+                        symbol: "eye.fill",
+                        tint: Color.orange,
+                        titleKey: "community_custody_unknown",
+                        descKey: "community_custody_unknown_desc"
+                    )
+                ]
+
+                ForEach(custodyOptions) { option in
+                    let isSelected = store.custodyStatus == option.id
+                    Button {
+                        CommunityHaptics.selection()
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                            store.custodyStatus = option.id
+                        }
+                    } label: {
+                        HStack(alignment: .center, spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(option.tint.opacity(isSelected ? 0.2 : 0.1))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: option.symbol)
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(option.tint)
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(PPAdoptLang(option.titleKey))
+                                    .font(CommunityFont.bold(14))
+                                    .foregroundStyle(isSelected ? Color.ppTextPrimary : Color.ppTextSecondary)
+                                Text(PPAdoptLang(option.descKey))
+                                    .font(CommunityFont.regular(11))
+                                    .foregroundStyle(Color.ppTextSecondary.opacity(0.85))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer()
+
+                            ZStack {
+                                Circle()
+                                    .stroke(isSelected ? option.tint : Color.ppBorder, lineWidth: 1.5)
+                                    .frame(width: 22, height: 22)
+                                if isSelected {
+                                    Circle()
+                                        .fill(option.tint)
+                                        .frame(width: 14, height: 14)
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                        }
+                        .padding(14)
+                        .background(
+                            isSelected ? option.tint.opacity(0.06) : Color.ppSecondarySurface,
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(isSelected ? option.tint.opacity(0.6) : Color.clear, lineWidth: 1.2)
+                        )
+                    }
+                    .buttonStyle(CommunityPressStyle())
+                }
+            }
+        }
+        .padding(18)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8))
+    }
+
+    private var geospatialRadarCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(CommunityPalette.missing)
+                    .frame(width: 34, height: 34)
+                    .background(CommunityPalette.missing.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(PPAdoptLang("community_location_title"))
+                        .font(CommunityFont.bold(16, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Text(PPAdoptLang("community_location_privacy"))
+                        .font(CommunityFont.regular(11))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+            }
+
+            // Interactive City & District Chips
+            HStack(spacing: 10) {
+                // City Button
+                Button {
+                    CommunityHaptics.light()
+                    activeSheet = .city
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(PPAdoptLang("City"))
+                            .font(CommunityFont.medium(11))
+                            .foregroundStyle(Color.ppTextSecondary)
+                        HStack {
+                            Text(store.city.isEmpty ? PPAdoptLang("community_location_select_city") : store.city)
+                                .font(CommunityFont.bold(14))
+                                .foregroundStyle(store.city.isEmpty ? Color.ppTextSecondary : Color.ppTextPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.ppTextSecondary)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(store.city.isEmpty ? Color.clear : CommunityPalette.found.opacity(0.4), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(CommunityPressStyle())
+
+                // District Button
+                Button {
+                    CommunityHaptics.light()
+                    activeSheet = .district
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(PPAdoptLang("community_district"))
+                            .font(CommunityFont.medium(11))
+                            .foregroundStyle(Color.ppTextSecondary)
+                        HStack {
+                            Text(store.district.isEmpty ? PPAdoptLang("community_location_select_district") : store.district)
+                                .font(CommunityFont.bold(14))
+                                .foregroundStyle(store.district.isEmpty ? Color.ppTextSecondary : Color.ppTextPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.ppTextSecondary)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(store.district.isEmpty ? Color.clear : CommunityPalette.found.opacity(0.4), lineWidth: 1)
+                    )
                 }
                 .buttonStyle(CommunityPressStyle())
             }
+
+            // Manual District Text Field Fallback
+            VStack(alignment: .leading, spacing: 4) {
+                Text(PPAdoptLang("community_location_manual_hint"))
+                    .font(CommunityFont.regular(11))
+                    .foregroundStyle(Color.ppTextSecondary)
+                TextField(PPAdoptLang("community_district"), text: $store.district)
+                    .font(CommunityFont.regular(14))
+                    .padding(.horizontal, 12)
+                    .frame(height: 42)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            // Live GPS Beacon
+            Button {
+                CommunityHaptics.medium()
+                location.request()
+            } label: {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill((location.coordinate != nil ? CommunityPalette.safe : CommunityPalette.missing).opacity(0.15))
+                            .frame(width: 32, height: 32)
+                        Circle()
+                            .fill(location.coordinate != nil ? CommunityPalette.safe : CommunityPalette.missing)
+                            .frame(width: 10, height: 10)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(locationTitle)
+                            .font(CommunityFont.bold(14))
+                            .foregroundStyle(location.coordinate != nil ? CommunityPalette.safe : CommunityPalette.missing)
+                        if location.coordinate != nil {
+                            Text(PPAdoptLang("community_location_pulse_ready"))
+                                .font(CommunityFont.regular(11))
+                                .foregroundStyle(Color.ppTextSecondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: location.coordinate != nil ? "checkmark.circle.fill" : "location.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(location.coordinate != nil ? CommunityPalette.safe : CommunityPalette.missing)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    (location.coordinate != nil ? CommunityPalette.safe : CommunityPalette.missing).opacity(0.06),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke((location.coordinate != nil ? CommunityPalette.safe : CommunityPalette.missing).opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(CommunityPressStyle())
+
+            // Coarse Notice
+            Label(PPAdoptLang("community_location_coarse_notice"), systemImage: "shield.lefthalf.filled")
+                .font(CommunityFont.regular(11))
+                .foregroundStyle(Color.ppTextSecondary)
         }
+        .padding(18)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8))
     }
 
     private var locationTitle: String {
@@ -1446,100 +2564,527 @@ private struct CommunityCaseFormScreen: View {
         }
     }
 
-    private var mediaCard: some View {
-        CommunityFormCard(symbol: "photo.stack.fill", tint: .indigo, title: PPAdoptLang("community_media_title"), message: PPAdoptLang("community_media_privacy")) {
-            VStack(spacing: 10) {
-                mediaHeader
-                if store.mediaAttachmentCount > 0 {
-                    HStack { Image(systemName: "checkmark.shield.fill").foregroundStyle(CommunityPalette.safe); Text(PPAdoptLang("community_media_selected")).font(CommunityFont.regular(13)); Spacer() }
+    private var timelineStoryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.blue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(PPAdoptLang("community_details_title"))
+                        .font(CommunityFont.bold(16, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Text(PPAdoptLang("community_details_message"))
+                        .font(CommunityFont.regular(11))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+            }
+
+            // Date & Time Picker
+            DatePicker(
+                PPAdoptLang(kind == .missing ? "community_lost_at" : "community_found_at"),
+                selection: $store.eventDate,
+                in: ...Date()
+            )
+            .font(CommunityFont.medium(14))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            // Guided Story Text Area
+            VStack(alignment: .leading, spacing: 6) {
+                ZStack(alignment: .topLeading) {
+                    if store.descriptionText.isEmpty {
+                        Text(PPAdoptLang(kind == .missing ? "community_story_placeholder_missing" : "community_story_placeholder_found"))
+                            .font(CommunityFont.regular(14))
+                            .foregroundStyle(Color.ppTextSecondary.opacity(0.75))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .allowsHitTesting(false)
+                    }
+                    TextEditor(text: $store.descriptionText)
+                        .font(CommunityFont.regular(14))
+                        .frame(minHeight: 110)
+                        .padding(8)
+                        .background(Color.clear)
+                }
+                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(store.descriptionText.isEmpty ? Color.clear : CommunityPalette.found.opacity(0.3), lineWidth: 1)
+                )
+
+                HStack {
+                    Spacer()
+                    Text("\(store.descriptionText.count) حرف")
+                        .font(CommunityFont.regular(11))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+            }
+
+            if kind == .missing {
+                CommunityField(title: PPAdoptLang("community_wearing"), text: $store.wearing)
+
+                Toggle(isOn: $store.rewardOffered) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(Color.orange)
+                        Text(PPAdoptLang("community_reward"))
+                            .font(CommunityFont.medium(14))
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+        }
+        .padding(18)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8))
+    }
+
+    private var identificationVaultCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(CommunityPalette.safe)
+                    .frame(width: 34, height: 34)
+                    .background(CommunityPalette.safe.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(PPAdoptLang("community_ident_vault_title"))
+                        .font(CommunityFont.bold(16, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Text(PPAdoptLang("community_identification_privacy"))
+                        .font(CommunityFont.regular(11))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+            }
+
+            if kind == .missing {
+                Toggle(PPAdoptLang("community_microchipped"), isOn: $store.microchipped)
+                    .font(CommunityFont.medium(14))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            if kind == .found || store.microchipped {
+                CommunityField(title: PPAdoptLang("community_microchip_optional"), text: $store.microchipID)
+            }
+
+            CommunityField(title: PPAdoptLang("community_ring_tag_optional"), text: $store.ringTag)
+
+            Label(PPAdoptLang("community_ident_vault_note"), systemImage: "key.fill")
+                .font(CommunityFont.regular(11))
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8))
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Color.red)
+            Text(message)
+                .font(CommunityFont.medium(13))
+                .foregroundStyle(Color.red)
+            Spacer()
+        }
+        .padding(14)
+        .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var floatingActionDock: some View {
+        VStack(spacing: 8) {
+            if let notice = store.missingFieldNotice(location.coordinate) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.circle")
+                        .font(.system(size: 12, weight: .medium))
+                    Text(notice)
+                        .font(CommunityFont.medium(12))
+                }
+                .foregroundStyle(Color.ppTextSecondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Color.ppSurface.opacity(0.92), in: Capsule())
+                .shadow(color: Color.black.opacity(0.06), radius: 4, y: 2)
+            }
+
+            Button {
+                CommunityHaptics.success()
+                Task { await store.submit(coordinate: location.coordinate) }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 16, weight: .bold))
+                    Text(PPAdoptLang("community_submit_instant_match"))
+                        .font(CommunityFont.bold(17, relativeTo: .headline))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background(
+                    LinearGradient(
+                        colors: kind == .missing
+                            ? [Color.orange, Color.red.opacity(0.85)]
+                            : [CommunityPalette.found, CommunityPalette.safe],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                )
+                .shadow(
+                    color: (kind == .missing ? CommunityPalette.missing : CommunityPalette.found).opacity(0.35),
+                    radius: 12,
+                    y: 5
+                )
+            }
+            .buttonStyle(CommunityPressStyle())
+            .disabled(!store.canSubmit || !store.submissionLocationIsAvailable(location.coordinate) || store.submitting)
+            .opacity((!store.canSubmit || !store.submissionLocationIsAvailable(location.coordinate) || store.submitting) ? 0.45 : 1.0)
+            .accessibilityHint(PPAdoptLang("community_submit_review_hint"))
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 16)
+        .background(.ultraThinMaterial)
+        .overlay(
+            VStack {
+                Divider()
+                Spacer()
+            }
+        )
+    }
+}
+
+// MARK: - Dedicated Picker Sheets
+
+private struct CommunityCityPickerSheet: View {
+    let cities: [CityModel]
+    @Binding var selectedCity: CityModel?
+    let onSelect: (CityModel) -> Void
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var search = ""
+
+    var filtered: [CityModel] {
+        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return cities }
+        return cities.filter {
+            ($0.localizedName).localizedCaseInsensitiveContains(search) ||
+            ($0.name ?? "").localizedCaseInsensitiveContains(search)
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.ppBackground.ignoresSafeArea()
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Color.ppTextSecondary)
+                        TextField(PPAdoptLang("community_search_placeholder"), text: $search)
+                            .font(CommunityFont.regular(15))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal, 16)
+
+                    List(filtered, id: \.cityID) { city in
+                        Button {
+                            CommunityHaptics.selection()
+                            selectedCity = city
+                            onSelect(city)
+                            presentationMode.wrappedValue.dismiss()
+                        } label: {
+                            HStack {
+                                Text(city.localizedName)
+                                    .font(CommunityFont.medium(16))
+                                    .foregroundStyle(Color.ppTextPrimary)
+                                Spacer()
+                                if selectedCity?.cityID == city.cityID {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(CommunityPalette.found)
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+                .padding(.top, 12)
+            }
+            .navigationTitle(PPAdoptLang("community_location_select_city"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPAdoptLang("Cancel")) { presentationMode.wrappedValue.dismiss() }
                 }
             }
         }
     }
+}
 
-    @ViewBuilder
-    private var appearanceFieldPair: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: 12) {
-                CommunityField(title: PPAdoptLang("Gender"), text: $store.sex)
-                CommunityField(title: PPAdoptLang("community_size"), text: $store.size)
-            }
-        } else {
-            HStack(spacing: 12) {
-                CommunityField(title: PPAdoptLang("Gender"), text: $store.sex)
-                CommunityField(title: PPAdoptLang("community_size"), text: $store.size)
-            }
+private struct CommunityDistrictPickerSheet: View {
+    let areas: [StateModel]
+    @Binding var selectedArea: StateModel?
+    let onSelect: (StateModel) -> Void
+    @Binding var manualDistrict: String
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var search = ""
+
+    var filtered: [StateModel] {
+        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return areas }
+        return areas.filter {
+            ($0.localizedName).localizedCaseInsensitiveContains(search) ||
+            ($0.arName ?? "").localizedCaseInsensitiveContains(search) ||
+            ($0.enName ?? "").localizedCaseInsensitiveContains(search)
         }
     }
 
-    @ViewBuilder
-    private var locationFieldPair: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: 12) {
-                CommunityField(title: PPAdoptLang("City"), text: $store.city)
-                CommunityField(title: PPAdoptLang("community_district"), text: $store.district)
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.ppBackground.ignoresSafeArea()
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Color.ppTextSecondary)
+                        TextField(PPAdoptLang("community_search_placeholder"), text: $search)
+                            .font(CommunityFont.regular(15))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal, 16)
+
+                    List {
+                        if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Button {
+                                CommunityHaptics.selection()
+                                manualDistrict = search.trimmingCharacters(in: .whitespacesAndNewlines)
+                                selectedArea = nil
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundStyle(CommunityPalette.found)
+                                    Text("\(PPAdoptLang("community_location_manual_hint")): \(search)")
+                                        .font(CommunityFont.bold(15))
+                                        .foregroundStyle(CommunityPalette.found)
+                                }
+                            }
+                        }
+
+                        ForEach(filtered, id: \.stateID) { area in
+                            Button {
+                                CommunityHaptics.selection()
+                                selectedArea = area
+                                manualDistrict = area.localizedName
+                                onSelect(area)
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                HStack {
+                                    Text(area.localizedName)
+                                        .font(CommunityFont.medium(16))
+                                        .foregroundStyle(Color.ppTextPrimary)
+                                    Spacer()
+                                    if selectedArea?.stateID == area.stateID {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(CommunityPalette.found)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+                .padding(.top, 12)
             }
-        } else {
-            HStack(spacing: 12) {
-                CommunityField(title: PPAdoptLang("City"), text: $store.city)
-                CommunityField(title: PPAdoptLang("community_district"), text: $store.district)
+            .navigationTitle(PPAdoptLang("community_location_select_district"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPAdoptLang("Cancel")) { presentationMode.wrappedValue.dismiss() }
+                }
             }
         }
     }
+}
 
-    @ViewBuilder
-    private var custodyPicker: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            Picker(PPAdoptLang("community_custody"), selection: $store.custodyStatus) {
-                custodyOptions
+private struct CommunitySpeciesPickerSheet: View {
+    let kinds: [MainKindsModel]
+    @Binding var selectedKind: MainKindsModel?
+    @Binding var speciesString: String
+    let onSelect: (MainKindsModel) -> Void
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var search = ""
+
+    var filtered: [MainKindsModel] {
+        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return kinds }
+        return kinds.filter {
+            ($0.localizedName).localizedCaseInsensitiveContains(search) ||
+            ($0.kindNameAr ?? "").localizedCaseInsensitiveContains(search) ||
+            ($0.kindNameEn ?? "").localizedCaseInsensitiveContains(search)
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.ppBackground.ignoresSafeArea()
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Color.ppTextSecondary)
+                        TextField(PPAdoptLang("community_search_placeholder"), text: $search)
+                            .font(CommunityFont.regular(15))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal, 16)
+
+                    List {
+                        if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Button {
+                                CommunityHaptics.selection()
+                                speciesString = search.trimmingCharacters(in: .whitespacesAndNewlines)
+                                selectedKind = nil
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundStyle(CommunityPalette.found)
+                                    Text("\(search)")
+                                        .font(CommunityFont.bold(15))
+                                        .foregroundStyle(CommunityPalette.found)
+                                }
+                            }
+                        }
+
+                        ForEach(filtered, id: \.id) { kind in
+                            Button {
+                                CommunityHaptics.selection()
+                                selectedKind = kind
+                                speciesString = kind.localizedName
+                                onSelect(kind)
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                HStack {
+                                    Text(kind.localizedName)
+                                        .font(CommunityFont.medium(16))
+                                        .foregroundStyle(Color.ppTextPrimary)
+                                    Spacer()
+                                    if selectedKind?.id == kind.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(CommunityPalette.found)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+                .padding(.top, 12)
             }
-            .pickerStyle(.menu)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            Picker(PPAdoptLang("community_custody"), selection: $store.custodyStatus) {
-                custodyOptions
+            .navigationTitle(PPAdoptLang("community_species"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPAdoptLang("Cancel")) { presentationMode.wrappedValue.dismiss() }
+                }
             }
-            .pickerStyle(.segmented)
+        }
+    }
+}
+
+private struct CommunityBreedPickerSheet: View {
+    let breeds: [SubKindModel]
+    @Binding var selectedBreed: SubKindModel?
+    @Binding var breedString: String
+    let onSelect: (SubKindModel) -> Void
+    @Environment(\.presentationMode) private var presentationMode
+    @State private var search = ""
+
+    var filtered: [SubKindModel] {
+        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return breeds }
+        return breeds.filter {
+            ($0.localizedName).localizedCaseInsensitiveContains(search) ||
+            ($0.subKindNameAr ?? "").localizedCaseInsensitiveContains(search) ||
+            ($0.subKindNameEn ?? "").localizedCaseInsensitiveContains(search)
         }
     }
 
-    @ViewBuilder
-    private var custodyOptions: some View {
-        Text(PPAdoptLang("community_custody_with_me")).tag("with_reporter")
-        Text(PPAdoptLang("community_custody_safe_place")).tag("safe_location")
-        Text(PPAdoptLang("community_custody_unknown")).tag("unknown")
-    }
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.ppBackground.ignoresSafeArea()
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Color.ppTextSecondary)
+                        TextField(PPAdoptLang("community_search_placeholder"), text: $search)
+                            .font(CommunityFont.regular(15))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal, 16)
 
-    @ViewBuilder
-    private var mediaHeader: some View {
-        let count = Text(String(format: PPAdoptLang("community_media_count"), store.mediaAttachmentCount, 8))
-            .font(CommunityFont.medium(13))
-            .foregroundStyle(Color.ppTextSecondary)
-        let add = Button(PPAdoptLang("community_add_media")) { showsMediaPicker = true }
-            .font(CommunityFont.bold(14))
-            .disabled(store.mediaAttachmentCount >= 8)
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 8) { count; add }
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            HStack { count; Spacer(); add }
+                    List {
+                        if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Button {
+                                CommunityHaptics.selection()
+                                breedString = search.trimmingCharacters(in: .whitespacesAndNewlines)
+                                selectedBreed = nil
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundStyle(CommunityPalette.found)
+                                    Text("\(search)")
+                                        .font(CommunityFont.bold(15))
+                                        .foregroundStyle(CommunityPalette.found)
+                                }
+                            }
+                        }
+
+                        ForEach(filtered, id: \.id) { breed in
+                            Button {
+                                CommunityHaptics.selection()
+                                selectedBreed = breed
+                                breedString = breed.localizedName
+                                onSelect(breed)
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                HStack {
+                                    Text(breed.localizedName)
+                                        .font(CommunityFont.medium(16))
+                                        .foregroundStyle(Color.ppTextPrimary)
+                                    Spacer()
+                                    if selectedBreed?.id == breed.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(CommunityPalette.found)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+                .padding(.top, 12)
+            }
+            .navigationTitle(PPAdoptLang("Breed"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PPAdoptLang("Cancel")) { presentationMode.wrappedValue.dismiss() }
+                }
+            }
         }
-    }
-
-    private func errorCard(_ message: String) -> some View {
-        Text(message).font(CommunityFont.medium(14)).foregroundStyle(Color.red).frame(maxWidth: .infinity, alignment: .leading).padding(14).background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-    }
-
-    private var submitButton: some View {
-        Button { Task { await store.submit(coordinate: location.coordinate) } } label: {
-            Text(PPAdoptLang("community_submit_for_review"))
-                .font(CommunityFont.bold(17, relativeTo: .headline)).foregroundStyle(.white)
-                .frame(maxWidth: .infinity, minHeight: 54)
-                .background(kind == .missing ? CommunityPalette.missing : CommunityPalette.found, in: RoundedRectangle(cornerRadius: 18))
-        }
-        .buttonStyle(CommunityPressStyle())
-        .disabled(!store.canSubmit || !store.submissionLocationIsAvailable(location.coordinate) || store.submitting)
-        .accessibilityHint(PPAdoptLang("community_submit_review_hint"))
     }
 }
 
@@ -2974,7 +4519,7 @@ private struct CommunityAdoptionApplicationDetailScreen: View {
         availableActions.filter { !$0.isDestructive }
     }
     private var destructiveAction: CommunityAdoptionApplicationAction? {
-        availableActions.first { $0.isDestructive }
+        availableActions.first(where: { $0.isDestructive })
     }
 
     private func configuredAnswerTitle(_ answer: [String: Any]) -> String {

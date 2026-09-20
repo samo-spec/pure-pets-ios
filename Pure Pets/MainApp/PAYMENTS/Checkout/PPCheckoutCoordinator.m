@@ -41,6 +41,10 @@
 @property (nonatomic, assign) BOOL isCheckoutInProgress;
 @property (nonatomic, assign) NSInteger checkoutGeneration;
 @property (nonatomic, assign) BOOL hasResolvedCheckout;
+/// The QIB sheet can close before the order cancellation callable succeeds.
+/// Keep this gate closed until the server transaction confirms abandonment.
+@property (nonatomic, assign) BOOL awaitingServerCancellationConfirmation;
+@property (nonatomic, assign) BOOL isCancellationRequestInFlight;
 
 /// UUID generated once per checkout attempt.  Survives retries within the
 /// same coordinator instance so that a network-timeout retry does not create
@@ -54,6 +58,14 @@
 - (void)completeWithFailure:(FIRDocumentSnapshot * _Nullable)snapshot generation:(NSInteger)generation;
 - (void)completeWithPendingVerification:(NSError *)error generation:(NSInteger)generation;
 - (void)completeWithCancellation:(PPOrder *)order generation:(NSInteger)generation;
+- (void)pp_cancelPendingCheckoutOrder:(PPOrder *)order
+                            generation:(NSInteger)generation
+                                source:(NSString *)source;
+- (void)pp_completeConfirmedCancellationForOrder:(PPOrder *)order
+                                      generation:(NSInteger)generation;
+- (void)pp_completeCancellationPendingForOrder:(PPOrder *)order
+                                     generation:(NSInteger)generation
+                                          error:(NSError *)error;
 - (void)failOrderWithError:(NSError *)error generation:(NSInteger)generation;
 - (void)failOrderWithError:(NSError *)error retryable:(BOOL)retryable generation:(NSInteger)generation;
 - (BOOL)pp_isCheckoutGenerationCurrent:(NSInteger)generation;
@@ -576,6 +588,21 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         }
         return;
     }
+    if (self.awaitingServerCancellationConfirmation) {
+        NSError *cancellationPendingError =
+        [NSError errorWithDomain:@"Checkout"
+                            code:1012
+                        userInfo:@{NSLocalizedDescriptionKey:
+                                       kLang(@"checkout_payment_cancellation_pending_message")}];
+        PPORDERLog(@"Checkout blocked | reason=cancellation_not_confirmed | orderId=%@",
+                   self.currentOrder.orderId ?: @"");
+        if (completion) {
+            completion(PPCheckoutResultCancellationPending,
+                       self.currentOrder,
+                       cancellationPendingError);
+        }
+        return;
+    }
     if (![self pp_isValidCheckoutAddress:address]) {
         NSError *addressError = [NSError errorWithDomain:@"Checkout"
                                                     code:1005
@@ -590,6 +617,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 
     self.completion = completion;
     self.hasResolvedCheckout = NO;
+    self.awaitingServerCancellationConfirmation = NO;
+    self.isCancellationRequestInFlight = NO;
     self.checkoutGeneration += 1;
     NSInteger generation = self.checkoutGeneration;
 
@@ -1108,28 +1137,113 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         return;
     }
 
+    self.currentOrder = order ?: self.currentOrder;
+    self.awaitingServerCancellationConfirmation = YES;
+
     PPORDERLog(@"Checkout cancelled | generation=%ld | orderId=%@",
                (long)generation, order.orderId ?: @"");
 
     NSString *orderId = PPCheckoutTrimmedString(order.orderId);
-    if (orderId.length > 0) {
-        [[PPOrderManager shared] cancelPendingCheckoutOrder:order
-                                                  completion:^(BOOL success, BOOL alreadyCancelled, NSError * _Nullable error) {
-            if (!success || error) {
-                PPORDERLog(@"Failed to cancel order via protected checkout path | orderId=%@ | error=%@",
-                           orderId,
-                           error.localizedDescription ?: @"");
-                return;
-            }
-            PPORDERLog(@"Order cancelled via protected checkout path | orderId=%@ | alreadyCancelled=%d",
-                       orderId,
-                       alreadyCancelled);
-        }];
+    if (orderId.length == 0) {
+        // No server-side checkout order exists yet, so there is nothing to
+        // abandon. It is safe to return the customer to method selection.
+        [self pp_completeConfirmedCancellationForOrder:order generation:generation];
+        return;
     }
 
-    // User explicitly cancelled — clear idempotency key so next checkout starts fresh.
-    self.checkoutIdempotencyKey = nil;
+    [self pp_cancelPendingCheckoutOrder:order generation:generation source:@"qib_sheet_cancelled"];
+}
 
+- (void)retryCancellationForOrder:(PPOrder * _Nullable)order
+{
+    PPOrder *orderToCancel = order ?: self.currentOrder;
+    NSInteger generation = self.checkoutGeneration;
+    if (!self.awaitingServerCancellationConfirmation ||
+        ![self pp_isCheckoutGenerationCurrent:generation]) {
+        PPORDERLog(@"Ignoring cancellation retry outside an awaiting-cancellation checkout");
+        return;
+    }
+
+    NSString *orderId = PPCheckoutTrimmedString(orderToCancel.orderId);
+    if (orderId.length == 0) {
+        NSError *missingOrderError =
+        [NSError errorWithDomain:@"Checkout"
+                            code:1013
+                        userInfo:@{NSLocalizedDescriptionKey:
+                                       kLang(@"checkout_payment_cancellation_pending_message")}];
+        [self pp_completeCancellationPendingForOrder:orderToCancel
+                                          generation:generation
+                                               error:missingOrderError];
+        return;
+    }
+
+    [self pp_cancelPendingCheckoutOrder:orderToCancel generation:generation source:@"customer_retry"];
+}
+
+- (void)pp_cancelPendingCheckoutOrder:(PPOrder *)order
+                            generation:(NSInteger)generation
+                                source:(NSString *)source
+{
+    if (!self.awaitingServerCancellationConfirmation ||
+        ![self pp_isCheckoutGenerationCurrent:generation] ||
+        self.isCancellationRequestInFlight) {
+        return;
+    }
+
+    self.isCancellationRequestInFlight = YES;
+    NSString *orderId = PPCheckoutTrimmedString(order.orderId);
+    PPORDERLog(@"Requesting server checkout cancellation | source=%@ | generation=%ld | orderId=%@",
+               source ?: @"",
+               (long)generation,
+               orderId);
+
+    __weak typeof(self) weakSelf = self;
+    [[PPOrderManager shared] cancelPendingCheckoutOrder:order
+                                              completion:^(BOOL success, BOOL alreadyCancelled, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            if (![self pp_isCheckoutGenerationCurrent:generation] ||
+                !self.awaitingServerCancellationConfirmation) {
+                return;
+            }
+
+            self.isCancellationRequestInFlight = NO;
+            if (success && !error) {
+                PPORDERLog(@"Server confirmed checkout cancellation | orderId=%@ | alreadyCancelled=%d",
+                           orderId,
+                           alreadyCancelled);
+                [self pp_completeConfirmedCancellationForOrder:order generation:generation];
+                return;
+            }
+
+            NSError *resolvedError = error ?: [NSError errorWithDomain:@"Checkout"
+                                                                    code:1014
+                                                                userInfo:@{NSLocalizedDescriptionKey:
+                                                                               kLang(@"checkout_payment_cancellation_pending_message")}];
+            PPORDERLog(@"Server checkout cancellation remains unconfirmed | source=%@ | orderId=%@ | error=%@",
+                       source ?: @"",
+                       orderId,
+                       resolvedError.localizedDescription ?: @"");
+            [self pp_completeCancellationPendingForOrder:order
+                                              generation:generation
+                                                   error:resolvedError];
+        });
+    }];
+}
+
+- (void)pp_completeConfirmedCancellationForOrder:(PPOrder *)order
+                                      generation:(NSInteger)generation
+{
+    if (![self pp_isCheckoutGenerationCurrent:generation]) {
+        return;
+    }
+
+    self.awaitingServerCancellationConfirmation = NO;
+    self.isCancellationRequestInFlight = NO;
+    // A different payment method must use a fresh, server-authorized checkout
+    // command rather than replaying the abandoned QIB command identity.
+    self.checkoutIdempotencyKey = nil;
     self.currentOrder = nil;
     [self cleanup];
 
@@ -1139,6 +1253,24 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
                             code:NSUserCancelledError
                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_cancelled_by_user")}];
         self.completion(PPCheckoutResultCancelled, order, cancelError);
+    }
+}
+
+- (void)pp_completeCancellationPendingForOrder:(PPOrder *)order
+                                     generation:(NSInteger)generation
+                                          error:(NSError *)error
+{
+    if (![self pp_isCheckoutGenerationCurrent:generation] ||
+        !self.awaitingServerCancellationConfirmation) {
+        return;
+    }
+
+    // The QIB sheet is gone, but the server has not confirmed whether this
+    // checkout was abandoned. Stop observing the presentation attempt while
+    // retaining the order identity and the gate that blocks a second method.
+    [self cleanup];
+    if (self.completion) {
+        self.completion(PPCheckoutResultCancellationPending, order, error);
     }
 }
 

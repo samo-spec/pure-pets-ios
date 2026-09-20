@@ -204,6 +204,104 @@ struct HomeCategoryModel: Identifiable {
     let raw: NSObject
 }
 
+extension HomeCategoryModel {
+    /// Resolves an animal-specific SF Symbol for the selected category indicator
+    /// (e.g. "dog.fill" for dogs, "cat.fill" for cats, "bird.fill" for birds, etc.),
+    /// keeping "pawprint.fill" as the safe fallback.
+    static func indicatorSymbol(for category: HomeCategoryModel?) -> String {
+        guard let category else {
+            return "pawprint.fill"
+        }
+        return category.indicatorSymbol
+    }
+
+    var indicatorSymbol: String {
+        // 1. Resolve animal-specific SF Symbol FIRST (e.g. "dog.fill" for dogs, "cat.fill" for cats, etc.)
+        let candidate: String? = {
+            let numericID = HomeModelAdapter.mainKindID(raw)
+
+            var textBag = [title.lowercased()]
+            if let mainKind = raw as? MainKindsModel {
+                let ar: String? = mainKind.kindNameAr
+                if let ar, !ar.isEmpty { textBag.append(ar.lowercased()) }
+                let en: String? = mainKind.kindNameEn
+                if let en, !en.isEmpty { textBag.append(en.lowercased()) }
+                let name: String? = mainKind.kindName
+                if let name, !name.isEmpty { textBag.append(name.lowercased()) }
+            } else {
+                if let ar = ((raw.value(forKey: "KindNameAr") as? String) ?? (raw.value(forKey: "kindNameAr") as? String))?.lowercased() { textBag.append(ar) }
+                if let en = ((raw.value(forKey: "KindNameEn") as? String) ?? (raw.value(forKey: "kindNameEn") as? String))?.lowercased() { textBag.append(en) }
+                if let name = ((raw.value(forKey: "KindName") as? String) ?? (raw.value(forKey: "kindName") as? String))?.lowercased() { textBag.append(name) }
+            }
+            let joinedText = textBag.joined(separator: " ")
+
+            func matchesAny(_ tokens: [String]) -> Bool {
+                tokens.contains { joinedText.contains($0) }
+            }
+
+            // Dogs (الكلاب)
+            if matchesAny(["كلب", "كلاب", "كلبة", "كلبه", "جرو", "dog", "dogs", "puppy", "puppies", "canine"]) || numericID == 6 {
+                return "dog.fill"
+            }
+
+            // Cats (القطط)
+            if matchesAny(["قط", "قطط", "قطة", "قطه", "بسة", "بسه", "cat", "cats", "kitten", "kittens", "feline"]) || numericID == 5 {
+                return "cat.fill"
+            }
+
+            // Birds & Falcons (الطيور، الصقور)
+            if matchesAny(["طير", "طيور", "عصفور", "عصافير", "صقر", "صقور", "ببغاء", "بلبل", "حمام", "حمامة", "طائر", "bird", "birds", "falcon", "falcons", "parrot", "parrots", "avian"]) || numericID == 1 || numericID == 11 {
+                return "bird.fill"
+            }
+
+            // Fish (الأسماك)
+            if matchesAny(["سمك", "أسماك", "اسماك", "سمكة", "أحواض", "fish", "fishes", "aquarium"]) || numericID == 7 {
+                return "fish.fill"
+            }
+
+            // Rabbits & Small Pets (الأرانب، القوارض)
+            if matchesAny(["أرنب", "ارنب", "أرانب", "ارانب", "قوارض", "هامستر", "rabbit", "rabbits", "hare", "bunny", "bunnies", "hamster"]) {
+                return "hare.fill"
+            }
+
+            // Turtles & Reptiles (السلاحف، الزواحف)
+            if matchesAny(["سلحفاة", "سلحفاه", "سلاحف", "زواحف", "turtle", "tortoise", "reptile"]) {
+                return "tortoise.fill"
+            }
+
+            // Horses & Equestrian (الخيول)
+            if matchesAny(["خيل", "خيول", "حصان", "أفراس", "horse", "horses", "equestrian"]) || numericID == 3 {
+                return "figure.equestrian.sports"
+            }
+
+            return nil
+        }()
+
+        if let candidate, UIImage(systemName: candidate) != nil {
+            return candidate
+        }
+
+        // 2. Fallback: check if the model has a valid SF symbol directly specified in kindIconName
+        if let mainKind = raw as? MainKindsModel {
+            let rawIcon: String? = mainKind.kindIconName
+            if let icon = rawIcon {
+                let iconName = icon.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !iconName.isEmpty, UIImage(systemName: iconName) != nil {
+                    return iconName
+                }
+            }
+        } else if let rawIcon = (raw.value(forKey: "KindIconName") as? String) ?? (raw.value(forKey: "kindIconName") as? String) {
+            let iconName = rawIcon.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !iconName.isEmpty, UIImage(systemName: iconName) != nil {
+                return iconName
+            }
+        }
+
+        // 3. Final safe fallback
+        return "pawprint.fill"
+    }
+}
+
 enum HomePriorityDestination {
     case shop
     case food

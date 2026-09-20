@@ -2436,7 +2436,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     // The model intentionally falls back to a preparation delivery state. Preserve a
     // genuine customer-visible pending phase so the filter agrees with the row copy.
     NSString *customerStatusKey = [self customerStatusKeyForOrder:order];
-    if ([customerStatusKey isEqualToString:@"pending"]) {
+    if ([customerStatusKey isEqualToString:@"pending"] ||
+        [customerStatusKey isEqualToString:@"checkout_card_payment_pending"]) {
         return kOrderHistoryFilterPending;
     }
     if ([customerStatusKey isEqualToString:@"unknown"]) {
@@ -2457,6 +2458,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (NSString *)displayTitleForCustomerStatusKey:(NSString *)statusKey
 {
     NSString *key = PPOrderHistoryNormalizedStatus(statusKey);
+    if ([key isEqualToString:@"checkout_card_payment_pending"]) return kLang(@"checkout_card_payment_pending_title");
+    if ([key isEqualToString:@"checkout_card_payment_cancelled"]) return kLang(@"checkout_card_payment_cancelled_title");
+    if ([key isEqualToString:@"checkout_card_payment_failed"]) return kLang(@"checkout_card_payment_failed_title");
     if ([key isEqualToString:@"pending"]) return kLang(@"order_placed_title") ?: kLang(@"Pending");
     if ([key isEqualToString:@"preparing_for_shipment"]) return kLang(@"Preparing for Shipment");
     if ([key isEqualToString:@"ready_for_delivery"] ||

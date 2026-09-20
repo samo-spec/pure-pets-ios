@@ -29,6 +29,7 @@
 #import "DesignFiles/PP/PPStyles/Styling.h"
 #import "CountryModel.h"
 #import "CityModel.h"
+#import "StateModel.h"
 #import "MainApp/UserFiles/Adressess/CitiesManager.h"
 
 #import <IQKeyboardManager/IQKeyboardManager.h>

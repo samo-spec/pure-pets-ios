@@ -29,7 +29,10 @@ typedef NS_ENUM(NSInteger, PPCheckoutResult) {
     PPCheckoutResultSuccess,
     PPCheckoutResultPendingVerification,
     PPCheckoutResultFailed,
-    PPCheckoutResultCancelled
+    PPCheckoutResultCancelled,
+    /// The QIB sheet was dismissed, but the server has not yet confirmed that
+    /// the unpaid checkout order was abandoned. A different method must wait.
+    PPCheckoutResultCancellationPending
 };
 
 typedef void (^PPCheckoutCompletion)(PPCheckoutResult result, PPOrder * _Nullable order, NSError * _Nullable error);
@@ -48,6 +51,11 @@ typedef void (^PPCheckoutCompletion)(PPCheckoutResult result, PPOrder * _Nullabl
 - (void)startCheckoutWithAddress:(PPAddressModel * _Nullable)address
                  paymentMethodId:(nullable NSString *)paymentMethodId
                       completion:(PPCheckoutCompletion)completion;
+
+/// Retries only the server-authoritative abandonment of an unpaid QIB checkout
+/// order after `PPCheckoutResultCancellationPending`. This never starts a new
+/// payment attempt or creates another order.
+- (void)retryCancellationForOrder:(nullable PPOrder *)order;
 
 @end
 

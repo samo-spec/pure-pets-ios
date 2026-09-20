@@ -776,6 +776,12 @@ struct PPOrderDetailsMissionControlScreen: View {
 
     private static func stepTitle(for key: String, fallback: String) -> String {
         switch key {
+        case "checkout_card_payment_pending":
+            return PPOrderMissionText("checkout_card_payment_pending_title")
+        case "checkout_card_payment_cancelled":
+            return PPOrderMissionText("checkout_card_payment_cancelled_title")
+        case "checkout_card_payment_failed":
+            return PPOrderMissionText("checkout_card_payment_failed_title")
         case "pending":
             return PPOrderMissionText("order_placed_title")
         case "preparing_for_shipment":

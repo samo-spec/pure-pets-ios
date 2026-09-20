@@ -18,6 +18,11 @@ public final class AddAdoptPetHostingController: UIViewController {
     private var onSuccessCallback: (() -> Void)?
     private var previousNavigationBarHidden = false
 
+    public override var modalPresentationStyle: UIModalPresentationStyle {
+        get { .fullScreen }
+        set { super.modalPresentationStyle = .fullScreen }
+    }
+
     @objc(initWithPet:)
     public init(pet: AdoptPetModel?) {
         self.editingPet = pet
