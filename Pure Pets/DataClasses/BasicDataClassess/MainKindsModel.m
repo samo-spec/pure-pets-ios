@@ -474,6 +474,7 @@ static NSString *PPMainKindOptionalString(id value) {
              return [UIColor colorWithHexString:@"#6C757D"]; // Neutral fallback
      }
  }
+ */
 
 - (NSString *)petSFSymbolName {
     NSMutableArray<NSString *> *textBag = [NSMutableArray array];
