@@ -72,7 +72,7 @@ struct PPAccessoryViewerScreen: View {
                 topInset: topChromeInset(proxy),
                 compact: proxy.size.width < 700 ||
                     dynamicTypeSize.isAccessibilitySize,
-                bottomInset: bottomScreenSpacing
+                bottomInset: bottomChromeInset(proxy)
             )
         case let .failed(message):
             PPAccessoryViewerErrorState(
@@ -106,7 +106,7 @@ struct PPAccessoryViewerScreen: View {
             ? min(max(proxy.size.height * 0.42, 370), 460)
             : min(max(contentWidth * 0.52, 420), 560)
         let topInset = topChromeInset(proxy)
-        let bottomInset = bottomScreenSpacing
+        let bottomInset = bottomChromeInset(proxy)
         let topBarHeight: CGFloat = topInset + (compact ? 56 : 64)
         let titleRevealOffset: CGFloat = compact ? 14 : 22
         let usesRecoveryDock =
@@ -116,23 +116,23 @@ struct PPAccessoryViewerScreen: View {
         let decisionBarClearance: CGFloat = {
             if dynamicTypeSize.isAccessibilitySize {
                 if snapshot.showsCart {
-                    return usesRecoveryDock ? 360 : 440
+                    return usesRecoveryDock ? 240 : 220
                 }
-                return 200
+                return 160
             }
             if snapshot.showsCart {
                 if usesRecoveryDock {
-                    return compact ? 270 : 180
+                    return compact ? 170 : 150
                 }
-                return compact ? 320 : 250
+                return compact ? 164 : 148
             }
-            return 160
+            return 120
         }()
         let resolvedDecisionBarClearance: CGFloat = {
             guard decisionBarHeight > 0, decisionBarHeight < 720 else {
-                return decisionBarClearance
+                return decisionBarClearance + bottomInset
             }
-            return max(decisionBarHeight + PPSpace.xl, decisionBarClearance)
+            return decisionBarHeight + PPSpace.base
         }()
 
         return ZStack(alignment: .top) {
@@ -154,6 +154,19 @@ struct PPAccessoryViewerScreen: View {
                         .offset(y: heroResolved ? 0 : 8)
 
                         PPAccessoryProductIdentity(
+                            store: store,
+                            snapshot: snapshot,
+                            compact: compact
+                        )
+                        .padding(.horizontal, horizontalPadding)
+                        .opacity(identityResolved ? 1 : 0)
+                        .offset(y: identityResolved ? 0 : 14)
+
+                        // Directly under identity, above every other card: choosing a
+                        // colour changes which product the whole screen describes, so it
+                        // must be read before price, fit or stock are trusted. It
+                        // self-hides for a standalone product.
+                        PPAccessoryColorRail(
                             store: store,
                             snapshot: snapshot,
                             compact: compact
@@ -199,7 +212,7 @@ struct PPAccessoryViewerScreen: View {
                         .padding(.horizontal, horizontalPadding)
                         .padding(
                             .bottom,
-                            resolvedDecisionBarClearance + bottomInset
+                            resolvedDecisionBarClearance
                         )
                         .opacity(cardsResolved ? 1 : 0)
                         .offset(y: cardsResolved ? 0 : 20)
@@ -335,6 +348,19 @@ struct PPAccessoryViewerScreen: View {
         return max(sceneTop, 24)
     }
 
+    private func bottomChromeInset(_ proxy: GeometryProxy) -> CGFloat {
+        let resolved = proxy.safeAreaInsets.bottom
+        if resolved > 1 {
+            return resolved
+        }
+        let sceneBottom = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets.bottom ?? 0
+        return max(sceneBottom, bottomScreenSpacing)
+    }
+
     private func topFadeOverlay(proxy: GeometryProxy) -> some View {
         let topColor = Color.ppBackground
 
@@ -361,14 +387,12 @@ struct PPAccessoryViewerScreen: View {
         bottomInset: CGFloat
     ) -> some View {
         let fallbackHeight = dynamicTypeSize.isAccessibilitySize
-            ? (snapshot.showsCart ? 410.0 : 168.0)
-            : (snapshot.showsCart ? 292.0 : 112.0)
+            ? (snapshot.showsCart ? 220.0 : 140.0)
+            : (snapshot.showsCart ? 164.0 : 112.0)
         let safeDecisionBarHeight = (decisionBarHeight > 0 && decisionBarHeight < 720)
             ? decisionBarHeight
-            : fallbackHeight
-        let totalOverlayHeight = safeDecisionBarHeight
-            + max(bottomInset, PPBottomDecisionBarGeometry.bottomBreathingRoom)
-            + 44
+            : (fallbackHeight + bottomInset)
+        let totalOverlayHeight = safeDecisionBarHeight + PPSpace.base
         let bottomColor = Color.ppBackground
 
         return LinearGradient(

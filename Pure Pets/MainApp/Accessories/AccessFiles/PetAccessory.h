@@ -62,6 +62,17 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL isDeleted;
 @property (nonatomic, assign) BOOL isDisabled;
 
+/// Identifier of the `ProductFamilies` document that groups this product with its
+/// sibling colours, or `nil` when the product is standalone.
+///
+/// Server-owned: written only by the `upsertProductVariantFamily` callable, which is
+/// staff-only. The client reads it to decide whether a colour rail applies at all,
+/// which is why absence must mean "standalone" rather than a default value.
+///
+/// Deliberately **not** serialized by `toFirestoreDictionary` — the consumer app
+/// never writes it, and emitting it would let a merge write clobber server state.
+@property (nonatomic, copy, nullable) NSString *productFamilyId;
+
 // Computed type helpers
 @property (nonatomic, readonly) BOOL isLivePet;
 @property (nonatomic, readonly) BOOL isFood;

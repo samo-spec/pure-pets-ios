@@ -634,3 +634,105 @@ struct PPAccessoryViewerSuggestion: Identifiable {
             accessory.quantity > 0
     }
 }
+
+
+/// One sellable colour of a product family.
+///
+/// Every field mirrors the server's `ProductFamilies.variants[]` projection, which is
+/// merchandising identity only. It is deliberately **not** a price or stock authority:
+/// tapping a swatch resolves the colour's own `petAccessories` document, and that
+/// document is what the screen then renders and sells.
+///
+/// `id` is the colour identifier, never the localized name and never the hex. A colour
+/// can be renamed or repainted without changing identity, and two colours may
+/// legitimately share a hex (two different fabrics of the same navy).
+struct PPAccessoryViewerVariant: Identifiable, Equatable {
+    let id: String
+    let productId: String
+    let name: String
+    let hex: String
+    let sortOrder: Int
+    let isDefault: Bool
+    let isArchived: Bool
+    let sku: String
+    let primaryImageURL: String?
+
+    /// Parses one server projection entry, returning `nil` when it cannot be rendered
+    /// as a selectable colour.
+    ///
+    /// Fails closed on a missing `productId` or colour `id`: a swatch that cannot be
+    /// resolved to a document would be a dead tap, which is worse than being absent.
+    /// A missing hex is tolerated — the rail falls back to a neutral chip and the name
+    /// still identifies the colour, because the name is the accessible label anyway.
+    init?(projection: [String: Any]) {
+        guard let rawProductId = projection["productId"] as? String,
+              case let productId = rawProductId.trimmingCharacters(
+                  in: .whitespacesAndNewlines
+              ),
+              !productId.isEmpty else { return nil }
+
+        let color = projection["color"] as? [String: Any] ?? [:]
+        guard let rawColorId = color["id"] as? String,
+              case let colorId = rawColorId.trimmingCharacters(
+                  in: .whitespacesAndNewlines
+              ),
+              !colorId.isEmpty else { return nil }
+
+        self.id = colorId
+        self.productId = productId
+
+        // Arabic is the product's primary language, English the secondary. Pick by the
+        // active language and fall back to the other rather than to the raw id, so a
+        // half-translated colour still reads as a colour.
+        let nameAr = (color["nameAr"] as? String)?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ) ?? ""
+        let nameEn = (color["nameEn"] as? String)?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ) ?? ""
+        let preferred = PPAccessoryViewerLegacyBridge.isRTL() ? nameAr : nameEn
+        let fallback = PPAccessoryViewerLegacyBridge.isRTL() ? nameEn : nameAr
+        name = !preferred.isEmpty ? preferred : fallback
+
+        hex = (color["hex"] as? String)?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).uppercased() ?? ""
+
+        if let order = projection["sortOrder"] as? Int {
+            sortOrder = order
+        } else if let order = projection["sortOrder"] as? NSNumber {
+            sortOrder = order.intValue
+        } else {
+            sortOrder = 0
+        }
+
+        isDefault = (projection["isDefault"] as? Bool) ?? false
+        isArchived = (projection["isArchived"] as? Bool) ?? false
+        sku = (projection["sku"] as? String)?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ) ?? ""
+
+        let image = (projection["primaryImageURL"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        primaryImageURL = image.isEmpty ? nil : image
+    }
+
+    /// The swatch's red/green/blue components in 0...1, or `nil` when the server sent
+    /// no usable hex.
+    ///
+    /// Returns components rather than a `Color` so this models file stays free of
+    /// SwiftUI: the view layer decides how to paint a colour, the model only carries
+    /// what the server said. A malformed hex yields `nil` so the rail can fall back to
+    /// a neutral chip instead of painting an arbitrary wrong colour.
+    var swatchComponents: (red: Double, green: Double, blue: Double)? {
+        let cleaned = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard cleaned.count == 6, let value = UInt64(cleaned, radix: 16) else {
+            return nil
+        }
+        return (
+            red: Double((value & 0xFF0000) >> 16) / 255.0,
+            green: Double((value & 0x00FF00) >> 8) / 255.0,
+            blue: Double(value & 0x0000FF) / 255.0
+        )
+    }
+}

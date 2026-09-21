@@ -149,6 +149,15 @@ struct HomeHeroPage: Identifiable {
     let accessibilityLabel: String?
     let autoScrollInterval: TimeInterval
     let usesHeroImageURL: Bool
+    let endsHeightAfterSubtitle: Bool
+
+    /// Clearance in points after the subtitle when the hero card height ends after the subtitle.
+    static let subtitleBottomClearance: CGFloat = 8
+
+    /// Whether this hero page represents a HomePromotionSpark presentation.
+    var isPromotionSpark: Bool {
+        kind == .promotion && (imageURL == nil || imageURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true)
+    }
 
     init(
         id: String,
@@ -164,7 +173,8 @@ struct HomeHeroPage: Identifiable {
         action: HomeHeroAction,
         accessibilityLabel: String? = nil,
         autoScrollInterval: TimeInterval = 4.8,
-        usesHeroImageURL: Bool = false
+        usesHeroImageURL: Bool = false,
+        endsHeightAfterSubtitle: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -180,6 +190,7 @@ struct HomeHeroPage: Identifiable {
         self.accessibilityLabel = accessibilityLabel
         self.autoScrollInterval = autoScrollInterval
         self.usesHeroImageURL = usesHeroImageURL
+        self.endsHeightAfterSubtitle = endsHeightAfterSubtitle
     }
 }
 
@@ -260,7 +271,7 @@ extension HomeCategoryModel {
             }
 
             // Rabbits & Small Pets (الأرانب، القوارض)
-            if matchesAny(["أرنب", "ارنب", "أرانب", "ارانب", "قوارض", "هامستر", "rabbit", "rabbits", "hare", "bunny", "bunnies", "hamster"]) {
+            if matchesAny(["أرنب", "ارنب", "أرانب", "ارانب", "قوارض", "هامستر", "rabbit", "rabbits", "hare", "bunny", "bunnies", "hamster"]) || numericID == 12 || numericID == 8 {
                 return "hare.fill"
             }
 

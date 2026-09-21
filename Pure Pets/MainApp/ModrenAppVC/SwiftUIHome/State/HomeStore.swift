@@ -1540,7 +1540,7 @@ final class HomeStore: ObservableObject {
     }
 
     private func buildPromotionHeroPages() -> [HomeHeroPage] {
-        promotions.prefix(8).compactMap { card -> HomeHeroPage? in
+        promotions.prefix(8).enumerated().compactMap { index, card -> HomeHeroPage? in
             let presentation = PPHomeDataBridge.promotionPresentation(for: card)
             var title = presentation["title"] as? String ?? ""
             let subtitle = presentation["subtitle"] as? String ?? ""
@@ -1583,7 +1583,8 @@ final class HomeStore: ObservableObject {
                 localImage: nil,
                 accentHex: normalizedHex(accentHex, fallback: "75666B"),
                 action: .openPromotion(card, interaction: "card"),
-                autoScrollInterval: max(2.0, interval)
+                autoScrollInterval: max(2.0, interval),
+                endsHeightAfterSubtitle: index < 4
             )
         }
     }

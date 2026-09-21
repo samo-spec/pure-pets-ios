@@ -663,18 +663,88 @@ public final class MainKindsCellV2: UICollectionViewCell {
         if content.isAll {
             return UIImage(named: "menugrid") ?? UIImage(systemName: "square.grid.2x2.fill")
         }
-        if !content.iconName.isEmpty, let image = UIImage(named: content.iconName) {
+
+        // 1. Resolve animal-specific SF Symbol FIRST (e.g. "dog.fill" for dogs, "cat.fill" for cats, etc.)
+        if let petSymbol = petSFSymbolName(for: content),
+           let image = UIImage(systemName: petSymbol) {
             return image
         }
+
+        // 2. Fallback: explicitly specified SF symbol in iconName
         if !content.iconName.isEmpty, let image = UIImage(systemName: content.iconName) {
             return image
         }
+
+        // 3. Fallback: custom asset in iconName
+        if !content.iconName.isEmpty, let image = UIImage(named: content.iconName) {
+            return image
+        }
+
+        // 4. Fallback based on numeric ID
         switch content.numericID {
         case 1, 11:
-            return UIImage(systemName: "feather") ?? UIImage(systemName: "pawprint.fill")
+            return UIImage(systemName: "bird.fill") ?? UIImage(systemName: "feather") ?? UIImage(systemName: "pawprint.fill")
         default:
             return UIImage(systemName: "pawprint.fill")
         }
+    }
+
+    private func petSFSymbolName(for content: MainKindsV2Content) -> String? {
+        var textBag = [content.title.lowercased()]
+        if let model = content.kind as? MainKindsModel {
+            let ar = model.kindNameAr.lowercased()
+            if !ar.isEmpty { textBag.append(ar) }
+            let en = model.kindNameEn.lowercased()
+            if !en.isEmpty { textBag.append(en) }
+            let name = model.kindName.lowercased()
+            if !name.isEmpty { textBag.append(name) }
+        } else if let kind = content.kind {
+            if let ar = ((kind.value(forKey: "KindNameAr") as? String) ?? (kind.value(forKey: "kindNameAr") as? String))?.lowercased() { textBag.append(ar) }
+            if let en = ((kind.value(forKey: "KindNameEn") as? String) ?? (kind.value(forKey: "kindNameEn") as? String))?.lowercased() { textBag.append(en) }
+            if let name = ((kind.value(forKey: "KindName") as? String) ?? (kind.value(forKey: "kindName") as? String))?.lowercased() { textBag.append(name) }
+        }
+        let joinedText = textBag.joined(separator: " ")
+
+        func matchesAny(_ tokens: [String]) -> Bool {
+            tokens.contains { joinedText.contains($0) }
+        }
+
+        // Dogs (الكلاب)
+        if matchesAny(["كلب", "كلاب", "كلبة", "كلبه", "جرو", "dog", "dogs", "puppy", "puppies", "canine"]) || content.numericID == 6 {
+            return "dog.fill"
+        }
+
+        // Cats (القطط)
+        if matchesAny(["قط", "قطط", "قطة", "قطه", "بسة", "بسه", "cat", "cats", "kitten", "kittens", "feline"]) || content.numericID == 5 {
+            return "cat.fill"
+        }
+
+        // Birds & Falcons (الطيور، الصقور)
+        if matchesAny(["طير", "طيور", "عصفور", "عصافير", "صقر", "صقور", "ببغاء", "بلبل", "حمام", "حمامة", "طائر", "bird", "birds", "falcon", "falcons", "parrot", "parrots", "avian"]) || content.numericID == 1 || content.numericID == 11 {
+            return "bird.fill"
+        }
+
+        // Fish (الأسماك)
+        if matchesAny(["سمك", "أسماك", "اسماك", "سمكة", "أحواض", "fish", "fishes", "aquarium"]) || content.numericID == 7 {
+            return "fish.fill"
+        }
+
+        // Rabbits & Small Pets (الأرانب، القوارض)
+        if matchesAny(["أرنب", "ارنب", "أرانب", "ارانب", "قوارض", "هامستر", "rabbit", "rabbits", "hare", "bunny", "bunnies", "hamster"]) || content.numericID == 12 || content.numericID == 8 {
+            return "hare.fill"
+        }
+
+        // Turtles & Reptiles (السلاحف، الزواحف)
+        if matchesAny(["سلحفاة", "سلحفاه", "سلاحف", "زواحف", "turtle", "tortoise", "reptile"]) {
+            return "tortoise.fill"
+        }
+
+        // Horses & Equestrian (الخيول)
+        if matchesAny(["خيل", "خيول", "حصان", "أفراس", "horse", "horses", "equestrian"]) || content.numericID == 3 {
+            return "figure.equestrian.sports"
+        }
+
+        return nil
     }
 
     // MARK: - Artwork Loading & Caching

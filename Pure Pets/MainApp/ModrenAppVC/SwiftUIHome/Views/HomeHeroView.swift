@@ -233,11 +233,13 @@ struct HomeHeroView: View {
             }
             .frame(maxWidth: .infinity, alignment: .center)
             
-            heroMetaPill(page, accent: accent)
-                .frame(maxWidth: .infinity, alignment: .center)
-            
-            primaryButton(page, accent: accent)
-                .frame(maxWidth: .infinity, alignment: .center)
+            if !page.endsHeightAfterSubtitle {
+                heroMetaPill(page, accent: accent)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                
+                primaryButton(page, accent: accent)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }

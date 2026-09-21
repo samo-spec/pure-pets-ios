@@ -4191,6 +4191,15 @@
 "accessory_view_remaining_format" = "متبقي %ld بعد السلة";
 "accessory_view_sign_in_required" = "سجّل الدخول للمتابعة.";
 "accessory_view_suggestions_failed" = "تعذّر تحميل المستلزمات المرتبطة.";
+"accessory_view_colors_title" = "اللون";
+"accessory_view_colors_hint" = "اختر هذا اللون";
+"accessory_view_colors_retry" = "إعادة المحاولة";
+"accessory_view_colors_failed" = "تعذّر تحميل الألوان المتوفرة.";
+"accessory_view_colors_missing" = "هذا اللون غير متوفر الآن.";
+"accessory_view_colors_busy" = "أكمل العملية الحالية قبل تغيير اللون.";
+"accessory_view_colors_unavailable" = "هذا اللون غير متاح للبيع حالياً.";
+"accessory_view_colors_selected_format" = "تم اختيار اللون %@";
+"accessory_view_colors_loading_format" = "جارِ تحميل اللون %@";
 "accessory_view_unavailable_message" = "يتعذّر عرض هذا المستلزم الآن. أعد المحاولة أو ارجع إلى الشاشة السابقة.";
 "accessory_view_unavailable_title" = "المستلزم غير متاح";
 "accessory_view_updating_favorite" = "جارِ تحديث المفضلة";

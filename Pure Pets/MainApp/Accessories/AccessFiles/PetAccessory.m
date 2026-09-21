@@ -389,6 +389,11 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         _isDeleted = [dict[@"isDeleted"] boolValue];
         _isDisabled = [dict[@"isDisabled"] boolValue];
 
+        // Colour-variant grouping. Absence means standalone, so an empty string is
+        // normalized back to nil rather than kept — callers branch on nil.
+        NSString *resolvedFamilyID = PPAccessoryStringValueForKeys(dict, @[@"productFamilyId"]);
+        _productFamilyId = resolvedFamilyID.length > 0 ? resolvedFamilyID : nil;
+
         _quantity = [dict[@"quantity"] integerValue];
         _searchTitle = dict[@"searchTitle"];
         if(isPPDebugMode)

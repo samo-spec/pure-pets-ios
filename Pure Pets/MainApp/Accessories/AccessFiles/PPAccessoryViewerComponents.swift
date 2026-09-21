@@ -711,6 +711,13 @@ struct PPAccessoryShorelineGallery: View {
                 max(snapshot.media.count - 1, 0)
             )
         }
+        // A colour switch replaces the product, so the gallery must return to that
+        // colour's first image. Keyed on the document id, not on the media list, because
+        // the clamp above must keep handling a same-product media edit without yanking
+        // the customer off the image they were looking at.
+        .onChange(of: snapshot.accessory.accessoryID) { _ in
+            selection = 0
+        }
         .fullScreenCover(isPresented: $showsMediaViewer) {
             PPMediaViewer(
                 items: PPMediaItem.from(accessoryMedia: snapshot.media),
@@ -3044,8 +3051,14 @@ struct PPAccessorySuggestionShore: View {
     @ObservedObject var store: PPAccessoryViewerStore
     let compact: Bool
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var suggestionCardHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 508 : 336
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
                 PPAccessoryViewerL10n.text(
                     store.suggestionsFromSameProvider
@@ -3060,12 +3073,13 @@ struct PPAccessorySuggestionShore: View {
                 suggestionSkeleton
             case .loaded:
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
+                    LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(store.suggestions) { suggestion in
                             universalSuggestionCard(suggestion)
                         }
                     }
-                    .padding(.horizontal, 1)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 8)
                     .padding(.bottom, 8)
                 }
             case .empty:
@@ -3116,15 +3130,20 @@ struct PPAccessorySuggestionShore: View {
                 store.openSuggestion(suggestion)
             }
         )
-        .frame(width: compact ? 172 : 195, height: compact ? 310 : 328)
+        .frame(width: compact ? 172 : 195, height: suggestionCardHeight)
         .accessibilityElement(children: .combine)
     }
 
     private var suggestionSkeleton: some View {
-        HStack(spacing: 12) {
-            ForEach(["skeleton-0", "skeleton-1", "skeleton-2"], id: \.self) { itemID in
-                skeletonCard(itemID)
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 12) {
+                ForEach(["skeleton-0", "skeleton-1", "skeleton-2"], id: \.self) { itemID in
+                    skeletonCard(itemID)
+                }
             }
+            .padding(.horizontal, 4)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
         }
         .accessibilityLabel(
             PPAccessoryViewerL10n.text(
@@ -3144,7 +3163,7 @@ struct PPAccessorySuggestionShore: View {
             discountMode: .plain,
             showsSubtitle: true
         )
-        .frame(width: compact ? 172 : 195, height: compact ? 310 : 328)
+        .frame(width: compact ? 172 : 195, height: suggestionCardHeight)
     }
 }
 
@@ -4279,7 +4298,7 @@ struct PPAccessoryViewerLoadingState: View {
             .frame(maxWidth: .infinity)
             .padding(
                 .bottom,
-                (compact ? 280 : 205) + bottomInset + PPSpace.xl
+                (compact ? 164 : 148) + PPSpace.base
             )
         }
         .redacted(reason: .placeholder)
@@ -4451,5 +4470,352 @@ struct PPAccessoryPriceHaloView: ViewModifier {
 extension View {
     func priceHaloTransition(pulseToken: Int) -> some View {
         modifier(PPAccessoryPriceHaloView(pulseToken: pulseToken))
+    }
+}
+
+
+// MARK: - Colour Rail
+
+/// Lets the customer move between the sellable colours of one logical product.
+///
+/// Renders nothing unless there is a real choice — the store only publishes `variants`
+/// when a family has more than one member, so a standalone product and a family whose
+/// siblings were archived both cost zero pixels.
+///
+/// Selection is communicated by **three** simultaneous signals — swatch size, ring
+/// width, and an explicit check — never by colour alone, because the content being
+/// selected *is* colour and a colour-blind customer would otherwise have no way to tell
+/// which one is active. The colour name is always visible for the same reason: a swatch
+/// alone is not a label.
+@available(iOS 16.0, *)
+struct PPAccessoryColorRail: View {
+    @ObservedObject var store: PPAccessoryViewerStore
+    let snapshot: PPAccessoryViewerSnapshot
+    let compact: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        switch store.variantsPhase {
+        case .idle, .empty:
+            EmptyView()
+        case .loading:
+            // Only occupy space once we know a rail is coming. Before that, a skeleton
+            // would make every standalone product flash a control it will never have.
+            if !store.variants.isEmpty {
+                container { railBody }
+            }
+        case .loaded:
+            container { railBody }
+        case .failed(let message):
+            container { failureBody(message) }
+        }
+    }
+
+    // MARK: Shell
+
+    private func container<Content: View>(
+        @ViewBuilder _ content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            header
+            content()
+        }
+        .padding(PPSpace.base)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ppAccessorySubviewBackground(
+            PPAccessorySubviewBackground.baseSurface,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            ),
+            stroke: colorSchemeContrast == .increased
+                ? PPAccessorySubviewBackground.controlStroke
+                : PPAccessorySubviewBackground.faintStroke,
+            lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+        )
+        .accessibilityElement(children: .contain)
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+            Text(PPAccessoryViewerL10n.text("accessory_view_colors_title"))
+                .font(PPAccessoryTypography.calloutBold)
+                .foregroundStyle(PPAccessoryPalette.ink)
+
+            Spacer(minLength: PPSpace.xs)
+
+            if let selected = selectedVariant, !selected.name.isEmpty {
+                Text(selected.name)
+                    .font(PPAccessoryTypography.caption)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        // The heading and the live selection read as one phrase, so VoiceOver does not
+        // announce a bare word followed by an unrelated colour name.
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Rail
+
+    @ViewBuilder
+    private var railBody: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            // At accessibility sizes a horizontal rail forces the customer to scroll
+            // sideways through text that no longer fits. Stack instead, matching
+            // `PPAccessoryDetailRail`.
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                ForEach(store.variants) { variant in
+                    swatchButton(variant, fillsWidth: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        } else if #available(iOS 17.0, *) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: PPSpace.sm) {
+                    ForEach(store.variants) { variant in
+                        swatchButton(variant, fillsWidth: false)
+                    }
+                }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 2)
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: PPSpace.sm) {
+                    ForEach(store.variants) { variant in
+                        swatchButton(variant, fillsWidth: false)
+                    }
+                }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private func swatchButton(
+        _ variant: PPAccessoryViewerVariant,
+        fillsWidth: Bool
+    ) -> some View {
+        let isSelected = variant.productId == snapshot.accessory.accessoryID
+        let isResolving = store.switchingVariantProductId == variant.productId
+        let isBusy = store.switchingVariantProductId != nil
+
+        return Button {
+            store.selectVariant(variant)
+        } label: {
+            railItemLabel(
+                variant,
+                isSelected: isSelected,
+                isResolving: isResolving,
+                fillsWidth: fillsWidth
+            )
+        }
+        .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.92))
+        // Only the selected swatch stays enabled-looking while another resolves, so the
+        // customer can see where they are but cannot queue a second switch.
+        .disabled(isSelected || isBusy)
+        .opacity(isBusy && !isResolving && !isSelected ? 0.5 : 1)
+        .accessibilityLabel(accessibilityLabel(for: variant))
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityHint(
+            isSelected
+                ? ""
+                : PPAccessoryViewerL10n.text("accessory_view_colors_hint")
+        )
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.82),
+            value: isSelected
+        )
+    }
+
+    private func railItemLabel(
+        _ variant: PPAccessoryViewerVariant,
+        isSelected: Bool,
+        isResolving: Bool,
+        fillsWidth: Bool
+    ) -> some View {
+        let axis: Alignment = fillsWidth ? .leading : .center
+
+        return Group {
+            if fillsWidth {
+                HStack(spacing: PPSpace.sm) {
+                    swatch(variant, isSelected: isSelected, isResolving: isResolving)
+                    nameLabel(variant, isSelected: isSelected, fillsWidth: true)
+                }
+            } else {
+                VStack(spacing: PPSpace.xs) {
+                    swatch(variant, isSelected: isSelected, isResolving: isResolving)
+                    nameLabel(variant, isSelected: isSelected, fillsWidth: false)
+                }
+            }
+        }
+        .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: axis)
+        .padding(.horizontal, fillsWidth ? PPSpace.sm : 0)
+        .padding(.vertical, fillsWidth ? PPSpace.xs : 0)
+        .contentShape(
+            RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+        )
+    }
+
+    private func swatch(
+        _ variant: PPAccessoryViewerVariant,
+        isSelected: Bool,
+        isResolving: Bool
+    ) -> some View {
+        // 44pt is the minimum comfortable target, so the unselected size is already at
+        // the floor rather than below it; selection grows from there.
+        let side: CGFloat = isSelected ? 52 : 44
+
+        return ZStack {
+            if let components = variant.swatchComponents {
+                Circle()
+                    .fill(
+                        Color(
+                            red: components.red,
+                            green: components.green,
+                            blue: components.blue
+                        )
+                    )
+            } else {
+                // No usable hex from the server. A neutral chip carrying the colour's
+                // initial is honest; painting an arbitrary colour would not be.
+                Circle()
+                    .fill(PPAccessoryPalette.sand)
+                Text(initial(for: variant))
+                    .font(PPAccessoryTypography.captionBold)
+                    .foregroundStyle(PPAccessoryPalette.ink)
+            }
+
+            if isResolving {
+                Circle().fill(PPAccessoryPalette.ink.opacity(0.35))
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(.white)
+                    .scaleEffect(0.7)
+            } else if isSelected {
+                // The third, non-colour selection signal.
+                Image(systemName: "checkmark")
+                    .font(.system(size: 15, weight: .heavy))
+                    .foregroundStyle(contrastingInk(for: variant))
+                    .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
+            }
+        }
+        .frame(width: side, height: side)
+        .overlay {
+            Circle()
+                .stroke(
+                    isSelected
+                        ? PPAccessoryPalette.accent
+                        : PPAccessoryPalette.ink.opacity(
+                            colorSchemeContrast == .increased ? 0.45 : 0.18
+                        ),
+                    lineWidth: isSelected ? 3 : 1
+                )
+        }
+        // A white or very light swatch would otherwise vanish into the card.
+        .overlay {
+            Circle()
+                .stroke(PPAccessoryPalette.ink.opacity(0.10), lineWidth: 0.5)
+                .padding(isSelected ? 3 : 1)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func nameLabel(
+        _ variant: PPAccessoryViewerVariant,
+        isSelected: Bool,
+        fillsWidth: Bool
+    ) -> some View {
+        Text(variant.name.isEmpty ? variant.id : variant.name)
+            .font(
+                isSelected
+                    ? PPAccessoryTypography.captionBold
+                    : PPAccessoryTypography.caption
+            )
+            .foregroundStyle(
+                isSelected
+                    ? PPAccessoryPalette.ink
+                    : PPAccessoryPalette.inkSecondary
+            )
+            .lineLimit(fillsWidth ? 2 : 1)
+            .multilineTextAlignment(fillsWidth ? .leading : .center)
+            .truncationMode(.tail)
+            .frame(maxWidth: fillsWidth ? .infinity : 68, alignment: fillsWidth ? .leading : .center)
+            .accessibilityHidden(true)
+    }
+
+    // MARK: Failure
+
+    private func failureBody(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            Text(message)
+                .font(PPAccessoryTypography.caption)
+                .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                store.retryVariants()
+            } label: {
+                Text(PPAccessoryViewerL10n.text("accessory_view_colors_retry"))
+                    .font(PPAccessoryTypography.captionBold)
+                    .foregroundStyle(PPAccessoryPalette.brand)
+                    .padding(.vertical, PPSpace.sm)
+                    .padding(.horizontal, PPSpace.md)
+                    .ppAccessorySubviewBackground(
+                        PPAccessorySubviewBackground.quietFill,
+                        in: Capsule(style: .continuous),
+                        stroke: PPAccessorySubviewBackground.controlStroke
+                    )
+            }
+            .buttonStyle(PPAccessoryPressStyle())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Helpers
+
+    private var selectedVariant: PPAccessoryViewerVariant? {
+        store.variants.first {
+            $0.productId == snapshot.accessory.accessoryID
+        }
+    }
+
+    private func initial(for variant: PPAccessoryViewerVariant) -> String {
+        let source = variant.name.isEmpty ? variant.id : variant.name
+        return String(source.prefix(1)).uppercased()
+    }
+
+    /// Picks black or white for the check mark from the swatch's perceived brightness,
+    /// so it stays visible on both a pale cream and a near-black.
+    private func contrastingInk(
+        for variant: PPAccessoryViewerVariant
+    ) -> Color {
+        guard let components = variant.swatchComponents else {
+            return PPAccessoryPalette.ink
+        }
+        let luminance = (0.299 * components.red)
+            + (0.587 * components.green)
+            + (0.114 * components.blue)
+        return luminance > 0.6 ? .black : .white
+    }
+
+    private func accessibilityLabel(
+        for variant: PPAccessoryViewerVariant
+    ) -> String {
+        let name = variant.name.isEmpty ? variant.id : variant.name
+        if store.switchingVariantProductId == variant.productId {
+            return PPAccessoryViewerL10n.formatted(
+                "accessory_view_colors_loading_format",
+                name
+            )
+        }
+        return name
     }
 }

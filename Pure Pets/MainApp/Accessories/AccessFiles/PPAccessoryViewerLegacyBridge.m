@@ -736,6 +736,66 @@ static UIViewController *PPAccessoryResolvedPresenter(
     }];
 }
 
++ (void)fetchVariantFamilyForAccessory:(PetAccessory *)accessory
+                            completion:(void (^)(NSArray<NSDictionary<NSString *, id> *> *,
+                                                 NSString * _Nullable,
+                                                 NSError * _Nullable))completion
+{
+    if (!completion) { return; }
+
+    // No family id means standalone. Return empty without touching Firestore —
+    // most products are not variants, and a colour rail must cost them nothing.
+    NSString *familyID = accessory.productFamilyId;
+    if (![familyID isKindOfClass:[NSString class]] || familyID.length == 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(@[], nil, nil);
+        });
+        return;
+    }
+
+    [PetAccessoryManager
+     fetchProductFamilyWithID:familyID
+     completion:^(NSDictionary * _Nullable family, NSError * _Nullable error) {
+        if (error || !family) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(@[], nil, error);
+            });
+            return;
+        }
+
+        NSArray *rawVariants = family[@"variants"];
+        if (![rawVariants isKindOfClass:[NSArray class]]) {
+            rawVariants = @[];
+        }
+        NSMutableArray<NSDictionary<NSString *, id> *> *variants =
+            [NSMutableArray arrayWithCapacity:rawVariants.count];
+        for (id entry in rawVariants) {
+            if ([entry isKindOfClass:[NSDictionary class]]) {
+                [variants addObject:entry];
+            }
+        }
+
+        // `variantAxis` lives only on the family document — it is not stamped onto
+        // member products — so this is the only place the client can learn it.
+        NSString *axis = family[@"variantAxis"];
+        if (![axis isKindOfClass:[NSString class]] || axis.length == 0) {
+            axis = nil;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(variants, axis, nil);
+        });
+    }];
+}
+
++ (void)fetchAccessoryWithID:(NSString *)accessoryID
+                  completion:(void (^)(PetAccessory * _Nullable,
+                                       NSError * _Nullable))completion
+{
+    if (!completion) { return; }
+    [PetAccessoryManager fetchAccessoryWithID:accessoryID completion:completion];
+}
+
 + (void)loadFavoriteForAccessoryID:(NSString *)accessoryID
                         completion:(void (^)(BOOL,
                                              NSError * _Nullable))completion

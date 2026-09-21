@@ -4215,6 +4215,15 @@
 "accessory_view_remaining_format" = "%ld left after cart";
 "accessory_view_sign_in_required" = "Sign in to continue.";
 "accessory_view_suggestions_failed" = "Related accessories couldn’t be loaded.";
+"accessory_view_colors_title" = "Colour";
+"accessory_view_colors_hint" = "Select this colour";
+"accessory_view_colors_retry" = "Try again";
+"accessory_view_colors_failed" = "Available colours couldn’t be loaded.";
+"accessory_view_colors_missing" = "That colour isn’t available right now.";
+"accessory_view_colors_busy" = "Finish the current action before changing colour.";
+"accessory_view_colors_unavailable" = "This colour isn’t available to buy right now.";
+"accessory_view_colors_selected_format" = "%@ selected";
+"accessory_view_colors_loading_format" = "Loading %@";
 "accessory_view_unavailable_message" = "This accessory can’t be displayed right now. Try again or return to the previous screen.";
 "accessory_view_unavailable_title" = "Accessory unavailable";
 "accessory_view_updating_favorite" = "Updating favorite";

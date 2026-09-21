@@ -67,6 +67,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithDict:(NSDictionary *)data ;
 + (MainKindsModel *)allKind;
 -(UIColor *)kindColor;
+- (NSString *)petSFSymbolName;
 @end
 
 NS_ASSUME_NONNULL_END

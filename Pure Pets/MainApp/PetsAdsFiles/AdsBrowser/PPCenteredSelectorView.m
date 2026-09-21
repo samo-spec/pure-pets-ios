@@ -257,7 +257,15 @@ forCellWithReuseIdentifier:kPPSelectorCellId];
     NSString *title = kind.KindName ?: kind.KindNameEn ?: kind.KindNameAr ?: @"-";
 
     cell.titleLabel.text = title;
-    cell.iconView.image  = PPSYSImage(kind.KindIconName) ?: PPImage(kind.KindIconName);
+    NSString *petSymbol = [kind petSFSymbolName];
+    UIImage *resolvedImage = nil;
+    if (petSymbol.length > 0) {
+        resolvedImage = [UIImage systemImageNamed:petSymbol];
+    }
+    if (!resolvedImage) {
+        resolvedImage = PPSYSImage(kind.KindIconName) ?: PPImage(kind.KindIconName) ?: [UIImage systemImageNamed:@"pawprint.fill"];
+    }
+    cell.iconView.image  = resolvedImage;
 
     BOOL selected = (index == (NSInteger)self.selectedIndex);
 

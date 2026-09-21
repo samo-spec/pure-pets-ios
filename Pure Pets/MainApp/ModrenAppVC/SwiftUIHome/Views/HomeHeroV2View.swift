@@ -109,6 +109,15 @@ private enum HomeHeroSpeciesDockMetrics {
 }
 
 @available(iOS 15.0, *)
+private struct HeroCopyHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next > 0 { value = next }
+    }
+}
+
+@available(iOS 15.0, *)
 struct HomeHeroV2View: View {
     let pages: [HomeHeroPage]
     let selectedIndex: Int
@@ -129,6 +138,8 @@ struct HomeHeroV2View: View {
     @ScaledMetric(relativeTo: .title) private var scaledHeight: CGFloat =
         HomeHeroV2Metrics.height
 
+    @State private var measuredCopyHeights: [String: CGFloat] = [:]
+
     private var selectedPage: HomeHeroPage? {
         guard pages.indices.contains(selectedIndex) else { return nil }
         return pages[selectedIndex]
@@ -136,6 +147,25 @@ struct HomeHeroV2View: View {
 
     private var resolvedHeight: CGFloat {
         min(scaledHeight, HomeHeroV2Metrics.maximumHeight)
+    }
+
+    private func shouldEndHeightAfterSubtitle(for page: HomeHeroPage) -> Bool {
+        if page.endsHeightAfterSubtitle { return true }
+        if page.isPromotionSpark {
+            if let index = pages.firstIndex(where: { $0.id == page.id }) {
+                return index < 4
+            }
+            return true
+        }
+        return false
+    }
+
+    private func stageHeight(for page: HomeHeroPage) -> CGFloat {
+        if shouldEndHeightAfterSubtitle(for: page) {
+            let measured = measuredCopyHeights[page.id] ?? 88
+            return HomeHeroV2Metrics.copyTopInset + measured + HomeHeroPage.subtitleBottomClearance
+        }
+        return HomeHeroV2Metrics.stageHeight
     }
 
     /// `HomeView` publishes `HomeStore.state.isRightToLeft` into the SwiftUI
@@ -252,6 +282,19 @@ struct HomeHeroV2View: View {
                 onSelect: onSelect
             )
         )
+        .onTapGesture {
+            if shouldEndHeightAfterSubtitle(for: page) {
+                onPrimaryAction()
+            }
+        }
+        .onPreferenceChange(HeroCopyHeightPreferenceKey.self) { height in
+            if height > 0 {
+                let current = measuredCopyHeights[page.id] ?? 0
+                if abs(current - height) > 0.5 {
+                    measuredCopyHeights[page.id] = height
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -261,7 +304,11 @@ struct HomeHeroV2View: View {
     ) -> some View {
         VStack(spacing: 0) {
             splitHero(page, accent: accent)
-                .frame(height: HomeHeroV2Metrics.stageHeight)
+                .frame(height: stageHeight(for: page))
+                .animation(
+                    reduceMotion ? nil : .easeInOut(duration: 0.22),
+                    value: stageHeight(for: page)
+                )
 
             if !categories.isEmpty, let onSelectCategory {
                 // Categories Section Strip
@@ -328,15 +375,20 @@ struct HomeHeroV2View: View {
         GeometryReader { proxy in
             let width = proxy.size.width
             let height = proxy.size.height
-            let plateInk = min(
-                HomeHeroV2Metrics.plateInk,
-                HomeHeroV2Metrics.referenceStageHeight - (HomeHeroV2Metrics.cardContentInset * 2)
-            )
+            let isCompact = shouldEndHeightAfterSubtitle(for: page)
+            let plateInk = isCompact
+                ? min(max(height - 12, 60), 120)
+                : min(
+                    HomeHeroV2Metrics.plateInk,
+                    HomeHeroV2Metrics.referenceStageHeight - (HomeHeroV2Metrics.cardContentInset * 2)
+                )
             let plateFrame = plateInk / HomeHeroV2Metrics.blobInkRatio
-            let plateOverflow = min(
-                HomeHeroV2Metrics.plateHorizontalOverflow,
-                plateFrame * HomeHeroV2Metrics.maximumPlateOverflowRatio
-            )
+            let plateOverflow = isCompact
+                ? 10
+                : min(
+                    HomeHeroV2Metrics.plateHorizontalOverflow,
+                    plateFrame * HomeHeroV2Metrics.maximumPlateOverflowRatio
+                )
             let visiblePlateWidth = plateFrame - plateOverflow
             let availableCopyWidth = width
                 - visiblePlateWidth
@@ -359,10 +411,16 @@ struct HomeHeroV2View: View {
                 - HomeHeroV2Metrics.gripEdgeInset
                 - (HomeHeroV2Metrics.gripWidth / 2)
 
-            let artworkSide = min(HomeHeroV2Metrics.artworkSide, plateInk - PPSpace.base)
-            let blobCenterX = plateCenterX + 80
-            let contentCenterY = height - (HomeHeroV2Metrics.referenceStageHeight / 2)
-            let plateArtworkCenterY = contentCenterY + HomeHeroV2Metrics.plateArtworkGroupVerticalOffset
+            let artworkSide = isCompact
+                ? min(plateInk - 6, 96)
+                : min(HomeHeroV2Metrics.artworkSide, plateInk - PPSpace.base)
+            let blobCenterX = isCompact ? (plateCenterX + 20) : (plateCenterX + 80)
+            let contentCenterY = isCompact
+                ? (height / 2)
+                : (height - (HomeHeroV2Metrics.referenceStageHeight / 2))
+            let plateArtworkCenterY = isCompact
+                ? (height / 2)
+                : (contentCenterY + HomeHeroV2Metrics.plateArtworkGroupVerticalOffset)
             ZStack(alignment: .topLeading) {
                 // Living blob plate shifted trailing by +80
                 plateStage(
@@ -637,7 +695,8 @@ struct HomeHeroV2View: View {
         _ page: HomeHeroPage,
         accent: Color
     ) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let isCompact = shouldEndHeightAfterSubtitle(for: page)
+        return VStack(alignment: .leading, spacing: 0) {
             Text(page.eyebrow)
                 .font(HomeFont.bold(HomeHeroV2Metrics.eyebrowSize))
                 .foregroundStyle(accent)
@@ -667,23 +726,33 @@ struct HomeHeroV2View: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, HomeHeroV2Metrics.copyTitleToSubtitleSpacing)
 
-            ZStack(alignment: .leading) {
-                primaryButton(page, accent: accent)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, HomeHeroV2Metrics.copySubtitleToPrimarySpacing)
-
-            if let secondaryTitle = page.secondaryTitle,
-               !secondaryTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                .isEmpty {
+            if !isCompact {
                 ZStack(alignment: .leading) {
-                    secondaryButton(secondaryTitle, accent: accent)
+                    primaryButton(page, accent: accent)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, HomeHeroV2Metrics.copyPrimaryToSecondarySpacing)
+                .padding(.top, HomeHeroV2Metrics.copySubtitleToPrimarySpacing)
+
+                if let secondaryTitle = page.secondaryTitle,
+                   !secondaryTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .isEmpty {
+                    ZStack(alignment: .leading) {
+                        secondaryButton(secondaryTitle, accent: accent)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, HomeHeroV2Metrics.copyPrimaryToSecondarySpacing)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            GeometryReader { copyProxy in
+                Color.clear.preference(
+                    key: HeroCopyHeightPreferenceKey.self,
+                    value: copyProxy.size.height
+                )
+            }
+        )
     }
 
     private func primaryButton(
@@ -1793,13 +1862,13 @@ private struct HomeHeroSpeciesDock: View {
     private func pawGem(for category: HomeCategoryModel?, accent: Color) -> some View {
         let symbol = HomeCategoryModel.indicatorSymbol(for: category)
         return Image(systemName: symbol)
-            .font(.system(size: 10, weight: .bold))
+            .font(.system(size: 11.5, weight: .bold))
             .foregroundStyle(
                 contrast == .increased
                     ? Color.ppTextPrimary
                     : accent
             )
-            .frame(width: 12, height: 12)
+            .frame(width: 14, height: 14)
             .accessibilityHidden(true)
     }
 

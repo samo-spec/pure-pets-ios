@@ -129,6 +129,31 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)fetchAccessoriesTypeAccessWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
 + (void)fetchAccessoriesTypeFoodWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
 
+#pragma mark - Colour-variant families
+
+/// Reads one `ProductFamilies` document and returns its raw data.
+///
+/// Read-only and open by rule: `ProductFamilies` is world-readable so the marketplace
+/// can resolve a product's sibling colours before the customer authenticates. The
+/// family document is merchandising identity only — it carries no stock, cost,
+/// supplier or branch data, so the caller must still read each member product for
+/// live price and availability.
+///
+/// Calls back on the main queue with `nil` when the family is missing or the read
+/// fails; `error` distinguishes the two.
++ (void)fetchProductFamilyWithID:(NSString *)familyID
+                      completion:(void (^)(NSDictionary * _Nullable family, NSError * _Nullable error))completion;
+
+/// Reads a single `petAccessories` document without applying any merchandising
+/// filter.
+///
+/// `fetchAccessoriesWithIDs:` deliberately drops items that fail the used-accessory
+/// flag, which is correct for list surfaces but wrong when resolving a specific
+/// colour the customer just tapped: silently returning nothing would look like a
+/// broken swatch. This returns whatever the document says and lets the caller decide.
++ (void)fetchAccessoryWithID:(NSString *)accessoryID
+                  completion:(void (^)(PetAccessory * _Nullable accessory, NSError * _Nullable error))completion;
+
 
  
 - (void)fetchAccessoriesForAllMainKinds:(void (^)(NSArray<PetAccessory *> *accessories))completion;

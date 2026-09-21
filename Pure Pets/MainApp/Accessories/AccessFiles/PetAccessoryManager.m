@@ -2081,6 +2081,69 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         });
     }
 
+#pragma mark - Colour-variant families
+
+    + (void)fetchProductFamilyWithID:(NSString *)familyID
+                          completion:(void (^)(NSDictionary * _Nullable family, NSError * _Nullable error))completion {
+        if (!completion) { return; }
+        NSString *cleanID = [familyID isKindOfClass:[NSString class]]
+            ? [familyID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+            : @"";
+        if (cleanID.length == 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, nil); });
+            return;
+        }
+
+        FIRFirestore *db = [FIRFirestore firestore];
+        [[[db collectionWithPath:@"ProductFamilies"] documentWithPath:cleanID]
+         getDocumentWithCompletion:^(FIRDocumentSnapshot *doc, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (error) {
+                    [PPFirestoreErrorNotifier postError:error
+                                                context:@"ProductFamilies.read"];
+                    completion(nil, error);
+                    return;
+                }
+                // A missing family is not an error. It happens whenever a product's
+                // family was released after the client cached the product, and the
+                // caller must treat it as "standalone", not as a failure to retry.
+                completion(doc.exists ? doc.data : nil, nil);
+            });
+        }];
+    }
+
+    + (void)fetchAccessoryWithID:(NSString *)accessoryID
+                      completion:(void (^)(PetAccessory * _Nullable accessory, NSError * _Nullable error))completion {
+        if (!completion) { return; }
+        NSString *cleanID = [accessoryID isKindOfClass:[NSString class]]
+            ? [accessoryID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+            : @"";
+        if (cleanID.length == 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, nil); });
+            return;
+        }
+
+        FIRFirestore *db = [FIRFirestore firestore];
+        [[[db collectionWithPath:@"petAccessories"] documentWithPath:cleanID]
+         getDocumentWithCompletion:^(FIRDocumentSnapshot *doc, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (error) {
+                    [PPFirestoreErrorNotifier postError:error
+                                                context:@"petAccessories.variantRead"];
+                    completion(nil, error);
+                    return;
+                }
+                if (!doc.exists || !doc.data) {
+                    completion(nil, nil);
+                    return;
+                }
+                PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data
+                                                                  documentID:doc.documentID];
+                item.accessoryID = doc.documentID;
+                completion(item, nil);
+            });
+        }];
+    }
 
     + (void)fetchAccessoriesTypeAccessWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
         if (itemIDs.count == 0) {

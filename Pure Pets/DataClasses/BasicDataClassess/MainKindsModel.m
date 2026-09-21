@@ -475,5 +475,55 @@ static NSString *PPMainKindOptionalString(id value) {
      }
  }
 
- */
+- (NSString *)petSFSymbolName {
+    NSMutableArray<NSString *> *textBag = [NSMutableArray array];
+    if (self.KindName.length) [textBag addObject:[self.KindName lowercaseString]];
+    if (self.KindNameAr.length) [textBag addObject:[self.KindNameAr lowercaseString]];
+    if (self.KindNameEn.length) [textBag addObject:[self.KindNameEn lowercaseString]];
+    NSString *joined = [textBag componentsJoinedByString:@" "];
+
+    BOOL (^matchesAny)(NSArray<NSString *> *) = ^BOOL(NSArray<NSString *> *tokens) {
+        for (NSString *t in tokens) {
+            if ([joined containsString:t]) return YES;
+        }
+        return NO;
+    };
+
+    // Dogs
+    if (self.ID == 6 || matchesAny(@[@"كلب", @"كلاب", @"كلبة", @"كلبه", @"جرو", @"dog", @"dogs", @"puppy", @"puppies", @"canine"])) {
+        return @"dog.fill";
+    }
+    // Cats
+    if (self.ID == 5 || matchesAny(@[@"قط", @"قطط", @"قطة", @"قطه", @"بسة", @"بسه", @"cat", @"cats", @"kitten", @"kittens", @"feline"])) {
+        return @"cat.fill";
+    }
+    // Birds & Falcons
+    if (self.ID == 1 || self.ID == 11 || matchesAny(@[@"طير", @"طيور", @"عصفور", @"عصافير", @"صقر", @"صقور", @"ببغاء", @"بلبل", @"حمام", @"حمامة", @"طائر", @"bird", @"birds", @"falcon", @"falcons", @"parrot", @"parrots", @"avian"])) {
+        return @"bird.fill";
+    }
+    // Fish
+    if (self.ID == 7 || matchesAny(@[@"سمك", @"أسماك", @"اسماك", @"سمكة", @"أحواض", @"fish", @"fishes", @"aquarium"])) {
+        return @"fish.fill";
+    }
+    // Rabbits & Rodents
+    if (self.ID == 12 || self.ID == 8 || matchesAny(@[@"أرنب", @"ارنب", @"أرانب", @"ارانب", @"قوارض", @"هامستر", @"rabbit", @"rabbits", @"hare", @"bunny", @"bunnies", @"hamster"])) {
+        return @"hare.fill";
+    }
+    // Turtles & Reptiles
+    if (matchesAny(@[@"سلحفاة", @"سلحفاه", @"سلاحف", @"زواحف", @"turtle", @"tortoise", @"reptile"])) {
+        return @"tortoise.fill";
+    }
+    // Horses & Equestrian
+    if (self.ID == 3 || matchesAny(@[@"خيل", @"خيول", @"حصان", @"أفراس", @"horse", @"horses", @"equestrian"])) {
+        return @"figure.equestrian.sports";
+    }
+
+    // Explicit SF Symbol in KindIconName
+    if (self.KindIconName.length > 0 && [UIImage systemImageNamed:self.KindIconName] != nil) {
+        return self.KindIconName;
+    }
+
+    return @"pawprint.fill";
+}
+
 @end

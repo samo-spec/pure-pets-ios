@@ -34,6 +34,15 @@ final class PPAccessoryViewerStore: ObservableObject {
     @Published private(set) var scrollToSuggestionsToken = 0
     @Published private(set) var bannerMessage: String?
 
+    /// Sibling colours of the product being viewed, in server order. Empty for a
+    /// standalone product, which is the overwhelming majority.
+    @Published private(set) var variants: [PPAccessoryViewerVariant] = []
+    @Published private(set) var variantsPhase:
+        PPAccessoryViewerSectionPhase = .idle
+    /// Product id of the colour currently being resolved, so exactly one swatch can
+    /// show progress and the rest can be disabled without freezing the whole screen.
+    @Published private(set) var switchingVariantProductId: String?
+
     private var accessory: PetAccessory?
     private weak var presenter: UIViewController?
     private var didLoad = false
@@ -103,6 +112,7 @@ final class PPAccessoryViewerStore: ObservableObject {
         loadOwner()
         loadSuggestions()
         loadFavorite()
+        loadVariants()
         startLiveListener()
     }
 
@@ -120,6 +130,7 @@ final class PPAccessoryViewerStore: ObservableObject {
         loadOwner()
         loadSuggestions()
         loadFavorite()
+        loadVariants()
         refreshCartState()
         startLiveListener()
     }
@@ -940,8 +951,171 @@ final class PPAccessoryViewerStore: ObservableObject {
         }
     }
 
-    private func loadFavorite() {
+    // MARK: - Colour variants
+
+    /// Resolves the product's sibling colours.
+    ///
+    /// Costs nothing for a standalone product: the bridge short-circuits when there is
+    /// no `productFamilyId` and never touches Firestore, so the rail is free for the
+    /// overwhelming majority of the catalog.
+    ///
+    /// Terminal-state convention matches `loadSuggestions()` — a non-empty result wins
+    /// over an error, so a partial success still renders.
+    private func loadVariants() {
         guard let accessory else { return }
+        let currentProductId = accessory.accessoryID
+
+        // A family of one is not a choice. Only surface the rail when there is
+        // genuinely something to pick between, so a product that was grouped and then
+        // had its siblings archived does not show a single dead swatch.
+        variantsPhase = .loading
+        PPAccessoryViewerLegacyBridge.fetchVariantFamily(
+            for: accessory
+        ) { [weak self] projections, _, error in
+            Task { @MainActor in
+                guard let self else { return }
+                var seen = Set<String>()
+                let resolved = projections
+                    .compactMap(PPAccessoryViewerVariant.init(projection:))
+                    // An archived colour is no longer sellable. Keep it only when it is
+                    // the product being viewed, so arriving from a direct link or an
+                    // old order line still shows where you are instead of an empty rail.
+                    .filter { !$0.isArchived || $0.productId == currentProductId }
+                    .filter { seen.insert($0.productId).inserted }
+
+                self.variants = resolved.count > 1 ? resolved : []
+
+                if !self.variants.isEmpty {
+                    self.variantsPhase = .loaded
+                } else if error != nil {
+                    self.variantsPhase = .failed(
+                        message: PPAccessoryViewerL10n.text(
+                            "accessory_view_colors_failed"
+                        )
+                    )
+                } else {
+                    self.variantsPhase = .empty
+                }
+            }
+        }
+    }
+
+    func retryVariants() {
+        loadVariants()
+    }
+
+    /// Switches the screen to another colour of the same family, in place.
+    ///
+    /// The colour's own `petAccessories` document becomes the product being viewed, so
+    /// price, stock, images, cart state and the add-to-cart target all follow from it
+    /// with no special-casing anywhere else. This is why the cart needs no variant
+    /// dimension: a colour *is* a product, and `CartManager`'s flat `accessoryID`
+    /// identity is already exactly right.
+    ///
+    /// Resolved in place rather than by pushing a second screen. Pushing would grow the
+    /// navigation stack one entry per colour tried, so backing out of a product the
+    /// customer compared three colours on would take four taps.
+    func selectVariant(_ variant: PPAccessoryViewerVariant) {
+        guard switchingVariantProductId == nil else { return }
+        guard variant.productId != accessory?.accessoryID else { return }
+        guard cartPhase != .processing, checkoutPhase != .preparingCart else {
+            // Never move the ground under an in-flight purchase: the mutation was
+            // authorized against the colour on screen.
+            bannerMessage = PPAccessoryViewerL10n.text(
+                "accessory_view_colors_busy"
+            )
+            return
+        }
+
+        switchingVariantProductId = variant.productId
+        PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+
+        PPAccessoryViewerLegacyBridge.fetchAccessory(
+            accessoryID: variant.productId
+        ) { [weak self] resolved, error in
+            Task { @MainActor in
+                guard let self else { return }
+                self.switchingVariantProductId = nil
+
+                guard let resolved, error == nil else {
+                    self.bannerMessage = PPAccessoryViewerL10n.text(
+                        error == nil
+                            ? "accessory_view_colors_missing"
+                            : "accessory_view_colors_failed"
+                    )
+                    UIAccessibility.post(
+                        notification: .announcement,
+                        argument: self.bannerMessage
+                    )
+                    return
+                }
+
+                self.apply(variantAccessory: resolved, variant: variant)
+            }
+        }
+    }
+
+    /// Rebinds every piece of per-product state to a newly selected colour.
+    ///
+    /// Mirrors what the live listener already does on a server update — replace
+    /// `accessory` and `snapshot`, then refresh derived state — which is why switching
+    /// colours needs no new state machine.
+    private func apply(
+        variantAccessory: PetAccessory,
+        variant: PPAccessoryViewerVariant
+    ) {
+        let previousOwnerID = accessory?.ownerID
+        let nextSnapshot = PPAccessoryViewerSnapshot(accessory: variantAccessory)
+
+        accessory = variantAccessory
+        snapshot = nextSnapshot
+        livePhase = nextSnapshot.isUnavailable ? .deleted : .current
+
+        // Quantity is per-product. Carrying "3" across a colour change would silently
+        // request three of a colour that may only have one in stock.
+        quantity = 1
+        preparedCheckoutCartQuantity = nil
+        checkoutPhase = .ready
+        cartPhase = .ready
+        successResetTask?.cancel()
+        stockNotificationPhase = .idle
+
+        refreshCartState()
+
+        // Favorites are per-product, so this must be re-read. Owner and suggestions are
+        // provider-scoped and identical across a family in practice, so they are only
+        // refreshed if the provider actually differs.
+        loadFavorite()
+        if previousOwnerID != variantAccessory.ownerID {
+            loadOwner()
+            loadSuggestions()
+        }
+
+        // Re-point the live listener at the new document, otherwise price and stock
+        // banners would keep describing the colour the customer just left.
+        startLiveListener()
+
+        let urls = nextSnapshot.media.compactMap(\.imageURL)
+        PPAccessoryViewerLegacyBridge.prefetch(urls: urls)
+
+        if nextSnapshot.isUnavailable {
+            bannerMessage = PPAccessoryViewerL10n.text(
+                "accessory_view_colors_unavailable"
+            )
+        } else {
+            bannerMessage = nil
+        }
+
+        UIAccessibility.post(
+            notification: .announcement,
+            argument: PPAccessoryViewerL10n.formatted(
+                "accessory_view_colors_selected_format",
+                variant.name.isEmpty ? variant.id : variant.name
+            )
+        )
+    }
+
+    private func loadFavorite() {        guard let accessory else { return }
         guard PPAccessoryViewerLegacyBridge.isSignedIn() else {
             isFavorite = false
             favoritePhase = .idle

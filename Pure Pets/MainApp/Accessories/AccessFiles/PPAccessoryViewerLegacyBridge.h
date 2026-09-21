@@ -129,6 +129,28 @@ typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
                                                NSError * _Nullable error))completion
     NS_SWIFT_NAME(fetchSuggestions(for:completion:));
 
+/// Resolves the sibling colours of a product, or an empty result when it is standalone.
+///
+/// Reads `ProductFamilies/{productFamilyId}`, which is world-readable so the colour
+/// picker works before sign-in. Performs **no** read at all when the product carries
+/// no `productFamilyId`, so the overwhelming majority of products cost nothing.
+///
+/// The returned dictionaries are the server's ordered `variants[]` projection, already
+/// sorted by `sortOrder`. They are display identity only — colour, swatch, SKU,
+/// primary image, default flag — and are explicitly **not** an authority for price or
+/// stock, which must come from each member's own `petAccessories` document.
++ (void)fetchVariantFamilyForAccessory:(PetAccessory *)accessory
+                            completion:(void (^)(NSArray<NSDictionary<NSString *, id> *> *variants,
+                                                 NSString * _Nullable variantAxis,
+                                                 NSError * _Nullable error))completion
+    NS_SWIFT_NAME(fetchVariantFamily(for:completion:));
+
+/// Reads one product document by id, unfiltered, for resolving a tapped colour.
++ (void)fetchAccessoryWithID:(NSString *)accessoryID
+                  completion:(void (^)(PetAccessory * _Nullable accessory,
+                                       NSError * _Nullable error))completion
+    NS_SWIFT_NAME(fetchAccessory(accessoryID:completion:));
+
 + (void)loadFavoriteForAccessoryID:(NSString *)accessoryID
                         completion:(void (^)(BOOL isFavorite,
                                              NSError * _Nullable error))completion

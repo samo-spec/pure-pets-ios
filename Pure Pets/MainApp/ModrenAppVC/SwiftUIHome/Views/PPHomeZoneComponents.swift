@@ -650,7 +650,9 @@ struct PPHomeMarketingStage: View {
             .accessibilityAddTraits(.isHeader)
             .accessibilityHidden(isMarketplace(page))
 
-            actions(page)
+            if !page.endsHeightAfterSubtitle {
+                actions(page)
+            }
 
             if pages.count > 1 {
                 PPHomePageControl(
@@ -662,7 +664,12 @@ struct PPHomeMarketingStage: View {
         }
         .padding(.horizontal, PPSpace.lg)
         .padding(.top, PPSpace.xxs)
-        .padding(.bottom, PPSpace.base)
+        .padding(
+            .bottom,
+            page.endsHeightAfterSubtitle
+                ? HomeHeroPage.subtitleBottomClearance
+                : PPSpace.base
+        )
         .frame(maxWidth: .infinity, alignment: frameAlignment)
     }
 

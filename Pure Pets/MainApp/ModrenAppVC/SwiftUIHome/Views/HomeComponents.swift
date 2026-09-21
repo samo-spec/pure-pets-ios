@@ -3328,13 +3328,13 @@ struct HomeCategoriesStripView: View {
     private func pawGem(for category: HomeCategoryModel?, accent: Color) -> some View {
         let symbol = HomeCategoryModel.indicatorSymbol(for: category)
         return Image(systemName: symbol)
-            .font(.system(size: 10, weight: .bold))
+            .font(.system(size: 11.5, weight: .bold))
             .foregroundStyle(
                 contrast == .increased
                     ? Color.ppTextPrimary
                     : accent
             )
-            .frame(width: 12, height: 12)
+            .frame(width: 14, height: 14)
             .accessibilityHidden(true)
     }
 
@@ -4540,7 +4540,7 @@ private struct HomeMainKindHabitatCell: View {
                 title: title,
                 symbolName: isAllOption
                     ? "menugrid"
-                    : "pawprint.fill"
+                    : HomeCategoryModel.indicatorSymbol(for: category)
             )
         )
     }
@@ -4594,7 +4594,7 @@ private struct HomeMainKindHabitatCell: View {
         .frame(width: size.width, height: size.height)
         .background(card)
         .overlay(alignment: .topTrailing) {
-            HomeMainKindScopeMark(selected: selected)
+            HomeMainKindScopeMark(category: category, selected: selected)
                 .padding(HomeMainKindHabitat.scopeMarkInset)
         }
         .overlay(alignment: .bottom) {
@@ -4785,6 +4785,7 @@ private struct HomeMainKindHabitatCell: View {
 /// assistive technology because the cell already carries `.isSelected`.
 @available(iOS 15.0, *)
 private struct HomeMainKindScopeMark: View {
+    let category: HomeCategoryModel?
     let selected: Bool
 
     @Environment(\.colorScheme) private var colorScheme
@@ -4820,7 +4821,8 @@ private struct HomeMainKindScopeMark: View {
     /// White is the only foreground that holds AA contrast on `ppPrimary` in
     /// both appearances; the palette exposes no on-primary token.
     private var glyph: some View {
-        Image(systemName: "pawprint.fill")
+        let symbol = HomeCategoryModel.indicatorSymbol(for: category)
+        return Image(systemName: symbol)
             .font(
                 .system(
                     size: HomeMainKindHabitat.scopeMarkDiameter
