@@ -145,6 +145,13 @@ typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
                                                  NSError * _Nullable error))completion
     NS_SWIFT_NAME(fetchVariantFamily(for:completion:));
 
+/// Resolves the full product family document (options, variants, default variant, metadata)
+/// or nil when the product is standalone.
++ (void)fetchProductFamilyForAccessory:(PetAccessory *)accessory
+                            completion:(void (^)(NSDictionary<NSString *, id> * _Nullable family,
+                                                 NSError * _Nullable error))completion
+    NS_SWIFT_NAME(fetchProductFamily(for:completion:));
+
 /// Reads one product document by id, unfiltered, for resolving a tapped colour.
 + (void)fetchAccessoryWithID:(NSString *)accessoryID
                   completion:(void (^)(PetAccessory * _Nullable accessory,

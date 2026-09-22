@@ -394,6 +394,18 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         NSString *resolvedFamilyID = PPAccessoryStringValueForKeys(dict, @[@"productFamilyId"]);
         _productFamilyId = resolvedFamilyID.length > 0 ? resolvedFamilyID : nil;
 
+        if ([dict[@"selectedOptions"] isKindOfClass:[NSDictionary class]]) {
+            _selectedOptions = [dict[@"selectedOptions"] copy];
+        }
+        NSString *combKey = PPAccessoryStringValueForKeys(dict, @[@"variantCombinationKey"]);
+        _variantCombinationKey = combKey.length > 0 ? combKey : nil;
+        NSString *unitId = PPAccessoryStringValueForKeys(dict, @[@"sellableUnitId"]);
+        _sellableUnitId = unitId.length > 0 ? unitId : nil;
+        _isVariant = [dict[@"isVariant"] boolValue];
+        _isDefaultVariant = [dict[@"isDefaultVariant"] boolValue];
+        _variantIsArchived = [dict[@"variantIsArchived"] boolValue];
+        _variantSortOrder = [dict[@"variantSortOrder"] integerValue];
+
         _quantity = [dict[@"quantity"] integerValue];
         _searchTitle = dict[@"searchTitle"];
         if(isPPDebugMode)
@@ -440,6 +452,14 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.isBlocked = source.isBlocked;
     copy.isDeleted = source.isDeleted;
     copy.isDisabled = source.isDisabled;
+    copy.productFamilyId = [source.productFamilyId copy];
+    copy.selectedOptions = [source.selectedOptions copy];
+    copy.variantCombinationKey = [source.variantCombinationKey copy];
+    copy.sellableUnitId = [source.sellableUnitId copy];
+    copy.isVariant = source.isVariant;
+    copy.isDefaultVariant = source.isDefaultVariant;
+    copy.variantIsArchived = source.variantIsArchived;
+    copy.variantSortOrder = source.variantSortOrder;
     return copy;
 }
 

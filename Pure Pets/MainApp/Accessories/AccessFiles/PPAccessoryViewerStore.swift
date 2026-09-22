@@ -34,12 +34,19 @@ final class PPAccessoryViewerStore: ObservableObject {
     @Published private(set) var scrollToSuggestionsToken = 0
     @Published private(set) var bannerMessage: String?
 
-    /// Sibling colours of the product being viewed, in server order. Empty for a
+    /// Option definitions configured for this product family (e.g. Color, Size, Weight).
+    @Published private(set) var optionDefinitions: [PPAccessoryViewerOptionDefinition] = []
+    /// Currently selected option values: [optionId: valueId] (e.g. ["color": "black", "size": "s"]).
+    @Published private(set) var selectedOptions: [String: String] = [:]
+    /// Active variant matching current selection (if resolved).
+    @Published private(set) var currentVariant: PPAccessoryViewerVariant?
+
+    /// Sibling variants of the product being viewed, in server order. Empty for a
     /// standalone product, which is the overwhelming majority.
     @Published private(set) var variants: [PPAccessoryViewerVariant] = []
     @Published private(set) var variantsPhase:
         PPAccessoryViewerSectionPhase = .idle
-    /// Product id of the colour currently being resolved, so exactly one swatch can
+    /// Product id of the variant currently being resolved, so exactly one swatch/pill can
     /// show progress and the rest can be disabled without freezing the whole screen.
     @Published private(set) var switchingVariantProductId: String?
 
@@ -951,48 +958,110 @@ final class PPAccessoryViewerStore: ObservableObject {
         }
     }
 
-    // MARK: - Colour variants
+    // MARK: - Option & Variant Resolution
 
-    /// Resolves the product's sibling colours.
+    /// Resolves the product's options and variants.
     ///
     /// Costs nothing for a standalone product: the bridge short-circuits when there is
-    /// no `productFamilyId` and never touches Firestore, so the rail is free for the
-    /// overwhelming majority of the catalog.
-    ///
-    /// Terminal-state convention matches `loadSuggestions()` — a non-empty result wins
-    /// over an error, so a partial success still renders.
+    /// no `productFamilyId` and never touches Firestore.
     private func loadVariants() {
         guard let accessory else { return }
         let currentProductId = accessory.accessoryID
 
-        // A family of one is not a choice. Only surface the rail when there is
-        // genuinely something to pick between, so a product that was grouped and then
-        // had its siblings archived does not show a single dead swatch.
         variantsPhase = .loading
-        PPAccessoryViewerLegacyBridge.fetchVariantFamily(
+        PPAccessoryViewerLegacyBridge.fetchProductFamily(
             for: accessory
-        ) { [weak self] projections, _, error in
+        ) { [weak self] family, error in
             Task { @MainActor in
                 guard let self else { return }
+                guard let family, error == nil else {
+                    if error != nil {
+                        self.variantsPhase = .failed(
+                            message: PPAccessoryViewerL10n.text("accessory_view_options_failed")
+                        )
+                    } else {
+                        self.variantsPhase = .empty
+                    }
+                    return
+                }
+
+                // 1. Parse raw variants
+                let rawVariants = (family["variants"] as? [Any])?.compactMap { $0 as? [String: Any] } ?? []
                 var seen = Set<String>()
-                let resolved = projections
+                let parsedVariants = rawVariants
                     .compactMap(PPAccessoryViewerVariant.init(projection:))
-                    // An archived colour is no longer sellable. Keep it only when it is
-                    // the product being viewed, so arriving from a direct link or an
-                    // old order line still shows where you are instead of an empty rail.
                     .filter { !$0.isArchived || $0.productId == currentProductId }
                     .filter { seen.insert($0.productId).inserted }
 
-                self.variants = resolved.count > 1 ? resolved : []
+                self.variants = parsedVariants
 
-                if !self.variants.isEmpty {
+                // 2. Parse option definitions
+                let rawDefs = (family["optionDefinitions"] as? [Any])?.compactMap { $0 as? [String: Any] } ?? []
+                var parsedDefs = rawDefs.compactMap(PPAccessoryViewerOptionDefinition.init(dictionary:))
+
+                // If no option definitions exist but legacy colour variants exist, synthesize Color option
+                if parsedDefs.isEmpty && parsedVariants.contains(where: { !$0.hex.isEmpty || !$0.name.isEmpty }) {
+                    var colorValues: [PPAccessoryViewerOptionValue] = []
+                    var seenColorIds = Set<String>()
+                    for variant in parsedVariants {
+                        let colorId = variant.selectedOptions["color"] ?? variant.id
+                        if seenColorIds.insert(colorId).inserted {
+                            colorValues.append(
+                                PPAccessoryViewerOptionValue(
+                                    id: colorId,
+                                    canonicalValue: variant.name,
+                                    nameAr: variant.name,
+                                    nameEn: variant.name,
+                                    sortOrder: variant.sortOrder,
+                                    hex: variant.hex.isEmpty ? nil : variant.hex
+                                )
+                            )
+                        }
+                    }
+                    if !colorValues.isEmpty {
+                        parsedDefs = [
+                            PPAccessoryViewerOptionDefinition(
+                                id: "color",
+                                key: "color",
+                                nameAr: PPAccessoryViewerL10n.text("accessory_view_colors_title"),
+                                nameEn: "Color",
+                                sortOrder: 0,
+                                values: colorValues
+                            )
+                        ]
+                    }
+                }
+
+                self.optionDefinitions = parsedDefs
+
+                // 3. Resolve active selection
+                var initialSelection: [String: String] = [:]
+                if let activeVariant = parsedVariants.first(where: { $0.productId == currentProductId }) {
+                    initialSelection = activeVariant.selectedOptions
+                    self.currentVariant = activeVariant
+                } else if let accessoryOpts = accessory.selectedOptions {
+                    for (k, v) in accessoryOpts {
+                        initialSelection[k.lowercased()] = v.lowercased()
+                    }
+                }
+
+                // Fill any missing option axes with default / first values
+                for def in parsedDefs {
+                    if initialSelection[def.id] == nil, let firstVal = def.values.first?.id {
+                        initialSelection[def.id] = firstVal
+                    }
+                }
+                self.selectedOptions = initialSelection
+
+                // Update currentVariant if still nil
+                if self.currentVariant == nil {
+                    self.currentVariant = self.findVariant(matching: initialSelection)
+                }
+
+                // Phase determination: if variants > 1 or optionDefinitions has choices, loaded; else empty
+                let totalOptionChoices = parsedDefs.reduce(0) { $0 + $1.values.count }
+                if self.variants.count > 1 || totalOptionChoices > 1 {
                     self.variantsPhase = .loaded
-                } else if error != nil {
-                    self.variantsPhase = .failed(
-                        message: PPAccessoryViewerL10n.text(
-                            "accessory_view_colors_failed"
-                        )
-                    )
                 } else {
                     self.variantsPhase = .empty
                 }
@@ -1004,23 +1073,112 @@ final class PPAccessoryViewerStore: ObservableObject {
         loadVariants()
     }
 
-    /// Switches the screen to another colour of the same family, in place.
+    /// Finds a sellable variant matching the provided option dictionary.
+    func findVariant(matching options: [String: String]) -> PPAccessoryViewerVariant? {
+        guard !options.isEmpty else { return nil }
+        return variants.first { variant in
+            guard !variant.isArchived else { return false }
+            for (optId, valId) in options {
+                if variant.selectedOptions[optId] != valId {
+                    return false
+                }
+            }
+            return true
+        }
+    }
+
+    /// Evaluates dynamic compatibility & stock status for an option value.
+    func status(
+        forOptionValue value: PPAccessoryViewerOptionValue,
+        inOption option: PPAccessoryViewerOptionDefinition
+    ) -> PPAccessoryViewerOptionValueStatus {
+        let optId = option.id.lowercased()
+        let valId = value.id.lowercased()
+
+        // 1. Is this value currently selected?
+        if selectedOptions[optId] == valId {
+            return .selected
+        }
+
+        // 2. Build candidate selection keeping other axes fixed
+        var candidate = selectedOptions
+        candidate[optId] = valId
+
+        // 3. Find if a variant matches this combination
+        if let match = findVariant(matching: candidate) {
+            if match.productId == accessory?.accessoryID {
+                return (snapshot?.quantity ?? 0) > 0 ? .available : .outOfStock
+            }
+            return .available
+        }
+
+        // 4. If no exact match with other current choices, check if this value exists anywhere
+        let existsAnywhere = variants.contains { variant in
+            !variant.isArchived && variant.selectedOptions[optId] == valId
+        }
+
+        return existsAnywhere ? .incompatible : .incompatible
+    }
+
+    /// User taps an option value (e.g. Size = "Large" or Color = "Red").
+    func selectOptionValue(optionId: String, valueId: String) {
+        guard switchingVariantProductId == nil else { return }
+        guard cartPhase != .processing, checkoutPhase != .preparingCart else {
+            bannerMessage = PPAccessoryViewerL10n.text("accessory_view_colors_busy")
+            return
+        }
+
+        let cleanOptId = optionId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanValId = valueId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        // If already selected, do nothing
+        if selectedOptions[cleanOptId] == cleanValId {
+            return
+        }
+
+        var target = selectedOptions
+        target[cleanOptId] = cleanValId
+
+        // Look for exact matching variant
+        if let exactMatch = findVariant(matching: target) {
+            selectedOptions = target
+            selectVariant(exactMatch)
+            return
+        }
+
+        // Look for alternative variant having this option value
+        let alternatives = variants.filter { variant in
+            !variant.isArchived && variant.selectedOptions[cleanOptId] == cleanValId
+        }
+
+        if let bestAlternative = alternatives.first {
+            selectedOptions = bestAlternative.selectedOptions
+            selectVariant(bestAlternative)
+            return
+        }
+
+        // Incompatible / unavailable combination
+        bannerMessage = PPAccessoryViewerL10n.text("accessory_view_option_incompatible")
+        UIAccessibility.post(
+            notification: .announcement,
+            argument: bannerMessage
+        )
+    }
+
+    /// Switches the screen to another variant of the same family, in place.
     ///
-    /// The colour's own `petAccessories` document becomes the product being viewed, so
+    /// The variant's own `petAccessories` document becomes the product being viewed, so
     /// price, stock, images, cart state and the add-to-cart target all follow from it
-    /// with no special-casing anywhere else. This is why the cart needs no variant
-    /// dimension: a colour *is* a product, and `CartManager`'s flat `accessoryID`
-    /// identity is already exactly right.
-    ///
-    /// Resolved in place rather than by pushing a second screen. Pushing would grow the
-    /// navigation stack one entry per colour tried, so backing out of a product the
-    /// customer compared three colours on would take four taps.
+    /// with no special-casing anywhere else.
     func selectVariant(_ variant: PPAccessoryViewerVariant) {
         guard switchingVariantProductId == nil else { return }
-        guard variant.productId != accessory?.accessoryID else { return }
+        guard variant.productId != accessory?.accessoryID else {
+            currentVariant = variant
+            return
+        }
         guard cartPhase != .processing, checkoutPhase != .preparingCart else {
             // Never move the ground under an in-flight purchase: the mutation was
-            // authorized against the colour on screen.
+            // authorized against the variant on screen.
             bannerMessage = PPAccessoryViewerL10n.text(
                 "accessory_view_colors_busy"
             )
@@ -1055,11 +1213,7 @@ final class PPAccessoryViewerStore: ObservableObject {
         }
     }
 
-    /// Rebinds every piece of per-product state to a newly selected colour.
-    ///
-    /// Mirrors what the live listener already does on a server update — replace
-    /// `accessory` and `snapshot`, then refresh derived state — which is why switching
-    /// colours needs no new state machine.
+    /// Rebinds every piece of per-product state to a newly selected variant.
     private func apply(
         variantAccessory: PetAccessory,
         variant: PPAccessoryViewerVariant
@@ -1069,10 +1223,14 @@ final class PPAccessoryViewerStore: ObservableObject {
 
         accessory = variantAccessory
         snapshot = nextSnapshot
+        currentVariant = variant
+        if !variant.selectedOptions.isEmpty {
+            selectedOptions = variant.selectedOptions
+        }
         livePhase = nextSnapshot.isUnavailable ? .deleted : .current
 
-        // Quantity is per-product. Carrying "3" across a colour change would silently
-        // request three of a colour that may only have one in stock.
+        // Quantity is per-product. Carrying "3" across a variant change would silently
+        // request three of a variant that may only have one in stock.
         quantity = 1
         preparedCheckoutCartQuantity = nil
         checkoutPhase = .ready
@@ -1083,16 +1241,14 @@ final class PPAccessoryViewerStore: ObservableObject {
         refreshCartState()
 
         // Favorites are per-product, so this must be re-read. Owner and suggestions are
-        // provider-scoped and identical across a family in practice, so they are only
-        // refreshed if the provider actually differs.
+        // provider-scoped and identical across a family in practice.
         loadFavorite()
         if previousOwnerID != variantAccessory.ownerID {
             loadOwner()
             loadSuggestions()
         }
 
-        // Re-point the live listener at the new document, otherwise price and stock
-        // banners would keep describing the colour the customer just left.
+        // Re-point the live listener at the new document
         startLiveListener()
 
         let urls = nextSnapshot.media.compactMap(\.imageURL)
@@ -1106,11 +1262,25 @@ final class PPAccessoryViewerStore: ObservableObject {
             bannerMessage = nil
         }
 
+        let optionSummary: String = {
+            if !optionDefinitions.isEmpty {
+                let parts = optionDefinitions.compactMap { def -> String? in
+                    guard let valId = selectedOptions[def.id],
+                          let val = def.values.first(where: { $0.id == valId }) else { return nil }
+                    return "\(def.localizedName): \(val.localizedName)"
+                }
+                if !parts.isEmpty {
+                    return parts.joined(separator: "، ")
+                }
+            }
+            return variant.name.isEmpty ? variant.id : variant.name
+        }()
+
         UIAccessibility.post(
             notification: .announcement,
             argument: PPAccessoryViewerL10n.formatted(
                 "accessory_view_colors_selected_format",
-                variant.name.isEmpty ? variant.id : variant.name
+                optionSummary
             )
         )
     }

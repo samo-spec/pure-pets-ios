@@ -72,6 +72,13 @@ NS_ASSUME_NONNULL_BEGIN
 /// Deliberately **not** serialized by `toFirestoreDictionary` — the consumer app
 /// never writes it, and emitting it would let a merge write clobber server state.
 @property (nonatomic, copy, nullable) NSString *productFamilyId;
+@property (nonatomic, copy, nullable) NSDictionary<NSString *, NSString *> *selectedOptions;
+@property (nonatomic, copy, nullable) NSString *variantCombinationKey;
+@property (nonatomic, copy, nullable) NSString *sellableUnitId;
+@property (nonatomic, assign) BOOL isVariant;
+@property (nonatomic, assign) BOOL isDefaultVariant;
+@property (nonatomic, assign) BOOL variantIsArchived;
+@property (nonatomic, assign) NSInteger variantSortOrder;
 
 // Computed type helpers
 @property (nonatomic, readonly) BOOL isLivePet;

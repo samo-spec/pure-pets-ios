@@ -788,6 +788,29 @@ static UIViewController *PPAccessoryResolvedPresenter(
     }];
 }
 
++ (void)fetchProductFamilyForAccessory:(PetAccessory *)accessory
+                            completion:(void (^)(NSDictionary<NSString *, id> * _Nullable family,
+                                                 NSError * _Nullable error))completion
+{
+    if (!completion) { return; }
+
+    NSString *familyID = accessory.productFamilyId;
+    if (![familyID isKindOfClass:[NSString class]] || familyID.length == 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(nil, nil);
+        });
+        return;
+    }
+
+    [PetAccessoryManager
+     fetchProductFamilyWithID:familyID
+     completion:^(NSDictionary * _Nullable family, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(family, error);
+        });
+    }];
+}
+
 + (void)fetchAccessoryWithID:(NSString *)accessoryID
                   completion:(void (^)(PetAccessory * _Nullable,
                                        NSError * _Nullable))completion

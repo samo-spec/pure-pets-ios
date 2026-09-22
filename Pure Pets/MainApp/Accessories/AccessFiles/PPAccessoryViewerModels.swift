@@ -636,16 +636,196 @@ struct PPAccessoryViewerSuggestion: Identifiable {
 }
 
 
-/// One sellable colour of a product family.
+/// Option value in a customer product viewer.
+struct PPAccessoryViewerOptionValue: Identifiable, Equatable {
+    let id: String
+    let canonicalValue: String
+    let nameAr: String
+    let nameEn: String
+    let sortOrder: Int
+    let hex: String?
+    let unit: String?
+
+    init(
+        id: String,
+        canonicalValue: String = "",
+        nameAr: String = "",
+        nameEn: String = "",
+        sortOrder: Int = 0,
+        hex: String? = nil,
+        unit: String? = nil
+    ) {
+        self.id = id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanCanonical = canonicalValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanEn = nameEn.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanAr = nameAr.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.canonicalValue = cleanCanonical.isEmpty ? (cleanEn.isEmpty ? id : cleanEn) : cleanCanonical
+        self.nameAr = cleanAr.isEmpty ? self.canonicalValue : cleanAr
+        self.nameEn = cleanEn.isEmpty ? self.canonicalValue : cleanEn
+        self.sortOrder = sortOrder
+        var cleanHex = hex?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if let h = cleanHex, !h.isEmpty {
+            cleanHex = h.hasPrefix("#") ? h : "#" + h
+        }
+        self.hex = (cleanHex?.isEmpty == false) ? cleanHex : nil
+        self.unit = unit?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    init?(dictionary: [String: Any]) {
+        guard let rawId = dictionary["id"] as? String,
+              case let id = rawId.trimmingCharacters(in: .whitespacesAndNewlines),
+              !id.isEmpty else { return nil }
+
+        let canonical = (dictionary["canonicalValue"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let displayName = dictionary["displayName"] as? [String: Any]
+        let ar = (displayName?["ar"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let en = (displayName?["en"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let metadata = dictionary["metadata"] as? [String: Any]
+        let hex = metadata?["hex"] as? String
+        let unit = metadata?["unit"] as? String
+
+        let order: Int
+        if let o = dictionary["sortOrder"] as? Int {
+            order = o
+        } else if let o = dictionary["sortOrder"] as? NSNumber {
+            order = o.intValue
+        } else {
+            order = 0
+        }
+
+        self.init(
+            id: id,
+            canonicalValue: canonical,
+            nameAr: ar,
+            nameEn: en,
+            sortOrder: order,
+            hex: hex,
+            unit: unit
+        )
+    }
+
+    var localizedName: String {
+        let isRTL = PPAccessoryViewerLegacyBridge.isRTL()
+        let preferred = isRTL ? nameAr : nameEn
+        let fallback = isRTL ? nameEn : nameAr
+        if !preferred.isEmpty { return preferred }
+        if !fallback.isEmpty { return fallback }
+        return canonicalValue.isEmpty ? id : canonicalValue
+    }
+
+    var accessibilityName: String {
+        let name = localizedName
+        if let unit, !unit.isEmpty {
+            return "\(name) (\(unit))"
+        }
+        return name
+    }
+
+    var isColor: Bool {
+        guard let hex = hex else { return false }
+        return !hex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var swatchComponents: (red: Double, green: Double, blue: Double)? {
+        guard let hex = hex else { return nil }
+        let cleaned = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard cleaned.count == 6, let value = UInt64(cleaned, radix: 16) else {
+            return nil
+        }
+        return (
+            red: Double((value & 0xFF0000) >> 16) / 255.0,
+            green: Double((value & 0x00FF00) >> 8) / 255.0,
+            blue: Double(value & 0x0000FF) / 255.0
+        )
+    }
+}
+
+/// Option definition axis (e.g. Color, Size, Weight).
+struct PPAccessoryViewerOptionDefinition: Identifiable, Equatable {
+    let id: String
+    let key: String
+    let nameAr: String
+    let nameEn: String
+    let sortOrder: Int
+    let values: [PPAccessoryViewerOptionValue]
+
+    init(
+        id: String,
+        key: String = "",
+        nameAr: String = "",
+        nameEn: String = "",
+        sortOrder: Int = 0,
+        values: [PPAccessoryViewerOptionValue] = []
+    ) {
+        self.id = id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.key = cleanKey.isEmpty ? self.id : cleanKey
+        self.nameAr = nameAr.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.nameEn = nameEn.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.sortOrder = sortOrder
+        self.values = values.sorted { lhs, rhs in
+            lhs.sortOrder == rhs.sortOrder ? lhs.id < rhs.id : lhs.sortOrder < rhs.sortOrder
+        }
+    }
+
+    init?(dictionary: [String: Any]) {
+        guard let rawId = dictionary["id"] as? String,
+              case let id = rawId.trimmingCharacters(in: .whitespacesAndNewlines),
+              !id.isEmpty else { return nil }
+
+        let rawKey = (dictionary["key"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? id
+        let displayName = dictionary["displayName"] as? [String: Any]
+        let ar = (displayName?["ar"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let en = (displayName?["en"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        let order: Int
+        if let o = dictionary["sortOrder"] as? Int {
+            order = o
+        } else if let o = dictionary["sortOrder"] as? NSNumber {
+            order = o.intValue
+        } else {
+            order = 0
+        }
+
+        let rawValues = (dictionary["values"] as? [Any])?.compactMap { $0 as? [String: Any] } ?? []
+        let values = rawValues.compactMap(PPAccessoryViewerOptionValue.init(dictionary:))
+
+        self.init(
+            id: id,
+            key: rawKey,
+            nameAr: ar,
+            nameEn: en,
+            sortOrder: order,
+            values: values
+        )
+    }
+
+    var localizedName: String {
+        let isRTL = PPAccessoryViewerLegacyBridge.isRTL()
+        let preferred = isRTL ? nameAr : nameEn
+        let fallback = isRTL ? nameEn : nameAr
+        if !preferred.isEmpty { return preferred }
+        if !fallback.isEmpty { return fallback }
+        return key.isEmpty ? id : key
+    }
+
+    var isColor: Bool {
+        id == "color" || key == "color" || values.contains(where: \.isColor)
+    }
+}
+
+/// Dynamic availability status for an option value in the customer selector.
+enum PPAccessoryViewerOptionValueStatus: Equatable {
+    case selected
+    case available
+    case outOfStock
+    case incompatible
+}
+
+/// One sellable variant of a product family.
 ///
-/// Every field mirrors the server's `ProductFamilies.variants[]` projection, which is
-/// merchandising identity only. It is deliberately **not** a price or stock authority:
-/// tapping a swatch resolves the colour's own `petAccessories` document, and that
-/// document is what the screen then renders and sells.
-///
-/// `id` is the colour identifier, never the localized name and never the hex. A colour
-/// can be renamed or repainted without changing identity, and two colours may
-/// legitimately share a hex (two different fabrics of the same navy).
+/// Supports generic multi-option families (contractVersion 3) and legacy
+/// colour-only families (contractVersion 2).
 struct PPAccessoryViewerVariant: Identifiable, Equatable {
     let id: String
     let productId: String
@@ -655,15 +835,13 @@ struct PPAccessoryViewerVariant: Identifiable, Equatable {
     let isDefault: Bool
     let isArchived: Bool
     let sku: String
+    let barcode: String
+    let price: Double?
+    let compareAtPrice: Double?
     let primaryImageURL: String?
+    let selectedOptions: [String: String]
+    let combinationKey: String
 
-    /// Parses one server projection entry, returning `nil` when it cannot be rendered
-    /// as a selectable colour.
-    ///
-    /// Fails closed on a missing `productId` or colour `id`: a swatch that cannot be
-    /// resolved to a document would be a dead tap, which is worse than being absent.
-    /// A missing hex is tolerated — the rail falls back to a neutral chip and the name
-    /// still identifies the colour, because the name is the accessible label anyway.
     init?(projection: [String: Any]) {
         guard let rawProductId = projection["productId"] as? String,
               case let productId = rawProductId.trimmingCharacters(
@@ -671,19 +849,44 @@ struct PPAccessoryViewerVariant: Identifiable, Equatable {
               ),
               !productId.isEmpty else { return nil }
 
-        let color = projection["color"] as? [String: Any] ?? [:]
-        guard let rawColorId = color["id"] as? String,
-              case let colorId = rawColorId.trimmingCharacters(
-                  in: .whitespacesAndNewlines
-              ),
-              !colorId.isEmpty else { return nil }
-
-        self.id = colorId
         self.productId = productId
 
-        // Arabic is the product's primary language, English the secondary. Pick by the
-        // active language and fall back to the other rather than to the raw id, so a
-        // half-translated colour still reads as a colour.
+        // 1. Generic multi-option extraction
+        var parsedOptions: [String: String] = [:]
+        if let rawOpts = projection["selectedOptions"] as? [String: Any] {
+            for (k, v) in rawOpts {
+                if let str = v as? String {
+                    let clean = str.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    if !clean.isEmpty {
+                        parsedOptions[k.lowercased()] = clean
+                    }
+                }
+            }
+        }
+        let combKey = (projection["combinationKey"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        self.combinationKey = combKey
+
+        // 2. Legacy colour extraction fallback
+        let color = projection["color"] as? [String: Any] ?? [:]
+        let rawColorId = (color["id"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+
+        if parsedOptions.isEmpty && !rawColorId.isEmpty {
+            parsedOptions["color"] = rawColorId
+        }
+        self.selectedOptions = parsedOptions
+
+        // Check if color id or combination key or productId is identity
+        if !rawColorId.isEmpty {
+            self.id = rawColorId
+        } else if !combKey.isEmpty {
+            self.id = combKey
+        } else {
+            self.id = productId
+        }
+
+        // Arabic is the product's primary language, English the secondary.
         let nameAr = (color["nameAr"] as? String)?.trimmingCharacters(
             in: .whitespacesAndNewlines
         ) ?? ""
@@ -692,9 +895,9 @@ struct PPAccessoryViewerVariant: Identifiable, Equatable {
         ) ?? ""
         let preferred = PPAccessoryViewerLegacyBridge.isRTL() ? nameAr : nameEn
         let fallback = PPAccessoryViewerLegacyBridge.isRTL() ? nameEn : nameAr
-        name = !preferred.isEmpty ? preferred : fallback
+        self.name = !preferred.isEmpty ? preferred : fallback
 
-        hex = (color["hex"] as? String)?.trimmingCharacters(
+        self.hex = (color["hex"] as? String)?.trimmingCharacters(
             in: .whitespacesAndNewlines
         ).uppercased() ?? ""
 
@@ -711,19 +914,31 @@ struct PPAccessoryViewerVariant: Identifiable, Equatable {
         sku = (projection["sku"] as? String)?.trimmingCharacters(
             in: .whitespacesAndNewlines
         ) ?? ""
+        barcode = (projection["barcode"] as? String)?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ) ?? ""
+
+        if let p = projection["price"] as? Double {
+            self.price = p
+        } else if let p = projection["price"] as? NSNumber {
+            self.price = p.doubleValue
+        } else {
+            self.price = nil
+        }
+
+        if let c = projection["compareAtPrice"] as? Double {
+            self.compareAtPrice = c
+        } else if let c = projection["compareAtPrice"] as? NSNumber {
+            self.compareAtPrice = c.doubleValue
+        } else {
+            self.compareAtPrice = nil
+        }
 
         let image = (projection["primaryImageURL"] as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         primaryImageURL = image.isEmpty ? nil : image
     }
 
-    /// The swatch's red/green/blue components in 0...1, or `nil` when the server sent
-    /// no usable hex.
-    ///
-    /// Returns components rather than a `Color` so this models file stays free of
-    /// SwiftUI: the view layer decides how to paint a colour, the model only carries
-    /// what the server said. A malformed hex yields `nil` so the rail can fall back to
-    /// a neutral chip instead of painting an arbitrary wrong colour.
     var swatchComponents: (red: Double, green: Double, blue: Double)? {
         let cleaned = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
         guard cleaned.count == 6, let value = UInt64(cleaned, radix: 16) else {
