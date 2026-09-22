@@ -4224,6 +4224,13 @@
 "accessory_view_colors_unavailable" = "This colour isn’t available to buy right now.";
 "accessory_view_colors_selected_format" = "%@ selected";
 "accessory_view_colors_loading_format" = "Loading %@";
+"accessory_view_options_title" = "Product Options";
+"accessory_view_options_failed" = "Available options couldn’t be loaded.";
+"accessory_view_option_incompatible" = "Not available with selected options";
+"accessory_view_option_out_of_stock" = "Out of stock";
+"accessory_view_option_selected_format" = "%@: %@ selected";
+"accessory_view_option_loading_format" = "Loading %@...";
+"accessory_view_select_option_format" = "Please select %@";
 "accessory_view_unavailable_message" = "This accessory can’t be displayed right now. Try again or return to the previous screen.";
 "accessory_view_unavailable_title" = "Accessory unavailable";
 "accessory_view_updating_favorite" = "Updating favorite";

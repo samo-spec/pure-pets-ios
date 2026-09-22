@@ -26,6 +26,7 @@ typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 
 @property (nonatomic, strong, readonly) UIImageView *itemImageView;
 @property (nonatomic, strong, readonly) UILabel *nameLabel;
+@property (nonatomic, strong, readonly) UILabel *variantOptionsLabel;
 @property (nonatomic, strong, readonly) UILabel *priceLabel;
 @property (nonatomic, strong, readonly) UILabel *quantityLabel;
 

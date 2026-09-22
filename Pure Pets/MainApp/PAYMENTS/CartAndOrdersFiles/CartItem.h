@@ -35,6 +35,29 @@ typedef NS_ENUM(NSInteger, OrderStatus)
 @property (nonatomic, strong) NSString *type;
 @property (nonatomic, copy, nullable) NSString *size;
 
+#pragma mark - Variant & Options Metadata
+
+/// Sellable unit / variant identifier (matches variant productId)
+@property (nonatomic, copy, nullable) NSString *sellableUnitId;
+/// Unified variant identifier (sellableUnitId or legacy color ID)
+@property (nonatomic, copy, nullable) NSString *variantId;
+/// Canonical option combination key (e.g. "color=red|size=m")
+@property (nonatomic, copy, nullable) NSString *variantCombinationKey;
+/// Parent product family identifier if this item belongs to an option family
+@property (nonatomic, copy, nullable) NSString *productFamilyId;
+/// Exact SKU for this variant
+@property (nonatomic, copy, nullable) NSString *sku;
+/// Exact barcode for this variant
+@property (nonatomic, copy, nullable) NSString *barcode;
+/// Flag indicating whether this item represents a family variant
+@property (nonatomic, assign) BOOL isVariant;
+/// Selected options dictionary: optionId -> valueId
+@property (nonatomic, strong, nullable) NSDictionary<NSString *, NSString *> *selectedOptions;
+/// Detailed option snapshots for display and reconciliation
+@property (nonatomic, strong, nullable) NSArray<NSDictionary *> *selectedOptionsSnapshot;
+/// Human-readable option summary (e.g. "Color: Red · Size: M" or "اللون: أحمر · المقاس: M")
+@property (nonatomic, copy, nullable) NSString *optionsSummary;
+
 /// YES when originalPrice > price (a discount is active).
 @property (nonatomic, readonly) BOOL hasDiscount;
 /// The per-unit discount amount (originalPrice − price). Returns 0 if no discount.

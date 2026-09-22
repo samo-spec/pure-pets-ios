@@ -162,11 +162,11 @@ struct PPAccessoryViewerScreen: View {
                         .opacity(identityResolved ? 1 : 0)
                         .offset(y: identityResolved ? 0 : 14)
 
-                        // Directly under identity, above every other card: choosing a
-                        // colour changes which product the whole screen describes, so it
+                        // Directly under identity, above every other card: choosing an
+                        // option changes which variant the whole screen describes, so it
                         // must be read before price, fit or stock are trusted. It
                         // self-hides for a standalone product.
-                        PPAccessoryColorRail(
+                        PPAccessoryVariantSelectorSection(
                             store: store,
                             snapshot: snapshot,
                             compact: compact

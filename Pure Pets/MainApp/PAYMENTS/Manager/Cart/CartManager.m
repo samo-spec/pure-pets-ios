@@ -168,6 +168,17 @@ static CartItem *PPCartCopyItem(CartItem *source)
     copy.imageURL = source.imageURL ?: @"";
     copy.providerID = source.providerID ?: @"";
     copy.type = source.type ?: @"";
+    copy.size = source.size ?: @"";
+    copy.sellableUnitId = source.sellableUnitId ?: @"";
+    copy.variantId = source.variantId ?: @"";
+    copy.variantCombinationKey = source.variantCombinationKey ?: @"";
+    copy.productFamilyId = source.productFamilyId ?: @"";
+    copy.sku = source.sku ?: @"";
+    copy.barcode = source.barcode ?: @"";
+    copy.isVariant = source.isVariant;
+    copy.selectedOptions = [source.selectedOptions copy];
+    copy.selectedOptionsSnapshot = [source.selectedOptionsSnapshot copy];
+    copy.optionsSummary = source.optionsSummary ?: @"";
     return copy;
 }
 
@@ -269,6 +280,24 @@ static CartItem *PPCartCopyItem(CartItem *source)
     return nil;
 }
 
+- (CartItem *)pp_existingItemMatching:(CartItem *)item
+{
+    if (!item || item.itemID.length == 0) return nil;
+    for (CartItem *existing in self.cartItems) {
+        if (![existing.itemID isEqualToString:item.itemID]) {
+            continue;
+        }
+        if (existing.variantCombinationKey.length > 0 && item.variantCombinationKey.length > 0) {
+            if ([existing.variantCombinationKey isEqualToString:item.variantCombinationKey]) {
+                return existing;
+            }
+            continue;
+        }
+        return existing;
+    }
+    return nil;
+}
+
 - (NSInteger)pp_stockLimitForItem:(CartItem *)item existingItem:(CartItem *)existingItem
 {
     if (item.stockQuantity != NSNotFound) {
@@ -287,18 +316,9 @@ static CartItem *PPCartCopyItem(CartItem *source)
 
 - (NSMutableDictionary *)pp_firestorePayloadForItem:(CartItem *)item quantity:(NSInteger)quantity
 {
-    NSMutableDictionary *payload = [@{
-        @"itemID": item.itemID ?: @"",
-        @"name": item.name ?: @"",
-        @"quantity": @(MAX(quantity, 0)),
-        @"price": @(item.price),
-        @"originalPrice": @(item.originalPrice),
-        @"imageURL": item.imageURL ?: @"",
-        @"providerID": item.providerID ?: @""
-    } mutableCopy];
-    if (item.stockQuantity != NSNotFound) {
-        payload[@"stockQuantity"] = @(MAX(item.stockQuantity, 0));
-    }
+    NSMutableDictionary *payload = [[item firestoreDictionary] mutableCopy];
+    payload[@"quantity"] = @(MAX(quantity, 0));
+    payload[@"qty"] = @(MAX(quantity, 0));
     return payload;
 }
 
@@ -376,7 +396,7 @@ static CartItem *PPCartCopyItem(CartItem *source)
     __block BOOL success = NO;
 
     @try {
-        CartItem *existing = [self pp_existingItemForID:item.itemID];
+        CartItem *existing = [self pp_existingItemMatching:item];
         NSInteger existingQty = existing ? MAX(existing.quantity, 0) : 0;
         NSInteger stockLimit = [self pp_stockLimitForItem:item existingItem:existing];
         NSInteger increment = item.quantity;
@@ -438,7 +458,7 @@ static CartItem *PPCartCopyItem(CartItem *source)
 - (void)addItemAndWaitForSync:(CartItem *)item
                    completion:(void (^)(BOOL success))completion
 {
-    CartItem *existingBefore = [self pp_existingItemForID:item.itemID];
+    CartItem *existingBefore = [self pp_existingItemMatching:item];
     CartItem *existingSnapshot = PPCartCopyItem(existingBefore);
 
     __weak typeof(self) weakSelf = self;
@@ -452,7 +472,7 @@ static CartItem *PPCartCopyItem(CartItem *source)
             }
 
             if (!syncSucceeded) {
-                CartItem *current = [self pp_existingItemForID:item.itemID];
+                CartItem *current = [self pp_existingItemMatching:item];
                 if (existingSnapshot) {
                     NSUInteger index = current
                         ? [self.cartItems indexOfObjectIdenticalTo:current]
@@ -941,22 +961,16 @@ presentingViewController:(UIViewController *)presentingViewController
 
     BOOL updated = NO;
     NSInteger clampedQuantity = MAX(newQuantity, 1);
-    CartItem *existing = [self pp_existingItemForID:item.itemID];
+    CartItem *existing = [self pp_existingItemMatching:item];
     if (!existing) {
         if (completion) completion(NO);
         return;
     }
 
     NSInteger stockLimit = [self pp_stockLimitForItem:item existingItem:existing];
-    if (stockLimit == NSNotFound) {
-        if (completion) completion(NO);
-        return;
+    if (stockLimit != NSNotFound && stockLimit > 0) {
+        clampedQuantity = MIN(clampedQuantity, stockLimit);
     }
-    if (stockLimit <= 0) {
-        if (completion) completion(NO);
-        return;
-    }
-    clampedQuantity = MIN(clampedQuantity, stockLimit);
 
     existing.quantity = clampedQuantity;
     if (item.stockQuantity != NSNotFound) {
@@ -1015,6 +1029,11 @@ presentingViewController:(UIViewController *)presentingViewController
     for (NSUInteger i = 0; i < self.cartItems.count; i++) {
         CartItem *existing = self.cartItems[i];
         if ([existing.itemID isEqualToString:item.itemID]) {
+            if (existing.variantCombinationKey.length > 0 && item.variantCombinationKey.length > 0) {
+                if (![existing.variantCombinationKey isEqualToString:item.variantCombinationKey]) {
+                    continue;
+                }
+            }
             indexToRemove = i;
             break;
         }

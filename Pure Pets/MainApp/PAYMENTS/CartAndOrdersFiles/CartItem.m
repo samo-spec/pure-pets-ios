@@ -72,8 +72,40 @@
         _providerID = accessory.ownerID ?: @"";
         _size = accessory.size ?: @"";
 
-        NSLog(@"[CartItem] Created | id=%@ | basePrice=%.2f | finalPrice=%.2f | effectivePrice=%.2f | discount=%@ | qty=%ld",
-              _itemID, basePrice, finalPrice, _price,
+        _sellableUnitId = accessory.sellableUnitId.length > 0 ? accessory.sellableUnitId : _itemID;
+        _variantId = accessory.variantId.length > 0 ? accessory.variantId : (_sellableUnitId ?: accessory.colorID);
+        _variantCombinationKey = accessory.variantCombinationKey ?: @"";
+        _productFamilyId = accessory.productFamilyId ?: @"";
+        _sku = accessory.sku ?: @"";
+        _barcode = accessory.barcode ?: @"";
+        _isVariant = accessory.isVariant || (_variantCombinationKey.length > 0);
+        _selectedOptions = [accessory.selectedOptions copy];
+
+        NSMutableArray<NSString *> *parts = [NSMutableArray array];
+        if ([accessory.selectedOptions isKindOfClass:NSDictionary.class] && accessory.selectedOptions.count > 0) {
+            NSArray *sortedKeys = [accessory.selectedOptions.allKeys sortedArrayUsingSelector:@selector(compare:)];
+            for (NSString *key in sortedKeys) {
+                NSString *val = [NSString stringWithFormat:@"%@", accessory.selectedOptions[key]];
+                if (val.length > 0) {
+                    NSString *localizedKey = [key.lowercaseString isEqualToString:@"color"] ? kLang(@"Color") :
+                                             [key.lowercaseString isEqualToString:@"size"] ? kLang(@"Size") : key.capitalizedString;
+                    [parts addObject:[NSString stringWithFormat:@"%@: %@", localizedKey, val]];
+                }
+            }
+        }
+        if (parts.count == 0) {
+            if (accessory.colorName.length > 0) {
+                [parts addObject:[NSString stringWithFormat:@"%@: %@", kLang(@"Color"), accessory.colorName]];
+            }
+            if (accessory.size.length > 0) {
+                [parts addObject:[NSString stringWithFormat:@"%@: %@", kLang(@"Size"), accessory.size]];
+            }
+        }
+        _optionsSummary = [parts componentsJoinedByString:@" · "];
+
+        NSLog(@"[CartItem] Created | id=%@ | sellableId=%@ | variantKey=%@ | options=%@ | basePrice=%.2f | finalPrice=%.2f | effectivePrice=%.2f | discount=%@ | qty=%ld",
+              _itemID, _sellableUnitId, _variantCombinationKey, _optionsSummary,
+              basePrice, finalPrice, _price,
               self.hasDiscount ? @"YES" : @"NO", (long)_quantity);
     }
     return self;
@@ -85,14 +117,52 @@
 {
     NSMutableDictionary *dict = [@{
         @"id": self.itemID ?: @"",
+        @"itemID": self.itemID ?: @"",
         @"type": self.type ?: @"",
         @"name": self.name ?: @"",
         @"price": @(self.price),
         @"originalPrice": @(self.originalPrice),
-        @"qty": @(MAX(self.quantity, 0))
+        @"qty": @(MAX(self.quantity, 0)),
+        @"quantity": @(MAX(self.quantity, 0))
     } mutableCopy];
     if (self.size.length > 0) {
         dict[@"size"] = self.size;
+    }
+    if (self.sellableUnitId.length > 0) {
+        dict[@"sellableUnitId"] = self.sellableUnitId;
+    }
+    if (self.variantId.length > 0) {
+        dict[@"variantId"] = self.variantId;
+    }
+    if (self.variantCombinationKey.length > 0) {
+        dict[@"variantCombinationKey"] = self.variantCombinationKey;
+    }
+    if (self.productFamilyId.length > 0) {
+        dict[@"productFamilyId"] = self.productFamilyId;
+    }
+    if (self.sku.length > 0) {
+        dict[@"sku"] = self.sku;
+    }
+    if (self.barcode.length > 0) {
+        dict[@"barcode"] = self.barcode;
+    }
+    if (self.isVariant) {
+        dict[@"isVariant"] = @(YES);
+    }
+    if (self.selectedOptions.count > 0) {
+        dict[@"selectedOptions"] = self.selectedOptions;
+    }
+    if (self.selectedOptionsSnapshot.count > 0) {
+        dict[@"selectedOptionsSnapshot"] = self.selectedOptionsSnapshot;
+    }
+    if (self.optionsSummary.length > 0) {
+        dict[@"optionsSummary"] = self.optionsSummary;
+    }
+    if (self.imageURL.length > 0) {
+        dict[@"imageURL"] = self.imageURL;
+    }
+    if (self.providerID.length > 0) {
+        dict[@"providerID"] = self.providerID;
     }
     if (self.stockQuantity != NSNotFound) {
         dict[@"stockQuantity"] = @(MAX(self.stockQuantity, 0));
@@ -109,10 +179,10 @@
 - (instancetype)initWithDictionary:(NSDictionary *)dict {
     self = [super init];
     if (self) {
-        _itemID = dict[@"itemID"] ?: @"";
+        _itemID = dict[@"itemID"] ?: dict[@"id"] ?: @"";
         _name = dict[@"name"] ?: @"";
         _size = dict[@"size"] ?: @"";
-        _quantity = [dict[@"quantity"] integerValue];
+        _quantity = [dict[@"quantity"] ?: dict[@"qty"] integerValue];
         if ([dict[@"stockQuantity"] respondsToSelector:@selector(integerValue)]) {
             _stockQuantity = MAX(0, [dict[@"stockQuantity"] integerValue]);
         } else {
@@ -130,6 +200,38 @@
 
         _imageURL = dict[@"imageURL"] ?: @"";
         _providerID = [dict[@"providerID"] isKindOfClass:NSString.class] ? dict[@"providerID"] : @"";
+
+        _sellableUnitId = dict[@"sellableUnitId"] ?: _itemID;
+        _variantId = dict[@"variantId"] ?: _sellableUnitId;
+        _variantCombinationKey = dict[@"variantCombinationKey"] ?: @"";
+        _productFamilyId = dict[@"productFamilyId"] ?: @"";
+        _sku = dict[@"sku"] ?: @"";
+        _barcode = dict[@"barcode"] ?: @"";
+        _isVariant = [dict[@"isVariant"] boolValue] || (_variantCombinationKey.length > 0);
+        if ([dict[@"selectedOptions"] isKindOfClass:NSDictionary.class]) {
+            _selectedOptions = [dict[@"selectedOptions"] copy];
+        }
+        if ([dict[@"selectedOptionsSnapshot"] isKindOfClass:NSArray.class]) {
+            _selectedOptionsSnapshot = [dict[@"selectedOptionsSnapshot"] copy];
+        }
+        _optionsSummary = dict[@"optionsSummary"] ?: @"";
+        if (_optionsSummary.length == 0) {
+            NSMutableArray<NSString *> *parts = [NSMutableArray array];
+            if (_selectedOptions.count > 0) {
+                NSArray *sortedKeys = [_selectedOptions.allKeys sortedArrayUsingSelector:@selector(compare:)];
+                for (NSString *key in sortedKeys) {
+                    NSString *val = [NSString stringWithFormat:@"%@", _selectedOptions[key]];
+                    if (val.length > 0) {
+                        NSString *localizedKey = [key.lowercaseString isEqualToString:@"color"] ? kLang(@"Color") :
+                                                 [key.lowercaseString isEqualToString:@"size"] ? kLang(@"Size") : key.capitalizedString;
+                        [parts addObject:[NSString stringWithFormat:@"%@: %@", localizedKey, val]];
+                    }
+                }
+            } else if (_size.length > 0) {
+                [parts addObject:[NSString stringWithFormat:@"%@: %@", kLang(@"Size"), _size]];
+            }
+            _optionsSummary = [parts componentsJoinedByString:@" · "];
+        }
     }
     return self;
 }

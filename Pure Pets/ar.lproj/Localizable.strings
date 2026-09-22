@@ -4200,6 +4200,13 @@
 "accessory_view_colors_unavailable" = "هذا اللون غير متاح للبيع حالياً.";
 "accessory_view_colors_selected_format" = "تم اختيار اللون %@";
 "accessory_view_colors_loading_format" = "جارِ تحميل اللون %@";
+"accessory_view_options_title" = "خيارات المنتج";
+"accessory_view_options_failed" = "تعذّر تحميل خيارات المنتج.";
+"accessory_view_option_incompatible" = "غير متوفر مع الخيارات المحددة";
+"accessory_view_option_out_of_stock" = "نفد من المخزون";
+"accessory_view_option_selected_format" = "تم اختيار %@: %@";
+"accessory_view_option_loading_format" = "جارِ تحميل %@...";
+"accessory_view_select_option_format" = "يرجى اختيار %@";
 "accessory_view_unavailable_message" = "يتعذّر عرض هذا المستلزم الآن. أعد المحاولة أو ارجع إلى الشاشة السابقة.";
 "accessory_view_unavailable_title" = "المستلزم غير متاح";
 "accessory_view_updating_favorite" = "جارِ تحديث المفضلة";
