@@ -406,6 +406,25 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         _variantIsArchived = [dict[@"variantIsArchived"] boolValue];
         _variantSortOrder = [dict[@"variantSortOrder"] integerValue];
 
+        if ([dict[@"minPrice"] respondsToSelector:@selector(doubleValue)]) {
+            _minPrice = @([dict[@"minPrice"] doubleValue]);
+        }
+        if ([dict[@"maxPrice"] respondsToSelector:@selector(doubleValue)]) {
+            _maxPrice = @([dict[@"maxPrice"] doubleValue]);
+        }
+        _hasVariablePrice = [dict[@"hasVariablePrice"] boolValue];
+        _totalAvailableStock = [dict[@"totalAvailableStock"] integerValue];
+        _hasInStockVariants = [dict[@"hasInStockVariants"] boolValue];
+        if ([dict[@"availableColors"] isKindOfClass:NSArray.class]) {
+            _availableColors = [dict[@"availableColors"] copy];
+        }
+        if ([dict[@"availableSizes"] isKindOfClass:NSArray.class]) {
+            _availableSizes = [dict[@"availableSizes"] copy];
+        }
+        if ([dict[@"searchTokens"] isKindOfClass:NSArray.class]) {
+            _searchTokens = [dict[@"searchTokens"] copy];
+        }
+
         _quantity = [dict[@"quantity"] integerValue];
         _searchTitle = dict[@"searchTitle"];
         if(isPPDebugMode)
@@ -460,6 +479,14 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.isDefaultVariant = source.isDefaultVariant;
     copy.variantIsArchived = source.variantIsArchived;
     copy.variantSortOrder = source.variantSortOrder;
+    copy.minPrice = [source.minPrice copy];
+    copy.maxPrice = [source.maxPrice copy];
+    copy.hasVariablePrice = source.hasVariablePrice;
+    copy.totalAvailableStock = source.totalAvailableStock;
+    copy.hasInStockVariants = source.hasInStockVariants;
+    copy.availableColors = [source.availableColors copy];
+    copy.availableSizes = [source.availableSizes copy];
+    copy.searchTokens = [source.searchTokens copy];
     return copy;
 }
 
@@ -602,6 +629,21 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
 + (NSString *)formatCurrency:(NSNumber *)amount {
     if (!amount) return @"";
     return [GM formatPrice:amount currencyCode:kLang(@"Rials")];
+}
+
++ (NSString *)formattedPriceRangeForAccessory:(PetAccessory *)accessory {
+    if (!accessory) return @"";
+    if (accessory.hasVariablePrice && accessory.minPrice != nil && accessory.maxPrice != nil && accessory.minPrice.doubleValue > 0 && accessory.maxPrice.doubleValue > 0) {
+        NSString *minFormatted = [self formatCurrency:accessory.minPrice];
+        NSString *maxFormatted = [self formatCurrency:accessory.maxPrice];
+        if (Language.isRTL) {
+            return [NSString stringWithFormat:@"من %@ إلى %@", minFormatted, maxFormatted];
+        } else {
+            return [NSString stringWithFormat:@"%@ - %@", minFormatted, maxFormatted];
+        }
+    }
+    NSNumber *price = [accessory calculateFinalPrice];
+    return [self formatCurrency:price];
 }
 
 + (NSString *)conditionTextForAccessory:(PetAccessory *)accessory {

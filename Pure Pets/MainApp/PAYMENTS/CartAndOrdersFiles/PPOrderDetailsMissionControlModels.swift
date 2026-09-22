@@ -108,6 +108,8 @@ struct PPOrderMissionItem: Identifiable, Hashable {
     let id: String
     let itemID: String
     let name: String
+    let optionsSummary: String
+    let sku: String
     let quantity: Int
     let lineTotalText: String
     let imageURL: String
@@ -117,6 +119,8 @@ struct PPOrderMissionItem: Identifiable, Hashable {
         id = dictionary.missionString("id")
         itemID = dictionary.missionString("itemID")
         name = dictionary.missionString("name")
+        optionsSummary = dictionary.missionString("optionsSummary")
+        sku = dictionary.missionString("sku")
         quantity = max(1, dictionary.missionInt("quantity"))
         lineTotalText = dictionary.missionString("lineTotalText")
         imageURL = dictionary.missionString("imageURL")

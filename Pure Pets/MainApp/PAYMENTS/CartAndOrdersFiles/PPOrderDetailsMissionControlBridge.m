@@ -1143,8 +1143,56 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         NSString *name = PPMissionSafeString(item[@"name"] ?: item[@"title"]);
         NSInteger quantity = MAX(1, PPMissionInteger(item[@"qty"] ?: item[@"quantity"], 1));
         double price = MAX(0.0, PPMissionDouble(item[@"price"] ?: item[@"unitPrice"] ?: item[@"finalPrice"], 0.0));
-        NSString *imageURL = [self imageURLFromDictionary:item];
-        if (identifier.length == 0 && name.length == 0) continue;
+        NSString *optionsSummary = PPMissionSafeString(item[@"optionsSummary"]);
+        if (optionsSummary.length == 0) {
+            if ([item[@"selectedOptionsSnapshot"] isKindOfClass:NSArray.class]) {
+                NSMutableArray *parts = [NSMutableArray array];
+                for (id entry in item[@"selectedOptionsSnapshot"]) {
+                    if ([entry isKindOfClass:NSDictionary.class]) {
+                        NSString *optName = @"";
+                        if ([entry[@"optionName"] isKindOfClass:NSDictionary.class]) {
+                            optName = Language.isRTL ? entry[@"optionName"][@"ar"] : entry[@"optionName"][@"en"];
+                        } else if ([entry[@"optionName"] isKindOfClass:NSString.class]) {
+                            optName = entry[@"optionName"];
+                        }
+                        NSString *valName = @"";
+                        if ([entry[@"valueName"] isKindOfClass:NSDictionary.class]) {
+                            valName = Language.isRTL ? entry[@"valueName"][@"ar"] : entry[@"valueName"][@"en"];
+                        } else if ([entry[@"valueName"] isKindOfClass:NSString.class]) {
+                            valName = entry[@"valueName"];
+                        }
+                        if (valName.length > 0) {
+                            if (optName.length > 0) {
+                                [parts addObject:[NSString stringWithFormat:@"%@: %@", optName, valName]];
+                            } else {
+                                [parts addObject:valName];
+                            }
+                        }
+                    }
+                }
+                optionsSummary = [parts componentsJoinedByString:@" · "];
+            } else if ([item[@"selectedOptions"] isKindOfClass:NSDictionary.class] && [item[@"selectedOptions"] count] > 0) {
+                NSDictionary *opts = item[@"selectedOptions"];
+                NSMutableArray *parts = [NSMutableArray array];
+                NSArray *sortedKeys = [opts.allKeys sortedArrayUsingSelector:@selector(compare:)];
+                for (NSString *k in sortedKeys) {
+                    NSString *v = [NSString stringWithFormat:@"%@", opts[k]];
+                    if (v.length > 0) {
+                        NSString *locK = [k.lowercaseString isEqualToString:@"color"] ? kLang(@"Color") :
+                                         [k.lowercaseString isEqualToString:@"size"] ? kLang(@"Size") : k.capitalizedString;
+                        [parts addObject:[NSString stringWithFormat:@"%@: %@", locK, v]];
+                    }
+                }
+                optionsSummary = [parts componentsJoinedByString:@" · "];
+            } else if (PPMissionSafeString(item[@"variantColorName"]).length > 0) {
+                optionsSummary = [NSString stringWithFormat:@"%@: %@", kLang(@"Color"), item[@"variantColorName"]];
+            } else if (PPMissionSafeString(item[@"size"]).length > 0) {
+                optionsSummary = [NSString stringWithFormat:@"%@: %@", kLang(@"Size"), item[@"size"]];
+            }
+        }
+        line[@"optionsSummary"] = optionsSummary ?: @"";
+        line[@"sku"] = PPMissionSafeString(item[@"sku"]);
+
         line[@"itemID"] = identifier;
         line[@"stableID"] = identifier.length > 0
             ? [NSString stringWithFormat:@"%@-%ld", identifier, (long)position]
@@ -1174,6 +1222,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             @"id": PPMissionSafeString(line[@"stableID"]),
             @"itemID": PPMissionSafeString(line[@"itemID"]),
             @"name": name,
+            @"optionsSummary": PPMissionSafeString(line[@"optionsSummary"]),
+            @"sku": PPMissionSafeString(line[@"sku"]),
             @"quantity": @(quantity),
             @"unitPrice": @(price),
             @"lineTotalText": PPMissionMoneyText(price * quantity, currency),

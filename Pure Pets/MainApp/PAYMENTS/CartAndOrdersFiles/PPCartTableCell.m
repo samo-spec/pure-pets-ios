@@ -141,6 +141,8 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 @property (nonatomic, strong, readwrite) UIImageView *itemImageView;
 @property (nonatomic, strong, readwrite) UILabel *nameLabel;
+@property (nonatomic, strong, readwrite) UILabel *variantOptionsLabel;
+@property (nonatomic, strong) UIStackView *variantOptionsRow;
 @property (nonatomic, strong, readwrite) UILabel *priceLabel;
 @property (nonatomic, strong) UILabel *originalPriceLabel;
 @property (nonatomic, strong, readwrite) UILabel *quantityLabel;
@@ -344,6 +346,34 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     headerRow.alignment = UIStackViewAlignmentFill;
     headerRow.spacing = 12.0;
 
+    PPCartInsetLabel *variantOptionsLabel = [self pp_buildCapsuleLabelWithFont:[GM fontWithSize:11.5]
+                                                                     textColor:PPCartCellSecondaryTextColor()
+                                                               backgroundColor:[PPCartCellSoftFillColor() colorWithAlphaComponent:0.8]
+                                                                   borderColor:PPCartCellHairlineColor()
+                                                                       corners:6.0];
+    variantOptionsLabel.textInsets = UIEdgeInsetsMake(3.0, 7.0, 3.0, 7.0);
+    variantOptionsLabel.numberOfLines = 1;
+    variantOptionsLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    variantOptionsLabel.textAlignment = NSTextAlignmentNatural;
+    variantOptionsLabel.hidden = YES;
+    self.variantOptionsLabel = variantOptionsLabel;
+
+    UIView *variantSpacer = [[UIView alloc] initWithFrame:CGRectZero];
+    variantSpacer.translatesAutoresizingMaskIntoConstraints = NO;
+    [variantSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [variantSpacer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+
+    UIStackView *variantOptionsRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        variantOptionsLabel,
+        variantSpacer
+    ]];
+    variantOptionsRow.translatesAutoresizingMaskIntoConstraints = NO;
+    variantOptionsRow.axis = UILayoutConstraintAxisHorizontal;
+    variantOptionsRow.alignment = UIStackViewAlignmentCenter;
+    variantOptionsRow.spacing = 0.0;
+    variantOptionsRow.hidden = YES;
+    self.variantOptionsRow = variantOptionsRow;
+
     UIStackView *priceRow = [[UIStackView alloc] initWithArrangedSubviews:@[
         priceLabel,
         originalPriceLabel,
@@ -466,6 +496,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UIStackView *contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         headerRow,
+        variantOptionsRow,
         priceRow,
         bottomRow,
         savedActionsRow
@@ -664,6 +695,8 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     self.onAction = nil;
     self.itemImageView.image = nil;
     self.nameLabel.text = @"";
+    self.variantOptionsLabel.text = @"";
+    self.variantOptionsRow.hidden = YES;
     self.eyebrowLabel.text = @"";
     self.priceLabel.text = @"";
     self.originalPriceLabel.attributedText = nil;
@@ -788,6 +821,17 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     eyebrowText = [[eyebrowText stringByReplacingOccurrencesOfString:@"_" withString:@" "] uppercaseString];
     self.eyebrowLabel.text = eyebrowText.length > 0 ? eyebrowText : kLang(@"saved_for_later_item_badge");
     self.nameLabel.text = item.name.length > 0 ? item.name : kLang(@"saved_for_later_unknown_item");
+    if (item.optionsSummary.length > 0) {
+        self.variantOptionsLabel.text = item.optionsSummary;
+        self.variantOptionsLabel.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", kLang(@"accessory_view_options_title"), item.optionsSummary];
+        self.variantOptionsLabel.hidden = NO;
+        self.variantOptionsRow.hidden = NO;
+    } else {
+        self.variantOptionsLabel.text = @"";
+        self.variantOptionsLabel.accessibilityLabel = nil;
+        self.variantOptionsLabel.hidden = YES;
+        self.variantOptionsRow.hidden = YES;
+    }
     self.priceLabel.text = [PPChatsFunc formattedCurrency:item.price];
     self.subtotalPillLabel.text = kLang(@"saved_for_later_item_badge");
 
@@ -872,6 +916,17 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     self.eyebrowLabel.text = eyebrowText;
     self.nameLabel.text = item.name ?: @"";
+    if (item.optionsSummary.length > 0) {
+        self.variantOptionsLabel.text = item.optionsSummary;
+        self.variantOptionsLabel.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", kLang(@"accessory_view_options_title"), item.optionsSummary];
+        self.variantOptionsLabel.hidden = NO;
+        self.variantOptionsRow.hidden = NO;
+    } else {
+        self.variantOptionsLabel.text = @"";
+        self.variantOptionsLabel.accessibilityLabel = nil;
+        self.variantOptionsLabel.hidden = YES;
+        self.variantOptionsRow.hidden = YES;
+    }
     self.quantityLabel.text = [NSString stringWithFormat:@"%ld", (long)quantity];
     self.priceLabel.text = [PPChatsFunc formattedCurrency:item.price];
     self.subtotalPillLabel.text = [NSString stringWithFormat:@"%@ %@",

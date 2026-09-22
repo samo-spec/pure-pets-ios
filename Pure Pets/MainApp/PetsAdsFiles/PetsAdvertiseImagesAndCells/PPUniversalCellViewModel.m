@@ -283,11 +283,14 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         _finalPrice = accessory.finalPrice;
         _discountPercent = accessory.discountPercent;
         _discountAmount = accessory.discountAmount;
-        _itemQuantitiy = MAX(accessory.quantity, 0);
+        NSInteger effectiveStock = (accessory.productFamilyId.length > 0 && accessory.totalAvailableStock > 0)
+            ? accessory.totalAvailableStock
+            : accessory.quantity;
+        _itemQuantitiy = MAX(effectiveStock, 0);
         _stockStatusText = accessory.stockStatusText ?: @"";
-        if (accessory.quantity <= 0) {
+        if (effectiveStock <= 0 && (accessory.productFamilyId.length == 0 || !accessory.hasInStockVariants)) {
             _availabilityText = PPUniversalLocalizedString(@"Out of stock", PPUniversalLocalizedPair(@"Out of stock", @"غير متوفر"));
-        } else if (accessory.quantity < 5) {
+        } else if (effectiveStock < 5 && accessory.productFamilyId.length == 0) {
             _availabilityText = [NSString stringWithFormat:@"%@ %ld %@",
                                  PPUniversalLocalizedString(@"Only", PPUniversalLocalizedPair(@"Only", @"متبقي")),
                                  (long)accessory.quantity,
@@ -305,8 +308,12 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         _contextualReasonText = accessory.isNew
             ? PPUniversalLocalizedString(@"New", PPUniversalLocalizedPair(@"New", @"جديد"))
             : @"";
-        _priceText = [GM formatPrice:(accessory.finalPrice ?: accessory.price)
-                        currencyCode:_currencyCode] ?: @"";
+        if (accessory.hasVariablePrice) {
+            _priceText = [PetAccessory formattedPriceRangeForAccessory:accessory] ?: @"";
+        } else {
+            _priceText = [GM formatPrice:(accessory.finalPrice ?: accessory.price)
+                            currencyCode:_currencyCode] ?: @"";
+        }
         if (firstIsVideo) {
             CGFloat thumbWidth = [firstMedia[@"thumbnail_width"] doubleValue];
             CGFloat thumbHeight = [firstMedia[@"thumbnail_height"] doubleValue];

@@ -157,6 +157,14 @@ static inline NSString *Norm(NSString *s) {
             NSString *title = a.name ?: @"";
             NSString *sub = a.desc ?: @"";
             BOOL hit = [Norm(title) containsString:q] || [Norm(sub) containsString:q];
+            if (!hit && a.searchTokens.count > 0) {
+                for (NSString *tok in a.searchTokens) {
+                    if ([Norm(tok) containsString:q] || [q containsString:Norm(tok)]) {
+                        hit = YES;
+                        break;
+                    }
+                }
+            }
             if (hit) {
                 accMatches++;
                 NSString *img = a.imageURLsArray.firstObject ?: @"";

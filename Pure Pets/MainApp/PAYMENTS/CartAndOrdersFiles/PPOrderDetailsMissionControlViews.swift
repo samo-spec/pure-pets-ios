@@ -993,6 +993,16 @@ private struct PPOrderMissionItemRow: View {
                     .font(PPOrderMissionTypography.callout())
                     .foregroundStyle(Color.ppTextPrimary)
                     .lineLimit(2)
+                if !item.optionsSummary.isEmpty {
+                    Text(item.optionsSummary)
+                        .font(PPOrderMissionTypography.caption())
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.ppSecondarySurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                }
                 Text(
                     String(
                         format: PPOrderMissionText("order_mission_quantity_format"),

@@ -80,6 +80,17 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL variantIsArchived;
 @property (nonatomic, assign) NSInteger variantSortOrder;
 
+#pragma mark - Phase 11 Marketplace Aggregations & Facets
+
+@property (nonatomic, strong, nullable) NSNumber *minPrice;
+@property (nonatomic, strong, nullable) NSNumber *maxPrice;
+@property (nonatomic, assign) BOOL hasVariablePrice;
+@property (nonatomic, assign) NSInteger totalAvailableStock;
+@property (nonatomic, assign) BOOL hasInStockVariants;
+@property (nonatomic, strong, nullable) NSArray<NSString *> *availableColors;
+@property (nonatomic, strong, nullable) NSArray<NSString *> *availableSizes;
+@property (nonatomic, strong, nullable) NSArray<NSString *> *searchTokens;
+
 // Computed type helpers
 @property (nonatomic, readonly) BOOL isLivePet;
 @property (nonatomic, readonly) BOOL isFood;
@@ -103,6 +114,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)formattedPrice:(NSNumber *)finalPrice
                originalPrice:(NSNumber *)originalPrice
              discountPercent:(NSNumber *)discountPercent;
++ (NSString *)formattedPriceRangeForAccessory:(PetAccessory *)accessory;
 + (NSString *)shareMessageForAccessory:(PetAccessory *)accessory;
 + (nullable NSURL *)shareableLinkForAccessory:(PetAccessory *)accessory;
 + (void)sharePetAccessory:(PetAccessory *)accessory

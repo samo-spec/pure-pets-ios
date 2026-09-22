@@ -1595,6 +1595,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         NSArray *values = @[
             dictionary[@"name"] ?: @"",
             dictionary[@"title"] ?: @"",
+            dictionary[@"optionsSummary"] ?: @"",
+            dictionary[@"sku"] ?: @"",
             dictionary[@"id"] ?: @"",
             dictionary[@"itemID"] ?: @"",
             dictionary[@"productId"] ?: @"",
