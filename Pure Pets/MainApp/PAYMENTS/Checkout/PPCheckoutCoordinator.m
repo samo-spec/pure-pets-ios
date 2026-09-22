@@ -1354,7 +1354,14 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         NSString *title = name.length > 0 ? name : kLang(@"checkout_item_fallback");
 
         NSString *line = nil;
-        if (available <= 0) {
+        if ([issue[@"requiresExactUnitSelection"] boolValue]) {
+            // F-22: an individually tracked live animal must be chosen by its
+            // specific ring/tag. `qibPayment.js` rejects a quantity-only checkout
+            // for it, and this client previously had no copy for that case, so the
+            // customer saw a raw untranslated server precondition at the payment
+            // step. Named explicitly so the message tells them what to do.
+            line = [NSString stringWithFormat:kLang(@"checkout_item_requires_exact_unit_format"), title];
+        } else if (available <= 0) {
             line = [NSString stringWithFormat:kLang(@"checkout_item_out_of_stock_format"), title];
         } else {
             line = [NSString stringWithFormat:kLang(@"checkout_item_limited_stock_format"),

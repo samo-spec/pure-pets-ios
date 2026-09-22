@@ -197,7 +197,14 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
 + (NSInteger)stockLimitForViewModel:(PPUniversalCellViewModel *)viewModel
 {
     if ([self isAccessoryViewModel:viewModel]) {
-        return MAX(((PetAccessory *)viewModel.ModelObject).quantity, 0);
+        PetAccessory *accessory = (PetAccessory *)viewModel.ModelObject;
+        // F-22: this ceiling governs every card stepper in the app. Reading
+        // `quantity` alone meant a product the server had flagged unavailable still
+        // offered a positive ceiling and could be added to the basket.
+        if (accessory.isOutOfStock) {
+            return 0;
+        }
+        return MAX(accessory.quantity, 0);
     }
     return MAX(viewModel.itemQuantitiy, 0);
 }

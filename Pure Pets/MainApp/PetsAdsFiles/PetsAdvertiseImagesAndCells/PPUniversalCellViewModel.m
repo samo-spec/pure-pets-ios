@@ -286,6 +286,13 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         NSInteger effectiveStock = (accessory.productFamilyId.length > 0 && accessory.totalAvailableStock > 0)
             ? accessory.totalAvailableStock
             : accessory.quantity;
+        // F-22: the server's verdict overrides the count. A variant family keeps its
+        // family-level aggregate, because there the parent's own `noStock` says
+        // nothing about whether some child variant is still buyable.
+        BOOL serverSaysUnavailable = accessory.isOutOfStock && accessory.productFamilyId.length == 0;
+        if (serverSaysUnavailable) {
+            effectiveStock = 0;
+        }
         _itemQuantitiy = MAX(effectiveStock, 0);
         _stockStatusText = accessory.stockStatusText ?: @"";
         if (effectiveStock <= 0 && (accessory.productFamilyId.length == 0 || !accessory.hasInStockVariants)) {

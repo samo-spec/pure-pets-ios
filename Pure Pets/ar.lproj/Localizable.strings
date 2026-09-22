@@ -1967,6 +1967,7 @@
 "checkout_items_unavailable_review_cart" = "بعض المنتجات في سلتك لم تعد متوفرة أو تغير مخزونها. يرجى مراجعة السلة قبل إتمام الطلب.";
 "checkout_item_fallback" = "منتج";
 "checkout_item_out_of_stock_format" = "%@ لم يعد متوفراً.";
+"checkout_item_requires_exact_unit_format" = "%@ حيوان مُعرَّف بحلقة خاصة، ويجب اختياره من الفرع. لا يمكن شراؤه بالكمية.";
 "checkout_item_limited_stock_format" = "%@: المتوفر فقط %ld، بينما في سلتك %ld.";
 "checkout_more_items_format" = "...و %ld منتج(ات) أخرى تحتاج إلى مراجعة.";
 "checkout_items_unavailable_fallback" = "بعض منتجات السلة تحتاج إلى مراجعة قبل إتمام الطلب.";

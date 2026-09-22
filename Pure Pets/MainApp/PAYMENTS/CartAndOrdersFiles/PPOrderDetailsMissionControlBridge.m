@@ -1143,6 +1143,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         NSString *name = PPMissionSafeString(item[@"name"] ?: item[@"title"]);
         NSInteger quantity = MAX(1, PPMissionInteger(item[@"qty"] ?: item[@"quantity"], 1));
         double price = MAX(0.0, PPMissionDouble(item[@"price"] ?: item[@"unitPrice"] ?: item[@"finalPrice"], 0.0));
+        NSString *imageURL = [self imageURLFromDictionary:item];
         NSString *optionsSummary = PPMissionSafeString(item[@"optionsSummary"]);
         if (optionsSummary.length == 0) {
             if ([item[@"selectedOptionsSnapshot"] isKindOfClass:NSArray.class]) {
@@ -1171,7 +1172,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                     }
                 }
                 optionsSummary = [parts componentsJoinedByString:@" · "];
-            } else if ([item[@"selectedOptions"] isKindOfClass:NSDictionary.class] && [item[@"selectedOptions"] count] > 0) {
+            } else if ([item[@"selectedOptions"] isKindOfClass:NSDictionary.class]
+                       && ((NSDictionary *)item[@"selectedOptions"]).count > 0) {
                 NSDictionary *opts = item[@"selectedOptions"];
                 NSMutableArray *parts = [NSMutableArray array];
                 NSArray *sortedKeys = [opts.allKeys sortedArrayUsingSelector:@selector(compare:)];

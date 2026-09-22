@@ -15,10 +15,6 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PetAccessoryManager : NSObject
-- (void)pp_oneTimePopulateAccessoryInventoryAndOffersWithCompletion:(void (^)(NSError * _Nullable error,
-                                                                              NSInteger updatedCount))completion;
-- (void)pp_oneTimeSetAllAccessoriesPriceToFixedValuesWithCompletion:(void (^)(NSError * _Nullable error,
-                                                                              NSInteger updatedCount))completion;
 - (void)fetchAccessoriesForMainCategoryID:(NSInteger)mainCategoryID
                             subCategoryID:(NSInteger)subCategoryID
                                     limit:(NSInteger)limit

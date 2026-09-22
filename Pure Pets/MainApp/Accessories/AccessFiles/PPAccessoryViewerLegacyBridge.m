@@ -467,9 +467,15 @@ static UIViewController *PPAccessoryResolvedPresenter(
 
 + (BOOL)isAccessoryUnavailable:(PetAccessory *)accessory
 {
+    // F-22: this is the app's nominal "is this unavailable" predicate, and it was
+    // stock-blind — lifecycle flags only. Callers therefore had to write
+    // `isUnavailable || quantity <= 0` everywhere, and any caller that forgot the
+    // second half happily sold out-of-stock goods. Stock is now part of the answer,
+    // sourced from the server's flag rather than re-derived here.
     return accessory.isBlocked ||
         accessory.isDeleted ||
-        accessory.isDisabled;
+        accessory.isDisabled ||
+        accessory.isOutOfStock;
 }
 
 + (BOOL)shouldShowCartForAccessory:(PetAccessory *)accessory

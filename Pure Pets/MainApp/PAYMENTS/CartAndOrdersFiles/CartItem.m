@@ -164,9 +164,17 @@
     if (self.providerID.length > 0) {
         dict[@"providerID"] = self.providerID;
     }
-    if (self.stockQuantity != NSNotFound) {
-        dict[@"stockQuantity"] = @(MAX(self.stockQuantity, 0));
-    }
+    // F-25: `stockQuantity` is deliberately NOT persisted.
+    //
+    // It used to be written into `UsersCol/{uid}/cartItems/{id}` and read back, so
+    // a cart opened days later rendered availability from a frozen snapshot taken
+    // at add-to-cart time. The stored number only ever aged, never corrected
+    // itself, and it fed the add-to-cart ceiling — so a customer could be shown,
+    // and allowed to increase, stock that no longer existed.
+    //
+    // The field remains an in-memory hint resolved from the live catalogue; a
+    // restored cart starts with `NSNotFound` ("unknown"), which the add-to-cart
+    // guard already treats as fail-closed (`CartManager.m:395-410`).
     if (self.hasDiscount) {
         dict[@"discountPerUnit"] = @(self.discountPerUnit);
         dict[@"lineDiscount"] = @(self.lineDiscountTotal);
@@ -183,11 +191,10 @@
         _name = dict[@"name"] ?: @"";
         _size = dict[@"size"] ?: @"";
         _quantity = [dict[@"quantity"] ?: dict[@"qty"] integerValue];
-        if ([dict[@"stockQuantity"] respondsToSelector:@selector(integerValue)]) {
-            _stockQuantity = MAX(0, [dict[@"stockQuantity"] integerValue]);
-        } else {
-            _stockQuantity = NSNotFound;
-        }
+        // F-25: a persisted `stockQuantity` from an older build is ignored rather
+        // than trusted. Stock is re-resolved from the live catalogue; until then it
+        // is explicitly unknown, which the add-to-cart guard fails closed on.
+        _stockQuantity = NSNotFound;
         _price = [dict[@"price"] doubleValue];
 
         // Restore originalPrice if present; fallback to price for pre-migration data

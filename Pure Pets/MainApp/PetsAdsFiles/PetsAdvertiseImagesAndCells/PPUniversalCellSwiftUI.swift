@@ -1858,11 +1858,23 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     var isOutOfStock: Bool {
-        model.usesQuantityControl && (model.stock ?? 0) <= 0
+        // F-22: `model.stock == nil` means "ceiling unknown", not "in stock". The
+        // previous `(model.stock ?? 0) <= 0` happened to fail *closed* here, and this
+        // keeps that while making the intent explicit.
+        guard model.usesQuantityControl else { return false }
+        guard let stock = model.stock else { return true }
+        return stock <= 0
     }
 
     var canIncreaseQuantity: Bool {
-        model.stock.map { quantity < $0 } ?? true
+        // F-22: this failed *open* — `?? true` let a customer keep incrementing when
+        // the ceiling was unknown. An unknown ceiling must not authorise more.
+        //
+        // Cards without a quantity control have no stock concept at all, so their
+        // previous behaviour is preserved exactly rather than newly restricted.
+        guard model.usesQuantityControl else { return true }
+        guard let stock = model.stock else { return false }
+        return quantity < stock
     }
 
     private func delegateResponds(to selectorName: String) -> Bool {

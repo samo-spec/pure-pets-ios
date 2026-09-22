@@ -154,83 +154,18 @@ static BOOL PPAccessoryItemPassesUsedAccessoryFlag(PetAccessory *item, AccessKin
     }];
 }
 
-#pragma mark - ONE TIME PRICE MIGRATION (REMOVE AFTER RUNNING)
+#pragma mark - Removed one-time catalogue migrations
 
-/// ⚠️ One-time use only.
-/// Sets ALL accessories:
-/// price = 15
-/// discount = 5
-/// finalPrice = 10
-
-- (void)pp_oneTimeSetAllAccessoriesPriceToFixedValuesWithCompletion:(void (^)(NSError * _Nullable error,
-                                                                              NSInteger updatedCount))completion
-{
-    NSLog(@"🧾 [ONE-TIME] Accessories pricing migration started (price=%@, discount=%@, finalPrice=%@)", @10, @3, @7);
-    static BOOL didRun = NO;
-    if (didRun) {
-        NSLog(@"⚠️ [ONE-TIME] Migration already executed in this session - skipping");
-        if (completion) completion(nil, 0);
-        return;
-    }
-    didRun = YES;
-
-    FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
-    FIRCollectionReference *col = [db collectionWithPath:@"petAccessories"];
-    FIRQuery *baseQuery = [[col queryOrderedByField:@"createdAt"] queryLimitedTo:400];
-    NSLog(@"🧾 [ONE-TIME] Using collection 'petAccessories' with page size = %d", 400);
-
-    __block NSInteger totalUpdated = 0;
-    __block void (^runPage)(FIRQuery *);
-    runPage = ^(FIRQuery *query) {
-        NSLog(@"📄 [ONE-TIME] Fetching next page... (updated so far = %ld)", (long)totalUpdated);
-        [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
-            if (error || !snapshot) {
-                NSLog(@"❌ [ONE-TIME] Failed to fetch page: %@", error.localizedDescription);
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    if (completion) completion(error, totalUpdated);
-                });
-                return;
-            }
-            if (snapshot.documents.count == 0) {
-                NSLog(@"✅ [ONE-TIME] No more documents. Migration finished. Total updated = %ld", (long)totalUpdated);
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    if (completion) completion(nil, totalUpdated);
-                });
-                return;
-            }
-            FIRWriteBatch *batch = [db batch];
-            NSDictionary *updateData = @{
-                @"price": @10,
-                @"discount": @3,
-                @"finalPrice": @7
-            };
-            NSLog(@"✍️ [ONE-TIME] Updating %lu docs in this batch...", (unsigned long)snapshot.documents.count);
-            for (FIRDocumentSnapshot *doc in snapshot.documents) {
-                [batch updateData:updateData forDocument:[col documentWithPath:doc.documentID]];
-            }
-            [batch commitWithCompletion:^(NSError *commitError) {
-                if (commitError) {
-                    NSLog(@"❌ [ONE-TIME] Batch commit failed (updated so far = %ld): %@", (long)totalUpdated, commitError.localizedDescription);
-                } else {
-                    NSLog(@"✅ [ONE-TIME] Batch commit succeeded. Batch size = %lu", (unsigned long)snapshot.documents.count);
-                }
-                if (commitError) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        if (completion) completion(commitError, totalUpdated);
-                    });
-                    return;
-                }
-                totalUpdated += snapshot.documents.count;
-                NSLog(@"📈 [ONE-TIME] Progress: total updated = %ld", (long)totalUpdated);
-                FIRDocumentSnapshot *lastDoc = snapshot.documents.lastObject;
-                FIRQuery *nextQuery = [[baseQuery queryStartingAfterDocument:lastDoc] queryLimitedTo:400];
-                NSLog(@"➡️ [ONE-TIME] Moving to next page after docID=%@", lastDoc.documentID);
-                runPage(nextQuery);
-            }];
-        }];
-    };
-    runPage(baseQuery);
-}
+// F-24: `pp_oneTimeSetAllAccessoriesPriceToFixedValuesWithCompletion:` was
+// removed here. It was a paged 400-document FIRWriteBatch loop that rewrote
+// price/discount/finalPrice across the ENTIRE petAccessories collection,
+// compiled into the consumer binary, exported in the header, and guarded only
+// by a per-session `static BOOL didRun`. It had no call site, but it was one
+// line away from being invoked from a consumer device, and its comment block
+// disagreed with its own log line about the values it wrote.
+//
+// Bulk catalogue mutations belong in `Pure Pets Infra/scripts/`, run by an
+// operator against an audited server path — never in a shipped app.
 
 static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     return [NSError errorWithDomain:@"PetAccessoryManager"

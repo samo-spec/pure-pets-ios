@@ -54,6 +54,25 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) AccessKindType accessKindType;
 @property (nonatomic, assign) AccessConditions condition;
 @property (nonatomic, assign) NSInteger quantity; // how many in stock
+
+/// F-22 — the server's authoritative unavailability flag.
+///
+/// This model previously parsed only `quantity`, so **every** availability decision
+/// in the app was client-derived: `noStock` appeared in exactly two files out of the
+/// whole iOS repo. A product the server had explicitly flagged unavailable stayed
+/// purchasable wherever the two signals disagreed.
+///
+/// Read straight from Firestore; never computed on the client.
+@property (nonatomic, assign) BOOL serverMarkedNoStock;
+
+/// The single availability predicate. Either signal saying "unavailable" wins, and
+/// lifecycle flags (`isBlocked`/`isDeleted`/`isDisabled`) are included so callers
+/// cannot accidentally check stock while ignoring a withdrawn product.
+///
+/// Prefer this over comparing `quantity` directly.
+@property (nonatomic, assign, readonly) BOOL isOutOfStock;
+@property (nonatomic, assign, readonly) BOOL isPurchasable;
+
 - (NSString *)stockStatusText;
 @property (nonatomic, assign) BOOL isNew;
 @property (nonatomic, assign) BOOL hasOffer;
@@ -79,6 +98,24 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL isDefaultVariant;
 @property (nonatomic, assign) BOOL variantIsArchived;
 @property (nonatomic, assign) NSInteger variantSortOrder;
+
+/// Line-identity fields the server already writes on catalogue and order-line
+/// documents, but which this model never declared — so `CartItem.m:76-98` read
+/// five properties that did not exist and the target did not compile.
+///
+/// Read-only projections of server state, like the variant fields above:
+/// deliberately not serialized by `toFirestoreDictionary`, because the consumer
+/// app must never author them.
+///
+/// `variantId` is the server's alias for `sellableUnitId` on an order line;
+/// `colorID`/`colorName` arrive as `variantColorId`/`variantColorName` from the
+/// variant snapshot and as `colorID`/`colorName` on legacy catalogue documents,
+/// so both spellings are accepted.
+@property (nonatomic, copy, nullable) NSString *variantId;
+@property (nonatomic, copy, nullable) NSString *colorID;
+@property (nonatomic, copy, nullable) NSString *colorName;
+@property (nonatomic, copy, nullable) NSString *sku;
+@property (nonatomic, copy, nullable) NSString *barcode;
 
 #pragma mark - Phase 11 Marketplace Aggregations & Facets
 

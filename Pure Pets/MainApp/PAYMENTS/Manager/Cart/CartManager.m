@@ -300,18 +300,31 @@ static CartItem *PPCartCopyItem(CartItem *source)
 
 - (NSInteger)pp_stockLimitForItem:(CartItem *)item existingItem:(CartItem *)existingItem
 {
-    if (item.stockQuantity != NSNotFound) {
-        return MAX(0, item.stockQuantity);
-    }
-    if (existingItem && existingItem.stockQuantity != NSNotFound) {
-        return MAX(0, existingItem.stockQuantity);
-    }
-
+    // F-22: the live catalogue document is authoritative, so it is consulted FIRST.
+    //
+    // This used to prefer the in-memory `stockQuantity` hint on the cart item, which
+    // is only ever as fresh as the last time that product was loaded. A cart held
+    // open across a sell-out therefore enforced a stale ceiling, and the server's own
+    // `noStock` was never consulted at all.
     PetAccessory *accessory = [[PetAccessoryManager sharedManager] getAccessoryID:item.itemID];
     if (accessory) {
+        if (!accessory.isPurchasable) {
+            return 0;
+        }
         return MAX(0, accessory.quantity);
     }
-    return NSNotFound;
+
+    // No catalogue document cached. Fall back to the session hint, taking the LOWER
+    // of the two when both exist — a second opinion must never widen a ceiling.
+    NSInteger hint = NSNotFound;
+    if (item.stockQuantity != NSNotFound) {
+        hint = MAX(0, item.stockQuantity);
+    }
+    if (existingItem && existingItem.stockQuantity != NSNotFound) {
+        NSInteger existingHint = MAX(0, existingItem.stockQuantity);
+        hint = (hint == NSNotFound) ? existingHint : MIN(hint, existingHint);
+    }
+    return hint;
 }
 
 - (NSMutableDictionary *)pp_firestorePayloadForItem:(CartItem *)item quantity:(NSInteger)quantity
@@ -912,7 +925,10 @@ presentingViewController:(UIViewController *)presentingViewController
                     if (existing.stockQuantity == NSNotFound) {
                         existing.stockQuantity = item.stockQuantity;
                     } else {
-                        existing.stockQuantity = MAX(existing.stockQuantity, item.stockQuantity);
+                        // F-22: merging two cart documents must take the LOWER
+                        // ceiling. `MAX` let a stale, larger snapshot win over a
+                        // fresher, smaller one and widen the purchasable ceiling.
+                        existing.stockQuantity = MIN(existing.stockQuantity, item.stockQuantity);
                     }
                 }
                 if (item.name.length > 0) { existing.name = item.name; }

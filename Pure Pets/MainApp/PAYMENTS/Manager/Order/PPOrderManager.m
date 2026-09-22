@@ -1173,20 +1173,44 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 }
 
                 NSInteger availableQty = 0;
+                BOOL serverMarkedNoStock = NO;
+                BOOL requiresExactUnitSelection = NO;
                 if (snapshot.exists) {
                     id rawQty = snapshot.data[@"quantity"];
                     if ([rawQty respondsToSelector:@selector(integerValue)]) {
                         availableQty = MAX(0, [rawQty integerValue]);
                     }
+                    // F-22: `noStock` is the server's companion flag to `quantity`
+                    // (derived as `availableQuantity <= 0`). This pre-flight read
+                    // only `quantity`, so a product the server had explicitly
+                    // marked unavailable still passed whenever the two disagreed.
+                    id rawNoStock = snapshot.data[@"noStock"];
+                    if ([rawNoStock respondsToSelector:@selector(boolValue)]) {
+                        serverMarkedNoStock = [rawNoStock boolValue];
+                    }
+                    // F-22: an individually tracked live animal cannot be bought by
+                    // quantity — `qibPayment.js` rejects it with a raw
+                    // `failed-precondition` that this client had no localized copy
+                    // for, so the customer hit an untranslated server error at the
+                    // payment step. Detecting it here surfaces proper copy before
+                    // any payment is attempted.
+                    id rawMode = snapshot.data[@"inventoryMode"];
+                    if ([rawMode isKindOfClass:[NSString class]]) {
+                        requiresExactUnitSelection = [rawMode isEqualToString:@"INDIVIDUAL_TRACKED"];
+                    }
                 }
 
-                if (!snapshot.exists || availableQty < requestedQty) {
-                    [issues addObject:@{
+                if (!snapshot.exists || serverMarkedNoStock || requiresExactUnitSelection || availableQty < requestedQty) {
+                    NSMutableDictionary *issue = [@{
                         @"itemID": itemID ?: @"",
                         @"name": name ?: @"",
                         @"requestedQty": @(requestedQty),
-                        @"availableQty": @(availableQty)
-                    }];
+                        @"availableQty": @(serverMarkedNoStock ? 0 : availableQty)
+                    } mutableCopy];
+                    if (requiresExactUnitSelection) {
+                        issue[@"requiresExactUnitSelection"] = @YES;
+                    }
+                    [issues addObject:issue];
                 }
                 dispatch_group_leave(group);
             });

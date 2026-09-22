@@ -169,8 +169,22 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     return @(finalPrice);
 }
 
+- (BOOL)isOutOfStock {
+    // Either signal is sufficient. The server flag is authoritative; the quantity
+    // comparison remains as a conservative second check so a stale flag with a zero
+    // count still reads as unavailable.
+    return self.serverMarkedNoStock || self.quantity <= 0;
+}
+
+- (BOOL)isPurchasable {
+    return !self.isOutOfStock
+        && !self.isBlocked
+        && !self.isDeleted
+        && !self.isDisabled;
+}
+
 - (NSString *)stockStatusText {
-    if (self.quantity <= 0) {
+    if (self.isOutOfStock) {
         return kLang(@"Out of stock");
     } else if (self.quantity <= 5) {
         return [NSString stringWithFormat:@"%@ %ld %@",
@@ -406,6 +420,19 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         _variantIsArchived = [dict[@"variantIsArchived"] boolValue];
         _variantSortOrder = [dict[@"variantSortOrder"] integerValue];
 
+        // Line-identity projections. `variantId` falls back to `sellableUnitId`
+        // because the server treats them as the same identity on an order line.
+        NSString *variantIdentity = PPAccessoryStringValueForKeys(dict, @[@"variantId", @"sellableUnitId"]);
+        _variantId = variantIdentity.length > 0 ? variantIdentity : nil;
+        NSString *colorIdentity = PPAccessoryStringValueForKeys(dict, @[@"variantColorId", @"colorID", @"colorId"]);
+        _colorID = colorIdentity.length > 0 ? colorIdentity : nil;
+        NSString *colorLabel = PPAccessoryStringValueForKeys(dict, @[@"variantColorName", @"colorName"]);
+        _colorName = colorLabel.length > 0 ? colorLabel : nil;
+        NSString *skuValue = PPAccessoryStringValueForKeys(dict, @[@"sku"]);
+        _sku = skuValue.length > 0 ? skuValue : nil;
+        NSString *barcodeValue = PPAccessoryStringValueForKeys(dict, @[@"barcode"]);
+        _barcode = barcodeValue.length > 0 ? barcodeValue : nil;
+
         if ([dict[@"minPrice"] respondsToSelector:@selector(doubleValue)]) {
             _minPrice = @([dict[@"minPrice"] doubleValue]);
         }
@@ -426,6 +453,15 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         }
 
         _quantity = [dict[@"quantity"] integerValue];
+        // F-22: the server's own verdict. A document that predates the flag has no
+        // key at all, so absence must fall back to the quantity rather than to
+        // `false` — defaulting a missing flag to "in stock" is the fail-open
+        // behaviour this fix removes.
+        if (dict[@"noStock"] != nil && [dict[@"noStock"] respondsToSelector:@selector(boolValue)]) {
+            _serverMarkedNoStock = [dict[@"noStock"] boolValue];
+        } else {
+            _serverMarkedNoStock = (_quantity <= 0);
+        }
         _searchTitle = dict[@"searchTitle"];
         if(isPPDebugMode)
         {
@@ -465,6 +501,7 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.createdAt = [source.createdAt copy];
     copy.expiryDate = [source.expiryDate copy];
     copy.quantity = source.quantity;
+    copy.serverMarkedNoStock = source.serverMarkedNoStock;
     copy.isNew = source.isNew;
     copy.hasOffer = source.hasOffer;
     copy.showInAppMarket = source.showInAppMarket;
@@ -479,6 +516,11 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.isDefaultVariant = source.isDefaultVariant;
     copy.variantIsArchived = source.variantIsArchived;
     copy.variantSortOrder = source.variantSortOrder;
+    copy.variantId = [source.variantId copy];
+    copy.colorID = [source.colorID copy];
+    copy.colorName = [source.colorName copy];
+    copy.sku = [source.sku copy];
+    copy.barcode = [source.barcode copy];
     copy.minPrice = [source.minPrice copy];
     copy.maxPrice = [source.maxPrice copy];
     copy.hasVariablePrice = source.hasVariablePrice;

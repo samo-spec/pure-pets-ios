@@ -1990,6 +1990,7 @@
 "checkout_items_unavailable_review_cart" = "Some items in your cart are no longer available or have changed stock. Please review your cart before checkout.";
 "checkout_item_fallback" = "Item";
 "checkout_item_out_of_stock_format" = "%@ is no longer available.";
+"checkout_item_requires_exact_unit_format" = "%@ is an individually ring-tagged animal and must be selected at the branch. It cannot be bought by quantity.";
 "checkout_item_limited_stock_format" = "%@: only %ld left, but your cart has %ld.";
 "checkout_more_items_format" = "...and %ld more item(s) need review.";
 "checkout_items_unavailable_fallback" = "Some cart items need review before checkout.";
