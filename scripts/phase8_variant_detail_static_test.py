@@ -98,11 +98,11 @@ def main():
     comp_file = os.path.join(ACCESS_FILES, "PPAccessoryViewerComponents.swift")
     if not check_file_contains(comp_file, [
         r"struct PPAccessoryVariantSelectorSection",
-        r"struct PPAccessoryColorSubRail",
-        r"struct PPAccessoryOptionPillSubRail",
+        r"struct PPAccessoryOptionGroup",
+        r"struct PPAccessoryOptionChoiceLabel",
         r"private var allOptionsSelected:\s*Bool",
         r"allOptionsSelected"
-    ], "PPAccessoryViewerComponents option rails & add-to-cart gating"):
+    ], "PPAccessoryViewerComponents adaptive options & add-to-cart gating"):
         failures += 1
 
     # 7. Check PPAccessoryViewerScreen.swift

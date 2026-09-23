@@ -689,6 +689,16 @@ static UIBezierPath *PPSplashBlobPath(CGFloat side,
     [self pp_applyTheme];
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (!previousTraitCollection ||
+        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection] ||
+        self.traitCollection.accessibilityContrast != previousTraitCollection.accessibilityContrast) {
+        [self pp_applyTheme];
+    }
+}
+
 - (void)pp_applyTheme
 {
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
@@ -700,50 +710,89 @@ static UIBezierPath *PPSplashBlobPath(CGFloat side,
         resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *surfaceColor = [[UIColor ppSurface]
         resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *elevatedSurfaceColor = [[UIColor ppElevatedSurface]
+        resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *softRoseColor = [[UIColor ppSoftRose]
         resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *premiumColor = [[UIColor ppPremiumAccent]
         resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *accentTextColor = [[UIColor ppAccentText]
+        resolvedColorWithTraitCollection:self.traitCollection];
+
+    // In dark mode, use the more luminous accentText for active progress strokes
+    // to preserve vibrancy and Apple HIG contrast against the dark canvas.
+    UIColor *effectiveBrandProgress = isDark ? (accentTextColor ?: brandColor) : brandColor;
     UIColor *progressColor = self.usesFallback
         ? [[UIColor ppCareAccent] resolvedColorWithTraitCollection:self.traitCollection]
-        : brandColor;
-    UIColor *appForegroundColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
+        : effectiveBrandProgress;
+
+    UIColor *rawAppForegroundColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
         AppForgroundColr ?: [UIColor whiteColor];
-    UIColor *plateColor = [appForegroundColor colorWithAlphaComponent:0.7];
+    UIColor *appForegroundColor = [rawAppForegroundColor
+        resolvedColorWithTraitCollection:self.traitCollection];
+
+    // In light mode, preserve the exact original translucent white plate (alpha 0.7).
+    // In dark mode, use the elevated dark surface (#21191C) with translucent depth
+    // so the living carrier forms an authored, elegant dark glass pedestal behind the mark.
+    UIColor *plateColor = isDark
+        ? [elevatedSurfaceColor colorWithAlphaComponent:0.75]
+        : [appForegroundColor colorWithAlphaComponent:0.70];
+
+    // Liquid rim: in light mode, uses plateColor. In dark mode, a micro-luminous
+    // specular rim catches light along the organic liquid silhouette.
+    UIColor *liquidRimColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:usesIncreasedContrast ? 0.26 : 0.14]
+        : plateColor;
+
+    // Liquid sheen: directional sheen gradient along the rim boundary.
+    UIColor *liquidSheenBaseColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:usesIncreasedContrast ? 0.22 : 0.11]
+        : plateColor;
+
+    // Specular highlight: the arc reflection just inside the liquid edge.
+    // In dark mode, it must be a crisp light reflection rather than dark ink.
+    UIColor *liquidHighlightColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:usesIncreasedContrast ? 0.44 : 0.28]
+        : plateColor;
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
 
+    // In dark mode, give the brand halo rich, radiant warmth.
     CGFloat centerAlpha = usesIncreasedContrast
-        ? (isDark ? 0.22 : 0.16)
-        : (isDark ? 0.16 : 0.10);
+        ? (isDark ? 0.26 : 0.16)
+        : (isDark ? 0.18 : 0.10);
+    UIColor *haloColor = isDark ? (accentTextColor ?: brandColor) : brandColor;
     self.haloLayer.colors = @[
-        (id)[brandColor colorWithAlphaComponent:centerAlpha].CGColor,
-        (id)[brandColor colorWithAlphaComponent:centerAlpha * 0.36].CGColor,
+        (id)[haloColor colorWithAlphaComponent:centerAlpha].CGColor,
+        (id)[haloColor colorWithAlphaComponent:centerAlpha * 0.36].CGColor,
         (id)UIColor.clearColor.CGColor
     ];
 
     self.blobLayer.fillColor = plateColor.CGColor;
     self.blobLayer.shadowOpacity = 0.0f;
 
-    // Liquid border using appforground color with 0.7 alpha and 0.75 width
+    // Liquid border
     CGFloat rimWidth = 0.75;
-    self.liquidRimLayer.strokeColor = plateColor.CGColor;
+    self.liquidRimLayer.strokeColor = liquidRimColor.CGColor;
     self.liquidRimLayer.lineWidth = rimWidth;
 
     // A slightly wider mask lets the sheen soften the rim's outer boundary
     self.liquidSheenMaskLayer.lineWidth = rimWidth + 0.3;
     self.liquidSheenLayer.colors = @[
-        (id)plateColor.CGColor,
+        (id)liquidSheenBaseColor.CGColor,
         (id)UIColor.clearColor.CGColor,
-        (id)plateColor.CGColor
+        (id)liquidSheenBaseColor.CGColor
     ];
 
-    self.liquidHighlightLayer.strokeColor = plateColor.CGColor;
+    self.liquidHighlightLayer.strokeColor = liquidHighlightColor.CGColor;
     self.liquidHighlightLayer.lineWidth = 0.75;
 
-    UIColor *trackColor = [secondaryColor colorWithAlphaComponent:
-        usesIncreasedContrast ? (isDark ? 0.68 : 0.82) : (isDark ? 0.34 : 0.28)];
+    // In dark mode, use a refined translucent white track for crisp geometric readability
+    UIColor *trackColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:usesIncreasedContrast ? 0.32 : 0.14]
+        : [secondaryColor colorWithAlphaComponent:usesIncreasedContrast ? 0.82 : 0.28];
+
     CGFloat trackWidth = usesIncreasedContrast ? 3.0 : 2.25;
     CGFloat progressWidth = usesIncreasedContrast ? 5.5 : 4.5;
     for (CAShapeLayer *trackLayer in self.trackLayers) {
@@ -972,9 +1021,9 @@ static UIBezierPath *PPSplashBlobPath(CGFloat side,
         [legacySubview removeFromSuperview];
     }
 
-    UIColor *launchCanvasColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
+    UIColor *rawLaunchCanvasColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
         AppForgroundColr ?: UIColor.systemBackgroundColor;
-    self.view.backgroundColor = launchCanvasColor;
+    self.view.backgroundColor = [rawLaunchCanvasColor resolvedColorWithTraitCollection:self.traitCollection];
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.view.clipsToBounds = YES;
 
@@ -1186,8 +1235,11 @@ static UIBezierPath *PPSplashBlobPath(CGFloat side,
 
 - (void)pp_applySplashTheme
 {
-    UIColor *canvasColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *rawCanvasColor = [UIColor colorNamed:@"AppForegroundColor"] ?:
         AppForgroundColr ?: UIColor.systemBackgroundColor;
+    UIColor *canvasColor = [rawCanvasColor
+        resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *titleColor = [[UIColor ppTextPrimary]
         resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *secondaryTextColor = [[UIColor ppTextSecondary]
@@ -1198,9 +1250,13 @@ static UIBezierPath *PPSplashBlobPath(CGFloat side,
         resolvedColorWithTraitCollection:self.traitCollection];
     UIColor *homeSoftRose = [[UIColor ppSoftRose]
         resolvedColorWithTraitCollection:self.traitCollection];
-    UIColor *identityMist = [PPColorUtils blendColor:homeSoftRose
-                                           withColor:primaryColor
-                                              factor:0.16];
+
+    // In dark mode, tune the ambient identity mist to provide a deep, velvety,
+    // luxurious rose-plum bloom behind the hero background rather than an
+    // oversaturated crimson flood.
+    UIColor *identityMist = isDark
+        ? [PPColorUtils blendColor:primaryColor withColor:homeSoftRose factor:0.24]
+        : [PPColorUtils blendColor:homeSoftRose withColor:primaryColor factor:0.16];
 
     self.view.backgroundColor = canvasColor;
     self.ambientBackgroundView.accentColorOverride = identityMist;
@@ -1212,7 +1268,7 @@ static UIBezierPath *PPSplashBlobPath(CGFloat side,
     self.subtitleLabel.textColor = secondaryTextColor;
     self.loadingTitleLabel.textColor = titleColor;
     self.loadingStatusLabel.textColor = secondaryTextColor;
-    self.footerLabel.textColor = [secondaryTextColor colorWithAlphaComponent:0.78];
+    self.footerLabel.textColor = [secondaryTextColor colorWithAlphaComponent:isDark ? 0.62 : 0.78];
 }
 
 - (void)pp_applySplashCopy

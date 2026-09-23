@@ -152,6 +152,15 @@ private struct HomeUniversalCompatibilityCard: View {
                         )
                     }
                     Spacer(minLength: 0)
+
+                    if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
+                        Text(variantInfo)
+                            .font(HomeFont.bold(11))
+                            .foregroundStyle(Color.ppPrimary)
+                            .padding(.horizontal, PPSpace.sm)
+                            .padding(.vertical, PPSpace.xs)
+                            .background(Color.ppPrimary.opacity(0.12), in: Capsule())
+                    }
                 }
 
                 action

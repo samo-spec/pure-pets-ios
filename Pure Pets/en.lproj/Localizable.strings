@@ -1440,6 +1440,10 @@
 "In Stock" = "In Stock";
 "Out of Stock" = "Out of Stock";
 "Limited Stock" = "Limited Stock";
+"MultipleOptions" = "Multiple options";
+"OptionsAvailable" = "Options available";
+"ColorsAvailableFormat" = "%ld Colors";
+"SizesAvailableFormat" = "%ld Sizes";
 
 // Sharing options
 "Share Options" = "Share Options";
@@ -5311,3 +5315,33 @@
 "characters" = "characters";
 "Take Photo" = "Take Photo";
 "home_browse_by_category" = "Browse by category";
+
+/* Product viewer — confirmed variant selection */
+"accessory_view_options_hint" = "Choose what fits. Product details update once your choice is confirmed.";
+"accessory_view_options_loading" = "Loading options";
+"accessory_view_options_busy" = "Finish the current action before changing options.";
+"accessory_view_current_selection" = "Your current selection";
+"accessory_view_selection_needed" = "Choose a complete combination to confirm the product.";
+"accessory_view_option_value_format" = "%1$@: %2$@";
+"accessory_view_option_unnamed" = "Product option";
+"accessory_view_options_confirmed_format" = "Selection confirmed: %@";
+"accessory_view_option_missing" = "This option is unavailable right now. Your current selection is unchanged.";
+"accessory_view_option_switch_failed" = "This option couldn’t be loaded. Your current selection is unchanged. Check your connection and try again.";
+"accessory_view_option_unavailable" = "This option is currently unavailable to buy.";
+"accessory_view_keep_selection" = "Keep current selection";
+"accessory_view_options_check_availability" = "Availability needs verification for the current product";
+"accessory_view_all_combinations" = "View all combinations";
+"accessory_view_combinations_hint" = "Choose the complete product options from this list. Some options are not offered together.";
+"accessory_view_search_combinations" = "Search combinations";
+"accessory_view_search_option_format" = "Search %@";
+"accessory_view_options_no_results" = "No choices match your search.";
+"accessory_view_options_empty_axis" = "No choices are available right now.";
+"accessory_view_options_clear_search" = "Clear search";
+"accessory_view_options_show_less" = "Show fewer choices";
+"accessory_view_options_show_all_format" = "Show all %@ choices";
+"accessory_view_options_expanded" = "Expanded";
+"accessory_view_options_collapsed" = "Collapsed";
+"accessory_view_option_other_combination" = "Unavailable with this selection";
+"accessory_view_option_sku_format" = "SKU: %@";
+"accessory_view_option_details" = "Selection details";
+"accessory_view_all_combinations_short" = "All combinations";

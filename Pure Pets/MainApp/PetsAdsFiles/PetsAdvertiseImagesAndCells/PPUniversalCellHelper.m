@@ -450,6 +450,21 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
     return ad.isFemale ? @"female" : @"male";
 }
 
++ (BOOL)hasVariantsForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    return viewModel.hasVariants;
+}
+
++ (NSString *)variantInfoTextForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    return viewModel.variantInfoText;
+}
+
++ (NSString *)variantInfoIconForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    return viewModel.variantInfoIconName;
+}
+
 + (void)registerStockNotificationForViewModel:(PPUniversalCellViewModel *)viewModel
                                     completion:(void (^)(BOOL))completion
 {

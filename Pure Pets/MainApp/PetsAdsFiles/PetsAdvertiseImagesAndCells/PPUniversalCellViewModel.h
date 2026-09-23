@@ -42,6 +42,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *currencyCode;
 @property (nonatomic, copy) NSString *availabilityText;
 @property (nonatomic, copy) NSString *badgeText;
+@property (nonatomic, assign) BOOL hasVariants;
+@property (nonatomic, copy, nullable) NSString *variantInfoText;
+@property (nonatomic, copy, nullable) NSString *variantInfoIconName;
 @property (nonatomic, assign, getter=isSkeleton) BOOL skeleton;
 
 - (instancetype)initWithModel:(nullable id)model

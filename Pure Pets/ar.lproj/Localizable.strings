@@ -1416,6 +1416,10 @@
 "In Stock" = "متوفر بالمخزون";
 "Out of Stock" = "غير متوفر";
 "Limited Stock" = "كمية محدودة";
+"MultipleOptions" = "خيارات متعددة";
+"OptionsAvailable" = "خيارات متوفرة";
+"ColorsAvailableFormat" = "%ld ألوان";
+"SizesAvailableFormat" = "%ld مقاسات";
 
 // Sharing options
 "Share Options" = "خيارات المشاركة";
@@ -5295,3 +5299,33 @@
 "characters" = "حرف";
 "Take Photo" = "التقاط صورة";
 "home_browse_by_category" = "تصفح حسب النوع";
+
+/* Product viewer — confirmed variant selection */
+"accessory_view_options_hint" = "اختر ما يناسبك. تتحدّث تفاصيل المنتج بعد تأكيد الاختيار.";
+"accessory_view_options_loading" = "جارِ تحميل الخيارات";
+"accessory_view_options_busy" = "أكمل العملية الحالية قبل تغيير الخيارات.";
+"accessory_view_current_selection" = "اختيارك الحالي";
+"accessory_view_selection_needed" = "اختر أحد الخيارات الكاملة لتأكيد المنتج.";
+"accessory_view_option_value_format" = "%1$@: %2$@";
+"accessory_view_option_unnamed" = "خيار المنتج";
+"accessory_view_options_confirmed_format" = "تم تأكيد الاختيار: %@";
+"accessory_view_option_missing" = "هذا الخيار غير متاح الآن. لم يتغيّر اختيارك الحالي.";
+"accessory_view_option_switch_failed" = "تعذّر تحميل هذا الخيار. لم يتغيّر اختيارك الحالي. أعد المحاولة عند توفر الاتصال.";
+"accessory_view_option_unavailable" = "هذا الخيار غير متاح للشراء حالياً.";
+"accessory_view_keep_selection" = "الاحتفاظ بالاختيار الحالي";
+"accessory_view_options_check_availability" = "يلزم التحقق من توفر المنتج الحالي";
+"accessory_view_all_combinations" = "عرض جميع الخيارات الكاملة";
+"accessory_view_combinations_hint" = "اختر مواصفات المنتج كاملة من القائمة. بعض الخيارات لا تتوفر معاً.";
+"accessory_view_search_combinations" = "ابحث في الخيارات الكاملة";
+"accessory_view_search_option_format" = "ابحث في %@";
+"accessory_view_options_no_results" = "لا توجد خيارات مطابقة لبحثك.";
+"accessory_view_options_empty_axis" = "لا توجد خيارات متاحة حالياً.";
+"accessory_view_options_clear_search" = "مسح البحث";
+"accessory_view_options_show_less" = "عرض خيارات أقل";
+"accessory_view_options_show_all_format" = "عرض جميع الخيارات (%@)";
+"accessory_view_options_expanded" = "القائمة موسّعة";
+"accessory_view_options_collapsed" = "القائمة مختصرة";
+"accessory_view_option_other_combination" = "غير متاح مع هذا الاختيار";
+"accessory_view_option_sku_format" = "رمز المنتج: %@";
+"accessory_view_option_details" = "تفاصيل الاختيار";
+"accessory_view_all_combinations_short" = "كل الخيارات";

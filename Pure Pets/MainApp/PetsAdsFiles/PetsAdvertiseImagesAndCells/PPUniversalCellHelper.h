@@ -59,6 +59,9 @@ typedef NS_ENUM(NSInteger, PPUniversalAvailabilityTone) {
 + (nullable NSString *)metadataTextForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (nullable NSString *)metadataSystemImageForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (nullable NSString *)advertisementGenderValueForViewModel:(PPUniversalCellViewModel *)viewModel;
++ (BOOL)hasVariantsForViewModel:(PPUniversalCellViewModel *)viewModel;
++ (nullable NSString *)variantInfoTextForViewModel:(PPUniversalCellViewModel *)viewModel;
++ (nullable NSString *)variantInfoIconForViewModel:(PPUniversalCellViewModel *)viewModel;
 
 + (void)fetchOwnerProfileForUID:(NSString *)uid
                       viewModel:(PPUniversalCellViewModel *)viewModel

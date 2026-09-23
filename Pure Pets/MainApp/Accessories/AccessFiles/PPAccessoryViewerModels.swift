@@ -72,6 +72,11 @@ enum PPAccessoryViewerL10n {
             ?? String(value)
     }
 
+    /// Isolate backend names/units/codes without forcing Arabic or Latin content to mirror.
+    static func isolated(_ value: String) -> String {
+        "\u{2068}\(value)\u{2069}"
+    }
+
     static func decimal(_ value: Double) -> String {
         let formatter = PPAccessoryViewerLegacyBridge.isRTL()
             ? arabicDecimalFormatter
@@ -721,6 +726,12 @@ struct PPAccessoryViewerOptionValue: Identifiable, Equatable {
         return name
     }
 
+    func matches(_ query: String) -> Bool {
+        [nameAr, nameEn, canonicalValue, unit ?? ""].contains {
+            $0.localizedStandardContains(query)
+        }
+    }
+
     var isColor: Bool {
         guard let hex = hex else { return false }
         return !hex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -763,7 +774,8 @@ struct PPAccessoryViewerOptionDefinition: Identifiable, Equatable {
         self.nameAr = nameAr.trimmingCharacters(in: .whitespacesAndNewlines)
         self.nameEn = nameEn.trimmingCharacters(in: .whitespacesAndNewlines)
         self.sortOrder = sortOrder
-        self.values = values.sorted { lhs, rhs in
+        var seen = Set<String>()
+        self.values = values.filter { !$0.id.isEmpty && seen.insert($0.id).inserted }.sorted { lhs, rhs in
             lhs.sortOrder == rhs.sortOrder ? lhs.id < rhs.id : lhs.sortOrder < rhs.sortOrder
         }
     }
@@ -877,14 +889,9 @@ struct PPAccessoryViewerVariant: Identifiable, Equatable {
         }
         self.selectedOptions = parsedOptions
 
-        // Check if color id or combination key or productId is identity
-        if !rawColorId.isEmpty {
-            self.id = rawColorId
-        } else if !combKey.isEmpty {
-            self.id = combKey
-        } else {
-            self.id = productId
-        }
+        // A color is shared by multiple sizes. Sellable product identity is unique
+        // across every axis and remains stable when display metadata changes.
+        self.id = productId
 
         // Arabic is the product's primary language, English the secondary.
         let nameAr = (color["nameAr"] as? String)?.trimmingCharacters(

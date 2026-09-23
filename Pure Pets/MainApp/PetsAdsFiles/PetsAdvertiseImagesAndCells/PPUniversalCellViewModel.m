@@ -321,6 +321,35 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
             _priceText = [GM formatPrice:(accessory.finalPrice ?: accessory.price)
                             currencyCode:_currencyCode] ?: @"";
         }
+        BOOL hasVariants = NO;
+        NSString *variantInfoText = nil;
+        NSString *variantInfoIconName = nil;
+        if (accessory.productFamilyId.length > 0 ||
+            accessory.isVariant ||
+            accessory.hasVariablePrice ||
+            accessory.availableColors.count > 1 ||
+            accessory.availableSizes.count > 1 ||
+            (accessory.hasInStockVariants && (accessory.availableColors.count > 0 || accessory.availableSizes.count > 0))) {
+            hasVariants = YES;
+            if (accessory.availableColors.count > 1 && accessory.availableSizes.count > 1) {
+                variantInfoText = PPUniversalLocalizedString(@"MultipleOptions", PPUniversalLocalizedPair(@"Multiple options", @"خيارات متعددة"));
+                variantInfoIconName = @"square.stack.3d.up.fill";
+            } else if (accessory.availableColors.count > 1) {
+                NSString *format = PPUniversalLocalizedString(@"ColorsAvailableFormat", PPUniversalLocalizedPair(@"%ld Colors", @"%ld ألوان"));
+                variantInfoText = [NSString stringWithFormat:format, (long)accessory.availableColors.count];
+                variantInfoIconName = @"paintpalette.fill";
+            } else if (accessory.availableSizes.count > 1) {
+                NSString *format = PPUniversalLocalizedString(@"SizesAvailableFormat", PPUniversalLocalizedPair(@"%ld Sizes", @"%ld مقاسات"));
+                variantInfoText = [NSString stringWithFormat:format, (long)accessory.availableSizes.count];
+                variantInfoIconName = @"ruler.fill";
+            } else {
+                variantInfoText = PPUniversalLocalizedString(@"OptionsAvailable", PPUniversalLocalizedPair(@"Options available", @"خيارات متوفرة"));
+                variantInfoIconName = @"square.2.layers.3d";
+            }
+        }
+        _hasVariants = hasVariants;
+        _variantInfoText = [variantInfoText copy];
+        _variantInfoIconName = [variantInfoIconName copy];
         if (firstIsVideo) {
             CGFloat thumbWidth = [firstMedia[@"thumbnail_width"] doubleValue];
             CGFloat thumbHeight = [firstMedia[@"thumbnail_height"] doubleValue];
@@ -497,6 +526,9 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
     _currencyCode = PPUniversalLocalizedString(@"Rials", @"QAR");
     _availabilityText = @"";
     _badgeText = @"";
+    _hasVariants = NO;
+    _variantInfoText = nil;
+    _variantInfoIconName = nil;
     _stockStatusText = @"";
     _location = @"";
     _ModelID = [NSUUID UUID].UUIDString;

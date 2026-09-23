@@ -189,6 +189,9 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
     public var prefersEdgeToEdgeMedia: Bool
     public var prefersNavigationChevron: Bool
     public var preferredAspectRatio: CGFloat
+    public var hasVariants: Bool
+    public var variantInfoText: String?
+    public var variantInfoIconName: String?
 
     public init(
         id: String,
@@ -217,7 +220,10 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         prefersContainedImage: Bool = false,
         prefersEdgeToEdgeMedia: Bool = false,
         prefersNavigationChevron: Bool = false,
-        preferredAspectRatio: CGFloat = 0.82
+        preferredAspectRatio: CGFloat = 0.82,
+        hasVariants: Bool = false,
+        variantInfoText: String? = nil,
+        variantInfoIconName: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -246,6 +252,9 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         self.prefersEdgeToEdgeMedia = prefersEdgeToEdgeMedia
         self.prefersNavigationChevron = prefersNavigationChevron
         self.preferredAspectRatio = preferredAspectRatio
+        self.hasVariants = hasVariants
+        self.variantInfoText = variantInfoText
+        self.variantInfoIconName = variantInfoIconName
     }
 }
 
@@ -930,7 +939,10 @@ private struct PPUniversalLegacyCardSnapshot {
                 } else {
                     return 0.82
                 }
-            }()
+            }(),
+            hasVariants: viewModel.hasVariants,
+            variantInfoText: viewModel.variantInfoText,
+            variantInfoIconName: viewModel.variantInfoIconName
         )
         self.context = resolvedContext
         self.layout = resolvedLayout
@@ -1350,7 +1362,10 @@ private final class PPUniversalCardStore: ObservableObject {
                 } else {
                     return 0.82
                 }
-            }()
+            }(),
+            hasVariants: viewModel.hasVariants,
+            variantInfoText: viewModel.variantInfoText,
+            variantInfoIconName: viewModel.variantInfoIconName
         )
         refreshSavedForLaterState()
 
@@ -3343,6 +3358,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var hasBottomBadges: Bool {
         if let badge = store.model.badgeText, !badge.isEmpty { return true }
+        if let variantInfo = store.model.variantInfoText, !variantInfo.isEmpty { return true }
         let availability = store.model.availability
         let hasAvailability =
             availability?.text.isEmpty == false ||
@@ -3361,11 +3377,13 @@ private struct PPUniversalCardRenderer: View {
             availability?.text.isEmpty == false
         let hasGender = store.model.gender != nil
         let hasBadge = store.model.badgeText?.isEmpty == false
+        let hasVariant = store.model.variantInfoText?.isEmpty == false
         let activeBadgeCount =
             (hasMeta ? 1 : 0) +
             (hasText ? 1 : 0) +
             (hasGender ? 1 : 0) +
-            (hasBadge ? 1 : 0)
+            (hasBadge ? 1 : 0) +
+            (hasVariant ? 1 : 0)
         return HStack(spacing: 6) {
             if let badgeText = store.model.badgeText, !badgeText.isEmpty {
                 PPUniversalPill(
@@ -3419,6 +3437,25 @@ private struct PPUniversalCardRenderer: View {
                     border: metadataPillBorder(
                         availabilityForeground(availability.tone),
                         semanticOpacity: 0.18
+                    ),
+                    fillWidth: false,
+                    calm: store.context.isCatalogCommerce
+                )
+            }
+
+            if let variantInfo = store.model.variantInfoText, !variantInfo.isEmpty {
+                PPUniversalPill(
+                    text: variantInfo,
+                    systemImage: store.model.variantInfoIconName ?? "square.2.layers.3d",
+                    foreground: store.palette.primary,
+                    background: metadataPillBackground(
+                        store.palette.primary,
+                        darkOpacity: 0.16,
+                        lightOpacity: 0.08
+                    ),
+                    border: metadataPillBorder(
+                        store.palette.primary,
+                        semanticOpacity: 0.20
                     ),
                     fillWidth: false,
                     calm: store.context.isCatalogCommerce

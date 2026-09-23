@@ -49,6 +49,12 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// Product id of the variant currently being resolved, so exactly one swatch/pill can
     /// show progress and the rest can be disabled without freezing the whole screen.
     @Published private(set) var switchingVariantProductId: String?
+    @Published private(set) var variantSelectionError: String?
+    private var failedVariantProductId: String?
+    private var variantRequestID = UUID()
+    private var familyRequestID = UUID()
+    private var liveRequestID = UUID()
+    private var favoriteRequestID = UUID()
 
     private var accessory: PetAccessory?
     private weak var presenter: UIViewController?
@@ -165,6 +171,47 @@ final class PPAccessoryViewerStore: ObservableObject {
             checkoutPhase == .openingPayment
     }
 
+    /// A pending choice is never a cart identity. Only the loaded product can be bought.
+    var isVariantSelectionConfirmed: Bool {
+        switchingVariantProductId == nil && hasResolvedVariantOptions
+    }
+
+    var hasResolvedVariantOptions: Bool {
+        guard accessory?.variantIsArchived != true, currentVariant?.isArchived != true else { return false }
+        guard !optionDefinitions.isEmpty else { return true }
+        guard currentVariant?.productId == accessory?.accessoryID else { return false }
+        return optionDefinitions.allSatisfy { definition in
+            guard let valueID = selectedOptions[definition.id] else { return false }
+            return definition.values.contains { $0.id == valueID }
+        }
+    }
+
+    var canChangeVariant: Bool {
+        variantsPhase == .loaded && switchingVariantProductId == nil &&
+            cartPhase != .processing && !isCheckoutProcessing
+    }
+
+    var pendingVariant: PPAccessoryViewerVariant? {
+        variants.first { $0.productId == switchingVariantProductId }
+    }
+
+    func optionSummary(for variant: PPAccessoryViewerVariant) -> String {
+        let parts = optionDefinitions.compactMap { definition -> String? in
+            guard let valueID = variant.selectedOptions[definition.id],
+                  let value = definition.values.first(where: { $0.id == valueID }) else { return nil }
+            return PPAccessoryViewerL10n.formatted(
+                "accessory_view_option_value_format",
+                definition.localizedName,
+                PPAccessoryViewerL10n.isolated(value.accessibilityName)
+            )
+        }
+        if !parts.isEmpty { return parts.joined(separator: " · ") }
+        if !variant.name.isEmpty { return variant.name }
+        return variant.sku.isEmpty
+            ? PPAccessoryViewerL10n.text("accessory_view_option_unnamed")
+            : PPAccessoryViewerL10n.isolated(variant.sku)
+    }
+
     var hasSimilarAlternatives: Bool {
         suggestionsPhase == .loaded &&
             suggestions.contains(where: \.isAvailable)
@@ -191,7 +238,8 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     func incrementQuantity() {
-        guard cartPhase != .processing,
+        guard switchingVariantProductId == nil,
+              cartPhase != .processing,
               !isCheckoutProcessing,
               quantity < remainingStock else {
             return
@@ -203,7 +251,8 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     func decrementQuantity() {
-        guard cartPhase != .processing,
+        guard switchingVariantProductId == nil,
+              cartPhase != .processing,
               !isCheckoutProcessing,
               quantity > 1 else { return }
         quantity -= 1
@@ -217,7 +266,7 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// Returns the updated total cart items count on success.
     /// Throws on any failure so the animated button can show its retry state.
     func addToCartAsync() async throws -> AnimatedAddToCartOutcome {
-        guard !isCheckoutProcessing else {
+        guard !isCheckoutProcessing, isVariantSelectionConfirmed else {
             throw PPAccessoryCartError.unavailable
         }
         return try await performCartMutation(presentation: .cart)
@@ -227,7 +276,8 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// This keeps PPCommerceCartHolder's quantity binding synchronized with
     /// the same local, Firestore-backed cart used by the UIKit checkout flow.
     func updateCartQuantity(_ requestedQuantity: Int) async throws -> Int {
-        guard let accessory,
+        guard switchingVariantProductId == nil,
+              let accessory,
               let snapshot,
               snapshot.showsCart,
               !snapshot.isUnavailable,
@@ -277,7 +327,10 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// The holder reports only that the handoff opened; payment confirmation
     /// remains owned by the existing checkout flow.
     func openCartCheckout() async throws {
-        guard let snapshot,
+        guard switchingVariantProductId == nil,
+              !isCheckoutProcessing,
+              cartPhase != .processing,
+              let snapshot,
               snapshot.showsCart,
               !snapshot.isUnavailable,
               isPurchaseDataCurrent,
@@ -317,7 +370,9 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// selected quantity. The shared cart is not prepared, synchronized, or
     /// used as the payment payload.
     func openDirectCheckout(quantity requestedQuantity: Int) async throws {
-        guard let accessory,
+        guard isVariantSelectionConfirmed,
+              cartPhase != .processing,
+              let accessory,
               let snapshot,
               snapshot.showsCart,
               !snapshot.isUnavailable,
@@ -411,7 +466,8 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     func payNow() {
-        guard !isCheckoutProcessing, cartPhase != .processing else { return }
+        guard isVariantSelectionConfirmed,
+              !isCheckoutProcessing, cartPhase != .processing else { return }
 
         if checkoutPhase == .routeFailed {
             openPreparedCheckout()
@@ -464,7 +520,8 @@ final class PPAccessoryViewerStore: ObservableObject {
     ) async throws -> AnimatedAddToCartOutcome {
         let hasValidCheckoutPreview =
             presentation == .cart || checkoutPreviewCanCommit
-        guard let accessory,
+        guard isVariantSelectionConfirmed,
+              let accessory,
               let snapshot,
               snapshot.showsCart,
               !snapshot.isUnavailable,
@@ -589,6 +646,7 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     private func openPreparedCheckout() {
+        guard isVariantSelectionConfirmed else { return }
         guard let presenter,
               PPAccessoryViewerLegacyBridge.openPaymentSelection(
                 from: presenter
@@ -607,7 +665,8 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     func registerStockNotification() {
-        guard let accessory,
+        guard switchingVariantProductId == nil,
+              let accessory,
               snapshot?.canRequestStockNotification == true,
               stockNotificationPhase != .processing else {
             return
@@ -619,7 +678,7 @@ final class PPAccessoryViewerStore: ObservableObject {
                 from: presenter
             ) { [weak self] signedIn in
                 Task { @MainActor in
-                    guard signedIn else { return }
+                    guard signedIn, self?.accessory?.accessoryID == accessory.accessoryID else { return }
                     self?.registerStockNotification()
                 }
             }
@@ -631,7 +690,7 @@ final class PPAccessoryViewerStore: ObservableObject {
             for: accessory
         ) { [weak self] succeeded in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.accessory?.accessoryID == accessory.accessoryID else { return }
                 self.stockNotificationPhase =
                     succeeded ? .success : .failed
                 if !succeeded {
@@ -674,6 +733,7 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     func pause() {
+        cancelVariantSelection()
         successResetTask?.cancel()
         if checkoutPhase == .preparingCart {
             checkoutTask?.cancel()
@@ -699,13 +759,16 @@ final class PPAccessoryViewerStore: ObservableObject {
         }
 
         let nextValue = !isFavorite
+        let requestID = UUID()
+        favoriteRequestID = requestID
         favoritePhase = .loading
         PPAccessoryViewerLegacyBridge.setFavorite(
             nextValue,
             accessoryID: accessory.accessoryID
         ) { [weak self] error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.favoriteRequestID == requestID,
+                      self.accessory?.accessoryID == accessory.accessoryID else { return }
                 if error == nil {
                     self.isFavorite = nextValue
                     self.favoritePhase = .loaded
@@ -736,6 +799,10 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     func close() {
+        cancelVariantSelection()
+        familyRequestID = UUID()
+        favoriteRequestID = UUID()
+        stopLiveListener()
         guard let presenter else { return }
         PPAccessoryViewerLegacyBridge.close(from: presenter)
     }
@@ -965,21 +1032,29 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// Costs nothing for a standalone product: the bridge short-circuits when there is
     /// no `productFamilyId` and never touches Firestore.
     private func loadVariants() {
-        guard let accessory else { return }
+        guard switchingVariantProductId == nil, let accessory else { return }
         let currentProductId = accessory.accessoryID
+        let requestID = UUID()
+        familyRequestID = requestID
 
         variantsPhase = .loading
         PPAccessoryViewerLegacyBridge.fetchProductFamily(
             for: accessory
         ) { [weak self] family, error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self,
+                      self.familyRequestID == requestID,
+                      self.accessory?.accessoryID == currentProductId else { return }
                 guard let family, error == nil else {
                     if error != nil {
                         self.variantsPhase = .failed(
                             message: PPAccessoryViewerL10n.text("accessory_view_options_failed")
                         )
                     } else {
+                        self.optionDefinitions = []
+                        self.variants = []
+                        self.currentVariant = nil
+                        self.selectedOptions = [:]
                         self.variantsPhase = .empty
                     }
                     return
@@ -997,7 +1072,10 @@ final class PPAccessoryViewerStore: ObservableObject {
 
                 // 2. Parse option definitions
                 let rawDefs = (family["optionDefinitions"] as? [Any])?.compactMap { $0 as? [String: Any] } ?? []
+                var seenDefinitions = Set<String>()
                 var parsedDefs = rawDefs.compactMap(PPAccessoryViewerOptionDefinition.init(dictionary:))
+                    .filter { seenDefinitions.insert($0.id).inserted }
+                    .sorted { $0.sortOrder == $1.sortOrder ? $0.id < $1.id : $0.sortOrder < $1.sortOrder }
 
                 // If no option definitions exist but legacy colour variants exist, synthesize Color option
                 if parsedDefs.isEmpty && parsedVariants.contains(where: { !$0.hex.isEmpty || !$0.name.isEmpty }) {
@@ -1024,7 +1102,7 @@ final class PPAccessoryViewerStore: ObservableObject {
                                 id: "color",
                                 key: "color",
                                 nameAr: PPAccessoryViewerL10n.text("accessory_view_colors_title"),
-                                nameEn: "Color",
+                                nameEn: PPAccessoryViewerL10n.text("accessory_view_colors_title"),
                                 sortOrder: 0,
                                 values: colorValues
                             )
@@ -1036,6 +1114,7 @@ final class PPAccessoryViewerStore: ObservableObject {
 
                 // 3. Resolve active selection
                 var initialSelection: [String: String] = [:]
+                self.currentVariant = nil
                 if let activeVariant = parsedVariants.first(where: { $0.productId == currentProductId }) {
                     initialSelection = activeVariant.selectedOptions
                     self.currentVariant = activeVariant
@@ -1045,22 +1124,14 @@ final class PPAccessoryViewerStore: ObservableObject {
                     }
                 }
 
-                // Fill any missing option axes with default / first values
-                for def in parsedDefs {
-                    if initialSelection[def.id] == nil, let firstVal = def.values.first?.id {
-                        initialSelection[def.id] = firstVal
-                    }
-                }
+                // Never invent a choice: a first value may describe a different
+                // sellable product. Missing axes stay unresolved until explicitly chosen.
                 self.selectedOptions = initialSelection
-
-                // Update currentVariant if still nil
-                if self.currentVariant == nil {
-                    self.currentVariant = self.findVariant(matching: initialSelection)
-                }
 
                 // Phase determination: if variants > 1 or optionDefinitions has choices, loaded; else empty
                 let totalOptionChoices = parsedDefs.reduce(0) { $0 + $1.values.count }
-                if self.variants.count > 1 || totalOptionChoices > 1 {
+                if self.variants.count > 1 || totalOptionChoices > 1 ||
+                    (!parsedDefs.isEmpty && !self.hasResolvedVariantOptions) {
                     self.variantsPhase = .loaded
                 } else {
                     self.variantsPhase = .empty
@@ -1112,19 +1183,13 @@ final class PPAccessoryViewerStore: ObservableObject {
             return .available
         }
 
-        // 4. If no exact match with other current choices, check if this value exists anywhere
-        let existsAnywhere = variants.contains { variant in
-            !variant.isArchived && variant.selectedOptions[optId] == valId
-        }
-
-        return existsAnywhere ? .incompatible : .incompatible
+        return .incompatible
     }
 
     /// User taps an option value (e.g. Size = "Large" or Color = "Red").
     func selectOptionValue(optionId: String, valueId: String) {
-        guard switchingVariantProductId == nil else { return }
-        guard cartPhase != .processing, checkoutPhase != .preparingCart else {
-            bannerMessage = PPAccessoryViewerL10n.text("accessory_view_colors_busy")
+        guard canChangeVariant else {
+            bannerMessage = PPAccessoryViewerL10n.text("accessory_view_options_busy")
             return
         }
 
@@ -1141,7 +1206,6 @@ final class PPAccessoryViewerStore: ObservableObject {
 
         // Look for exact matching variant
         if let exactMatch = findVariant(matching: target) {
-            selectedOptions = target
             selectVariant(exactMatch)
             return
         }
@@ -1152,7 +1216,6 @@ final class PPAccessoryViewerStore: ObservableObject {
         }
 
         if let bestAlternative = alternatives.first {
-            selectedOptions = bestAlternative.selectedOptions
             selectVariant(bestAlternative)
             return
         }
@@ -1171,46 +1234,70 @@ final class PPAccessoryViewerStore: ObservableObject {
     /// price, stock, images, cart state and the add-to-cart target all follow from it
     /// with no special-casing anywhere else.
     func selectVariant(_ variant: PPAccessoryViewerVariant) {
-        guard switchingVariantProductId == nil else { return }
+        guard canChangeVariant,
+              !variant.isArchived,
+              variants.contains(where: { $0.productId == variant.productId }) else { return }
         guard variant.productId != accessory?.accessoryID else {
             currentVariant = variant
-            return
-        }
-        guard cartPhase != .processing, checkoutPhase != .preparingCart else {
-            // Never move the ground under an in-flight purchase: the mutation was
-            // authorized against the variant on screen.
-            bannerMessage = PPAccessoryViewerL10n.text(
-                "accessory_view_colors_busy"
-            )
+            selectedOptions = variant.selectedOptions
             return
         }
 
+        let requestID = UUID()
+        variantRequestID = requestID
+        let sourceProductID = accessory?.accessoryID
+        variantSelectionError = nil
+        failedVariantProductId = nil
         switchingVariantProductId = variant.productId
         PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+        UIAccessibility.post(
+            notification: .announcement,
+            argument: PPAccessoryViewerL10n.formatted(
+                "accessory_view_option_loading_format", optionSummary(for: variant)
+            )
+        )
 
         PPAccessoryViewerLegacyBridge.fetchAccessory(
             accessoryID: variant.productId
         ) { [weak self] resolved, error in
             Task { @MainActor in
-                guard let self else { return }
-                self.switchingVariantProductId = nil
+                guard let self,
+                      self.variantRequestID == requestID,
+                      self.accessory?.accessoryID == sourceProductID else { return }
 
-                guard let resolved, error == nil else {
-                    self.bannerMessage = PPAccessoryViewerL10n.text(
+                guard let resolved, error == nil,
+                      resolved.accessoryID == variant.productId else {
+                    self.switchingVariantProductId = nil
+                    self.failedVariantProductId = variant.productId
+                    self.variantSelectionError = PPAccessoryViewerL10n.text(
                         error == nil
-                            ? "accessory_view_colors_missing"
-                            : "accessory_view_colors_failed"
+                            ? "accessory_view_option_missing"
+                            : "accessory_view_option_switch_failed"
                     )
                     UIAccessibility.post(
                         notification: .announcement,
-                        argument: self.bannerMessage
+                        argument: self.variantSelectionError
                     )
                     return
                 }
 
                 self.apply(variantAccessory: resolved, variant: variant)
+                self.switchingVariantProductId = nil
             }
         }
+    }
+
+    func retryVariantSelection() {
+        guard let variant = variants.first(where: { $0.productId == failedVariantProductId }) else { return }
+        selectVariant(variant)
+    }
+
+    func cancelVariantSelection() {
+        // The read may still finish. Its request identity prevents a late commit.
+        variantRequestID = UUID()
+        switchingVariantProductId = nil
+        variantSelectionError = nil
+        failedVariantProductId = nil
     }
 
     /// Rebinds every piece of per-product state to a newly selected variant.
@@ -1224,9 +1311,7 @@ final class PPAccessoryViewerStore: ObservableObject {
         accessory = variantAccessory
         snapshot = nextSnapshot
         currentVariant = variant
-        if !variant.selectedOptions.isEmpty {
-            selectedOptions = variant.selectedOptions
-        }
+        selectedOptions = variant.selectedOptions
         livePhase = nextSnapshot.isUnavailable ? .deleted : .current
 
         // Quantity is per-product. Carrying "3" across a variant change would silently
@@ -1256,36 +1341,26 @@ final class PPAccessoryViewerStore: ObservableObject {
 
         if nextSnapshot.isUnavailable {
             bannerMessage = PPAccessoryViewerL10n.text(
-                "accessory_view_colors_unavailable"
+                "accessory_view_option_unavailable"
             )
         } else {
             bannerMessage = nil
         }
 
-        let optionSummary: String = {
-            if !optionDefinitions.isEmpty {
-                let parts = optionDefinitions.compactMap { def -> String? in
-                    guard let valId = selectedOptions[def.id],
-                          let val = def.values.first(where: { $0.id == valId }) else { return nil }
-                    return "\(def.localizedName): \(val.localizedName)"
-                }
-                if !parts.isEmpty {
-                    return parts.joined(separator: "، ")
-                }
-            }
-            return variant.name.isEmpty ? variant.id : variant.name
-        }()
-
         UIAccessibility.post(
             notification: .announcement,
             argument: PPAccessoryViewerL10n.formatted(
-                "accessory_view_colors_selected_format",
-                optionSummary
+                "accessory_view_options_confirmed_format",
+                optionSummary(for: variant)
             )
         )
     }
 
-    private func loadFavorite() {        guard let accessory else { return }
+    private func loadFavorite() {
+        guard let accessory else { return }
+        let accessoryID = accessory.accessoryID
+        let requestID = UUID()
+        favoriteRequestID = requestID
         guard PPAccessoryViewerLegacyBridge.isSignedIn() else {
             isFavorite = false
             favoritePhase = .idle
@@ -1293,10 +1368,11 @@ final class PPAccessoryViewerStore: ObservableObject {
         }
         favoritePhase = .loading
         PPAccessoryViewerLegacyBridge.loadFavorite(
-            accessoryID: accessory.accessoryID
+            accessoryID: accessoryID
         ) { [weak self] favorite, error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.favoriteRequestID == requestID,
+                      self.accessory?.accessoryID == accessoryID else { return }
                 self.isFavorite = favorite
                 self.favoritePhase = error == nil
                     ? .loaded
@@ -1328,11 +1404,13 @@ final class PPAccessoryViewerStore: ObservableObject {
     private func startLiveListener() {
         guard let accessoryID = accessory?.accessoryID, !accessoryID.isEmpty else { return }
         stopLiveListener()
+        let requestID = liveRequestID
         liveRegistration = PPAccessoryViewerLegacyBridge.listenToAccessory(
             accessoryID: accessoryID,
             onUpdate: { [weak self] status, updatedAccessory in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.liveRequestID == requestID,
+                      self.accessory?.accessoryID == accessoryID else { return }
                 switch status {
                 case .updated:
                     guard let updatedAccessory else { return }
@@ -1390,6 +1468,7 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     private func stopLiveListener() {
+        liveRequestID = UUID()
         if let registration = liveRegistration as? NSObject {
             registration.perform(Selector(("remove")))
         }
