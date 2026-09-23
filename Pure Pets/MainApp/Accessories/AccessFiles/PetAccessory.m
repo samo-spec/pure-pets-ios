@@ -451,6 +451,12 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         if ([dict[@"searchTokens"] isKindOfClass:NSArray.class]) {
             _searchTokens = [dict[@"searchTokens"] copy];
         }
+        if ([dict[@"colorCount"] respondsToSelector:@selector(integerValue)]) {
+            _colorCount = [dict[@"colorCount"] integerValue];
+        }
+        if ([dict[@"variantCount"] respondsToSelector:@selector(integerValue)]) {
+            _variantCount = [dict[@"variantCount"] integerValue];
+        }
 
         _quantity = [dict[@"quantity"] integerValue];
         // F-22: the server's own verdict. A document that predates the flag has no
@@ -529,7 +535,71 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.availableColors = [source.availableColors copy];
     copy.availableSizes = [source.availableSizes copy];
     copy.searchTokens = [source.searchTokens copy];
+    copy.colorCount = source.colorCount;
+    copy.variantCount = source.variantCount;
     return copy;
+}
+
+- (NSInteger)distinctColorCount {
+    if (self.colorCount > 0) {
+        return self.colorCount;
+    }
+    if (self.availableColors.count == 0) {
+        return 0;
+    }
+    // Predefined color library for canonical deduplication of bilingual color entries
+    static NSDictionary<NSString *, NSString *> *canonicalColorMap = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        canonicalColorMap = @{
+            @"black": @"black", @"أسود": @"black",
+            @"white": @"white", @"أبيض": @"white",
+            @"grey": @"grey", @"gray": @"grey", @"رمادي": @"grey",
+            @"beige": @"beige", @"بيج": @"beige",
+            @"brown": @"brown", @"بني": @"brown",
+            @"crimson-red": @"red", @"red": @"red", @"أحمر": @"red",
+            @"rose-pink": @"pink", @"pink": @"pink", @"وردي": @"pink",
+            @"amber-orange": @"orange", @"orange": @"orange", @"برتقالي": @"orange",
+            @"sun-yellow": @"yellow", @"yellow": @"yellow", @"أصفر": @"yellow",
+            @"forest-green": @"green", @"green": @"green", @"أخضر": @"green",
+            @"teal": @"teal", @"أزرق مخضر": @"teal",
+            @"ocean-blue": @"blue", @"blue": @"blue", @"أزرق": @"blue",
+            @"navy": @"navy", @"كحلي": @"navy",
+            @"violet": @"violet", @"purple": @"violet", @"بنفسجي": @"violet"
+        };
+    });
+    
+    NSMutableSet<NSString *> *distinct = [NSMutableSet set];
+    NSInteger arabicCount = 0;
+    NSInteger latinCount = 0;
+    for (NSString *c in self.availableColors) {
+        if (![c isKindOfClass:[NSString class]]) continue;
+        NSString *trimmed = [c stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].lowercaseString;
+        if (trimmed.length == 0) continue;
+        NSString *canonical = canonicalColorMap[trimmed];
+        if (canonical) {
+            [distinct addObject:canonical];
+        } else {
+            BOOL isArabic = NO;
+            for (NSUInteger i = 0; i < trimmed.length; i++) {
+                unichar ch = [trimmed characterAtIndex:i];
+                if (ch >= 0x0600 && ch <= 0x06FF) {
+                    isArabic = YES;
+                    break;
+                }
+            }
+            if (isArabic) arabicCount++;
+            else latinCount++;
+            [distinct addObject:trimmed];
+        }
+    }
+    if (distinct.count > 0 && distinct.count < self.availableColors.count) {
+        return distinct.count;
+    }
+    if (arabicCount > 0 && latinCount > 0) {
+        return MAX(arabicCount, latinCount);
+    }
+    return self.availableColors.count;
 }
 
 

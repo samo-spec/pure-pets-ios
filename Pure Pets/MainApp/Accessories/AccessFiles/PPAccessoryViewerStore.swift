@@ -191,6 +191,18 @@ final class PPAccessoryViewerStore: ObservableObject {
             cartPhase != .processing && !isCheckoutProcessing
     }
 
+    /// Presentation-facing description of the current configuration.
+    ///
+    /// Derived, never stored, so it cannot drift from the selection the Store owns.
+    var variantConfigurationState: PPAccessoryVariantConfigurationState {
+        if switchingVariantProductId != nil { return .resolving }
+        if accessory?.variantIsArchived == true || currentVariant?.isArchived == true {
+            return .unavailable
+        }
+        if hasResolvedVariantOptions { return .confirmed }
+        return .needsSelection(remaining: unresolvedOptionNames)
+    }
+
     var pendingVariant: PPAccessoryViewerVariant? {
         variants.first { $0.productId == switchingVariantProductId }
     }
@@ -202,7 +214,7 @@ final class PPAccessoryViewerStore: ObservableObject {
             return PPAccessoryViewerL10n.formatted(
                 "accessory_view_option_value_format",
                 definition.localizedName,
-                PPAccessoryViewerL10n.isolated(value.accessibilityName)
+                PPAccessoryViewerL10n.isolated(value.summaryName)
             )
         }
         if !parts.isEmpty { return parts.joined(separator: " · ") }
@@ -1183,7 +1195,63 @@ final class PPAccessoryViewerStore: ObservableObject {
             return .available
         }
 
-        return .incompatible
+        // 4. No variant fits the current combination. The value is still buyable
+        //    when another combination carries it, because selecting it adjusts
+        //    the other axes. Only a value no sellable variant carries is a dead
+        //    end, and only that one is presented as unavailable.
+        return sellableAlternative(forOption: optId, valueId: valId) != nil
+            ? .incompatible
+            : .notOffered
+    }
+
+    /// Best sellable variant carrying `valueId` on `optionId`, preferring the
+    /// combination that changes the fewest other axes.
+    ///
+    /// Read-only. Resolution is deterministic so the same tap always lands on
+    /// the same product: closeness to the current selection, then the family's
+    /// default, then server sort order, then product id.
+    func sellableAlternative(
+        forOption optionId: String,
+        valueId: String
+    ) -> PPAccessoryViewerVariant? {
+        let optId = optionId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let valId = valueId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !optId.isEmpty, !valId.isEmpty else { return nil }
+
+        let candidates = variants.filter { variant in
+            !variant.isArchived && variant.selectedOptions[optId] == valId
+        }
+        guard !candidates.isEmpty else { return nil }
+
+        func preservedAxisCount(_ variant: PPAccessoryViewerVariant) -> Int {
+            selectedOptions.reduce(into: 0) { total, entry in
+                guard entry.key != optId else { return }
+                if variant.selectedOptions[entry.key] == entry.value {
+                    total += 1
+                }
+            }
+        }
+
+        return candidates.min { lhs, rhs in
+            let lhsPreserved = preservedAxisCount(lhs)
+            let rhsPreserved = preservedAxisCount(rhs)
+            if lhsPreserved != rhsPreserved { return lhsPreserved > rhsPreserved }
+            if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
+            if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
+            return lhs.productId < rhs.productId
+        }
+    }
+
+    /// Axes that still have no resolved value, in server order.
+    var unresolvedOptionNames: [String] {
+        guard !optionDefinitions.isEmpty else { return [] }
+        return optionDefinitions.compactMap { definition in
+            guard let valueID = selectedOptions[definition.id],
+                  definition.values.contains(where: { $0.id == valueID }) else {
+                return definition.localizedName
+            }
+            return nil
+        }
     }
 
     /// User taps an option value (e.g. Size = "Large" or Color = "Red").
@@ -1210,12 +1278,12 @@ final class PPAccessoryViewerStore: ObservableObject {
             return
         }
 
-        // Look for alternative variant having this option value
-        let alternatives = variants.filter { variant in
-            !variant.isArchived && variant.selectedOptions[cleanOptId] == cleanValId
-        }
-
-        if let bestAlternative = alternatives.first {
+        // Otherwise move to the closest combination that carries this value, so
+        // the customer is never blocked by the order they happened to tap in.
+        if let bestAlternative = sellableAlternative(
+            forOption: cleanOptId,
+            valueId: cleanValId
+        ) {
             selectVariant(bestAlternative)
             return
         }

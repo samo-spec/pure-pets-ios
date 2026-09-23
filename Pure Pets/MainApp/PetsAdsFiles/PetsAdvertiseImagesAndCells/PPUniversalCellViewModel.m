@@ -324,27 +324,34 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         BOOL hasVariants = NO;
         NSString *variantInfoText = nil;
         NSString *variantInfoIconName = nil;
-        if (accessory.productFamilyId.length > 0 ||
-            accessory.isVariant ||
-            accessory.hasVariablePrice ||
-            accessory.availableColors.count > 1 ||
-            accessory.availableSizes.count > 1 ||
-            (accessory.hasInStockVariants && (accessory.availableColors.count > 0 || accessory.availableSizes.count > 0))) {
+        NSInteger colorCount = [accessory distinctColorCount];
+        NSInteger sizeCount = accessory.availableSizes.count;
+        NSInteger variantCount = accessory.variantCount;
+
+        BOOL hasMultipleOptions = (colorCount > 1 && sizeCount > 1);
+        BOOL hasMultipleColors = (colorCount > 1);
+        BOOL hasMultipleSizes = (sizeCount > 1);
+        BOOL hasVariantDifference = accessory.hasVariablePrice || (variantCount > 1);
+
+        if ((accessory.productFamilyId.length > 0 || accessory.isVariant || accessory.hasInStockVariants || hasVariantDifference) &&
+            (hasMultipleOptions || hasMultipleColors || hasMultipleSizes || hasVariantDifference)) {
             hasVariants = YES;
-            if (accessory.availableColors.count > 1 && accessory.availableSizes.count > 1) {
+            if (hasMultipleOptions) {
                 variantInfoText = PPUniversalLocalizedString(@"MultipleOptions", PPUniversalLocalizedPair(@"Multiple options", @"خيارات متعددة"));
                 variantInfoIconName = @"square.stack.3d.up.fill";
-            } else if (accessory.availableColors.count > 1) {
+            } else if (hasMultipleColors) {
                 NSString *format = PPUniversalLocalizedString(@"ColorsAvailableFormat", PPUniversalLocalizedPair(@"%ld Colors", @"%ld ألوان"));
-                variantInfoText = [NSString stringWithFormat:format, (long)accessory.availableColors.count];
+                variantInfoText = [NSString stringWithFormat:format, (long)colorCount];
                 variantInfoIconName = @"paintpalette.fill";
-            } else if (accessory.availableSizes.count > 1) {
+            } else if (hasMultipleSizes) {
                 NSString *format = PPUniversalLocalizedString(@"SizesAvailableFormat", PPUniversalLocalizedPair(@"%ld Sizes", @"%ld مقاسات"));
-                variantInfoText = [NSString stringWithFormat:format, (long)accessory.availableSizes.count];
+                variantInfoText = [NSString stringWithFormat:format, (long)sizeCount];
                 variantInfoIconName = @"ruler.fill";
-            } else {
+            } else if (hasVariantDifference) {
                 variantInfoText = PPUniversalLocalizedString(@"OptionsAvailable", PPUniversalLocalizedPair(@"Options available", @"خيارات متوفرة"));
                 variantInfoIconName = @"square.2.layers.3d";
+            } else {
+                hasVariants = NO;
             }
         }
         _hasVariants = hasVariants;

@@ -194,16 +194,64 @@ struct PPMarketplaceCompatibilityCard: View {
     private var leadingAction: some View {
         if showsSaveForLater {
             Button {
+                if !isSavedForLater {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                } else {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
                 bridge.toggleSaveForLater(for: viewModel)
                 isSavedForLater.toggle()
             } label: {
-                Image(systemName: isSavedForLater ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Color(uiColor: bridge.accentColor))
-                    .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial, in: Circle())
+                ZStack {
+                    Circle()
+                        .fill(
+                            isSavedForLater
+                                ? Color(uiColor: bridge.accentColor).opacity(colorScheme == .dark ? 0.22 : 0.14)
+                                : (colorScheme == .dark ? Color.black.opacity(0.52) : Color.white.opacity(0.88))
+                        )
+                        .background(.ultraThinMaterial, in: Circle())
+
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: isSavedForLater
+                                    ? [
+                                        Color(uiColor: bridge.accentColor).opacity(colorScheme == .dark ? 0.85 : 0.75),
+                                        Color(uiColor: bridge.accentColor).opacity(colorScheme == .dark ? 0.40 : 0.30)
+                                    ]
+                                    : [
+                                        Color.white.opacity(colorScheme == .dark ? 0.35 : 0.90),
+                                        Color.white.opacity(colorScheme == .dark ? 0.10 : 0.30)
+                                    ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isSavedForLater ? 1.0 : 0.85
+                        )
+
+                    Image(systemName: isSavedForLater ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 14.5, weight: isSavedForLater ? .bold : .semibold))
+                        .foregroundStyle(
+                            isSavedForLater
+                                ? Color(uiColor: bridge.accentColor)
+                                : (colorScheme == .dark ? Color.white.opacity(0.92) : Color.black.opacity(0.78))
+                        )
+                        .scaleEffect(isSavedForLater ? 1.05 : 1.0)
+                }
+                .frame(width: 32, height: 32)
+                .shadow(
+                    color: isSavedForLater
+                        ? Color(uiColor: bridge.accentColor).opacity(colorScheme == .dark ? 0.40 : 0.28)
+                        : Color.black.opacity(colorScheme == .dark ? 0.40 : 0.10),
+                    radius: isSavedForLater ? 6 : 4,
+                    x: 0,
+                    y: isSavedForLater ? 2 : 1.5
+                )
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .animation(.spring(response: 0.28, dampingFraction: 0.72), value: isSavedForLater)
             .accessibilityLabel(
                 PPMarketplaceText.localized(
                     isSavedForLater

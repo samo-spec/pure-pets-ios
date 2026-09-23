@@ -127,6 +127,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, nullable) NSArray<NSString *> *availableColors;
 @property (nonatomic, strong, nullable) NSArray<NSString *> *availableSizes;
 @property (nonatomic, strong, nullable) NSArray<NSString *> *searchTokens;
+@property (nonatomic, assign) NSInteger colorCount;
+@property (nonatomic, assign) NSInteger variantCount;
+
+- (NSInteger)distinctColorCount;
 
 // Computed type helpers
 @property (nonatomic, readonly) BOOL isLivePet;

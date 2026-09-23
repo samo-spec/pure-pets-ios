@@ -3560,74 +3560,139 @@ private struct PPUniversalCardRenderer: View {
                 var next = store.model
                 next.isFavorite.toggle()
                 store.model = next
+                if next.isFavorite {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                } else {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
                 store.actions.onFavorite?(next, next.isFavorite)
             } label: {
-                Image(
-                    systemName: store.model.isFavorite
-                        ? "heart.fill"
-                        : "heart"
+                ZStack {
+                    Circle()
+                        .fill(
+                            store.model.isFavorite
+                                ? store.palette.destructive.opacity(colorScheme == .dark ? 0.22 : 0.14)
+                                : (colorScheme == .dark ? Color.black.opacity(0.52) : Color.white.opacity(0.88))
+                        )
+                        .background(.ultraThinMaterial, in: Circle())
+
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: store.model.isFavorite
+                                    ? [
+                                        store.palette.destructive.opacity(colorScheme == .dark ? 0.85 : 0.75),
+                                        store.palette.destructive.opacity(colorScheme == .dark ? 0.40 : 0.30)
+                                    ]
+                                    : [
+                                        Color.white.opacity(colorScheme == .dark ? 0.35 : 0.90),
+                                        Color.white.opacity(colorScheme == .dark ? 0.10 : 0.30)
+                                    ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: store.model.isFavorite ? 1.0 : 0.85
+                        )
+
+                    Image(
+                        systemName: store.model.isFavorite
+                            ? "heart.fill"
+                            : "heart"
+                    )
+                    .font(.system(size: 14.5, weight: store.model.isFavorite ? .bold : .semibold))
+                    .foregroundStyle(
+                        store.model.isFavorite
+                            ? store.palette.destructive
+                            : (colorScheme == .dark ? Color.white.opacity(0.92) : Color.black.opacity(0.78))
+                    )
+                    .scaleEffect(store.model.isFavorite ? 1.05 : 1.0)
+                }
+                .frame(width: 32, height: 32)
+                .shadow(
+                    color: store.model.isFavorite
+                        ? store.palette.destructive.opacity(colorScheme == .dark ? 0.40 : 0.28)
+                        : Color.black.opacity(colorScheme == .dark ? 0.40 : 0.10),
+                    radius: store.model.isFavorite ? 6 : 4,
+                    x: 0,
+                    y: store.model.isFavorite ? 2 : 1.5
                 )
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(
-                    store.model.isFavorite
-                        ? store.palette.destructive
-                        : store.palette.ink
-                )
-                .frame(
-                    width: store.isHomePresentation
-                        ? HomeVisualTokens.productUtilityVisualSize
-                        : HomeVisualTokens.minimumTouchTarget,
-                    height: store.isHomePresentation
-                        ? HomeVisualTokens.productUtilityVisualSize
-                        : HomeVisualTokens.minimumTouchTarget
-                )
-                .background(.ultraThinMaterial, in: Circle())
                 .frame(
                     width: HomeVisualTokens.minimumTouchTarget,
                     height: HomeVisualTokens.minimumTouchTarget
                 )
-                .contentShape(Circle())
+                .contentShape(Rectangle())
             }
             .buttonStyle(PPUniversalScaleButtonStyle())
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(response: 0.28, dampingFraction: 0.72),
+                value: store.model.isFavorite
+            )
         }
     }
 
     private var saveForLaterControl: some View {
         Button {
+            if store.isSavedForLater {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } else {
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
             store.tapSaveForLater()
         } label: {
-            Image(systemName: saveForLaterSystemImage)
-                .font(.system(size: 15.5, weight: .semibold))
-                .foregroundStyle(saveForLaterIconColor)
-                .frame(
-                    width: store.isHomePresentation
-                        ? HomeVisualTokens.productUtilityVisualSize
-                        : HomeVisualTokens.minimumTouchTarget,
-                    height: store.isHomePresentation
-                        ? HomeVisualTokens.productUtilityVisualSize
-                        : HomeVisualTokens.minimumTouchTarget
-                )
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(
-                    Circle()
-                        .stroke(
-                            Color.white.opacity(
-                                colorScheme == .dark ? 0.18 : 0.42
-                            ),
-                            lineWidth: 0.75
-                        )
-                )
-                .frame(
-                    width: HomeVisualTokens.minimumTouchTarget,
-                    height: HomeVisualTokens.minimumTouchTarget
-                )
-                .contentShape(Circle())
+            ZStack {
+                Circle()
+                    .fill(
+                        store.isSavedForLater
+                            ? primaryActionAccent.opacity(colorScheme == .dark ? 0.22 : 0.14)
+                            : (colorScheme == .dark ? Color.black.opacity(0.52) : Color.white.opacity(0.88))
+                    )
+                    .background(.ultraThinMaterial, in: Circle())
+
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: store.isSavedForLater
+                                ? [
+                                    primaryActionAccent.opacity(colorScheme == .dark ? 0.85 : 0.75),
+                                    primaryActionAccent.opacity(colorScheme == .dark ? 0.40 : 0.30)
+                                ]
+                                : [
+                                    Color.white.opacity(colorScheme == .dark ? 0.35 : 0.90),
+                                    Color.white.opacity(colorScheme == .dark ? 0.10 : 0.30)
+                                ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: store.isSavedForLater ? 1.0 : 0.85
+                    )
+
+                Image(systemName: saveForLaterSystemImage)
+                    .font(.system(size: 14.5, weight: store.isSavedForLater ? .bold : .semibold))
+                    .foregroundStyle(saveForLaterIconColor)
+                    .scaleEffect(store.isSavedForLater ? 1.05 : 1.0)
+            }
+            .frame(width: 32, height: 32)
+            .shadow(
+                color: store.isSavedForLater
+                    ? primaryActionAccent.opacity(colorScheme == .dark ? 0.40 : 0.28)
+                    : Color.black.opacity(colorScheme == .dark ? 0.40 : 0.10),
+                radius: store.isSavedForLater ? 6 : 4,
+                x: 0,
+                y: store.isSavedForLater ? 2 : 1.5
+            )
+            .frame(
+                width: HomeVisualTokens.minimumTouchTarget,
+                height: HomeVisualTokens.minimumTouchTarget
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
         .animation(
             reduceMotion
                 ? nil
-                : .spring(response: 0.24, dampingFraction: 0.82),
+                : .spring(response: 0.28, dampingFraction: 0.72),
             value: store.isSavedForLater
         )
         .accessibilityElement(children: .ignore)
@@ -3648,10 +3713,7 @@ private struct PPUniversalCardRenderer: View {
         if store.isSavedForLater {
             return primaryActionAccent
         }
-        return Color(
-            uiColor: UIColor(named: "SecondaryTextColor") ??
-                UIColor.secondaryLabel
-        )
+        return colorScheme == .dark ? Color.white.opacity(0.92) : Color.black.opacity(0.78)
     }
 
     private var ownerMenu: some View {

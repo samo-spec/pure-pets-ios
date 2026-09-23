@@ -5345,3 +5345,29 @@
 "accessory_view_option_sku_format" = "SKU: %@";
 "accessory_view_option_details" = "Selection details";
 "accessory_view_all_combinations_short" = "All combinations";
+
+
+/* Product viewer — configuration console */
+"accessory_view_options_console_caption" = "Your choice decides the price, stock and delivery shown below.";
+"accessory_view_options_state_confirmed" = "Confirmed";
+"accessory_view_options_state_resolving" = "Updating";
+"accessory_view_options_state_unavailable" = "Not buyable";
+"accessory_view_options_state_choose_format" = "Choose %@";
+"accessory_view_options_state_choose_count_format" = "%@ choices left";
+"accessory_view_options_axis_available_format" = "%1$@ of %2$@ available";
+"accessory_view_options_axis_single_choice" = "Only choice offered";
+"accessory_view_options_not_offered_format" = "Never offered (%@)";
+"accessory_view_options_not_offered_caption" = "The seller lists these values but does not sell them.";
+"accessory_view_option_not_offered" = "Not offered";
+"accessory_view_option_adjusts" = "Changes another option";
+"accessory_view_option_adjusts_hint" = "Available in a different combination. Selecting it updates the other options for you.";
+"accessory_view_options_resolved_label" = "You are buying";
+"accessory_view_options_resolving_label" = "Checking this choice";
+"accessory_view_options_axis_unresolved" = "Not chosen yet";
+"accessory_view_options_console_label" = "Product options";
+
+
+/* Product viewer — commerce dock */
+"accessory_view_dock_max_reached" = "That is every unit still available.";
+"accessory_view_dock_commit_hint" = "Adds the chosen quantity to your cart.";
+"accessory_view_dock_cart_hint" = "Opens your cart to review and check out.";

@@ -77,6 +77,12 @@ enum PPAccessoryViewerL10n {
         "\u{2068}\(value)\u{2069}"
     }
 
+    /// Locale-correct separator for short comma-joined phrases such as a
+    /// VoiceOver label that appends a status to a value.
+    static var listSeparator: String {
+        PPAccessoryViewerLegacyBridge.isRTL() ? "، " : ", "
+    }
+
     static func decimal(_ value: Double) -> String {
         let formatter = PPAccessoryViewerLegacyBridge.isRTL()
             ? arabicDecimalFormatter
@@ -726,6 +732,44 @@ struct PPAccessoryViewerOptionValue: Identifiable, Equatable {
         return name
     }
 
+    /// Text shown on a selector control.
+    ///
+    /// Never carries the unit in parentheses. The viewer used to print
+    /// ``accessibilityName`` on screen, which rendered values the seller had
+    /// already spelled out as "250g (g)".
+    var displayName: String {
+        localizedName
+    }
+
+    /// Unit rendered as a subordinate line under ``displayName``, and only when
+    /// the value itself is a bare quantity. A value that already spells its own
+    /// unit must not repeat it.
+    var unitLabel: String? {
+        guard let unit, !unit.isEmpty else { return nil }
+        let name = localizedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let digits = CharacterSet.decimalDigits
+        let separators = CharacterSet(charactersIn: " .,٫٬-/×x")
+        var sawDigit = false
+        for scalar in name.unicodeScalars {
+            if digits.contains(scalar) {
+                sawDigit = true
+                continue
+            }
+            guard separators.contains(scalar) else { return nil }
+        }
+        return sawDigit ? unit : nil
+    }
+
+    /// Value text for compact summaries. The unit is appended only when the value
+    /// is a bare quantity, so a summary never reads "250g (g)".
+    var summaryName: String {
+        if let unitLabel {
+            return "\(displayName) \(unitLabel)"
+        }
+        return displayName
+    }
+
     func matches(_ query: String) -> Bool {
         [nameAr, nameEn, canonicalValue, unit ?? ""].contains {
             $0.localizedStandardContains(query)
@@ -827,11 +871,53 @@ struct PPAccessoryViewerOptionDefinition: Identifiable, Equatable {
 }
 
 /// Dynamic availability status for an option value in the customer selector.
+///
+/// The distinction between ``incompatible`` and ``notOffered`` is load bearing.
+/// A value that no sellable variant carries can never be bought, so offering it
+/// as a control would be a dead end. A value that exists on another combination
+/// is genuinely buyable; the selector reaches it by adjusting the other axes,
+/// which is what ``PPAccessoryViewerStore/selectOptionValue(optionId:valueId:)``
+/// already does. Collapsing both into one state hid a real purchase path.
 enum PPAccessoryViewerOptionValueStatus: Equatable {
     case selected
     case available
     case outOfStock
+    /// Not available alongside the current selection, but reachable by changing
+    /// one or more other axes.
     case incompatible
+    /// No sellable variant in this family carries this value.
+    case notOffered
+
+    /// Whether the customer can act on this value at all.
+    var isActionable: Bool {
+        switch self {
+        case .selected, .notOffered:
+            return false
+        case .available, .outOfStock, .incompatible:
+            return true
+        }
+    }
+
+    /// Whether this value belongs on the primary rail rather than the
+    /// "not offered" drawer.
+    var belongsOnPrimaryRail: Bool {
+        self != .notOffered
+    }
+}
+
+/// Whether the customer's option choices currently resolve to one sellable product.
+///
+/// The console header reads exactly this. Purchase gating stays with
+/// ``PPAccessoryViewerStore/hasResolvedVariantOptions``; this only describes it.
+enum PPAccessoryVariantConfigurationState: Equatable {
+    /// A chosen combination is being resolved against the server.
+    case resolving
+    /// The selection maps to one sellable product.
+    case confirmed
+    /// One or more axes still need a value. Carries their localized names.
+    case needsSelection(remaining: [String])
+    /// The resolved combination cannot be bought.
+    case unavailable
 }
 
 /// One sellable variant of a product family.

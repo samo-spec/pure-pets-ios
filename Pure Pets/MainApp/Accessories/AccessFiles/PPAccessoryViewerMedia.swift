@@ -13,6 +13,12 @@ struct PPAccessoryRemoteImageView: View {
     var fallbackInitials: String? = nil
     var cacheKey: String? = nil
     var displaySize: CGSize? = nil
+    /// Opts an avatar out of the default fill behaviour.
+    ///
+    /// Avatars fill by default because a photograph must cover its frame. A brand
+    /// mark is authored inside its own canvas, so filling crops it; those callers
+    /// pass `true` and supply their own inset plate.
+    var avatarFitsContent: Bool = false
     var onImageLoaded: ((UIImage) -> Void)? = nil
 
     @State private var blurHashImage: UIImage?
@@ -26,6 +32,7 @@ struct PPAccessoryRemoteImageView: View {
         fallbackInitials: String? = nil,
         cacheKey: String? = nil,
         displaySize: CGSize? = nil,
+        avatarFitsContent: Bool = false,
         onImageLoaded: ((UIImage) -> Void)? = nil
     ) {
         self.urlString = urlString
@@ -36,13 +43,26 @@ struct PPAccessoryRemoteImageView: View {
         self.fallbackInitials = fallbackInitials
         self.cacheKey = cacheKey
         self.displaySize = displaySize
+        self.avatarFitsContent = avatarFitsContent
         self.onImageLoaded = onImageLoaded
+    }
+
+    /// Resolved aspect behaviour for the rendered image.
+    private var resolvedContentMode: ContentMode {
+        guard isAvatar else { return contentMode }
+        return avatarFitsContent ? .fit : .fill
     }
 
     var body: some View {
         ZStack {
             if isAvatar {
-                PPAccessoryPalette.appBackground
+                // A fitted avatar is composited onto a plate the caller owns, so
+                // painting a second ground here would show as an inner square.
+                if avatarFitsContent {
+                    Color.clear
+                } else {
+                    PPAccessoryPalette.appBackground
+                }
             } else {
                 PPAccessorySubviewBackground.mediaFill
             }
@@ -51,11 +71,11 @@ struct PPAccessoryRemoteImageView: View {
                 if let image = UIImage(named: "newlogo") {
                     Image(uiImage: image)
                         .resizable()
-                        .aspectRatio(contentMode: isAvatar ? .fill : contentMode)
+                        .aspectRatio(contentMode: resolvedContentMode)
                 } else {
                     Image(systemName: "person.crop.circle.fill")
                         .resizable()
-                        .aspectRatio(contentMode: isAvatar ? .fill : contentMode)
+                        .aspectRatio(contentMode: resolvedContentMode)
                         .foregroundStyle(Color.ppPrimary)
                 }
             } else {
@@ -63,7 +83,7 @@ struct PPAccessoryRemoteImageView: View {
                     urlString: urlString,
                     cacheKey: cacheKey,
                     displaySize: displaySize,
-                    contentMode: isAvatar ? .fill : contentMode,
+                    contentMode: resolvedContentMode,
                     showsRetryAction: !isAvatar,
                     onImageLoaded: onImageLoaded
                 ) {
@@ -73,7 +93,7 @@ struct PPAccessoryRemoteImageView: View {
                             Image(uiImage: blurHashImage)
                                 .resizable()
                                 .aspectRatio(
-                                    contentMode: isAvatar ? .fill : contentMode
+                                    contentMode: resolvedContentMode
                                 )
                         }
                         if !isAvatar {

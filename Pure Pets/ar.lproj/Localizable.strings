@@ -5329,3 +5329,29 @@
 "accessory_view_option_sku_format" = "رمز المنتج: %@";
 "accessory_view_option_details" = "تفاصيل الاختيار";
 "accessory_view_all_combinations_short" = "كل الخيارات";
+
+
+/* Product viewer — configuration console */
+"accessory_view_options_console_caption" = "اختيارك يحدّد السعر والتوفر والتوصيل الظاهرة بالأسفل.";
+"accessory_view_options_state_confirmed" = "مؤكَّد";
+"accessory_view_options_state_resolving" = "جارِ التحديث";
+"accessory_view_options_state_unavailable" = "غير قابل للشراء";
+"accessory_view_options_state_choose_format" = "اختر %@";
+"accessory_view_options_state_choose_count_format" = "بقي %@ اختيارات";
+"accessory_view_options_axis_available_format" = "%1$@ من %2$@ متاح";
+"accessory_view_options_axis_single_choice" = "الخيار المتاح الوحيد";
+"accessory_view_options_not_offered_format" = "غير معروضة للبيع (%@)";
+"accessory_view_options_not_offered_caption" = "قيم مذكورة لدى البائع لكنه لا يبيعها.";
+"accessory_view_option_not_offered" = "غير معروض للبيع";
+"accessory_view_option_adjusts" = "يُغيّر خياراً آخر";
+"accessory_view_option_adjusts_hint" = "متاح مع تركيبة مختلفة. عند اختياره تُحدَّث الخيارات الأخرى تلقائياً.";
+"accessory_view_options_resolved_label" = "أنت تشتري";
+"accessory_view_options_resolving_label" = "جارِ التحقق من هذا الاختيار";
+"accessory_view_options_axis_unresolved" = "لم يُحدَّد بعد";
+"accessory_view_options_console_label" = "خيارات المنتج";
+
+
+/* Product viewer — commerce dock */
+"accessory_view_dock_max_reached" = "هذه كل الكمية المتاحة حالياً.";
+"accessory_view_dock_commit_hint" = "يضيف الكمية المختارة إلى سلتك.";
+"accessory_view_dock_cart_hint" = "يفتح سلتك لمراجعة الطلب وإتمام الدفع.";
