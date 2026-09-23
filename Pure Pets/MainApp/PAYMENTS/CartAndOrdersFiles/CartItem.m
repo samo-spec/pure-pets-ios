@@ -8,6 +8,12 @@
 
 #import "CartItem.h"
 #import "PetAccessory.h"
+#import <math.h>
+
+static NSString *PPCartItemString(id value)
+{
+    return [value isKindOfClass:NSString.class] ? value : @"";
+}
 
 @implementation CartItem
 
@@ -187,41 +193,59 @@
 - (instancetype)initWithDictionary:(NSDictionary *)dict {
     self = [super init];
     if (self) {
-        _itemID = dict[@"itemID"] ?: dict[@"id"] ?: @"";
-        _name = dict[@"name"] ?: @"";
-        _size = dict[@"size"] ?: @"";
-        _quantity = [dict[@"quantity"] ?: dict[@"qty"] integerValue];
+        if (![dict isKindOfClass:NSDictionary.class]) { dict = @{}; }
+        _itemID = PPCartItemString(dict[@"itemID"]);
+        if (_itemID.length == 0) { _itemID = PPCartItemString(dict[@"id"]); }
+        _name = PPCartItemString(dict[@"name"]);
+        _type = PPCartItemString(dict[@"type"]);
+        _size = PPCartItemString(dict[@"size"]);
+        id quantity = [dict[@"quantity"] respondsToSelector:@selector(integerValue)]
+            ? dict[@"quantity"] : dict[@"qty"];
+        _quantity = [quantity respondsToSelector:@selector(integerValue)]
+            ? MAX(0, [quantity integerValue]) : 0;
         // F-25: a persisted `stockQuantity` from an older build is ignored rather
         // than trusted. Stock is re-resolved from the live catalogue; until then it
         // is explicitly unknown, which the add-to-cart guard fails closed on.
         _stockQuantity = NSNotFound;
-        _price = [dict[@"price"] doubleValue];
+        _price = [dict[@"price"] respondsToSelector:@selector(doubleValue)]
+            ? [dict[@"price"] doubleValue] : 0.0;
+        if (!isfinite(_price) || _price < 0.0) { _price = 0.0; }
 
         // Restore originalPrice if present; fallback to price for pre-migration data
         if ([dict[@"originalPrice"] respondsToSelector:@selector(doubleValue)]) {
             double stored = [dict[@"originalPrice"] doubleValue];
-            _originalPrice = stored > 0.0f ? stored : _price;
+            _originalPrice = isfinite(stored) && stored > 0.0f ? stored : _price;
         } else {
             _originalPrice = _price;
         }
 
-        _imageURL = dict[@"imageURL"] ?: @"";
-        _providerID = [dict[@"providerID"] isKindOfClass:NSString.class] ? dict[@"providerID"] : @"";
+        _imageURL = PPCartItemString(dict[@"imageURL"]);
+        _providerID = PPCartItemString(dict[@"providerID"]);
 
-        _sellableUnitId = dict[@"sellableUnitId"] ?: _itemID;
-        _variantId = dict[@"variantId"] ?: _sellableUnitId;
-        _variantCombinationKey = dict[@"variantCombinationKey"] ?: @"";
-        _productFamilyId = dict[@"productFamilyId"] ?: @"";
-        _sku = dict[@"sku"] ?: @"";
-        _barcode = dict[@"barcode"] ?: @"";
-        _isVariant = [dict[@"isVariant"] boolValue] || (_variantCombinationKey.length > 0);
+        _sellableUnitId = PPCartItemString(dict[@"sellableUnitId"]);
+        if (_sellableUnitId.length == 0) { _sellableUnitId = _itemID; }
+        _variantId = PPCartItemString(dict[@"variantId"]);
+        if (_variantId.length == 0) { _variantId = _sellableUnitId; }
+        _variantCombinationKey = PPCartItemString(dict[@"variantCombinationKey"]);
+        _productFamilyId = PPCartItemString(dict[@"productFamilyId"]);
+        _sku = PPCartItemString(dict[@"sku"]);
+        _barcode = PPCartItemString(dict[@"barcode"]);
+        _isVariant = ([dict[@"isVariant"] respondsToSelector:@selector(boolValue)] &&
+                      [dict[@"isVariant"] boolValue]) || (_variantCombinationKey.length > 0);
         if ([dict[@"selectedOptions"] isKindOfClass:NSDictionary.class]) {
-            _selectedOptions = [dict[@"selectedOptions"] copy];
+            NSMutableDictionary *options = [NSMutableDictionary dictionary];
+            for (id key in dict[@"selectedOptions"]) {
+                id value = dict[@"selectedOptions"][key];
+                if ([key isKindOfClass:NSString.class] && [value isKindOfClass:NSString.class]) {
+                    options[key] = value;
+                }
+            }
+            _selectedOptions = [options copy];
         }
         if ([dict[@"selectedOptionsSnapshot"] isKindOfClass:NSArray.class]) {
             _selectedOptionsSnapshot = [dict[@"selectedOptionsSnapshot"] copy];
         }
-        _optionsSummary = dict[@"optionsSummary"] ?: @"";
+        _optionsSummary = PPCartItemString(dict[@"optionsSummary"]);
         if (_optionsSummary.length == 0) {
             NSMutableArray<NSString *> *parts = [NSMutableArray array];
             if (_selectedOptions.count > 0) {

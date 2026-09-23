@@ -4,6 +4,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class PPUniversalCellViewModel;
+@class PetAccessory;
 
 typedef NS_ENUM(NSInteger, PPUniversalAvailabilityTone) {
     PPUniversalAvailabilityToneNeutral = 0,
@@ -62,6 +63,17 @@ typedef NS_ENUM(NSInteger, PPUniversalAvailabilityTone) {
 + (BOOL)hasVariantsForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (nullable NSString *)variantInfoTextForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (nullable NSString *)variantInfoIconForViewModel:(PPUniversalCellViewModel *)viewModel;
+
+/// YES when the card represents a variant family, so a quantity mutation has no
+/// single sellable target. Callers must resolve a variant before writing to the
+/// cart instead of committing the family's default document.
++ (BOOL)requiresVariantSelectionForViewModel:(PPUniversalCellViewModel *)viewModel
+    NS_SWIFT_NAME(requiresVariantSelection(for:));
+
+/// The legacy catalogue model backing an accessory card, or nil for any other
+/// kind of view model. Keeps model-class knowledge out of the SwiftUI layer.
++ (nullable PetAccessory *)accessoryForViewModel:(PPUniversalCellViewModel *)viewModel
+    NS_SWIFT_NAME(accessory(for:));
 
 + (void)fetchOwnerProfileForUID:(NSString *)uid
                       viewModel:(PPUniversalCellViewModel *)viewModel

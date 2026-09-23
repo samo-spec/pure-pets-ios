@@ -3,6 +3,11 @@ import UIKit
 
 @MainActor
 final class PPAccessoryViewerStore: ObservableObject {
+    enum ContentScope {
+        case productDetail
+        case quickAdd
+    }
+
     @Published private(set) var phase: PPAccessoryViewerScreenPhase = .loading
     @Published private(set) var snapshot: PPAccessoryViewerSnapshot?
     @Published private(set) var ownerPhase: PPAccessoryViewerSectionPhase = .idle
@@ -55,6 +60,9 @@ final class PPAccessoryViewerStore: ObservableObject {
     private var familyRequestID = UUID()
     private var liveRequestID = UUID()
     private var favoriteRequestID = UUID()
+    private var resolvedFamilyID: String?
+    private let contentScope: ContentScope
+    private let initialFamilyID: String
 
     private var accessory: PetAccessory?
     private weak var presenter: UIViewController?
@@ -70,9 +78,15 @@ final class PPAccessoryViewerStore: ObservableObject {
         case checkout
     }
 
-    init(accessory: PetAccessory?, presenter: UIViewController) {
+    init(
+        accessory: PetAccessory?,
+        presenter: UIViewController,
+        contentScope: ContentScope = .productDetail
+    ) {
         self.accessory = accessory
         self.presenter = presenter
+        self.contentScope = contentScope
+        self.initialFamilyID = accessory?.productFamilyId ?? ""
         cartObserver = NotificationCenter.default.addObserver(
             forName: Notification.Name("CartUpdated"),
             object: nil,
@@ -104,6 +118,10 @@ final class PPAccessoryViewerStore: ObservableObject {
 
         // Preserve the prepared loading frame before resolving injected data.
         await Task.yield()
+        guard !Task.isCancelled else {
+            didLoad = false
+            return
+        }
         guard let accessory else {
             phase = .failed(
                 message: PPAccessoryViewerL10n.text(
@@ -177,17 +195,45 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     var hasResolvedVariantOptions: Bool {
-        guard accessory?.variantIsArchived != true, currentVariant?.isArchived != true else { return false }
-        guard !optionDefinitions.isEmpty else { return true }
-        guard currentVariant?.productId == accessory?.accessoryID else { return false }
+        guard let accessory, !accessory.variantIsArchived else { return false }
+        let familyID = accessory.productFamilyId ?? ""
+        if familyID.isEmpty {
+            return contentScope == .productDetail
+        }
+        guard resolvedFamilyID == familyID,
+              contentScope != .quickAdd || familyID == initialFamilyID,
+              let currentVariant,
+              !currentVariant.isArchived,
+              currentVariant.productId == accessory.accessoryID,
+              variantIdentityMatches(currentVariant, accessory: accessory),
+              currentVariant.selectedOptions == selectedOptions else { return false }
         return optionDefinitions.allSatisfy { definition in
             guard let valueID = selectedOptions[definition.id] else { return false }
             return definition.values.contains { $0.id == valueID }
         }
     }
 
+    /// Generic option stamps on the sellable product must agree with the family
+    /// projection being shown. Legacy colour products may omit these fields.
+    private func variantIdentityMatches(
+        _ variant: PPAccessoryViewerVariant,
+        accessory: PetAccessory
+    ) -> Bool {
+        if let options = accessory.selectedOptions, !options.isEmpty {
+            var normalized: [String: String] = [:]
+            for (key, value) in options {
+                normalized[key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()] =
+                    value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            }
+            guard normalized == variant.selectedOptions else { return false }
+        }
+        let combination = (accessory.variantCombinationKey ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return combination.isEmpty || combination == variant.combinationKey
+    }
+
     var canChangeVariant: Bool {
-        variantsPhase == .loaded && switchingVariantProductId == nil &&
+        resolvedFamilyID != nil && variantsPhase == .loaded && switchingVariantProductId == nil &&
             cartPhase != .processing && !isCheckoutProcessing
     }
 
@@ -292,12 +338,23 @@ final class PPAccessoryViewerStore: ObservableObject {
               let accessory,
               let snapshot,
               snapshot.showsCart,
-              !snapshot.isUnavailable,
-              isPurchaseDataCurrent,
               !isCheckoutProcessing,
               cartPhase != .processing,
+              requestedQuantity >= 0,
               cartQuantity > 0 else {
             throw PPAccessoryCartError.unavailable
+        }
+
+        // Removing/reducing an existing line is safe even after a sell-out.
+        // Increasing must use the confirmed selected product's current ceiling;
+        // the family aggregate can never authorize that increase.
+        if requestedQuantity > cartQuantity {
+            guard isVariantSelectionConfirmed,
+                  !snapshot.isUnavailable,
+                  isPurchaseDataCurrent,
+                  requestedQuantity <= snapshot.quantity else {
+                throw PPAccessoryCartError.unavailable
+            }
         }
 
         cartPhase = .processing
@@ -739,6 +796,9 @@ final class PPAccessoryViewerStore: ObservableObject {
         }
         refreshCartState()
         loadFavorite()
+        if contentScope == .quickAdd && resolvedFamilyID == nil {
+            loadVariants()
+        }
         if liveRegistration == nil {
             startLiveListener()
         }
@@ -751,6 +811,22 @@ final class PPAccessoryViewerStore: ObservableObject {
             checkoutTask?.cancel()
         }
         stopLiveListener()
+        if contentScope == .quickAdd {
+            familyRequestID = UUID()
+            resolvedFamilyID = nil
+        }
+    }
+
+    /// Final teardown for the transient quick-add presentation. Normal product
+    /// viewers keep their observer while temporarily covered by another route.
+    func finishQuickAdd() {
+        guard contentScope == .quickAdd else { return }
+        pause()
+        favoriteRequestID = UUID()
+        if let cartObserver {
+            NotificationCenter.default.removeObserver(cartObserver)
+            self.cartObserver = nil
+        }
     }
 
 
@@ -904,6 +980,7 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     private func loadOwner() {
+        guard contentScope == .productDetail else { return }
         guard let accessory else { return }
         ownerPhase = .loading
         PPAccessoryViewerLegacyBridge.fetchOwner(
@@ -997,6 +1074,7 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     private func loadSuggestions() {
+        guard contentScope == .productDetail else { return }
         guard let accessory else { return }
         suggestionsPhase = .loading
         PPAccessoryViewerLegacyBridge.fetchSuggestions(
@@ -1046,8 +1124,10 @@ final class PPAccessoryViewerStore: ObservableObject {
     private func loadVariants() {
         guard switchingVariantProductId == nil, let accessory else { return }
         let currentProductId = accessory.accessoryID
+        let expectedFamilyID = accessory.productFamilyId ?? ""
         let requestID = UUID()
         familyRequestID = requestID
+        resolvedFamilyID = nil
 
         variantsPhase = .loading
         PPAccessoryViewerLegacyBridge.fetchProductFamily(
@@ -1056,9 +1136,10 @@ final class PPAccessoryViewerStore: ObservableObject {
             Task { @MainActor in
                 guard let self,
                       self.familyRequestID == requestID,
-                      self.accessory?.accessoryID == currentProductId else { return }
+                      self.accessory?.accessoryID == currentProductId,
+                      (self.accessory?.productFamilyId ?? "") == expectedFamilyID else { return }
                 guard let family, error == nil else {
-                    if error != nil {
+                    if error != nil || !expectedFamilyID.isEmpty {
                         self.variantsPhase = .failed(
                             message: PPAccessoryViewerL10n.text("accessory_view_options_failed")
                         )
@@ -1069,6 +1150,22 @@ final class PPAccessoryViewerStore: ObservableObject {
                         self.selectedOptions = [:]
                         self.variantsPhase = .empty
                     }
+                    return
+                }
+
+                // A family read is display data until its lifecycle and schema
+                // are understood. Never treat missing/failed family data as a
+                // standalone product merely because there are no option axes.
+                let schemaVersion = (family["schemaVersion"] as? NSNumber)?.intValue ?? 1
+                guard !expectedFamilyID.isEmpty,
+                      self.contentScope != .quickAdd || expectedFamilyID == self.initialFamilyID,
+                      (family["familyId"] as? String ?? expectedFamilyID) == expectedFamilyID,
+                      (family["active"] as? Bool) != false,
+                      (family["isArchived"] as? Bool) != true,
+                      (1...2).contains(schemaVersion) else {
+                    self.variantsPhase = .failed(
+                        message: PPAccessoryViewerL10n.text("accessory_view_item_unavailable")
+                    )
                     return
                 }
 
@@ -1139,10 +1236,19 @@ final class PPAccessoryViewerStore: ObservableObject {
                 // Never invent a choice: a first value may describe a different
                 // sellable product. Missing axes stay unresolved until explicitly chosen.
                 self.selectedOptions = initialSelection
+                if let currentVariant = self.currentVariant,
+                   !self.variantIdentityMatches(currentVariant, accessory: accessory) {
+                    self.variantsPhase = .failed(
+                        message: PPAccessoryViewerL10n.text("accessory_view_options_failed")
+                    )
+                    return
+                }
+                self.resolvedFamilyID = expectedFamilyID
 
                 // Phase determination: if variants > 1 or optionDefinitions has choices, loaded; else empty
                 let totalOptionChoices = parsedDefs.reduce(0) { $0 + $1.values.count }
-                if self.variants.count > 1 || totalOptionChoices > 1 ||
+                if (self.contentScope == .quickAdd && !parsedVariants.isEmpty) ||
+                    self.variants.count > 1 || totalOptionChoices > 1 ||
                     (!parsedDefs.isEmpty && !self.hasResolvedVariantOptions) {
                     self.variantsPhase = .loaded
                 } else {
@@ -1314,6 +1420,7 @@ final class PPAccessoryViewerStore: ObservableObject {
         let requestID = UUID()
         variantRequestID = requestID
         let sourceProductID = accessory?.accessoryID
+        let expectedFamilyID = accessory?.productFamilyId
         variantSelectionError = nil
         failedVariantProductId = nil
         switchingVariantProductId = variant.productId
@@ -1331,10 +1438,14 @@ final class PPAccessoryViewerStore: ObservableObject {
             Task { @MainActor in
                 guard let self,
                       self.variantRequestID == requestID,
-                      self.accessory?.accessoryID == sourceProductID else { return }
+                      self.accessory?.accessoryID == sourceProductID,
+                      self.accessory?.productFamilyId == expectedFamilyID else { return }
 
                 guard let resolved, error == nil,
-                      resolved.accessoryID == variant.productId else {
+                      resolved.accessoryID == variant.productId,
+                      resolved.productFamilyId == expectedFamilyID,
+                      !resolved.variantIsArchived,
+                      self.variantIdentityMatches(variant, accessory: resolved) else {
                     self.switchingVariantProductId = nil
                     self.failedVariantProductId = variant.productId
                     self.variantSelectionError = PPAccessoryViewerL10n.text(
@@ -1425,6 +1536,7 @@ final class PPAccessoryViewerStore: ObservableObject {
     }
 
     private func loadFavorite() {
+        guard contentScope == .productDetail else { return }
         guard let accessory else { return }
         let accessoryID = accessory.accessoryID
         let requestID = UUID()
@@ -1472,6 +1584,9 @@ final class PPAccessoryViewerStore: ObservableObject {
     private func startLiveListener() {
         guard let accessoryID = accessory?.accessoryID, !accessoryID.isEmpty else { return }
         stopLiveListener()
+        if contentScope == .quickAdd {
+            livePhase = .refreshing
+        }
         let requestID = liveRequestID
         liveRegistration = PPAccessoryViewerLegacyBridge.listenToAccessory(
             accessoryID: accessoryID,
@@ -1482,6 +1597,11 @@ final class PPAccessoryViewerStore: ObservableObject {
                 switch status {
                 case .updated:
                     guard let updatedAccessory else { return }
+                    let familyIdentityChanged =
+                        self.accessory?.productFamilyId != updatedAccessory.productFamilyId ||
+                        self.accessory?.variantCombinationKey != updatedAccessory.variantCombinationKey ||
+                        self.accessory?.selectedOptions != updatedAccessory.selectedOptions ||
+                        self.accessory?.variantIsArchived != updatedAccessory.variantIsArchived
                     let oldPrice = self.snapshot?.price
                     let oldQuantity = self.snapshot?.quantity
                     let nextSnapshot = PPAccessoryViewerSnapshot(
@@ -1493,6 +1613,10 @@ final class PPAccessoryViewerStore: ObservableObject {
                         ? .deleted
                         : .current
                     self.refreshCartState()
+                    if familyIdentityChanged {
+                        self.cancelVariantSelection()
+                        self.loadVariants()
+                    }
 
                     if oldPrice != nextSnapshot.price {
                         self.pricePulseToken += 1

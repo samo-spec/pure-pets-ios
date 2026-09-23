@@ -355,6 +355,13 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
             }
         }
         _hasVariants = hasVariants;
+        // A family member is one of several sellable documents behind the same
+        // parent listing. The card cannot know which one the customer wants, and
+        // `ProductFamilies/{familyId}` is the only place the choices exist, so a
+        // family id is the precondition for offering the picker at all.
+        // Older/non-default members may not carry the family's badge aggregates.
+        // Family identity, rather than display counts, requires resolution.
+        _requiresVariantSelection = accessory.productFamilyId.length > 0;
         _variantInfoText = [variantInfoText copy];
         _variantInfoIconName = [variantInfoIconName copy];
         if (firstIsVideo) {
@@ -534,6 +541,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
     _availabilityText = @"";
     _badgeText = @"";
     _hasVariants = NO;
+    _requiresVariantSelection = NO;
     _variantInfoText = nil;
     _variantInfoIconName = nil;
     _stockStatusText = @"";

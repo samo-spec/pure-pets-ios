@@ -182,6 +182,21 @@ static CartItem *PPCartCopyItem(CartItem *source)
     return copy;
 }
 
+static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
+{
+    if (![source.itemID isEqualToString:target.itemID]) { return; }
+    if (source.productFamilyId.length > 0) { target.productFamilyId = source.productFamilyId; }
+    if (source.sellableUnitId.length > 0) { target.sellableUnitId = source.sellableUnitId; }
+    if (source.variantId.length > 0) { target.variantId = source.variantId; }
+    if (source.variantCombinationKey.length > 0) { target.variantCombinationKey = source.variantCombinationKey; }
+    if (source.sku.length > 0) { target.sku = source.sku; }
+    if (source.barcode.length > 0) { target.barcode = source.barcode; }
+    if (source.selectedOptions.count > 0) { target.selectedOptions = [source.selectedOptions copy]; }
+    if (source.selectedOptionsSnapshot.count > 0) { target.selectedOptionsSnapshot = [source.selectedOptionsSnapshot copy]; }
+    if (source.optionsSummary.length > 0) { target.optionsSummary = source.optionsSummary; }
+    target.isVariant = target.isVariant || source.isVariant;
+}
+
 - (void)pp_handleAppDidBecomeActiveNotification:(NSNotification *)notification
 {
     (void)notification;
@@ -435,6 +450,7 @@ static CartItem *PPCartCopyItem(CartItem *source)
         }
 
         if (existing) {
+            PPCartMergeVariantMetadata(item, existing);
             existing.quantity += increment;
             if (item.stockQuantity != NSNotFound) {
                 existing.stockQuantity = MAX(0, item.stockQuantity);
@@ -679,19 +695,9 @@ presentingViewController:(UIViewController *)presentingViewController
 - (void)saveCart {
     NSMutableArray *encoded = [NSMutableArray array];
     for (CartItem *item in self.cartItems) {
-        NSMutableDictionary *dict = [@{
-            @"itemID": item.itemID ?: @"",
-            @"name": item.name ?: @"",
-            @"quantity": @(MAX(item.quantity, 0)),
-            @"price": @(item.price),
-            @"originalPrice": @(item.originalPrice),
-            @"imageURL": item.imageURL ?: @"",
-            @"providerID": item.providerID ?: @"",
-        } mutableCopy];
-        if (item.stockQuantity != NSNotFound) {
-            dict[@"stockQuantity"] = @(MAX(item.stockQuantity, 0));
-        }
-        [encoded addObject:dict];
+        // One serializer preserves sellable identity/options in both mirrors.
+        // Its stock hint is deliberately session-only, never persisted.
+        [encoded addObject:[item firestoreDictionary]];
     }
     [[NSUserDefaults standardUserDefaults] setObject:encoded forKey:kSavedCartKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
@@ -700,27 +706,11 @@ presentingViewController:(UIViewController *)presentingViewController
 - (void)loadCart {
     NSArray *saved = [[NSUserDefaults standardUserDefaults] objectForKey:kSavedCartKey];
     [self.cartItems removeAllObjects];
+    if (![saved isKindOfClass:NSArray.class]) { return; }
     for (NSDictionary *dict in saved) {
-        CartItem *item = [[CartItem alloc] init];
-        item.itemID = dict[@"itemID"];
-        item.name = dict[@"name"];
-        item.quantity = MAX(0, [dict[@"quantity"] integerValue]);
-        if ([dict[@"stockQuantity"] respondsToSelector:@selector(integerValue)]) {
-            NSInteger rawStock = [dict[@"stockQuantity"] integerValue];
-            item.stockQuantity = (rawStock == NSNotFound) ? NSNotFound : MAX(0, rawStock);
-        } else {
-            item.stockQuantity = NSNotFound;
-        }
-        item.price = [dict[@"price"] doubleValue];
-        // Restore originalPrice; fallback to price for pre-migration data
-        if ([dict[@"originalPrice"] respondsToSelector:@selector(doubleValue)]) {
-            double stored = [dict[@"originalPrice"] doubleValue];
-            item.originalPrice = stored > 0.0 ? stored : item.price;
-        } else {
-            item.originalPrice = item.price;
-        }
-        item.imageURL = dict[@"imageURL"] ?: @"";
-        item.providerID = [dict[@"providerID"] isKindOfClass:NSString.class] ? dict[@"providerID"] : @"";
+        if (![dict isKindOfClass:NSDictionary.class]) { continue; }
+        CartItem *item = [[CartItem alloc] initWithDictionary:dict];
+        if (item.itemID.length == 0 || item.quantity <= 0) { continue; }
         [self.cartItems addObject:item];
     }
     //[[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
@@ -891,7 +881,7 @@ presentingViewController:(UIViewController *)presentingViewController
 
         NSMutableDictionary<NSString *, CartItem *> *mergedByItemID = [NSMutableDictionary dictionary];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
-            CartItem *item = [[CartItem alloc] init];
+            CartItem *item = [[CartItem alloc] initWithDictionary:doc.data ?: @{}];
             NSString *itemID = [doc[@"itemID"] isKindOfClass:NSString.class] ? doc[@"itemID"] : @"";
             if (itemID.length == 0) {
                 itemID = doc.documentID ?: @"";
@@ -900,26 +890,10 @@ presentingViewController:(UIViewController *)presentingViewController
                 continue;
             }
             item.itemID = itemID;
-            item.name = [doc[@"name"] isKindOfClass:NSString.class] ? doc[@"name"] : @"";
-            item.quantity = MAX(0, [doc[@"quantity"] integerValue]);
-            if ([doc[@"stockQuantity"] respondsToSelector:@selector(integerValue)]) {
-                item.stockQuantity = MAX(0, [doc[@"stockQuantity"] integerValue]);
-            } else {
-                item.stockQuantity = NSNotFound;
-            }
-            item.price = [doc[@"price"] doubleValue];
-            // Restore originalPrice from remote; fallback to price
-            if ([doc[@"originalPrice"] respondsToSelector:@selector(doubleValue)]) {
-                double remote = [doc[@"originalPrice"] doubleValue];
-                item.originalPrice = remote > 0.0 ? remote : item.price;
-            } else {
-                item.originalPrice = item.price;
-            }
-            item.imageURL = doc[@"imageURL"] ?: @"";
-            item.providerID = [doc[@"providerID"] isKindOfClass:NSString.class] ? doc[@"providerID"] : @"";
 
             CartItem *existing = mergedByItemID[item.itemID];
             if (existing) {
+                PPCartMergeVariantMetadata(item, existing);
                 existing.quantity += item.quantity;
                 if (item.stockQuantity != NSNotFound) {
                     if (existing.stockQuantity == NSNotFound) {
@@ -984,6 +958,13 @@ presentingViewController:(UIViewController *)presentingViewController
     }
 
     NSInteger stockLimit = [self pp_stockLimitForItem:item existingItem:existing];
+    // A missing/zero ceiling cannot authorize an increase. Reductions remain
+    // available so customers can correct a line after availability changes.
+    if (clampedQuantity > existing.quantity &&
+        (stockLimit == NSNotFound || stockLimit <= 0)) {
+        if (completion) completion(NO);
+        return;
+    }
     if (stockLimit != NSNotFound && stockLimit > 0) {
         clampedQuantity = MIN(clampedQuantity, stockLimit);
     }

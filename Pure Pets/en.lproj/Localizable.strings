@@ -5371,3 +5371,7 @@
 "accessory_view_dock_max_reached" = "That is every unit still available.";
 "accessory_view_dock_commit_hint" = "Adds the chosen quantity to your cart.";
 "accessory_view_dock_cart_hint" = "Opens your cart to review and check out.";
+
+/* Universal product card — selected variant cart */
+"universal_variant_cart_quantity_format" = "%@ in cart for this option";
+"universal_variant_options_hint" = "Choose an option, then set its cart quantity.";

@@ -786,6 +786,7 @@
 		F2E33F6B3006C51A005E31C6 /* PPOrderProgressTimelineRowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F593006C200005E31C6 /* PPOrderProgressTimelineRowView.m */; };
 		F2E33F6C3006C521005E31C6 /* PPOrderStatusStepperView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F573006C1C9005E31C6 /* PPOrderStatusStepperView.m */; };
 		F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */; };
+		A3B174093025000000000002 /* PPUniversalVariantPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B174093025000000000001 /* PPUniversalVariantPicker.swift */; };
 		F2E64412302EB320005B0699 /* PPCommerceCartHolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */; };
 		F2E64419302F76D1005B0699 /* PPProviderStorefrontDataBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E64417302F76D1005B0699 /* PPProviderStorefrontDataBridge.m */; };
 		F2E6441A302F76D1005B0699 /* PPProviderProfileHeroStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64415302F76D1005B0699 /* PPProviderProfileHeroStore.swift */; };
@@ -2284,6 +2285,7 @@
 		F2E33F673006C4D6005E31C6 /* PPOrderSupportRequestListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderSupportRequestListViewController.m; sourceTree = "<group>"; };
 		F2E33F693006C4FF005E31C6 /* PPOrderTimelineViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderTimelineViewController.m; sourceTree = "<group>"; };
 		F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellSwiftUI.swift; sourceTree = "<group>"; };
+		A3B174093025000000000001 /* PPUniversalVariantPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalVariantPicker.swift; sourceTree = "<group>"; };
 		F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCommerceCartHolder.swift; sourceTree = "<group>"; };
 		F2E64413302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPProviderCompaniesSwiftUI.swift; sourceTree = "<group>"; };
 		F2E64414302F76D1005B0699 /* PPProviderProfileHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPProviderProfileHero.swift; sourceTree = "<group>"; };
@@ -4282,6 +4284,7 @@
 				F21D1B5D2E9C727E00220F72 /* PPUniversalCell.h */,
 				F21D1B5E2E9C72B600220F72 /* PPUniversalCell.m */,
 				F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */,
+				A3B174093025000000000001 /* PPUniversalVariantPicker.swift */,
 				F276E5C52DE314BF00926D56 /* PetImageGalleryView.h */,
 				F276E5C62DE314D000926D56 /* PetImageGalleryView.m */,
 			);
@@ -5631,6 +5634,7 @@
 				F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */,
 				F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */,
 				F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */,
+				A3B174093025000000000002 /* PPUniversalVariantPicker.swift in Sources */,
 				F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */,
 				F2E0E8712E7A16D400F0C084 /* UIViewController+PPNavBar.m in Sources */,
 				F2449C432D0DD4FD00DB6BBC /* MainKindsModel.m in Sources */,

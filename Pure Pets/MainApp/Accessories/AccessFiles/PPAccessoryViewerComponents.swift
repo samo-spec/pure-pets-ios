@@ -3233,7 +3233,9 @@ struct PPAccessoryPersistentDecisionBar: View {
         .padding(.top, PPSpace.sm)
         .padding(
             .bottom,
-            max(bottomInset, PPSpace.base)
+            snapshot.showsCart
+                ? PPSpace.xs
+                : max(bottomInset, PPSpace.base)
         )
         .ignoresSafeArea(.container, edges: .bottom)
         .animation(
@@ -4046,7 +4048,7 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
         .padding(.top, PPSpace.sm)
         .padding(
             .bottom,
-            max(bottomInset, PPSpace.base)
+            PPSpace.xs
         )
         .redacted(reason: .placeholder)
         .allowsHitTesting(false)
@@ -4385,6 +4387,7 @@ struct PPAccessoryVariantSelectorSection: View {
     @ObservedObject var store: PPAccessoryViewerStore
     let snapshot: PPAccessoryViewerSnapshot
     let compact: Bool
+    var showsDeliveryContext = true
 
     @State private var showsCombinations = false
     @State private var combinationQuery = ""
@@ -4415,10 +4418,7 @@ struct PPAccessoryVariantSelectorSection: View {
             }
         case let .failed(message):
             console {
-                VStack(alignment: .leading, spacing: PPSpace.md) {
-                    header
-                    recovery(message, action: store.retryVariants)
-                }
+                recovery(message, action: store.retryVariants)
             }
         }
     }
@@ -4506,169 +4506,16 @@ struct PPAccessoryVariantSelectorSection: View {
         }
     }
 
-    // MARK: Header
-
-    private var header: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: PPSpace.sm) {
-                    headerIdentity
-                    stateChip
-                }
-            } else {
-                HStack(alignment: .top, spacing: PPSpace.sm) {
-                    headerIdentity
-                    Spacer(minLength: PPSpace.xs)
-                    stateChip
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var headerIdentity: some View {
-        HStack(alignment: .top, spacing: PPSpace.sm) {
-            consoleMark
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(PPAccessoryViewerL10n.text("accessory_view_options_title"))
-                    .font(PPAccessoryTypography.headline)
-                    .foregroundStyle(PPAccessoryPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-
-                Text(
-                    PPAccessoryViewerL10n.text(
-                        "accessory_view_options_console_caption"
-                    )
-                )
-                .font(PPAccessoryTypography.caption2)
-                .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var consoleMark: some View {
-        Image(systemName: "slider.horizontal.3")
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(PPAccessoryPalette.brand)
-            .frame(width: 32, height: 32)
-            .background(
-                PPAccessoryPalette.brand.opacity(
-                    colorSchemeContrast == .increased ? 0.20 : 0.11
-                ),
-                in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-            )
-            .accessibilityHidden(true)
-    }
-
-    /// The live answer to "can I buy this yet?". Derived from the Store, never stored.
-    private var stateChip: some View {
-        let state = store.variantConfigurationState
-        let tone = stateTone(state)
-
-        return HStack(spacing: 5) {
-            switch state {
-            case .resolving:
-                ProgressView()
-                    .controlSize(.mini)
-                    .tint(tone)
-            case .confirmed:
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 11, weight: .bold))
-            case .needsSelection:
-                Image(systemName: "circle.dashed")
-                    .font(.system(size: 11, weight: .bold))
-            case .unavailable:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11, weight: .bold))
-            }
-
-            Text(stateText(state))
-                .font(PPAccessoryTypography.captionBold)
-                .lineLimit(2)
-                .minimumScaleFactor(0.84)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .foregroundStyle(tone)
-        .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, 5)
-        .background(
-            tone.opacity(colorSchemeContrast == .increased ? 0.20 : 0.11),
-            in: Capsule(style: .continuous)
-        )
-        .animation(
-            reduceMotion ? nil : .easeInOut(duration: 0.22),
-            value: state
-        )
-        .accessibilityElement(children: .combine)
-    }
-
-    private func stateTone(
-        _ state: PPAccessoryVariantConfigurationState
-    ) -> Color {
-        switch state {
-        case .resolving:
-            return PPAccessoryPalette.brand
-        case .confirmed:
-            return PPAccessoryPalette.success
-        case .needsSelection:
-            return PPAccessoryPalette.warning
-        case .unavailable:
-            return PPAccessoryPalette.error
-        }
-    }
-
-    private func stateText(
-        _ state: PPAccessoryVariantConfigurationState
-    ) -> String {
-        switch state {
-        case .resolving:
-            return PPAccessoryViewerL10n.text(
-                "accessory_view_options_state_resolving"
-            )
-        case .confirmed:
-            return PPAccessoryViewerL10n.text(
-                "accessory_view_options_state_confirmed"
-            )
-        case .unavailable:
-            return PPAccessoryViewerL10n.text(
-                "accessory_view_options_state_unavailable"
-            )
-        case let .needsSelection(remaining):
-            if remaining.count == 1 {
-                return PPAccessoryViewerL10n.formatted(
-                    "accessory_view_options_state_choose_format",
-                    PPAccessoryViewerL10n.isolated(remaining[0])
-                )
-            }
-            if remaining.count > 1 {
-                return PPAccessoryViewerL10n.formatted(
-                    "accessory_view_options_state_choose_count_format",
-                    PPAccessoryViewerL10n.integer(remaining.count)
-                )
-            }
-            return PPAccessoryViewerL10n.text(
-                "accessory_view_selection_needed"
-            )
-        }
-    }
-
     // MARK: Configuration body
 
     private var configuration: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
-            header
-
             if store.optionDefinitions.isEmpty {
                 if !store.variants.isEmpty {
                     combinationsList
                 }
             } else {
-                VStack(alignment: .leading, spacing: PPSpace.base) {
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
                     ForEach(
                         Array(store.optionDefinitions.enumerated()),
                         id: \.element.id
@@ -4964,27 +4811,22 @@ struct PPAccessoryVariantSelectorSection: View {
 
     /// Loading keeps the console's exact anatomy so nothing shifts on arrival.
     private var skeleton: some View {
-        VStack(alignment: .leading, spacing: PPSpace.base) {
-            header
+        HStack(alignment: .center, spacing: PPSpace.sm) {
+            Capsule().fill(PPAccessoryPalette.ink.opacity(0.08))
+                .frame(width: 48, height: 16)
 
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                Capsule().fill(PPAccessoryPalette.ink.opacity(0.08))
-                    .frame(width: 64, height: 10)
-                Capsule().fill(PPAccessoryPalette.ink.opacity(0.11))
-                    .frame(width: 120, height: 18)
-
-                HStack(spacing: PPSpace.sm) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        RoundedRectangle(
-                            cornerRadius: PPCorner.small,
-                            style: .continuous
-                        )
-                        .fill(PPAccessoryPalette.ink.opacity(0.07))
-                        .frame(height: 56)
-                    }
+            HStack(spacing: PPSpace.xs) {
+                ForEach(0..<3, id: \.self) { _ in
+                    RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
+                    .fill(PPAccessoryPalette.ink.opacity(0.07))
+                    .frame(width: 68, height: 36)
                 }
             }
         }
+        .frame(height: 48)
         .redacted(reason: .placeholder)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
@@ -5005,425 +4847,99 @@ private struct PPAccessoryOptionGroup: View {
     let option: PPAccessoryViewerOptionDefinition
     let compact: Bool
 
-    @State private var expanded = false
-    @State private var showsNotOffered = false
-    @State private var query = ""
-    @FocusState private var searchFocused: Bool
-
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .caption) private var colorCellWidth: CGFloat = 68
-    @ScaledMetric(relativeTo: .body) private var specCellWidth: CGFloat = 96
 
     private typealias Entry = (
         value: PPAccessoryViewerOptionValue,
         status: PPAccessoryViewerOptionValueStatus
     )
 
+    @ViewBuilder
     var body: some View {
         let entries: [Entry] = option.values.map { value in
             (value: value, status: store.status(forOptionValue: value, inOption: option))
         }
         let rail = entries.filter { $0.status.belongsOnPrimaryRail }
-        let notOffered = entries
-            .filter { !$0.status.belongsOnPrimaryRail }
-            .map(\.value)
-        let shown = visibleEntries(in: rail)
 
-        return VStack(alignment: .leading, spacing: PPSpace.sm) {
-            axisHeader(actionable: rail.count)
-            selectedLine
-
-            if expanded, rail.count > 12 {
-                searchField
-            }
-
-            if shown.isEmpty {
-                emptyRail(hasAnyValue: !rail.isEmpty)
-            } else if dynamicTypeSize.isAccessibilitySize {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: PPSpace.xs) {
-                    ForEach(shown, id: \.value.id) { entry in
-                        choice(entry.value, status: entry.status)
-                    }
-                }
-                .opacity(railIsBusyElsewhere ? 0.55 : 1)
-                .animation(
-                    reduceMotion ? nil : .easeInOut(duration: 0.20),
-                    value: railIsBusyElsewhere
-                )
-            } else {
-                LazyVGrid(
-                    columns: columns,
-                    alignment: .leading,
-                    spacing: option.isColor ? PPSpace.md : PPSpace.sm
-                ) {
-                    ForEach(shown, id: \.value.id) { entry in
-                        choice(entry.value, status: entry.status)
-                    }
-                }
-                .opacity(railIsBusyElsewhere ? 0.55 : 1)
-                .animation(
-                    reduceMotion ? nil : .easeInOut(duration: 0.20),
-                    value: railIsBusyElsewhere
-                )
-            }
+                    Text(option.localizedName)
+                        .font(PPAccessoryTypography.calloutBold)
+                        .foregroundStyle(PPAccessoryPalette.ink)
+                        .accessibilityAddTraits(.isHeader)
 
-            footer(actionable: rail.count, notOffered: notOffered)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: PPSpace.sm) {
+                            ForEach(rail, id: \.value.id) { entry in
+                                choice(entry.value, status: entry.status)
+                            }
+                        }
+                        .padding(.horizontal, 2)
+                    }
+                }
+                .frame(minHeight: 48)
+            } else {
+                HStack(alignment: .center, spacing: PPSpace.md) {
+                    Text(option.localizedName)
+                        .font(PPAccessoryTypography.subheadlineBold)
+                        .foregroundStyle(PPAccessoryPalette.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .frame(minWidth: 44, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: PPSpace.sm) {
+                            if rail.isEmpty {
+                                emptyRail(hasAnyValue: !option.values.isEmpty)
+                            } else {
+                                ForEach(rail, id: \.value.id) { entry in
+                                    choice(entry.value, status: entry.status)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 2)
+                    }
+                }
+                .frame(height: 48)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .opacity(railIsBusyElsewhere ? 0.55 : 1)
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.20),
+            value: railIsBusyElsewhere
+        )
         .accessibilityElement(children: .contain)
-        .onChange(of: store.selectedOptions[option.id]) { _ in
-            query = ""
-            searchFocused = false
-        }
-    }
-
-    // MARK: Layout
-
-    private var columns: [GridItem] {
-        let minimum = option.isColor ? colorCellWidth : specCellWidth
-        let maximum = option.isColor
-            ? colorCellWidth * 1.9
-            : specCellWidth * (compact ? 2.0 : 2.4)
-
-        return [
-            GridItem(
-                .adaptive(minimum: minimum, maximum: maximum),
-                spacing: PPSpace.sm,
-                alignment: .topLeading
-            )
-        ]
     }
 
     private var selectedValue: PPAccessoryViewerOptionValue? {
         option.values.first { $0.id == store.selectedOptions[option.id] }
     }
 
-    /// A cart or checkout mutation owns the screen; the rail reads as temporarily
-    /// inert. A variant switch is deliberately excluded, because the tapped
-    /// control shows its own progress and must stay legible.
     private var railIsBusyElsewhere: Bool {
         store.cartPhase == .processing || store.isCheckoutProcessing
     }
 
-    /// Collapse and search operate on the buyable rail only.
-    private func visibleEntries(in rail: [Entry]) -> [Entry] {
-        let cleanQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if expanded, !cleanQuery.isEmpty {
-            return rail.filter { $0.value.matches(cleanQuery) }
-        }
-        guard !expanded, rail.count > 6 else { return rail }
-
-        var kept = Array(rail.prefix(6))
-        if let selectedValue,
-           !kept.contains(where: { $0.value.id == selectedValue.id }),
-           let selectedEntry = rail.first(where: { $0.value.id == selectedValue.id }) {
-            kept.removeLast()
-            kept.append(selectedEntry)
-        }
-        let ids = Set(kept.map(\.value.id))
-        return rail.filter { ids.contains($0.value.id) }
-    }
-
-    // MARK: Header
-
-    private func axisHeader(actionable: Int) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
-            Text(option.localizedName)
-                .font(PPAccessoryTypography.captionBold)
-                .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: PPSpace.xs)
-
-            availabilityChip(actionable: actionable)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    @ViewBuilder
-    private func availabilityChip(actionable: Int) -> some View {
-        let total = option.values.count
-
-        if total > actionable {
-            Text(
-                PPAccessoryViewerL10n.formatted(
-                    "accessory_view_options_axis_available_format",
-                    PPAccessoryViewerL10n.integer(actionable),
-                    PPAccessoryViewerL10n.integer(total)
-                )
-            )
-            .font(PPAccessoryTypography.caption2)
-            .foregroundStyle(PPAccessoryPalette.inkSecondary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-        } else if actionable == 1 {
-            Text(
-                PPAccessoryViewerL10n.text(
-                    "accessory_view_options_axis_single_choice"
-                )
-            )
-            .font(PPAccessoryTypography.caption2)
-            .foregroundStyle(PPAccessoryPalette.inkSecondary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-        }
-    }
-
-    @ViewBuilder
-    private var selectedLine: some View {
-        if let selectedValue {
-            HStack(alignment: .center, spacing: PPSpace.xs) {
-                if option.isColor, let swatch = selectedValue.swatchComponents {
-                    Circle()
-                        .fill(
-                            Color(
-                                red: swatch.red,
-                                green: swatch.green,
-                                blue: swatch.blue
-                            )
-                        )
-                        .frame(width: 11, height: 11)
-                        .overlay {
-                            Circle().strokeBorder(
-                                PPAccessoryPalette.ink.opacity(0.22),
-                                lineWidth: 0.5
-                            )
-                        }
-                        .accessibilityHidden(true)
-                }
-
-                Text(PPAccessoryViewerL10n.isolated(selectedValue.summaryName))
-                    .font(PPAccessoryTypography.bodyBold)
-                    .foregroundStyle(PPAccessoryPalette.ink)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            Text(
-                PPAccessoryViewerL10n.text(
-                    "accessory_view_options_axis_unresolved"
-                )
-            )
-            .font(PPAccessoryTypography.callout)
-            .foregroundStyle(PPAccessoryPalette.warning)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var searchField: some View {
-        TextField(
-            PPAccessoryViewerL10n.formatted(
-                "accessory_view_search_option_format",
-                option.localizedName
-            ),
-            text: $query
-        )
-        .font(PPAccessoryTypography.body)
-        .textFieldStyle(.roundedBorder)
-        .submitLabel(.search)
-        .autocorrectionDisabled()
-        .focused($searchFocused)
-        .onSubmit { searchFocused = false }
-    }
-
     @ViewBuilder
     private func emptyRail(hasAnyValue: Bool) -> some View {
-        Text(
-            PPAccessoryViewerL10n.text(
-                query.isEmpty
-                    ? "accessory_view_options_empty_axis"
-                    : "accessory_view_options_no_results"
-            )
-        )
-        .font(PPAccessoryTypography.callout)
-        .foregroundStyle(PPAccessoryPalette.inkSecondary)
-        .fixedSize(horizontal: false, vertical: true)
+        Text(PPAccessoryViewerL10n.text("accessory_view_options_empty_axis"))
+            .font(PPAccessoryTypography.caption)
+            .foregroundStyle(PPAccessoryPalette.inkSecondary)
 
-        if query.isEmpty, !hasAnyValue {
+        if !hasAnyValue {
             Button(PPAccessoryViewerL10n.text("accessory_view_colors_retry")) {
                 store.retryVariants()
-            }
-            .font(PPAccessoryTypography.calloutBold)
-            .foregroundStyle(PPAccessoryPalette.brand)
-            .frame(minHeight: 44)
-            .buttonStyle(.plain)
-            .disabled(!store.canChangeVariant)
-        }
-    }
-
-    // MARK: Footer
-
-    @ViewBuilder
-    private func footer(
-        actionable: Int,
-        notOffered: [PPAccessoryViewerOptionValue]
-    ) -> some View {
-        if !query.isEmpty {
-            Button(
-                PPAccessoryViewerL10n.text("accessory_view_options_clear_search")
-            ) {
-                query = ""
-                searchFocused = false
             }
             .font(PPAccessoryTypography.captionBold)
             .foregroundStyle(PPAccessoryPalette.brand)
             .frame(minHeight: 44)
             .buttonStyle(.plain)
+            .disabled(!store.canChangeVariant)
         }
-
-        if actionable > 6 {
-            Button {
-                searchFocused = false
-                query = ""
-                withAnimation(
-                    reduceMotion ? nil : .easeInOut(duration: 0.22)
-                ) {
-                    expanded.toggle()
-                }
-            } label: {
-                HStack(spacing: PPSpace.xs) {
-                    Text(
-                        expanded
-                            ? PPAccessoryViewerL10n.text(
-                                "accessory_view_options_show_less"
-                            )
-                            : PPAccessoryViewerL10n.formatted(
-                                "accessory_view_options_show_all_format",
-                                PPAccessoryViewerL10n.integer(actionable)
-                            )
-                    )
-                    .font(PPAccessoryTypography.captionBold)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .accessibilityHidden(true)
-                }
-                .frame(minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(PPAccessoryPalette.brand)
-            .accessibilityValue(
-                PPAccessoryViewerL10n.text(
-                    expanded
-                        ? "accessory_view_options_expanded"
-                        : "accessory_view_options_collapsed"
-                )
-            )
-        }
-
-        notOfferedDrawer(notOffered)
-    }
-
-    /// Values the seller configured but never sells. Kept visible for honesty,
-    /// kept inert because there is no product behind them.
-    @ViewBuilder
-    private func notOfferedDrawer(
-        _ values: [PPAccessoryViewerOptionValue]
-    ) -> some View {
-        if !values.isEmpty {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                Button {
-                    withAnimation(
-                        reduceMotion ? nil : .easeInOut(duration: 0.22)
-                    ) {
-                        showsNotOffered.toggle()
-                    }
-                } label: {
-                    HStack(spacing: PPSpace.xs) {
-                        Image(
-                            systemName: showsNotOffered
-                                ? "chevron.up"
-                                : "chevron.down"
-                        )
-                        .font(.system(size: 10, weight: .bold))
-                        .accessibilityHidden(true)
-
-                        Text(
-                            PPAccessoryViewerL10n.formatted(
-                                "accessory_view_options_not_offered_format",
-                                PPAccessoryViewerL10n.integer(values.count)
-                            )
-                        )
-                        .font(PPAccessoryTypography.caption)
-                        .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(minHeight: 44, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                .accessibilityValue(
-                    PPAccessoryViewerL10n.text(
-                        showsNotOffered
-                            ? "accessory_view_options_expanded"
-                            : "accessory_view_options_collapsed"
-                    )
-                )
-
-                if showsNotOffered {
-                    Text(
-                        PPAccessoryViewerL10n.text(
-                            "accessory_view_options_not_offered_caption"
-                        )
-                    )
-                    .font(PPAccessoryTypography.caption2)
-                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                    PPAccessoryChoiceFlowLayout(
-                        spacing: PPSpace.xs,
-                        rowSpacing: PPSpace.xs
-                    ) {
-                        ForEach(values) { value in
-                            ghostChip(value)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func ghostChip(
-        _ value: PPAccessoryViewerOptionValue
-    ) -> some View {
-        HStack(spacing: PPSpace.xs) {
-            if option.isColor, let swatch = value.swatchComponents {
-                Circle()
-                    .fill(
-                        Color(
-                            red: swatch.red,
-                            green: swatch.green,
-                            blue: swatch.blue
-                        )
-                    )
-                    .frame(width: 10, height: 10)
-                    .accessibilityHidden(true)
-            }
-
-            Text(PPAccessoryViewerL10n.isolated(value.summaryName))
-                .font(PPAccessoryTypography.caption)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .foregroundStyle(PPAccessoryPalette.inkSecondary.opacity(0.85))
-        .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, 6)
-        .overlay {
-            Capsule(style: .continuous).strokeBorder(
-                PPAccessorySubviewBackground.faintStroke,
-                style: StrokeStyle(lineWidth: 1, dash: [3, 3])
-            )
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            accessibilityLabel(for: value, status: .notOffered)
-        )
     }
 
     // MARK: Choice control
@@ -5438,44 +4954,14 @@ private struct PPAccessoryOptionGroup: View {
         let isEnabled = store.canChangeVariant && status.isActionable
 
         return Button {
-            searchFocused = false
             store.selectOptionValue(optionId: option.id, valueId: value.id)
         } label: {
-            if dynamicTypeSize.isAccessibilitySize {
-                PPAccessoryOptionChoiceLabel(
-                    title: PPAccessoryViewerL10n.isolated(value.displayName),
-                    detail: detailText(for: status),
-                    unit: value.unitLabel,
-                    swatch: option.isColor ? value.swatchComponents : nil,
-                    selected: isSelected,
-                    pending: isPending,
-                    unavailable: status == .notOffered,
-                    adjusts: status == .incompatible
-                )
-            } else if option.isColor, let swatch = value.swatchComponents {
-                PPAccessoryOptionGemCell(
-                    value: value,
-                    swatch: swatch,
-                    status: status,
-                    pending: isPending,
-                    // A colour cell is small; the ring badge already states that
-                    // the value lives in another combination, so only stock text
-                    // earns a caption under the sample.
-                    detail: status == .outOfStock
-                        ? detailText(for: status)
-                        : nil
-                )
-            } else {
-                PPAccessoryOptionSpecTile(
-                    value: value,
-                    status: status,
-                    pending: isPending,
-                    detail: detailText(for: status)
-                )
-            }
+            chip(value: value, status: status, isSelected: isSelected, isPending: isPending)
         }
         .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.97))
         .disabled(!isEnabled)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
         .accessibilityLabel(accessibilityLabel(for: value, status: status))
         .accessibilityValue(
             accessibilityValue(for: status, pending: isPending)
@@ -5485,6 +4971,99 @@ private struct PPAccessoryOptionGroup: View {
         .accessibilityIdentifier(
             "pp.accessory.option.\(option.id).\(value.id)"
         )
+    }
+
+    @ViewBuilder
+    private func chip(
+        value: PPAccessoryViewerOptionValue,
+        status: PPAccessoryViewerOptionValueStatus,
+        isSelected: Bool,
+        isPending: Bool
+    ) -> some View {
+        let isColor = option.isColor && value.swatchComponents != nil
+        let shape = RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+
+        HStack(spacing: PPSpace.xs) {
+            if isColor, let swatch = value.swatchComponents {
+                Circle()
+                    .fill(Color(red: swatch.red, green: swatch.green, blue: swatch.blue))
+                    .frame(width: 16, height: 16)
+                    .overlay {
+                        Circle().strokeBorder(
+                            PPAccessoryPalette.ink.opacity(0.18),
+                            lineWidth: 0.5
+                        )
+                    }
+                    .accessibilityHidden(true)
+            }
+
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(PPAccessoryPalette.brand)
+                    .accessibilityHidden(true)
+            } else if isPending {
+                ProgressView()
+                    .controlSize(.mini)
+                    .tint(PPAccessoryPalette.brand)
+            }
+
+            Text(PPAccessoryViewerL10n.isolated(value.displayName))
+                .font(
+                    isSelected
+                        ? PPAccessoryTypography.captionBold
+                        : PPAccessoryTypography.caption
+                )
+                .foregroundStyle(
+                    status == .notOffered
+                        ? PPAccessoryPalette.inkSecondary
+                        : (isSelected
+                            ? PPAccessoryPalette.brand
+                            : PPAccessoryPalette.ink)
+                )
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+
+            if let unit = value.unitLabel {
+                Text(PPAccessoryViewerL10n.isolated(unit))
+                    .font(PPAccessoryTypography.caption2)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .lineLimit(1)
+            }
+
+            if let detail = detailText(for: status) {
+                Text(detail)
+                    .font(PPAccessoryTypography.caption2)
+                    .foregroundStyle(
+                        status == .outOfStock
+                            ? PPAccessoryPalette.warning
+                            : PPAccessoryPalette.inkSecondary
+                    )
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .frame(height: 36)
+        .background(
+            isSelected
+                ? PPAccessoryPalette.brand.opacity(colorSchemeContrast == .increased ? 0.20 : 0.10)
+                : PPAccessorySubviewBackground.quietFill,
+            in: shape
+        )
+        .overlay {
+            shape.strokeBorder(
+                isSelected
+                    ? PPAccessoryPalette.brand
+                    : (status == .incompatible
+                        ? PPAccessoryPalette.warning.opacity(0.6)
+                        : PPAccessorySubviewBackground.faintStroke),
+                style: StrokeStyle(
+                    lineWidth: isSelected ? 1.5 : 1.0,
+                    dash: status == .incompatible ? [3, 2] : []
+                )
+            )
+        }
+        .opacity(status == .notOffered ? 0.50 : 1.0)
     }
 
     /// Short consequence text shown on the control itself, so the customer learns

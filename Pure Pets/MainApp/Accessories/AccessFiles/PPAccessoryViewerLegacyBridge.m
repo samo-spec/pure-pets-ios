@@ -529,6 +529,10 @@ static UIViewController *PPAccessoryResolvedPresenter(
         return;
     }
 
+    // Restored variant lines may have no session stock hint, and non-default
+    // variants need not exist in the catalogue list cache. The selected product
+    // was resolved by the viewer; give CartManager that same per-product ceiling.
+    item.stockQuantity = accessory.isPurchasable ? MAX(accessory.quantity, 0) : 0;
     [cartManager updateQuantity:requestedQuantity
                          forItem:item
                       completion:^(BOOL succeeded) {
@@ -1112,6 +1116,7 @@ static UIViewController *PPAccessoryResolvedPresenter(
         PPAccessoryResolvedPresenter(viewController);
     CartManager *cartManager = CartManager.sharedManager;
 
+    __block NSInteger quantityBeforeCommit = existing;
     void (^handleAddResult)(BOOL, BOOL) =
         ^(BOOL didAdd, BOOL didCancel) {
         if (didCancel) {
@@ -1125,22 +1130,26 @@ static UIViewController *PPAccessoryResolvedPresenter(
             return;
         }
 
+        // CartManager can clamp again against a fresher/lower catalogue ceiling.
+        // Report the selected line's actual local change, never the requested
+        // amount as though it were committed. This is not a server sync receipt.
+        NSInteger confirmedQuantity =
+            [cartManager quantityForAccessory:accessory];
+        NSInteger actualAddedQuantity = MAX(0, confirmedQuantity - quantityBeforeCommit);
+
         [PPAnalytics logAddToCartItemID:accessory.accessoryID
                                    name:accessory.name
                                category:[NSString stringWithFormat:
                                          @"acc-%ld",
                                          (long)accessory.petMainCategoryID]
                                   price:accessory.finalPrice.doubleValue
-                               quantity:safeQuantity];
+                               quantity:actualAddedQuantity];
 
-        NSString *message = safeQuantity < requested
-            ? [NSString stringWithFormat:@"%@ %ld %@",
-               [self localizedTextForKey:@"Only" fallback:@"Only"],
-               (long)available,
-               [self localizedTextForKey:@"left in stock"
-                                fallback:@"left in stock"]]
-            : [self localizedTextForKey:@"ItemAddedToYourCart"
-                               fallback:@"Item added to your cart."];
+        NSString *message = [NSString stringWithFormat:
+            [self localizedTextForKey:@"accessory_view_added_quantity_format"
+                             fallback:@"Added %@"],
+            [NSNumberFormatter localizedStringFromNumber:@(actualAddedQuantity)
+                                             numberStyle:NSNumberFormatterDecimalStyle]];
         if (showsSuccessToast) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [PPAddToCartSuccessToast showWithTitle:
@@ -1156,10 +1165,11 @@ static UIViewController *PPAccessoryResolvedPresenter(
         }
         [PPCommerceFeedbackManager.shared
          playEvent:PPCommerceFeedbackEventCartQuantityChanged];
-        finish(PPAccessoryCartResultCodeSuccess, safeQuantity);
+        finish(PPAccessoryCartResultCodeSuccess, actualAddedQuantity);
     };
 
     void (^commitPreparedItem)(void) = ^{
+        quantityBeforeCommit = [cartManager quantityForAccessory:accessory];
         if (waitsForConfirmedSync) {
             [cartManager addItemAndWaitForSync:item
                                     completion:^(BOOL succeeded) {

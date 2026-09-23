@@ -45,6 +45,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL hasVariants;
 @property (nonatomic, copy, nullable) NSString *variantInfoText;
 @property (nonatomic, copy, nullable) NSString *variantInfoIconName;
+/// YES when this card stands for a variant family rather than a single sellable
+/// unit, so a quantity cannot be committed until the customer resolves which
+/// variant they mean. The card routes its add-to-cart action to the variant
+/// picker instead of mutating the cart with the family's default document.
+@property (nonatomic, assign) BOOL requiresVariantSelection;
 @property (nonatomic, assign, getter=isSkeleton) BOOL skeleton;
 
 - (instancetype)initWithModel:(nullable id)model

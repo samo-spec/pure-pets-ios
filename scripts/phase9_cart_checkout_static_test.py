@@ -76,7 +76,10 @@ def main():
         r'dict\[@"sellableUnitId"\]\s*=\s*self\.sellableUnitId',
         r'dict\[@"variantCombinationKey"\]\s*=\s*self\.variantCombinationKey',
         r'dict\[@"optionsSummary"\]\s*=\s*self\.optionsSummary',
-        r'_sellableUnitId\s*=\s*dict\[@"sellableUnitId"\]\s*\?:\s*_itemID;'
+        # Dictionary hydration validates optional strings before falling back to
+        # the legacy product id; NSNull must not become a sellable identifier.
+        r'_sellableUnitId\s*=\s*PPCartItemString\(dict\[@"sellableUnitId"\]\);',
+        r'if\s*\(_sellableUnitId\.length\s*==\s*0\)\s*\{\s*_sellableUnitId\s*=\s*_itemID;'
     ], "CartItem.m variant mapping and serialization"):
         failures += 1
 

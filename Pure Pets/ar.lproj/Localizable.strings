@@ -5355,3 +5355,7 @@
 "accessory_view_dock_max_reached" = "هذه كل الكمية المتاحة حالياً.";
 "accessory_view_dock_commit_hint" = "يضيف الكمية المختارة إلى سلتك.";
 "accessory_view_dock_cart_hint" = "يفتح سلتك لمراجعة الطلب وإتمام الدفع.";
+
+/* Universal product card — selected variant cart */
+"universal_variant_cart_quantity_format" = "%@ في السلة لهذا الخيار";
+"universal_variant_options_hint" = "اختر الخيار المناسب، ثم حدّد كميته في السلة.";

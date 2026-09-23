@@ -192,6 +192,9 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
     public var hasVariants: Bool
     public var variantInfoText: String?
     public var variantInfoIconName: String?
+    /// The card stands for a variant family, so no quantity can be committed from
+    /// the card itself. The primary action resolves a variant first.
+    public var requiresVariantSelection: Bool
 
     public init(
         id: String,
@@ -223,7 +226,8 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         preferredAspectRatio: CGFloat = 0.82,
         hasVariants: Bool = false,
         variantInfoText: String? = nil,
-        variantInfoIconName: String? = nil
+        variantInfoIconName: String? = nil,
+        requiresVariantSelection: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -255,6 +259,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         self.hasVariants = hasVariants
         self.variantInfoText = variantInfoText
         self.variantInfoIconName = variantInfoIconName
+        self.requiresVariantSelection = requiresVariantSelection
     }
 }
 
@@ -942,7 +947,11 @@ private struct PPUniversalLegacyCardSnapshot {
             }(),
             hasVariants: viewModel.hasVariants,
             variantInfoText: viewModel.variantInfoText,
-            variantInfoIconName: viewModel.variantInfoIconName
+            variantInfoIconName: viewModel.variantInfoIconName,
+            requiresVariantSelection:
+                PPUniversalCellSwiftUIBridge.requiresVariantSelection(
+                    for: viewModel
+                )
         )
         self.context = resolvedContext
         self.layout = resolvedLayout
@@ -1071,6 +1080,11 @@ private enum PPUniversalAnimatedCartError: Error {
     case mutationRejected
 }
 
+private struct PPUniversalVariantSelection: Identifiable {
+    let id = UUID()
+    let accessory: PetAccessory
+}
+
 private final class PPUniversalUIKitReferences {
     weak var imageView: UIImageView?
     weak var imageContainer: PPUniversalGradientView?
@@ -1100,6 +1114,7 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var showsOwnerRow = false
     @Published var isContextFocused = false
     @Published var isSavedForLater = false
+    @Published var variantSelection: PPUniversalVariantSelection?
 
     let borderMode: PPUniversalCardBorderMode
     let palette: PPUniversalCardPalette
@@ -1365,14 +1380,20 @@ private final class PPUniversalCardStore: ObservableObject {
             }(),
             hasVariants: viewModel.hasVariants,
             variantInfoText: viewModel.variantInfoText,
-            variantInfoIconName: viewModel.variantInfoIconName
+            variantInfoIconName: viewModel.variantInfoIconName,
+            requiresVariantSelection:
+                PPUniversalCellSwiftUIBridge.requiresVariantSelection(
+                    for: viewModel
+                )
         )
         refreshSavedForLaterState()
 
         if stableID != previousID {
             resetTransientState(quantity: cartQuantity)
         } else {
-            quantity = min(max(0, cartQuantity), stock ?? Int.max)
+            quantity = model.requiresVariantSelection
+                ? max(0, cartQuantity)
+                : min(max(0, cartQuantity), stock ?? Int.max)
         }
 
         if isAdLike && resolvedLayout == .pinterest {
@@ -1549,7 +1570,7 @@ private final class PPUniversalCardStore: ObservableObject {
         }
 
         if model.usesQuantityControl &&
-            !isOutOfStock &&
+            (requiresVariantSelection || !isOutOfStock) &&
             delegateResponds(
                 to: "PPUniversalCell_changeQuantity:quantity:"
             ) {
@@ -1699,6 +1720,7 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     func handlePrimaryAction() {
+        guard !model.isSkeleton else { return }
         if context == .savedForLater {
             if let viewModel = viewModel {
                 delegate?.ppUniversalCell_tapMove?(toCart: viewModel)
@@ -1711,6 +1733,14 @@ private final class PPUniversalCardStore: ObservableObject {
             return
         }
         guard requireAuthentication() else {
+            return
+        }
+        if requiresVariantSelection {
+            // A family card has no single sellable target. Committing a quantity
+            // here would silently buy the family's default document, so the
+            // customer resolves the variant first and the write happens against
+            // that variant's own product document.
+            presentVariantSelection()
             return
         }
         if isOutOfStock {
@@ -1732,6 +1762,13 @@ private final class PPUniversalCardStore: ObservableObject {
         let itemID = model.id
 
         guard requireAuthentication() else {
+            throw CancellationError()
+        }
+        guard !requiresVariantSelection else {
+            // Defence in depth: the renderer never shows the animated control for a
+            // family card, but a stray caller must not be able to commit a quantity
+            // against an unresolved variant.
+            presentVariantSelection()
             throw CancellationError()
         }
         guard model.usesQuantityControl,
@@ -1762,6 +1799,10 @@ private final class PPUniversalCardStore: ObservableObject {
         guard requireAuthentication() else {
             return
         }
+        guard !requiresVariantSelection else {
+            presentVariantSelection()
+            return
+        }
         setQuantity(quantity + delta, animated: true, notifyDelegate: true)
         restartCollapseTimer()
     }
@@ -1771,7 +1812,13 @@ private final class PPUniversalCardStore: ObservableObject {
         animated: Bool,
         notifyDelegate: Bool
     ) {
-        let clamped = min(max(0, proposedQuantity), model.stock ?? Int.max)
+        if notifyDelegate && requiresVariantSelection {
+            presentVariantSelection()
+            return
+        }
+        let clamped = model.requiresVariantSelection
+            ? max(0, proposedQuantity)
+            : min(max(0, proposedQuantity), model.stock ?? Int.max)
         guard clamped != quantity else {
             return
         }
@@ -1881,7 +1928,25 @@ private final class PPUniversalCardStore: ObservableObject {
         return stock <= 0
     }
 
+    var requiresVariantSelection: Bool {
+        // Saved-for-later records already refer to an explicitly saved product;
+        // their existing move/remove contract remains owned by that route.
+        model.requiresVariantSelection && context != .savedForLater
+    }
+
+    private func presentVariantSelection() {
+        guard variantSelection == nil else { return }
+        guard let viewModel,
+              let accessory = PPUniversalCellSwiftUIBridge.accessory(for: viewModel) else {
+            tapCard()
+            return
+        }
+        collapseStepper(animated: false)
+        variantSelection = PPUniversalVariantSelection(accessory: accessory)
+    }
+
     var canIncreaseQuantity: Bool {
+        guard !requiresVariantSelection else { return false }
         // F-22: this failed *open* — `?? true` let a customer keep incrementing when
         // the ceiling was unknown. An unknown ceiling must not authorise more.
         //
@@ -1977,6 +2042,7 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     private func resetTransientState(quantity: Int) {
+        variantSelection = nil
         collapseTask?.cancel()
         collapseTask = nil
         stopMediaPlayback()
@@ -2200,6 +2266,13 @@ private struct PPUniversalCardRenderer: View {
         )
         .onDisappear {
             store.collapseStepperAfterDisappearance()
+        }
+        .sheet(item: $store.variantSelection, onDismiss: {
+            store.refreshCartQuantity()
+        }) { selection in
+            PPUniversalVariantPicker(accessory: selection.accessory)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .onAppear {
             if store.showsOwnerRow {
@@ -3208,7 +3281,9 @@ private struct PPUniversalCardRenderer: View {
 
     @ViewBuilder
     private var primaryAction: some View {
-        if store.model.usesQuantityControl && !store.isOutOfStock {
+        if store.context != .savedForLater &&
+            store.model.usesQuantityControl && !store.isOutOfStock &&
+            !store.requiresVariantSelection {
             animatedCartAction
         } else {
             standardPrimaryAction
@@ -3337,6 +3412,8 @@ private struct PPUniversalCardRenderer: View {
         .buttonStyle(PPUniversalScaleButtonStyle())
         .disabled(store.isNotifyInFlight)
         .accessibilityLabel(primaryActionTitle)
+        .accessibilityHint(store.requiresVariantSelection
+            ? PPAccessoryViewerL10n.text("accessory_view_options_title") : "")
     }
 
     private func cartQuantityAccessibilityValue(
@@ -4132,6 +4209,11 @@ private struct PPUniversalCardRenderer: View {
                 fallback: "Details"
             )
         }
+        if store.requiresVariantSelection {
+            return store.quantity > 0
+                ? "\(PPUniversalCardStore.localized("InCart", fallback: "In cart")) • \(PPAccessoryViewerL10n.integer(store.quantity))"
+                : PPUniversalCardStore.localized("addToCart", fallback: "Add to cart")
+        }
         if store.isOutOfStock {
             if store.isNotifyInFlight {
                 return PPUniversalCardStore.localized(
@@ -4168,6 +4250,9 @@ private struct PPUniversalCardRenderer: View {
                 return "chevron.forward"
             }
             return store.isRightToLeft ? "arrow.up.left" : "arrow.up.right"
+        }
+        if store.requiresVariantSelection {
+            return store.quantity > 0 ? "cart.fill" : "cart.badge.plus"
         }
         if store.isOutOfStock {
             return store.notifySucceeded

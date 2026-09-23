@@ -49,6 +49,36 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
     return [NSString stringWithFormat:@"%.2f", value];
 }
 
+/// A product that belongs to `ProductFamilies/{familyId}`: one of several
+/// sellable `petAccessories` documents presented behind a single parent listing.
+static BOOL PPUniversalAccessoryBelongsToVariantFamily(PetAccessory *accessory)
+{
+    return accessory.productFamilyId.length > 0;
+}
+
+/// Units of any variant of this family already in the cart.
+///
+/// Read-only. Each variant is its own cart line keyed by its own product id, so
+/// a family card cannot report a single line's count without lying about the
+/// others.
+static NSInteger PPUniversalFamilyCartQuantity(PetAccessory *accessory)
+{
+    NSString *productFamilyID = accessory.productFamilyId;
+    if (productFamilyID.length == 0) {
+        return 0;
+    }
+    NSInteger total = 0;
+    for (CartItem *item in CartManager.sharedManager.cartItems) {
+        // The product-id branch also includes an older cart line saved before
+        // family metadata was introduced, without counting that line twice.
+        if ([item.productFamilyId isEqualToString:productFamilyID] ||
+            [item.itemID isEqualToString:accessory.accessoryID]) {
+            total += MAX(item.quantity, 0);
+        }
+    }
+    return total;
+}
+
 @implementation PPCornerBlurView
 
 - (void)layoutSubviews
@@ -213,8 +243,16 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
 {
     NSInteger quantity = 0;
     if ([self isAccessoryViewModel:viewModel]) {
-        quantity = [CartManager.sharedManager
-                    quantityForAccessory:(PetAccessory *)viewModel.ModelObject];
+        PetAccessory *accessory = (PetAccessory *)viewModel.ModelObject;
+        if (PPUniversalAccessoryBelongsToVariantFamily(accessory)) {
+            // Every variant is its own cart line, so the family card reports the
+            // total it is responsible for rather than one sibling's count.
+            // Cart intent remains truthful even if availability has since fallen.
+            // No family aggregate is a ceiling for any individual variant.
+            return PPUniversalFamilyCartQuantity(accessory);
+        } else {
+            quantity = [CartManager.sharedManager quantityForAccessory:accessory];
+        }
     }
     if (quantity <= 0) {
         NSString *itemID = PPUniversalSwiftUIItemIdentifier(viewModel);
@@ -463,6 +501,22 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
 + (NSString *)variantInfoIconForViewModel:(PPUniversalCellViewModel *)viewModel
 {
     return viewModel.variantInfoIconName;
+}
+
++ (BOOL)requiresVariantSelectionForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    if (![self usesQuantityControlForViewModel:viewModel]) {
+        return NO;
+    }
+    return viewModel.requiresVariantSelection;
+}
+
++ (PetAccessory *)accessoryForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    if (![self isAccessoryViewModel:viewModel]) {
+        return nil;
+    }
+    return (PetAccessory *)viewModel.ModelObject;
 }
 
 + (void)registerStockNotificationForViewModel:(PPUniversalCellViewModel *)viewModel
