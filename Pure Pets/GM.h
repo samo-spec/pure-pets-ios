@@ -186,6 +186,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)formatPrice:(id)price
              currencyCode:(NSString * _Nullable)currencyCode
                 freeLabel:(NSString * _Nullable)freeLabel;
+/// Parses a user-entered monetary amount without truncating cents.
+/// Accepts Latin/Arabic/Farsi digits and common decimal separators; max 2 fraction digits.
++ (NSNumber * _Nullable)moneyNumberFromInput:(id _Nullable)value;
 
 
 

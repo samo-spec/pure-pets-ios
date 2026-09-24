@@ -642,7 +642,7 @@ static UIImage *PPPetCareVetSymbol(NSString *name, CGFloat pointSize, UIImageSym
     
     NSString *contactText;
     if (vet.vetCost > 0) {
-        contactText = [NSString stringWithFormat:@"%.0f %@", vet.vetCost, PPPetCareLocalized(@"QAR", @"ر.ق")];
+        contactText = [NSString stringWithFormat:@"%.2f %@", vet.vetCost, PPPetCareLocalized(@"QAR", @"ر.ق")];
     } else if (canContact) {
         contactText = PPPetCareLocalized(@"pet_care_vet_contact_ready", @"Contact ready");
     } else {

@@ -798,6 +798,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
                                                                 title:[self pp_localizedStringForKey:@"form_price_title" fallback:@"Price"]
                                                           placeholder:[self pp_localizedStringForKey:@"form_price_placeholder" fallback:@"Enter price"]
                                                             inputType:PPFormInputTypeNumber];
+    price.keyboardType = UIKeyboardTypeDecimalPad;
     price.value = (self.draftPrice && [self.draftPrice doubleValue] > 0.0) ? [self.draftPrice stringValue] : @"";
     price.required = YES;
     price.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
@@ -906,12 +907,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 }
 
 - (NSNumber *)pp_numberFromValue:(id)value {
-    if ([value isKindOfClass:[NSNumber class]]) return value;
-    if ([value isKindOfClass:[NSString class]]) {
-        NSString *t = [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        return t.length == 0 ? nil : @([t doubleValue]);
-    }
-    return nil;
+    return [GM moneyNumberFromInput:value];
 }
 
 - (void)pp_syncModelFromDraftProperties {

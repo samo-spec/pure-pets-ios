@@ -221,6 +221,16 @@ enum PPAccessoryTypography {
         size: 17,
         relativeTo: .body
     )
+    static let subheadline = Font.custom(
+        "Beiruti-Regular",
+        size: 16,
+        relativeTo: .subheadline
+    )
+    static let subheadlineBold = Font.custom(
+        "Beiruti-Bold",
+        size: 16,
+        relativeTo: .subheadline
+    )
     static let callout = Font.custom(
         "Beiruti-Regular",
         size: 15,
@@ -1005,7 +1015,7 @@ struct PPAccessoryProductIdentity: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 2)
         .padding(.top, compact ? 6 : 10)
-        .padding(.bottom, compact ? 16 : 20)
+        .padding(.bottom, compact ? 2 : 6)
         .overlay(alignment: .topTrailing) {
             favoriteButton
         }
@@ -1784,16 +1794,16 @@ private extension PPAccessoryViewerDetailTone {
 struct PPAccessoryDetailRail: View {
     let details: [PPAccessoryViewerDetailItem]
     let compactColumns: Bool
+    var stockQuantity: Int? = nil
 
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
 
+    @State private var selectedDetailId: String? = nil
     @State private var appeared = false
-    @ScaledMetric(relativeTo: .body) private var gemWidth: CGFloat = 128
-    @ScaledMetric(relativeTo: .body) private var gemIconFrame: CGFloat = 36
-    @ScaledMetric(relativeTo: .body) private var gemIconSize: CGFloat = 17
 
     private let interCardSpacing: CGFloat = PPSpace.sm
     private let railInset: CGFloat = PPSpace.base
@@ -1813,7 +1823,22 @@ struct PPAccessoryDetailRail: View {
             } else {
                 scrollingRail
             }
+
+            if let selectedDetail = railDetails.first(where: { $0.id == selectedDetailId }) {
+                specInsightBanner(selectedDetail)
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)),
+                                removal: .opacity
+                            )
+                    )
+            } else if !railDetails.isEmpty {
+                explorationHint
+            }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.82), value: selectedDetailId)
         .onAppear {
             if reduceMotion {
                 appeared = true
@@ -1836,48 +1861,75 @@ struct PPAccessoryDetailRail: View {
     // MARK: - Section Header
 
     private var sectionHeader: some View {
-        HStack(spacing: PPSpace.sm) {
-            Image(systemName: "list.bullet.rectangle.portrait.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(PPAccessoryPalette.brand)
-                .frame(width: PPSpace.xxl, height: PPSpace.xxl)
-                .background(
-                    PPAccessoryPalette.brand.opacity(
-                        colorSchemeContrast == .increased ? 0.18 : 0.10
-                    ),
-                    in: RoundedRectangle(
-                        cornerRadius: 9,
-                        style: .continuous
+        HStack(alignment: .center, spacing: PPSpace.sm + 2) {
+            // Illuminated Spec Emblem
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.22 : 0.12),
+                                PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.10 : 0.05)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .accessibilityHidden(true)
+                    .frame(width: 36, height: 36)
+                    .overlay {
+                        Circle()
+                            .strokeBorder(
+                                PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.35 : 0.18),
+                                lineWidth: 0.75
+                            )
+                    }
 
-            Text(PPAccessoryViewerL10n.text("accessory_view_details_title"))
-                .font(PPAccessoryTypography.headline)
-                .foregroundStyle(PPAccessoryPalette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(PPAccessoryPalette.brand)
+            }
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(PPAccessoryViewerL10n.text("accessory_view_details_title"))
+                    .font(PPAccessoryTypography.headline)
+                    .foregroundStyle(PPAccessoryPalette.ink)
+                    .accessibilityAddTraits(.isHeader)
+
+                Text(PPAccessoryViewerL10n.text("accessory_view_details_subtitle"))
+                    .font(PPAccessoryTypography.caption2)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+            }
 
             Spacer(minLength: PPSpace.sm)
 
-            if railDetails.count > 4 {
-                countBadge
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
+            // Certified Trust Pill
+            HStack(spacing: 5) {
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(PPAccessoryPalette.success)
 
-    private var countBadge: some View {
-        Text(PPAccessoryViewerL10n.integer(railDetails.count))
-            .font(PPAccessoryTypography.captionBold)
-            .foregroundStyle(PPAccessoryPalette.inkSecondary)
-            .padding(.horizontal, PPSpace.sm)
-            .padding(.vertical, 3)
+                Text(PPAccessoryViewerL10n.text("accessory_view_details_verified_pill"))
+                    .font(PPAccessoryTypography.captionBold)
+                    .foregroundStyle(PPAccessoryPalette.ink)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
             .background(
-                PPAccessorySubviewBackground.quietFill,
-                in: Capsule(style: .continuous)
+                Capsule(style: .continuous)
+                    .fill(
+                        PPAccessoryPalette.success.opacity(colorScheme == .dark ? 0.18 : 0.08)
+                    )
             )
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        PPAccessoryPalette.success.opacity(colorScheme == .dark ? 0.32 : 0.18),
+                        lineWidth: 0.75
+                    )
+            }
+            .accessibilityElement(children: .combine)
+        }
     }
 
     // MARK: - Fill-Width Layout
@@ -1902,7 +1954,7 @@ struct PPAccessoryDetailRail: View {
                     railCardList(fillsWidth: false)
                 }
                 .padding(.horizontal, railInset)
-                .padding(.vertical, 2)
+                .padding(.vertical, 4)
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.viewAligned)
@@ -1912,7 +1964,7 @@ struct PPAccessoryDetailRail: View {
                     railCardList(fillsWidth: false)
                 }
                 .padding(.horizontal, railInset)
-                .padding(.vertical, 2)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -1923,16 +1975,90 @@ struct PPAccessoryDetailRail: View {
         }
     }
 
-    // MARK: - Accessibility Layout
+    // MARK: - Exploration Hint
 
-    private var accessibilityList: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-            ForEach(Array(railDetails.enumerated()), id: \.element.id) { index, detail in
-                gemCard(detail, index: index, fillsWidth: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+    private var explorationHint: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "hand.tap.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(PPAccessoryPalette.inkSecondary.opacity(0.65))
+
+            Text(PPAccessoryViewerL10n.text("accessory_view_details_tap_hint"))
+                .font(PPAccessoryTypography.caption2)
+                .foregroundStyle(PPAccessoryPalette.inkSecondary.opacity(0.65))
+
+            Spacer()
         }
-        .accessibilityElement(children: .contain)
+        .padding(.horizontal, 4)
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Interactive Spec Insight Banner
+
+    private func specInsightBanner(_ detail: PPAccessoryViewerDetailItem) -> some View {
+        let accent = detail.tone.accessoryAccentColor
+        let isDark = colorScheme == .dark
+
+        return HStack(alignment: .top, spacing: PPSpace.sm + 2) {
+            ZStack {
+                Circle()
+                    .fill(accent.opacity(isDark ? 0.24 : 0.12))
+                    .frame(width: 32, height: 32)
+                    .overlay {
+                        Circle()
+                            .strokeBorder(accent.opacity(isDark ? 0.40 : 0.22), lineWidth: 0.75)
+                    }
+
+                detailIconView(detail, accent: accent, size: 14)
+            }
+            .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(insightTitle(for: detail))
+                    .font(PPAccessoryTypography.captionBold)
+                    .foregroundStyle(PPAccessoryPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(insightDescription(for: detail))
+                    .font(PPAccessoryTypography.caption2)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(2)
+            }
+
+            Spacer(minLength: PPSpace.xs)
+
+            Button {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.20)) {
+                    selectedDetailId = nil
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .padding(6)
+                    .background(
+                        Circle()
+                            .fill(PPAccessoryPalette.ink.opacity(isDark ? 0.15 : 0.06))
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(PPAccessoryViewerL10n.text("close"))
+        }
+        .padding(PPSpace.md)
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(
+                    accent.opacity(isDark ? 0.12 : 0.05)
+                )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .strokeBorder(
+                    accent.opacity(isDark ? 0.32 : 0.18),
+                    lineWidth: 0.8
+                )
+        }
     }
 
     // MARK: - Detail Gem Card
@@ -1942,76 +2068,131 @@ struct PPAccessoryDetailRail: View {
         index: Int,
         fillsWidth: Bool
     ) -> some View {
+        let isSelected = selectedDetailId == detail.id
         let accent = detail.tone.accessoryAccentColor
+        let isDark = colorScheme == .dark
 
-        return VStack(spacing: 7) {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius: 8,
-                    style: .continuous
-                )
-                .fill(
-                    accent.opacity(
-                        colorSchemeContrast == .increased ? 0.18 : 0.10
-                    )
-                )
-                .frame(
-                    width: gemIconFrame,
-                    height: gemIconFrame
-                )
-
-                detailIconView(detail, accent: accent)
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82)) {
+                if selectedDetailId == detail.id {
+                    selectedDetailId = nil
+                } else {
+                    selectedDetailId = detail.id
+                }
             }
-            .padding(.top, 2)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                // Top row: Gem Icon + Semantic Status Beacon
+                HStack(alignment: .center, spacing: PPSpace.xs) {
+                    // Sculpted Gem Icon Container
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        accent.opacity(isDark ? 0.22 : 0.12),
+                                        accent.opacity(isDark ? 0.12 : 0.06)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(accent.opacity(isDark ? 0.35 : 0.20), lineWidth: 0.65)
+                            }
 
-            Text(detail.value)
-                .font(PPAccessoryTypography.bodyBold)
-                .foregroundStyle(PPAccessoryPalette.ink)
-                .lineLimit(fillsWidth ? 3 : 2)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
+                        detailIconView(detail, accent: accent, size: 15)
+                    }
 
-            Text(detail.title)
-                .font(PPAccessoryTypography.caption)
-                .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                .lineLimit(1)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, 2)
+                    Spacer(minLength: 2)
+
+                    // Semantic Status Beacon
+                    specStatusBeacon(detail: detail, accent: accent)
+                }
+
+                Spacer(minLength: PPSpace.sm)
+
+                // Value and Title Stack
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(detail.value)
+                        .font(PPAccessoryTypography.headline)
+                        .foregroundStyle(PPAccessoryPalette.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.80)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(detail.title)
+                        .font(PPAccessoryTypography.caption)
+                        .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Spacer(minLength: PPSpace.sm)
+
+                // Bottom Intelligent Indicator
+                specBottomDescriptor(detail: detail, accent: accent)
+            }
+            .padding(.horizontal, PPSpace.sm + 2)
+            .padding(.vertical, PPSpace.md)
+            .frame(
+                width: fillsWidth ? nil : 124,
+                height: 122,
+                alignment: .topLeading
+            )
+            .background(
+                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    .fill(
+                        isSelected
+                            ? (isDark ? Color.ppElevatedSurface : Color.ppForeground)
+                            : (isDark ? Color.ppElevatedSurface.opacity(0.85) : Color.ppForeground)
+                    )
+            )
+            .overlay {
+                // Outer stroke
+                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    .strokeBorder(
+                        isSelected
+                            ? accent.opacity(isDark ? 0.90 : 0.75)
+                            : (colorSchemeContrast == .increased
+                                ? accent.opacity(0.40)
+                                : accent.opacity(isDark ? 0.22 : 0.12)),
+                        lineWidth: isSelected ? 1.5 : (colorSchemeContrast == .increased ? 1.0 : 0.65)
+                    )
+            }
+            .overlay(alignment: .top) {
+                // Subtle top specular highlight filament
+                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(isSelected ? 0.70 : 0.35),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.0
+                    )
+                    .padding(0.5)
+                    .allowsHitTesting(false)
+            }
+            .shadow(
+                color: isSelected
+                    ? accent.opacity(isDark ? 0.25 : 0.12)
+                    : Color.black.opacity(isDark ? 0.16 : 0.04),
+                radius: isSelected ? 10 : 6,
+                y: isSelected ? 4 : 2
+            )
         }
-        .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, PPSpace.md)
-        .frame(
-            width: fillsWidth ? nil : gemWidth,
-            alignment: .top
-        )
-        .background(
-            RoundedRectangle(
-                cornerRadius: PPCorner.small,
-                style: .continuous
-            )
-            .fill(PPAccessorySubviewBackground.baseSurface)
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.small,
-                style: .continuous
-            )
-            .stroke(
-                accent.opacity(
-                    colorSchemeContrast == .increased ? 0.28 : 0.14
-                ),
-                lineWidth: colorSchemeContrast == .increased ? 1.0 : 0.5
-            )
-        }
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: PPCorner.small,
-                style: .continuous
-            )
-        )
+        .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.96))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(detail.title): \(detail.value)")
+        .accessibilityHint(PPAccessoryViewerL10n.text("accessory_view_details_tap_hint"))
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 14)
         .animation(
@@ -2023,12 +2204,249 @@ struct PPAccessoryDetailRail: View {
         )
     }
 
+    // MARK: - Semantic Status Beacon
+
+    @ViewBuilder
+    private func specStatusBeacon(detail: PPAccessoryViewerDetailItem, accent: Color) -> some View {
+        let isDark = colorScheme == .dark
+        if detail.id == "condition" {
+            HStack(spacing: 3) {
+                Circle()
+                    .fill(PPAccessoryPalette.success)
+                    .frame(width: 5, height: 5)
+
+                Text(PPAccessoryViewerL10n.text("accessory_view_spec_pristine_tag"))
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(PPAccessoryPalette.success)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2.5)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(PPAccessoryPalette.success.opacity(isDark ? 0.18 : 0.09))
+            )
+        } else if detail.id == "remain-quantity" {
+            let qty = resolvedQuantity(for: detail)
+            let isLowStock = qty <= 5
+
+            HStack(spacing: 3) {
+                Circle()
+                    .fill(isLowStock ? PPAccessoryPalette.warning : PPAccessoryPalette.success)
+                    .frame(width: 5, height: 5)
+
+                Text(PPAccessoryViewerL10n.text(isLowStock ? "accessory_view_spec_low_stock_tag" : "accessory_view_spec_in_stock_tag"))
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(isLowStock ? PPAccessoryPalette.warning : PPAccessoryPalette.success)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2.5)
+            .background(
+                Capsule(style: .continuous)
+                    .fill((isLowStock ? PPAccessoryPalette.warning : PPAccessoryPalette.success).opacity(isDark ? 0.18 : 0.09))
+            )
+        } else if detail.id == "accessory-kind" || detail.id == "subcategory" {
+            Text(PPAccessoryViewerL10n.text("accessory_view_spec_category_tag"))
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(accent)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2.5)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(accent.opacity(isDark ? 0.18 : 0.09))
+                )
+        } else {
+            Circle()
+                .fill(accent.opacity(0.50))
+                .frame(width: 4, height: 4)
+        }
+    }
+
+    // MARK: - Bottom Descriptor
+
+    @ViewBuilder
+    private func specBottomDescriptor(detail: PPAccessoryViewerDetailItem, accent: Color) -> some View {
+        let isDark = colorScheme == .dark
+        if detail.id == "remain-quantity" {
+            let qty = resolvedQuantity(for: detail)
+            let segments = min(max(qty, 1), 4)
+
+            HStack(spacing: 2.5) {
+                ForEach(0..<4, id: \.self) { idx in
+                    Capsule(style: .continuous)
+                        .fill(
+                            idx < segments
+                                ? accent
+                                : accent.opacity(isDark ? 0.20 : 0.12)
+                        )
+                        .frame(height: 3)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
+        } else if detail.id == "condition" {
+            Text(PPAccessoryViewerL10n.text("accessory_view_spec_pristine_sub"))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(PPAccessoryPalette.success)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if detail.id == "accessory-kind" || detail.id == "subcategory" {
+            Text(PPAccessoryViewerL10n.text("accessory_view_spec_category_sub"))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Text(PPAccessoryViewerL10n.text("accessory_view_spec_standard_sub"))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - Quantity Resolution
+
+    private func resolvedQuantity(for detail: PPAccessoryViewerDetailItem) -> Int {
+        if let stockQuantity, stockQuantity > 0 {
+            return stockQuantity
+        }
+        let clean = detail.value
+            .replacingOccurrences(of: "٠", with: "0")
+            .replacingOccurrences(of: "١", with: "1")
+            .replacingOccurrences(of: "٢", with: "2")
+            .replacingOccurrences(of: "٣", with: "3")
+            .replacingOccurrences(of: "٤", with: "4")
+            .replacingOccurrences(of: "٥", with: "5")
+            .replacingOccurrences(of: "٦", with: "6")
+            .replacingOccurrences(of: "٧", with: "7")
+            .replacingOccurrences(of: "٨", with: "8")
+            .replacingOccurrences(of: "٩", with: "9")
+            .filter { $0.isNumber }
+        return Int(clean) ?? 4
+    }
+
+    // MARK: - Insight Texts
+
+    private func insightTitle(for detail: PPAccessoryViewerDetailItem) -> String {
+        switch detail.id {
+        case "condition":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_condition_title")
+        case "remain-quantity":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_stock_title")
+        case "accessory-kind", "subcategory":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_kind_title")
+        case "weight":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_weight_title")
+        case "expiry":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_expiry_title")
+        case "location":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_location_title")
+        default:
+            return detail.title
+        }
+    }
+
+    private func insightDescription(for detail: PPAccessoryViewerDetailItem) -> String {
+        switch detail.id {
+        case "condition":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_condition_desc")
+        case "remain-quantity":
+            let qty = resolvedQuantity(for: detail)
+            return PPAccessoryViewerL10n.text(
+                qty <= 5
+                    ? "accessory_view_spec_stock_desc"
+                    : "accessory_view_spec_stock_desc_ample"
+            )
+        case "accessory-kind", "subcategory":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_kind_desc")
+        case "weight":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_weight_desc")
+        case "expiry":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_expiry_desc")
+        case "location":
+            return PPAccessoryViewerL10n.text("accessory_view_spec_location_desc")
+        default:
+            return "\(detail.title): \(detail.value)"
+        }
+    }
+
+    // MARK: - Accessibility Layout
+
+    private var accessibilityList: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            ForEach(Array(railDetails.enumerated()), id: \.element.id) { index, detail in
+                accessibleSpecRow(detail, index: index)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func accessibleSpecRow(_ detail: PPAccessoryViewerDetailItem, index: Int) -> some View {
+        let isSelected = selectedDetailId == detail.id
+        let accent = detail.tone.accessoryAccentColor
+        let isDark = colorScheme == .dark
+
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82)) {
+                selectedDetailId = (selectedDetailId == detail.id ? nil : detail.id)
+            }
+        } label: {
+            HStack(alignment: .center, spacing: PPSpace.md) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(accent.opacity(isDark ? 0.22 : 0.12))
+                        .frame(width: 40, height: 40)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(accent.opacity(isDark ? 0.35 : 0.20), lineWidth: 0.75)
+                        }
+
+                    detailIconView(detail, accent: accent, size: 18)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(detail.title)
+                        .font(PPAccessoryTypography.caption)
+                        .foregroundStyle(PPAccessoryPalette.inkSecondary)
+
+                    Text(detail.value)
+                        .font(PPAccessoryTypography.headline)
+                        .foregroundStyle(PPAccessoryPalette.ink)
+                }
+
+                Spacer(minLength: PPSpace.sm)
+
+                specStatusBeacon(detail: detail, accent: accent)
+            }
+            .padding(PPSpace.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    .fill(Color.ppForeground)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                    .strokeBorder(
+                        isSelected
+                            ? accent.opacity(0.85)
+                            : accent.opacity(isDark ? 0.24 : 0.14),
+                        lineWidth: isSelected ? 1.5 : 0.65
+                    )
+            }
+        }
+        .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.98))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(detail.title): \(detail.value)")
+    }
+
     // MARK: - Icon
 
     @ViewBuilder
     private func detailIconView(
         _ detail: PPAccessoryViewerDetailItem,
-        accent: Color
+        accent: Color,
+        size: CGFloat = 15
     ) -> some View {
         if detail.symbol == "pawprint.fill" {
             Image("pawprint4")
@@ -2036,15 +2454,15 @@ struct PPAccessoryDetailRail: View {
                 .resizable()
                 .scaledToFit()
                 .frame(
-                    width: gemIconSize,
-                    height: gemIconSize
+                    width: size,
+                    height: size
                 )
                 .foregroundStyle(accent)
                 .accessibilityHidden(true)
         } else {
             Image(systemName: detail.symbol)
                 .font(.system(
-                    size: gemIconSize,
+                    size: size,
                     weight: .semibold
                 ))
                 .symbolRenderingMode(.hierarchical)
@@ -2057,41 +2475,49 @@ struct PPAccessoryDetailRail: View {
 
     private var emptyState: some View {
         HStack(alignment: .center, spacing: PPSpace.md) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(PPAccessoryPalette.brandDarker)
-                .frame(width: PPSpace.xxxl, height: PPSpace.xxxl)
-                .background(
-                    PPAccessoryPalette.brandDarker.opacity(
-                        colorSchemeContrast == .increased ? 0.20 : 0.11
-                    ),
-                    in: RoundedRectangle(
-                        cornerRadius: PPCorner.small,
-                        style: .continuous
-                    )
-                )
-                .accessibilityHidden(true)
+            ZStack {
+                Circle()
+                    .fill(PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.18 : 0.08))
+                    .frame(width: 42, height: 42)
+                    .overlay {
+                        Circle()
+                            .strokeBorder(
+                                PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.32 : 0.18),
+                                lineWidth: 0.75
+                            )
+                    }
 
-            Text(PPAccessoryViewerL10n.text("accessory_view_details_empty"))
-                .font(PPAccessoryTypography.body)
-                .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(PPAccessoryPalette.brand)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(PPAccessoryViewerL10n.text("accessory_view_details_title"))
+                    .font(PPAccessoryTypography.bodyBold)
+                    .foregroundStyle(PPAccessoryPalette.ink)
+
+                Text(PPAccessoryViewerL10n.text("accessory_view_details_empty"))
+                    .font(PPAccessoryTypography.caption)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             Spacer(minLength: 0)
         }
         .padding(PPSpace.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ppAccessorySubviewBackground(
-            PPAccessorySubviewBackground.baseSurface,
-            in: RoundedRectangle(
-                cornerRadius: PPCorner.medium,
-                style: .continuous
-            ),
-            stroke: PPAccessoryPalette.brandDarker.opacity(
-                colorSchemeContrast == .increased ? 0.44 : 0.20
-            ),
-            lineWidth: colorSchemeContrast == .increased ? 1.25 : 0.8
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(Color.ppForeground)
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .strokeBorder(
+                    PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.28 : 0.14),
+                    lineWidth: 0.75
+                )
+        }
         .accessibilityElement(children: .combine)
     }
 }
@@ -2466,19 +2892,21 @@ struct PPAccessorySourceIsland: View {
     private func sellerActionRunway(
         _ owner: PPAccessoryViewerOwner
     ) -> some View {
+        let showChat = shouldShowChat(for: owner)
+        let showCall = shouldShowCall(for: owner)
+
         if dynamicTypeSize.isAccessibilitySize {
             VStack(spacing: PPSpace.sm) {
-                sourceAction(
-                    title: PPAccessoryViewerL10n.text("Chat"),
-                    symbol: "message.fill",
-                    style: .chat,
-                    layout: .primaryPill,
-                    enabled: owner.isChatAllowed,
-                    disabledValue: PPAccessoryViewerL10n.text(
-                        "accessory_view_contact_unavailable"
-                    ),
-                    action: store.chatWithOwner
-                )
+                if showChat {
+                    sourceAction(
+                        title: PPAccessoryViewerL10n.text("Chat"),
+                        symbol: "message.fill",
+                        style: .chat,
+                        layout: .primaryPill,
+                        enabled: true,
+                        action: store.chatWithOwner
+                    )
+                }
 
                 HStack(spacing: PPSpace.sm) {
                     sourceAction(
@@ -2490,7 +2918,7 @@ struct PPAccessorySourceIsland: View {
                         action: store.openSellerProfile
                     )
 
-                    if shouldShowCall(for: owner) {
+                    if showCall {
                         sourceAction(
                             title: PPAccessoryViewerL10n.text("Call"),
                             symbol: "phone.fill",
@@ -2503,29 +2931,38 @@ struct PPAccessorySourceIsland: View {
             }
         } else {
             HStack(spacing: PPSpace.sm) {
-                sourceAction(
-                    title: PPAccessoryViewerL10n.text("Chat"),
-                    symbol: "message.fill",
-                    style: .chat,
-                    layout: .primaryPill,
-                    enabled: owner.isChatAllowed,
-                    disabledValue: PPAccessoryViewerL10n.text(
-                        "accessory_view_contact_unavailable"
-                    ),
-                    action: store.chatWithOwner
-                )
-                .layoutPriority(1)
+                if showChat {
+                    sourceAction(
+                        title: PPAccessoryViewerL10n.text("Chat"),
+                        symbol: "message.fill",
+                        style: .chat,
+                        layout: .primaryPill,
+                        enabled: true,
+                        action: store.chatWithOwner
+                    )
+                    .layoutPriority(1)
 
-                sourceAction(
-                    title: PPAccessoryViewerL10n.text("View_Profile"),
-                    symbol: "storefront.fill",
-                    style: .profile,
-                    layout: .squareIcon,
-                    enabled: true,
-                    action: store.openSellerProfile
-                )
+                    sourceAction(
+                        title: PPAccessoryViewerL10n.text("View_Profile"),
+                        symbol: "storefront.fill",
+                        style: .profile,
+                        layout: .squareIcon,
+                        enabled: true,
+                        action: store.openSellerProfile
+                    )
+                } else {
+                    sourceAction(
+                        title: PPAccessoryViewerL10n.text("View_Profile"),
+                        symbol: "storefront.fill",
+                        style: .profile,
+                        layout: .primaryPill,
+                        enabled: true,
+                        action: store.openSellerProfile
+                    )
+                    .layoutPriority(1)
+                }
 
-                if shouldShowCall(for: owner) {
+                if showCall {
                     sourceAction(
                         title: PPAccessoryViewerL10n.text("Call"),
                         symbol: "phone.fill",
@@ -2536,6 +2973,28 @@ struct PPAccessorySourceIsland: View {
                 }
             }
         }
+    }
+
+    private func shouldShowChat(
+        for owner: PPAccessoryViewerOwner
+    ) -> Bool {
+        guard !snapshot.isOwnItem && owner.isChatAllowed else { return false }
+        return !isPurePetsOwner(owner)
+    }
+
+    private func isPurePetsOwner(_ owner: PPAccessoryViewerOwner) -> Bool {
+        if owner.user.id == "PUIDPOFFICILAL20262214" { return true }
+        if let avatar = owner.preferredAvatarURL, avatar.hasPrefix("purepets://support-logo") {
+            return true
+        }
+        let trimmed = owner.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == PPAccessoryViewerL10n.text("accessory_view_store_name") ||
+           trimmed.contains("بيوربتس") ||
+           trimmed.contains("بيور بتس") ||
+           trimmed.contains("Pure Pets") {
+            return true
+        }
+        return false
     }
 
     private func shouldShowCall(
@@ -3234,7 +3693,7 @@ struct PPAccessoryPersistentDecisionBar: View {
         .padding(
             .bottom,
             snapshot.showsCart
-                ? PPSpace.xs
+                ? PPSpace.base
                 : max(bottomInset, PPSpace.base)
         )
         .ignoresSafeArea(.container, edges: .bottom)
@@ -4048,7 +4507,7 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
         .padding(.top, PPSpace.sm)
         .padding(
             .bottom,
-            PPSpace.xs
+            0
         )
         .redacted(reason: .placeholder)
         .allowsHitTesting(false)
@@ -4437,7 +4896,8 @@ struct PPAccessoryVariantSelectorSection: View {
 
         return content()
             .padding(.horizontal, compact ? PPSpace.base : PPSpace.lg)
-            .padding(.vertical, PPSpace.base)
+            .padding(.top, compact ? PPSpace.sm : PPSpace.md)
+            .padding(.bottom, compact ? PPSpace.sm : PPSpace.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(consoleFill, in: shape)
             .overlay {
@@ -4509,7 +4969,7 @@ struct PPAccessoryVariantSelectorSection: View {
     // MARK: Configuration body
 
     private var configuration: some View {
-        VStack(alignment: .leading, spacing: PPSpace.base) {
+        VStack(alignment: .leading, spacing: compact ? PPSpace.sm : PPSpace.md) {
             if store.optionDefinitions.isEmpty {
                 if !store.variants.isEmpty {
                     combinationsList
@@ -4531,7 +4991,11 @@ struct PPAccessoryVariantSelectorSection: View {
                 }
             }
 
-            PPAccessoryVariantResolutionBar(store: store, snapshot: snapshot)
+            PPAccessoryVariantResolutionBar(
+                store: store,
+                snapshot: snapshot,
+                compact: compact
+            )
 
             combinationsAffordance
         }
@@ -4628,7 +5092,7 @@ struct PPAccessoryVariantSelectorSection: View {
                 .foregroundStyle(PPAccessoryPalette.inkSecondary)
                 .accessibilityHidden(true)
             }
-            .frame(minHeight: 44)
+            .frame(minHeight: compact ? 32 : 40)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -4851,60 +5315,32 @@ private struct PPAccessoryOptionGroup: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private typealias Entry = (
-        value: PPAccessoryViewerOptionValue,
-        status: PPAccessoryViewerOptionValueStatus
-    )
+    private struct OptionEntry: Identifiable {
+        let value: PPAccessoryViewerOptionValue
+        let status: PPAccessoryViewerOptionValueStatus
 
-    @ViewBuilder
-    var body: some View {
-        let entries: [Entry] = option.values.map { value in
-            (value: value, status: store.status(forOptionValue: value, inOption: option))
+        var id: String { value.id }
+    }
+
+    private var entries: [OptionEntry] {
+        option.values.map { value in
+            OptionEntry(
+                value: value,
+                status: store.status(forOptionValue: value, inOption: option)
+            )
         }
-        let rail = entries.filter { $0.status.belongsOnPrimaryRail }
+    }
 
-        Group {
+    private var rail: [OptionEntry] {
+        entries.filter { $0.status.belongsOnPrimaryRail }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: PPSpace.xs) {
-                    Text(option.localizedName)
-                        .font(PPAccessoryTypography.calloutBold)
-                        .foregroundStyle(PPAccessoryPalette.ink)
-                        .accessibilityAddTraits(.isHeader)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: PPSpace.sm) {
-                            ForEach(rail, id: \.value.id) { entry in
-                                choice(entry.value, status: entry.status)
-                            }
-                        }
-                        .padding(.horizontal, 2)
-                    }
-                }
-                .frame(minHeight: 48)
+                accessibilityRailView
             } else {
-                HStack(alignment: .center, spacing: PPSpace.md) {
-                    Text(option.localizedName)
-                        .font(PPAccessoryTypography.subheadlineBold)
-                        .foregroundStyle(PPAccessoryPalette.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                        .frame(minWidth: 44, alignment: .leading)
-                        .accessibilityAddTraits(.isHeader)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: PPSpace.sm) {
-                            if rail.isEmpty {
-                                emptyRail(hasAnyValue: !option.values.isEmpty)
-                            } else {
-                                ForEach(rail, id: \.value.id) { entry in
-                                    choice(entry.value, status: entry.status)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 2)
-                    }
-                }
-                .frame(height: 48)
+                standardRailView
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -4914,6 +5350,57 @@ private struct PPAccessoryOptionGroup: View {
             value: railIsBusyElsewhere
         )
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var accessibilityRailView: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(option.localizedName)
+                .font(PPAccessoryTypography.calloutBold)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .accessibilityAddTraits(.isHeader)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: PPSpace.sm) {
+                    if rail.isEmpty {
+                        emptyRail(hasAnyValue: !option.values.isEmpty)
+                    } else {
+                        ForEach(rail) { entry in
+                            choice(entry.value, status: entry.status)
+                        }
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+        .frame(minHeight: 48)
+    }
+
+    @ViewBuilder
+    private var standardRailView: some View {
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            Text(option.localizedName)
+                .font(PPAccessoryTypography.bodyBold)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(minWidth: 44, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: PPSpace.sm) {
+                    if rail.isEmpty {
+                        emptyRail(hasAnyValue: !option.values.isEmpty)
+                    } else {
+                        ForEach(rail) { entry in
+                            choice(entry.value, status: entry.status)
+                        }
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+        .frame(height: 48)
     }
 
     private var selectedValue: PPAccessoryViewerOptionValue? {
@@ -4926,19 +5413,21 @@ private struct PPAccessoryOptionGroup: View {
 
     @ViewBuilder
     private func emptyRail(hasAnyValue: Bool) -> some View {
-        Text(PPAccessoryViewerL10n.text("accessory_view_options_empty_axis"))
-            .font(PPAccessoryTypography.caption)
-            .foregroundStyle(PPAccessoryPalette.inkSecondary)
+        HStack(spacing: PPSpace.xs) {
+            Text(PPAccessoryViewerL10n.text("accessory_view_options_empty_axis"))
+                .font(PPAccessoryTypography.caption)
+                .foregroundStyle(PPAccessoryPalette.inkSecondary)
 
-        if !hasAnyValue {
-            Button(PPAccessoryViewerL10n.text("accessory_view_colors_retry")) {
-                store.retryVariants()
+            if !hasAnyValue {
+                Button(PPAccessoryViewerL10n.text("accessory_view_colors_retry")) {
+                    store.retryVariants()
+                }
+                .font(PPAccessoryTypography.captionBold)
+                .foregroundStyle(PPAccessoryPalette.brand)
+                .frame(minHeight: 44)
+                .buttonStyle(.plain)
+                .disabled(!store.canChangeVariant)
             }
-            .font(PPAccessoryTypography.captionBold)
-            .foregroundStyle(PPAccessoryPalette.brand)
-            .frame(minHeight: 44)
-            .buttonStyle(.plain)
-            .disabled(!store.canChangeVariant)
         }
     }
 
@@ -5584,6 +6073,7 @@ private struct PPAccessoryOptionChoiceLabel: View {
 private struct PPAccessoryVariantResolutionBar: View {
     @ObservedObject var store: PPAccessoryViewerStore
     let snapshot: PPAccessoryViewerSnapshot
+    var compact: Bool = true
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -5601,7 +6091,8 @@ private struct PPAccessoryVariantResolutionBar: View {
                 failureRow(message)
             }
         }
-        .padding(PPSpace.md)
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, compact ? PPSpace.sm : PPSpace.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             PPAccessorySubviewBackground.quietFill,

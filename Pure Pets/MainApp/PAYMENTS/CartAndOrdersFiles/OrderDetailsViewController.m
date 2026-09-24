@@ -4884,7 +4884,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [group addSubview:amountPill];
 
     UILabel *amountLabel = [[UILabel alloc] init];
-    amountLabel.text = [NSString stringWithFormat:@"%@ %.0f", fo.currency, fo.subtotal];
+    amountLabel.text = [NSString stringWithFormat:@"%@ %.2f", fo.currency, fo.subtotal];
     amountLabel.font = [GM boldFontWithSize:PPFontCallout];
     amountLabel.textColor = UIColor.labelColor;
     amountLabel.textAlignment = NSTextAlignmentCenter;

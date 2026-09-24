@@ -9,6 +9,8 @@ public struct SpearListingContext: Equatable, Identifiable, Sendable {
   public var detail: String
   public var actionTitle: String
   public var thumbnailURL: URL?
+  public var symbolSystemName: String?
+  public var badgeText: String?
 
   public init(
     id: String,
@@ -16,7 +18,9 @@ public struct SpearListingContext: Equatable, Identifiable, Sendable {
     title: String,
     detail: String,
     actionTitle: String,
-    thumbnailURL: URL? = nil
+    thumbnailURL: URL? = nil,
+    symbolSystemName: String? = nil,
+    badgeText: String? = nil
   ) {
     self.id = id
     self.eyebrow = eyebrow
@@ -24,6 +28,8 @@ public struct SpearListingContext: Equatable, Identifiable, Sendable {
     self.detail = detail
     self.actionTitle = actionTitle
     self.thumbnailURL = thumbnailURL
+    self.symbolSystemName = symbolSystemName
+    self.badgeText = badgeText
   }
 }
 
@@ -161,12 +167,21 @@ public enum SpearConversationContext: Equatable, Identifiable, Sendable {
 
   internal var symbolSystemName: String {
     switch self {
-    case .listing:
-      "pawprint.fill"
+    case .listing(let value):
+      return value.symbolSystemName ?? "pawprint.fill"
     case .order:
-      "shippingbox.fill"
+      return "shippingbox.fill"
     case .support:
-      "shield.lefthalf.filled"
+      return "shield.lefthalf.filled"
+    }
+  }
+
+  internal var badgeText: String? {
+    switch self {
+    case .listing(let value):
+      return value.badgeText
+    case .order, .support:
+      return nil
     }
   }
 

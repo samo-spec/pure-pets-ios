@@ -2216,11 +2216,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         }
     }
 
-    if ([[self fieldForTag:kprice].value respondsToSelector:@selector(integerValue)]) {
-        NSInteger price = [[self fieldForTag:kprice].value integerValue];
-        if (price > 0) {
-            snapshot[@"price"] = @(price);
-        }
+    NSNumber *snapshotPrice = [GM moneyNumberFromInput:[self fieldForTag:kprice].value];
+    if (snapshotPrice.doubleValue > 0.0) {
+        snapshot[@"price"] = snapshotPrice;
     }
 
     NSString *desc = [PPSafeString([self fieldForTag:kdesc].value) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -2582,8 +2580,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         self.adModel.petAgeMonths = storedValues[@"petAgeMonths"];
     }
 
-    if ([storedValues[@"price"] respondsToSelector:@selector(integerValue)]) {
-        self.adModel.price = storedValues[@"price"];
+    NSNumber *restoredPrice = [GM moneyNumberFromInput:storedValues[@"price"]];
+    if (restoredPrice) {
+        self.adModel.price = restoredPrice;
     }
 
     NSString *desc = PPSafeString(storedValues[@"desc"]);
@@ -3351,9 +3350,10 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
                                                                     title:kLang(@"price")
                                                               placeholder:kLang(@"enter_price")
                                                                 inputType:PPFormInputTypeNumber];
+    priceField.keyboardType = UIKeyboardTypeDecimalPad;
     priceField.required = YES;
     priceField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
-        weakSelf.adModel.price = value.length > 0 ? @(value.integerValue) : nil;
+        weakSelf.adModel.price = [GM moneyNumberFromInput:value];
         if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
     };
 
@@ -3594,7 +3594,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     NSString *priceVal = [self.listingFormView valueForIdentifier:kprice];
     NSString *ageVal = [self.petFormView valueForIdentifier:kpetAge];
 
-    if (priceVal.length > 0 && priceVal.integerValue <= 0) {
+    NSNumber *validatedPrice = [GM moneyNumberFromInput:priceVal];
+    if (priceVal.length > 0 && (!validatedPrice || validatedPrice.doubleValue <= 0.0)) {
         NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
         NSString *subtitle = [self pp_localizedStringForKey:@"validation_price_invalid"
                                                     fallback:@"Please enter a valid price greater than zero."];

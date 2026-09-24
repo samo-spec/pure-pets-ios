@@ -6,6 +6,12 @@
 #import "PPCartCalculator.h"
 #import "CartManager.h"
 #import "CartItem.h"
+#import <math.h>
+
+static double PPCartRoundMoney(double value)
+{
+    return isfinite(value) ? round(value * 100.0) / 100.0 : 0.0;
+}
 
 #pragma mark - PPCartSummary (private setters)
 
@@ -47,28 +53,28 @@
 
     for (CartItem *item in items) {
         NSInteger qty = MAX(item.quantity, 0);
-        double effective = item.price;
-        double original  = item.originalPrice > 0.0 ? item.originalPrice : effective;
+        double effective = PPCartRoundMoney(item.price);
+        double original  = item.originalPrice > 0.0 ? PPCartRoundMoney(item.originalPrice) : effective;
 
         totalQty += qty;
-        subtotal += effective * (double)qty;
+        subtotal = PPCartRoundMoney(subtotal + PPCartRoundMoney(effective * (double)qty));
 
-        double lineBefore = original * (double)qty;
-        subtotalBefore += lineBefore;
+        double lineBefore = PPCartRoundMoney(original * (double)qty);
+        subtotalBefore = PPCartRoundMoney(subtotalBefore + lineBefore);
 
         if (item.hasDiscount) {
             anyDiscount = YES;
-            discountTotal += item.discountPerUnit * (double)qty;
+            discountTotal = PPCartRoundMoney(discountTotal + item.lineDiscountTotal);
         }
     }
 
     s.totalQuantity = totalQty;
     s.uniqueItems = (NSInteger)items.count;
-    s.subtotal = MAX(0.0, subtotal);
-    s.discountTotal = MAX(0.0, discountTotal);
-    s.subtotalBeforeDiscount = MAX(0.0, subtotalBefore);
-    s.shippingFee = MAX(0.0, shippingFee);
-    s.finalTotal = MAX(0.0, s.subtotal + s.shippingFee);
+    s.subtotal = MAX(0.0, PPCartRoundMoney(subtotal));
+    s.discountTotal = MAX(0.0, PPCartRoundMoney(discountTotal));
+    s.subtotalBeforeDiscount = MAX(0.0, PPCartRoundMoney(subtotalBefore));
+    s.shippingFee = MAX(0.0, PPCartRoundMoney(shippingFee));
+    s.finalTotal = MAX(0.0, PPCartRoundMoney(s.subtotal + s.shippingFee));
     s.hasAnyDiscount = anyDiscount;
 
     return s;

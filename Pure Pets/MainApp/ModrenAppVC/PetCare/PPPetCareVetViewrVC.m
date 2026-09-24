@@ -653,7 +653,7 @@ static UIColor *PPPetCareVetViewerQuietRowColor(void)
                                                                value:[self pp_verificationText]
                                                               accent:green]];
     if (self.vet.vetCost > 0) {
-        NSString *costString = [NSString stringWithFormat:@"%.0f %@", self.vet.vetCost, PPPetCareVetViewerLocalized(@"QAR", @"ر.ق")];
+        NSString *costString = [NSString stringWithFormat:@"%.2f %@", self.vet.vetCost, PPPetCareVetViewerLocalized(@"QAR", @"ر.ق")];
         [self.factsStackView addArrangedSubview:[self pp_factRowWithIcon:@"banknote.fill"
                                                                    title:PPPetCareVetViewerLocalized(@"pet_care_vet_viewer_cost", @"Consultation fee")
                                                                    value:costString

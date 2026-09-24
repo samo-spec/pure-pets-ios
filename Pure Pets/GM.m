@@ -2435,6 +2435,44 @@ CGSize getImageSizeSafely(UIImage *image) {
     return [PPChatsFunc pp_forceLatinDigits:result];
 }
 
++ (NSNumber * _Nullable)moneyNumberFromInput:(id _Nullable)value
+{
+    if (!value || value == (id)kCFNull) return nil;
+
+    NSDecimalNumber *decimal = nil;
+    if ([value isKindOfClass:NSNumber.class]) {
+        double raw = [(NSNumber *)value doubleValue];
+        if (!isfinite(raw)) return nil;
+        decimal = [NSDecimalNumber decimalNumberWithDecimal:[(NSNumber *)value decimalValue]];
+    } else if ([value isKindOfClass:NSString.class]) {
+        NSString *text = [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        text = [PPChatsFunc pp_forceLatinDigits:text];
+        text = [text stringByReplacingOccurrencesOfString:@"٬" withString:@""];
+        text = [text stringByReplacingOccurrencesOfString:@"٫" withString:@"."];
+        text = [text stringByReplacingOccurrencesOfString:@"،" withString:@"."];
+        text = [text stringByReplacingOccurrencesOfString:@"," withString:@"."];
+        if (text.length == 0) return nil;
+        if ([text hasPrefix:@"."]) text = [@"0" stringByAppendingString:text];
+        if ([text hasPrefix:@"-."]) text = [text stringByReplacingCharactersInRange:NSMakeRange(0, 2) withString:@"-0."];
+
+        NSRegularExpression *pattern = [NSRegularExpression regularExpressionWithPattern:@"^-?[0-9]+(?:\\.[0-9]{0,2})?$" options:0 error:nil];
+        NSRange fullRange = NSMakeRange(0, text.length);
+        if ([pattern numberOfMatchesInString:text options:0 range:fullRange] != 1) return nil;
+        decimal = [NSDecimalNumber decimalNumberWithString:text locale:@{NSLocaleDecimalSeparator: @"."}];
+    } else {
+        return nil;
+    }
+
+    if (!decimal || [decimal isEqualToNumber:NSDecimalNumber.notANumber]) return nil;
+    NSDecimalNumberHandler *rounding = [NSDecimalNumberHandler decimalNumberHandlerWithRoundingMode:NSRoundPlain
+                                                                                              scale:2
+                                                                                   raiseOnExactness:NO
+                                                                                    raiseOnOverflow:NO
+                                                                                   raiseOnUnderflow:NO
+                                                                                raiseOnDivideByZero:NO];
+    return [decimal decimalNumberByRoundingAccordingToBehavior:rounding];
+}
+
 // Helpers
 + (NSNumber *)pp_coerceNumber:(id)price {
     if (!price || price == (id)kCFNull) return nil;

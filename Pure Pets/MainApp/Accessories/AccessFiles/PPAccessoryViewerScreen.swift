@@ -106,7 +106,7 @@ struct PPAccessoryViewerScreen: View {
             ? min(max(proxy.size.height * 0.42, 370), 460)
             : min(max(contentWidth * 0.52, 420), 560)
         let topInset = topChromeInset(proxy)
-        let bottomInset = snapshot.showsCart ? 0 : bottomChromeInset(proxy)
+        let bottomInset = snapshot.showsCart ? PPSpace.base : bottomChromeInset(proxy)
         let topBarHeight: CGFloat = topInset + (compact ? 56 : 64)
         let titleRevealOffset: CGFloat = compact ? 14 : 22
         let usesRecoveryDock =
@@ -200,7 +200,8 @@ struct PPAccessoryViewerScreen: View {
 
                             PPAccessoryDetailRail(
                                 details: snapshot.details,
-                                compactColumns: compact
+                                compactColumns: compact,
+                                stockQuantity: snapshot.quantity
                             )
 
                             PPAccessorySuggestionShore(
@@ -304,9 +305,8 @@ struct PPAccessoryViewerScreen: View {
                 }
             }
             .offset(y: actionResolved ? 0 : 22)
-            .ignoresSafeArea(.container, edges: .bottom)
-            .zIndex(100)
             .frame(maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea(.container, edges: .bottom)
             .onPreferenceChange(
                 PPAccessoryDecisionBarHeightPreferenceKey.self
             ) { measuredHeight in
@@ -316,6 +316,7 @@ struct PPAccessoryViewerScreen: View {
                 }
                 decisionBarHeight = measuredHeight
             }
+            .zIndex(999)
         }
         .coordinateSpace(name: "accessory-viewer-root")
         .ignoresSafeArea(.all, edges: [.top, .bottom])
@@ -414,7 +415,7 @@ struct PPAccessoryViewerScreen: View {
             reduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.88),
             value: actionResolved
         )
-        .zIndex(80)
+        .zIndex(10)
     }
 
     private func runEntranceIfNeeded() {

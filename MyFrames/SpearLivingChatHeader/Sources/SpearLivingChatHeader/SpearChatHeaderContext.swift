@@ -64,9 +64,17 @@ internal struct SpearContextRail: View {
         verticalLayout
       }
     }
-    .padding(.horizontal, 4)
-    .padding(.vertical, 4)
+    .padding(.horizontal, 6)
+    .padding(.vertical, 6)
     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    .background(
+      Color.primary.opacity(0.025),
+      in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        .stroke(Color.primary.opacity(0.05), lineWidth: 0.5)
+    )
     .contentShape(Rectangle())
   }
 
@@ -94,11 +102,15 @@ internal struct SpearContextRail: View {
   @ViewBuilder
   private var contextVisual: some View {
     if context.isSupport {
-      Image(systemName: context.symbolSystemName)
-        .font(.system(size: 14, weight: .medium))
-        .foregroundStyle(brandColor)
-        .frame(width: 24, height: 24)
-        .accessibilityHidden(true)
+      ZStack {
+        Circle()
+          .fill(brandColor.opacity(0.10))
+        Image(systemName: context.symbolSystemName)
+          .font(.system(size: 14, weight: .bold))
+          .foregroundStyle(brandColor)
+      }
+      .frame(width: 32, height: 32)
+      .accessibilityHidden(true)
     } else {
       ZStack {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -110,35 +122,60 @@ internal struct SpearContextRail: View {
           thumbnail(thumbnailURL)
         }
       }
-      .frame(width: 44, height: 44)
+      .frame(width: 48, height: 48)
       .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+          .stroke(Color.primary.opacity(0.06), lineWidth: 0.5)
+      )
       .accessibilityHidden(true)
     }
   }
 
   private var contextText: some View {
-    VStack(alignment: .leading, spacing: 2) {
+    VStack(alignment: .leading, spacing: 3) {
       if context.isSupport {
         Text(context.detail.isEmpty ? context.title : context.detail)
           .font(Font.ppBeirutiMedium(size: 14, relativeTo: .subheadline))
           .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
       } else {
-        Text(context.eyebrow)
-          .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
-          .foregroundStyle(.secondary)
+        HStack(spacing: 4) {
+          HStack(spacing: 3) {
+            Image(systemName: context.symbolSystemName)
+              .font(.system(size: 8, weight: .bold))
+            Text(context.eyebrow)
+              .font(Font.ppBeirutiBold(size: 10, relativeTo: .caption2))
+          }
+          .foregroundStyle(brandColor)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 2)
+          .background(brandColor.opacity(0.09), in: Capsule())
+
+          if let badgeText = context.badgeText, !badgeText.isEmpty {
+            Text(badgeText)
+              .font(Font.ppBeirutiMedium(size: 10, relativeTo: .caption2))
+              .foregroundStyle(Color.secondary)
+              .padding(.horizontal, 5)
+              .padding(.vertical, 2)
+              .background(Color.primary.opacity(0.04), in: Capsule())
+          }
+        }
+
         Text(context.title)
-          .font(Font.ppBeirutiSemiBold(size: 15, relativeTo: .subheadline))
-          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+          .font(Font.ppBeirutiBold(size: 15, relativeTo: .subheadline))
+          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+
         if !context.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
           Text(context.detail)
-            .font(Font.ppBeirutiRegular(size: 13, relativeTo: .caption))
-            .foregroundStyle(.secondary)
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .font(Font.ppBeirutiSemiBold(size: 13, relativeTo: .caption))
+            .foregroundStyle(Color.secondary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
         }
+
         if let progress = context.orderProgress {
           ProgressView(value: progress)
             .tint(brandColor)
-            .padding(.top, 4)
+            .padding(.top, 2)
         }
       }
     }
@@ -151,16 +188,22 @@ internal struct SpearContextRail: View {
   @ViewBuilder
   private var actionLabel: some View {
     if action.availability.isVisible {
-      HStack(spacing: 4) {
+      HStack(spacing: 3) {
         Text(context.actionTitle)
-          .font(Font.ppBeirutiSemiBold(size: 14, relativeTo: .subheadline))
-          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+          .font(Font.ppBeirutiBold(size: 12, relativeTo: .caption))
+          .lineLimit(1)
         Image(systemName: "chevron.forward")
-          .font(.system(size: 10, weight: .semibold))
+          .font(.system(size: 8, weight: .bold))
       }
       .foregroundStyle(action.availability.isEnabled ? brandColor : Color.secondary)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(
+        brandColor.opacity(action.availability.isEnabled ? 0.08 : 0.03),
+        in: Capsule()
+      )
       .multilineTextAlignment(.trailing)
-      .fixedSize(horizontal: false, vertical: true)
+      .fixedSize(horizontal: true, vertical: true)
     }
   }
 
@@ -189,11 +232,12 @@ internal struct SpearContextRowButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
+      .scaleEffect(reduceMotion ? 1.0 : (configuration.isPressed ? 0.985 : 1.0))
       .background(
-        color.opacity(configuration.isPressed ? 0.07 : 0),
+        color.opacity(configuration.isPressed ? 0.06 : 0),
         in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
       )
-      .opacity(configuration.isPressed ? 0.82 : 1)
+      .opacity(configuration.isPressed ? 0.85 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
         value: configuration.isPressed

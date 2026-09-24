@@ -15,6 +15,11 @@ static NSString *PPCartItemString(id value)
     return [value isKindOfClass:NSString.class] ? value : @"";
 }
 
+static double PPCartItemRoundMoney(double value)
+{
+    return isfinite(value) ? round(value * 100.0) / 100.0 : 0.0;
+}
+
 @implementation CartItem
 
 #pragma mark - Computed Properties
@@ -26,23 +31,23 @@ static NSString *PPCartItemString(id value)
 
 - (double)discountPerUnit
 {
-    return self.hasDiscount ? (self.originalPrice - self.price) : 0.0;
+    return self.hasDiscount ? PPCartItemRoundMoney(self.originalPrice - self.price) : 0.0;
 }
 
 - (double)lineSubtotal
 {
-    return self.price * (double)MAX(self.quantity, 0);
+    return PPCartItemRoundMoney(self.price * (double)MAX(self.quantity, 0));
 }
 
 - (double)lineSubtotalBeforeDiscount
 {
     double base = self.hasDiscount ? self.originalPrice : self.price;
-    return base * (double)MAX(self.quantity, 0);
+    return PPCartItemRoundMoney(base * (double)MAX(self.quantity, 0));
 }
 
 - (double)lineDiscountTotal
 {
-    return self.hasDiscount ? (self.discountPerUnit * (double)MAX(self.quantity, 0)) : 0.0;
+    return self.hasDiscount ? PPCartItemRoundMoney(self.discountPerUnit * (double)MAX(self.quantity, 0)) : 0.0;
 }
 
 #pragma mark - Init from Accessory

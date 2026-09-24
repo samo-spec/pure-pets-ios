@@ -14,6 +14,7 @@
 #import <UIKit/UIKit.h>
 
 @class PetAd;
+@class PetAccessory;
 @class ChatThreadModel;
 @class PPNavigationController;
 
@@ -44,6 +45,13 @@ NS_ASSUME_NONNULL_BEGIN
                    fromVC:(UIViewController *)vc;
 + (BOOL)pp_openChatThread:(ChatThreadModel *)thread
              petAdContext:(nullable PetAd *)petAd
+                   fromVC:(UIViewController *)vc
+                 animated:(BOOL)animated;
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+         accessoryContext:(nullable PetAccessory *)accessory
+                   fromVC:(UIViewController *)vc;
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+         accessoryContext:(nullable PetAccessory *)accessory
                    fromVC:(UIViewController *)vc
                  animated:(BOOL)animated;
 + (void)pp_openDetailForObject:(id)object

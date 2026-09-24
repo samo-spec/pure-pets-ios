@@ -16,6 +16,7 @@
 #import "PPHUD.h"
 #import "PPImageLoaderManager.h"
 #import "PPNavigationController.h"
+#import "PPOverlayCoordinator.h"
 #import "PPNetworkRetryHelper.h"
 #import "PPSelectPaymentVC.h"
 #import "PPUniversalCellHelper.h"
@@ -1381,8 +1382,19 @@ fromViewController:(UIViewController *)viewController
 {
     [self trackInteractionCode:PPItemInteractionTypeChat
                   forAccessory:accessory];
-    [GM chatWith:owner
-     FromController:PPAccessoryResolvedPresenter(viewController)];
+    UIViewController *presenter = PPAccessoryResolvedPresenter(viewController);
+    if (!owner) {
+        return;
+    }
+    [[ChManager sharedManager] createOrGetChatThreadWithUser:owner completion:^(ChatThreadModel * _Nullable chatThread, NSError * _Nullable error) {
+        if (error || !chatThread) {
+            [GM chatWith:owner FromController:presenter];
+            return;
+        }
+        [PPOverlayCoordinator pp_openChatThread:chatThread
+                               accessoryContext:accessory
+                                         fromVC:presenter];
+    }];
     [PPCommerceFeedbackManager.shared
      playEvent:PPCommerceFeedbackEventPaymentAction];
 }

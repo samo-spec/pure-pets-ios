@@ -65,7 +65,7 @@ public struct PPServiceViewerSnapshot: Equatable {
         let formattedPrice: String = {
             if service.price > 0 {
                 let curr = service.currency ?? "QAR"
-                return String(format: "%.0f %@", service.price, curr)
+                return String(format: "%.2f %@", service.price, curr)
             }
             return PPServiceViewerL10n.text("not available", fallback: "Not available")
         }()

@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString *orderID;
 @property (nonatomic, strong) NSDate *createdAt;
 @property (nonatomic, assign) OrderStatus status;
-@property (nonatomic, assign) float totalPrice;
+@property (nonatomic, assign) double totalPrice;
 @property (nonatomic, assign) NSInteger totalQuantity;
 @property (nonatomic, strong) NSArray<CartItem *> *items;
 

@@ -120,6 +120,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
     private var hostingController: UIHostingController<PPMessagingScreen>?
     private var chatThread: ChatThreadModel?
     private var launchPetAdContext: PetAd?
+    private var launchAccessoryContext: PetAccessory?
     private var preparedSupportInquiryKey: String?
     private var messagePageLimit = 50
     private var messageObservationGeneration = 0
@@ -143,23 +144,38 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
 
     @objc(configureWithChatThread:)
     public func configure(with thread: ChatThreadModel) {
-        configure(with: thread, petAdContext: nil)
+        configure(with: thread, petAdContext: nil, accessoryContext: nil)
     }
 
     @objc(configureWithChatThread:petAdContext:)
     public func configure(with thread: ChatThreadModel, petAdContext: PetAd?) {
+        configure(with: thread, petAdContext: petAdContext, accessoryContext: nil)
+    }
+
+    @objc(configureWithChatThread:accessoryContext:)
+    public func configure(with thread: ChatThreadModel, accessoryContext: PetAccessory?) {
+        configure(with: thread, petAdContext: nil, accessoryContext: accessoryContext)
+    }
+
+    public func configure(
+        with thread: ChatThreadModel,
+        petAdContext: PetAd?,
+        accessoryContext: PetAccessory?
+    ) {
         onMain { [weak self] in
             guard let self = self else { return }
             self.stopConversationActivityObservation()
             self.chatThread = thread
             self.launchPetAdContext = petAdContext
+            self.launchAccessoryContext = accessoryContext
             self.screenState.configure(
                 thread: thread,
                 isModal: false,
-                petAdContext: petAdContext
+                petAdContext: petAdContext,
+                accessoryContext: accessoryContext
             )
 
-            // Support keeps its canonical routing context. An ad belongs to this
+            // Support keeps its canonical routing context. An ad or product belongs to this
             // presentation and the editable inquiry, not the shared support model.
             if let petAd = petAdContext, !petAd.adID.isEmpty {
                 if ChatThreadModel.isSupportThread(thread) {
@@ -177,8 +193,20 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                     ]
                     PPMessagingContextCache.set(payload, for: thread.id)
                 }
+            } else if let accessory = accessoryContext, !accessory.accessoryID.isEmpty {
+                let snapshot = PPMessagingScreenState.presentationSnapshot(for: accessory)
+                thread.contextType = "accessory"
+                thread.contextId = accessory.accessoryID
+                thread.contextSnapshot = (snapshot as? [String: Any]) ?? [:]
+
+                let payload: [String: Any] = [
+                    "contextType": "accessory",
+                    "contextId": accessory.accessoryID,
+                    "contextSnapshot": snapshot
+                ]
+                PPMessagingContextCache.set(payload, for: thread.id)
             } else {
-                // If reopened without petAdContext, rehydrate ad context dynamically
+                // If reopened without context, rehydrate ad or product context dynamically
                 self.rehydrateAdContextIfNeeded(for: thread)
             }
 
@@ -189,14 +217,63 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
     }
 
     private func rehydrateAdContextIfNeeded(for thread: ChatThreadModel) {
-        // Support contextId identifies the customer, never a pet_ads document.
+        // Support contextId identifies the customer, never a pet_ads or product document.
         // General support opens must not inherit an earlier ad inquiry.
         guard !ChatThreadModel.isSupportThread(thread) else { return }
 
-        var targetAdID = ""
         let currentType = screenState.contextType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let currentID = screenState.contextID.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        let isAccessoryType = ["accessory", "product", "pet_accessory", "item"].contains(currentType)
+            || ["accessory", "product", "pet_accessory", "item"].contains(thread.contextType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+
+        if isAccessoryType {
+            var targetAccessoryID = ""
+            if ["accessory", "product", "pet_accessory", "item"].contains(currentType), !currentID.isEmpty, currentID != thread.id {
+                targetAccessoryID = currentID
+            } else if !thread.contextId.isEmpty, thread.contextId != thread.id {
+                targetAccessoryID = thread.contextId
+            } else if let cached = PPMessagingContextCache.dictionary(for: thread.id),
+                      let cachedID = cached["contextId"] as? String,
+                      !cachedID.isEmpty, cachedID != thread.id {
+                targetAccessoryID = cachedID
+                if let cachedType = cached["contextType"] as? String, !cachedType.isEmpty {
+                    screenState.contextType = cachedType
+                }
+                if let cachedSnap = cached["contextSnapshot"] as? NSDictionary, cachedSnap.count > 0 {
+                    screenState.contextSnapshot = cachedSnap
+                }
+            }
+
+            guard !targetAccessoryID.isEmpty else { return }
+
+            PPAccessoryViewerLegacyBridge.fetchAccessory(accessoryID: targetAccessoryID) { [weak self] accessory, _ in
+                guard let self = self, let accessory = accessory else { return }
+
+                self.onMain {
+                    self.launchAccessoryContext = accessory
+                    let presentation = PPMessagingScreenState.presentationSnapshot(for: accessory)
+                    self.screenState.contextType = "accessory"
+                    self.screenState.contextID = accessory.accessoryID
+                    self.screenState.contextSnapshot = presentation
+                }
+
+                thread.contextType = "accessory"
+                thread.contextId = accessory.accessoryID
+                let presentation = PPMessagingScreenState.presentationSnapshot(for: accessory)
+                thread.contextSnapshot = (presentation as? [String: Any]) ?? [:]
+
+                let payload: [String: Any] = [
+                    "contextType": "accessory",
+                    "contextId": accessory.accessoryID,
+                    "contextSnapshot": presentation
+                ]
+                PPMessagingContextCache.set(payload, for: thread.id)
+            }
+            return
+        }
+
+        var targetAdID = ""
         if ["pet_ad", "pet_listing", "listing"].contains(currentType), !currentID.isEmpty, currentID != thread.id {
             targetAdID = currentID
         } else if !thread.contextId.isEmpty, thread.contextId != thread.id {
@@ -338,7 +415,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
         let contextType = screenState.contextType
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-        let isEntityContext = ["listing", "pet_listing", "pet_ad", "order"]
+        let isEntityContext = ["listing", "pet_listing", "pet_ad", "order", "accessory", "product", "pet_accessory", "item"]
             .contains(contextType)
 
         if isEntityContext {
@@ -355,6 +432,29 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
                         let ad = PetAd(dictionary: data, documentID: snapshot.documentID)
                         self.launchPetAdContext = ad
                         PPPetAdViewerLegacyBridge.openPetAd(ad, from: self)
+                    } else if let delegate = self.delegate {
+                        delegate.messagingHostDidRequestAction(
+                            PPMessagingAction.context.rawValue,
+                            messageID: contextID
+                        )
+                    } else {
+                        self.presentConversationContextDetails(contextID: contextID)
+                    }
+                }
+                return
+            }
+
+            if ["accessory", "product", "pet_accessory", "item"].contains(contextType) {
+                if let accessory = launchAccessoryContext, accessory.accessoryID == contextID {
+                    PPAccessoryViewerLegacyBridge.openAccessory(accessory, from: self)
+                    return
+                }
+
+                PPAccessoryViewerLegacyBridge.fetchAccessory(accessoryID: contextID) { [weak self] accessory, _ in
+                    guard let self = self else { return }
+                    if let accessory = accessory {
+                        self.launchAccessoryContext = accessory
+                        PPAccessoryViewerLegacyBridge.openAccessory(accessory, from: self)
                     } else if let delegate = self.delegate {
                         delegate.messagingHostDidRequestAction(
                             PPMessagingAction.context.rawValue,
@@ -2120,7 +2220,8 @@ private final class PPMessagingScreenState: ObservableObject {
     func configure(
         thread: ChatThreadModel,
         isModal: Bool,
-        petAdContext: PetAd? = nil
+        petAdContext: PetAd? = nil,
+        accessoryContext: PetAccessory? = nil
     ) {
         let user = ChatThreadModel.resolveOtherUser(fromThread: thread) ?? thread.otherUser
         let isSupportThread = ChatThreadModel.isSupportThread(thread)
@@ -2163,7 +2264,12 @@ private final class PPMessagingScreenState: ObservableObject {
         participantPlan = user?.subscriptionPlan ?? ""
         providerRatingValue = user?.providerRatingValue ?? 0
         providerReviewCount = max(0, user?.providerReviewCount ?? 0)
-        if let petAdContext,
+        if let accessoryContext,
+           !accessoryContext.accessoryID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            contextType = "accessory"
+            contextID = accessoryContext.accessoryID
+            contextSnapshot = Self.presentationSnapshot(for: accessoryContext)
+        } else if let petAdContext,
            !petAdContext.adID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             contextType = "pet_ad"
             contextID = petAdContext.adID
@@ -2196,6 +2302,36 @@ private final class PPMessagingScreenState: ObservableObject {
             contextID = resolvedId
             contextSnapshot = resolvedSnapshot
         }
+    }
+
+    fileprivate static func presentationSnapshot(for accessory: PetAccessory) -> NSDictionary {
+        let trimmedTitle = accessory.name
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallback = Language.get("chat_header_accessory_title_fallback", alter: "chat_header_accessory_title_fallback")
+            ?? NSLocalizedString("chat_header_accessory_title_fallback", comment: "")
+        let title = trimmedTitle.isEmpty ? fallback : trimmedTitle
+        let price = PPAccessoryViewerLegacyBridge.formattedPrice(for: accessory)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let stock = PPAccessoryViewerLegacyBridge.stockText(for: accessory)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let location = PPAccessoryViewerLegacyBridge.locationName(for: accessory)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let detail = [price, stock, location]
+            .filter { !$0.isEmpty }
+            .reduce(into: [String]()) { values, value in
+                if !values.contains(value) { values.append(value) }
+            }
+            .joined(separator: " · ")
+        let thumbnailURLString = accessory.imageURLsArray?.first ?? ""
+
+        return [
+            "title": title,
+            "detail": detail,
+            "priceText": price,
+            "stockText": stock,
+            "availabilityText": stock,
+            "thumbnailURLString": thumbnailURLString
+        ]
     }
 
     fileprivate static func presentationSnapshot(for ad: PetAd) -> NSDictionary {
@@ -4292,7 +4428,35 @@ private struct PPMessagingHeader: View {
                         "thumbnailURLString",
                         "imageURLString",
                         "imageURL"
-                    ).flatMap(URL.init(string:))
+                    ).flatMap(URL.init(string:)),
+                    symbolSystemName: "pawprint.fill",
+                    badgeText: localized("chat_header_badge_pet")
+                )
+            )
+        }
+
+        if !contextID.isEmpty,
+           ["accessory", "product", "pet_accessory", "item"].contains(contextType) {
+            let title = snapshotText("title", "displayTitle", "name")
+                ?? localized("chat_header_accessory_title_fallback")
+            let detail = snapshotText("detail", "subtitle")
+                ?? [snapshotText("priceText"), snapshotText("stockText"), snapshotText("availabilityText")]
+                    .compactMap { $0 }
+                    .joined(separator: " · ")
+            return .listing(
+                .init(
+                    id: contextID,
+                    eyebrow: localized("chat_header_accessory_eyebrow"),
+                    title: title,
+                    detail: detail,
+                    actionTitle: localized("chat_header_listing_action"),
+                    thumbnailURL: snapshotText(
+                        "thumbnailURLString",
+                        "imageURLString",
+                        "imageURL"
+                    ).flatMap(URL.init(string:)),
+                    symbolSystemName: "bag.fill",
+                    badgeText: localized("chat_header_badge_product")
                 )
             )
         }

@@ -14,7 +14,7 @@
     if (self) {
         _orderID = docID;
         _status = [dict[@"status"] integerValue] ?: OrderStatusPending;
-        _totalPrice = [dict[@"totalPrice"] floatValue];
+        _totalPrice = [dict[@"totalPrice"] doubleValue];
         _totalQuantity = [dict[@"totalQuantity"] integerValue];
         
         FIRTimestamp *timestamp = dict[@"createdAt"];

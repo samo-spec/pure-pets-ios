@@ -273,6 +273,64 @@
     return YES;
 }
 
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+         accessoryContext:(nullable PetAccessory *)accessory
+                   fromVC:(UIViewController *)vc
+{
+    return [self pp_openChatThread:thread
+                  accessoryContext:accessory
+                            fromVC:vc
+                          animated:YES];
+}
+
++ (BOOL)pp_openChatThread:(ChatThreadModel *)thread
+         accessoryContext:(nullable PetAccessory *)accessory
+                   fromVC:(UIViewController *)vc
+                 animated:(BOOL)animated
+{
+    if (!PPIsUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return NO;
+    }
+    NSLog(@"💬 [Chat] Request to open chat thread with accessory context");
+
+    if (!thread) {
+        NSLog(@"❌ [Chat] Thread is nil, aborting navigation");
+        return NO;
+    }
+
+    if (!vc) {
+        NSLog(@"❌ [Chat] Source view controller is nil");
+        return NO;
+    }
+    UIViewController *presenter = [self pp_resolvedPresenterFrom:vc];
+    if (![self pp_canPresentFrom:presenter]) {
+        NSLog(@"⚠️ [Chat] Presenter is busy, dropping duplicate open request");
+        return NO;
+    }
+
+    NSLog(@"📨 [Chat] Thread info | threadID=%@ | accessoryID=%@",
+          thread.ID,
+          accessory.accessoryID);
+
+    NSLog(@"➡️ [Chat] Presenting PPMessagingSwiftUIHostController with accessory");
+
+    PPMessagingSwiftUIHostController *chat = [[PPMessagingSwiftUIHostController alloc] init];
+    if (accessory) {
+        [chat configureWithChatThread:thread accessoryContext:accessory];
+    } else {
+        [chat configureWithChatThread:thread];
+    }
+
+    PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:chat];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    nav.modalPresentationCapturesStatusBarAppearance = YES;
+    [presenter presentViewController:nav animated:animated completion:nil];
+
+    NSLog(@"✅ [Chat] Chat screen with accessory context presented successfully");
+    return YES;
+}
+
 
 + (void)pp_openDetailForObject:(id)object
                         fromVC:(UIViewController *)vc
