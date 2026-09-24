@@ -2322,7 +2322,7 @@ private final class PPMessagingScreenState: ObservableObject {
                 if !values.contains(value) { values.append(value) }
             }
             .joined(separator: " · ")
-        let thumbnailURLString = accessory.imageURLsArray?.first ?? ""
+        let thumbnailURLString = accessory.imageURLsArray.first ?? ""
 
         return [
             "title": title,
