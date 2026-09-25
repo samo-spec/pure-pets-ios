@@ -53,27 +53,43 @@ typedef NS_ENUM(NSInteger, PPImageSearchMode) {
 
 /// Resolves a detector species against the current server-driven, user-visible
 /// MainKinds taxonomy. `supported == NO` is authoritative only when `error` is nil.
+- (void)resolveSupportForSpecies:(NSString *)species
+                      completion:(void (^)(NSDictionary * _Nullable support,
+                                            NSError * _Nullable error))completion
+    NS_SWIFT_NAME(resolveSupport(species:completion:));
+
 - (void)validateSpecies:(NSString *)species
              completion:(void (^)(BOOL supported,
                                   NSError * _Nullable error))completion
     NS_SWIFT_NAME(validateSpecies(_:completion:));
 
+- (void)identifyAnimalImageData:(NSData *)imageData
+                         contentType:(NSString *)contentType
+                        localSpecies:(NSString *)localSpecies
+                          localBreed:(NSString * _Nullable)localBreed
+                      consentVersion:(NSString *)consentVersion
+                          completion:(void (^)(NSDictionary * _Nullable response,
+                                                NSError * _Nullable error))completion
+    NS_SWIFT_NAME(identifyAnimal(data:contentType:localSpecies:localBreed:consentVersion:completion:));
+
 - (void)searchImageData:(NSData *)imageData
              contentType:(NSString *)contentType
                  species:(NSString *)species
                    breed:(NSString * _Nullable)breed
+              mainKindID:(NSInteger)mainKindID
                    limit:(NSInteger)limit
               completion:(void (^)(NSArray<NSDictionary *> * _Nullable items,
                                     NSError * _Nullable error))completion
-    NS_SWIFT_NAME(searchImage(data:contentType:species:breed:limit:completion:));
+    NS_SWIFT_NAME(searchImage(data:contentType:species:breed:mainKindID:limit:completion:));
 
 - (void)searchMarketplaceCategory:(NSString *)category
                            species:(NSString *)species
                              breed:(NSString * _Nullable)breed
+                        mainKindID:(NSInteger)mainKindID
                              limit:(NSInteger)limit
                         completion:(void (^)(NSArray<NSDictionary *> * _Nullable items,
                                               NSError * _Nullable error))completion
-    NS_SWIFT_NAME(searchMarketplace(category:species:breed:limit:completion:));
+    NS_SWIFT_NAME(searchMarketplace(category:species:breed:mainKindID:limit:completion:));
 
 - (void)openItemWithIdentifier:(NSString *)identifier
                            kind:(NSString *)kind

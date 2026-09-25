@@ -23,6 +23,8 @@
 
 #pragma mark - Pure Lens discovery adapter
 
+static const NSUInteger PPPureLensIdentityMaxBase64Length = 1200000;
+
 static NSString *PPPureLensNormalizedText(NSString *value)
 {
     NSString *normalized = [value.lowercaseString stringByReplacingOccurrencesOfString:@"_" withString:@" "];
@@ -97,21 +99,106 @@ static NSError *PPPureLensDiscoveryError(NSInteger code)
     return self;
 }
 
-- (void)validateSpecies:(NSString *)species
-             completion:(void (^)(BOOL supported, NSError * _Nullable error))completion
+- (void)resolveSupportForSpecies:(NSString *)species
+                      completion:(void (^)(NSDictionary * _Nullable support, NSError * _Nullable error))completion
 {
+    NSString *normalized = PPPureLensNormalizedText(species);
+    NSSet<NSString *> *broadLabels = [NSSet setWithArray:@[
+        @"", @"animal", @"bird", @"mammal", @"reptile", @"fish", @"small mammal"
+    ]];
+    if ([broadLabels containsObject:normalized]) {
+        if (completion) completion(nil, nil);
+        return;
+    }
+
+    void (^finish)(MainKindsModel * _Nullable) = ^(MainKindsModel * _Nullable kind) {
+        if (!kind) {
+            if (completion) completion(nil, nil);
+            return;
+        }
+        NSDictionary *support = @{
+            @"mainKindID": @(kind.ID),
+            @"mainKindNameEn": kind.KindNameEn ?: @"",
+            @"mainKindNameAr": kind.KindNameAr ?: @"",
+            @"matchedBy": @"local_visible_taxonomy"
+        };
+        if (completion) completion(support, nil);
+    };
+
     NSArray<MainKindsModel *> *availableKinds = [[MainKindsArrayManager shared] visibleMainKindsSnapshot];
     if (availableKinds.count > 0) {
-        if (completion) completion([self pp_mainKindForSpecies:species] != nil, nil);
+        finish([self pp_mainKindForSpecies:species]);
         return;
     }
 
     [[MainKindsArrayManager shared] loadMainDataCompletionHandler:^(int result) {
         if (result == 0) {
-            if (completion) completion(NO, PPPureLensDiscoveryError(2005));
+            if (completion) completion(nil, PPPureLensDiscoveryError(2005));
             return;
         }
-        if (completion) completion([self pp_mainKindForSpecies:species] != nil, nil);
+        finish([self pp_mainKindForSpecies:species]);
+    }];
+}
+
+- (void)validateSpecies:(NSString *)species
+             completion:(void (^)(BOOL supported, NSError * _Nullable error))completion
+{
+    [self resolveSupportForSpecies:species completion:^(NSDictionary * _Nullable support, NSError * _Nullable error) {
+        if (completion) completion(support != nil, error);
+    }];
+}
+
+- (void)identifyAnimalImageData:(NSData *)imageData
+                         contentType:(NSString *)contentType
+                        localSpecies:(NSString *)localSpecies
+                          localBreed:(NSString * _Nullable)localBreed
+                      consentVersion:(NSString *)consentVersion
+                          completion:(void (^)(NSDictionary * _Nullable response,
+                                                NSError * _Nullable error))completion
+{
+    if (imageData.length == 0 || consentVersion.length == 0) {
+        if (completion) completion(nil, PPPureLensDiscoveryError(2010));
+        return;
+    }
+    NSString *normalizedType = contentType.lowercaseString;
+    NSSet<NSString *> *allowedTypes = [NSSet setWithArray:@[@"image/jpeg", @"image/png", @"image/webp"]];
+    if (![allowedTypes containsObject:normalizedType]) {
+        if (completion) completion(nil, PPPureLensDiscoveryError(2011));
+        return;
+    }
+    NSString *base64 = [imageData base64EncodedStringWithOptions:0];
+    if (base64.length == 0 || base64.length > PPPureLensIdentityMaxBase64Length) {
+        if (completion) completion(nil, PPPureLensDiscoveryError(2012));
+        return;
+    }
+    NSMutableDictionary *localHint = [NSMutableDictionary dictionary];
+    if (localSpecies.length > 0) localHint[@"species"] = localSpecies;
+    if (localBreed.length > 0) localHint[@"breed"] = localBreed;
+    NSDictionary *payload = @{
+        @"imageBase64": base64,
+        @"contentType": normalizedType,
+        @"consentGranted": @YES,
+        @"consentVersion": consentVersion,
+        @"localHint": localHint.copy
+    };
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+        HTTPSCallableWithName:@"lensAnimalIdentify"];
+    [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result,
+                                                  NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error) {
+                if (completion) completion(nil, error);
+                return;
+            }
+            NSDictionary *data = [result.data isKindOfClass:NSDictionary.class]
+                ? (NSDictionary *)result.data
+                : nil;
+            if (!data) {
+                if (completion) completion(nil, PPPureLensDiscoveryError(2013));
+                return;
+            }
+            if (completion) completion(data, nil);
+        });
     }];
 }
 
@@ -119,12 +206,17 @@ static NSError *PPPureLensDiscoveryError(NSInteger code)
              contentType:(NSString *)contentType
                  species:(NSString *)species
                    breed:(NSString * _Nullable)breed
+              mainKindID:(NSInteger)mainKindID
                    limit:(NSInteger)limit
               completion:(void (^)(NSArray<NSDictionary *> * _Nullable items,
                                     NSError * _Nullable error))completion
 {
+    if (mainKindID <= 0) {
+        if (completion) completion(nil, PPPureLensDiscoveryError(2001));
+        return;
+    }
     NSInteger boundedLimit = MAX(1, MIN(limit, 24));
-    [self pp_resolveMainKindForSpecies:species allowReload:YES completion:^(MainKindsModel * _Nullable mainKind) {
+    [self pp_resolveMainKindForID:mainKindID species:species allowReload:YES completion:^(MainKindsModel * _Nullable mainKind) {
         if (!mainKind) {
             if (completion) completion(nil, PPPureLensDiscoveryError(2001));
             return;
@@ -190,12 +282,17 @@ static NSError *PPPureLensDiscoveryError(NSInteger code)
 - (void)searchMarketplaceCategory:(NSString *)category
                            species:(NSString *)species
                              breed:(NSString * _Nullable)breed
+                        mainKindID:(NSInteger)mainKindID
                              limit:(NSInteger)limit
                         completion:(void (^)(NSArray<NSDictionary *> * _Nullable items,
                                               NSError * _Nullable error))completion
 {
+    if (mainKindID <= 0) {
+        if (completion) completion(nil, PPPureLensDiscoveryError(2001));
+        return;
+    }
     NSInteger boundedLimit = MAX(1, MIN(limit, 24));
-    [self pp_resolveMainKindForSpecies:species allowReload:YES completion:^(MainKindsModel * _Nullable mainKind) {
+    [self pp_resolveMainKindForID:mainKindID species:species allowReload:YES completion:^(MainKindsModel * _Nullable mainKind) {
         if (!mainKind) {
             if (completion) completion(nil, PPPureLensDiscoveryError(2001));
             return;
@@ -271,6 +368,38 @@ static NSError *PPPureLensDiscoveryError(NSInteger code)
 }
 
 #pragma mark - Taxonomy and mapping
+
+- (void)pp_resolveMainKindForID:(NSInteger)mainKindID
+                            species:(NSString *)species
+                        allowReload:(BOOL)allowReload
+                         completion:(void (^)(MainKindsModel * _Nullable mainKind))completion
+{
+    (void)species;
+    if (mainKindID <= 0) {
+        if (completion) completion(nil);
+        return;
+    }
+
+    NSArray<MainKindsModel *> *availableKinds = [[MainKindsArrayManager shared] visibleMainKindsSnapshot];
+    MainKindsModel *match = [self pp_mainKindForID:mainKindID];
+    if (match || !allowReload || availableKinds.count > 0) {
+        if (completion) completion(match);
+        return;
+    }
+
+    [[MainKindsArrayManager shared] loadMainDataCompletionHandler:^(int result) {
+        if (completion) completion(result == 0 ? nil : [self pp_mainKindForID:mainKindID]);
+    }];
+}
+
+- (MainKindsModel * _Nullable)pp_mainKindForID:(NSInteger)mainKindID
+{
+    if (mainKindID <= 0) return nil;
+    for (MainKindsModel *kind in [[MainKindsArrayManager shared] visibleMainKindsSnapshot]) {
+        if (kind.isVisibleInUserApp && kind.ID == mainKindID) return kind;
+    }
+    return nil;
+}
 
 - (void)pp_resolveMainKindForSpecies:(NSString *)species
                          allowReload:(BOOL)allowReload

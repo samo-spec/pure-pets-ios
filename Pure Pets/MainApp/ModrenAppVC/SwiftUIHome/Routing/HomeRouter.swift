@@ -113,6 +113,47 @@ final class PPPureLensHostPresenter: NSObject {
         )
         let itemLimit = configuration.discoveryItemLimit
         let discovery = LensDiscoveryClient(
+            identifyAnimal: { frame, animal in
+                let response: NSDictionary = try await withCheckedThrowingContinuation { continuation in
+                    bridge.identifyAnimal(
+                        data: frame.data,
+                        contentType: frame.mimeType,
+                        localSpecies: animal.species,
+                        localBreed: animal.breed,
+                        consentVersion: Self.consentVersion
+                    ) { response, error in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else if let response {
+                            continuation.resume(returning: response)
+                        } else {
+                            continuation.resume(throwing: Self.invalidAnimalIdentityError())
+                        }
+                    }
+                }
+                return try Self.animalIdentification(from: response)
+            },
+            resolveAnimalSupport: { animal in
+                let rawSupport: NSDictionary? = try await withCheckedThrowingContinuation { continuation in
+                    bridge.resolveSupport(species: animal.species) { support, error in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume(returning: support)
+                        }
+                    }
+                }
+                guard let rawSupport,
+                      let mainKindID = rawSupport["mainKindID"] as? NSNumber,
+                      mainKindID.intValue > 0
+                else { return nil }
+                return LensAnimalSupportContext(
+                    mainKindID: mainKindID.intValue,
+                    nameEn: rawSupport["mainKindNameEn"] as? String ?? "",
+                    nameAr: rawSupport["mainKindNameAr"] as? String ?? "",
+                    matchedBy: rawSupport["matchedBy"] as? String ?? "local_visible_taxonomy"
+                )
+            },
             isAnimalSupported: { animal in
                 try await withCheckedThrowingContinuation { continuation in
                     bridge.validateSpecies(animal.species) { supported, error in
@@ -131,6 +172,7 @@ final class PPPureLensHostPresenter: NSObject {
                         contentType: frame.mimeType,
                         species: animal.species,
                         breed: animal.breed,
+                        mainKindID: animal.businessMainKindID ?? 0,
                         limit: itemLimit
                     ) { items, error in
                         if let error {
@@ -144,7 +186,8 @@ final class PPPureLensHostPresenter: NSObject {
                     items: try PureLensDiscoveryDictionaryAdapter.items(
                         from: rows,
                         limit: itemLimit
-                    )
+                    ),
+                    detectedMainKindID: animal.businessMainKindID
                 )
             },
             searchMarketplace: { category, animal in
@@ -153,6 +196,7 @@ final class PPPureLensHostPresenter: NSObject {
                         category: category.rawValue,
                         species: animal.species,
                         breed: animal.breed,
+                        mainKindID: animal.businessMainKindID ?? 0,
                         limit: itemLimit
                     ) { items, error in
                         if let error {
@@ -197,6 +241,51 @@ final class PPPureLensHostPresenter: NSObject {
         }
     }
 
+    private static func invalidAnimalIdentityError() -> NSError {
+        NSError(
+            domain: "PurePets.PureLens.Identity",
+            code: 2101,
+            userInfo: [NSLocalizedDescriptionKey: "Pure Lens received an invalid animal identity response."]
+        )
+    }
+
+    private static func animalIdentification(
+        from response: NSDictionary
+    ) throws -> LensAnimalIdentificationResult {
+        guard let raw = response["identification"] as? NSDictionary,
+              let statusValue = raw["status"] as? String,
+              let status = LensAnimalIdentificationStatus(rawValue: statusValue),
+              let commonName = raw["commonName"] as? String,
+              let canonicalSpecies = raw["canonicalSpecies"] as? String,
+              let speciesConfidence = raw["speciesConfidence"] as? NSNumber
+        else { throw invalidAnimalIdentityError() }
+
+        var support: LensAnimalSupportContext?
+        if let rawSupport = response["support"] as? NSDictionary,
+           (rawSupport["supported"] as? NSNumber)?.boolValue == true,
+           let mainKindID = rawSupport["mainKindID"] as? NSNumber,
+           mainKindID.intValue > 0 {
+            support = LensAnimalSupportContext(
+                mainKindID: mainKindID.intValue,
+                nameEn: rawSupport["mainKindNameEn"] as? String ?? "",
+                nameAr: rawSupport["mainKindNameAr"] as? String ?? "",
+                matchedBy: rawSupport["matchedBy"] as? String ?? ""
+            )
+        }
+
+        return LensAnimalIdentificationResult(
+            status: status,
+            commonName: commonName,
+            canonicalSpecies: canonicalSpecies,
+            scientificName: raw["scientificName"] as? String,
+            animalGroup: raw["animalGroup"] as? String,
+            breed: raw["breed"] as? String,
+            speciesConfidence: speciesConfidence.doubleValue,
+            breedConfidence: (raw["breedConfidence"] as? NSNumber)?.doubleValue ?? 0,
+            support: support
+        )
+    }
+
     private func track(name: String, properties: [String: String]) {
         if name == Self.consentEvent {
             persistCurrentConsent()
@@ -207,6 +296,8 @@ final class PPPureLensHostPresenter: NSObject {
             "pure_lens_failed",
             "pure_lens_detector_degraded",
             "pure_lens_unsupported_subject",
+            "pure_lens_identity_uncertain",
+            "pure_lens_animal_identity_failed",
             "pure_lens_taxonomy_validation_failed",
             "pure_lens_remote_processing_declined",
             "pure_lens_discovery_category_failed",
