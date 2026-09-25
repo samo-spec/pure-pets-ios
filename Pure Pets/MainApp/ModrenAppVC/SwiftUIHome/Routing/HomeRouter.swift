@@ -282,6 +282,7 @@ final class PPPureLensHostPresenter: NSObject {
             breed: raw["breed"] as? String,
             speciesConfidence: speciesConfidence.doubleValue,
             breedConfidence: (raw["breedConfidence"] as? NSNumber)?.doubleValue ?? 0,
+            ambiguityReason: raw["ambiguityReason"] as? String,
             support: support
         )
     }
@@ -296,7 +297,12 @@ final class PPPureLensHostPresenter: NSObject {
             "pure_lens_failed",
             "pure_lens_detector_degraded",
             "pure_lens_unsupported_subject",
+            "pure_lens_identity_supported",
+            "pure_lens_identity_unsupported",
             "pure_lens_identity_uncertain",
+            "pure_lens_identity_not_animal",
+            "pure_lens_taxonomy_unavailable",
+            "pure_lens_commerce_scope_rejected",
             "pure_lens_animal_identity_failed",
             "pure_lens_taxonomy_validation_failed",
             "pure_lens_remote_processing_declined",
