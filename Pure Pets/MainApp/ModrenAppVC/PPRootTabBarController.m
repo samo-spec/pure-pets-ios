@@ -4223,7 +4223,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     vc.FromVC = @"AppVC";
     vc.pp_transitionStyle = PPTransitionStyleNone;
 
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:vc];
     nav.modalPresentationStyle = UIModalPresentationFullScreen;
     [self presentViewController:nav animated:YES completion:nil];
 }
@@ -4263,7 +4263,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     vc.accessKindType = AccessTypeAccessory;
     vc.pp_transitionStyle = PPTransitionStyleNone;
 
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:vc];
     nav.modalPresentationStyle = UIModalPresentationFullScreen;
     [self presentViewController:nav animated:YES completion:nil];
 }

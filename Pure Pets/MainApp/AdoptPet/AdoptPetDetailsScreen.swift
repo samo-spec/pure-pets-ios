@@ -1333,18 +1333,7 @@ private func resolvedFacts(for pet: AdoptPetModel) -> [AdoptionDetailFact] {
     }
 
     if pet.ageMonths > 0 {
-        let ageString: String
-        if pet.ageMonths >= 12 {
-            let years = pet.ageMonths / 12
-            let months = pet.ageMonths % 12
-            if months == 0 {
-                ageString = "\(years) " + PPAdoptLang("Years")
-            } else {
-                ageString = "\(years) " + PPAdoptLang("Years") + " " + "\(months) " + PPAdoptLang("Months")
-            }
-        } else {
-            ageString = String(format: PPAdoptLang("%ld Months"), pet.ageMonths)
-        }
+        let ageString = PPAdoptFormattedAge(months: pet.ageMonths)
         facts.append(
             AdoptionDetailFact(id: "age", symbol: "calendar", title: PPAdoptLang("Age"), value: ageString)
         )

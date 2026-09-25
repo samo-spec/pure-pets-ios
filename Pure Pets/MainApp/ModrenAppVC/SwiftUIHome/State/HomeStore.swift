@@ -1859,10 +1859,10 @@ final class HomeStore: ObservableObject {
             // a capped global feed from another species.
             relevantAccessories = (categoryAccessories[selectedCategoryID] ?? [])
                 .filter {
-                    integerValue($0, key: "petMainCategoryID") == selectedCategoryID
+                    $0.matchesMainCategoryID(selectedCategoryID)
                 }
             relevantFood = food.filter {
-                integerValue($0, key: "petMainCategoryID") == selectedCategoryID
+                $0.matchesMainCategoryID(selectedCategoryID)
             }
             relevantAds = (categoryAdvertisements[selectedCategoryID] ?? [])
                 .filter {

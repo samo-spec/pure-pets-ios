@@ -178,6 +178,130 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
 
 
 
+@interface PPInteractivePopGestureDelegate : NSObject <UIGestureRecognizerDelegate>
+@property (nonatomic, weak) UINavigationController *navigationController;
+@end
+
+@implementation PPInteractivePopGestureDelegate
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    UINavigationController *nav = self.navigationController;
+    if (!nav) return NO;
+    
+    // 1. Only allow when navigation stack has more than 1 controller
+    if (nav.viewControllers.count <= 1) {
+        return NO;
+    }
+    
+    // 2. Prevent gesture while transition animation is already active
+    if (nav.transitionCoordinator != nil && !nav.transitionCoordinator.isInteractive) {
+        return NO;
+    }
+    @try {
+        if ([[nav valueForKey:@"_isTransitioning"] boolValue]) {
+            return NO;
+        }
+    } @catch (NSException *e) {}
+    
+    // 3. Check if current top view controller opts out
+    UIViewController *topVC = nav.topViewController;
+    if ([topVC respondsToSelector:@selector(pp_disableInteractivePopGesture)]) {
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        BOOL disabled = ((BOOL (*)(id, SEL))[topVC methodForSelector:@selector(pp_disableInteractivePopGesture)])(topVC, @selector(pp_disableInteractivePopGesture));
+        #pragma clang diagnostic pop
+        if (disabled) {
+            return NO;
+        }
+    }
+    
+    return YES;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldBeRequiredToFailByGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    // When the interactive pop gesture recognizer (screen edge pan) is evaluated,
+    // require other pan gestures (like UIScrollView's panGestureRecognizer, horizontal carousels, table/collection swipes)
+    // to fail first before they can begin.
+    UINavigationController *nav = self.navigationController;
+    if (nav && gestureRecognizer == nav.interactivePopGestureRecognizer) {
+        if ([otherGestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    return NO;
+}
+
+@end
+
+static char kPPInteractivePopDelegateKey;
+
+@implementation UINavigationController (PPSwipeBack)
+
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        Class cls = [UINavigationController class];
+        
+        Method origPush = class_getInstanceMethod(cls, @selector(pushViewController:animated:));
+        Method swzPush  = class_getInstanceMethod(cls, @selector(pp_swizzled_pushViewController:animated:));
+        if (origPush && swzPush) {
+            method_exchangeImplementations(origPush, swzPush);
+        }
+        
+        Method origSetNavHidden = class_getInstanceMethod(cls, @selector(setNavigationBarHidden:animated:));
+        Method swzSetNavHidden  = class_getInstanceMethod(cls, @selector(pp_swizzled_setNavigationBarHidden:animated:));
+        if (origSetNavHidden && swzSetNavHidden) {
+            method_exchangeImplementations(origSetNavHidden, swzSetNavHidden);
+        }
+        
+        Method origDidAppear = class_getInstanceMethod(cls, @selector(viewDidAppear:));
+        Method swzDidAppear  = class_getInstanceMethod(cls, @selector(pp_swizzled_viewDidAppear:));
+        if (origDidAppear && swzDidAppear) {
+            method_exchangeImplementations(origDidAppear, swzDidAppear);
+        }
+    });
+}
+
+- (PPInteractivePopGestureDelegate *)pp_interactivePopGestureDelegate {
+    PPInteractivePopGestureDelegate *delegate = objc_getAssociatedObject(self, &kPPInteractivePopDelegateKey);
+    if (!delegate) {
+        delegate = [[PPInteractivePopGestureDelegate alloc] init];
+        delegate.navigationController = self;
+        objc_setAssociatedObject(self, &kPPInteractivePopDelegateKey, delegate, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    return delegate;
+}
+
+- (void)pp_enableInteractivePopGesture {
+    if (self.interactivePopGestureRecognizer) {
+        self.interactivePopGestureRecognizer.enabled = YES;
+        self.interactivePopGestureRecognizer.delegate = [self pp_interactivePopGestureDelegate];
+    }
+}
+
+- (void)pp_swizzled_pushViewController:(UIViewController *)viewController animated:(BOOL)animated {
+    [self pp_enableInteractivePopGesture];
+    [self pp_swizzled_pushViewController:viewController animated:animated];
+    [self pp_enableInteractivePopGesture];
+}
+
+- (void)pp_swizzled_setNavigationBarHidden:(BOOL)hidden animated:(BOOL)animated {
+    [self pp_swizzled_setNavigationBarHidden:hidden animated:animated];
+    [self pp_enableInteractivePopGesture];
+}
+
+- (void)pp_swizzled_viewDidAppear:(BOOL)animated {
+    [self pp_swizzled_viewDidAppear:animated];
+    [self pp_enableInteractivePopGesture];
+}
+
+@end
+
+
 @implementation PPNavigationController
 
 -(instancetype)initWithRootViewController:(UIViewController *)rootViewController
@@ -229,13 +353,12 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
         };
         [[UINavigationBar appearance] setTitleTextAttributes:titleAttributes];
     }
-    self.interactivePopGestureRecognizer.enabled = YES;
-    self.interactivePopGestureRecognizer.delegate = (id<UIGestureRecognizerDelegate>)self;
+    [self pp_enableInteractivePopGesture];
 }
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
-    return self.viewControllers.count > 1;
+    return [[self pp_interactivePopGestureDelegate] gestureRecognizerShouldBegin:gestureRecognizer];
 }
 
 // ✅ Prevent iOS from “borrowing” appearance from pushed VC
@@ -243,6 +366,7 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
     
     self.navigationBar.tintColor = AppPrimaryTextClr ?: UIColor.labelColor; // reset before transition
     [super pushViewController:viewController animated:animated];
+    [self pp_enableInteractivePopGesture];
 }
 
 - (UIViewController *)popViewControllerAnimated:(BOOL)animated {

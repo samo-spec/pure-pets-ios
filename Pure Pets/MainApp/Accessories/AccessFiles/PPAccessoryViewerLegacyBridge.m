@@ -333,6 +333,22 @@ static UIViewController *PPAccessoryResolvedPresenter(
 
 + (NSString *)categoryNameForAccessory:(PetAccessory *)accessory
 {
+    if (accessory.isAllCategories) {
+        return kLang(@"AllCategories");
+    }
+    if (accessory.petMainCategoryIDs.count > 1) {
+        NSMutableArray<NSString *> *names = [NSMutableArray arrayWithCapacity:accessory.petMainCategoryIDs.count];
+        for (NSNumber *catNum in accessory.petMainCategoryIDs) {
+            MainKindsModel *model = [MainKindsModel mainKindModelForID:catNum.integerValue];
+            NSString *kindName = PPAccessoryBridgeTrimmedString(model.KindName);
+            if (kindName.length > 0 && ![names containsObject:kindName]) {
+                [names addObject:kindName];
+            }
+        }
+        if (names.count > 0) {
+            return [names componentsJoinedByString:@" · "];
+        }
+    }
     MainKindsModel *model =
         [MainKindsModel mainKindModelForID:accessory.petMainCategoryID];
     NSString *name = PPAccessoryBridgeTrimmedString(model.KindName);
@@ -343,6 +359,32 @@ static UIViewController *PPAccessoryResolvedPresenter(
 
 + (NSString *)subcategoryNameForAccessory:(PetAccessory *)accessory
 {
+    if (accessory.isAllSubCategories) {
+        return kLang(@"data_nav_all_breed");
+    }
+    if (accessory.petSubCategoryIDs.count > 1) {
+        NSMutableArray<NSString *> *names = [NSMutableArray arrayWithCapacity:accessory.petSubCategoryIDs.count];
+        for (NSNumber *subNum in accessory.petSubCategoryIDs) {
+            NSInteger subID = subNum.integerValue;
+            SubKindModel *subModel = nil;
+            MainKindsModel *primaryModel = [MainKindsModel mainKindModelForID:accessory.petMainCategoryID];
+            subModel = [primaryModel subKindForID:subID];
+            if (!subModel) {
+                for (NSNumber *mainNum in accessory.petMainCategoryIDs) {
+                    MainKindsModel *m = [MainKindsModel mainKindModelForID:mainNum.integerValue];
+                    subModel = [m subKindForID:subID];
+                    if (subModel) break;
+                }
+            }
+            NSString *subName = PPAccessoryBridgeTrimmedString(subModel.SubKindName);
+            if (subName.length > 0 && ![names containsObject:subName]) {
+                [names addObject:subName];
+            }
+        }
+        if (names.count > 0) {
+            return [names componentsJoinedByString:@" · "];
+        }
+    }
     MainKindsModel *model =
         [MainKindsModel mainKindModelForID:accessory.petMainCategoryID];
     SubKindModel *subcategory =

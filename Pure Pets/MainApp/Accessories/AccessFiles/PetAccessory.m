@@ -70,6 +70,20 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
 
 
 
+static NSArray<NSNumber *> *PPAccessoryIntegerArray(id value) {
+    if (![value isKindOfClass:NSArray.class]) return @[];
+    NSMutableArray<NSNumber *> *numbers = [NSMutableArray array];
+    for (id item in (NSArray *)value) {
+        if ([item respondsToSelector:@selector(integerValue)]) {
+            NSInteger val = [item integerValue];
+            if (val > 0) {
+                [numbers addObject:@(val)];
+            }
+        }
+    }
+    return [numbers copy];
+}
+
 // MARK: - Private interface for searchTitle storage
 
 @interface PetAccessory ()
@@ -109,6 +123,18 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     // Categories
     dict[@"petMainCategoryID"] = @(self.petMainCategoryID);
     dict[@"petSubCategoryID"] = @(self.petSubCategoryID);
+    if (self.petMainCategoryIDs.count > 0) {
+        dict[@"petMainCategoryIDs"] = self.petMainCategoryIDs;
+    } else if (self.petMainCategoryID > 0) {
+        dict[@"petMainCategoryIDs"] = @[@(self.petMainCategoryID)];
+    }
+    if (self.petSubCategoryIDs.count > 0) {
+        dict[@"petSubCategoryIDs"] = self.petSubCategoryIDs;
+    } else if (self.petSubCategoryID > 0) {
+        dict[@"petSubCategoryIDs"] = @[@(self.petSubCategoryID)];
+    }
+    dict[@"isAllCategories"] = @(self.isAllCategories);
+    dict[@"isAllSubCategories"] = @(self.isAllSubCategories);
     if (self.AccessoryCategoryID) dict[@"AccessoryCategoryID"] = self.AccessoryCategoryID;
     dict[@"cityID"] = @(self.cityID);
     
@@ -194,6 +220,26 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     } else {
         return kLang(@"inStock");
     }
+}
+
+- (BOOL)matchesMainCategoryID:(NSInteger)categoryID {
+    if (categoryID <= 0) return YES;
+    if (self.isAllCategories) return YES;
+    if (self.petMainCategoryID == categoryID) return YES;
+    for (NSNumber *num in self.petMainCategoryIDs) {
+        if (num.integerValue == categoryID) return YES;
+    }
+    return NO;
+}
+
+- (BOOL)matchesSubCategoryID:(NSInteger)subCategoryID {
+    if (subCategoryID <= 0) return YES;
+    if (self.isAllSubCategories) return YES;
+    if (self.petSubCategoryID == subCategoryID) return YES;
+    for (NSNumber *num in self.petSubCategoryIDs) {
+        if (num.integerValue == subCategoryID) return YES;
+    }
+    return NO;
 }
 
 - (NSArray<PetImageItem *> *)imageItems {
@@ -341,6 +387,21 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         _imageMeta  = dict[@"imageMeta"] ?: nil;
         _petMainCategoryID = [dict[@"petMainCategoryID"] integerValue];
         _petSubCategoryID = [dict[@"petSubCategoryID"] integerValue];
+        _petMainCategoryIDs = PPAccessoryIntegerArray(dict[@"petMainCategoryIDs"]);
+        _petSubCategoryIDs = PPAccessoryIntegerArray(dict[@"petSubCategoryIDs"]);
+        _isAllCategories = [dict[@"isAllCategories"] boolValue];
+        _isAllSubCategories = [dict[@"isAllSubCategories"] boolValue];
+
+        if (_petMainCategoryIDs.count == 0 && _petMainCategoryID > 0) {
+            _petMainCategoryIDs = @[@(_petMainCategoryID)];
+        } else if (_petMainCategoryID <= 0 && _petMainCategoryIDs.count > 0) {
+            _petMainCategoryID = [_petMainCategoryIDs.firstObject integerValue];
+        }
+        if (_petSubCategoryIDs.count == 0 && _petSubCategoryID > 0) {
+            _petSubCategoryIDs = @[@(_petSubCategoryID)];
+        } else if (_petSubCategoryID <= 0 && _petSubCategoryIDs.count > 0) {
+            _petSubCategoryID = [_petSubCategoryIDs.firstObject integerValue];
+        }
         _AccessoryCategoryID = [dict[@"AccessoryCategoryID"] isKindOfClass:NSString.class] ? dict[@"AccessoryCategoryID"] : nil;
         _cityID = [dict[@"cityID"] ?: @(0) integerValue];
         id createdVal = dict[@"createdAt"];
@@ -497,6 +558,10 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.blurHash = [source.blurHash copy];
     copy.petMainCategoryID = source.petMainCategoryID;
     copy.petSubCategoryID = source.petSubCategoryID;
+    copy.petMainCategoryIDs = [source.petMainCategoryIDs copy];
+    copy.petSubCategoryIDs = [source.petSubCategoryIDs copy];
+    copy.isAllCategories = source.isAllCategories;
+    copy.isAllSubCategories = source.isAllSubCategories;
     copy.AccessoryCategoryID = [source.AccessoryCategoryID copy];
     copy.cityID = source.cityID;
     copy.condition = source.condition;
@@ -681,14 +746,41 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     }
     
     // Category Information
-    if (accessory.petMainCategoryID > 0) {
+    if (accessory.isAllCategories) {
+        [message appendFormat:@"%@: %@\n", kLang(@"Category"), kLang(@"All Categories")];
+    } else if (accessory.petMainCategoryIDs.count > 1) {
+        NSMutableArray<NSString *> *names = [NSMutableArray array];
+        for (NSNumber *catID in accessory.petMainCategoryIDs) {
+            NSString *n = [MainKindsModel kindNameForID:catID.integerValue];
+            if (n.length > 0 && ![names containsObject:n]) {
+                [names addObject:n];
+            }
+        }
+        if (names.count > 0) {
+            [message appendFormat:@"%@: %@\n", kLang(@"Category"), [names componentsJoinedByString:Language.isRTL ? @"، " : @", "]];
+        }
+    } else if (accessory.petMainCategoryID > 0) {
         NSString *mainCategoryName = [MainKindsModel kindNameForID:accessory.petMainCategoryID];
         if (mainCategoryName) {
             [message appendFormat:@"%@: %@\n", kLang(@"Category"), mainCategoryName];
         }
     }
     
-    if (accessory.petSubCategoryID > 0) {
+    if (accessory.isAllSubCategories) {
+        [message appendFormat:@"%@: %@\n", kLang(@"Subcategory"), kLang(@"All Subcategories")];
+    } else if (accessory.petSubCategoryIDs.count > 1) {
+        NSMutableArray<NSString *> *subNames = [NSMutableArray array];
+        NSArray *subKinds = [MKM getSubKindArray:accessory.petMainCategoryID];
+        for (NSNumber *subID in accessory.petSubCategoryIDs) {
+            NSString *name = [SubKindModel getSubKindName:subID.integerValue subKindsArrayLocal:subKinds];
+            if (name.length > 0 && ![subNames containsObject:name]) {
+                [subNames addObject:name];
+            }
+        }
+        if (subNames.count > 0) {
+            [message appendFormat:@"%@: %@\n", kLang(@"Subcategory"), [subNames componentsJoinedByString:Language.isRTL ? @"، " : @", "]];
+        }
+    } else if (accessory.petSubCategoryID > 0) {
         NSArray *subKinds = [MKM getSubKindArray:accessory.petMainCategoryID];
         NSString *subCategoryName = [SubKindModel getSubKindName:accessory.petSubCategoryID
                                                   subKindsArrayLocal:subKinds];

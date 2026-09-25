@@ -48,6 +48,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface PPNavigationController : UINavigationController
 @end
+
+@interface UINavigationController (PPSwipeBack)
+
+/// Ensures the interactive pop gesture recognizer is properly configured on this navigation controller.
+- (void)pp_enableInteractivePopGesture;
+
+@end
+
+@protocol PPInteractivePopSupport <NSObject>
+@optional
+/// Return YES to disable interactive pop gesture on this specific controller (e.g. camera, drawing, custom pan)
+- (BOOL)pp_disableInteractivePopGesture;
+@end
  
 
 

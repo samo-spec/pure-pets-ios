@@ -1205,7 +1205,7 @@ private struct iPhoneAddAdoptPetDeck: View {
                     storySection
 
                     // Spacer for Floating Action Bar
-                    Spacer().frame(height: 110)
+                    Spacer().frame(height: 130)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 12)
@@ -1639,9 +1639,13 @@ private struct iPhoneAddAdoptPetDeck: View {
                     }
                     .buttonStyle(AdoptPressStyle())
 
-                    Text("\(store.ageMonths) " + PPAdoptLang("%ld Months"))
+                    Text(formattedAge(months: store.ageMonths))
                         .font(AdoptFont.bold(15))
-                        .frame(width: 120)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(minWidth: 100)
+                        .padding(.horizontal, 8)
 
                     Button(action: {
                         if store.ageMonths < 240 {
@@ -1669,8 +1673,8 @@ private struct iPhoneAddAdoptPetDeck: View {
                 title: PPAdoptLang("adopt_form_gender_label"),
                 value: store.selectedGender.isEmpty ? nil : (store.selectedGender.lowercased() == "male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female")),
                 placeholder: PPAdoptLang("adopt_form_select_gender"),
-                icon: store.selectedGender.lowercased() == "female" ? "heart.circle.fill" : "figure.walk",
-                iconTint: store.selectedGender.lowercased() == "female" ? Color(hex: 0xEC4899) : Color(hex: 0x3B82F6),
+                icon: store.selectedGender.isEmpty ? "pawprint.circle" : (store.selectedGender.lowercased() == "female" ? "figure.stand.dress" : "figure.stand"),
+                iconTint: store.selectedGender.isEmpty ? Color(hex: 0x6B7280) : (store.selectedGender.lowercased() == "female" ? Color(hex: 0xEC4899) : Color(hex: 0x3B82F6)),
                 isEnabled: true,
                 isRequired: true
             ) {
@@ -1743,7 +1747,7 @@ private struct iPhoneAddAdoptPetDeck: View {
                     Text(PPAdoptLang("adopt_form_story_title"))
                         .font(AdoptFont.bold(16))
                 } icon: {
-                    Image(systemName: "quote.opening")
+                    Image(systemName: "quote.bubble.fill")
                         .foregroundColor(Color(hex: 0xC41E3A))
                 }
 
@@ -1754,47 +1758,63 @@ private struct iPhoneAddAdoptPetDeck: View {
                     .foregroundColor(.secondary)
             }
 
-            TextEditor(text: $store.details)
-                .font(AdoptFont.regular(15))
-                .frame(minHeight: 110)
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                )
-                .overlay(alignment: .topLeading) {
-                    if store.details.isEmpty {
-                        Text(PPAdoptLang("adopt_form_story_placeholder"))
-                            .font(AdoptFont.regular(14))
-                            .foregroundColor(.secondary.opacity(0.7))
-                            .padding(14)
-                            .allowsHitTesting(false)
-                    }
+            ZStack(alignment: .topLeading) {
+                if store.details.isEmpty {
+                    Text(PPAdoptLang("adopt_form_story_placeholder"))
+                        .font(AdoptFont.regular(15))
+                        .foregroundColor(.secondary.opacity(0.65))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .allowsHitTesting(false)
                 }
+
+                TextEditor(text: $store.details)
+                    .font(AdoptFont.regular(15))
+                    .hideScrollContentBackgroundCompat()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+            }
+            .frame(minHeight: 110)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+            )
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(PPAdoptLang("community_adoption_reason_title"))
                     .font(AdoptFont.medium(13))
                     .foregroundColor(.secondary)
 
-                TextEditor(text: $store.adoptionReason)
-                    .font(AdoptFont.regular(15))
-                    .frame(minHeight: 82)
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                    )
-                    .overlay(alignment: .topLeading) {
-                        if store.adoptionReason.isEmpty {
-                            Text(PPAdoptLang("community_adoption_reason_placeholder"))
-                                .font(AdoptFont.regular(14))
-                                .foregroundColor(.secondary.opacity(0.7))
-                                .padding(14)
-                                .allowsHitTesting(false)
-                        }
+                ZStack(alignment: .topLeading) {
+                    if store.adoptionReason.isEmpty {
+                        Text(PPAdoptLang("community_adoption_reason_placeholder"))
+                            .font(AdoptFont.regular(14))
+                            .foregroundColor(.secondary.opacity(0.65))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .allowsHitTesting(false)
                     }
-                    .accessibilityLabel(PPAdoptLang("community_adoption_reason_title"))
+
+                    TextEditor(text: $store.adoptionReason)
+                        .font(AdoptFont.regular(15))
+                        .hideScrollContentBackgroundCompat()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                }
+                .frame(minHeight: 82)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                        )
+                )
+                .accessibilityLabel(PPAdoptLang("community_adoption_reason_title"))
             }
         }
         .padding(18)
@@ -1818,16 +1838,45 @@ private struct iPhoneAddAdoptPetDeck: View {
     // MARK: - Floating Action Dock
 
     private var floatingActionDock: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             if let err = store.errorMessage {
-                Text(err)
-                    .font(AdoptFont.bold(13))
+                Button(action: {
+                    AdoptHaptics.selection()
+                    if !UserManager.shared().isUserLoggedIn() {
+                        UserManager.showPromptOnTopController()
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 14, weight: .bold))
+
+                        Text(err)
+                            .font(AdoptFont.bold(13))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+
+                        Spacer()
+
+                        if !UserManager.shared().isUserLoggedIn() {
+                            Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                                .opacity(0.7)
+                        }
+                    }
                     .foregroundColor(Color(hex: 0xC41E3A))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
                     .background(
-                        Capsule().fill(Color(hex: 0xFFF1F2))
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(hex: 0xFFF1F2))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color(hex: 0xFCA5A5).opacity(0.4), lineWidth: 1)
+                            )
                     )
+                }
+                .buttonStyle(AdoptPressStyle())
+                .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
             }
 
             HStack(spacing: 12) {
@@ -1842,7 +1891,11 @@ private struct iPhoneAddAdoptPetDeck: View {
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(Color(UIColor.secondarySystemGroupedBackground))
-                                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                                )
+                                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                         )
                 }
                 .buttonStyle(AdoptPressStyle())
@@ -1878,28 +1931,26 @@ private struct iPhoneAddAdoptPetDeck: View {
                 .buttonStyle(AdoptPressStyle())
                 .disabled(store.isSubmitting)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
-            .background(
-                Rectangle()
-                    .fill(Color(UIColor.systemBackground).opacity(0.88))
-                    .background(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.06), radius: 16, y: -4)
-            )
         }
+        .padding(.horizontal, 18)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background(
+            Color(UIColor.systemBackground).opacity(0.92)
+                .background(.ultraThinMaterial)
+                .overlay(
+                    VStack {
+                        Divider().opacity(0.6)
+                        Spacer()
+                    }
+                )
+                .shadow(color: .black.opacity(0.06), radius: 16, y: -4)
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 
     private func formattedAge(months: Int) -> String {
-        if months < 12 {
-            return "\(months) " + PPAdoptLang("%ld Months")
-        }
-        let years = months / 12
-        let rem = months % 12
-        if rem == 0 {
-            return "\(years) " + (years == 1 ? PPAdoptLang("Year") : PPAdoptLang("Years"))
-        }
-        return "\(years) " + PPAdoptLang("Year") + " & \(rem) " + PPAdoptLang("%ld Months")
+        return PPAdoptFormattedAge(months: months)
     }
 }
 
@@ -2357,7 +2408,7 @@ private struct iPadAddAdoptPetCockpit: View {
                                 .foregroundColor(Color(hex: 0xC41E3A))
                         }
                         Spacer()
-                        Text("\(store.ageMonths) " + PPAdoptLang("%ld Months"))
+                        Text(PPAdoptFormattedAge(months: store.ageMonths))
                             .font(AdoptFont.bold(14))
                             .foregroundColor(Color(hex: 0xC41E3A))
                     }
@@ -2404,8 +2455,8 @@ private struct iPadAddAdoptPetCockpit: View {
                     title: PPAdoptLang("adopt_form_gender_label"),
                     value: store.selectedGender.isEmpty ? nil : (store.selectedGender.lowercased() == "male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female")),
                     placeholder: PPAdoptLang("adopt_form_select_gender"),
-                    icon: store.selectedGender.lowercased() == "female" ? "heart.circle.fill" : "figure.walk",
-                    iconTint: store.selectedGender.lowercased() == "female" ? Color(hex: 0xEC4899) : Color(hex: 0x3B82F6),
+                    icon: store.selectedGender.isEmpty ? "pawprint.circle" : (store.selectedGender.lowercased() == "female" ? "figure.stand.dress" : "figure.stand"),
+                    iconTint: store.selectedGender.isEmpty ? Color(hex: 0x6B7280) : (store.selectedGender.lowercased() == "female" ? Color(hex: 0xEC4899) : Color(hex: 0x3B82F6)),
                     isEnabled: true,
                     isRequired: true
                 ) {
@@ -2480,7 +2531,7 @@ private struct iPadAddAdoptPetCockpit: View {
                     Text(PPAdoptLang("adopt_form_story_title"))
                         .font(AdoptFont.bold(17))
                 } icon: {
-                    Image(systemName: "quote.opening")
+                    Image(systemName: "quote.bubble.fill")
                         .foregroundColor(Color(hex: 0xC41E3A))
                 }
 
@@ -2491,47 +2542,63 @@ private struct iPadAddAdoptPetCockpit: View {
                     .foregroundColor(.secondary)
             }
 
-            TextEditor(text: $store.details)
-                .font(AdoptFont.regular(15))
-                .frame(minHeight: 120)
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                )
-                .overlay(alignment: .topLeading) {
-                    if store.details.isEmpty {
-                        Text(PPAdoptLang("adopt_form_story_placeholder"))
-                            .font(AdoptFont.regular(14))
-                            .foregroundColor(.secondary.opacity(0.7))
-                            .padding(16)
-                            .allowsHitTesting(false)
-                    }
+            ZStack(alignment: .topLeading) {
+                if store.details.isEmpty {
+                    Text(PPAdoptLang("adopt_form_story_placeholder"))
+                        .font(AdoptFont.regular(15))
+                        .foregroundColor(.secondary.opacity(0.65))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .allowsHitTesting(false)
                 }
+
+                TextEditor(text: $store.details)
+                    .font(AdoptFont.regular(15))
+                    .hideScrollContentBackgroundCompat()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+            }
+            .frame(minHeight: 120)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+            )
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(PPAdoptLang("community_adoption_reason_title"))
                     .font(AdoptFont.medium(13))
                     .foregroundColor(.secondary)
 
-                TextEditor(text: $store.adoptionReason)
-                    .font(AdoptFont.regular(15))
-                    .frame(minHeight: 92)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color(UIColor.tertiarySystemGroupedBackground))
-                    )
-                    .overlay(alignment: .topLeading) {
-                        if store.adoptionReason.isEmpty {
-                            Text(PPAdoptLang("community_adoption_reason_placeholder"))
-                                .font(AdoptFont.regular(14))
-                                .foregroundColor(.secondary.opacity(0.7))
-                                .padding(16)
-                                .allowsHitTesting(false)
-                        }
+                ZStack(alignment: .topLeading) {
+                    if store.adoptionReason.isEmpty {
+                        Text(PPAdoptLang("community_adoption_reason_placeholder"))
+                            .font(AdoptFont.regular(14))
+                            .foregroundColor(.secondary.opacity(0.65))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .allowsHitTesting(false)
                     }
-                    .accessibilityLabel(PPAdoptLang("community_adoption_reason_title"))
+
+                    TextEditor(text: $store.adoptionReason)
+                        .font(AdoptFont.regular(15))
+                        .hideScrollContentBackgroundCompat()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                }
+                .frame(minHeight: 92)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(UIColor.tertiarySystemGroupedBackground))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                        )
+                )
+                .accessibilityLabel(PPAdoptLang("community_adoption_reason_title"))
             }
         }
         .padding(22)
@@ -2688,10 +2755,10 @@ private struct AdoptLiveListingPreviewCard: View {
                         previewTraitPill(icon: "tag.fill", text: breed.localizedName)
                     }
                     if store.hasAge {
-                        previewTraitPill(icon: "calendar", text: "\(store.ageMonths) " + PPAdoptLang("%ld Months"))
+                        previewTraitPill(icon: "calendar", text: PPAdoptFormattedAge(months: store.ageMonths))
                     }
                     if store.hasGender {
-                        previewTraitPill(icon: store.selectedGender.lowercased() == "female" ? "heart.fill" : "figure.walk", text: store.selectedGender.lowercased() == "male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female"))
+                        previewTraitPill(icon: store.selectedGender.lowercased() == "female" ? "figure.stand.dress" : "figure.stand", text: store.selectedGender.lowercased() == "male" ? PPAdoptLang("adopt_form_gender_male") : PPAdoptLang("adopt_form_gender_female"))
                     }
                     if let city = store.selectedCity {
                         let locText = store.selectedArea.map { "\($0.localizedName)، \(city.localizedName)" } ?? city.localizedName
@@ -3088,8 +3155,8 @@ private struct AdoptGenderPickerSheet: View {
     }
 
     private let options = [
-        GenderOption(key: "Male", titleKey: "adopt_form_gender_male", icon: "figure.walk", color: Color(hex: 0x3B82F6)),
-        GenderOption(key: "Female", titleKey: "adopt_form_gender_female", icon: "heart.circle.fill", color: Color(hex: 0xEC4899))
+        GenderOption(key: "Male", titleKey: "adopt_form_gender_male", icon: "figure.stand", color: Color(hex: 0x3B82F6)),
+        GenderOption(key: "Female", titleKey: "adopt_form_gender_female", icon: "figure.stand.dress", color: Color(hex: 0xEC4899))
     ]
 
     var body: some View {
@@ -3454,6 +3521,17 @@ private struct AdoptCameraPicker: UIViewControllerRepresentable {
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             picker.dismiss(animated: true)
             parent.onCapture(nil)
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func hideScrollContentBackgroundCompat() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollContentBackground(.hidden)
+        } else {
+            self
         }
     }
 }

@@ -514,7 +514,7 @@ public struct AnimatedAddToCartButton: View {
             ?? signatureControlHeight
         let accessibilityMinimum: CGFloat = dynamicTypeSize.isAccessibilitySize
             ? 52
-            : 38
+            : min(32, preferredHeight)
         return max(preferredHeight, accessibilityMinimum)
     }
 

@@ -324,7 +324,7 @@ static NSError *PPPureLensDiscoveryError(NSInteger code)
 - (BOOL)pp_item:(PetAccessory *)item isCompatibleWithMainKindID:(NSInteger)mainKindID
 {
     if (![self pp_itemIsDisplayable:item]) return NO;
-    return mainKindID > 0 && item.petMainCategoryID == mainKindID;
+    return mainKindID > 0 && [item matchesMainCategoryID:mainKindID];
 }
 
 - (NSDictionary * _Nullable)pp_dictionaryForAccessory:(PetAccessory *)item

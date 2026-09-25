@@ -2026,18 +2026,7 @@ private func adoptPetFacts(_ pet: AdoptPetModel) -> [AdoptListFact] {
     }
 
     if pet.ageMonths > 0 {
-        let ageString: String
-        if pet.ageMonths >= 12 {
-            let years = pet.ageMonths / 12
-            let months = pet.ageMonths % 12
-            if months == 0 {
-                ageString = "\(years) " + PPAdoptLang("Years")
-            } else {
-                ageString = "\(years) " + PPAdoptLang("Years") + " " + "\(months) " + PPAdoptLang("Months")
-            }
-        } else {
-            ageString = String(format: PPAdoptLang("%ld Months"), pet.ageMonths)
-        }
+        let ageString = PPAdoptFormattedAge(months: pet.ageMonths)
         facts.append(AdoptListFact(id: "age", title: ageString, symbol: "calendar"))
     }
 

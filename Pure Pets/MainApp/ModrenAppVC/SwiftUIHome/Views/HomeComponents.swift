@@ -43,9 +43,8 @@ enum HomeVisualTokens {
     static let productDiscountVisualScale: CGFloat = 0.92
     static let productTitleToPriceSpacing = PPSpace.xs + PPSpace.xxs
     static let productPriceRowSpacing = PPSpace.xs + PPSpace.xxs
-    /// The Home cart surface is visually lighter while non-commerce actions
-    /// keep their existing action geometry. Decreased by -2pt.
-    static let universalCartActionVisualHeight: CGFloat = (minimumTouchTarget - PPSpace.sm) - 2
+    /// The Home cart surface is visually unified across all action states.
+    static let universalCartActionVisualHeight: CGFloat = minimumTouchTarget - PPSpace.sm
     static let advertisementActionVisualHeight: CGFloat = 38
     static let primaryActionCorner = PPCorner.small + PPSpace.xs
     static let advertisementActionCorner = primaryActionCorner

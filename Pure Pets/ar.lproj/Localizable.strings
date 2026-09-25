@@ -5386,3 +5386,12 @@
 /* Universal product card — selected variant cart */
 "universal_variant_cart_quantity_format" = "%@ في السلة لهذا الخيار";
 "universal_variant_options_hint" = "اختر الخيار المناسب، ثم حدّد كميته في السلة.";
+
+/* Cart product cell: identity, per-item price and line total. */
+"cart_cell_line_total" = "إجمالي المنتج";
+"cart_cell_unit_price_format" = "%@ للقطعة";
+"cart_cell_original_price_format" = "سابقاً %@ للقطعة";
+"cart_cell_savings_format" = "وفّرت %@";
+"cart_cell_unnamed_item" = "منتج في السلة";
+"cart_cell_decrease_format" = "تقليل كمية %@";
+"cart_cell_increase_format" = "زيادة كمية %@";

@@ -34,6 +34,73 @@ func PPAdoptGenderLabel(_ rawValue: String?) -> String {
     return raw
 }
 
+/// Produces a grammatically accurate, localized age representation for pets.
+/// Handles singular, dual, plural (3-10), and distinguished singular (11+) forms,
+/// as well as compound year and month combinations in both Arabic and English.
+func PPAdoptFormattedAge(months: Int) -> String {
+    guard months > 0 else { return "" }
+
+    if Language.isRTL() {
+        if months < 12 {
+            if months == 1 {
+                return "شهر"
+            } else if months == 2 {
+                return "شهران"
+            } else if months >= 3 && months <= 10 {
+                return "\(months) أشهر"
+            } else {
+                return "\(months) شهراً"
+            }
+        }
+
+        let years = months / 12
+        let rem = months % 12
+
+        let yearText: String
+        if years == 1 {
+            yearText = "سنة"
+        } else if years == 2 {
+            yearText = "سنتان"
+        } else if years >= 3 && years <= 10 {
+            yearText = "\(years) سنوات"
+        } else {
+            yearText = "\(years) سنة"
+        }
+
+        if rem == 0 {
+            return yearText
+        }
+
+        let monthText: String
+        if rem == 1 {
+            monthText = "شهر"
+        } else if rem == 2 {
+            monthText = "شهران"
+        } else if rem >= 3 && rem <= 10 {
+            monthText = "\(rem) أشهر"
+        } else {
+            monthText = "\(rem) شهراً"
+        }
+
+        return "\(yearText) و\(monthText)"
+    } else {
+        if months < 12 {
+            return months == 1 ? "1 Month" : "\(months) Months"
+        }
+
+        let years = months / 12
+        let rem = months % 12
+
+        let yearText = years == 1 ? "1 Year" : "\(years) Years"
+        if rem == 0 {
+            return yearText
+        }
+
+        let monthText = rem == 1 ? "1 Month" : "\(rem) Months"
+        return "\(yearText) & \(monthText)"
+    }
+}
+
 // MARK: - Adopt Pet List Store
 
 @MainActor

@@ -824,7 +824,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.cartTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.cartTableView.contentInset = UIEdgeInsetsMake(12.0, 0.0, kCartTableBottomInset, 0.0);
     self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, kCartTableBottomInset, 0.0);
-    self.cartTableView.estimatedRowHeight = 144.0;
+    self.cartTableView.rowHeight = UITableViewAutomaticDimension;
+    self.cartTableView.estimatedRowHeight = 212.0;
     if (@available(iOS 15.0, *)) {
         self.cartTableView.sectionHeaderTopPadding = 0.0;
     }
@@ -866,12 +867,29 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                              selector:@selector(pp_updateSavedForLaterFooter)
                                                  name:@"PPSaveForLaterUpdatedNotification"
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_cartContentSizeCategoryDidChange:)
+                                                 name:UIContentSizeCategoryDidChangeNotification
+                                               object:nil];
     
     // Initial UI
     [self setupFormFooterFrom:@"LOAD"];
     [self updateTotalLabel];
     [self pp_updateSavedForLaterFooter];
     [self pp_applyEmptyStateIfNeeded];
+}
+
+- (void)pp_cartContentSizeCategoryDidChange:(NSNotification *)notification
+{
+    (void)notification;
+    // Let scaled labels update before asking the table for its new row heights.
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.isViewLoaded || self.cartTableView.hasUncommittedUpdates) return;
+        [UIView performWithoutAnimation:^{
+            [self.cartTableView beginUpdates];
+            [self.cartTableView endUpdates];
+        }];
+    });
 }
 
 - (void)setSummuryViewAtBottom
@@ -3932,7 +3950,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                              accessibility:isAccessibilitySize];
     }
 
-    return 134.0;
+    return UITableViewAutomaticDimension;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath

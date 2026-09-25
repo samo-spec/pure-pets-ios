@@ -2271,8 +2271,6 @@ private struct PPUniversalCardRenderer: View {
             store.refreshCartQuantity()
         }) { selection in
             PPUniversalVariantPicker(accessory: selection.accessory)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         }
         .onAppear {
             if store.showsOwnerRow {
@@ -2684,12 +2682,12 @@ private struct PPUniversalCardRenderer: View {
             if showsBottomCTA && !store.isContextFocused && !isAdsMode {
                 bottomCTA
                     .padding(.top, 8)
-                    .padding(.bottom, hasBottomBadges ? 0 : 2)
+                    .padding(.bottom, 0)
             }
 
             if hasBottomBadges {
                 bottomBadgesRow
-                    .padding(.top, 6)
+                    .padding(.top, 8)
                     .padding(.bottom, 2)
             }
         }
@@ -3343,7 +3341,7 @@ private struct PPUniversalCardRenderer: View {
                 isEnabled: !store.model.isSkeleton,
                 canRemove: true,
                 controlHeight: homeCartActionHeight,
-                minimumHitHeight: HomeVisualTokens.minimumTouchTarget,
+                minimumHitHeight: homeCartActionHeight,
                 onIncrement: {
                     PPUniversalHaptics.light()
                     store.changeQuantity(by: 1)
@@ -3362,11 +3360,10 @@ private struct PPUniversalCardRenderer: View {
             return try await store.addFirstQuantityFromAnimatedControl()
         }
         .id(store.model.id)
-        // Keep the compact 42pt visual control, but give the composed Home
-        // action an independent HIG-sized interaction frame.
         .frame(
             maxWidth: .infinity,
-            minHeight: homeCartActionHeight
+            minHeight: homeCartActionHeight,
+            maxHeight: store.isHomePresentation ? homeCartActionHeight : nil
         )
         .contentShape(Rectangle())
     }
@@ -3398,7 +3395,10 @@ private struct PPUniversalCardRenderer: View {
             }
             .foregroundStyle(primaryActionForeground)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: standardActionVisualHeight)
+            .frame(
+                minHeight: standardActionVisualHeight,
+                maxHeight: store.isHomePresentation ? standardActionVisualHeight : nil
+            )
             .background(
                 primaryActionBackground
                     .clipShape(actionShape)
@@ -3406,7 +3406,10 @@ private struct PPUniversalCardRenderer: View {
             .overlay(
                 actionShape.stroke(primaryActionBorder, lineWidth: 0.75)
             )
-            .frame(minHeight: standardActionHeight)
+            .frame(
+                minHeight: standardActionHeight,
+                maxHeight: store.isHomePresentation ? standardActionHeight : nil
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
@@ -4083,7 +4086,7 @@ private struct PPUniversalCardRenderer: View {
             : 0
         let actionHeight: CGFloat = accessibility
             ? (isAdsMode ? 0 : 52)
-            : (isAdsMode ? 0 : (store.model.usesQuantityControl ? homeCartActionHeight : standardActionHeight))
+            : (isAdsMode ? 0 : (store.isHomePresentation ? universalCardActionHeight : (store.model.usesQuantityControl ? homeCartActionHeight : standardActionHeight)))
         let metadataHeight: CGFloat = accessibility ? 36 : 28
         let titleToPriceSpacing: CGFloat = accessibility
             ? 8
@@ -4358,33 +4361,31 @@ private struct PPUniversalCardRenderer: View {
         false
     }
 
+    private var universalCardActionHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 52 : 36
+    }
+
     private var standardActionHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 52 : (HomeVisualTokens.minimumTouchTarget - 4)
+        guard store.isHomePresentation else {
+            return dynamicTypeSize.isAccessibilitySize ? 52 : (HomeVisualTokens.minimumTouchTarget - 4)
+        }
+        return universalCardActionHeight
     }
 
-    /// Only the in-stock Home cart CTA adopts the compact visual treatment.
-    /// Every other card action keeps the standard action geometry.
+    /// On Home presentation, all cart and action states maintain uniform geometry.
     private var homeCartActionHeight: CGFloat {
-        guard store.isHomePresentation,
-              store.model.usesQuantityControl,
-              !store.isOutOfStock,
-              !dynamicTypeSize.isAccessibilitySize
-        else {
+        guard store.isHomePresentation else {
             return standardActionHeight
         }
-        return HomeVisualTokens.universalCartActionVisualHeight
+        return universalCardActionHeight
     }
 
-    /// Ads keep the full interactive frame, but on Home their visible button
-    /// is intentionally quieter so media, title, and price lead the card.
+    /// Ads and standard actions maintain uniform action geometry on Home presentation.
     private var standardActionVisualHeight: CGFloat {
-        guard store.isHomePresentation,
-              isAdAction,
-              !dynamicTypeSize.isAccessibilitySize
-        else {
+        guard store.isHomePresentation else {
             return standardActionHeight
         }
-        return HomeVisualTokens.advertisementActionVisualHeight
+        return universalCardActionHeight
     }
 
     private var cardShape: RoundedRectangle {
@@ -5179,7 +5180,7 @@ private struct PPUniversalShimmer: ViewModifier {
     }
 }
 
-private enum PPUniversalHaptics {
+enum PPUniversalHaptics {
     static func light() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare()
