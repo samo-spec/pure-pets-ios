@@ -13,6 +13,7 @@ import SwiftUI
 import UIKit
 import PhotosUI
 import Combine
+import FirebaseAuth
 
 // MARK: - Model Localization & Icon Helpers
 
@@ -222,8 +223,39 @@ final class AddAdoptPetStore: ObservableObject {
     // Freeze the owner at presentation time. Reading UserManager dynamically
     // for a persisted draft lets an already-visible form follow a later
     // logout/account switch and cross an account boundary on the same device.
-    private let draftOwnerUID: String
-    private let draftPersistenceEnabled: Bool
+    private var draftOwnerUID: String
+    private var draftPersistenceEnabled: Bool
+
+    // MARK: - Authentication Resolution Helpers
+
+    static func resolvedCurrentUID() -> String {
+        if let authUID = Auth.auth().currentUser?.uid.trimmingCharacters(in: .whitespacesAndNewlines), !authUID.isEmpty {
+            return authUID
+        }
+        let userMgrID = (UserManager.shared().currentUser?.id ?? UserManager.shared().currentUser?.ID ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return userMgrID
+    }
+
+    static var isUserLoggedIn: Bool {
+        if UserManager.shared().isUserLoggedIn() { return true }
+        if let auth = Auth.auth().currentUser, !auth.uid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+        return false
+    }
+
+    func handleAuthStateRefresh() {
+        let currentUID = Self.resolvedCurrentUID()
+        guard !currentUID.isEmpty else { return }
+        if !draftPersistenceEnabled || draftOwnerUID != currentUID {
+            draftOwnerUID = currentUID
+            draftPersistenceEnabled = true
+            if errorMessage == PPAdoptLang("community_error_sign_in_required") {
+                errorMessage = nil
+            }
+        }
+    }
 
     // Persistence Keys
     private let draftPrefix = "pp.add_adopt_pet.draft"
@@ -267,15 +299,13 @@ final class AddAdoptPetStore: ObservableObject {
 
     init(pet: AdoptPetModel? = nil) {
         self.editingPet = pet
-        let currentUID = (UserManager.shared().currentUser?.id ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        // A guest may still view this form, but its local media/draft payload
-        // must not be written under a device-wide "guest" namespace.
-        self.draftOwnerUID = currentUID.isEmpty ? UUID().uuidString.lowercased() : currentUID
-        self.draftPersistenceEnabled = !currentUID.isEmpty
+        let currentUID = Self.resolvedCurrentUID()
+        let hasUser = !currentUID.isEmpty
+        self.draftOwnerUID = hasUser ? currentUID : UUID().uuidString.lowercased()
+        self.draftPersistenceEnabled = hasUser
         if let existingID = pet?.documentID, !existingID.isEmpty {
             self.creationListingID = existingID
-        } else if draftPersistenceEnabled {
+        } else if hasUser {
             let persisted = UserDefaults.standard.string(forKey: creationIdentityDefaultsKey)
             self.creationListingID = (persisted?.isEmpty == false ? persisted : nil) ?? UUID().uuidString.lowercased()
             UserDefaults.standard.set(self.creationListingID, forKey: creationIdentityDefaultsKey)
@@ -762,20 +792,28 @@ final class AddAdoptPetStore: ObservableObject {
             return
         }
 
-        guard UserManager.shared().isUserLoggedIn() else {
+        guard Self.isUserLoggedIn else {
             UserManager.showPromptOnTopController()
+            errorMessage = PPAdoptLang("community_error_sign_in_required")
             return
         }
 
-        let currentUID = (UserManager.shared().currentUser?.id ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard draftPersistenceEnabled, currentUID == draftOwnerUID else {
-            // Do not submit an already-visible draft through a different
-            // account after a session transition. The opening account retains
-            // its own local draft; reopening under the active account starts
-            // a new, isolated form.
+        let currentUID = Self.resolvedCurrentUID()
+        guard !currentUID.isEmpty else {
+            UserManager.showPromptOnTopController()
             errorMessage = PPAdoptLang("community_error_sign_in_required")
             return
+        }
+
+        // If this draft was opened unpersisted/anonymously, bind it to the authenticated user now.
+        if !draftPersistenceEnabled || draftOwnerUID != currentUID {
+            draftOwnerUID = currentUID
+            draftPersistenceEnabled = true
+            if creationListingID.isEmpty {
+                creationListingID = UUID().uuidString.lowercased()
+            }
+            UserDefaults.standard.set(creationListingID, forKey: creationIdentityDefaultsKey)
+            persistDraft(showSuccessFeedback: false)
         }
 
         isSubmitting = true
@@ -948,6 +986,7 @@ struct AddAdoptPetScreen: View {
         }
         .onAppear {
             store.checkCommunityConfiguration()
+            store.handleAuthStateRefresh()
         }
         .alert(isPresented: $store.showUnsavedChangesDialog) {
             Alert(
@@ -1842,7 +1881,7 @@ private struct iPhoneAddAdoptPetDeck: View {
             if let err = store.errorMessage {
                 Button(action: {
                     AdoptHaptics.selection()
-                    if !UserManager.shared().isUserLoggedIn() {
+                    if !AddAdoptPetStore.isUserLoggedIn {
                         UserManager.showPromptOnTopController()
                     }
                 }) {
@@ -1857,7 +1896,7 @@ private struct iPhoneAddAdoptPetDeck: View {
 
                         Spacer()
 
-                        if !UserManager.shared().isUserLoggedIn() {
+                        if !AddAdoptPetStore.isUserLoggedIn {
                             Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
                                 .font(.system(size: 11, weight: .bold))
                                 .opacity(0.7)

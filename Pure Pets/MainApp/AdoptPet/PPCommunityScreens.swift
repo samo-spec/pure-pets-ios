@@ -12,6 +12,7 @@ import Security
 import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
+import FirebaseAuth
 
 private enum CommunityFont {
     static func bold(_ size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
@@ -123,6 +124,24 @@ private func communityDouble(_ value: Any?, fallback: Double = 0) -> Double {
     if let number = value as? Double { return number }
     if let string = value as? String, let number = Double(string) { return number }
     return fallback
+}
+
+private func currentAuthenticatedUID() -> String {
+    if let authUID = Auth.auth().currentUser?.uid.trimmingCharacters(in: .whitespacesAndNewlines), !authUID.isEmpty {
+        return authUID
+    }
+    let userMgrID = communityString(UserManager.shared().currentUser?.id).isEmpty
+        ? communityString(UserManager.shared().currentUser?.ID)
+        : communityString(UserManager.shared().currentUser?.id)
+    return userMgrID
+}
+
+private func isUserCurrentlyLoggedIn() -> Bool {
+    if UserManager.shared().isUserLoggedIn() { return true }
+    if let auth = Auth.auth().currentUser, !auth.uid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        return true
+    }
+    return false
 }
 
 private func communityCoordinate(from payload: [String: Any]) -> CLLocationCoordinate2D? {
@@ -1083,8 +1102,8 @@ private final class CommunityCaseFormStore: ObservableObject {
     @Published var selectedAreaModel: StateModel? = nil
     @Published var selectedColors: Set<String> = []
 
-    private let draftOwnerUID: String
-    private let draftPersistenceEnabled: Bool
+    private var draftOwnerUID: String
+    private var draftPersistenceEnabled: Bool
     private var pendingCoordinate: CLLocationCoordinate2D?
     private var submissionPayloadLocked = false
     // A stable record ID by itself does not make a create retry idempotent: a
@@ -1098,7 +1117,7 @@ private final class CommunityCaseFormStore: ObservableObject {
 
     init(kind: CommunityCaseKind) {
         self.kind = kind
-        let currentUID = communityString(UserManager.shared().currentUser?.id)
+        let currentUID = currentAuthenticatedUID()
         self.draftOwnerUID = currentUID.isEmpty ? UUID().uuidString.lowercased() : currentUID
         self.draftPersistenceEnabled = !currentUID.isEmpty
         self.recordID = UUID().uuidString.lowercased()
@@ -1284,7 +1303,8 @@ private final class CommunityCaseFormStore: ObservableObject {
     }
 
     private var activeSessionOwnsDraft: Bool {
-        draftPersistenceEnabled && communityString(UserManager.shared().currentUser?.id) == draftOwnerUID
+        let activeUID = currentAuthenticatedUID()
+        return !activeUID.isEmpty && (draftOwnerUID == activeUID || !draftPersistenceEnabled)
     }
 
     func coordinateForSubmission(_ liveCoordinate: CLLocationCoordinate2D?) -> CLLocationCoordinate2D? {
@@ -1419,9 +1439,21 @@ private final class CommunityCaseFormStore: ObservableObject {
     }
 
     func submit(coordinate: CLLocationCoordinate2D?) async {
-        guard activeSessionOwnsDraft else {
+        guard isUserCurrentlyLoggedIn() else {
+            UserManager.showPromptOnTopController()
             errorMessage = PPAdoptLang("community_error_sign_in_required")
             return
+        }
+        let activeUID = currentAuthenticatedUID()
+        guard !activeUID.isEmpty else {
+            UserManager.showPromptOnTopController()
+            errorMessage = PPAdoptLang("community_error_sign_in_required")
+            return
+        }
+        if !draftPersistenceEnabled || draftOwnerUID != activeUID {
+            draftOwnerUID = activeUID
+            draftPersistenceEnabled = true
+            persistDraft(coordinate: coordinate)
         }
         guard canSubmit, let coordinate = coordinateForSubmission(coordinate) else {
             errorMessage = PPAdoptLang("community_location_required")
@@ -3424,8 +3456,8 @@ private final class CommunitySightingStore: ObservableObject {
     @Published var submitting = false
     @Published var errorMessage: String?
     @Published var success = false
-    private let draftOwnerUID: String
-    private let draftPersistenceEnabled: Bool
+    private var draftOwnerUID: String
+    private var draftPersistenceEnabled: Bool
     private var pendingCoordinate: CLLocationCoordinate2D?
     private var submissionPayloadLocked = false
     private var lockedSubmissionPayload: [String: Any]?
@@ -3436,7 +3468,7 @@ private final class CommunitySightingStore: ObservableObject {
 
     init(caseID: String) {
         self.caseID = caseID
-        let currentUID = communityString(UserManager.shared().currentUser?.id)
+        let currentUID = currentAuthenticatedUID()
         self.draftOwnerUID = currentUID.isEmpty ? UUID().uuidString.lowercased() : currentUID
         self.draftPersistenceEnabled = !currentUID.isEmpty
         self.sightingID = UUID().uuidString.lowercased()
@@ -3453,7 +3485,8 @@ private final class CommunitySightingStore: ObservableObject {
     }
 
     private var activeSessionOwnsDraft: Bool {
-        draftPersistenceEnabled && communityString(UserManager.shared().currentUser?.id) == draftOwnerUID
+        let activeUID = currentAuthenticatedUID()
+        return !activeUID.isEmpty && (draftOwnerUID == activeUID || !draftPersistenceEnabled)
     }
 
     func coordinateForSubmission(_ liveCoordinate: CLLocationCoordinate2D?) -> CLLocationCoordinate2D? {
@@ -3545,9 +3578,21 @@ private final class CommunitySightingStore: ObservableObject {
     }
 
     func submit(coordinate: CLLocationCoordinate2D?) async {
-        guard activeSessionOwnsDraft else {
+        guard isUserCurrentlyLoggedIn() else {
+            UserManager.showPromptOnTopController()
             errorMessage = PPAdoptLang("community_error_sign_in_required")
             return
+        }
+        let activeUID = currentAuthenticatedUID()
+        guard !activeUID.isEmpty else {
+            UserManager.showPromptOnTopController()
+            errorMessage = PPAdoptLang("community_error_sign_in_required")
+            return
+        }
+        if !draftPersistenceEnabled || draftOwnerUID != activeUID {
+            draftOwnerUID = activeUID
+            draftPersistenceEnabled = true
+            persistDraft(coordinate: coordinate)
         }
         guard canSubmit,
               let coordinate = coordinateForSubmission(coordinate) else {
