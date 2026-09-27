@@ -16,21 +16,33 @@ internal struct SpearHeaderToolbarButton: View {
   var body: some View {
     if action.availability.isVisible {
       Button(action: action.perform) {
-        Image(systemName: systemName)
-          .font(.system(size: 17, weight: .medium))
-          .foregroundStyle(tint)
-          .frame(width: 32, height: 32)
-          .background {
-            Circle()
-              .fill(isActive ? tint.opacity(0.12) : Color.primary.opacity(0.045))
-          }
-          .overlay {
-            if contrast == .increased {
-              Circle().strokeBorder(Color.primary.opacity(0.24), lineWidth: 1)
-            }
-          }
-          .frame(width: 44, height: 44)
-          .contentShape(Circle())
+        ZStack {
+          Circle()
+            .fill(
+              isActive
+                ? tint.opacity(0.15)
+                : Color(uiColor: .secondarySystemGroupedBackground).opacity(0.94)
+            )
+          Circle()
+            .strokeBorder(
+              LinearGradient(
+                colors: [
+                  Color.white.opacity(contrast == .increased ? 0.50 : 0.25),
+                  Color.primary.opacity(contrast == .increased ? 0.25 : 0.08)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              ),
+              lineWidth: contrast == .increased ? 1.5 : 0.75
+            )
+          Image(systemName: systemName)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(tint)
+        }
+        .frame(width: 38, height: 38)
+        .shadow(color: Color.black.opacity(0.06), radius: 3, x: 0, y: 1.5)
+        .frame(width: 44, height: 44)
+        .contentShape(Circle())
       }
       .buttonStyle(SpearCapsuleItemStyle())
       .hoverEffect(.highlight)
@@ -53,14 +65,34 @@ internal struct SpearHeaderIconActionButton: View {
   let action: SpearHeaderAction
   var tint: Color = .primary
 
+  @Environment(\.colorSchemeContrast) private var contrast
+
   var body: some View {
     if action.availability.isVisible {
       Button(action: action.perform) {
-        Image(systemName: systemName)
-          .font(.system(size: 17, weight: .semibold))
-          .foregroundStyle(tint)
-          .frame(width: 44, height: 44)
-          .contentShape(Circle())
+        ZStack {
+          Circle()
+            .fill(Color(uiColor: .secondarySystemGroupedBackground).opacity(0.94))
+          Circle()
+            .strokeBorder(
+              LinearGradient(
+                colors: [
+                  Color.white.opacity(contrast == .increased ? 0.50 : 0.25),
+                  Color.primary.opacity(contrast == .increased ? 0.25 : 0.08)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              ),
+              lineWidth: contrast == .increased ? 1.5 : 0.75
+            )
+          Image(systemName: systemName)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(tint)
+        }
+        .frame(width: 38, height: 38)
+        .shadow(color: Color.black.opacity(0.06), radius: 3, x: 0, y: 1.5)
+        .frame(width: 44, height: 44)
+        .contentShape(Circle())
       }
       .buttonStyle(SpearIconButtonStyle())
       .hoverEffect(.highlight)
@@ -120,35 +152,28 @@ internal struct SpearDisabledReasonModifier: ViewModifier {
 
 // MARK: - Button Styles
 
-/// Toolbar control: a local press response without moving adjacent identity.
+/// Toolbar control: tactile spring response with specular surface.
 internal struct SpearCapsuleItemStyle: ButtonStyle {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
-      .opacity(configuration.isPressed ? 0.72 : 1)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.93 : 1)
+      .opacity(configuration.isPressed ? 0.76 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
         value: configuration.isPressed)
   }
 }
 
-/// Icon button: back, standalone actions
+/// Icon button: back, standalone actions with tactile spring response.
 internal struct SpearIconButtonStyle: ButtonStyle {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.colorSchemeContrast) private var contrast
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .background(
-        Color.primary.opacity(
-          contrast == .increased ? 0.12 : 0.065
-        ).opacity(configuration.isPressed ? 1 : 0),
-        in: Circle()
-      )
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
-      .opacity(configuration.isPressed ? 0.82 : 1)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.93 : 1)
+      .opacity(configuration.isPressed ? 0.76 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
         value: configuration.isPressed)
@@ -162,13 +187,14 @@ internal struct SpearIdentityButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .padding(.vertical, 4)
+      .padding(.horizontal, 4)
       .background(
-        Color.primary.opacity(0.05)
+        Color.primary.opacity(0.04)
           .opacity(configuration.isPressed ? 1 : 0),
         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
       )
       .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
-      .opacity(configuration.isPressed ? 0.86 : 1)
+      .opacity(configuration.isPressed ? 0.88 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
         value: configuration.isPressed)

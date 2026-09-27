@@ -125,7 +125,7 @@ final class PPPureLensHostPresenter: NSObject {
                         if let error {
                             continuation.resume(throwing: error)
                         } else if let response {
-                            continuation.resume(returning: response)
+                            continuation.resume(returning: response as NSDictionary)
                         } else {
                             continuation.resume(throwing: Self.invalidAnimalIdentityError())
                         }
@@ -138,8 +138,10 @@ final class PPPureLensHostPresenter: NSObject {
                     bridge.resolveSupport(species: animal.species) { support, error in
                         if let error {
                             continuation.resume(throwing: error)
+                        } else if let support {
+                            continuation.resume(returning: support as NSDictionary)
                         } else {
-                            continuation.resume(returning: support)
+                            continuation.resume(returning: nil)
                         }
                     }
                 }

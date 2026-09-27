@@ -106,10 +106,8 @@ public enum SpearTrustState: Equatable, Sendable {
     switch self {
     case .standard:
       return nil
-    case .verifiedSeller:
+    case .verifiedSeller, .verifiedBusiness:
       return "checkmark.seal.fill"
-    case .verifiedBusiness:
-      return "building.2.crop.circle.fill"
     case .restricted:
       return "exclamationmark.shield.fill"
     }
@@ -119,10 +117,8 @@ public enum SpearTrustState: Equatable, Sendable {
     switch self {
     case .standard(let role):
       return role == nil ? nil : "person.crop.circle"
-    case .verifiedSeller:
+    case .verifiedSeller, .verifiedBusiness:
       return "checkmark.seal.fill"
-    case .verifiedBusiness:
-      return "building.2.crop.circle.fill"
     case .restricted:
       return "exclamationmark.shield.fill"
     }

@@ -61,6 +61,12 @@ enum PPCommunityError: LocalizedError {
            message.localizedCaseInsensitiveContains("media required") {
             return PPAdoptLang("community_error_media_required")
         }
+        if message.localizedCaseInsensitiveContains("firebasestorage") ||
+           message.localizedCaseInsensitiveContains("permission to access") ||
+           message.localizedCaseInsensitiveContains("storage/unauthorized") ||
+           nsError.domain.localizedCaseInsensitiveContains("storage") {
+            return PPAdoptLang("community_error_media_upload_failed")
+        }
         if message.localizedCaseInsensitiveContains("draft changed") ||
            message.localizedCaseInsensitiveContains("reload before submitting") {
             return PPAdoptLang("community_error_refresh_required")

@@ -6,7 +6,7 @@ import UIKit
 @available(iOS 16.0, *)
 struct PPUniversalVariantPicker: View {
     let accessory: PetAccessory
-    @State private var measuredHeight: CGFloat = 390
+    @State private var measuredHeight: CGFloat = 460
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -17,13 +17,16 @@ struct PPUniversalVariantPicker: View {
         }) {
             dismiss()
         }
-        .presentationDetents([.height(min(max(measuredHeight, 300), UIScreen.main.bounds.height * 0.88))])
+        .presentationDetents([
+            .height(min(max(measuredHeight, 340), UIScreen.main.bounds.height * 0.90)),
+            .large
+        ])
         .presentationDragIndicator(.visible)
 
         if #available(iOS 16.4, *) {
             base
                 .presentationCornerRadius(42)
-                .presentationBackground(.ultraThinMaterial)
+                .presentationBackground(.clear)
         } else {
             base
         }
@@ -59,6 +62,8 @@ private final class PPUniversalVariantPickerController: UIViewController {
     private let close: () -> Void
     private var store: PPAccessoryViewerStore?
     private var loadTask: Task<Void, Never>?
+    private var hostingController: UIHostingController<PPUniversalVariantPickerContent>?
+    private var lastTargetHeight: CGFloat = 0
 
     init(accessory: PetAccessory, onHeightChange: @escaping (CGFloat) -> Void, close: @escaping () -> Void) {
         self.accessory = accessory
@@ -69,11 +74,28 @@ private final class PPUniversalVariantPickerController: UIViewController {
 
     required init?(coder: NSCoder) { return nil }
 
+    private var activeSheetPresentationController: UISheetPresentationController? {
+        if let sheet = self.sheetPresentationController {
+            return sheet
+        }
+        if let sheet = self.navigationController?.sheetPresentationController {
+            return sheet
+        }
+        if let sheet = self.parent?.sheetPresentationController {
+            return sheet
+        }
+        if let sheet = self.presentationController as? UISheetPresentationController {
+            return sheet
+        }
+        return nil
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
+        view.insetsLayoutMarginsFromSafeArea = false
 
-        if let sheet = self.sheetPresentationController {
+        if let sheet = activeSheetPresentationController {
             sheet.preferredCornerRadius = 42
             sheet.prefersGrabberVisible = true
         }
@@ -82,7 +104,7 @@ private final class PPUniversalVariantPickerController: UIViewController {
             accessory: accessory, presenter: self, contentScope: .quickAdd
         )
         self.store = store
-        let host = UIHostingController(rootView: PPUniversalVariantPickerContent(
+        let content = PPUniversalVariantPickerContent(
             store: store,
             close: { [weak self] in
                 guard let self, self.store?.cartPhase != .processing else { return }
@@ -92,10 +114,18 @@ private final class PPUniversalVariantPickerController: UIViewController {
                 self?.setDismissalBlocked(busy)
             },
             onHeightChange: { [weak self] height in
-                self?.onHeightChange(height)
+                guard let self = self else { return }
+                self.onHeightChange(height)
+                self.animateSheetToHeight(height)
             }
-        ))
+        )
+        let host = UIHostingController(rootView: content)
         host.view.backgroundColor = .clear
+        if #available(iOS 16.4, *) {
+            host.safeAreaRegions = []
+        }
+        host.view.insetsLayoutMarginsFromSafeArea = false
+        self.hostingController = host
         addChild(host)
         host.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(host.view)
@@ -109,9 +139,53 @@ private final class PPUniversalVariantPickerController: UIViewController {
         loadTask = Task { await store.load() }
     }
 
+    func animateSheetToHeight(_ targetHeight: CGFloat) {
+        guard abs(lastTargetHeight - targetHeight) > 3 else { return }
+        lastTargetHeight = targetHeight
+        guard let sheet = activeSheetPresentationController else { return }
+        let maxHeight = UIScreen.main.bounds.height * 0.90
+        let clamped = min(max(targetHeight, 340), maxHeight)
+
+        let detentId = UISheetPresentationController.Detent.Identifier("pp_dynamic_variant_height")
+        let dynamicDetent = UISheetPresentationController.Detent.custom(identifier: detentId) { _ in
+            return clamped
+        }
+        sheet.animateChanges {
+            sheet.detents = [dynamicDetent, .large()]
+            sheet.selectedDetentIdentifier = detentId
+        }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        clearSheetBackgrounds()
+        if lastTargetHeight > 100 {
+            animateSheetToHeight(lastTargetHeight)
+        }
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        clearSheetBackgrounds()
         if store?.snapshot != nil { store?.resume() }
+        if lastTargetHeight > 100 {
+            animateSheetToHeight(lastTargetHeight)
+        }
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        clearSheetBackgrounds()
+    }
+
+    private func clearSheetBackgrounds() {
+        view.backgroundColor = .clear
+        hostingController?.view.backgroundColor = .clear
+        view.superview?.backgroundColor = .clear
+        presentationController?.presentedView?.backgroundColor = .clear
+        for subview in view.subviews {
+            subview.backgroundColor = .clear
+        }
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -164,8 +238,10 @@ private struct PPUniversalVariantPickerContent: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        VStack(spacing: 0) {
+            sheetHeader
+
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: PPSpace.md) {
                     switch store.phase {
                     case .loading:
@@ -183,7 +259,7 @@ private struct PPUniversalVariantPickerContent: View {
                 .frame(maxWidth: 720, alignment: .leading)
                 .padding(.horizontal, PPSpace.lg)
                 .padding(.top, PPSpace.xs)
-                .padding(.bottom, PPSpace.base)
+                .padding(.bottom, PPSpace.xl)
                 .frame(maxWidth: .infinity)
                 .background(
                     GeometryReader { geo in
@@ -194,25 +270,18 @@ private struct PPUniversalVariantPickerContent: View {
                     }
                 )
             }
-            .scrollDisabled(true)
             .background(Color.clear)
-            .navigationTitle(PPAccessoryViewerL10n.text("accessory_view_options_title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(PPAccessoryViewerL10n.text("Done"), action: close)
-                        .font(PPAccessoryTypography.bodyBold)
-                        .disabled(isMutating)
-                }
-            }
+            .ignoresSafeArea(.container, edges: .bottom)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(.container, edges: .bottom)
         .tint(PPAccessoryPalette.brand)
         .background(glassBackground)
         .environment(\.layoutDirection, PPAccessoryViewerLegacyBridge.isRTL() ? .rightToLeft : .leftToRight)
         .interactiveDismissDisabled(isMutating)
         .onPreferenceChange(PPContentHeightPreferenceKey.self) { height in
             guard height > 100 else { return }
-            onHeightChange(height + 74)
+            onHeightChange(height + 104)
         }
         .onAppear {
             if reduceMotion {
@@ -234,6 +303,43 @@ private struct PPUniversalVariantPickerContent: View {
         }
     }
 
+    private var sheetHeader: some View {
+        HStack(alignment: .center, spacing: PPSpace.sm) {
+            Text(PPAccessoryViewerL10n.text("accessory_view_options_title"))
+                .font(PPAccessoryTypography.headline)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+
+            Spacer(minLength: PPSpace.base)
+
+            Button(action: close) {
+                Text(PPAccessoryViewerL10n.text("Done"))
+                    .font(PPAccessoryTypography.bodyBold)
+                    .foregroundStyle(PPAccessoryPalette.brand)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.65))
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(
+                                Color.white.opacity(colorScheme == .dark ? 0.22 : 0.45),
+                                lineWidth: 0.75
+                            )
+                    )
+            }
+            .buttonStyle(PPOptionsScaleButtonStyle())
+            .disabled(isMutating)
+            .accessibilityLabel(PPAccessoryViewerL10n.text("Done"))
+        }
+        .padding(.horizontal, PPSpace.lg)
+        .padding(.top, 18)
+        .padding(.bottom, PPSpace.xs)
+    }
+
     private var loadingState: some View {
         VStack(spacing: PPSpace.base) {
             ProgressView()
@@ -248,24 +354,30 @@ private struct PPUniversalVariantPickerContent: View {
 
     private var glassBackground: some View {
         ZStack {
-            Rectangle()
+            PPTopRoundedCornerShape(radius: 42)
                 .fill(.ultraThinMaterial)
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.45),
-                    Color.white.opacity(0.0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 42, style: .continuous)
-                .strokeBorder(
+
+            PPTopRoundedCornerShape(radius: 42)
+                .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.22 : 0.65),
-                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.15)
+                            Color.white.opacity(colorScheme == .dark ? 0.12 : 0.38),
+                            Color.white.opacity(colorScheme == .dark ? 0.02 : 0.06),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+        }
+        .overlay(
+            PPTopRoundedCornerShape(radius: 42)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.28 : 0.65),
+                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.20),
+                            Color.white.opacity(colorScheme == .dark ? 0.02 : 0.08)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -348,18 +460,25 @@ private struct PPUniversalVariantPickerContent: View {
         }
         .padding(PPSpace.base)
         .background(
-            Color.ppElevatedSurface.opacity(colorScheme == .dark ? 0.85 : 0.90),
-            in: RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.ppElevatedSurface.opacity(colorScheme == .dark ? 0.70 : 0.78))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .stroke(
-                    PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.22 : 0.14),
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.22 : 0.60),
+                            PPAccessoryPalette.brand.opacity(colorScheme == .dark ? 0.22 : 0.14)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
                     lineWidth: 1
                 )
         )
         .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.06),
+            color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.05),
             radius: 12,
             y: 4
         )
@@ -439,8 +558,8 @@ private struct PPUniversalVariantPickerContent: View {
                         Spacer(minLength: 4)
 
                         Text(formattedCalculatedPrice(snapshot))
-                            .font(.custom("Beiruti-SemiBold", size: 14, relativeTo: .callout))
-                            .opacity(0.92)
+                            .font(.custom("Beiruti-Black", size: 15, relativeTo: .callout))
+                            .opacity(0.96)
                             .contentTransition(.numericText())
                     }
                 }
@@ -662,6 +781,7 @@ private struct PPUniversalVariantPickerContent: View {
                     }
                 }
                 announceCartQuantity()
+                broadcastCartUpdated()
             } catch is CancellationError {
                 // The existing auth/provider-switch presentation owns cancellation.
             } catch {
@@ -682,9 +802,28 @@ private struct PPUniversalVariantPickerContent: View {
                 _ = try await store.updateCartQuantity(value)
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 announceCartQuantity()
+                broadcastCartUpdated()
             } catch {
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
                 mutationError = PPAccessoryViewerL10n.text("accessory_view_cart_quantity_update_failed")
+            }
+        }
+    }
+
+    private func broadcastCartUpdated() {
+        NotificationCenter.default.post(name: NSNotification.Name("kCartUpdatedNotification"), object: nil)
+        NotificationCenter.default.post(name: NSNotification.Name("CartUpdated"), object: nil)
+        NotificationCenter.default.post(name: NSNotification.Name("PPCartDidChangeNotification"), object: nil)
+        DispatchQueue.main.async {
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = scene.windows.first(where: { $0.isKeyWindow }),
+               let rootVC = window.rootViewController as? PPRootTabBarController {
+                let target = (rootVC.selectedViewController as? UINavigationController)?.topViewController
+                    ?? (rootVC.selectedViewController as? UINavigationController)?.visibleViewController
+                    ?? rootVC.selectedViewController
+                if let target {
+                    PPRootLegacyAdapter.applySurface(for: target, animated: true)
+                }
             }
         }
     }
@@ -709,5 +848,36 @@ private struct PPOptionsScaleButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.spring(response: 0.28, dampingFraction: 0.75), value: configuration.isPressed)
+    }
+}
+
+private struct PPTopRoundedCornerShape: Shape {
+    var radius: CGFloat = 42
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let r = min(radius, min(rect.width / 2, rect.height / 2))
+        let extendedBottom = rect.maxY + 200
+
+        path.move(to: CGPoint(x: rect.minX, y: extendedBottom))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + r))
+        path.addArc(
+            center: CGPoint(x: rect.minX + r, y: rect.minY + r),
+            radius: r,
+            startAngle: .degrees(180),
+            endAngle: .degrees(270),
+            clockwise: false
+        )
+        path.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY))
+        path.addArc(
+            center: CGPoint(x: rect.maxX - r, y: rect.minY + r),
+            radius: r,
+            startAngle: .degrees(270),
+            endAngle: .degrees(360),
+            clockwise: false
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: extendedBottom))
+        path.closeSubpath()
+        return path
     }
 }

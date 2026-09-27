@@ -4041,6 +4041,9 @@
 "saved_for_later" = "المحفوظات لاحقاً";
 "saved_for_later_added_toast" = "تم حفظه لوقت لاحق. ستجده في المحفوظات.";
 "saved_for_later_removed_toast" = "تمت إزالته من المحفوظات لاحقاً.";
+"cart_cell_save_for_later" = "حفظ لوقت لاحق";
+"cart_cell_save_format" = "حفظ %@ لوقت لاحق";
+"cart_cell_save_hint" = "ينقل هذا المنتج من السلة إلى المحفوظات لاحقاً";
 "choose_items_to_move" = "اختر المنتجات لنقلها إلى السلة";
 "move_to_cart" = "انقل للسلة";
 "moved_to_cart_success" = "تم النقل للسلة";
@@ -5037,6 +5040,7 @@
 "community_error_media_rejected" = "تعذر قبول هذا الملف. اختر ملفًا آخر.";
 "community_error_media_too_large" = "حجم هذا الملف يتجاوز الحد المسموح.";
 "community_error_media_required" = "أضف صورة واحدة على الأقل قبل الإرسال.";
+"community_error_media_upload_failed" = "تعذر رفع وسائط البلاغ. يرجى المحاولة مرة أخرى.";
 "community_search_placeholder" = "ابحث بالحيوان أو السلالة أو المنطقة أو التفاصيل";
 "community_missing_title" = "حيوانات مفقودة";
 "community_found_title" = "حيوانات عُثر عليها";
@@ -5047,7 +5051,9 @@
 "community_report_action" = "إضافة بلاغ";
 "community_report_action_hint" = "اختر ما إذا كان الحيوان مفقودًا أو معثورًا عليه.";
 "community_report_missing" = "الإبلاغ عن حيوان مفقود";
+"community_report_missing_desc" = "أنشئ بلاغاً للبحث عن حيوانك المفقود وتنسيق عودته بأمان.";
 "community_report_found" = "الإبلاغ عن حيوان معثور عليه";
+"community_report_found_desc" = "أضف بلاغاً عن حيوان عثرت عليه للمساعدة في إعادته لمالكه.";
 "community_missing_form_title" = "بلاغ حيوان مفقود";
 "community_found_form_title" = "بلاغ حيوان معثور عليه";
 "community_form_privacy_message" = "أضف معلومات دقيقة. يعرض البلاغ العام منطقة تقريبية ويستخدم تواصلًا محميًا داخل التطبيق.";

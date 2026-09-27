@@ -1495,7 +1495,7 @@ private final class CommunityCaseFormStore: ObservableObject {
             clearDraft()
         } catch {
             unlockDefinitivelyRejectedSubmission(after: error)
-            errorMessage = error.localizedDescription
+            errorMessage = PPCommunityError.userFacingErrorMessage(for: error)
         }
         submitting = false
     }
@@ -1610,7 +1610,7 @@ private struct CommunityCaseFormScreen: View {
                 CommunityMediaPicker(
                     maximumCount: max(1, remaining),
                     completion: { sources in store.media.append(contentsOf: sources.prefix(remaining)) },
-                    failure: { error in store.errorMessage = error.localizedDescription }
+                    failure: { error in store.errorMessage = PPCommunityError.userFacingErrorMessage(for: error) }
                 )
             case .city:
                 CommunityCityPickerSheet(
@@ -3593,7 +3593,7 @@ private final class CommunitySightingStore: ObservableObject {
             clearDraft()
         } catch {
             unlockDefinitivelyRejectedSubmission(after: error)
-            errorMessage = error.localizedDescription
+            errorMessage = PPCommunityError.userFacingErrorMessage(for: error)
         }
         submitting = false
     }
@@ -3657,7 +3657,7 @@ private struct CommunitySightingFormScreen: View {
             CommunityMediaPicker(
                 maximumCount: max(1, remaining),
                 completion: { sources in store.media.append(contentsOf: sources.prefix(remaining)) },
-                failure: { error in store.errorMessage = error.localizedDescription }
+                failure: { error in store.errorMessage = PPCommunityError.userFacingErrorMessage(for: error) }
             )
         }
     }
@@ -5195,3 +5195,46 @@ final class PPAdoptionApplicationHostingController: UIViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() { super.viewDidLoad(); weak var weakSelf = self; let host = UIHostingController(rootView: PPAdoptionApplicationScreen(listing: listing) { weakSelf?.dismiss(animated: true) }); hosting = host; addChild(host); host.view.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(host.view); NSLayoutConstraint.activate([host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)]); host.didMove(toParent: self) }
 }
+
+@objc(PPCommunityCaseFormHostingController)
+final class PPCommunityCaseFormHostingController: UIViewController {
+    private let isMissing: Bool
+    private var onFinishedCallback: (() -> Void)?
+    private var hosting: UIHostingController<AnyView>?
+
+    @objc(initWithMissing:onFinished:)
+    init(isMissing: Bool, onFinished: (() -> Void)? = nil) {
+        self.isMissing = isMissing
+        self.onFinishedCallback = onFinished
+        super.init(nibName: nil, bundle: nil)
+        self.modalPresentationStyle = .pageSheet
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        let kind: CommunityCaseKind = isMissing ? .missing : .found
+        weak var weakSelf = self
+        let form = CommunityCaseFormScreen(kind: kind) {
+            weakSelf?.onFinishedCallback?()
+            weakSelf?.dismiss(animated: true)
+        }
+        let host = UIHostingController(rootView: AnyView(form))
+        hosting = host
+        addChild(host)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(host.view)
+        NSLayoutConstraint.activate([
+            host.view.topAnchor.constraint(equalTo: view.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        host.didMove(toParent: self)
+    }
+}
+

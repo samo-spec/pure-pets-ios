@@ -19,6 +19,7 @@ typedef NS_ENUM(NSInteger, PPBottomSurfaceKind) {
 
 - (PPBottomSurfaceKind)resolvedSurfaceKindForController:(nullable UIViewController *)controller;
 - (void)applySurfaceForController:(nullable UIViewController *)controller animated:(BOOL)animated;
+- (nullable void (^)(void))pp_floatingCartOpenHandlerForController:(nullable UIViewController *)controller;
 
 + (NSTimeInterval)transitionOutDuration;
 + (NSTimeInterval)transitionInDuration;

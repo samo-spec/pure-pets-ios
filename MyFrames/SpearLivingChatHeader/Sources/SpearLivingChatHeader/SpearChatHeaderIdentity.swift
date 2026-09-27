@@ -78,7 +78,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
   }
 
   private var identityContent: some View {
-    HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
+    HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 10) {
       SpearAvatarFrame(
         trust: model.trust,
         presence: model.presence,
@@ -88,30 +88,34 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
         content: avatarContent
       )
 
-      VStack(alignment: .leading, spacing: 2) {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
+      VStack(alignment: .leading, spacing: 1) {
+        HStack(alignment: .center, spacing: 5) {
           Text(model.name)
             .font(Font.ppBeirutiBold(size: 20, relativeTo: .headline))
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .layoutPriority(1)
 
           if let badge = model.trust.badgeSystemName {
             Image(systemName: badge)
-              .font(.caption.weight(.semibold))
+              .font(.system(size: 13, weight: .bold))
               .foregroundStyle(trustTint)
-              .symbolRenderingMode(.hierarchical)
-              .frame(minWidth: 18, minHeight: 18)
               .accessibilityHidden(true)
           }
 
           if canExpand {
-            Image(systemName: "chevron.down")
-              .font(.system(size: 10, weight: .bold))
-              .foregroundStyle(isExpanded ? brandColor : Color.secondary)
-              .rotationEffect(.degrees(isExpanded ? 180 : 0))
-              .accessibilityHidden(true)
+            ZStack {
+              Circle()
+                .fill(isExpanded ? brandColor.opacity(0.14) : Color.primary.opacity(0.05))
+              Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .heavy))
+                .foregroundStyle(isExpanded ? brandColor : Color.secondary)
+                .rotationEffect(.degrees(isExpanded ? 180 : 0))
+            }
+            .frame(width: 18, height: 18)
+            .animation(SpearHeaderMotion.quick, value: isExpanded)
+            .accessibilityHidden(true)
           }
         }
 

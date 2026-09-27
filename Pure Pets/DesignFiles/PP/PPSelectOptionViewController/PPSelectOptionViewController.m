@@ -351,10 +351,10 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
                                                                         resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext>  _Nonnull context) {
                     return MIN(preferredHeight, context.maximumDetentValue);
                 }];
-                sheet.detents = @[compactDetent];
+                sheet.detents = @[compactDetent, [UISheetPresentationControllerDetent largeDetent]];
                 sheet.selectedDetentIdentifier = compactDetent.identifier;
             } else {
-                sheet.detents = @[[UISheetPresentationControllerDetent mediumDetent]];
+                sheet.detents = @[[UISheetPresentationControllerDetent mediumDetent], [UISheetPresentationControllerDetent largeDetent]];
             }
         } else if (premiumPicker) {
             if (@available(iOS 16.0, *)) {
@@ -638,7 +638,8 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     // 1. Sleek top grabber handle
     UIView *grabber = [UIView new];
     grabber.translatesAutoresizingMaskIntoConstraints = NO;
-    grabber.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.18];
+    grabber.backgroundColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.26]
+                                                darkColor:[UIColor colorWithWhite:1.0 alpha:0.38]];
     grabber.layer.cornerRadius = 2.5;
     grabber.layer.cornerCurve = kCACornerCurveContinuous;
     // Gender already has an explicit close control; keep the decorative
@@ -723,12 +724,12 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     CGFloat sideInset = [self pp_effectiveHorizontalInset];
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
-        [grabber.topAnchor constraintEqualToAnchor:container.topAnchor constant:8.0],
+        [grabber.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
         [grabber.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
-        [grabber.widthAnchor constraintEqualToConstant:36.0],
+        [grabber.widthAnchor constraintEqualToConstant:44.0],
         [grabber.heightAnchor constraintEqualToConstant:5.0],
 
-        [closeBtn.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:10.0],
+        [closeBtn.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:12.0],
         [closeBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
         [closeBtn.widthAnchor constraintEqualToConstant:32.0],
         [closeBtn.heightAnchor constraintEqualToConstant:32.0]

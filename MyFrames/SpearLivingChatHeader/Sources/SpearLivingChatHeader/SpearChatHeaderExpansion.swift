@@ -43,11 +43,47 @@ internal struct SpearIdentityExpansion: View {
     if let detail = trust.detailText,
       let symbol = trust.detailSystemName
     {
-      Label(detail, systemImage: symbol)
-        .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
-        .foregroundStyle(trust.isRestricted ? SpearHeaderSemanticColor.warning : Color.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
+      if trust.isVerified {
+        HStack(spacing: 8) {
+          Image(systemName: symbol)
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(brandColor)
+
+          Text(detail)
+            .font(Font.ppBeirutiSemiBold(size: 13, relativeTo: .caption))
+            .foregroundStyle(.primary)
+
+          Spacer(minLength: 4)
+
+          HStack(spacing: 4) {
+            Image(systemName: "lock.shield.fill")
+              .font(.system(size: 10))
+            Text(Locale.current.languageCode == "ar" ? "قناة آمنة" : "Secure Channel")
+              .font(Font.ppBeirutiMedium(size: 11, relativeTo: .caption2))
+          }
+          .foregroundStyle(SpearHeaderSemanticColor.live)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 3)
+          .background(SpearHeaderSemanticColor.live.opacity(0.12), in: Capsule())
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+          Color(uiColor: .secondarySystemGroupedBackground).opacity(0.88),
+          in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .overlay(
+          RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .stroke(Color.primary.opacity(0.06), lineWidth: 0.5)
+        )
         .accessibilityHidden(true)
+      } else {
+        Label(detail, systemImage: symbol)
+          .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
+          .foregroundStyle(trust.isRestricted ? SpearHeaderSemanticColor.warning : Color.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .accessibilityHidden(true)
+      }
     }
   }
 
@@ -199,19 +235,30 @@ private struct SpearIdentityUtilityButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .foregroundStyle(configuration.isPressed ? brandColor : Color.primary)
-      .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
       .background(
-        configuration.isPressed ? brandColor.opacity(0.07) : Color.primary.opacity(0.04),
-        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        configuration.isPressed
+          ? brandColor.opacity(0.10)
+          : Color(uiColor: .secondarySystemGroupedBackground).opacity(0.92),
+        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
       )
       .overlay {
-        if contrast == .increased {
-          RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .strokeBorder(Color.primary.opacity(0.24), lineWidth: 1)
-        }
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+          .strokeBorder(
+            LinearGradient(
+              colors: [
+                Color.white.opacity(contrast == .increased ? 0.40 : 0.20),
+                Color.primary.opacity(contrast == .increased ? 0.24 : 0.06)
+              ],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            ),
+            lineWidth: contrast == .increased ? 1.5 : 0.75
+          )
       }
-      .opacity(configuration.isPressed ? 0.82 : 1)
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+      .shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1.5)
+      .opacity(configuration.isPressed ? 0.84 : 1)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
         value: configuration.isPressed)

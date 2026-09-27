@@ -19,7 +19,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Callback for quantity actions.
+/// Callback for quantity, saved-item and product-preview actions.
 typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 
 @interface PPCartTableCell : UITableViewCell
@@ -29,8 +29,9 @@ typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 @property (nonatomic, strong, readonly) UILabel *variantOptionsLabel;
 @property (nonatomic, strong, readonly) UILabel *priceLabel;
 @property (nonatomic, strong, readonly) UILabel *quantityLabel;
+@property (nonatomic, strong, readonly) UIButton *saveForLaterButton;
 
-/// Called when the quantity buttons are tapped.
+/// Called for quantity/saved-item buttons and accessible product-preview activation.
 @property (nonatomic, copy, nullable) PPCartCellActionBlock onAction;
 
 /// Configure the cell with a cart item

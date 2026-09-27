@@ -2269,8 +2269,29 @@ private struct PPUniversalCardRenderer: View {
         }
         .sheet(item: $store.variantSelection, onDismiss: {
             store.refreshCartQuantity()
+            NotificationCenter.default.post(name: NSNotification.Name("kCartUpdatedNotification"), object: nil)
+            NotificationCenter.default.post(name: NSNotification.Name("CartUpdated"), object: nil)
+            NotificationCenter.default.post(name: NSNotification.Name("PPCartDidChangeNotification"), object: nil)
+            DispatchQueue.main.async {
+                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = scene.windows.first(where: { $0.isKeyWindow }),
+                   let rootVC = window.rootViewController as? PPRootTabBarController {
+                    let target = (rootVC.selectedViewController as? UINavigationController)?.topViewController
+                        ?? (rootVC.selectedViewController as? UINavigationController)?.visibleViewController
+                        ?? rootVC.selectedViewController
+                    if let target {
+                        PPRootLegacyAdapter.applySurface(for: target, animated: true)
+                    }
+                }
+            }
         }) { selection in
-            PPUniversalVariantPicker(accessory: selection.accessory)
+            if #available(iOS 16.4, *) {
+                PPUniversalVariantPicker(accessory: selection.accessory)
+                    .presentationCornerRadius(42)
+                    .presentationBackground(.clear)
+            } else {
+                PPUniversalVariantPicker(accessory: selection.accessory)
+            }
         }
         .onAppear {
             if store.showsOwnerRow {

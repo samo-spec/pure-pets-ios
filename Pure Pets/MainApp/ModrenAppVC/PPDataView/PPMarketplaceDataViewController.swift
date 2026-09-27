@@ -60,6 +60,12 @@ final class PPMarketplaceDataViewController: UIViewController {
         store.schedulePresentationStateRefresh()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        PPRootLegacyAdapter.applySurface(for: self, animated: animated)
+        store.schedulePresentationStateRefresh()
+    }
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         if let interactivePopGestureRecognizer =

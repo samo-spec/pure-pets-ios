@@ -473,6 +473,35 @@ public final class PPRootStore: ObservableObject {
         let isEligible = handler.isEligibleFloatingCartSource(topVC)
         
         if isEligible && freshCart.itemCount > 0 {
+            let effectiveSource: UIViewController = {
+                if topVC.responds(to: NSSelectorFromString("pp_isFloatingCartEligible")) {
+                    return topVC
+                }
+                var presenter = topVC.presentingViewController ?? topVC.parent
+                while let p = presenter {
+                    if p.responds(to: NSSelectorFromString("pp_isFloatingCartEligible")) {
+                        return p
+                    }
+                    presenter = p.presentingViewController ?? p.parent
+                }
+                return topVC
+            }()
+            
+            if self.activeSourceViewController?.value == nil {
+                self.activeSourceViewController = weak_ref(effectiveSource)
+            }
+            if self.cartOpenHandler == nil {
+                if effectiveSource.responds(to: NSSelectorFromString("pp_openCart")) {
+                    self.cartOpenHandler = { [weak effectiveSource] in
+                        effectiveSource?.perform(NSSelectorFromString("pp_openCart"))
+                    }
+                } else if effectiveSource.responds(to: NSSelectorFromString("onCartTapped")) {
+                    self.cartOpenHandler = { [weak effectiveSource] in
+                        effectiveSource?.perform(NSSelectorFromString("onCartTapped"))
+                    }
+                }
+            }
+            
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                 cartState = PPCartFloatingBarState(
                     itemCount: freshCart.itemCount,
@@ -484,6 +513,9 @@ public final class PPRootStore: ObservableObject {
             }
             PPHaptics.softImpact()
             startCollapseTimer()
+            
+            handler.updateBottomNavigationClearance(computedBottomContentClearance)
+            handler.applyBottomSurface(for: effectiveSource, animated: true)
         } else if !isEligible {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                 cartState = PPCartFloatingBarState(
@@ -494,6 +526,8 @@ public final class PPRootStore: ObservableObject {
                 )
                 isDockHidden = false
             }
+            handler.updateBottomNavigationClearance(computedBottomContentClearance)
+            handler.applyBottomSurface(for: topVC, animated: true)
         } else {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                 cartState = PPCartFloatingBarState(
@@ -504,10 +538,9 @@ public final class PPRootStore: ObservableObject {
                 )
                 isDockHidden = false
             }
+            handler.updateBottomNavigationClearance(computedBottomContentClearance)
+            handler.applyBottomSurface(for: topVC, animated: true)
         }
-        
-        handler.updateBottomNavigationClearance(computedBottomContentClearance)
-        handler.applyBottomSurface(for: topVC, animated: true)
     }
 }
 

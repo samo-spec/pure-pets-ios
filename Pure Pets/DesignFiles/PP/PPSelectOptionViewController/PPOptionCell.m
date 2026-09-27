@@ -269,6 +269,10 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
     [super layoutSubviews];
     self.iconPlateGradientLayer.frame = self.iconPlateView.bounds;
     self.iconPlateGradientLayer.cornerRadius = self.iconPlateView.layer.cornerRadius;
+    if (self.isActionPortalMode) {
+        self.iconPlateGradientLayer.cornerCurve = kCACornerCurveContinuous;
+        self.iconPlateView.layer.borderColor = [self.accentColor colorWithAlphaComponent:0.22].CGColor;
+    }
     if (self.isUserOption && self.onlineIndicatorView) {
         if (@available(iOS 13.0, *)) {
             self.onlineIndicatorView.layer.borderColor = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? [UIColor colorWithWhite:0.12 alpha:1.0] : UIColor.whiteColor).CGColor;
@@ -355,17 +359,25 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
     NSString *icon = systemIcon ?: @"plus.circle.fill";
     
     if ([actionID isEqualToString:@"addPetForAdoption"] || [actionID containsString:@"Adopt"]) {
-        c1 = [UIColor colorWithRed:0.98 green:0.36 blue:0.36 alpha:1.0]; // Warm Coral
-        c2 = [UIColor colorWithRed:1.00 green:0.56 blue:0.40 alpha:1.0]; // Golden Amber
+        c1 = [UIColor colorWithRed:0.96 green:0.28 blue:0.42 alpha:1.0]; // Warm Coral Rose
+        c2 = [UIColor colorWithRed:1.00 green:0.52 blue:0.44 alpha:1.0]; // Radiant Amber Glow
         if (!systemIcon.length) icon = @"heart.fill";
     } else if ([actionID isEqualToString:@"newAd"] || [actionID containsString:@"Ad"]) {
-        c1 = [UIColor colorWithRed:0.90 green:0.00 blue:0.27 alpha:1.0]; // Pure Pets Crimson
-        c2 = [UIColor colorWithRed:1.00 green:0.30 blue:0.46 alpha:1.0]; // Radiant Rose
+        c1 = [UIColor colorWithRed:0.92 green:0.10 blue:0.32 alpha:1.0]; // Pure Pets Crimson Rose
+        c2 = [UIColor colorWithRed:1.00 green:0.32 blue:0.50 alpha:1.0]; // Radiant Petal
         if (!systemIcon.length) icon = @"square.and.pencil";
     } else if ([actionID isEqualToString:@"addUsedButton"] || [actionID containsString:@"Accessory"] || [actionID containsString:@"Used"]) {
-        c1 = [UIColor colorWithRed:0.15 green:0.42 blue:0.94 alpha:1.0]; // Royal Azure
-        c2 = [UIColor colorWithRed:0.00 green:0.72 blue:0.88 alpha:1.0]; // Vivid Cyan
+        c1 = [UIColor colorWithRed:0.15 green:0.48 blue:0.96 alpha:1.0]; // Royal Azure
+        c2 = [UIColor colorWithRed:0.00 green:0.75 blue:0.92 alpha:1.0]; // Vivid Cyan
         if (!systemIcon.length) icon = @"tag.fill";
+    } else if ([actionID isEqualToString:@"communityMissing"] || [actionID containsString:@"Missing"]) {
+        c1 = [UIColor colorWithRed:0.98 green:0.52 blue:0.08 alpha:1.0]; // Community Safety Amber
+        c2 = [UIColor colorWithRed:1.00 green:0.68 blue:0.22 alpha:1.0]; // Warm Gold
+        if (!systemIcon.length) icon = @"location.magnifyingglass";
+    } else if ([actionID isEqualToString:@"communityFound"] || [actionID containsString:@"Found"]) {
+        c1 = [UIColor colorWithRed:0.10 green:0.72 blue:0.60 alpha:1.0]; // Community Emerald Teal
+        c2 = [UIColor colorWithRed:0.22 green:0.84 blue:0.72 alpha:1.0]; // Mint Aura
+        if (!systemIcon.length) icon = @"hand.raised.fill";
     } else {
         UIColor *base = accentColor ?: (AppPrimaryClr ?: UIColor.systemPinkColor);
         c1 = base;
@@ -373,13 +385,24 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
     }
     
     self.accentColor = c1;
-    self.iconPlateGradientLayer.colors = @[(id)c1.CGColor, (id)c2.CGColor];
-    self.iconPlateView.backgroundColor = UIColor.clearColor;
+    
+    // Studio-crafted translucent tinted squircle plate
+    UIColor *tintColor1 = [c1 colorWithAlphaComponent:0.14];
+    UIColor *tintColor2 = [c2 colorWithAlphaComponent:0.06];
+    self.iconPlateGradientLayer.colors = @[(id)tintColor1.CGColor, (id)tintColor2.CGColor];
+    self.iconPlateGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.iconPlateGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.iconPlateGradientLayer.cornerRadius = 17.0;
+    self.iconPlateGradientLayer.cornerCurve = kCACornerCurveContinuous;
+    self.iconPlateView.backgroundColor = [c1 colorWithAlphaComponent:0.10];
+    self.iconPlateView.layer.borderColor = [c1 colorWithAlphaComponent:0.22].CGColor;
+    self.iconPlateView.layer.borderWidth = 1.0;
+    self.iconPlateView.layer.cornerRadius = 17.0;
+    self.iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     
     // Icon sizing: 52x52 squircle plate
     self.iconPlateWidthConstraint.constant = 52.0;
     self.iconPlateHeightConstraint.constant = 52.0;
-    self.iconPlateView.layer.cornerRadius = 18.0;
     
     self.circleImageWidthConstraint.constant = 26.0;
     self.circleImageHeightConstraint.constant = 26.0;
@@ -387,11 +410,11 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
     self.circleImageView.clipsToBounds = NO;
     self.circleImageView.contentMode = UIViewContentModeScaleAspectFit;
     
-    UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:22.0 weight:UIImageSymbolWeightBold];
+    UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:22.0 weight:UIImageSymbolWeightSemibold];
     UIImage *img = [UIImage systemImageNamed:icon withConfiguration:symCfg];
     if (!img) img = [UIImage imageNamed:icon];
     self.circleImageView.image = [img imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    self.circleImageView.tintColor = UIColor.whiteColor;
+    self.circleImageView.tintColor = c1;
     
     // Typography
     self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
@@ -622,6 +645,14 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
         self.cardView.transform = CGAffineTransformMakeScale(scale, scale);
         self.cardView.layer.shadowOpacity = highlighted ? 0.015 : 0.035;
         self.trailingActionPlate.transform = highlighted ? CGAffineTransformMakeScale(0.92, 0.92) : CGAffineTransformIdentity;
+        if (self.isActionPortalMode) {
+            self.iconPlateView.backgroundColor = highlighted
+                ? [self.accentColor colorWithAlphaComponent:0.18]
+                : [self.accentColor colorWithAlphaComponent:0.10];
+            self.iconPlateView.layer.borderColor = highlighted
+                ? [self.accentColor colorWithAlphaComponent:0.38].CGColor
+                : [self.accentColor colorWithAlphaComponent:0.22].CGColor;
+        }
     } completion:nil];
 }
 

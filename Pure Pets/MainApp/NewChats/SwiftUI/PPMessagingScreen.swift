@@ -4301,7 +4301,7 @@ private struct PPMessagingHeader: View {
         let presence: SpearPresence
         if state.isTyping {
             presence = .typing
-        } else if state.isOnline {
+        } else if state.isOnline || (state.isSupportThread && state.lastActiveAt == nil) {
             presence = .online(responseSpeed: nil)
         } else if let lastActiveAt = state.lastActiveAt {
             presence = .offline(lastActiveAt: lastActiveAt)
@@ -4344,11 +4344,13 @@ private struct PPMessagingHeader: View {
             verifiedSellerAccessibilityLabel: localized("chat_header_verified_seller"),
             verifiedBusinessAccessibilityLabel: localized("chat_header_verified_business"),
             restrictedAccessibilityLabel: localized("chat_header_restricted_account"),
-            profileButtonTitle: localized("chat_stories_title"),
+            profileButtonTitle: Language.isRTL() ? "الملف الشخصي" : "View Profile",
             safetyButtonTitle: localized("chat.report"),
             loadingAccessibilityLabel: localized("chat_header_loading_identity"),
             conversationAccessibilityPrefix: localized("chat_header_conversation_with"),
-            onlineNowText: localized("chat_header_online_now"),
+            onlineNowText: state.isSupportThread
+                ? (Language.isRTL() ? "فريق الدعم متواجد لخدمتك" : "Support team is online")
+                : localized("chat_header_online_now"),
             repliesFastText: localized("chat_header_replies_fast"),
             repliesTypicallyText: localized("chat_header_replies_typically"),
             typingText: localized("chat_header_typing"),
@@ -4538,8 +4540,8 @@ private struct PPMessagingHeader: View {
         return SpearChatHeaderActions(
             onBack: { relay.request(.close) },
             more: .enabled { relay.request(.more) },
-            profile: .enabled { relay.request(.profile) },
-            safety: .enabled { relay.request(.report) },
+            profile: state.isSupportThread ? .hidden : .enabled { relay.request(.profile) },
+            safety: state.isSupportThread ? .hidden : .enabled { relay.request(.report) },
             context: contextAction
         )
     }
@@ -4559,11 +4561,39 @@ private struct PPMessagingAvatar: View {
         ZStack(alignment: .bottomTrailing) {
             Group {
                 if usesSupportLogo {
-                    Image("tintLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .padding(7)
-                        .background(PPMessagingPalette.avatarLogoSurface)
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 225 / 255.0, green: 29 / 255.0, blue: 72 / 255.0),
+                                        Color(red: 159 / 255.0, green: 18 / 255.0, blue: 57 / 255.0)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        Circle()
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.40),
+                                        Color.clear,
+                                        Color.black.opacity(0.20)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                        Image("tintLogo")
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .foregroundStyle(.white)
+                            .padding(8)
+                            .shadow(color: Color.black.opacity(0.30), radius: 2, x: 0, y: 1.5)
+                    }
                 } else if let url = URL(string: urlString), !urlString.isEmpty {
                     AsyncImage(url: url) { phase in
                         if let image = phase.image {

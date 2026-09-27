@@ -171,6 +171,38 @@
     return method_getImplementation(defaultMethod) != method_getImplementation(controllerMethod);
 }
 
+- (BOOL)pp_controllerOrDescendantOverridesPreferredKind:(UIViewController *)controller
+{
+    if (!controller) {
+        return NO;
+    }
+    if ([self pp_controllerOverridesPreferredKind:controller]) {
+        return YES;
+    }
+    if ([self pp_isFloatingCartEligibleController:controller]) {
+        return YES;
+    }
+    if ([controller isKindOfClass:UINavigationController.class]) {
+        UINavigationController *nav = (UINavigationController *)controller;
+        UIViewController *top = nav.topViewController;
+        if (top && top != controller && [self pp_controllerOrDescendantOverridesPreferredKind:top]) {
+            return YES;
+        }
+        UIViewController *vis = nav.visibleViewController;
+        if (vis && vis != controller && vis != top && [self pp_controllerOrDescendantOverridesPreferredKind:vis]) {
+            return YES;
+        }
+    }
+    if ([controller isKindOfClass:UITabBarController.class]) {
+        UITabBarController *tab = (UITabBarController *)controller;
+        UIViewController *sel = tab.selectedViewController;
+        if (sel && sel != controller) {
+            return [self pp_controllerOrDescendantOverridesPreferredKind:sel];
+        }
+    }
+    return NO;
+}
+
 - (BOOL)pp_canShowFloatingCartSurfaceForController:(UIViewController *)controller
 {
     if (![self pp_isFloatingCartEligibleController:controller]) {
@@ -186,20 +218,24 @@
 
 - (BOOL)pp_isFloatingCartEligibleController:(UIViewController *)controller
 {
-    if ([controller respondsToSelector:@selector(pp_isFloatingCartEligible)]) {
-        BOOL (*eligibleFunc)(id, SEL) = (BOOL (*)(id, SEL))[controller methodForSelector:@selector(pp_isFloatingCartEligible)];
-        if (eligibleFunc) {
-            return eligibleFunc(controller, @selector(pp_isFloatingCartEligible));
+    UIViewController *target = controller;
+    while (target) {
+        if ([target respondsToSelector:@selector(pp_isFloatingCartEligible)]) {
+            BOOL (*eligibleFunc)(id, SEL) = (BOOL (*)(id, SEL))[target methodForSelector:@selector(pp_isFloatingCartEligible)];
+            if (eligibleFunc && eligibleFunc(target, @selector(pp_isFloatingCartEligible))) {
+                return YES;
+            }
         }
-    }
 
-    for (Class candidateClass = controller.class;
-         candidateClass && candidateClass != UIViewController.class;
-         candidateClass = class_getSuperclass(candidateClass)) {
-        NSString *className = NSStringFromClass(candidateClass);
-        if ([className isEqualToString:@"SellerProfileVC"]) {
-            return YES;
+        for (Class candidateClass = target.class;
+             candidateClass && candidateClass != UIViewController.class;
+             candidateClass = class_getSuperclass(candidateClass)) {
+            NSString *className = NSStringFromClass(candidateClass);
+            if ([className isEqualToString:@"SellerProfileVC"]) {
+                return YES;
+            }
         }
+        target = target.presentingViewController ?: target.parentViewController;
     }
     return NO;
 }
@@ -212,6 +248,33 @@
         if (presentedController &&
             !presentedController.isBeingDismissed &&
             !presentedController.isMovingFromParentViewController) {
+            
+            // Alerts and system activity controllers must never displace the presenting view controller
+            if ([presentedController isKindOfClass:UIAlertController.class] ||
+                [presentedController isKindOfClass:UIActivityViewController.class]) {
+                break;
+            }
+            
+            // Check if presented controller is a modal presentation or sheet without custom bottom surface
+            BOOL isSheetPresentation = NO;
+            if (@available(iOS 15.0, *)) {
+                if (presentedController.sheetPresentationController != nil) {
+                    isSheetPresentation = YES;
+                }
+            }
+            if (presentedController.modalPresentationStyle == UIModalPresentationPageSheet ||
+                presentedController.modalPresentationStyle == UIModalPresentationFormSheet ||
+                presentedController.modalPresentationStyle == UIModalPresentationOverFullScreen ||
+                presentedController.modalPresentationStyle == UIModalPresentationOverCurrentContext ||
+                presentedController.modalPresentationStyle == UIModalPresentationCustom) {
+                isSheetPresentation = YES;
+            }
+            
+            if (isSheetPresentation && ![self pp_controllerOrDescendantOverridesPreferredKind:presentedController]) {
+                // The presented sheet/modal does not have its own bottom surface; preserve targetController as the authority!
+                break;
+            }
+            
             targetController = presentedController;
             continue;
         }
@@ -236,6 +299,20 @@
         }
         break;
     }
+    
+    // Fallback: If targetController itself is a presented sheet that does not override preferred kind,
+    // climb presentingViewController to find the host controller with bottom surface authority
+    if (targetController && ![self pp_controllerOrDescendantOverridesPreferredKind:targetController]) {
+        UIViewController *presenter = targetController.presentingViewController ?: targetController.parentViewController;
+        while (presenter) {
+            if ([self pp_controllerOrDescendantOverridesPreferredKind:presenter]) {
+                targetController = presenter;
+                break;
+            }
+            presenter = presenter.presentingViewController ?: presenter.parentViewController;
+        }
+    }
+    
     return targetController;
 }
 
@@ -316,9 +393,20 @@
 
         case PPBottomSurfaceKindFloatingCartSurface: {
             PPCartFloatingBarOpenHandler openHandler = [self pp_floatingCartOpenHandlerForController:controller];
+            UIViewController *sourceVC = controller;
+            if (![sourceVC respondsToSelector:NSSelectorFromString(@"pp_isFloatingCartEligible")]) {
+                UIViewController *candidate = sourceVC.presentingViewController ?: sourceVC.parentViewController;
+                while (candidate) {
+                    if ([candidate respondsToSelector:NSSelectorFromString(@"pp_isFloatingCartEligible")]) {
+                        sourceVC = candidate;
+                        break;
+                    }
+                    candidate = candidate.presentingViewController ?: candidate.parentViewController;
+                }
+            }
             if (openHandler) {
                 [rootController setPremiumTabDockViewHidden:YES animation:animated];
-                [rootController pp_activateFloatingCartBarForSourceViewController:controller
+                [rootController pp_activateFloatingCartBarForSourceViewController:sourceVC
                                                                    openCartHandler:openHandler
                                                                           animated:animated];
             } else {
@@ -486,28 +574,31 @@
 
 - (nullable PPCartFloatingBarOpenHandler)pp_floatingCartOpenHandlerForController:(UIViewController *)controller
 {
-    SEL actionSelector = NULL;
-    if ([controller respondsToSelector:NSSelectorFromString(@"pp_openCart")]) {
-        actionSelector = NSSelectorFromString(@"pp_openCart");
-    } else if ([controller respondsToSelector:NSSelectorFromString(@"onCartTapped")]) {
-        actionSelector = NSSelectorFromString(@"onCartTapped");
-    }
-
-    if (!actionSelector) {
-        return nil;
-    }
-
-    __weak UIViewController *weakController = controller;
-    return ^{
-        UIViewController *strongController = weakController;
-        if (!strongController || ![strongController respondsToSelector:actionSelector]) {
-            return;
+    UIViewController *target = controller;
+    while (target) {
+        SEL actionSelector = NULL;
+        if ([target respondsToSelector:NSSelectorFromString(@"pp_openCart")]) {
+            actionSelector = NSSelectorFromString(@"pp_openCart");
+        } else if ([target respondsToSelector:NSSelectorFromString(@"onCartTapped")]) {
+            actionSelector = NSSelectorFromString(@"onCartTapped");
         }
-        void (*function)(id, SEL) = (void (*)(id, SEL))[strongController methodForSelector:actionSelector];
-        if (function) {
-            function(strongController, actionSelector);
+
+        if (actionSelector) {
+            __weak UIViewController *weakController = target;
+            return ^{
+                UIViewController *strongController = weakController;
+                if (!strongController || ![strongController respondsToSelector:actionSelector]) {
+                    return;
+                }
+                void (*function)(id, SEL) = (void (*)(id, SEL))[strongController methodForSelector:actionSelector];
+                if (function) {
+                    function(strongController, actionSelector);
+                }
+            };
         }
-    };
+        target = target.presentingViewController ?: target.parentViewController;
+    }
+    return nil;
 }
 
 - (void)pp_refreshStateForController:(UIViewController *)controller kind:(PPBottomSurfaceKind)kind

@@ -150,18 +150,69 @@ public final class PPRootObjCAdapter: PPRootActionHandling {
         guard let controller = targetController else { return nil }
         var current: UIViewController? = controller.selectedViewController ?? controller
         while let presented = current?.presentedViewController, !presented.isBeingDismissed {
+            // Ignore transient alerts and activity controllers
+            if presented is UIAlertController || presented is UIActivityViewController {
+                break
+            }
+            
+            // If presented is a sheet / drawer presentation, only descend if it defines its own surface
+            var isSheetPresentation = false
+            if #available(iOS 15.0, *) {
+                if presented.sheetPresentationController != nil {
+                    isSheetPresentation = true
+                }
+            }
+            if presented.modalPresentationStyle == .pageSheet ||
+               presented.modalPresentationStyle == .formSheet ||
+               presented.modalPresentationStyle == .overFullScreen ||
+               presented.modalPresentationStyle == .overCurrentContext ||
+               presented.modalPresentationStyle == .custom {
+                isSheetPresentation = true
+            }
+
+            if isSheetPresentation && !isControllerOrChildCustomSurface(presented) {
+                break
+            }
+
             current = presented
         }
         if let nav = current as? UINavigationController {
-            return nav.visibleViewController ?? nav.topViewController
+            let top = nav.topViewController
+            if let candidate = nav.visibleViewController, candidate !== top, !candidate.isBeingDismissed {
+                if isControllerOrChildCustomSurface(candidate) {
+                    return candidate
+                }
+            }
+            return top ?? nav.visibleViewController
         }
         return current
     }
 
-    public func isEligibleFloatingCartSource(_ viewController: UIViewController) -> Bool {
+    private func isControllerOrChildCustomSurface(_ viewController: UIViewController) -> Bool {
+        if isDirectEligibleFloatingCartSource(viewController) {
+            return true
+        }
+        let preferredKindSelector = NSSelectorFromString("pp_preferredBottomSurfaceKind")
+        if viewController.responds(to: preferredKindSelector) {
+            let defaultMethod = class_getInstanceMethod(UIViewController.self, preferredKindSelector)
+            let controllerMethod = class_getInstanceMethod(type(of: viewController), preferredKindSelector)
+            if let defaultMethod, let controllerMethod, method_getImplementation(defaultMethod) != method_getImplementation(controllerMethod) {
+                return true
+            }
+        }
+        if let nav = viewController as? UINavigationController {
+            let top = nav.visibleViewController ?? nav.topViewController
+            if let top, top !== viewController {
+                return isControllerOrChildCustomSurface(top)
+            }
+        }
+        return false
+    }
+
+    private func isDirectEligibleFloatingCartSource(_ viewController: UIViewController) -> Bool {
         let eligibilitySelector = NSSelectorFromString("pp_isFloatingCartEligible")
         if viewController.responds(to: eligibilitySelector),
-           let implementation = viewController.method(for: eligibilitySelector) {
+            let implementation = viewController.method(for: eligibilitySelector) {
             typealias EligibilityFunction = @convention(c) (
                 AnyObject,
                 Selector
@@ -175,15 +226,26 @@ public final class PPRootObjCAdapter: PPRootActionHandling {
 
         let className = NSStringFromClass(viewController.classForCoder)
         if className.isEmpty ||
-           className.contains("PPHomeViewController") ||
-           className.contains("Home") ||
-           className.contains("Photo") ||
-           className.contains("Viewer") ||
-           className.contains("DetailAd") ||
-           className.contains("Accessory") {
+            className.contains("PPHomeViewController") ||
+            className.contains("Home") ||
+            className.contains("Photo") ||
+            className.contains("Viewer") ||
+            className.contains("DetailAd") ||
+            className.contains("Accessory") {
             return false
         }
         return className.contains("SellerProfileVC")
+    }
+
+    public func isEligibleFloatingCartSource(_ viewController: UIViewController) -> Bool {
+        var candidate: UIViewController? = viewController
+        while let current = candidate {
+            if isDirectEligibleFloatingCartSource(current) {
+                return true
+            }
+            candidate = current.presentingViewController ?? current.parent
+        }
+        return false
     }
 
     // MARK: - Bottom Surface

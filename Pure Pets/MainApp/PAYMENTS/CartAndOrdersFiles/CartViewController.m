@@ -760,6 +760,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                             animated:(BOOL)animated
                           sourceView:(UIView * _Nullable)sourceView;
 - (void)pp_moveSavedForLaterItemToCart:(CartItem *)item;
+- (void)pp_moveCartItemToSavedForLater:(CartItem *)item;
+- (NSInteger)pp_cartRowForItem:(CartItem *)targetItem;
 - (void)pp_confirmRemoveSavedForLaterItem:(CartItem *)item;
 - (void)pp_registerStockNotificationForSavedItem:(CartItem *)item;
 - (void)pp_configureActiveCartCell:(PPCartTableCell *)cell item:(CartItem *)item;
@@ -2865,6 +2867,29 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     return NSNotFound;
 }
 
+- (NSInteger)pp_cartRowForItem:(CartItem *)targetItem
+{
+    if (!targetItem || targetItem.itemID.length == 0) return NSNotFound;
+    NSArray<CartItem *> *cartItems = [CartManager sharedManager].cartItems;
+    for (NSInteger index = 0; index < (NSInteger)cartItems.count; index += 1) {
+        CartItem *item = cartItems[index];
+        if ([item.itemID isEqualToString:targetItem.itemID]) {
+            if (targetItem.variantCombinationKey.length > 0 && item.variantCombinationKey.length > 0) {
+                if ([item.variantCombinationKey isEqualToString:targetItem.variantCombinationKey]) {
+                    return index;
+                }
+            } else if (targetItem.variantId.length > 0 && item.variantId.length > 0) {
+                if ([item.variantId isEqualToString:targetItem.variantId]) {
+                    return index;
+                }
+            } else {
+                return index;
+            }
+        }
+    }
+    return NSNotFound;
+}
+
 - (void)pp_configureActiveCartCell:(PPCartTableCell *)cell item:(CartItem *)item
 {
     if (![cell isKindOfClass:PPCartTableCell.class] || !item) {
@@ -2888,6 +2913,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                 }
             }];
             [strongSelf updateTotalLabel];
+        } else if ([action isEqualToString:@"moveToSavedForLater"]) {
+            [strongSelf pp_moveCartItemToSavedForLater:actionItem];
         }
     };
 }
@@ -3816,6 +3843,69 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     }];
 }
 
+- (void)pp_moveCartItemToSavedForLater:(CartItem *)item
+{
+    if (!item || item.itemID.length == 0) {
+        return;
+    }
+    if (self.isPerformingTableMutation) {
+        return;
+    }
+
+    NSInteger targetRow = [self pp_cartRowForItem:item];
+    if (targetRow == NSNotFound) {
+        targetRow = [self pp_cartRowForItemID:item.itemID];
+    }
+    if (targetRow == NSNotFound || targetRow >= (NSInteger)[CartManager sharedManager].cartItems.count) {
+        return;
+    }
+
+    self.isPerformingTableMutation = YES;
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:targetRow inSection:0];
+
+    // 1. Save item to Saved for Later
+    [[PPSaveForLaterManager sharedManager] saveItemForLater:item];
+
+    // 2. Remove item from Cart and persist
+    [[CartManager sharedManager] removeItem:item];
+    [[CartManager sharedManager] saveCart];
+
+    // 3. Tactile haptic & sound feedback
+    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartItemRemoved];
+    UINotificationFeedbackGenerator *feedback = [[UINotificationFeedbackGenerator alloc] init];
+    [feedback prepare];
+    [feedback notificationOccurred:UINotificationFeedbackTypeSuccess];
+
+    // 4. Update UI with animated transition
+    if (self.savedForLaterExpanded) {
+        [UIView transitionWithView:self.cartTableView
+                          duration:0.25
+                           options:UIViewAnimationOptionTransitionCrossDissolve
+                        animations:^{
+            [self.cartTableView reloadData];
+        } completion:^(__unused BOOL finished) {
+            self.isPerformingTableMutation = NO;
+            [self updateTotalLabel];
+            [self pp_notifyCartBadgeAndCollections];
+            [self pp_updateSavedForLaterFooter];
+            [self pp_applyEmptyStateIfNeeded];
+            [PPHUD showSuccess:kLang(@"saved_for_later_added_toast")];
+        }];
+    } else {
+        [self.cartTableView performBatchUpdates:^{
+            [self.cartTableView deleteRowsAtIndexPaths:@[indexPath]
+                                      withRowAnimation:UITableViewRowAnimationFade];
+        } completion:^(__unused BOOL finished) {
+            self.isPerformingTableMutation = NO;
+            [self updateTotalLabel];
+            [self pp_notifyCartBadgeAndCollections];
+            [self pp_updateSavedForLaterFooter];
+            [self pp_applyEmptyStateIfNeeded];
+            [PPHUD showSuccess:kLang(@"saved_for_later_added_toast")];
+        }];
+    }
+}
+
 - (void)pp_registerStockNotificationForSavedItem:(CartItem *)item
 {
     if (!item || item.itemID.length == 0) {
@@ -4005,9 +4095,28 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     }
     removeAction.backgroundColor = [UIColor systemRedColor];
 
+    UIContextualAction *saveAction =
+    [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+                                            title:kLang(@"cart_cell_save_for_later")
+                                          handler:^(__unused UIContextualAction * _Nonnull action,
+                                                    __unused UIView * _Nonnull sourceView,
+                                                    void (^ _Nonnull completionHandler)(BOOL)) {
+        NSArray<CartItem *> *items = [CartManager sharedManager].cartItems;
+        if (indexPath.row < (NSInteger)items.count) {
+            CartItem *item = items[indexPath.row];
+            [self pp_moveCartItemToSavedForLater:item];
+        }
+        completionHandler(YES);
+    }];
+
+    if (@available(iOS 13.0, *)) {
+        saveAction.image = [UIImage systemImageNamed:@"bookmark.fill"];
+    }
+    saveAction.backgroundColor = AppPrimaryClr ?: [UIColor systemOrangeColor];
+
     UISwipeActionsConfiguration *config =
-    [UISwipeActionsConfiguration configurationWithActions:@[removeAction]];
-    config.performsFirstActionWithFullSwipe = YES;
+    [UISwipeActionsConfiguration configurationWithActions:@[removeAction, saveAction]];
+    config.performsFirstActionWithFullSwipe = NO;
     return config;
 }
 

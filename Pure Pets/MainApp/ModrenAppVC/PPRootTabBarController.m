@@ -39,6 +39,8 @@
 #import <SDWebImage/SDImageCache.h>
 #import <objc/runtime.h>
 
+@class PPCommunityCaseFormHostingController;
+
 // ...
 
 
@@ -878,12 +880,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     PPBottomSurfaceKind resolvedKind =
         [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:visible];
     if (resolvedKind != PPBottomSurfaceKindFloatingCartSurface) {
-        if (self.state.isVisible || self.activeSourceViewController) {
-            self.activeSourceViewController = nil;
-            self.openCartHandler = nil;
-            [self updateVisibilityAnimated:animated];
+        if (![self isActiveSourceCurrentlyVisible]) {
+            if (self.state.isVisible || self.activeSourceViewController) {
+                self.activeSourceViewController = nil;
+                self.openCartHandler = nil;
+                [self updateVisibilityAnimated:animated];
+            }
+            return;
         }
-        return;
     }
     [self updateVisibilityAnimated:animated];
 }
@@ -925,26 +929,26 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (BOOL)isEligibleFloatingCartSourceViewController:(UIViewController *)viewController
 {
-    if (!viewController) {
-        return NO;
-    }
-
-    SEL explicitEligibilitySelector = NSSelectorFromString(@"pp_isFloatingCartEligible");
-    if ([viewController respondsToSelector:explicitEligibilitySelector]) {
-        BOOL (*eligibilityImplementation)(id, SEL) =
-            (BOOL (*)(id, SEL))[viewController methodForSelector:explicitEligibilitySelector];
-        if (eligibilityImplementation) {
-            return eligibilityImplementation(viewController, explicitEligibilitySelector);
+    UIViewController *target = viewController;
+    while (target) {
+        SEL explicitEligibilitySelector = NSSelectorFromString(@"pp_isFloatingCartEligible");
+        if ([target respondsToSelector:explicitEligibilitySelector]) {
+            BOOL (*eligibilityImplementation)(id, SEL) =
+                (BOOL (*)(id, SEL))[target methodForSelector:explicitEligibilitySelector];
+            if (eligibilityImplementation && eligibilityImplementation(target, explicitEligibilitySelector)) {
+                return YES;
+            }
         }
-    }
 
-    for (Class candidateClass = viewController.class;
-         candidateClass && candidateClass != UIViewController.class;
-         candidateClass = class_getSuperclass(candidateClass)) {
-        NSString *className = NSStringFromClass(candidateClass);
-        if ([className isEqualToString:@"SellerProfileVC"]) {
-            return YES;
+        for (Class candidateClass = target.class;
+             candidateClass && candidateClass != UIViewController.class;
+             candidateClass = class_getSuperclass(candidateClass)) {
+            NSString *className = NSStringFromClass(candidateClass);
+            if ([className isEqualToString:@"SellerProfileVC"]) {
+                return YES;
+            }
         }
+        target = target.presentingViewController ?: target.parentViewController;
     }
 
     return NO;
@@ -970,14 +974,73 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     UIViewController *presented = viewController.presentedViewController;
     if (presented && presented != viewController && !presented.isBeingDismissed) {
-        return [self topVisibleViewControllerFrom:presented visitedControllers:visitedControllers];
+        // Alerts and system activities must never displace the underlying view controller
+        if ([presented isKindOfClass:UIAlertController.class] ||
+            [presented isKindOfClass:UIActivityViewController.class]) {
+            // Keep inspecting viewController
+        } else {
+            BOOL isSheet = NO;
+            if (@available(iOS 15.0, *)) {
+                if (presented.sheetPresentationController != nil) {
+                    isSheet = YES;
+                }
+            }
+            if (presented.modalPresentationStyle == UIModalPresentationPageSheet ||
+                presented.modalPresentationStyle == UIModalPresentationFormSheet ||
+                presented.modalPresentationStyle == UIModalPresentationOverFullScreen ||
+                presented.modalPresentationStyle == UIModalPresentationOverCurrentContext ||
+                presented.modalPresentationStyle == UIModalPresentationCustom) {
+                isSheet = YES;
+            }
+
+            BOOL overridesSurface = NO;
+            UIViewController *checkController = presented;
+            if ([checkController isKindOfClass:UINavigationController.class]) {
+                checkController = ((UINavigationController *)checkController).visibleViewController ?: ((UINavigationController *)checkController).topViewController;
+            }
+            if ([self isEligibleFloatingCartSourceViewController:checkController]) {
+                overridesSurface = YES;
+            } else {
+                SEL preferredKindSelector = NSSelectorFromString(@"pp_preferredBottomSurfaceKind");
+                if ([checkController respondsToSelector:preferredKindSelector]) {
+                    Method defaultMethod = class_getInstanceMethod(UIViewController.class, preferredKindSelector);
+                    Method controllerMethod = class_getInstanceMethod(checkController.class, preferredKindSelector);
+                    if (defaultMethod && controllerMethod && method_getImplementation(defaultMethod) != method_getImplementation(controllerMethod)) {
+                        overridesSurface = YES;
+                    }
+                }
+            }
+
+            if (!isSheet || overridesSurface) {
+                return [self topVisibleViewControllerFrom:presented visitedControllers:visitedControllers];
+            }
+        }
     }
 
     if ([viewController isKindOfClass:UINavigationController.class]) {
         UINavigationController *navigationController = (UINavigationController *)viewController;
-        UIViewController *candidate = navigationController.visibleViewController ?: navigationController.topViewController;
-        if (candidate && candidate != viewController) {
-            return [self topVisibleViewControllerFrom:candidate visitedControllers:visitedControllers];
+        UIViewController *top = navigationController.topViewController;
+        UIViewController *candidate = navigationController.visibleViewController;
+        if (candidate && candidate != top && candidate != viewController && !candidate.isBeingDismissed) {
+            BOOL isSheetCandidate = NO;
+            if (@available(iOS 15.0, *)) {
+                if (candidate.sheetPresentationController != nil) {
+                    isSheetCandidate = YES;
+                }
+            }
+            if (candidate.modalPresentationStyle == UIModalPresentationPageSheet ||
+                candidate.modalPresentationStyle == UIModalPresentationFormSheet ||
+                candidate.modalPresentationStyle == UIModalPresentationOverFullScreen ||
+                candidate.modalPresentationStyle == UIModalPresentationOverCurrentContext ||
+                candidate.modalPresentationStyle == UIModalPresentationCustom) {
+                isSheetCandidate = YES;
+            }
+            if (!isSheetCandidate || [self isEligibleFloatingCartSourceViewController:candidate]) {
+                top = candidate;
+            }
+        }
+        if (top && top != viewController) {
+            return [self topVisibleViewControllerFrom:top visitedControllers:visitedControllers];
         }
         return viewController;
     }
@@ -1002,7 +1065,28 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 
     UIViewController *visible = [self topVisibleViewControllerFrom:self.hostController.selectedViewController ?: self.hostController];
-    return visible == source;
+    if (visible == source) {
+        return YES;
+    }
+
+    // Check if visible is presented by source or within source's presentation hierarchy (climbing both presenting and parent)
+    UIViewController *ancestor = visible.presentingViewController ?: visible.parentViewController;
+    while (ancestor) {
+        if (ancestor == source) {
+            return YES;
+        }
+        ancestor = ancestor.presentingViewController ?: ancestor.parentViewController;
+    }
+
+    // Check if source is embedded in visible (e.g. visible is UINavigationController containing source)
+    if ([visible isKindOfClass:UINavigationController.class]) {
+        UINavigationController *nav = (UINavigationController *)visible;
+        if (nav.topViewController == source || [nav.viewControllers containsObject:source]) {
+            return YES;
+        }
+    }
+
+    return NO;
 }
 
 - (BOOL)shouldShowFloatingCartForSourceViewController:(UIViewController *)source
@@ -1019,8 +1103,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 
     UIViewController *visible = [self topVisibleViewControllerFrom:self.hostController.selectedViewController ?: self.hostController];
+    UIViewController *targetController = visible;
+    if (![self isEligibleFloatingCartSourceViewController:targetController]) {
+        targetController = source;
+    }
     PPBottomSurfaceKind resolvedKind =
-        [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:visible];
+        [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:targetController];
     return resolvedKind == PPBottomSurfaceKindFloatingCartSurface;
 }
 
@@ -1078,6 +1166,26 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 
     UIViewController *source = self.activeSourceViewController;
+    if (!source) {
+        UIViewController *visible = [self topVisibleViewControllerFrom:host.selectedViewController ?: host];
+        if ([self isEligibleFloatingCartSourceViewController:visible]) {
+            UIViewController *candidate = visible;
+            while (candidate) {
+                if ([candidate respondsToSelector:NSSelectorFromString(@"pp_isFloatingCartEligible")]) {
+                    source = candidate;
+                    break;
+                }
+                candidate = candidate.presentingViewController ?: candidate.parentViewController;
+            }
+            if (!source) {
+                source = visible;
+            }
+            self.activeSourceViewController = source;
+            if (!self.openCartHandler) {
+                self.openCartHandler = [[PPBottomSurfaceCoordinator sharedCoordinator] pp_floatingCartOpenHandlerForController:source];
+            }
+        }
+    }
     CartManager *cartManager = [CartManager sharedManager];
     NSInteger itemCount = MAX(0, [cartManager totalItemsCount]);
     double totalAmount = [cartManager totalAmount];
@@ -4142,15 +4250,33 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [OptionModel optionWithID:@"addPetForAdoption"
                             title:kLang(@"addPetForAdoption")
                         imageName:nil
-                      systemImage:@"heart.circle.fill"
+                      systemImage:@"heart.fill"
                              desc:kLang(@"addPetForAdoption_desc")];
     adopt.sortOrder = 2;
+
+    OptionModel *missing =
+        [OptionModel optionWithID:@"communityMissing"
+                            title:kLang(@"community_report_missing")
+                        imageName:nil
+                      systemImage:@"location.magnifyingglass"
+                             desc:kLang(@"community_report_missing_desc")];
+    missing.sortOrder = 3;
+
+    OptionModel *found =
+        [OptionModel optionWithID:@"communityFound"
+                            title:kLang(@"community_report_found")
+                        imageName:nil
+                      systemImage:@"hand.raised.fill"
+                             desc:kLang(@"community_report_found_desc")];
+    found.sortOrder = 4;
 
     NSMutableArray<OptionModel *> *options = [NSMutableArray arrayWithObject:newAd];
     if (PPAllwedUsedAccessoriesEnabled()) {
         [options addObject:addUsed];
     }
     [options addObject:adopt];
+    [options addObject:missing];
+    [options addObject:found];
     return options.copy;
 }
 
@@ -4185,10 +4311,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         else if ([op.optID isEqualToString:@"addPetForAdoption"]) {
             [self openAdoptionEditor];
         }
+        else if ([op.optID isEqualToString:@"communityMissing"]) {
+            [self openCommunityMissingReport];
+        }
+        else if ([op.optID isEqualToString:@"communityFound"]) {
+            [self openCommunityFoundReport];
+        }
     }];
     vc.usesCompactOptionIcons = YES;
     vc.usesCompactPremiumHero = NO;
-    vc.preferredMainDetentHeight = 520.0;
+    vc.preferredMainDetentHeight = 660.0;
     vc.premiumHeroAccentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     [vc configurePremiumHeroWithEyebrow:kLang(@"create_picker_eyebrow")
                                   title:kLang(@"create_picker_title")
@@ -4284,6 +4416,28 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     vc.pp_transitionStyle = PPTransitionStyleNone;
 
     [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+}
+
+- (void)openCommunityMissingReport {
+    if (UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) {
+        [self pp_applyBlockedState:YES animated:YES];
+        return;
+    }
+    PPCommunityCaseFormHostingController *controller =
+        [[PPCommunityCaseFormHostingController alloc] initWithMissing:YES onFinished:nil];
+    controller.modalPresentationStyle = UIModalPresentationPageSheet;
+    [PPHomeHelper presentViewControllerSafely:controller from:self animated:YES completion:nil];
+}
+
+- (void)openCommunityFoundReport {
+    if (UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) {
+        [self pp_applyBlockedState:YES animated:YES];
+        return;
+    }
+    PPCommunityCaseFormHostingController *controller =
+        [[PPCommunityCaseFormHostingController alloc] initWithMissing:NO onFinished:nil];
+    controller.modalPresentationStyle = UIModalPresentationPageSheet;
+    [PPHomeHelper presentViewControllerSafely:controller from:self animated:YES completion:nil];
 }
 
 - (BOOL)pp_currentUserHasAnyPermissionInKeys:(NSArray<NSString *> *)permissionKeys {

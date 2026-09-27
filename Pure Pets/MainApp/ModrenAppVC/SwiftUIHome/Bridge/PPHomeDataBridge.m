@@ -206,6 +206,9 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
         fallbackSymbol = @"person.crop.circle.fill";
     } else if ([self.animationName isEqualToString:@"PetMedicine"]) {
         fallbackSymbol = @"pills.fill";
+    } else if ([self.animationName.lastPathComponent.lowercaseString isEqualToString:@"shop2.json"] ||
+               [self.animationName.lastPathComponent.lowercaseString isEqualToString:@"shop2"]) {
+        fallbackSymbol = @"storefront.fill";
     } else if ([self.animationName containsString:@"cart"] ||
                [self.animationName containsString:@"shop"] ||
                [self pp_isMarketplaceAnimationName]) {
@@ -233,7 +236,12 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
     [self addSubview:animation];
     self.animationView = animation;
 
-    CGFloat inset = ([self.animationName isEqualToString:@"petstore"] || [self pp_isMarketplaceAnimationName]) ? 9.0 : -2.0;
+    CGFloat inset = -2.0;
+    if ([self.animationName.lastPathComponent.lowercaseString containsString:@"shop2"]) {
+        inset = 2.0;
+    } else if ([self.animationName isEqualToString:@"petstore"] || [self pp_isMarketplaceAnimationName]) {
+        inset = 9.0;
+    }
     [NSLayoutConstraint activateConstraints:@[
         [fallback.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [fallback.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
@@ -499,7 +507,7 @@ static NSString *PPHomeCanonicalMainCategoryImageURL(NSString *rawURL) {
     // and causes Lottie keypath traversal issues on unnamed shapes. Only monochrome glyph
     // animations like bag2.json require layer-level color callbacks.
     NSString *safeName = self.animationName.lowercaseString ?: @"";
-    if ([safeName containsString:@"shop"]) {
+    if ([safeName isEqualToString:@"shop.json"] || [safeName isEqualToString:@"shop"]) {
         return;
     }
 

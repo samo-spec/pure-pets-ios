@@ -14,7 +14,8 @@ typedef NS_ENUM(NSUInteger, PPCommerceFeedbackEvent) {
     PPCommerceFeedbackEventPaymentAction,
     PPCommerceFeedbackEventPaymentSuccess,
     PPCommerceFeedbackEventPaymentFailure,
-    PPCommerceFeedbackEventRootTabSelected
+    PPCommerceFeedbackEventRootTabSelected,
+    PPCommerceFeedbackEventSuccess
 };
 
 NS_ASSUME_NONNULL_BEGIN

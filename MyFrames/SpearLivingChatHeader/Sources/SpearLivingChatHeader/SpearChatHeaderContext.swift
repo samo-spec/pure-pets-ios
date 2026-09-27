@@ -64,22 +64,33 @@ internal struct SpearContextRail: View {
         verticalLayout
       }
     }
-    .padding(.horizontal, 6)
-    .padding(.vertical, 6)
-    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 8)
+    .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
     .background(
-      Color.primary.opacity(0.025),
+      Color(uiColor: .secondarySystemGroupedBackground).opacity(0.92),
       in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
     )
     .overlay(
       RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        .stroke(Color.primary.opacity(0.05), lineWidth: 0.5)
+        .stroke(
+          LinearGradient(
+            colors: [
+              Color.white.opacity(0.38),
+              Color.primary.opacity(0.06)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          ),
+          lineWidth: 0.8
+        )
     )
+    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
     .contentShape(Rectangle())
   }
 
   private var horizontalLayout: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 10) {
       contextVisual
       contextText
       actionLabel
@@ -88,7 +99,7 @@ internal struct SpearContextRail: View {
 
   private var verticalLayout: some View {
     VStack(alignment: .leading, spacing: 8) {
-      HStack(alignment: .top, spacing: 8) {
+      HStack(alignment: .top, spacing: 10) {
         contextVisual
         contextText
       }
@@ -102,14 +113,30 @@ internal struct SpearContextRail: View {
   @ViewBuilder
   private var contextVisual: some View {
     if context.isSupport {
-      ZStack {
+      ZStack(alignment: .bottomTrailing) {
         Circle()
-          .fill(brandColor.opacity(0.10))
+          .fill(
+            LinearGradient(
+              colors: [
+                brandColor,
+                Color(red: 190 / 255.0, green: 24 / 255.0, blue: 60 / 255.0)
+              ],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
         Image(systemName: context.symbolSystemName)
-          .font(.system(size: 14, weight: .bold))
-          .foregroundStyle(brandColor)
+          .font(.system(size: 15, weight: .bold))
+          .foregroundStyle(.white)
+          .shadow(color: Color.black.opacity(0.25), radius: 1, y: 1)
+
+        Circle()
+          .fill(SpearHeaderSemanticColor.live)
+          .frame(width: 8, height: 8)
+          .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 1.5))
+          .offset(x: 2, y: 2)
       }
-      .frame(width: 32, height: 32)
+      .frame(width: 34, height: 34)
       .accessibilityHidden(true)
     } else {
       ZStack {
@@ -135,9 +162,25 @@ internal struct SpearContextRail: View {
   private var contextText: some View {
     VStack(alignment: .leading, spacing: 3) {
       if context.isSupport {
-        Text(context.detail.isEmpty ? context.title : context.detail)
-          .font(Font.ppBeirutiMedium(size: 14, relativeTo: .subheadline))
-          .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+        HStack(spacing: 5) {
+          Text(context.title.isEmpty ? context.eyebrow : context.title)
+            .font(Font.ppBeirutiBold(size: 15, relativeTo: .subheadline))
+            .lineLimit(1)
+
+          Text(Locale.current.languageCode == "ar" ? "نشط" : "Active")
+            .font(Font.ppBeirutiBold(size: 10, relativeTo: .caption2))
+            .foregroundStyle(SpearHeaderSemanticColor.live)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(SpearHeaderSemanticColor.live.opacity(0.12), in: Capsule())
+        }
+
+        if !context.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          Text(context.detail)
+            .font(Font.ppBeirutiRegular(size: 12, relativeTo: .caption))
+            .foregroundStyle(Color.secondary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+        }
       } else {
         HStack(spacing: 4) {
           HStack(spacing: 3) {
@@ -188,7 +231,7 @@ internal struct SpearContextRail: View {
   @ViewBuilder
   private var actionLabel: some View {
     if action.availability.isVisible {
-      HStack(spacing: 3) {
+      HStack(spacing: 4) {
         Text(context.actionTitle)
           .font(Font.ppBeirutiBold(size: 12, relativeTo: .caption))
           .lineLimit(1)
@@ -196,11 +239,18 @@ internal struct SpearContextRail: View {
           .font(.system(size: 8, weight: .bold))
       }
       .foregroundStyle(action.availability.isEnabled ? brandColor : Color.secondary)
-      .padding(.horizontal, 8)
-      .padding(.vertical, 4)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 5)
       .background(
-        brandColor.opacity(action.availability.isEnabled ? 0.08 : 0.03),
+        brandColor.opacity(action.availability.isEnabled ? 0.09 : 0.03),
         in: Capsule()
+      )
+      .overlay(
+        Capsule()
+          .strokeBorder(
+            brandColor.opacity(action.availability.isEnabled ? 0.22 : 0.08),
+            lineWidth: 0.75
+          )
       )
       .multilineTextAlignment(.trailing)
       .fixedSize(horizontal: true, vertical: true)

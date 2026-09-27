@@ -4065,6 +4065,9 @@
 "saved_for_later" = "Saved for later";
 "saved_for_later_added_toast" = "Saved for later. You can find it in your saved items.";
 "saved_for_later_removed_toast" = "Removed from saved for later.";
+"cart_cell_save_for_later" = "Save for later";
+"cart_cell_save_format" = "Save %@ for later";
+"cart_cell_save_hint" = "Moves this item from cart to saved for later";
 "choose_items_to_move" = "Choose items to move to cart";
 "move_to_cart" = "Move to Cart";
 "moved_to_cart_success" = "Moved to cart successfully";
@@ -5053,6 +5056,7 @@
 "community_error_media_rejected" = "This media could not be accepted. Choose another file.";
 "community_error_media_too_large" = "This media is larger than the allowed size.";
 "community_error_media_required" = "Add at least one photo before submitting.";
+"community_error_media_upload_failed" = "Could not upload case media. Please try again.";
 "community_search_placeholder" = "Search by pet, breed, area, or details";
 "community_missing_title" = "Missing pets";
 "community_found_title" = "Found pets";
@@ -5063,7 +5067,9 @@
 "community_report_action" = "Report a pet";
 "community_report_action_hint" = "Choose whether the pet is missing or found.";
 "community_report_missing" = "Report a Missing Pet";
+"community_report_missing_desc" = "Create a report to find your lost pet and coordinate safe return.";
 "community_report_found" = "Report a Found Pet";
+"community_report_found_desc" = "Report a pet you found to help reunite them with their owner.";
 "community_missing_form_title" = "Missing-pet report";
 "community_found_form_title" = "Found-pet report";
 "community_form_privacy_message" = "Share accurate details. The public report uses an approximate area and protected in-app contact.";

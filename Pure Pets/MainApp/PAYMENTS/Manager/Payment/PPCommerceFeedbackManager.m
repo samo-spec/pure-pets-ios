@@ -65,6 +65,7 @@ static inline void PPCommercePlaySystemSoundIfEnabled(BOOL enabled, SystemSoundI
         case PPCommerceFeedbackEventPaymentAction:
             return 0.10;
         case PPCommerceFeedbackEventPaymentSuccess:
+        case PPCommerceFeedbackEventSuccess:
         case PPCommerceFeedbackEventPaymentFailure:
             return 0.20;
         case PPCommerceFeedbackEventRootTabSelected:
@@ -135,7 +136,8 @@ static inline void PPCommercePlaySystemSoundIfEnabled(BOOL enabled, SystemSoundI
                 PPCommercePlaySystemSoundIfEnabled(self.soundEnabled, PPCommerceSoundTap);
             } break;
 
-            case PPCommerceFeedbackEventPaymentSuccess: {
+            case PPCommerceFeedbackEventPaymentSuccess:
+            case PPCommerceFeedbackEventSuccess: {
                 [self.notificationFeedback notificationOccurred:UINotificationFeedbackTypeSuccess];
                 PPCommercePlaySystemSoundIfEnabled(self.soundEnabled, PPCommerceSoundSuccess);
             } break;

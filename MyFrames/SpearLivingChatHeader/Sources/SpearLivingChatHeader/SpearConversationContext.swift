@@ -172,7 +172,7 @@ public enum SpearConversationContext: Equatable, Identifiable, Sendable {
     case .order:
       return "shippingbox.fill"
     case .support:
-      return "shield.lefthalf.filled"
+      return "shield.fill"
     }
   }
 

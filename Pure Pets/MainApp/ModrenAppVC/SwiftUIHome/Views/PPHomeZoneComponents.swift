@@ -4619,12 +4619,15 @@ private struct PPFeaturedCommerceArtwork: View {
                 )
                 .frame(width: side, height: side)
 
-            Image(systemName: "storefront.fill")
-                .font(.system(size: 44, weight: .semibold))
-                .foregroundStyle(accent)
-                .shadow(color: accent.opacity(colorScheme == .dark ? 0.35 : 0.18), radius: 6, y: 2)
-                .frame(width: side, height: side)
-                .scaleEffect(reduceMotion ? 1.0 : (isBreathing ? 1.06 : 1.0))
+            HomeHeroLottieRepresentable(
+                animationName: "Shop2.json",
+                loadsFromFirebase: false,
+                playbackEnabled: !reduceMotion,
+                tintColor: UIColor(accent)
+            )
+            .frame(width: side, height: side)
+            .shadow(color: accent.opacity(colorScheme == .dark ? 0.35 : 0.18), radius: 6, y: 2)
+            .scaleEffect(reduceMotion ? 1.0 : (isBreathing ? 1.04 : 1.0))
         }
         .frame(width: side, height: side)
         .allowsHitTesting(false)
@@ -4774,6 +4777,59 @@ struct PPClinicalServiceCard: View {
     }
 }
 
+/// Intentional, studio-crafted chromatic architecture for the Marketplace Quick Action ecosystem ("استكشف بيوربتس").
+/// Replaces arbitrary pastel and clashing brand-red assignments with an intentional,
+/// high-chroma harmonic jewel palette calibrated for light and dark appearances, ensuring
+/// distinct visual weight, zero chromatic clash with PureLens, and full harmony with the cart and navigation tokens.
+@available(iOS 15.0, *)
+enum PPMarketplaceQuickActionTone {
+    private static func dynamicColor(light: String, dark: String) -> Color {
+        Color(
+            uiColor: UIColor.ppDynamicColor(
+                light: UIColor(Color(hex: light)),
+                dark: UIColor(Color(hex: dark))
+            )
+        )
+    }
+
+    /// 1. Shop (تسوق) — Royal Sapphire Blue: Anchors the marketplace, harmonizes with search and cart.
+    static var shop: Color {
+        dynamicColor(light: "1E56DB", dark: "3B82F6")
+    }
+
+    /// 2. Food (طعام) — Warm Sunlit Amber: Appetizing, nourishing, complementary warm partner to Sapphire.
+    static var food: Color {
+        dynamicColor(light: "D97706", dark: "FBBF24")
+    }
+
+    /// 3. Vet Clinics (العيادات البيطرية) — Clinical Iris / Medical Indigo: High-trust clinical care, distinct from Sapphire.
+    static var vet: Color {
+        dynamicColor(light: "6366F1", dark: "818CF8")
+    }
+
+    /// 4. Pharmacy (الصيدلية) — Vital Emerald Jade: Universal pharmaceutical & medicinal green.
+    static var pharmacy: Color {
+        dynamicColor(light: "059669", dark: "10B981")
+    }
+
+    /// 5. Services (الخدمات) — Radiant Orchid Violet: Grooming, pampering, training, and spa luxury.
+    static var services: Color {
+        dynamicColor(light: "8B5CF6", dark: "A78BFA")
+    }
+
+    /// Resolves the dedicated color for any marketplace action identifier.
+    static func accent(for actionID: String) -> Color {
+        switch actionID {
+        case "shop": return shop
+        case "food": return food
+        case "vet": return vet
+        case "pharmacy": return pharmacy
+        case "services": return services
+        default: return shop
+        }
+    }
+}
+
 /// Provisions & Care Native Architecture (Featured Action + 2x2 Quick Grid)
 @available(iOS 15.0, *)
 struct PPProvisionsCareArchitectureView: View {
@@ -4788,18 +4844,7 @@ struct PPProvisionsCareArchitectureView: View {
     }
 
     private func accent(for action: HomePriorityAction) -> Color {
-        switch action.id {
-        case "food":
-            return Color.ppQuickActionFood
-        case "vet":
-            return Color.ppQuickActionCommunity
-        case "pharmacy":
-            return Color(red: 0.06, green: 0.72, blue: 0.51)
-        case "services":
-            return Color.ppQuickActionServices
-        default:
-            return HomeSemanticTone.brand
-        }
+        PPMarketplaceQuickActionTone.accent(for: action.id)
     }
 
     var body: some View {
@@ -4818,7 +4863,7 @@ struct PPProvisionsCareArchitectureView: View {
                 if let shopAction = action(id: PPProvisionsCareLayout.featuredActionID) {
                     PPCommerceHeroCard(
                         action: shopAction,
-                        accent: HomeSemanticTone.brand,
+                        accent: accent(for: shopAction),
                         cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
                         fixedHeight: PPProvisionsCareLayout.featuredCardHeight,
                         onTap: { onSelect(shopAction) }
@@ -4860,7 +4905,7 @@ struct PPProvisionsCareArchitectureView: View {
             if let shopAction = action(id: PPProvisionsCareLayout.featuredActionID) {
                 PPCommerceHeroCard(
                     action: shopAction,
-                    accent: HomeSemanticTone.brand,
+                    accent: accent(for: shopAction),
                     cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
                     onTap: { onSelect(shopAction) }
                 )
