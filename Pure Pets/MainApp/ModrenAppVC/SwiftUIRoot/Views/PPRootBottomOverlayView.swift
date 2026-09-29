@@ -49,6 +49,7 @@ private extension View {
 public struct PPRootBottomOverlayView: View {
     @ObservedObject public var store: PPRootStore
     private let interactiveFramesDidChange: ([CGRect]) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         store: PPRootStore,
@@ -68,6 +69,7 @@ public struct PPRootBottomOverlayView: View {
                     if store.shouldShowDock {
                         if #available(iOS 17.0, *) {
                             PPRootCommandDeck(store: store)
+                                .reportsBottomOverlayInteractiveFrame()
                                 .padding(
                                     .horizontal,
                                     PPCommandDeckTabBar.hostHorizontalInset
@@ -78,11 +80,10 @@ public struct PPRootBottomOverlayView: View {
                                 )
                                 .padding(
                                     .bottom,
-                                    PPCommandDeckTabBar.hostBottomInset
+                                    max(PPCommandDeckTabBar.hostBottomInset, proxy.safeAreaInsets.bottom)
                                 )
-                                .reportsBottomOverlayInteractiveFrame()
                                 .transition(
-                                    .move(edge: .bottom).combined(with: .opacity)
+                                    reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
                                 )
                         }
                     }
@@ -101,7 +102,7 @@ public struct PPRootBottomOverlayView: View {
                             proxy.safeAreaInsets.bottom
                                 + (store.shouldShowDock ? 54 : 12)
                         )
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                     }
                 }
                 .passthroughTouches(true)
@@ -142,8 +143,8 @@ private struct PPRootCommandDeck: View {
 
     var body: some View {
         let deckTheme = PPCommandDeckTheme(
-            accent: store.customAccentColor ?? .ppPrimary,
-            createTint: store.customAccentColor ?? .ppPrimary,
+            accent: .ppPrimary,
+            createTint: .ppPrimary,
             surface: colorScheme == .dark
                 ? Color(red: 0.10, green: 0.10, blue: 0.12)
                 : .white,

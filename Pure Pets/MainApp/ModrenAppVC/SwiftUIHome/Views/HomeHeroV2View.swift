@@ -93,19 +93,13 @@ private enum HomeHeroV2Metrics {
 @available(iOS 15.0, *)
 private enum HomeHeroSpeciesDockMetrics {
     static func height(for dynamicTypeSize: DynamicTypeSize) -> CGFloat {
-        if dynamicTypeSize >= .accessibility3 { return 144 }
-        if dynamicTypeSize.isAccessibilitySize { return 124 }
+        if dynamicTypeSize >= .accessibility3 { return 216 }
+        if dynamicTypeSize.isAccessibilitySize { return 160 }
         if dynamicTypeSize >= .xxLarge { return 96 }
         return HomeHeroV2Metrics.dockHeight
     }
 
-    static let seamHeight: CGFloat = 5
-    static let headerHorizontalInset: CGFloat = PPSpace.base
-    static let railHorizontalInset: CGFloat = PPSpace.sm
-    static let itemSpacing: CGFloat = 8
-    static let identitySeedFrame: CGFloat = 20
-    static let minimumItemWidth: CGFloat = 58
-    static let minimumItemHeight: CGFloat = 40
+
 }
 
 @available(iOS 15.0, *)
@@ -250,8 +244,6 @@ struct HomeHeroV2View: View {
             reduceMotion ? nil : .easeInOut(duration: 0.28),
             value: page.accentHex
         )
-        .id(page.id)
-        .transition(pageTransition)
         .modifier(
             HomeHeroV2PageMotionModifier(
                 pageID: AnyHashable(page.id),
@@ -259,16 +251,6 @@ struct HomeHeroV2View: View {
             )
         )
         .contentShape(Rectangle())
-        .modifier(
-            HomeHeroV2PagingGestureModifier(
-                isEnabled: allowsPaging,
-                selectedIndex: selectedIndex,
-                pageCount: pages.count,
-                layoutDirection: layoutDirection,
-                onSelect: onSelect,
-                onInteractionChanged: onInteractionChanged
-            )
-        )
         .accessibilityLabel(
             page.accessibilityLabel ?? [page.eyebrow, page.title, page.subtitle]
                 .filter { !$0.isEmpty }
@@ -304,6 +286,18 @@ struct HomeHeroV2View: View {
     ) -> some View {
         VStack(spacing: 0) {
             splitHero(page, accent: accent)
+                .id(page.id)
+                .transition(pageTransition)
+                .modifier(
+                    HomeHeroV2PagingGestureModifier(
+                        isEnabled: allowsPaging,
+                        selectedIndex: selectedIndex,
+                        pageCount: pages.count,
+                        layoutDirection: layoutDirection,
+                        onSelect: onSelect,
+                        onInteractionChanged: onInteractionChanged
+                    )
+                )
                 .frame(height: stageHeight(for: page))
                 .animation(
                     reduceMotion ? nil : .easeInOut(duration: 0.22),
@@ -843,18 +837,7 @@ struct HomeHeroV2View: View {
     // MARK: Motion
 
     private var pageTransition: AnyTransition {
-        let incomingX: CGFloat = isRightToLeft ? -34 : 34
-        let outgoingX: CGFloat = isRightToLeft ? 24 : -24
-        return .asymmetric(
-            insertion: .modifier(
-                active: HomeHeroV2PagePhase(opacity: 0, offsetX: incomingX),
-                identity: HomeHeroV2PagePhase.identity
-            ),
-            removal: .modifier(
-                active: HomeHeroV2PagePhase(opacity: 0, offsetX: outgoingX),
-                identity: HomeHeroV2PagePhase.identity
-            )
-        )
+        .opacity
     }
 
     // MARK: Artwork resolution (unchanged contract from V1)
@@ -1303,19 +1286,6 @@ private struct HomeHeroV2PressStyle: ButtonStyle {
     }
 }
 
-private struct HomeHeroV2PagePhase: ViewModifier {
-    let opacity: Double
-    let offsetX: CGFloat
-
-    static let identity = HomeHeroV2PagePhase(opacity: 1, offsetX: 0)
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(opacity)
-            .offset(x: offsetX)
-    }
-}
-
 private struct HomeHeroV2PageMotionModifier: ViewModifier {
     let pageID: AnyHashable
     let reduceMotion: Bool
@@ -1326,11 +1296,7 @@ private struct HomeHeroV2PageMotionModifier: ViewModifier {
             content.animation(nil, value: pageID)
         } else {
             content.animation(
-                .interactiveSpring(
-                    response: 0.52,
-                    dampingFraction: 0.84,
-                    blendDuration: 0.10
-                ),
+                .easeInOut(duration: 0.28),
                 value: pageID
             )
         }
@@ -1525,31 +1491,6 @@ private enum HomeHeroV2Palette {
 // MARK: - Living Species Dock
 
 @available(iOS 15.0, *)
-private struct HomeHeroSpeciesPressStyle: ButtonStyle {
-    let assistiveMotionIsDisabled: Bool
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(
-                configuration.isPressed
-                    && !reduceMotion
-                    && !assistiveMotionIsDisabled
-                    ? 0.95
-                    : 1
-            )
-            .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(
-                reduceMotion || assistiveMotionIsDisabled
-                    ? nil
-                    : .easeOut(duration: 0.12),
-                value: configuration.isPressed
-            )
-    }
-}
-
-@available(iOS 15.0, *)
 private struct HomeHeroSpeciesDock: View {
     let categories: [HomeCategoryModel]
     let selectedCategoryID: Int?
@@ -1558,378 +1499,16 @@ private struct HomeHeroSpeciesDock: View {
     let onSelect: (HomeCategoryModel?) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
-    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Namespace private var focusNamespace
-
-    @State private var isBeaconPulsing = false
-
-    private var motionIsDisabled: Bool {
-        reduceMotion || switchControlEnabled || voiceOverEnabled
-    }
-
-    private var isCategoryAccentEnabled: Bool {
-        UserDefaults.standard.bool(
-            forKey: "pp.marketplace.usesMainKindAccentColors"
-        )
-    }
-
-    private var headerTitle: String {
-        HomeModelAdapter.localized(
-            "home_browse_by_category",
-            fallback: isRightToLeft ? "تصفح حسب النوع" : "Browse by category"
-        )
-    }
-
-    private var allTitle: String {
-        Language.get("All", alter: nil) ?? Language.get("all", alter: nil) ?? (isRightToLeft ? "الكل" : "All")
-    }
-
-    private var selectedAccessibilityValue: String {
-        Language.get("Selected", alter: nil) ?? (isRightToLeft ? "محدد" : "Selected")
-    }
-
-    private var resolvedSelectedCategoryID: Int? {
-        guard let selectedCategoryID,
-              categories.contains(where: {
-                  HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
-              }) else {
-            return nil
-        }
-        return selectedCategoryID
-    }
-
-    private var resolvedSelectedCategory: HomeCategoryModel? {
-        guard let resolvedSelectedCategoryID else { return nil }
-        return categories.first {
-            HomeModelAdapter.mainKindID($0.raw) == resolvedSelectedCategoryID
-        }
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            scopeHeader
-            speciesRail
-        }
-        .frame(
-            maxWidth: .infinity,
-            maxHeight: .infinity,
-            alignment: .top
+        HomeCategoriesStripView(
+            categories: categories,
+            selectedCategoryID: selectedCategoryID,
+            accent: accent,
+            isRightToLeft: isRightToLeft,
+            reduceMotion: reduceMotion,
+            onSelect: onSelect,
+            accessibilityPrefix: "home.hero.mainKind"
         )
-        .environment(
-            \.layoutDirection,
-            isRightToLeft ? .rightToLeft : .leftToRight
-        )
-        .accessibilityElement(children: .contain)
-    }
-
-    private var scopeHeader: some View {
-        HStack(spacing: PPSpace.md) {
-            HStack(spacing: 7) {
-                // Dual-layer Living Jewel Beacon
-                ZStack {
-                    if !motionIsDisabled && contrast != .increased {
-                        Circle()
-                            .fill(accent.opacity(isBeaconPulsing ? 0.36 : 0.10))
-                            .frame(width: 15, height: 15)
-                            .scaleEffect(isBeaconPulsing ? 1.25 : 0.85)
-                            .blur(radius: 2.2)
-                    }
-
-                    Circle()
-                        .stroke(
-                            contrast == .increased
-                                ? Color.ppTextPrimary
-                                : accent.opacity(colorScheme == .dark ? 0.45 : 0.28),
-                            lineWidth: contrast == .increased ? 1.5 : 0.85
-                        )
-                        .frame(width: 11, height: 11)
-                        .scaleEffect(!motionIsDisabled && isBeaconPulsing ? 1.06 : 1.0)
-
-                    Circle()
-                        .fill(
-                            contrast == .increased
-                                ? Color.ppTextPrimary
-                                : accent
-                        )
-                        .frame(width: 5.5, height: 5.5)
-                        .scaleEffect(!motionIsDisabled && isBeaconPulsing ? 1.15 : 1.0)
-                }
-                .accessibilityHidden(true)
-
-                Text(headerTitle)
-                    .font(HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 14 : 12.5))
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(1)
-            }
-
-            HomeMainKindsScopeThread(
-                accent: accent,
-                selectedCategoryID: resolvedSelectedCategoryID,
-                isRightToLeft: isRightToLeft
-            )
-        }
-        .padding(.horizontal, HomeHeroSpeciesDockMetrics.headerHorizontalInset)
-        .padding(.top, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 2)
-        .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.xs : 2)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-        .onAppear {
-            guard !motionIsDisabled else { return }
-            if !isBeaconPulsing {
-                withAnimation(
-                    .easeInOut(duration: 2.2)
-                        .repeatForever(autoreverses: true)
-                ) {
-                    isBeaconPulsing = true
-                }
-            }
-        }
-    }
-
-    private var speciesRail: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: HomeHeroSpeciesDockMetrics.itemSpacing) {
-                    speciesButton(
-                        category: nil,
-                        title: allTitle,
-                        isSelected: resolvedSelectedCategoryID == nil
-                    )
-                    .id(allScrollID)
-
-                    ForEach(categories) { category in
-                        let categoryID = HomeModelAdapter.mainKindID(category.raw)
-                        speciesButton(
-                            category: category,
-                            title: category.title,
-                            isSelected: categoryID == resolvedSelectedCategoryID
-                        )
-                        .id(scrollID(for: category))
-                    }
-                }
-                .padding(.horizontal, HomeHeroSpeciesDockMetrics.railHorizontalInset)
-                .padding(.top, 4)
-                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? PPSpace.sm : 6)
-                .animation(
-                    motionIsDisabled
-                        ? nil
-                        : .spring(response: 0.36, dampingFraction: 0.82),
-                    value: resolvedSelectedCategoryID
-                )
-            }
-            .onAppear {
-                scrollToSelection(proxy: proxy, animated: false)
-            }
-            .onChange(of: selectedCategoryID) { _ in
-                scrollToSelection(
-                    proxy: proxy,
-                    animated: !motionIsDisabled
-                )
-            }
-        }
-    }
-
-    private func speciesButton(
-        category: HomeCategoryModel?,
-        title: String,
-        isSelected: Bool
-    ) -> some View {
-        let itemAccent = isSelected && isCategoryAccentEnabled
-            ? accent
-            : identityAccent(for: category)
-
-        return Button {
-            let feedback = UISelectionFeedbackGenerator()
-            feedback.prepare()
-            feedback.selectionChanged()
-
-            if motionIsDisabled {
-                onSelect(category)
-            } else {
-                withAnimation(
-                    .spring(response: 0.36, dampingFraction: 0.82)
-                ) {
-                    onSelect(category)
-                }
-            }
-        } label: {
-            HStack(spacing: isSelected ? 6 : 5) {
-                if isSelected {
-                    pawGem(for: category, accent: itemAccent)
-                } else {
-                    identitySeed(accent: itemAccent)
-                }
-
-                Text(title)
-                    .font(
-                        isSelected
-                            ? HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 17.5 : 15.5)
-                            : HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 16 : 14.5)
-                    )
-                    .foregroundStyle(
-                        isSelected
-                            ? (colorScheme == .dark ? Color.white : Color.black)
-                            : Color.ppTextSecondary
-                    )
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-            .padding(.leading, isSelected ? 12 : 9)
-            .padding(.trailing, isSelected ? 22 : 9)
-            .frame(
-                minWidth: HomeHeroSpeciesDockMetrics.minimumItemWidth,
-                minHeight: HomeHeroSpeciesDockMetrics.minimumItemHeight
-            )
-            .background {
-                if isSelected {
-                    activeCapsuleBackground(accent: itemAccent)
-                }
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(
-            HomeHeroSpeciesPressStyle(
-                assistiveMotionIsDisabled: switchControlEnabled
-                    || voiceOverEnabled
-            )
-        )
-        .hoverEffect(.highlight)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityValue(
-            isSelected ? selectedAccessibilityValue : ""
-        )
-        .accessibilityAddTraits(
-            isSelected ? [.isSelected, .isButton] : [.isButton]
-        )
-        .accessibilityIdentifier(
-            category.map { "home.hero.mainKind.\($0.id)" }
-                ?? "home.hero.mainKind.all"
-        )
-    }
-
-    @ViewBuilder
-    private func activeCapsuleBackground(accent: Color) -> some View {
-        if motionIsDisabled {
-            capsuleSurface(accent: accent)
-        } else {
-            capsuleSurface(accent: accent)
-                .matchedGeometryEffect(
-                    id: "home.hero.species.active-capsule",
-                    in: focusNamespace
-                )
-        }
-    }
-
-    private func capsuleSurface(accent: Color) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(
-                    reduceTransparency
-                        ? (colorScheme == .dark ? Color(white: 0.18) : Color.white)
-                        : (colorScheme == .dark
-                            ? Color.white.opacity(0.14)
-                            : Color.white.opacity(0.92))
-                )
-
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(
-                    contrast == .increased
-                        ? Color.ppTextPrimary
-                        : (colorScheme == .dark
-                            ? Color.white.opacity(0.20)
-                            : accent.opacity(0.28)),
-                    lineWidth: contrast == .increased ? 1.5 : 0.75
-                )
-        }
-        .shadow(
-            color: reduceTransparency || contrast == .increased
-                ? Color.clear
-                : (colorScheme == .dark
-                    ? Color.black.opacity(0.35)
-                    : accent.opacity(0.18)),
-            radius: 6,
-            x: 0,
-            y: 2
-        )
-    }
-
-    private func pawGem(for category: HomeCategoryModel?, accent: Color) -> some View {
-        let symbol = HomeCategoryModel.indicatorSymbol(for: category)
-        return Image(systemName: symbol)
-            .font(.system(size: 11.5, weight: .bold))
-            .foregroundStyle(
-                contrast == .increased
-                    ? Color.ppTextPrimary
-                    : accent
-            )
-            .frame(width: 14, height: 14)
-            .accessibilityHidden(true)
-    }
-
-    private func pawGem(accent: Color) -> some View {
-        pawGem(for: nil, accent: accent)
-    }
-
-    private func identitySeed(accent: Color) -> some View {
-        Circle()
-            .fill(accent.opacity(colorScheme == .dark ? 0.52 : 0.38))
-            .frame(width: 4.5, height: 4.5)
-            .frame(
-                width: 12,
-                height: 12
-            )
-            .accessibilityHidden(true)
-    }
-
-    private func identityAccent(
-        for category: HomeCategoryModel?
-    ) -> Color {
-        guard isCategoryAccentEnabled, let category else {
-            return Color.ppPrimary
-        }
-        return Color(uiColor: category.accent)
-    }
-
-    private var allScrollID: String {
-        "home-hero-main-kind-all"
-    }
-
-    private var selectedScrollID: String {
-        guard let selectedCategoryID = resolvedSelectedCategoryID,
-              let category = categories.first(where: {
-                  HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
-              }) else {
-            return allScrollID
-        }
-        return scrollID(for: category)
-    }
-
-    private func scrollID(for category: HomeCategoryModel) -> String {
-        "home-hero-main-kind-\(category.id)"
-    }
-
-    private func scrollToSelection(
-        proxy: ScrollViewProxy,
-        animated: Bool
-    ) {
-        let update = {
-            proxy.scrollTo(selectedScrollID, anchor: .center)
-        }
-
-        if animated {
-            withAnimation(
-                .spring(response: 0.36, dampingFraction: 0.82)
-            ) {
-                update()
-            }
-        } else {
-            update()
-        }
     }
 }

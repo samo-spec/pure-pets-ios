@@ -4416,8 +4416,7 @@ enum PPProvisionsCareLayout {
     static let featuredActionID = "shop"
     static let gridColumns = [["food", "pharmacy"], ["vet", "services"]]
     static let compactRowCount = 2
-    static let compactCardHeight: CGFloat = 94
-    static let featuredCorner: CGFloat = 24
+    static let compactCardHeight: CGFloat = 112
     static let compactCorner: CGFloat = 20
 
     // Preserve the featured card's original one-third width contract while
@@ -4426,14 +4425,6 @@ enum PPProvisionsCareLayout {
     static let featuredToGridSpacing: CGFloat = 8
     static let innerSectionSpacing: CGFloat = 8
     static let rowSpacing: CGFloat = innerSectionSpacing
-
-    // Living Commerce Portal: network-backed retail portal from Firebase Storage
-    // (LottieAnimations/Shop.json) with graceful bundle fallback (Shop2.json).
-    static let featuredLottieResourceName = "LottieAnimations/Shop.json"
-    static let featuredLottieStoragePath = "LottieAnimations/Shop.json"
-    static let featuredLottieFallbackName = "Shop2.json"
-    static let featuredPrefersFirebaseSource = true
-    static let featuredArtworkSide: CGFloat = 80
 
     static func preservedFeaturedCardWidth(totalWidth: CGFloat) -> CGFloat {
         max(0, (totalWidth - (baselineColumnSpacing * 2)) / 3)
@@ -4451,329 +4442,186 @@ enum PPProvisionsCareLayout {
     }
 }
 
-/// Featured retail action. The narrow one-third lane is treated as a living
-/// commerce portal rather than a stretched compact tile: cue → animated shop
-/// identity → anchored copy, all inside the category-defining card geometry.
+/// The featured shop and compact destinations share their icon, copy, surface,
+/// arrow, and press language. Only the shop's space and icon scale establish priority.
 @available(iOS 15.0, *)
 struct PPCommerceHeroCard: View {
     let action: HomePriorityAction
     let accent: Color
-    let cueText: String
     var fixedHeight: CGFloat? = nil
     let onTap: () -> Void
-
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    @State private var livePulse = false
-
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPProvisionsCareLayout.featuredCorner, style: .continuous)
-    }
 
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
         } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                // Top Live Express Pill
-                HStack(spacing: 5) {
-                    // Live beacon dot
-                    ZStack {
-                        Circle()
-                            .fill(Color(red: 0.16, green: 0.82, blue: 0.55).opacity(livePulse ? 0.35 : 0.15))
-                            .frame(width: 10, height: 10)
-                            .scaleEffect(livePulse ? 1.3 : 0.85)
-
-                        Circle()
-                            .fill(Color(red: 0.16, green: 0.82, blue: 0.55))
-                            .frame(width: 5.5, height: 5.5)
-                    }
-
-                    Text(cueText)
-                        .font(HomeFont.bold(10.5))
-                        .foregroundStyle(Color.homeTextPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                HStack(alignment: .top) {
+                    PPHomeQuickActionIcon(action: action, accent: accent, isFeatured: true)
+                    Spacer(minLength: 0)
+                    PPHomeQuickActionArrow()
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4.5)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(accent.opacity(colorScheme == .dark ? 0.12 : 0.05))
-                )
-                .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(accent.opacity(colorScheme == .dark ? 0.20 : 0.10), lineWidth: 0.8)
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Spacer(minLength: 4)
-
-                // Living Portal Artwork
-                PPFeaturedCommerceArtwork(accent: accent)
-                    .frame(maxWidth: .infinity, alignment: .center)
-
-                Spacer(minLength: 4)
-
-                // Title & Forward Portal Affordance
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .center, spacing: 4) {
-                        Text(action.title)
-                            .font(HomeFont.bold(17.5))
-                            .foregroundStyle(Color.homeTextPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.80)
-
-                        Spacer(minLength: 0)
-
-                        // Circular directional portal indicator
-                        ZStack {
-                            Circle()
-                                .fill(accent.opacity(colorScheme == .dark ? 0.12 : 0.06))
-                                .frame(width: 22, height: 22)
-
-                            Image(systemName: "arrow.up.forward")
-                                .font(.system(size: 9.5, weight: .bold))
-                                .foregroundStyle(accent)
-                                .flipsForRightToLeftLayoutDirection(true)
-                        }
-                        .accessibilityHidden(true)
-                    }
-
-                    Text(action.subtitle)
-                        .font(HomeFont.medium(11))
-                        .foregroundStyle(Color.homeTextSecondary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.80)
-                }
+                Spacer(minLength: 0)
+                PPHomeQuickActionCopy(action: action, isFeatured: true)
             }
-            .padding(10)
+            .padding(PPSpace.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: fixedHeight, alignment: .topLeading)
-            .background {
-                ZStack {
-                    Color.homeSurface
-                    LinearGradient(
-                        colors: [
-                            accent.opacity(colorScheme == .dark ? 0.09 : 0.045),
-                            accent.opacity(colorScheme == .dark ? 0.025 : 0.01),
-                            Color.clear,
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            }
-            .clipShape(shape)
-            .overlay {
-                shape.stroke(
-                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.16 : 0.08)),
-                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
-                )
-            }
-            .contentShape(shape)
+            .modifier(PPHomeQuickActionSurface())
         }
-        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
-        .hoverEffect(.highlight)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                livePulse = true
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(action.title), \(action.subtitle), \(cueText)")
+        .buttonStyle(HomeCardPressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(action.title)
         .accessibilityHint(action.subtitle)
-        .accessibilityAddTraits(.isButton)
     }
 }
 
-@available(iOS 15.0, *)
-private struct PPFeaturedCommerceArtwork: View {
-    let accent: Color
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
-
-    @State private var isBreathing = false
-
-    private let side = PPProvisionsCareLayout.featuredArtworkSide
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
-                            accent.opacity(colorScheme == .dark ? 0.05 : 0.02),
-                            Color.clear,
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: side * 0.52
-                    )
-                )
-                .frame(width: side, height: side)
-
-            HomeHeroLottieRepresentable(
-                animationName: "Shop2.json",
-                loadsFromFirebase: false,
-                playbackEnabled: !reduceMotion,
-                tintColor: UIColor(accent)
-            )
-            .frame(width: side, height: side)
-            .shadow(color: PPShadow.subtle.color, radius: 6, y: 2)
-            .scaleEffect(reduceMotion ? 1.0 : (isBreathing ? 1.04 : 1.0))
-        }
-        .frame(width: side, height: side)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
-                isBreathing = true
-            }
-        }
-    }
-}
-
-/// Clinical & Care Service Card (Food, Vet, Pharmacy, Services)
 @available(iOS 15.0, *)
 struct PPClinicalServiceCard: View {
     let action: HomePriorityAction
     let accent: Color
     let onTap: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPProvisionsCareLayout.compactCorner, style: .continuous)
-    }
 
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
         } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header: Jewel icon platter + micro directional indicator
-                HStack(alignment: .center) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        accent.opacity(colorScheme == .dark ? 0.12 : 0.07),
-                                        accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 38, height: 38)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(
-                                        accent.opacity(contrast == .increased ? 0.60 : (colorScheme == .dark ? 0.22 : 0.12)),
-                                        lineWidth: 1
-                                    )
-                            }
-                            .shadow(color: PPShadow.subtle.color, radius: 6, x: 0, y: 2)
-
-                        if action.id == "food" || action.systemImage == "pet-food" {
-                            Image("pet-food")
-                                .renderingMode(.template)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 19, height: 19)
-                                .foregroundStyle(accent)
-                        } else {
-                            Image(systemName: iconName(for: action))
-                                .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(accent)
-                        }
+            Group {
+                if dynamicTypeSize >= .xxLarge {
+                    VStack(alignment: .leading, spacing: PPSpace.sm) {
+                        iconRow
+                        PPHomeQuickActionCopy(action: action)
                     }
-
-                    Spacer(minLength: 0)
-
-                    // Directional micro indicator
-                    ZStack {
-                        Circle()
-                            .fill(Color.homeRaisedSurface)
-                            .frame(width: 22, height: 22)
-
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(Color.homeTextSecondary)
-                            .flipsForRightToLeftLayoutDirection(true)
+                } else {
+                    VStack(alignment: .leading, spacing: PPSpace.xs) {
+                        iconRow
+                        Spacer(minLength: PPSpace.xs)
+                        PPHomeQuickActionCopy(action: action)
                     }
-                    .accessibilityHidden(true)
-                }
-
-                Spacer(minLength: 6)
-
-                // Title & Subtitle
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(action.title)
-                        .font(HomeFont.bold(14))
-                        .foregroundStyle(Color.homeTextPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-
-                    Text(action.subtitle)
-                        .font(HomeFont.medium(10.5))
-                        .foregroundStyle(Color.homeTextSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.80)
                 }
             }
-            .padding(10)
+            .padding(PPSpace.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : PPProvisionsCareLayout.compactCardHeight)
-            .background {
-                ZStack {
-                    Color.homeSurface
-                    LinearGradient(
-                        colors: [
-                            accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
-                            accent.opacity(colorScheme == .dark ? 0.02 : 0.01),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            }
-            .clipShape(shape)
-            .overlay {
-                shape.stroke(
-                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.14 : 0.07)),
-                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
-                )
-            }
-            .contentShape(shape)
+            .frame(height: dynamicTypeSize >= .xxLarge ? nil : PPProvisionsCareLayout.compactCardHeight)
+            .modifier(PPHomeQuickActionSurface())
         }
-        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
-        .hoverEffect(.lift)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(action.title), \(action.subtitle)")
+        .buttonStyle(HomeCardPressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(action.title)
         .accessibilityHint(action.subtitle)
-        .accessibilityAddTraits(.isButton)
     }
 
-    private func iconName(for action: HomePriorityAction) -> String {
+    private var iconRow: some View {
+        HStack(alignment: .center) {
+            PPHomeQuickActionIcon(action: action, accent: accent)
+            Spacer(minLength: 0)
+            PPHomeQuickActionArrow()
+        }
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPHomeQuickActionIcon: View {
+    let action: HomePriorityAction
+    let accent: Color
+    var isFeatured = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    private var side: CGFloat { isFeatured ? 52 : 36 }
+    private var glyphSide: CGFloat { isFeatured ? 25 : 18 }
+
+    var body: some View {
+        Group {
+            if action.id == "food" || action.systemImage == "pet-food" {
+                Image("pet-food")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: glyphSide, height: glyphSide)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: glyphSide, weight: .semibold))
+            }
+        }
+        .foregroundStyle(accent)
+        .frame(width: side, height: side)
+        .background(
+            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
+            in: RoundedRectangle(cornerRadius: isFeatured ? 16 : 12, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: isFeatured ? 16 : 12, style: .continuous)
+                .strokeBorder(accent.opacity(contrast == .increased ? 0.7 : 0.12), lineWidth: contrast == .increased ? 1.5 : 0.75)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var symbol: String {
         switch action.id {
+        case "shop": return "bag.fill"
         case "vet": return "cross.case.fill"
         case "pharmacy": return "pills.fill"
         case "services": return "sparkles"
         default: return action.systemImage
         }
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPHomeQuickActionCopy: View {
+    let action: HomePriorityAction
+    var isFeatured = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            Text(action.title)
+                .font(HomeFont.bold(isFeatured ? 18 : 14))
+                .foregroundStyle(Color.homeTextPrimary)
+            Text(action.subtitle)
+                .font(HomeFont.regular(isFeatured ? 12 : 11))
+                .foregroundStyle(Color.homeTextSecondary)
+        }
+        .lineLimit(dynamicTypeSize >= .xxLarge ? nil : 2)
+        .fixedSize(horizontal: false, vertical: true)
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPHomeQuickActionArrow: View {
+    var body: some View {
+        Image(systemName: "chevron.forward")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(Color.homeTextSecondary)
+            .frame(width: 16, height: 20)
+            .accessibilityHidden(true)
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPHomeQuickActionSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: PPProvisionsCareLayout.compactCorner, style: .continuous)
+        content
+            .background(Color.homeSurface, in: shape)
+            .overlay {
+                shape.strokeBorder(
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                )
+            }
+            .contentShape(shape)
     }
 }
 
@@ -4849,7 +4697,7 @@ struct PPProvisionsCareArchitectureView: View {
 
     var body: some View {
         Group {
-            if dynamicTypeSize.isAccessibilitySize {
+            if dynamicTypeSize >= .xxLarge {
                 accessibilityStack
             } else {
                 featuredGrid
@@ -4864,7 +4712,6 @@ struct PPProvisionsCareArchitectureView: View {
                     PPCommerceHeroCard(
                         action: shopAction,
                         accent: accent(for: shopAction),
-                        cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
                         fixedHeight: PPProvisionsCareLayout.featuredCardHeight,
                         onTap: { onSelect(shopAction) }
                     )
@@ -4906,7 +4753,6 @@ struct PPProvisionsCareArchitectureView: View {
                 PPCommerceHeroCard(
                     action: shopAction,
                     accent: accent(for: shopAction),
-                    cueText: PPHomeZoneCopy.launcherFastDeliveryCue,
                     onTap: { onSelect(shopAction) }
                 )
                 .accessibilityIdentifier("home_launcher_provisions")
@@ -5485,6 +5331,7 @@ struct PPHomeEcosystemLauncher: View {
     let onSelect: (HomePriorityAction) -> Void
 
     @State private var selectedDomain: PPEcosystemDomain = .provisionsAndCare
+    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -5568,22 +5415,26 @@ struct PPHomeEcosystemLauncher: View {
                         }
                     }
                     .contentShape(Rectangle())
-                    .gesture(
+                    .simultaneousGesture(
                         DragGesture(minimumDistance: 24, coordinateSpace: .local)
                             .onEnded { value in
-                                let threshold: CGFloat = 30
-                                if value.translation.width > threshold {
-                                    // Swipe gesture direction
-                                    switchDomain(to: .provisionsAndCare)
-                                } else if value.translation.width < -threshold {
-                                    switchDomain(to: .liveCompanions)
-                                }
+                                let dx = value.translation.width
+                                let dy = value.translation.height
+                                guard abs(dx) > 44, abs(dx) > abs(dy) * 1.5 else { return }
+                                let advances = layoutDirection == .rightToLeft ? dx > 0 : dx < 0
+                                switchDomain(to: advances ? .liveCompanions : .provisionsAndCare)
                             }
                     )
                 }
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityAction(named: Text(PPEcosystemDomain.provisionsAndCare.title)) {
+            switchDomain(to: .provisionsAndCare)
+        }
+        .accessibilityAction(named: Text(PPEcosystemDomain.liveCompanions.title)) {
+            switchDomain(to: .liveCompanions)
+        }
     }
 
     private func switchDomain(to domain: PPEcosystemDomain) {

@@ -3073,320 +3073,193 @@ struct HomeCategoriesStripView: View {
     let isRightToLeft: Bool
     let reduceMotion: Bool
     let onSelect: (HomeCategoryModel?) -> Void
+    var accessibilityPrefix = "home.mainKind"
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @ScaledMetric(relativeTo: .subheadline) private var railHeight: CGFloat = 48
     @Namespace private var focusNamespace
 
-    @State private var isBeaconPulsing = false
-
-    private var headerTitle: String {
-        HomeModelAdapter.localized(
-            "home_browse_by_category",
-            fallback: isRightToLeft ? "تصفح حسب النوع" : "Browse by category"
-        )
+    private var motionIsDisabled: Bool {
+        reduceMotion || voiceOverEnabled || switchControlEnabled
     }
 
-    private var allTitle: String {
-        Language.get("All", alter: nil) ?? Language.get("all", alter: nil) ?? (isRightToLeft ? "الكل" : "All")
-    }
-
-    private var isCategoryAccentEnabled: Bool {
-        UserDefaults.standard.bool(
-            forKey: "pp.marketplace.usesMainKindAccentColors"
-        )
+    private var selectionAnimation: Animation? {
+        motionIsDisabled ? nil : .easeInOut(duration: 0.28)
     }
 
     private var effectiveAccent: Color {
-        guard isCategoryAccentEnabled else {
-            return Color.ppPrimary
+        guard UserDefaults.standard.bool(forKey: "pp.marketplace.usesMainKindAccentColors") else {
+            return .ppPrimary
         }
-        return accent ?? Color.ppPrimary
+        return accent ?? .ppPrimary
     }
 
-    private var resolvedSelectedCategory: HomeCategoryModel? {
-        guard let selectedCategoryID else { return nil }
-        return categories.first {
-            HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
-        }
+    private var resolvedSelectedID: Int? {
+        categories.contains { HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID }
+            ? selectedCategoryID : nil
+    }
+
+    private var selectedScrollID: String {
+        categories.first { HomeModelAdapter.mainKindID($0.raw) == resolvedSelectedID }
+            .map { "cat-strip-\($0.id)" } ?? "cat-strip-all"
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Scope Compass Header
-            scopeHeader
+            HStack(spacing: PPSpace.sm) {
+                Circle()
+                    .fill(effectiveAccent)
+                    .frame(width: 6, height: 6)
+                    .accessibilityHidden(true)
+                Text(HomeModelAdapter.localized("home_browse_by_category", fallback: "Browse by category"))
+                    .font(HomeFont.bold(12.5))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+                HomeMainKindsScopeThread(
+                    accent: effectiveAccent,
+                    selectedCategoryID: resolvedSelectedID,
+                    isRightToLeft: isRightToLeft
+                )
+            }
+            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+            .padding(.vertical, PPSpace.xxs)
+            .accessibilityAddTraits(.isHeader)
 
-            // Living Habitat Species Ribbon
-            speciesRail
+            ScrollViewReader { proxy in
+                speciesRail
+                    .onAppear { scrollToSelection(proxy, animated: false) }
+                    .onChange(of: selectedCategoryID) { _ in
+                        scrollToSelection(proxy, animated: true)
+                    }
+                    .onChange(of: categories.map(\.id)) { _ in
+                        scrollToSelection(proxy, animated: false)
+                    }
+                    .onChange(of: dynamicTypeSize) { _ in
+                        scrollToSelection(proxy, animated: false)
+                    }
+                    .onChange(of: isRightToLeft) { _ in
+                        scrollToSelection(proxy, animated: false)
+                    }
+            }
         }
-        .environment(
-            \.layoutDirection,
-            isRightToLeft ? .rightToLeft : .leftToRight
-        )
+        .environment(\.layoutDirection, isRightToLeft ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .contain)
     }
 
-    private var scopeHeader: some View {
-        HStack(spacing: PPSpace.md) {
-            HStack(spacing: 7) {
-                // Dual-layer Living Jewel Beacon
-                ZStack {
-                    if !reduceMotion && contrast != .increased {
-                        Circle()
-                            .fill(effectiveAccent.opacity(isBeaconPulsing ? 0.36 : 0.10))
-                            .frame(width: 15, height: 15)
-                            .scaleEffect(isBeaconPulsing ? 1.25 : 0.85)
-                            .blur(radius: 2.2)
-                    }
-
-                    Circle()
-                        .stroke(
-                            contrast == .increased
-                                ? Color.ppTextPrimary
-                                : effectiveAccent.opacity(colorScheme == .dark ? 0.45 : 0.28),
-                            lineWidth: contrast == .increased ? 1.5 : 0.85
-                        )
-                        .frame(width: 11, height: 11)
-                        .scaleEffect(!reduceMotion && isBeaconPulsing ? 1.06 : 1.0)
-
-                    Circle()
-                        .fill(
-                            contrast == .increased
-                                ? Color.ppTextPrimary
-                                : effectiveAccent
-                        )
-                        .frame(width: 5.5, height: 5.5)
-                        .scaleEffect(!reduceMotion && isBeaconPulsing ? 1.15 : 1.0)
+    private var speciesRail: some View {
+        GeometryReader { geometry in
+            if #available(iOS 17.0, *) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    railItems(viewportWidth: geometry.size.width)
                 }
-                .accessibilityHidden(true)
-
-                Text(headerTitle)
-                    .font(HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 14 : 12.5))
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineLimit(1)
-            }
-
-            HomeMainKindsScopeThread(
-                accent: effectiveAccent,
-                selectedCategoryID: selectedCategoryID,
-                isRightToLeft: isRightToLeft
-            )
-        }
-        .padding(.horizontal, PPSpace.base)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-        .onAppear {
-            guard !reduceMotion else { return }
-            if !isBeaconPulsing {
-                withAnimation(
-                    .easeInOut(duration: 2.2)
-                        .repeatForever(autoreverses: true)
-                ) {
-                    isBeaconPulsing = true
+                .contentMargins(.horizontal, HomeVisualTokens.contentHorizontalMargin, for: .scrollContent)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    railItems(viewportWidth: geometry.size.width)
+                        .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
                 }
             }
         }
+        .frame(height: railHeight + PPSpace.xs * 2)
     }
 
-    private var speciesRail: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    categoryCell(
-                        nil,
-                        title: allTitle,
-                        isSelected: selectedCategoryID == nil
-                    )
-                    .id("cat-strip-all")
+    /// Intrinsic-width destinations form one continuous rail. Selection changes
+    /// the background and ink without changing chip width or scroll behavior.
+    private func railItems(viewportWidth: CGFloat) -> some View {
+        let labelWidth = max(44, viewportWidth - HomeVisualTokens.contentHorizontalMargin * 2 - 48)
+        return HStack(spacing: PPSpace.sm) {
+            categoryCell(
+                nil,
+                title: Language.get("All", alter: nil) ?? Language.get("all", alter: nil) ?? "All",
+                isSelected: resolvedSelectedID == nil,
+                maximumLabelWidth: labelWidth
+            )
+            .id("cat-strip-all")
 
-                    ForEach(categories) { category in
-                        let catID = HomeModelAdapter.mainKindID(category.raw)
-                        let isSelected = (catID == selectedCategoryID)
-
-                        categoryCell(
-                            category,
-                            title: category.title,
-                            isSelected: isSelected
-                        )
-                        .id("cat-strip-\(category.id)")
-                    }
-                }
-                .padding(.horizontal, PPSpace.sm)
-                .padding(.top, 4)
-                .padding(.bottom, 6)
-                .animation(
-                    reduceMotion
-                        ? nil
-                        : .spring(response: 0.36, dampingFraction: 0.82),
-                    value: selectedCategoryID
+            ForEach(categories) { category in
+                categoryCell(
+                    category,
+                    title: category.title,
+                    isSelected: HomeModelAdapter.mainKindID(category.raw) == resolvedSelectedID,
+                    maximumLabelWidth: labelWidth
                 )
-            }
-            .onAppear {
-                scrollToSelection(proxy: proxy, animated: false)
-            }
-            .onChange(of: selectedCategoryID) { _ in
-                scrollToSelection(proxy: proxy, animated: !reduceMotion)
+                .id("cat-strip-\(category.id)")
             }
         }
+        .padding(.vertical, PPSpace.xs)
+        .animation(selectionAnimation, value: resolvedSelectedID)
     }
 
     private func categoryCell(
         _ category: HomeCategoryModel?,
         title: String,
-        isSelected: Bool
+        isSelected: Bool,
+        maximumLabelWidth: CGFloat
     ) -> some View {
-        let itemAccent: Color = {
-            if isSelected {
-                return effectiveAccent
-            }
-            if isCategoryAccentEnabled, let category {
-                return Color(uiColor: category.accent)
-            }
-            return Color.ppPrimary
-        }()
-
+        let categoryColors = UserDefaults.standard.bool(forKey: "pp.marketplace.usesMainKindAccentColors")
+        let itemAccent = categoryColors ? category.map { Color(uiColor: $0.accent) } ?? .ppPrimary : Color.ppPrimary
         return Button {
-            UISelectionFeedbackGenerator().selectionChanged()
-            if reduceMotion {
-                onSelect(category)
-            } else {
-                withAnimation(.spring(response: 0.36, dampingFraction: 0.82)) {
-                    onSelect(category)
-                }
-            }
+            // HomeStore owns the selection haptic and the existing delayed route.
+            withAnimation(selectionAnimation) { onSelect(category) }
         } label: {
-            HStack(spacing: isSelected ? 6 : 5) {
-                if isSelected {
-                    pawGem(for: category, accent: itemAccent)
-                } else {
-                    identitySeed(accent: itemAccent)
-                }
-
+            HStack(spacing: PPSpace.xs) {
+                Image(systemName: HomeCategoryModel.indicatorSymbol(for: category))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(itemAccent)
+                    .opacity(isSelected ? 1 : 0.65)
+                    .frame(width: 18, height: 18)
+                    .accessibilityHidden(true)
                 Text(title)
-                    .font(
-                        isSelected
-                            ? HomeFont.bold(dynamicTypeSize.isAccessibilitySize ? 17.5 : 15.5)
-                            : HomeFont.medium(dynamicTypeSize.isAccessibilitySize ? 16 : 14.5)
-                    )
-                    .foregroundStyle(
-                        isSelected
-                            ? (colorScheme == .dark ? Color.white : Color.black)
-                            : Color.ppTextSecondary
-                    )
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
+                    // Selection never changes the measured text or hit-target width.
+                    .font(HomeFont.bold(15.5))
+                    .foregroundStyle(isSelected ? Color.ppTextPrimary : Color.ppTextSecondary)
+                    .lineLimit(2)
+                    .frame(maxWidth: maximumLabelWidth, alignment: .leading)
+                    .fixedSize(horizontal: true, vertical: true)
             }
-            .padding(.leading, isSelected ? 12 : 9)
-            .padding(.trailing, isSelected ? 22 : 9)
-            .frame(minWidth: 58, minHeight: 40)
+            .padding(.horizontal, PPSpace.sm)
+            .padding(.vertical, PPSpace.xs)
+            .frame(minWidth: 64, minHeight: railHeight)
             .background {
                 if isSelected {
-                    activeCapsuleBackground(accent: itemAccent)
+                    selectionSurface(accent: itemAccent)
                 }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .buttonStyle(PlainButtonStyle())
-        .hoverEffect(.highlight)
+        .buttonStyle(HomeCardPressStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
-        .accessibilityValue(
-            isSelected
-                ? (Language.get("Selected", alter: nil) ?? (isRightToLeft ? "محدد" : "Selected"))
-                : ""
-        )
-        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityIdentifier(category.map { "\(accessibilityPrefix).\($0.id)" } ?? "\(accessibilityPrefix).all")
     }
 
     @ViewBuilder
-    private func activeCapsuleBackground(accent: Color) -> some View {
-        if reduceMotion {
-            capsuleSurface(accent: accent)
-        } else {
-            capsuleSurface(accent: accent)
-                .matchedGeometryEffect(
-                    id: "cat_strip_active_capsule",
-                    in: focusNamespace
-                )
-        }
-    }
-
-    private func capsuleSurface(accent: Color) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(
-                    reduceTransparency
-                        ? (colorScheme == .dark ? Color(white: 0.18) : Color.white)
-                        : (colorScheme == .dark
-                            ? Color.white.opacity(0.14)
-                            : Color.white.opacity(0.92))
-                )
-
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(
-                    contrast == .increased
-                        ? Color.ppTextPrimary
-                        : (colorScheme == .dark
-                            ? Color.white.opacity(0.20)
-                            : accent.opacity(0.28)),
-                    lineWidth: contrast == .increased ? 1.5 : 0.75
-                )
-        }
-        .shadow(
-            color: reduceTransparency || contrast == .increased
-                ? Color.clear
-                : (colorScheme == .dark
-                    ? Color.black.opacity(0.35)
-                    : accent.opacity(0.18)),
-            radius: 6,
-            x: 0,
-            y: 2
-        )
-    }
-
-    private func pawGem(for category: HomeCategoryModel?, accent: Color) -> some View {
-        let symbol = HomeCategoryModel.indicatorSymbol(for: category)
-        return Image(systemName: symbol)
-            .font(.system(size: 11.5, weight: .bold))
-            .foregroundStyle(
-                contrast == .increased
-                    ? Color.ppTextPrimary
-                    : accent
-            )
-            .frame(width: 14, height: 14)
-            .accessibilityHidden(true)
-    }
-
-    private func pawGem(accent: Color) -> some View {
-        pawGem(for: nil, accent: accent)
-    }
-
-    private func identitySeed(accent: Color) -> some View {
-        Circle()
-            .fill(accent.opacity(colorScheme == .dark ? 0.52 : 0.38))
-            .frame(width: 4.5, height: 4.5)
-            .frame(width: 12, height: 12)
-            .accessibilityHidden(true)
-    }
-
-    private func scrollToSelection(proxy: ScrollViewProxy, animated: Bool) {
-        let targetID: String
-        if let selectedCategoryID,
-           let cat = categories.first(where: { HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID }) {
-            targetID = "cat-strip-\(cat.id)"
-        } else {
-            targetID = "cat-strip-all"
-        }
-        if animated {
-            withAnimation(.spring(response: 0.36, dampingFraction: 0.82)) {
-                proxy.scrollTo(targetID, anchor: .center)
+    private func selectionSurface(accent: Color) -> some View {
+        let surface = RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color.homeSurface)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(
+                        contrast == .increased ? Color.ppTextPrimary : accent.opacity(colorScheme == .dark ? 0.6 : 0.3),
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
             }
+        if motionIsDisabled {
+            surface
         } else {
-            proxy.scrollTo(targetID, anchor: .center)
+            surface.matchedGeometryEffect(id: "home.category.selection", in: focusNamespace)
+        }
+    }
+
+    private func scrollToSelection(_ proxy: ScrollViewProxy, animated: Bool) {
+        withAnimation(animated ? selectionAnimation : nil) {
+            proxy.scrollTo(selectedScrollID, anchor: .center)
         }
     }
 }
@@ -6404,7 +6277,6 @@ struct HomePureLensSection: View {
                     onMotionSettled: onMotionSettled,
                     action: action
                 )
-                .environment(\.colorScheme, .dark)
             } else {
                 PureLensCardV1(
                     motionReady: motionReady,
@@ -6418,12 +6290,12 @@ struct HomePureLensSection: View {
     }
 }
 
-/// Home's optical cards use an independent, adaptive instrument palette.
-/// Keep every variant on these neutral system colors, including focus and
-/// pressed states, instead of inheriting the app's raspberry accent.
+/// A quiet pearl-gray Home tool surface, with neutral ink and a raised camera
+/// seat. Follow Home's appearance rather than forcing a separate dark theme.
+/// Neither the card nor its pressed state inherits the brand accent.
 private enum HomePureLensColors {
-    static let surface = Color(uiColor: .secondarySystemGroupedBackground)
-    static let canvas = Color(uiColor: .systemGray6)
+    static let surface = Color(uiColor: .systemGray6)
+    static let canvas = Color(uiColor: .secondarySystemGroupedBackground)
     static let primaryText = Color(uiColor: .label)
     static let secondaryText = Color(uiColor: .secondaryLabel)
     static let signal = Color(uiColor: .label)
@@ -6453,7 +6325,7 @@ struct PureLensCardV1: View {
     }
 }
 
-// MARK: - Pure Lens Card V2 (Vanguard AI Camera Portal)
+// MARK: - Pure Lens Home camera entry
 
 @available(iOS 16.0, *)
 struct PureLensCardV2: View {
@@ -6462,200 +6334,76 @@ struct PureLensCardV2: View {
     let onMotionSettled: () -> Void
     let action: () -> Void
 
-    @State private var pulseAura: Bool = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        Button(action: performAction) {
-            ZStack {
-                // Background surface
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: PPSpace.md) {
+                        cameraMark
+                        copy
+                    }
+                } else {
+                    HStack(alignment: .center, spacing: PPSpace.md) {
+                        cameraMark
+                        copy
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(PPSpace.lg)
+            .background(HomePureLensColors.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                HomePureLensColors.surface,
-                                Color(uiColor: .tertiarySystemGroupedBackground)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        HomePureLensColors.signal.opacity(pulseAura ? 0.10 : 0.05),
-                                        HomePureLensColors.divider
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.0
-                            )
-                    )
-                    .shadow(
-                        color: HomePureLensColors.signal.opacity(colorScheme == .dark ? 0.0 : 0.08),
-                        radius: 16,
-                        x: 0,
-                        y: 6
-                    )
-
-                VStack(spacing: 16) {
-                    HStack(spacing: 14) {
-                        // AI Camera Scanner Icon Plate
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [HomePureLensColors.signal, HomePureLensColors.signalPressed],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 48, height: 48)
-                                .shadow(color: PPShadow.subtle.color, radius: 8, x: 0, y: 4)
-
-                            Image(systemName: "camera.viewfinder")
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(HomePureLensColors.onSignal)
-                        }
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: 6) {
-                                Text(HomeModelAdapter.localized(
-                                    "pure_lens_account_title",
-                                    fallback: Language.isRTL() ? "بيورلينس" : "Pure Lens"
-                                ))
-                                .font(HomeFont.bold(19))
-                                .foregroundColor(HomePureLensColors.primaryText)
-
-                                Text(HomeModelAdapter.localized(
-                                    "pure_lens_account_live_vision",
-                                    fallback: Language.isRTL() ? "رؤية ذكية مباشرة" : "LIVE AI VISION"
-                                ))
-                                .font(HomeFont.bold(9.5))
-                                .foregroundColor(HomePureLensColors.signal)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(HomePureLensColors.signal.opacity(0.07)))
-                            }
-
-                            Text(HomeModelAdapter.localized(
-                                "home_pure_lens_subtitle",
-                                fallback: Language.isRTL()
-                                    ? "تعرّف على الحيوان واكتشف ما يناسبه."
-                                    : "Identify animals and discover what suits them."
-                            ))
-                            .font(HomeFont.regular(13))
-                            .foregroundColor(HomePureLensColors.secondaryText)
-                            .lineLimit(2)
-                        }
-
-                        Spacer(minLength: 0)
-
-                        Image(systemName: "arrow.up.forward.circle.fill")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(HomePureLensColors.signal)
-                    }
-
-                    // 3-step connected recognition pipeline
-                    HStack(spacing: 6) {
-                        stepPill(
-                            symbol: "camera.fill",
-                            title: HomeModelAdapter.localized(
-                                "pure_lens_account_camera",
-                                fallback: Language.isRTL() ? "كاميرا" : "Camera"
-                            ),
-                            tint: HomePureLensColors.signal
-                        )
-                        connectorLine
-                        stepPill(
-                            symbol: "viewfinder",
-                            title: HomeModelAdapter.localized(
-                                "pure_lens_account_recognize",
-                                fallback: Language.isRTL() ? "تعرّف" : "Identify"
-                            ),
-                            tint: HomePureLensColors.recognition
-                        )
-                        connectorLine
-                        stepPill(
-                            symbol: "sparkles",
-                            title: HomeModelAdapter.localized(
-                                "pure_lens_account_discover",
-                                fallback: Language.isRTL() ? "اكتشف" : "Discover"
-                            ),
-                            tint: HomePureLensColors.discovery
-                        )
-                    }
-                }
-                .padding(18)
+                    .strokeBorder(HomePureLensColors.divider, lineWidth: contrast == .increased ? 1.5 : 0.75)
             }
+            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        .buttonStyle(PureLensCardV2ButtonStyle())
-        .onAppear {
-            if !reduceMotion {
-                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
-                    pulseAura = true
-                }
-            }
+        .buttonStyle(HomeCardPressStyle())
+        .task(id: motionReady) {
+            guard motionReady || motionAlreadyPlayed else { return }
             onMotionSettled()
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(HomeModelAdapter.localized(
-            "pure_lens_account_a11y",
-            fallback: "Pure Lens. Camera, recognition, and marketplace discovery."
-        ))
-        .accessibilityHint(HomeModelAdapter.localized(
-            "pure_lens_account_hint",
-            fallback: "Opens the animal discovery camera"
-        ))
-        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(HomeModelAdapter.localized("home_pure_lens_a11y", fallback: "Open Pure Lens camera"))
+        .accessibilityHint(HomeModelAdapter.localized("pure_lens_account_hint", fallback: "Opens the animal discovery camera"))
         .accessibilityIdentifier("home.pureLens.open")
     }
 
-    private func performAction() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        action()
+    private var cameraMark: some View {
+        Image(systemName: "camera.viewfinder")
+            .font(.system(size: 23, weight: .medium))
+            .foregroundStyle(HomePureLensColors.primaryText)
+            .frame(width: 52, height: 52)
+            .background(HomePureLensColors.canvas, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityHidden(true)
     }
 
-    private func stepPill(symbol: String, title: String, tint: Color) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(tint)
-            Text(title)
-                .font(HomeFont.medium(11.5))
-                .foregroundColor(HomePureLensColors.secondaryText)
-                .lineLimit(1)
+    private var copy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(HomeModelAdapter.localized("home_pure_lens_title", fallback: "Pure Lens"))
+                .font(HomeFont.bold(19))
+                .foregroundStyle(HomePureLensColors.primaryText)
+            Text(HomeModelAdapter.localized("home_pure_lens_subtitle", fallback: "Recognize an animal and discover what fits it."))
+                .font(HomeFont.regular(13))
+                .foregroundStyle(HomePureLensColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: PPSpace.xs) {
+                Text(HomeModelAdapter.localized("home_pure_lens_action", fallback: "Open camera"))
+                    .font(HomeFont.bold(13))
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(HomePureLensColors.primaryText)
+            .padding(.top, PPSpace.xs)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .fixedSize(horizontal: true, vertical: false)
-        .background(
-            Capsule()
-                .fill(HomePureLensColors.canvas.opacity(0.85))
-                .overlay(Capsule().strokeBorder(HomePureLensColors.divider, lineWidth: 0.8))
-        )
-    }
-
-    private var connectorLine: some View {
-        Rectangle()
-            .fill(HomePureLensColors.signal.opacity(0.12))
-            .frame(height: 1.5)
-            .frame(minWidth: 6, maxWidth: .infinity)
-    }
-}
-
-private struct PureLensCardV2ButtonStyle: ButtonStyle {
-    var scaleAmount: CGFloat = 0.975
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? scaleAmount : 1.0)
-            .opacity(configuration.isPressed ? 0.92 : 1.0)
-            .animation(.spring(response: 0.28, dampingFraction: 0.72), value: configuration.isPressed)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .multilineTextAlignment(.leading)
     }
 }
 
