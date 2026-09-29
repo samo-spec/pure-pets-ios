@@ -6,53 +6,61 @@ import SwiftUI
 internal struct SpearHeaderLoadingRow: View {
   let copy: SpearChatHeaderCopy
   let actions: SpearChatHeaderActions
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
-    HStack(spacing: SpearHeaderLayout.topRowSpacing) {
-      SpearHeaderIconActionButton(
-        systemName: "chevron.backward",
-        accessibilityLabel: copy.backAccessibilityLabel,
-        accessibilityIdentifier: SpearChatHeaderAccessibilityID.back,
-        action: .enabled(actions.onBack)
-      )
+    Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        compactLayout
+      } else if #available(iOS 16.0, *) {
+        ViewThatFits(in: .horizontal) {
+          regularLayout.frame(minWidth: 320)
+          compactLayout
+        }
+      } else {
+        compactLayout
+      }
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 7)
+  }
 
+  private var regularLayout: some View {
+    HStack(spacing: SpearHeaderLayout.topRowSpacing) {
+      backButton
       skeletonContent
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(copy.loadingAccessibilityLabel)
-
       activeCallButton
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 8)
+  }
+
+  private var compactLayout: some View {
+    HStack(spacing: SpearHeaderLayout.topRowSpacing) {
+      backButton
+      loadingIdentity
+        .opacity(0.58)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(copy.loadingAccessibilityLabel)
+      activeCallButton
+    }
+  }
+
+  private var backButton: some View {
+    SpearHeaderIconActionButton(
+      systemName: "chevron.backward",
+      accessibilityLabel: copy.backAccessibilityLabel,
+      accessibilityIdentifier: SpearChatHeaderAccessibilityID.back,
+      action: .enabled(actions.onBack)
+    )
   }
 
   @ViewBuilder
   private var skeletonContent: some View {
-    let content = HStack(spacing: 12) {
-      // Match the ready identity footprint without continuous shimmer work.
-      Circle()
-        .fill(.quaternary)
-        .frame(width: 44, height: 44)
-        .overlay {
-          Circle()
-            .strokeBorder(Color.primary.opacity(0.04), lineWidth: 1)
-        }
+    let content = HStack(spacing: 8) {
+      loadingIdentity
 
-      VStack(alignment: .leading, spacing: 8) {
-        Capsule()
-          .fill(.quaternary)
-          .frame(maxWidth: 140)
-          .frame(height: 12)
-
-        Capsule()
-          .fill(.quaternary)
-          .frame(maxWidth: 90)
-          .frame(height: 8)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-
-      // Preserve the ready row's action footprint to avoid a loading-to-ready
-      // width jump. Active calls remain real controls outside the skeleton.
+      // Keep the action footprint stable without presenting dead controls.
       if !actions.call.isActive && hasLoadingActionFootprint {
         HStack(spacing: 4) {
           if actions.call.isVisible {
@@ -66,6 +74,28 @@ internal struct SpearHeaderLoadingRow: View {
     }
 
     content.opacity(0.58)
+  }
+
+  private var loadingIdentity: some View {
+    HStack(spacing: 9) {
+      Circle()
+        .fill(.quaternary)
+        .frame(width: 44, height: 44)
+
+      VStack(alignment: .leading, spacing: 8) {
+        Capsule()
+          .fill(.quaternary)
+          .frame(maxWidth: 140)
+          .frame(height: 12)
+
+        Capsule()
+          .fill(.quaternary)
+          .frame(maxWidth: 90)
+          .frame(height: 8)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var hasLoadingActionFootprint: Bool {
@@ -113,7 +143,7 @@ internal struct SpearHeaderUnavailableRow: View {
       } else {
         if #available(iOS 16.0, *) {
           ViewThatFits(in: .horizontal) {
-            regularLayout.frame(minWidth: 340)
+            regularLayout.frame(minWidth: 320)
             compactLayout
           }
         } else {
@@ -122,8 +152,7 @@ internal struct SpearHeaderUnavailableRow: View {
       }
     }
     .padding(.horizontal, 12)
-    .padding(.top, 10)
-    .padding(.bottom, 10)
+    .padding(.vertical, 7)
   }
 
   private var regularLayout: some View {

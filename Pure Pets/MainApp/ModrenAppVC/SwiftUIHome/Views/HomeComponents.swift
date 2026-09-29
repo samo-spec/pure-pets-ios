@@ -1024,28 +1024,44 @@ struct HomePetSwitcher: View {
             )
             .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .center, spacing: PPSpace.sm) {
-                    ForEach(Array(pets.enumerated()), id: \.element.id) { index, pet in
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: PPSpace.sm) {
+                    ForEach(pets) { pet in
                         HomePetIdentityPill(
                             pet: pet,
                             selected: pet.id == selectedID,
-                            onSelect: {
-                                onSelect(pet)
-                            }
+                            action: { activate(pet) }
                         )
-                        .modifier(HomePetPillCascade(ordinal: index))
                     }
                 }
                 .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
-                // The pill shadow reaches ~28pt below its frame. Pre-iOS 17
-                // this padding is the only room it has; from iOS 17 the scroll
-                // clip is lifted so the elevation is never sliced.
-                .padding(.top, dynamicTypeSize.isAccessibilitySize ? 8 : 6)
-                .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 18 : 16)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .center, spacing: PPSpace.sm) {
+                        ForEach(Array(pets.enumerated()), id: \.element.id) { index, pet in
+                            HomePetIdentityPill(
+                                pet: pet,
+                                selected: pet.id == selectedID,
+                                action: { activate(pet) }
+                            )
+                            .modifier(HomePetPillCascade(ordinal: index))
+                        }
+                    }
+                    .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                    .padding(.top, PPSpace.xs)
+                    .padding(.bottom, PPSpace.sm)
+                }
+                .contentMarginsCompat()
+                .scrollShadowClipDisabledCompat()
             }
-            .contentMarginsCompat()
-            .scrollShadowClipDisabledCompat()
+        }
+    }
+
+    private func activate(_ pet: HomePetModel) {
+        if pet.id == selectedID {
+            onEdit()
+        } else {
+            onSelect(pet)
         }
     }
 }
@@ -1053,66 +1069,34 @@ struct HomePetSwitcher: View {
 private struct HomePetIdentityPill: View {
     let pet: HomePetModel
     let selected: Bool
-    let onSelect: () -> Void
+    let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @FocusState private var isFocused: Bool
 
     private let shape = RoundedRectangle(
-        cornerRadius: PPCorner.card,
+        cornerRadius: PPCorner.medium,
         style: .continuous
     )
 
     var body: some View {
-        Button(action: onSelect) {
-            HStack(alignment: .center, spacing: PPSpace.base) {
-                portrait
-
-                VStack(alignment: .leading, spacing: PPSpace.xxs + 1) {
-                    Text(displayName)
-                        .font(HomeFont.headline())
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                        .minimumScaleFactor(0.82)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if let petContext {
-                        Text(petContext)
-                            .font(HomeFont.footnote())
-                            .foregroundStyle(Color.ppTextSecondary)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(
-                                dynamicTypeSize.isAccessibilitySize ? 3 : 2
-                            )
-                            .minimumScaleFactor(0.82)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    statusRow
-                        .padding(.top, PPSpace.xxs)
+        Button(action: action) {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    expandedIdentity
+                } else {
+                    compactIdentity
                 }
-                .layoutPriority(1)
-
-                Spacer(minLength: 0)
             }
-            .padding(.horizontal, PPSpace.base)
-            .padding(.vertical, PPSpace.sm + 2)
-            .frame(
-                minWidth: minimumWidth,
-                maxWidth: maximumWidth,
-                minHeight: cardHeight,
-                maxHeight: cardHeight,
-                alignment: .leading
-            )
-            .background {
-                shape.fill(surfaceBackground)
-            }
+            .background(Color.ppForeground, in: shape)
+            .clipShape(shape)
             .overlay {
                 shape.strokeBorder(borderColor, lineWidth: borderWidth)
+                    .allowsHitTesting(false)
             }
             .overlay {
                 if isFocused {
@@ -1120,13 +1104,14 @@ private struct HomePetIdentityPill: View {
                         Color.ppPrimary,
                         lineWidth: contrast == .increased ? 3 : 2.4
                     )
+                    .allowsHitTesting(false)
                 }
             }
             .shadow(
                 color: cardShadowColor,
-                radius: selected ? 8 : 4,
+                radius: PPShadow.subtle.radius,
                 x: 0,
-                y: selected ? 3 : 2
+                y: PPShadow.subtle.y
             )
             .contentShape(shape)
         }
@@ -1134,90 +1119,147 @@ private struct HomePetIdentityPill: View {
         .focused($isFocused)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint(
-            HomeModelAdapter.localized(
-                "home_pulse_pet_context_subtitle",
-                fallback: "Choose which pet context to view"
-            )
-        )
+        .accessibilityHint(accessibilityHint)
+        .accessibilityIdentifier("home.pet.\(pet.id)")
         .accessibilityAddTraits(selected ? .isSelected : [])
         .animation(selectionAnimation, value: selected)
     }
 
+    // Keep identity and action together; no fixed-height footer or empty
+    // middle is needed for a compact Home context control.
+    private var compactIdentity: some View {
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            portrait
+
+            copyStack
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(PPSpace.md)
+        .frame(width: compactWidth)
+        .frame(minHeight: compactMinimumHeight)
+    }
+
+    // At accessibility sizes the rail becomes a vertical list and the card
+    // grows with its content instead of clipping names or status.
+    private var expandedIdentity: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            portrait
+
+            copyStack
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(PPSpace.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var copyStack: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            Text(displayName)
+                .font(HomeFont.headline())
+                .foregroundStyle(Color.ppTextPrimary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let petContext {
+                Text(petContext)
+                    .font(HomeFont.caption1())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            statusRow
+                .padding(.top, PPSpace.xs)
+        }
+    }
+
     @ViewBuilder
     private var statusRow: some View {
-        if selected || pet.isDefault {
-            HStack(spacing: PPSpace.xs) {
-                if selected {
-                    statusTag(
-                        HomeModelAdapter.localized(
-                            "home_pulse_pet_selected_status",
-                            fallback: "Selected"
-                        ),
-                        color: Color.ppPrimary
-                    )
-                }
-
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                selectionStatus
                 if pet.isDefault {
-                    statusTag(
-                        HomeModelAdapter.localized(
-                            "Default",
-                            fallback: "Default"
-                        ),
-                        color: selected
-                            ? Color.ppPrimary
-                            : Color.ppTextTertiary
-                    )
+                    defaultStatus
+                }
+            }
+        } else {
+            HStack(spacing: PPSpace.sm) {
+                selectionStatus
+                    .layoutPriority(1)
+                if pet.isDefault {
+                    defaultStatus
                 }
             }
         }
     }
 
-    private func statusTag(_ title: String, color: Color) -> some View {
-        Text(title)
-            .font(HomeFont.bold(10))
-            .foregroundStyle(color)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, PPSpace.sm)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.12), in: Capsule())
+    private var selectionStatus: some View {
+        HStack(spacing: PPSpace.xs) {
+            Text(
+                selected
+                    ? HomeModelAdapter.localized(
+                        "home_pet_profile_open_cta",
+                        fallback: "Open pet profile"
+                    )
+                    : HomeModelAdapter.localized(
+                        "home_pulse_pet_choose_status",
+                        fallback: "Show on Home"
+                    )
+            )
+            .font(HomeFont.bold(11))
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            .minimumScaleFactor(0.8)
+
+            Image(systemName: "chevron.forward")
+                .font(.system(size: 8, weight: .bold))
+                .flipsForRightToLeftLayoutDirection(true)
+        }
+        .foregroundStyle(
+            selected
+                ? (contrast == .increased ? Color.ppTextPrimary : Color.ppAccentText)
+                : Color.ppTextSecondary
+        )
+    }
+
+    private var defaultStatus: some View {
+        HStack(spacing: PPSpace.xs) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 9, weight: .semibold))
+
+            Text(HomeModelAdapter.localized("Default", fallback: "Default"))
+                .font(HomeFont.caption2())
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .minimumScaleFactor(0.8)
+        }
+        .foregroundStyle(Color.ppTextSecondary)
     }
 
     private var portrait: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    selected
-                        ? Color.ppPrimary.opacity(
-                            colorScheme == .dark ? 0.16 : 0.10
-                        )
-                        : Color.ppSecondarySurface
-                )
-
-            portraitContent
-                .frame(
-                    width: portraitImageDiameter,
-                    height: portraitImageDiameter
-                )
-                .clipShape(Circle())
-        }
-        .frame(width: portraitDiameter, height: portraitDiameter)
-        .overlay {
-            Circle().strokeBorder(
-                selected
-                    ? Color.ppPrimary.opacity(
-                        contrast == .increased ? 1 : 0.85
-                    )
-                    : Color.ppBorder.opacity(
-                        contrast == .increased ? 0.70 : 0.40
-                    ),
-                lineWidth: selected
-                    ? (contrast == .increased ? 2 : 1.5)
-                    : (contrast == .increased ? 1.4 : 0.75)
+        portraitContent
+            .frame(width: portraitSize, height: portraitSize)
+            .background(Color.ppSecondarySurface)
+            .clipShape(
+                RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
             )
-        }
-        .accessibilityHidden(true)
+            .overlay(alignment: .bottomTrailing) {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .heavy))
+                        .foregroundStyle(Color.white)
+                        .frame(width: PPSpace.base, height: PPSpace.base)
+                        .background(Color.ppPrimary, in: Circle())
+                        .overlay {
+                            Circle().strokeBorder(Color.ppForeground, lineWidth: 2)
+                        }
+                        .offset(y: PPSpace.xxs)
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -1228,10 +1270,7 @@ private struct HomePetIdentityPill: View {
                 placeholder: UIImage(named: "petcare_placeholder"),
                 contentMode: .scaleAspectFill,
                 cacheKey: pet.id,
-                displaySize: CGSize(
-                    width: portraitImageDiameter,
-                    height: portraitImageDiameter
-                )
+                displaySize: CGSize(width: portraitSize, height: portraitSize)
             )
         } else {
             HomeGeneratedPetAvatar(
@@ -1242,9 +1281,7 @@ private struct HomePetIdentityPill: View {
     }
 
     private var displayName: String {
-        let name = pet.name.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
+        let name = pet.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
             return HomeModelAdapter.localized(
                 "pet_name_placeholder",
@@ -1256,9 +1293,7 @@ private struct HomePetIdentityPill: View {
 
     private var petContext: String? {
         let context = [pet.breedOrCategory, pet.age]
-            .map {
-                $0.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " • ")
         return context.isEmpty ? nil : context
@@ -1290,54 +1325,50 @@ private struct HomePetIdentityPill: View {
             .joined(separator: ", ")
     }
 
-    private var surfaceBackground: some ShapeStyle {
+    private var accessibilityHint: String {
         selected
-            ? AnyShapeStyle(Color.ppForeground)
-            : AnyShapeStyle(Color.ppForeground)
+            ? HomeModelAdapter.localized(
+                "home_pet_profile_open_hint",
+                fallback: "Opens the pet profile editor"
+            )
+            : HomeModelAdapter.localized(
+                "home_pulse_pet_context_subtitle",
+                fallback: "Choose which pet context to view"
+            )
     }
 
     private var borderColor: Color {
-        selected
-            ? Color.ppPrimary.opacity(contrast == .increased ? 1 : 0.48)
-            : (contrast == .increased
-                ? Color.ppTextPrimary.opacity(0.68)
-                : Color.ppBorder.opacity(0.50))
+        if contrast == .increased {
+            return selected ? Color.ppPrimary : Color.ppTextPrimary
+        }
+        return selected
+            ? Color.ppPrimary.opacity(0.22)
+            : Color.ppBorder.opacity(0.65)
     }
 
     private var borderWidth: CGFloat {
-        selected ? (contrast == .increased ? 2 : 1.25) :
-            (contrast == .increased ? 1.4 : 0.75)
+        contrast == .increased ? 1.5 : 0.8
     }
 
-    private var portraitDiameter: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 74 : 64
+    private var compactMinimumHeight: CGFloat {
+        dynamicTypeSize >= .xxxLarge ? 96 : 84
     }
 
-    private var portraitImageDiameter: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 66 : 56
+    private var portraitSize: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 48 : 56
     }
 
-    private var minimumWidth: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 320 : 276
-    }
-
-    private var maximumWidth: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 392 : 352
-    }
-
-    /// Fixed card height. Decreased from the previous flexible 108/136 minimum
-    /// so every pet card in the rail is the same, tighter height regardless of
-    /// its copy. The 64/74pt portrait plus vertical padding fits comfortably;
-    /// the name/context text already scale via minimumScaleFactor + lineLimit.
-    private var cardHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 120 : 92
+    private var compactWidth: CGFloat {
+        if dynamicTypeSize >= .xxxLarge || horizontalSizeClass == .regular {
+            return 304
+        }
+        return 280
     }
 
     private var cardShadowColor: Color {
-        if selected {
-            return Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.07)
-        }
-        return Color.black.opacity(colorScheme == .dark ? 0.12 : 0.03)
+        colorScheme == .dark || contrast == .increased
+            ? .clear
+            : PPShadow.subtle.color
     }
 
     private var selectionAnimation: Animation {
@@ -1366,13 +1397,6 @@ private struct HomePetIdentityPressStyle: ButtonStyle {
                 reduceMotion || !isEnabled
                     ? 1
                     : (configuration.isPressed ? 0.982 : 1)
-            )
-            .shadow(
-                color: Color.black.opacity(
-                    isEnabled && !configuration.isPressed ? 0.04 : 0
-                ),
-                radius: isEnabled && !configuration.isPressed ? 10 : 0,
-                y: isEnabled && !configuration.isPressed ? 4 : 0
             )
             .animation(
                 reduceMotion
@@ -6372,22 +6396,42 @@ struct HomePureLensSection: View {
     let action: () -> Void
 
     var body: some View {
-        if PURE_LENS_USE_V2.boolValue {
-            PureLensCardV2(
-                motionReady: motionReady,
-                motionAlreadyPlayed: motionAlreadyPlayed,
-                onMotionSettled: onMotionSettled,
-                action: action
-            )
-        } else {
-            PureLensCardV1(
-                motionReady: motionReady,
-                motionAlreadyPlayed: motionAlreadyPlayed,
-                onMotionSettled: onMotionSettled,
-                action: action
-            )
+        Group {
+            if PURE_LENS_USE_V2.boolValue {
+                PureLensCardV2(
+                    motionReady: motionReady,
+                    motionAlreadyPlayed: motionAlreadyPlayed,
+                    onMotionSettled: onMotionSettled,
+                    action: action
+                )
+                .environment(\.colorScheme, .dark)
+            } else {
+                PureLensCardV1(
+                    motionReady: motionReady,
+                    motionAlreadyPlayed: motionAlreadyPlayed,
+                    onMotionSettled: onMotionSettled,
+                    action: action
+                )
+            }
         }
+        .tint(HomePureLensColors.signal)
     }
+}
+
+/// Home's optical cards use an independent, adaptive instrument palette.
+/// Keep every variant on these neutral system colors, including focus and
+/// pressed states, instead of inheriting the app's raspberry accent.
+private enum HomePureLensColors {
+    static let surface = Color(uiColor: .secondarySystemGroupedBackground)
+    static let canvas = Color(uiColor: .systemGray6)
+    static let primaryText = Color(uiColor: .label)
+    static let secondaryText = Color(uiColor: .secondaryLabel)
+    static let signal = Color(uiColor: .label)
+    static let signalPressed = Color(uiColor: .secondaryLabel)
+    static let onSignal = Color(uiColor: .systemBackground)
+    static let divider = Color(uiColor: .separator)
+    static let recognition = Color(uiColor: .systemGreen)
+    static let discovery = Color(uiColor: .systemIndigo)
 }
 
 // MARK: - Preserved Pure Lens Card V1 (Neural Optical Chamber)
@@ -6430,8 +6474,8 @@ struct PureLensCardV2: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.ppSurfaceElevated,
-                                Color.ppPrimary.opacity(0.06)
+                                HomePureLensColors.surface,
+                                Color(uiColor: .tertiarySystemGroupedBackground)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -6442,8 +6486,8 @@ struct PureLensCardV2: View {
                             .strokeBorder(
                                 LinearGradient(
                                     colors: [
-                                        Color.ppPrimary.opacity(pulseAura ? 0.10 : 0.05),
-                                        Color.ppSurfaceBorder
+                                        HomePureLensColors.signal.opacity(pulseAura ? 0.10 : 0.05),
+                                        HomePureLensColors.divider
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -6452,7 +6496,7 @@ struct PureLensCardV2: View {
                             )
                     )
                     .shadow(
-                        color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.0 : 0.08),
+                        color: HomePureLensColors.signal.opacity(colorScheme == .dark ? 0.0 : 0.08),
                         radius: 16,
                         x: 0,
                         y: 6
@@ -6465,17 +6509,17 @@ struct PureLensCardV2: View {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(
                                     LinearGradient(
-                                        colors: [Color.ppPrimary, Color.ppPressedAction],
+                                        colors: [HomePureLensColors.signal, HomePureLensColors.signalPressed],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
                                 )
                                 .frame(width: 48, height: 48)
-                                .shadow(color: Color.ppPrimary.opacity(0.35), radius: 8, x: 0, y: 4)
+                                .shadow(color: PPShadow.subtle.color, radius: 8, x: 0, y: 4)
 
                             Image(systemName: "camera.viewfinder")
                                 .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(HomePureLensColors.onSignal)
                         }
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -6485,17 +6529,17 @@ struct PureLensCardV2: View {
                                     fallback: Language.isRTL() ? "بيورلينس" : "Pure Lens"
                                 ))
                                 .font(HomeFont.bold(19))
-                                .foregroundColor(Color.ppTextPrimary)
+                                .foregroundColor(HomePureLensColors.primaryText)
 
                                 Text(HomeModelAdapter.localized(
                                     "pure_lens_account_live_vision",
                                     fallback: Language.isRTL() ? "رؤية ذكية مباشرة" : "LIVE AI VISION"
                                 ))
                                 .font(HomeFont.bold(9.5))
-                                .foregroundColor(Color.ppPrimary)
+                                .foregroundColor(HomePureLensColors.signal)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.ppPrimary.opacity(0.12)))
+                                .background(Capsule().fill(HomePureLensColors.signal.opacity(0.07)))
                             }
 
                             Text(HomeModelAdapter.localized(
@@ -6505,7 +6549,7 @@ struct PureLensCardV2: View {
                                     : "Identify animals and discover what suits them."
                             ))
                             .font(HomeFont.regular(13))
-                            .foregroundColor(Color.ppTextSecondary)
+                            .foregroundColor(HomePureLensColors.secondaryText)
                             .lineLimit(2)
                         }
 
@@ -6513,7 +6557,7 @@ struct PureLensCardV2: View {
 
                         Image(systemName: "arrow.up.forward.circle.fill")
                             .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(Color.ppPrimary)
+                            .foregroundColor(HomePureLensColors.signal)
                     }
 
                     // 3-step connected recognition pipeline
@@ -6524,7 +6568,7 @@ struct PureLensCardV2: View {
                                 "pure_lens_account_camera",
                                 fallback: Language.isRTL() ? "كاميرا" : "Camera"
                             ),
-                            tint: Color.ppPrimary
+                            tint: HomePureLensColors.signal
                         )
                         connectorLine
                         stepPill(
@@ -6533,7 +6577,7 @@ struct PureLensCardV2: View {
                                 "pure_lens_account_recognize",
                                 fallback: Language.isRTL() ? "تعرّف" : "Identify"
                             ),
-                            tint: Color.ppSuccess
+                            tint: HomePureLensColors.recognition
                         )
                         connectorLine
                         stepPill(
@@ -6542,7 +6586,7 @@ struct PureLensCardV2: View {
                                 "pure_lens_account_discover",
                                 fallback: Language.isRTL() ? "اكتشف" : "Discover"
                             ),
-                            tint: Color.ppInfo
+                            tint: HomePureLensColors.discovery
                         )
                     }
                 }
@@ -6583,7 +6627,7 @@ struct PureLensCardV2: View {
                 .foregroundColor(tint)
             Text(title)
                 .font(HomeFont.medium(11.5))
-                .foregroundColor(Color.ppTextSecondary)
+                .foregroundColor(HomePureLensColors.secondaryText)
                 .lineLimit(1)
         }
         .padding(.horizontal, 9)
@@ -6591,14 +6635,14 @@ struct PureLensCardV2: View {
         .fixedSize(horizontal: true, vertical: false)
         .background(
             Capsule()
-                .fill(Color.ppSurfaceBase.opacity(0.85))
-                .overlay(Capsule().strokeBorder(tint.opacity(0.25), lineWidth: 0.8))
+                .fill(HomePureLensColors.canvas.opacity(0.85))
+                .overlay(Capsule().strokeBorder(HomePureLensColors.divider, lineWidth: 0.8))
         )
     }
 
     private var connectorLine: some View {
         Rectangle()
-            .fill(Color.ppPrimary.opacity(0.2))
+            .fill(HomePureLensColors.signal.opacity(0.12))
             .frame(height: 1.5)
             .frame(minWidth: 6, maxWidth: .infinity)
     }
@@ -6973,11 +7017,8 @@ struct HomePureLensSectionV2: View {
         cardShape
             .strokeBorder(
                 isFocused
-                    ? Color.ppPrimary
-                    : HomeVisualTokens.cardBorder(
-                        colorScheme: colorScheme,
-                        contrast: contrast
-                    ),
+                    ? palette.signal
+                    : (contrast == .increased ? palette.primaryText : palette.divider),
                 lineWidth: isFocused
                     ? (contrast == .increased ? 3 : 2.4)
                     : HomeVisualTokens.cardBorderWidth(contrast: contrast)
@@ -7250,38 +7291,38 @@ private struct HomePureLensV2Palette {
     }
 
     var surfaceBase: Color {
-        isDark ? Color.ppSurfaceElevated : Color.ppSurfaceRaised
+        HomePureLensColors.surface
     }
 
     var primaryText: Color {
-        Color.ppTextPrimary
+        HomePureLensColors.primaryText
     }
 
     var secondaryText: Color {
-        Color.ppTextSecondary
+        HomePureLensColors.secondaryText
     }
 
     var signal: Color {
-        Color.ppPrimary
+        HomePureLensColors.signal
     }
 
     var signalPressed: Color {
-        Color.ppPressedAction
+        HomePureLensColors.signalPressed
     }
 
     var chamberBackground: Color {
-        isDark ? Color.black : Color.ppTextPrimary
+        isDark ? HomePureLensColors.surface : HomePureLensColors.primaryText
     }
 
     var chamberContent: Color {
-        isDark ? Color.ppTextPrimary : Color.ppSurfaceRaised
+        isDark ? HomePureLensColors.primaryText : HomePureLensColors.surface
     }
 
     var shutterSurface: Color {
         if reduceTransparency {
-            return isDark ? Color.ppSurfaceElevated : Color.ppSurfaceRaised
+            return HomePureLensColors.surface
         }
-        return isDark ? Color.white.opacity(0.06) : Color.ppSurfaceRaised.opacity(0.85)
+        return isDark ? Color.white.opacity(0.06) : HomePureLensColors.surface.opacity(0.85)
     }
 
     var chipSurface: Color {
@@ -7289,7 +7330,7 @@ private struct HomePureLensV2Palette {
     }
 
     var divider: Color {
-        Color.ppSurfaceBorder
+        HomePureLensColors.divider
     }
 }
 
@@ -7483,11 +7524,8 @@ struct HomePureLensSectionV1: View {
         cardShape
             .strokeBorder(
                 isFocused
-                    ? Color.ppPrimary
-                    : HomeVisualTokens.cardBorder(
-                        colorScheme: colorScheme,
-                        contrast: contrast
-                    ),
+                    ? palette.signal
+                    : (contrast == .increased ? palette.primaryText : palette.divider),
                 lineWidth: isFocused
                     ? (contrast == .increased ? 3 : 2.4)
                     : HomeVisualTokens.cardBorderWidth(contrast: contrast)
@@ -7876,63 +7914,62 @@ private struct HomePureLensPalette {
     }
 
     var surfaceBase: Color {
-        isDark ? Color.ppSurfaceElevated : Color.ppSurfaceRaised
+        HomePureLensColors.surface
     }
 
-    var surfaceBrandOpacity: Double {
+    var surfaceWashOpacity: Double {
         isDark ? 0.16 : 0.64
     }
 
     var primaryText: Color {
-        Color.ppTextPrimary
+        HomePureLensColors.primaryText
     }
 
     var secondaryText: Color {
-        Color.ppTextSecondary
+        HomePureLensColors.secondaryText
     }
 
     var eyebrowText: Color {
-        Color.ppAccentText
+        HomePureLensColors.signal
     }
 
     var signal: Color {
-        Color.ppPrimary
+        HomePureLensColors.signal
     }
 
     var signalPressed: Color {
-        Color.ppPressedAction
+        HomePureLensColors.signalPressed
     }
 
     var chamberBackground: Color {
-        isDark ? Color.ppSurfaceElevated : Color.ppTextPrimary
+        isDark ? HomePureLensColors.surface : HomePureLensColors.primaryText
     }
 
-    /// A restrained raspberry veil warms the otherwise dark viewport without
-    /// introducing a separate scanner palette or a new visual effect.
-    var chamberWarmTint: Color {
-        Color.ppPrimary.opacity(isDark ? 0.12 : 0.06)
+    /// A neutral wash adds depth to the optical viewport in both appearances.
+    var chamberSignalTint: Color {
+        HomePureLensColors.signal.opacity(isDark ? 0.12 : 0.06)
     }
 
     var chamberContent: Color {
-        isDark ? Color.ppTextPrimary : Color.ppSurfaceRaised
+        isDark ? HomePureLensColors.primaryText : HomePureLensColors.surface
     }
 
     var actionSurface: Color {
         if reduceTransparency {
-            return isDark ? Color.ppSurfaceElevated : Color.ppSurfaceRaised
+            return HomePureLensColors.surface
         }
-        return Color.ppSurfaceRaised.opacity(isDark ? 0.82 : 0.72)
+        return HomePureLensColors.surface.opacity(isDark ? 0.82 : 0.72)
     }
 
     var divider: Color {
-        Color.ppSurfaceBorder
+        HomePureLensColors.divider
     }
 
     func cardBorder(increasedContrast: Bool) -> Color {
         if increasedContrast {
-            return Color.ppTextPrimary
+            return HomePureLensColors.primaryText
         }
-        return Color.ppSurfaceBorder
+        return HomePureLensColors.divider
     }
 }
 
@@ -7977,8 +8014,14 @@ private struct HomePureLensCardSurface: View {
 
             if !reduceTransparency {
                 cardShape
-                    .fill(PPGradient.softBrandField)
-                    .opacity(palette.surfaceBrandOpacity)
+                    .fill(
+                        LinearGradient(
+                            colors: [HomePureLensColors.surface, HomePureLensColors.canvas],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .opacity(palette.surfaceWashOpacity)
             }
         }
         .accessibilityHidden(true)
@@ -8215,7 +8258,7 @@ private struct HomePureLensOpticalChamber: View {
                 .fill(palette.chamberBackground)
 
             Rectangle()
-                .fill(palette.chamberWarmTint)
+                .fill(palette.chamberSignalTint)
 
             // Depth-of-field bloom with ambient optical breathing
             Circle()

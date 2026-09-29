@@ -67,10 +67,11 @@ typedef NS_ENUM(NSInteger, PPImageSearchMode) {
                          contentType:(NSString *)contentType
                         localSpecies:(NSString *)localSpecies
                           localBreed:(NSString * _Nullable)localBreed
+            selectedCanonicalSpecies:(NSString * _Nullable)selectedCanonicalSpecies
                       consentVersion:(NSString *)consentVersion
                           completion:(void (^)(NSDictionary * _Nullable response,
                                                 NSError * _Nullable error))completion
-    NS_SWIFT_NAME(identifyAnimal(data:contentType:localSpecies:localBreed:consentVersion:completion:));
+    NS_SWIFT_NAME(identifyAnimal(data:contentType:localSpecies:localBreed:selectedCanonicalSpecies:consentVersion:completion:));
 
 - (void)searchImageData:(NSData *)imageData
              contentType:(NSString *)contentType
@@ -78,7 +79,7 @@ typedef NS_ENUM(NSInteger, PPImageSearchMode) {
                    breed:(NSString * _Nullable)breed
               mainKindID:(NSInteger)mainKindID
                    limit:(NSInteger)limit
-              completion:(void (^)(NSArray<NSDictionary *> * _Nullable items,
+              completion:(void (^)(NSDictionary * _Nullable result,
                                     NSError * _Nullable error))completion
     NS_SWIFT_NAME(searchImage(data:contentType:species:breed:mainKindID:limit:completion:));
 

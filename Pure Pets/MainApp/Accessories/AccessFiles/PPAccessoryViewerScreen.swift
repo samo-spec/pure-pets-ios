@@ -12,6 +12,18 @@ private struct PPAccessoryDecisionBarHeightPreferenceKey: PreferenceKey {
     }
 }
 
+private struct PPAccessoryWarningBannerHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(
+        value: inout CGFloat,
+        nextValue: () -> CGFloat
+    ) {
+        value = max(value, nextValue())
+    }
+}
+
+
 
 
 @available(iOS 16.0, *)
@@ -25,6 +37,7 @@ struct PPAccessoryViewerScreen: View {
     @State private var didRunEntrance = false
     @State private var showsNavigationTitlePill = false
     @State private var decisionBarHeight: CGFloat = 0
+    @State private var warningBannerHeight: CGFloat = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -109,6 +122,7 @@ struct PPAccessoryViewerScreen: View {
         let bottomInset = snapshot.showsCart ? PPSpace.base : bottomChromeInset(proxy)
         let topBarHeight: CGFloat = topInset + (compact ? 56 : 64)
         let titleRevealOffset: CGFloat = compact ? 14 : 22
+        let clearance = warningClearance(compact: compact)
         let usesRecoveryDock =
             !snapshot.isAvailableForPurchase ||
             store.livePhase != .current ||
@@ -148,7 +162,7 @@ struct PPAccessoryViewerScreen: View {
                             onShare: store.share
                         )
                         .padding(.horizontal, horizontalPadding)
-                        .padding(.top, topBarHeight)
+                        .padding(.top, topBarHeight + clearance)
                         .scaleEffect(heroResolved ? 1.0 : 0.97)
                         .opacity(heroResolved ? 1 : 0)
                         .offset(y: heroResolved ? 0 : 8)
@@ -220,6 +234,12 @@ struct PPAccessoryViewerScreen: View {
                     }
                     .frame(maxWidth: contentWidth)
                     .frame(maxWidth: .infinity)
+                    .animation(
+                        reduceMotion
+                            ? nil
+                            : .spring(response: 0.32, dampingFraction: 0.88),
+                        value: clearance
+                    )
                 }
                 .coordinateSpace(
                     name: PPAccessoryViewerScrollMetrics.coordinateSpace
@@ -246,7 +266,7 @@ struct PPAccessoryViewerScreen: View {
                 }
             }
 
-            topFadeOverlay(proxy: proxy)
+            topFadeOverlay(proxy: proxy, clearance: clearance)
 
             bottomFadeOverlay(
                 snapshot: snapshot,
@@ -266,6 +286,14 @@ struct PPAccessoryViewerScreen: View {
                         dismiss: store.dismissBanner
                     )
                     .padding(.horizontal, 18)
+                    .background {
+                        GeometryReader { bannerProxy in
+                            Color.clear.preference(
+                                key: PPAccessoryWarningBannerHeightPreferenceKey.self,
+                                value: bannerProxy.size.height
+                            )
+                        }
+                    }
                     .transition(
                         reduceMotion
                             ? .opacity
@@ -283,7 +311,7 @@ struct PPAccessoryViewerScreen: View {
             .animation(
                 reduceMotion
                     ? nil
-                    : .spring(response: 0.30, dampingFraction: 0.88),
+                    : .spring(response: 0.32, dampingFraction: 0.88),
                 value: store.bannerMessage
             )
             .ignoresSafeArea(.container, edges: .top)
@@ -316,6 +344,20 @@ struct PPAccessoryViewerScreen: View {
                 }
                 decisionBarHeight = measuredHeight
             }
+            .onPreferenceChange(
+                PPAccessoryWarningBannerHeightPreferenceKey.self
+            ) { measuredHeight in
+                guard measuredHeight > 0, measuredHeight < 500 else { return }
+                guard abs(measuredHeight - warningBannerHeight) > 0.5 else {
+                    return
+                }
+                warningBannerHeight = measuredHeight
+            }
+            .onChange(of: store.bannerMessage) { message in
+                if message == nil {
+                    warningBannerHeight = 0
+                }
+            }
             .zIndex(999)
         }
         .coordinateSpace(name: "accessory-viewer-root")
@@ -334,6 +376,14 @@ struct PPAccessoryViewerScreen: View {
         ) { _ in
             store.resume()
         }
+    }
+
+    private func warningClearance(compact: Bool) -> CGFloat {
+        guard store.bannerMessage != nil else { return 0 }
+        let measured = warningBannerHeight > 0
+            ? warningBannerHeight
+            : (compact ? 54 : 60)
+        return measured + 20
     }
 
     private func topChromeInset(_ proxy: GeometryProxy) -> CGFloat {
@@ -362,7 +412,10 @@ struct PPAccessoryViewerScreen: View {
         return max(sceneBottom, bottomScreenSpacing)
     }
 
-    private func topFadeOverlay(proxy: GeometryProxy) -> some View {
+    private func topFadeOverlay(
+        proxy: GeometryProxy,
+        clearance: CGFloat = 0
+    ) -> some View {
         let topColor = Color.ppBackground
 
         return LinearGradient(
@@ -375,11 +428,17 @@ struct PPAccessoryViewerScreen: View {
             startPoint: .top,
             endPoint: .bottom
         )
-        .frame(height: proxy.safeAreaInsets.top + 80)
+        .frame(height: proxy.safeAreaInsets.top + 80 + clearance)
         .ignoresSafeArea(edges: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .allowsHitTesting(false)
         .opacity(heroResolved ? 1 : 0)
+        .animation(
+            reduceMotion
+                ? nil
+                : .spring(response: 0.32, dampingFraction: 0.88),
+            value: clearance
+        )
         .zIndex(80)
     }
 

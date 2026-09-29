@@ -4301,7 +4301,7 @@ private struct PPMessagingHeader: View {
         let presence: SpearPresence
         if state.isTyping {
             presence = .typing
-        } else if state.isOnline || (state.isSupportThread && state.lastActiveAt == nil) {
+        } else if state.isOnline {
             presence = .online(responseSpeed: nil)
         } else if let lastActiveAt = state.lastActiveAt {
             presence = .offline(lastActiveAt: lastActiveAt)
@@ -4344,12 +4344,12 @@ private struct PPMessagingHeader: View {
             verifiedSellerAccessibilityLabel: localized("chat_header_verified_seller"),
             verifiedBusinessAccessibilityLabel: localized("chat_header_verified_business"),
             restrictedAccessibilityLabel: localized("chat_header_restricted_account"),
-            profileButtonTitle: Language.isRTL() ? "الملف الشخصي" : "View Profile",
+            profileButtonTitle: localized("chat_header_view_stories"),
             safetyButtonTitle: localized("chat.report"),
             loadingAccessibilityLabel: localized("chat_header_loading_identity"),
             conversationAccessibilityPrefix: localized("chat_header_conversation_with"),
             onlineNowText: state.isSupportThread
-                ? (Language.isRTL() ? "فريق الدعم متواجد لخدمتك" : "Support team is online")
+                ? localized("chat_header_support_online")
                 : localized("chat_header_online_now"),
             repliesFastText: localized("chat_header_replies_fast"),
             repliesTypicallyText: localized("chat_header_replies_typically"),

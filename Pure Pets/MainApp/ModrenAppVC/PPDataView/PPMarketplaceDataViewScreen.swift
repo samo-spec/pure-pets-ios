@@ -294,24 +294,27 @@ struct PPMarketplaceDataViewScreen: View {
 
     private var bottomNavigationFade: some View {
         GeometryReader { proxy in
-            let extraFade: CGFloat = store.bottomClearance > 0 ? PPSpace.base : PPSpace.xs
+            let extraFade: CGFloat = store.bottomClearance > 0 ? PPSpace.xs : 0
             let fadeHeight = max(
                 store.bottomClearance,
                 proxy.safeAreaInsets.bottom
             ) + extraFade
 
-            LinearGradient(
-                colors: [
-                    Color.clear,
-                    Color.ppBackground.opacity(0.58),
-                    Color.ppBackground,
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: fadeHeight)
-            .frame(maxHeight: .infinity, alignment: .bottom)
-            .ignoresSafeArea(edges: .bottom)
+            if fadeHeight > 0 {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.0),
+                        .init(color: Color.ppBackground.opacity(0.12), location: 0.35),
+                        .init(color: Color.ppBackground.opacity(0.55), location: 0.70),
+                        .init(color: Color.ppBackground, location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: fadeHeight)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+            }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)

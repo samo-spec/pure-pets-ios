@@ -120,10 +120,32 @@ final class PPPureLensHostPresenter: NSObject {
                         contentType: frame.mimeType,
                         localSpecies: animal.species,
                         localBreed: animal.breed,
+                        selectedCanonicalSpecies: nil,
                         consentVersion: Self.consentVersion
                     ) { response, error in
                         if let error {
-                            continuation.resume(throwing: error)
+                            continuation.resume(throwing: Self.classifiedAnimalIdentityError(error))
+                        } else if let response {
+                            continuation.resume(returning: response as NSDictionary)
+                        } else {
+                            continuation.resume(throwing: Self.invalidAnimalIdentityError())
+                        }
+                    }
+                }
+                return try Self.animalIdentification(from: response)
+            },
+            confirmAnimalCandidate: { frame, animal, selectedCanonicalSpecies in
+                let response: NSDictionary = try await withCheckedThrowingContinuation { continuation in
+                    bridge.identifyAnimal(
+                        data: frame.data,
+                        contentType: frame.mimeType,
+                        localSpecies: animal.species,
+                        localBreed: animal.breed,
+                        selectedCanonicalSpecies: selectedCanonicalSpecies,
+                        consentVersion: Self.consentVersion
+                    ) { response, error in
+                        if let error {
+                            continuation.resume(throwing: Self.classifiedAnimalIdentityError(error))
                         } else if let response {
                             continuation.resume(returning: response as NSDictionary)
                         } else {
@@ -168,7 +190,7 @@ final class PPPureLensHostPresenter: NSObject {
                 }
             },
             searchByImage: { frame, animal in
-                let rows: NSArray = try await withCheckedThrowingContinuation { continuation in
+                let response: NSDictionary = try await withCheckedThrowingContinuation { continuation in
                     bridge.searchImage(
                         data: frame.data,
                         contentType: frame.mimeType,
@@ -176,20 +198,26 @@ final class PPPureLensHostPresenter: NSObject {
                         breed: animal.breed,
                         mainKindID: animal.businessMainKindID ?? 0,
                         limit: itemLimit
-                    ) { items, error in
+                    ) { result, error in
                         if let error {
                             continuation.resume(throwing: error)
+                        } else if let result {
+                            continuation.resume(returning: result as NSDictionary)
                         } else {
-                            continuation.resume(returning: (items ?? []) as NSArray)
+                            continuation.resume(throwing: Self.invalidAnimalIdentityError())
                         }
                     }
                 }
+                guard let rows = response["items"] as? NSArray else {
+                    throw Self.invalidAnimalIdentityError()
+                }
+                let detectedMainKindID = (response["detectedMainKindID"] as? NSNumber)?.intValue
                 return LensImageSearchResult(
                     items: try PureLensDiscoveryDictionaryAdapter.items(
                         from: rows,
                         limit: itemLimit
                     ),
-                    detectedMainKindID: animal.businessMainKindID
+                    detectedMainKindID: detectedMainKindID
                 )
             },
             searchMarketplace: { category, animal in
@@ -251,6 +279,12 @@ final class PPPureLensHostPresenter: NSObject {
         )
     }
 
+    private static func classifiedAnimalIdentityError(_ error: Error) -> Error {
+        let details = (error as NSError).userInfo["details"] as? [String: Any]
+        let reason = details?["reason"] as? String
+        return LensAnimalIdentityServiceError.fromServerReason(reason) ?? error
+    }
+
     private static func animalIdentification(
         from response: NSDictionary
     ) throws -> LensAnimalIdentificationResult {
@@ -275,9 +309,25 @@ final class PPPureLensHostPresenter: NSObject {
             )
         }
 
+        let candidates: [LensAnimalIdentityCandidate] = (raw["candidates"] as? [NSDictionary] ?? [])
+            .compactMap { candidate in
+                guard let commonName = candidate["commonName"] as? String,
+                      let canonicalSpecies = candidate["canonicalSpecies"] as? String,
+                      let confidence = candidate["confidence"] as? NSNumber
+                else { return nil }
+                return LensAnimalIdentityCandidate(
+                    commonName: commonName,
+                    commonNameAr: candidate["commonNameAr"] as? String,
+                    canonicalSpecies: canonicalSpecies,
+                    scientificName: candidate["scientificName"] as? String,
+                    confidence: confidence.doubleValue
+                )
+            }
+
         return LensAnimalIdentificationResult(
             status: status,
             commonName: commonName,
+            commonNameAr: raw["commonNameAr"] as? String,
             canonicalSpecies: canonicalSpecies,
             scientificName: raw["scientificName"] as? String,
             animalGroup: raw["animalGroup"] as? String,
@@ -285,6 +335,7 @@ final class PPPureLensHostPresenter: NSObject {
             speciesConfidence: speciesConfidence.doubleValue,
             breedConfidence: (raw["breedConfidence"] as? NSNumber)?.doubleValue ?? 0,
             ambiguityReason: raw["ambiguityReason"] as? String,
+            candidates: candidates,
             support: support
         )
     }

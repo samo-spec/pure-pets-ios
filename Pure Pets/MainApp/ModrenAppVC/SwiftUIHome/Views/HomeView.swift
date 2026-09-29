@@ -217,7 +217,6 @@ struct HomeView: View {
                 HomeCommandBar(
                     state: store.state,
                     searchProminence: plan.searchProminence,
-                    customAccent: activeHomeAccent,
                     searchAction: store.router.openSearch,
                     cartAction: store.router.openCart,
                     locationAction: store.locationTapped,
@@ -932,23 +931,26 @@ struct HomeView: View {
 
     private var bottomNavigationFade: some View {
         GeometryReader { proxy in
-            let fadeHeight = max(
-                store.state.bottomContentClearance,
-                proxy.safeAreaInsets.bottom
-            ) + PPSpace.xxxl
+            let clearance = store.state.bottomContentClearance
+            let fadeHeight: CGFloat = clearance > 0
+                ? clearance + PPSpace.xs
+                : (proxy.safeAreaInsets.bottom > 0 ? proxy.safeAreaInsets.bottom : 0)
 
-            LinearGradient(
-                colors: [
-                    Color.clear,
-                    Color.homeCanvas.opacity(0.58),
-                    Color.homeCanvas,
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: fadeHeight)
-            .frame(maxHeight: .infinity, alignment: .bottom)
-            .ignoresSafeArea(edges: .bottom)
+            if fadeHeight > 0 {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.0),
+                        .init(color: Color.homeCanvas.opacity(0.12), location: 0.35),
+                        .init(color: Color.homeCanvas.opacity(0.55), location: 0.70),
+                        .init(color: Color.homeCanvas, location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: fadeHeight)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+            }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)

@@ -2,8 +2,7 @@ import SwiftUI
 
 // MARK: - Conversation Deck
 
-/// One inset reading column for context and disclosed utilities. Separation is
-/// typographic and spatial; neither section creates another card or brand rail.
+/// A full-width typographic handoff below the participant crown.
 @available(iOS 15.0, *)
 internal struct SpearHeaderDeck<Content: View>: View {
   let mainBackgroundColor: Color
@@ -16,7 +15,7 @@ internal struct SpearHeaderDeck<Content: View>: View {
   init(
     mainBackgroundColor: Color,
     horizontalPadding: CGFloat = 0,
-    verticalPadding: CGFloat = 4,
+    verticalPadding: CGFloat = 2,
     @ViewBuilder content: () -> Content
   ) {
     self.mainBackgroundColor = mainBackgroundColor

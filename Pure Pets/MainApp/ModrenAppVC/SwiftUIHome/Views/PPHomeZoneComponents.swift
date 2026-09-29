@@ -275,14 +275,14 @@ private struct PPHomeSectionActionSurfaceModifier: ViewModifier {
     }
 
     private var tint: Color {
-        baseColor.opacity(colorScheme == .dark ? 0.12 : 0.065)
+        baseColor.opacity(colorScheme == .dark ? 0.08 : 0.045)
     }
 
     private var stroke: Color {
         baseColor.opacity(
             contrast == .increased
                 ? 0.54
-                : (colorScheme == .dark ? 0.32 : 0.22)
+                : (colorScheme == .dark ? 0.22 : 0.14)
         )
     }
 
@@ -4502,11 +4502,11 @@ struct PPCommerceHeroCard: View {
                 .padding(.vertical, 4.5)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(accent.opacity(colorScheme == .dark ? 0.20 : 0.08))
+                        .fill(accent.opacity(colorScheme == .dark ? 0.12 : 0.05))
                 )
                 .overlay(
                     Capsule(style: .continuous)
-                        .stroke(accent.opacity(colorScheme == .dark ? 0.32 : 0.16), lineWidth: 0.8)
+                        .stroke(accent.opacity(colorScheme == .dark ? 0.20 : 0.10), lineWidth: 0.8)
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -4532,7 +4532,7 @@ struct PPCommerceHeroCard: View {
                         // Circular directional portal indicator
                         ZStack {
                             Circle()
-                                .fill(accent.opacity(colorScheme == .dark ? 0.22 : 0.10))
+                                .fill(accent.opacity(colorScheme == .dark ? 0.12 : 0.06))
                                 .frame(width: 22, height: 22)
 
                             Image(systemName: "arrow.up.forward")
@@ -4558,8 +4558,8 @@ struct PPCommerceHeroCard: View {
                     Color.homeSurface
                     LinearGradient(
                         colors: [
-                            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
-                            accent.opacity(colorScheme == .dark ? 0.04 : 0.01),
+                            accent.opacity(colorScheme == .dark ? 0.09 : 0.045),
+                            accent.opacity(colorScheme == .dark ? 0.025 : 0.01),
                             Color.clear,
                         ],
                         startPoint: .topLeading,
@@ -4570,7 +4570,7 @@ struct PPCommerceHeroCard: View {
             .clipShape(shape)
             .overlay {
                 shape.stroke(
-                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.26 : 0.14)),
+                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.16 : 0.08)),
                     lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
                 )
             }
@@ -4608,8 +4608,8 @@ private struct PPFeaturedCommerceArtwork: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            accent.opacity(colorScheme == .dark ? 0.22 : 0.12),
-                            accent.opacity(colorScheme == .dark ? 0.08 : 0.035),
+                            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
+                            accent.opacity(colorScheme == .dark ? 0.05 : 0.02),
                             Color.clear,
                         ],
                         center: .center,
@@ -4626,7 +4626,7 @@ private struct PPFeaturedCommerceArtwork: View {
                 tintColor: UIColor(accent)
             )
             .frame(width: side, height: side)
-            .shadow(color: accent.opacity(colorScheme == .dark ? 0.35 : 0.18), radius: 6, y: 2)
+            .shadow(color: PPShadow.subtle.color, radius: 6, y: 2)
             .scaleEffect(reduceMotion ? 1.0 : (isBreathing ? 1.04 : 1.0))
         }
         .frame(width: side, height: side)
@@ -4670,8 +4670,8 @@ struct PPClinicalServiceCard: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        accent.opacity(colorScheme == .dark ? 0.28 : 0.16),
-                                        accent.opacity(colorScheme == .dark ? 0.16 : 0.08),
+                                        accent.opacity(colorScheme == .dark ? 0.12 : 0.07),
+                                        accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -4681,11 +4681,11 @@ struct PPClinicalServiceCard: View {
                             .overlay {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .stroke(
-                                        accent.opacity(contrast == .increased ? 0.60 : (colorScheme == .dark ? 0.35 : 0.20)),
+                                        accent.opacity(contrast == .increased ? 0.60 : (colorScheme == .dark ? 0.22 : 0.12)),
                                         lineWidth: 1
                                     )
                             }
-                            .shadow(color: accent.opacity(colorScheme == .dark ? 0.25 : 0.10), radius: 6, x: 0, y: 2)
+                            .shadow(color: PPShadow.subtle.color, radius: 6, x: 0, y: 2)
 
                         if action.id == "food" || action.systemImage == "pet-food" {
                             Image("pet-food")
@@ -4706,12 +4706,12 @@ struct PPClinicalServiceCard: View {
                     // Directional micro indicator
                     ZStack {
                         Circle()
-                            .fill(accent.opacity(colorScheme == .dark ? 0.14 : 0.07))
+                            .fill(Color.homeRaisedSurface)
                             .frame(width: 22, height: 22)
 
                         Image(systemName: "chevron.forward")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(accent.opacity(0.80))
+                            .foregroundStyle(Color.homeTextSecondary)
                             .flipsForRightToLeftLayoutDirection(true)
                     }
                     .accessibilityHidden(true)
@@ -4742,8 +4742,8 @@ struct PPClinicalServiceCard: View {
                     Color.homeSurface
                     LinearGradient(
                         colors: [
-                            accent.opacity(colorScheme == .dark ? 0.12 : 0.05),
-                            accent.opacity(colorScheme == .dark ? 0.03 : 0.01),
+                            accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
+                            accent.opacity(colorScheme == .dark ? 0.02 : 0.01),
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -4753,7 +4753,7 @@ struct PPClinicalServiceCard: View {
             .clipShape(shape)
             .overlay {
                 shape.stroke(
-                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.24 : 0.12)),
+                    accent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.14 : 0.07)),
                     lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
                 )
             }
@@ -6242,7 +6242,9 @@ struct PPHomeExploreMoreRow: View {
                     )
                     .background(
                         tone.opacity(
-                            contrast == .increased ? 0.18 : 0.10
+                            contrast == .increased
+                                ? 0.18
+                                : (colorScheme == .dark ? 0.10 : 0.06)
                         ),
                         in: RoundedRectangle(
                             cornerRadius: HomeVisualTokens.iconContainerCorner,

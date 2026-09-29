@@ -4397,6 +4397,7 @@
 "home_pulse_pet_context_subtitle" = "Choose which pet context to view";
 "home_pulse_pet_context_title" = "Your pet context";
 "home_pulse_pet_selected_status" = "Selected";
+"home_pulse_pet_choose_status" = "Show on Home";
 "home_pulse_pet_hero_subtitle" = "Care, shop, and discover from one place.";
 "home_pulse_pet_hero_title" = "Today with %@";
 "home_pulse_pet_reminder_active_fmt" = "Reminder: %@";
@@ -4689,8 +4690,8 @@
 "chat_header_accessory_title_fallback" = "Product details";
 "chat_header_badge_product" = "Product";
 "chat_header_badge_pet" = "Pet";
-"chat_header_order_eyebrow" = "Active order";
-"chat_header_order_action" = "Track";
+"chat_header_order_eyebrow" = "Order";
+"chat_header_order_action" = "View order";
 "chat_header_order_title_format" = "Order %@";
 "chat_header_start_call_accessibility" = "Start voice call";
 "chat_header_end_call_accessibility" = "End call";
@@ -4701,6 +4702,8 @@
 "chat_header_loading_identity" = "Loading conversation identity";
 "chat_header_conversation_with" = "Conversation with";
 "chat_header_online_now" = "Online now";
+"chat_header_support_online" = "Support team is online";
+"chat_header_view_stories" = "View stories";
 "chat_header_replies_fast" = "Replies fast";
 "chat_header_replies_typically" = "Usually replies soon";
 "chat_header_typing" = "Typing";

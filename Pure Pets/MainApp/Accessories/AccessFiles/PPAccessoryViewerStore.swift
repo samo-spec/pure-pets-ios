@@ -1362,6 +1362,10 @@ final class PPAccessoryViewerStore: ObservableObject {
 
     /// User taps an option value (e.g. Size = "Large" or Color = "Red").
     func selectOptionValue(optionId: String, valueId: String) {
+        guard cartPhase != .processing, checkoutPhase != .preparingCart else {
+            bannerMessage = PPAccessoryViewerL10n.text("accessory_view_options_busy")
+            return
+        }
         guard canChangeVariant else {
             bannerMessage = PPAccessoryViewerL10n.text("accessory_view_options_busy")
             return

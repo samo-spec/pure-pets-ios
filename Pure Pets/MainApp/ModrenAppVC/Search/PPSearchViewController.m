@@ -66,7 +66,7 @@ static NSInteger const kPPSearchSegmentIconTag = 9101;
 static NSInteger const kPPSearchSegmentTitleTag = 9102;
 static NSInteger const kPPSearchSegmentCountTag = 9103;
 static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
-static BOOL const kPPImageSearchUseLegacyLoadingCAAnimations = NO;
+static BOOL const kPPImageSearchUseLegacyLoadingCAAnimations = YES;
 static NSString * const kPPImageSearchLoadingLottiePath = @"LottieAnimations/Shop.json";
 
 #pragma mark - Lottie Retinting Helpers
@@ -74,20 +74,24 @@ static NSString * const kPPImageSearchLoadingLottiePath = @"LottieAnimations/Sho
 static NSArray<NSNumber *> *PPImageSearchLottieRGBA(UIColor *color) {
     UIColor *resolved = color ?: UIColor.labelColor;
     CGFloat r = 0.0, g = 0.0, b = 0.0, a = 1.0;
-    if (![resolved getRed:&r green:&g blue:&b alpha:&a]) {
-        const CGFloat *components = CGColorGetComponents(resolved.CGColor);
-        size_t count = CGColorGetNumberOfComponents(resolved.CGColor);
-        if (components && count >= 3) {
-            r = components[0];
-            g = components[1];
-            b = components[2];
-            a = (count >= 4) ? components[3] : 1.0;
-        } else if (components && count >= 2) {
-            r = components[0];
-            g = components[0];
-            b = components[0];
-            a = components[1];
+    @try {
+        if (![resolved getRed:&r green:&g blue:&b alpha:&a]) {
+            const CGFloat *components = CGColorGetComponents(resolved.CGColor);
+            size_t count = CGColorGetNumberOfComponents(resolved.CGColor);
+            if (components && count >= 3) {
+                r = components[0];
+                g = components[1];
+                b = components[2];
+                a = (count >= 4) ? components[3] : 1.0;
+            } else if (components && count >= 2) {
+                r = components[0];
+                g = components[0];
+                b = components[0];
+                a = components[1];
+            }
         }
+    } @catch (__unused NSException *e) {
+        r = 0.95; g = 0.35; b = 0.45; a = 1.0;
     }
     return @[@(r), @(g), @(b), @(a)];
 }
@@ -411,9 +415,13 @@ PHPickerViewControllerDelegate>
     self.searchFieldChromeView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.searchFieldChromeView.bounds
                                    cornerRadius:self.searchFieldChromeView.layer.cornerRadius].CGPath;
-    self.imageSearchLoadingCardView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.imageSearchLoadingCardView.bounds
-                                   cornerRadius:self.imageSearchLoadingCardView.layer.cornerRadius].CGPath;
+    if (CGRectGetWidth(self.imageSearchLoadingCardView.bounds) > 1.0 && CGRectGetHeight(self.imageSearchLoadingCardView.bounds) > 1.0) {
+        self.imageSearchLoadingCardView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.imageSearchLoadingCardView.bounds
+                                       cornerRadius:self.imageSearchLoadingCardView.layer.cornerRadius].CGPath;
+    } else {
+        self.imageSearchLoadingCardView.layer.shadowPath = nil;
+    }
     self.imageSearchLoadingOrbGradientLayer.frame = self.imageSearchLoadingOrbView.bounds;
     self.imageSearchLoadingOrbView.layer.cornerRadius = CGRectGetWidth(self.imageSearchLoadingOrbView.bounds) * 0.5;
 #if PPSEARCH_HAS_LOTTIE
@@ -1482,7 +1490,8 @@ PHPickerViewControllerDelegate>
     collectionView.delegate = self;
     collectionView.showsVerticalScrollIndicator = NO;
     collectionView.translatesAutoresizingMaskIntoConstraints = NO;
-    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
+    self.collectionView = collectionView;
+    [PPUniversalCell pp_registerInCollectionView:collectionView];
 
     [self.view addSubview:collectionView];
     [self pp_sendBackdropGlowsToBack];
@@ -1492,8 +1501,6 @@ PHPickerViewControllerDelegate>
         [collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-0.0]
     ]];
-
-    self.collectionView = collectionView;
 }
 
 - (void)setupBottomSearchFade
@@ -1562,6 +1569,10 @@ PHPickerViewControllerDelegate>
 
 - (void)setupDataSource
 {
+    if (self.collectionView) {
+        [PPUniversalCell pp_registerInCollectionView:self.collectionView];
+    }
+
     __weak typeof(self) weakSelf = self;
     self.dataSource = [[UICollectionViewDiffableDataSource alloc]
                        initWithCollectionView:self.collectionView
@@ -1728,6 +1739,7 @@ PHPickerViewControllerDelegate>
     lottieView.userInteractionEnabled = NO;
     lottieView.backgroundColor = UIColor.clearColor;
     lottieView.opaque = NO;
+    lottieView.clipsToBounds = YES;
     lottieView.hidden = YES;
     lottieView.alpha = 0.0;
 #endif
@@ -2372,11 +2384,12 @@ PHPickerViewControllerDelegate>
 {
     BOOL hasValidQuery = self.lastQuery.length >= kPPSearchMinimumQueryLength;
     BOOL hasImageSearchMode = [self pp_isImageSearchMode];
-    BOOL noImageResults = hasImageSearchMode && !self.isSearching && self.results.count == 0;
+    BOOL isImageSearchLoading = hasImageSearchMode && (self.isSearching || self.imageSearchLoadingVisible);
+    BOOL noImageResults = hasImageSearchMode && !isImageSearchLoading && self.results.count == 0;
     BOOL noResults = !hasImageSearchMode && hasValidQuery && !self.isSearching && self.results.count == 0;
-    BOOL idleState = !hasImageSearchMode && !hasValidQuery && !self.isSearching;
+    BOOL idleState = !hasImageSearchMode && !hasValidQuery && !self.isSearching && !self.imageSearchLoadingVisible;
 
-    BOOL shouldShow = noImageResults || noResults || idleState;
+    BOOL shouldShow = !isImageSearchLoading && (noImageResults || noResults || idleState);
 
     if (noImageResults) {
         self.emptyStateIconView.image = [UIImage systemImageNamed:@"camera.metering.none"];
@@ -3471,7 +3484,8 @@ PHPickerViewControllerDelegate>
     __weak typeof(self) weakSelf = self;
     [picker dismissViewControllerAnimated:YES completion:^{
         if (image) {
-            [weakSelf runDirectImageSearch:image];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            [strongSelf runDirectImageSearch:image];
         }
     }];
 }
@@ -3485,20 +3499,23 @@ PHPickerViewControllerDelegate>
 
 - (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results API_AVAILABLE(ios(14.0))
 {
-    [picker dismissViewControllerAnimated:YES completion:nil];
     PHPickerResult *result = results.firstObject;
     if (!result) {
+        [picker dismissViewControllerAnimated:YES completion:nil];
         return;
     }
 
     __weak typeof(self) weakSelf = self;
     [result.itemProvider loadObjectOfClass:[UIImage class]
                          completionHandler:^(__kindof id<NSItemProviderReading> _Nullable object, NSError * _Nullable error) {
-        if (![object isKindOfClass:[UIImage class]]) {
-            return;
-        }
+        UIImage *pickedImage = [object isKindOfClass:[UIImage class]] ? (UIImage *)object : nil;
         dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf runDirectImageSearch:(UIImage *)object];
+            [picker dismissViewControllerAnimated:YES completion:^{
+                if (pickedImage) {
+                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                    [strongSelf runDirectImageSearch:pickedImage];
+                }
+            }];
         });
     }];
 }
@@ -3813,7 +3830,7 @@ PHPickerViewControllerDelegate>
     [self applyResultsAnimated:NO];
     [self pp_setImageSearchLoading:YES];
     [self pp_setImageSearchLoadingOverlayVisible:YES animated:YES];
-    [self pp_hideSkeleton];
+    [self pp_stopSearchLoadingAnimation];
     [self updateEmptyState];
     [self updateHeaderStateAnimated:YES];
 
@@ -3850,10 +3867,11 @@ PHPickerViewControllerDelegate>
                 return;
             }
 
-            NSDictionary *metadata = [strongSelf pp_dictionaryFromObject:response[@"metadata"]] ?: @{};
-            NSDictionary *detected = [strongSelf pp_dictionaryFromObject:response[@"detected"]] ?: @{};
-            NSArray *results = [strongSelf pp_arrayFromObject:response[@"results"]];
-            NSArray *resultRefs = [strongSelf pp_imageSearchResultRefsFromResponse:response
+            NSDictionary *safeResponse = [strongSelf pp_dictionaryFromObject:response] ?: @{};
+            NSDictionary *metadata = [strongSelf pp_dictionaryFromObject:safeResponse[@"metadata"]] ?: @{};
+            NSDictionary *detected = [strongSelf pp_dictionaryFromObject:safeResponse[@"detected"]] ?: @{};
+            NSArray *results = [strongSelf pp_arrayFromObject:safeResponse[@"results"]];
+            NSArray *resultRefs = [strongSelf pp_imageSearchResultRefsFromResponse:safeResponse
                                                                           metadata:metadata
                                                                            results:results];
 
@@ -4313,6 +4331,7 @@ PHPickerViewControllerDelegate>
     }
 
     BOOL shouldPlay =
+        self.view.window != nil &&
         self.imageSearchLoadingVisible &&
         self.imageSearchLoadingView.hidden == NO &&
         !UIAccessibilityIsReduceMotionEnabled();
@@ -4330,6 +4349,7 @@ PHPickerViewControllerDelegate>
             self.imageSearchLoadingLottieReady = NO;
             self.imageSearchLoadingLottieUnavailable = YES;
             [self pp_applyImageSearchLoadingLottieVisualState];
+            [self pp_startImageSearchLoadingAnimations];
         }
         return;
     }
@@ -4404,8 +4424,12 @@ PHPickerViewControllerDelegate>
 {
     [self pp_pauseLegacyImageSearchLoadingCAAnimations];
 #if PPSEARCH_HAS_LOTTIE
-    [self.imageSearchLoadingLottieView stop];
-    self.imageSearchLoadingLottieView.animationProgress = 0.0;
+    @try {
+        [self.imageSearchLoadingLottieView stop];
+        self.imageSearchLoadingLottieView.animationProgress = 0.0;
+    } @catch (NSException *exception) {
+        NSLog(@"[PPSearchViewController] Lottie stop exception: %@", exception);
+    }
 #endif
 }
 

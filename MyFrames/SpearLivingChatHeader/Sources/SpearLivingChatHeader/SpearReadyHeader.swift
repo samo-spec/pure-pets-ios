@@ -1,9 +1,7 @@
 import SwiftUI
 
-// MARK: - Ready Conversation Header
-
-/// Identity anchors one reading column. Context stays mounted while utilities
-/// disclose in that column, preserving both the route and transcript anchors.
+/// A compact crown identifies the participant. A separate, full-width band
+/// carries the conversation purpose without stealing transcript space.
 @available(iOS 15.0, *)
 internal struct SpearReadyHeader<AvatarContent: View>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -32,8 +30,6 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
   }
 
-  // MARK: - Top Section
-
   @ViewBuilder
   private var topSection: some View {
     if dynamicTypeSize.isAccessibilitySize {
@@ -50,8 +46,6 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
     }
   }
 
-  // MARK: - Subordinate Conversation Content
-
   @ViewBuilder
   private var subordinateContent: some View {
     if hasSubordinateContent {
@@ -66,17 +60,12 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           subordinateLayout
         }
       }
-      .padding(
-        .leading,
-        dynamicTypeSize.isAccessibilitySize ? 0 : SpearHeaderLayout.conversationLeadingInset
-      )
       .padding(.horizontal, style.horizontalPadding)
-      .padding(.bottom, SpearHeaderLayout.deckSpacing)
     }
   }
 
   private var subordinateLayout: some View {
-    VStack(spacing: SpearHeaderLayout.deckSpacing) {
+    VStack(spacing: 0) {
       if let context = model.context {
         SpearContextRail(
           context: context,
@@ -88,6 +77,13 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       }
 
       if showsIdentityExpansion {
+        if model.context != nil {
+          Rectangle()
+            .fill(Color.primary.opacity(0.10))
+            .frame(height: 0.5)
+            .accessibilityHidden(true)
+        }
+
         SpearIdentityExpansion(
           trust: model.trust,
           metrics: model.metrics,
@@ -97,6 +93,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
           profileAction: actions.profile,
           safetyAction: actions.safety
         )
+        .padding(.top, model.context == nil ? 8 : 4)
         .transition(expansionTransition)
       }
     }
@@ -124,7 +121,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       toolbarActions
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.vertical, 8)
+    .padding(.vertical, 7)
   }
 
   // MARK: - Compact Layout
@@ -145,7 +142,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       }
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.vertical, 8)
+    .padding(.vertical, 7)
   }
 
   private var accessibilityLayout: some View {
@@ -158,7 +155,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
       identityButton
     }
     .padding(.horizontal, style.horizontalPadding)
-    .padding(.vertical, 8)
+    .padding(.vertical, 7)
   }
 
   // MARK: - Toolbar
@@ -265,7 +262,7 @@ internal struct SpearReadyHeader<AvatarContent: View>: View {
   }
 
   private var regularMinimumWidth: CGFloat {
-    actions.call.isVisible && actions.more.availability.isVisible ? 376 : 320
+    actions.call.isVisible && actions.more.availability.isVisible ? 320 : 292
   }
 
   // MARK: - Actions

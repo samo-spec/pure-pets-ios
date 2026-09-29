@@ -38,6 +38,7 @@
 		A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */; };
 		A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
+		A3B174093025000000000002 /* PPUniversalVariantPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B174093025000000000001 /* PPUniversalVariantPicker.swift */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E100012FF1000100A5E001 /* PPHeroApex.swift */; };
 		A5E100042FF1000100A5E004 /* PPBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */; };
@@ -47,6 +48,7 @@
 		A6B710013020000100000001 /* AppRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710003020000100000001 /* AppRemoteImage.swift */; };
 		A6B710063020000100000001 /* PPMediaViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B710053020000100000001 /* PPMediaViewer.swift */; };
 		A810000A301E00010000000A /* PPChatCellBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A810000B301E00010000000B /* PPChatCellBridge.swift */; };
+		A8F0C52CE16A4B549AF51AA4 /* MainKindsCellV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B66D4BA3B4C491BB6A24122 /* MainKindsCellV2.swift */; };
 		A9F200010000000000000001 /* PPPetProfilesSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100010000000000000001 /* PPPetProfilesSwiftUI.swift */; };
 		A9F200020000000000000002 /* PPPetProfileEditorSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100020000000000000002 /* PPPetProfileEditorSwiftUI.swift */; };
 		A9F200030000000000000003 /* PPPetProfilesHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */; };
@@ -465,7 +467,6 @@
 		F281B414301A5AB600040E59 /* PPHomeHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B402301A5AB600040E59 /* PPHomeHostingController.swift */; };
 		F281B415301A5AB600040E59 /* HomeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B404301A5AB600040E59 /* HomeRouter.swift */; };
 		F281B416301A5AB600040E59 /* HomeHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B40A301A5AB600040E59 /* HomeHeroView.swift */; };
-		FA11E7C0A1B2C3D4E5F60002 /* HomeHeroV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */; };
 		F281B417301A5AB600040E59 /* HomeViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B407301A5AB600040E59 /* HomeViewState.swift */; };
 		F281B418301A5AB600040E59 /* HomeModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F281B3FF301A5AB600040E59 /* HomeModelAdapter.swift */; };
 		F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */; };
@@ -644,7 +645,6 @@
 		F2ACA9F8301A93C000F55032 /* PetMedicine.json in Resources */ = {isa = PBXBuildFile; fileRef = F2ACA9F6301A93C000F55032 /* PetMedicine.json */; };
 		F2ACA9FA301A93C000F55032 /* thinking.json in Resources */ = {isa = PBXBuildFile; fileRef = F2ACA9F7301A93C000F55032 /* thinking.json */; };
 		F2ACA9FC301ABCDB00F55032 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */; };
-		A8F0C52CE16A4B549AF51AA4 /* MainKindsCellV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B66D4BA3B4C491BB6A24122 /* MainKindsCellV2.swift */; };
 		F2ACA9FF301ACF4A00F55032 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = F2ACA9FE301ACF4A00F55032 /* Kingfisher */; };
 		F2ACAA01301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */; };
 		F2AD5A010000000000000001 /* PurePetsAdShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AD5A030000000000000001 /* PurePetsAdShareKit */; };
@@ -786,7 +786,6 @@
 		F2E33F6B3006C51A005E31C6 /* PPOrderProgressTimelineRowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F593006C200005E31C6 /* PPOrderProgressTimelineRowView.m */; };
 		F2E33F6C3006C521005E31C6 /* PPOrderStatusStepperView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F573006C1C9005E31C6 /* PPOrderStatusStepperView.m */; };
 		F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */; };
-		A3B174093025000000000002 /* PPUniversalVariantPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B174093025000000000001 /* PPUniversalVariantPicker.swift */; };
 		F2E64412302EB320005B0699 /* PPCommerceCartHolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */; };
 		F2E64419302F76D1005B0699 /* PPProviderStorefrontDataBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E64417302F76D1005B0699 /* PPProviderStorefrontDataBridge.m */; };
 		F2E6441A302F76D1005B0699 /* PPProviderProfileHeroStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E64415302F76D1005B0699 /* PPProviderProfileHeroStore.swift */; };
@@ -903,6 +902,7 @@
 		F33000000000000000000003 /* HomePromotionSpark.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000003 /* HomePromotionSpark.json */; };
 		F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
+		FA11E7C0A1B2C3D4E5F60002 /* HomeHeroV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -977,6 +977,7 @@
 		7248B299EE6D39A2B3A84800 /* NovaSpeechTranscriber.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaSpeechTranscriber.swift; sourceTree = "<group>"; };
 		78BDBCFB11D05E53A115F3C0 /* PPVaccinationEditorSheet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVaccinationEditorSheet.h; sourceTree = "<group>"; };
 		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
+		7B66D4BA3B4C491BB6A24122 /* MainKindsCellV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainKindsCellV2.swift; sourceTree = "<group>"; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
 		94376A6F0A77F44A1BD9FA1C /* PurePets-DesignSystem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "PurePets-DesignSystem.swift"; sourceTree = "<group>"; };
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
@@ -987,6 +988,7 @@
 		A11D00052FFD100000000005 /* UIViewController+PPBottomSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPBottomSurface.h"; sourceTree = "<group>"; };
 		A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPBottomSurface.m"; sourceTree = "<group>"; };
 		A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaSpeechSpeaker.swift; sourceTree = "<group>"; };
+		A3B174093025000000000001 /* PPUniversalVariantPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalVariantPicker.swift; sourceTree = "<group>"; };
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A5E100012FF1000100A5E001 /* PPHeroApex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApex.swift; sourceTree = "<group>"; };
 		A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBackgroundViewApexBridge.m; sourceTree = "<group>"; };
@@ -1771,7 +1773,6 @@
 		F281B407301A5AB600040E59 /* HomeViewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewState.swift; sourceTree = "<group>"; };
 		F281B409301A5AB600040E59 /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeComponents.swift; sourceTree = "<group>"; };
 		F281B40A301A5AB600040E59 /* HomeHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeroView.swift; sourceTree = "<group>"; };
-		FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeroV2View.swift; sourceTree = "<group>"; };
 		F281B40B301A5AB600040E59 /* HomeUniversalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeUniversalCard.swift; sourceTree = "<group>"; };
 		F281B40C301A5AB600040E59 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F281B4692FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormRowFullWidthTextFieldCell.h; sourceTree = "<group>"; };
@@ -2062,7 +2063,6 @@
 		F2ACA9F6301A93C000F55032 /* PetMedicine.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PetMedicine.json; sourceTree = "<group>"; };
 		F2ACA9F7301A93C000F55032 /* thinking.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = thinking.json; sourceTree = "<group>"; };
 		F2ACA9FB301ABCDB00F55032 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
-		7B66D4BA3B4C491BB6A24122 /* MainKindsCellV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainKindsCellV2.swift; sourceTree = "<group>"; };
 		F2ACAA00301AD5F500F55032 /* PPSectionHeaderSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSectionHeaderSwiftUI.swift; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
 		F2AEC1452D6E6AB400B55427 /* MainController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainController.h; sourceTree = "<group>"; };
@@ -2285,7 +2285,6 @@
 		F2E33F673006C4D6005E31C6 /* PPOrderSupportRequestListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderSupportRequestListViewController.m; sourceTree = "<group>"; };
 		F2E33F693006C4FF005E31C6 /* PPOrderTimelineViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderTimelineViewController.m; sourceTree = "<group>"; };
 		F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellSwiftUI.swift; sourceTree = "<group>"; };
-		A3B174093025000000000001 /* PPUniversalVariantPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalVariantPicker.swift; sourceTree = "<group>"; };
 		F2E64411302EB320005B0699 /* PPCommerceCartHolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCommerceCartHolder.swift; sourceTree = "<group>"; };
 		F2E64413302F76D1005B0699 /* PPProviderCompaniesSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPProviderCompaniesSwiftUI.swift; sourceTree = "<group>"; };
 		F2E64414302F76D1005B0699 /* PPProviderProfileHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPProviderProfileHero.swift; sourceTree = "<group>"; };
@@ -2435,6 +2434,7 @@
 		F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeSwiftUIMigrationTests.swift; sourceTree = "<group>"; };
 		F56AEC9C060B7F98E8DD47E0 /* Speech.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoicePermissionManager.swift; sourceTree = "<group>"; };
+		FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeroV2View.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6601,7 +6601,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 234;
+				CURRENT_PROJECT_VERSION = 235;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6709,7 +6709,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets Release.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 234;
+				CURRENT_PROJECT_VERSION = 235;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6814,7 +6814,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 234;
+				CURRENT_PROJECT_VERSION = 235;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6832,7 +6832,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 234;
+				CURRENT_PROJECT_VERSION = 235;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6849,7 +6849,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 234;
+				CURRENT_PROJECT_VERSION = 235;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6866,7 +6866,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 234;
+				CURRENT_PROJECT_VERSION = 235;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

@@ -4373,6 +4373,7 @@
 "home_pulse_pet_context_subtitle" = "اختر سياق الحيوان الذي تريد عرضه";
 "home_pulse_pet_context_title" = "سياق حيوانك";
 "home_pulse_pet_selected_status" = "مختار";
+"home_pulse_pet_choose_status" = "عرض في الرئيسية";
 "home_pulse_pet_hero_subtitle" = "الرعاية والتسوّق والاكتشاف من مكان واحد.";
 "home_pulse_pet_hero_title" = "يومك مع %@";
 "home_pulse_pet_reminder_active_fmt" = "تذكير: %@";
@@ -4688,8 +4689,8 @@
 "chat_header_accessory_title_fallback" = "تفاصيل المنتج";
 "chat_header_badge_product" = "منتج";
 "chat_header_badge_pet" = "أليف";
-"chat_header_order_eyebrow" = "طلب نشط";
-"chat_header_order_action" = "تتبع";
+"chat_header_order_eyebrow" = "طلب";
+"chat_header_order_action" = "عرض الطلب";
 "chat_header_order_title_format" = "الطلب %@";
 "chat_header_start_call_accessibility" = "بدء مكالمة صوتية";
 "chat_header_end_call_accessibility" = "إنهاء المكالمة";
@@ -4700,6 +4701,8 @@
 "chat_header_loading_identity" = "جارٍ تحميل هوية المحادثة";
 "chat_header_conversation_with" = "محادثة مع";
 "chat_header_online_now" = "متصل الآن";
+"chat_header_support_online" = "فريق الدعم متصل الآن";
+"chat_header_view_stories" = "عرض القصص";
 "chat_header_replies_fast" = "سريع الرد";
 "chat_header_replies_typically" = "يرد عادةً قريبًا";
 "chat_header_typing" = "يكتب الآن";

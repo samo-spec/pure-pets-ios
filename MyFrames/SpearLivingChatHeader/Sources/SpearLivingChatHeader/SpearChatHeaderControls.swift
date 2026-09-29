@@ -20,27 +20,19 @@ internal struct SpearHeaderToolbarButton: View {
           Circle()
             .fill(
               isActive
-                ? tint.opacity(0.15)
-                : Color(uiColor: .secondarySystemGroupedBackground).opacity(0.94)
+                ? tint.opacity(0.12)
+                : Color.primary.opacity(0.035)
             )
           Circle()
             .strokeBorder(
-              LinearGradient(
-                colors: [
-                  Color.white.opacity(contrast == .increased ? 0.50 : 0.25),
-                  Color.primary.opacity(contrast == .increased ? 0.25 : 0.08)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              ),
-              lineWidth: contrast == .increased ? 1.5 : 0.75
+              Color.primary.opacity(contrast == .increased ? 0.30 : 0.05),
+              lineWidth: contrast == .increased ? 1.5 : 0.5
             )
           Image(systemName: systemName)
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(tint)
         }
         .frame(width: 38, height: 38)
-        .shadow(color: Color.black.opacity(0.06), radius: 3, x: 0, y: 1.5)
         .frame(width: 44, height: 44)
         .contentShape(Circle())
       }
@@ -72,25 +64,17 @@ internal struct SpearHeaderIconActionButton: View {
       Button(action: action.perform) {
         ZStack {
           Circle()
-            .fill(Color(uiColor: .secondarySystemGroupedBackground).opacity(0.94))
+            .fill(tint.opacity(0.055))
           Circle()
             .strokeBorder(
-              LinearGradient(
-                colors: [
-                  Color.white.opacity(contrast == .increased ? 0.50 : 0.25),
-                  Color.primary.opacity(contrast == .increased ? 0.25 : 0.08)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              ),
-              lineWidth: contrast == .increased ? 1.5 : 0.75
+              Color.primary.opacity(contrast == .increased ? 0.30 : 0.05),
+              lineWidth: contrast == .increased ? 1.5 : 0.5
             )
           Image(systemName: systemName)
             .font(.system(size: 15, weight: .bold))
             .foregroundStyle(tint)
         }
         .frame(width: 38, height: 38)
-        .shadow(color: Color.black.opacity(0.06), radius: 3, x: 0, y: 1.5)
         .frame(width: 44, height: 44)
         .contentShape(Circle())
       }
@@ -158,7 +142,7 @@ internal struct SpearCapsuleItemStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.93 : 1)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
       .opacity(configuration.isPressed ? 0.76 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
@@ -172,7 +156,7 @@ internal struct SpearIconButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.93 : 1)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
       .opacity(configuration.isPressed ? 0.76 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),
@@ -214,22 +198,21 @@ internal struct SpearSecondaryButtonStyle: ButtonStyle {
       .padding(.vertical, 8)
       .frame(minHeight: 44)
       .background(
-        Color.primary.opacity(0.04),
-        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        Color.primary.opacity(0.035),
+        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
       )
       .overlay {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-          .fill(Color.primary.opacity(0.04))
+        RoundedRectangle(cornerRadius: 9, style: .continuous)
+          .fill(Color.primary.opacity(0.05))
           .opacity(configuration.isPressed ? 1 : 0)
       }
       .overlay {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
+        RoundedRectangle(cornerRadius: 9, style: .continuous)
           .strokeBorder(
-            Color.primary.opacity(contrast == .increased ? 0.22 : 0.07),
+            Color.primary.opacity(contrast == .increased ? 0.30 : 0.06),
             lineWidth: contrast == .increased ? 1.5 : 0.5
           )
       }
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
       .opacity(configuration.isPressed ? 0.84 : 1)
       .animation(
         reduceMotion ? nil : SpearHeaderMotion.press(isPressed: configuration.isPressed),

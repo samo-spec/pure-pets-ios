@@ -51,6 +51,7 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
   let action: () -> Void
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   @ViewBuilder
   var body: some View {
@@ -68,17 +69,19 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
       .accessibilityValue(
         isExpanded ? copy.expandedAccessibilityValue : copy.collapsedAccessibilityValue
       )
+      .accessibilityAddTraits(.isHeader)
       .accessibilityIdentifier(SpearChatHeaderAccessibilityID.identity)
     } else {
       identityContent
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier(SpearChatHeaderAccessibilityID.identity)
     }
   }
 
   private var identityContent: some View {
-    HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 10) {
+    HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 9) {
       SpearAvatarFrame(
         trust: model.trust,
         presence: model.presence,
@@ -88,11 +91,11 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
         content: avatarContent
       )
 
-      VStack(alignment: .leading, spacing: 1) {
-        HStack(alignment: .center, spacing: 5) {
+      VStack(alignment: .leading, spacing: 0) {
+        HStack(alignment: .center, spacing: 6) {
           Text(model.name)
-            .font(Font.ppBeirutiBold(size: 20, relativeTo: .headline))
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+            .font(Font.ppBeirutiBold(size: 19, relativeTo: .headline))
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .layoutPriority(1)
@@ -105,17 +108,13 @@ internal struct SpearIdentityButton<AvatarContent: View>: View {
           }
 
           if canExpand {
-            ZStack {
-              Circle()
-                .fill(isExpanded ? brandColor.opacity(0.14) : Color.primary.opacity(0.05))
-              Image(systemName: "chevron.down")
-                .font(.system(size: 8, weight: .heavy))
-                .foregroundStyle(isExpanded ? brandColor : Color.secondary)
-                .rotationEffect(.degrees(isExpanded ? 180 : 0))
-            }
-            .frame(width: 18, height: 18)
-            .animation(SpearHeaderMotion.quick, value: isExpanded)
-            .accessibilityHidden(true)
+            Image(systemName: "chevron.down")
+              .font(.system(size: 10, weight: .semibold))
+              .foregroundStyle(isExpanded ? brandColor : Color.secondary)
+              .rotationEffect(.degrees(isExpanded ? 180 : 0))
+              .frame(width: 16, height: 24)
+              .animation(reduceMotion ? nil : SpearHeaderMotion.quick, value: isExpanded)
+              .accessibilityHidden(true)
           }
         }
 

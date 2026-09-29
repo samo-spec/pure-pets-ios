@@ -232,7 +232,11 @@ final class AddAdoptPetStore: ObservableObject {
         if let authUID = Auth.auth().currentUser?.uid.trimmingCharacters(in: .whitespacesAndNewlines), !authUID.isEmpty {
             return authUID
         }
-        let userMgrID = (UserManager.shared().currentUser?.id ?? UserManager.shared().currentUser?.ID ?? "")
+        let userMgrID = (
+            UserManager
+                .shared().currentUser?.id ?? UserManager
+                .shared().currentUser?.id ?? ""
+        )
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return userMgrID
     }

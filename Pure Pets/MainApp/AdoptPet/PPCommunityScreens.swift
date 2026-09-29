@@ -130,10 +130,7 @@ private func currentAuthenticatedUID() -> String {
     if let authUID = Auth.auth().currentUser?.uid.trimmingCharacters(in: .whitespacesAndNewlines), !authUID.isEmpty {
         return authUID
     }
-    let userMgrID = communityString(UserManager.shared().currentUser?.id).isEmpty
-        ? communityString(UserManager.shared().currentUser?.ID)
-        : communityString(UserManager.shared().currentUser?.id)
-    return userMgrID
+    return communityString(UserManager.shared().currentUser?.id)
 }
 
 private func isUserCurrentlyLoggedIn() -> Bool {
