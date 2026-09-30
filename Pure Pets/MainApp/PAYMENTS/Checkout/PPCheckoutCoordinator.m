@@ -38,6 +38,7 @@
 @property (nonatomic, strong, nullable) PPAddressModel *selectedAddress;
 @property (nonatomic, copy) NSString *selectedPaymentMethodId;
 @property (nonatomic, strong) id<FIRListenerRegistration> orderListener;
+@property (nonatomic, assign, readwrite) PPCheckoutState state;
 @property (nonatomic, assign) BOOL isCheckoutInProgress;
 @property (nonatomic, assign) NSInteger checkoutGeneration;
 @property (nonatomic, assign) BOOL hasResolvedCheckout;
@@ -51,6 +52,7 @@
 /// a duplicate order.  Cleared on success or explicit cancellation.
 @property (nonatomic, copy, nullable) NSString *checkoutIdempotencyKey;
 
+- (BOOL)pp_transitionToState:(PPCheckoutState)newState generation:(NSInteger)generation;
 - (NSError *)checkoutInventoryErrorFromIssues:(NSArray<NSDictionary *> *)issues;
 - (void)beginPaymentForOrder:(PPOrder *)order generation:(NSInteger)generation;
 - (void)startListeningToOrder:(PPOrder *)order generation:(NSInteger)generation;
@@ -87,6 +89,80 @@
 
 @end
 
+NSString *NSStringFromPPCheckoutState(PPCheckoutState state)
+{
+    switch (state) {
+        case PPCheckoutStateIdle: return @"idle";
+        case PPCheckoutStateValidating: return @"validating";
+        case PPCheckoutStateCreatingOrder: return @"creatingOrder";
+        case PPCheckoutStateAwaitingPayment: return @"awaitingPayment";
+        case PPCheckoutStateVerifyingPayment: return @"verifyingPayment";
+        case PPCheckoutStatePendingVerification: return @"pendingVerification";
+        case PPCheckoutStateSucceeded: return @"succeeded";
+        case PPCheckoutStateFailed: return @"failed";
+        case PPCheckoutStateCancelled: return @"cancelled";
+        default: return @"unknown";
+    }
+}
+
+BOOL PPCheckoutCanTransition(PPCheckoutState fromState, PPCheckoutState toState)
+{
+    if (fromState == toState) {
+        return YES;
+    }
+    switch (fromState) {
+        case PPCheckoutStateIdle:
+            return (toState == PPCheckoutStateValidating);
+
+        case PPCheckoutStateValidating:
+            return (toState == PPCheckoutStateCreatingOrder ||
+                    toState == PPCheckoutStateFailed ||
+                    toState == PPCheckoutStateCancelled);
+
+        case PPCheckoutStateCreatingOrder:
+            return (toState == PPCheckoutStateAwaitingPayment ||
+                    toState == PPCheckoutStateVerifyingPayment ||
+                    toState == PPCheckoutStateSucceeded ||
+                    toState == PPCheckoutStateFailed ||
+                    toState == PPCheckoutStateCancelled);
+
+        case PPCheckoutStateAwaitingPayment:
+            return (toState == PPCheckoutStateVerifyingPayment ||
+                    toState == PPCheckoutStatePendingVerification ||
+                    toState == PPCheckoutStateCancelled ||
+                    toState == PPCheckoutStateFailed ||
+                    toState == PPCheckoutStateSucceeded);
+
+        case PPCheckoutStateVerifyingPayment:
+            return (toState == PPCheckoutStateSucceeded ||
+                    toState == PPCheckoutStateFailed ||
+                    toState == PPCheckoutStatePendingVerification ||
+                    toState == PPCheckoutStateCancelled);
+
+        case PPCheckoutStatePendingVerification:
+            return (toState == PPCheckoutStateSucceeded ||
+                    toState == PPCheckoutStateFailed ||
+                    toState == PPCheckoutStateCancelled ||
+                    toState == PPCheckoutStateIdle ||
+                    toState == PPCheckoutStateValidating);
+
+        case PPCheckoutStateSucceeded:
+            return (toState == PPCheckoutStateIdle ||
+                    toState == PPCheckoutStateValidating);
+
+        case PPCheckoutStateFailed:
+            return (toState == PPCheckoutStateIdle ||
+                    toState == PPCheckoutStateValidating);
+
+        case PPCheckoutStateCancelled:
+            return (toState == PPCheckoutStateIdle ||
+                    toState == PPCheckoutStateValidating);
+
+        default:
+            return NO;
+    }
+}
+
 static NSString *PPCheckoutItemsSignature(NSArray<NSDictionary *> *items)
 {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
@@ -109,7 +185,7 @@ static BOOL PPCheckoutOrderMatchesCart(PPOrder *order,
                                        NSString *addressID)
 {
     if (!order) return NO;
-    if (fabs(order.amount - amount) > 0.01) return NO;
+    if (fabs([PPOrder roundMoney:order.amount] - [PPOrder roundMoney:amount]) > 0.005) return NO;
     if (addressID.length > 0 && ![order.shippingAddressId isEqualToString:addressID]) return NO;
     NSString *candidateSignature = PPCheckoutItemsSignature(order.items);
     NSString *targetSignature = PPCheckoutItemsSignature(items);
@@ -326,6 +402,7 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         _explicitCheckoutItems = checkoutItems.count > 0
             ? checkoutItems.copy
             : nil;
+        _state = PPCheckoutStateIdle;
     }
     return self;
 }
@@ -343,6 +420,37 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 - (BOOL)pp_isCheckoutGenerationCurrent:(NSInteger)generation
 {
     return generation > 0 && generation == self.checkoutGeneration;
+}
+
+- (BOOL)pp_transitionToState:(PPCheckoutState)newState generation:(NSInteger)generation
+{
+    if (![self pp_isCheckoutGenerationCurrent:generation]) {
+        PPORDERLog(@"[State Machine] Rejected transition to %@: stale generation %ld (current: %ld)",
+                   NSStringFromPPCheckoutState(newState),
+                   (long)generation,
+                   (long)self.checkoutGeneration);
+        return NO;
+    }
+
+    if (!PPCheckoutCanTransition(self.state, newState)) {
+        PPORDERLog(@"[State Machine] ❌ Illegal transition rejected: %@ -> %@ | generation=%ld",
+                   NSStringFromPPCheckoutState(self.state),
+                   NSStringFromPPCheckoutState(newState),
+                   (long)generation);
+        return NO;
+    }
+
+    PPORDERLog(@"[State Machine] Transition: %@ -> %@ | generation=%ld",
+               NSStringFromPPCheckoutState(self.state),
+               NSStringFromPPCheckoutState(newState),
+               (long)generation);
+
+    _state = newState;
+    self.isCheckoutInProgress = (newState == PPCheckoutStateValidating ||
+                                 newState == PPCheckoutStateCreatingOrder ||
+                                 newState == PPCheckoutStateAwaitingPayment ||
+                                 newState == PPCheckoutStateVerifyingPayment);
+    return YES;
 }
 
 - (BOOL)pp_beginTerminalResolutionForGeneration:(NSInteger)generation label:(NSString *)label
@@ -622,6 +730,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     self.checkoutGeneration += 1;
     NSInteger generation = self.checkoutGeneration;
 
+    [self pp_transitionToState:PPCheckoutStateValidating generation:generation];
+
     // Generate a stable idempotency key for this checkout attempt.
     // If one already exists (retry after a transient failure), keep it so
     // the backend can deduplicate the order creation request.
@@ -642,7 +752,7 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         NSError *error = [NSError errorWithDomain:@"Checkout"
                                              code:1001
                                          userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_cart_empty")}];
-        if (completion) completion(PPCheckoutResultFailed, nil, error);
+        [self failOrderWithError:error generation:generation];
         return;
     }
 
@@ -692,6 +802,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
             [self failOrderWithError:error generation:generation];
             return;
         }
+
+        [self pp_transitionToState:PPCheckoutStateCreatingOrder generation:generation];
 
         if (self.currentOrder.orderId.length > 0) {
             // Always re-resolve pending orders from Firestore before payment launch so
@@ -756,6 +868,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         [self completeWithSuccess:nil generation:generation];
         return;
     }
+
+    [self pp_transitionToState:PPCheckoutStateAwaitingPayment generation:generation];
 
     PPORDERLog(@"Starting QIB payment | generation=%ld | orderId=%@",
                (long)generation,
@@ -829,6 +943,7 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         PPORDERLog(@"Verifying payment with Cloud Function | generation=%ld | orderId=%@",
                    (long)generation,
                    order.orderId ?: @"");
+        [self pp_transitionToState:PPCheckoutStateVerifyingPayment generation:generation];
         // Start the delayed-confirmation timeout only after the customer leaves the QIB UI
         // and we begin backend verification. This avoids showing a false "don't pay again"
         // warning while the user is still entering card details inside the gateway screen.
@@ -1040,6 +1155,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         return;
     }
 
+    [self pp_transitionToState:PPCheckoutStateSucceeded generation:generation];
+
     if (snapshot) {
         PPOrder *updatedOrder = [PPOrder orderFromSnapshot:snapshot];
         if (updatedOrder) {
@@ -1064,12 +1181,12 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     }
 
     [self cleanup];
-    if (![self pp_usesExplicitCheckoutItems]) {
-        [CartManager.sharedManager clearCart];
-    }
+    [CartManager.sharedManager removePurchasedItems:checkoutItems completion:nil];
 
-    if (self.completion) {
-        self.completion(PPCheckoutResultSuccess, self.currentOrder, nil);
+    PPCheckoutCompletion completion = self.completion;
+    self.completion = nil;
+    if (completion) {
+        completion(PPCheckoutResultSuccess, self.currentOrder, nil);
     }
 }
 
@@ -1078,6 +1195,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     if (![self pp_beginTerminalResolutionForGeneration:generation label:@"failure"]) {
         return;
     }
+
+    [self pp_transitionToState:PPCheckoutStateFailed generation:generation];
 
     if (snapshot) {
         PPOrder *updatedOrder = [PPOrder orderFromSnapshot:snapshot];
@@ -1101,8 +1220,10 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
                     userInfo:@{NSLocalizedDescriptionKey: reason,
                                PPCheckoutErrorIsRetryableKey: @YES}];
     
-    if (self.completion) {
-        self.completion(PPCheckoutResultFailed, self.currentOrder, error);
+    PPCheckoutCompletion completion = self.completion;
+    self.completion = nil;
+    if (completion) {
+        completion(PPCheckoutResultFailed, self.currentOrder, error);
     }
 }
 
@@ -1111,6 +1232,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     if (![self pp_beginTerminalResolutionForGeneration:generation label:@"pending_verification"]) {
         return;
     }
+
+    [self pp_transitionToState:PPCheckoutStatePendingVerification generation:generation];
 
     PPORDERLog(@"Checkout pending verification | generation=%ld | orderId=%@ | message=%@",
                (long)generation,
@@ -1126,8 +1249,10 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
                                                   code:error.code
                                               userInfo:[enrichedUserInfo copy]];
 
-    if (self.completion) {
-        self.completion(PPCheckoutResultPendingVerification, self.currentOrder, retryableError);
+    PPCheckoutCompletion completion = self.completion;
+    self.completion = nil;
+    if (completion) {
+        completion(PPCheckoutResultPendingVerification, self.currentOrder, retryableError);
     }
 }
 
@@ -1136,6 +1261,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     if (![self pp_beginTerminalResolutionForGeneration:generation label:@"cancelled"]) {
         return;
     }
+
+    [self pp_transitionToState:PPCheckoutStateCancelled generation:generation];
 
     self.currentOrder = order ?: self.currentOrder;
     self.awaitingServerCancellationConfirmation = YES;
@@ -1247,12 +1374,14 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     self.currentOrder = nil;
     [self cleanup];
 
-    if (self.completion) {
+    PPCheckoutCompletion completion = self.completion;
+    self.completion = nil;
+    if (completion) {
         NSError *cancelError =
         [NSError errorWithDomain:NSCocoaErrorDomain
                             code:NSUserCancelledError
                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_cancelled_by_user")}];
-        self.completion(PPCheckoutResultCancelled, order, cancelError);
+        completion(PPCheckoutResultCancelled, order, cancelError);
     }
 }
 
@@ -1271,6 +1400,7 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     [self cleanup];
     if (self.completion) {
         self.completion(PPCheckoutResultCancellationPending, order, error);
+        self.completion = nil;
     }
 }
 
@@ -1284,6 +1414,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     if (![self pp_beginTerminalResolutionForGeneration:generation label:@"error"]) {
         return;
     }
+
+    [self pp_transitionToState:PPCheckoutStateFailed generation:generation];
 
     PPORDERLog(@"Checkout error | generation=%ld | orderId=%@ | retryable=%d | error=%@",
                (long)generation,
@@ -1311,8 +1443,10 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
                                          userInfo:[enrichedUserInfo copy]];
     }
 
-    if (self.completion) {
-        self.completion(PPCheckoutResultFailed, self.currentOrder, deliveredError);
+    PPCheckoutCompletion completion = self.completion;
+    self.completion = nil;
+    if (completion) {
+        completion(PPCheckoutResultFailed, self.currentOrder, deliveredError);
     }
 }
 

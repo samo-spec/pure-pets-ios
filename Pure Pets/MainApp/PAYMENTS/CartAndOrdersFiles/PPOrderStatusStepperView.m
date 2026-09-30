@@ -58,7 +58,25 @@
     self.showsFailure = showsFailure;
     self.progressTintColor = tintColor;
     [self rebuildViews];
+    [self pp_updateAccessibility];
     [self setNeedsLayout];
+}
+
+- (void)pp_updateAccessibility
+{
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
+    self.accessibilityLabel = kLang(@"order_status");
+    if (self.steps.count > 0 && self.currentIndex < (NSInteger)self.steps.count) {
+        NSString *currentStep = self.steps[self.currentIndex];
+        self.accessibilityValue = [NSString stringWithFormat:@"%@ (%ld %@ %ld)",
+                                   currentStep,
+                                   (long)(self.currentIndex + 1),
+                                   Language.isRTL ? @"من" : @"of",
+                                   (long)self.steps.count];
+    } else {
+        self.accessibilityValue = nil;
+    }
 }
 
 - (void)rebuildViews

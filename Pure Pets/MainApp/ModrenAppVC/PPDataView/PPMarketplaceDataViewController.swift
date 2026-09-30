@@ -10,12 +10,20 @@ import UIKit
 @available(iOS 15.0, *)
 @MainActor
 @objc(PPMarketplaceDataViewController)
-final class PPMarketplaceDataViewController: UIViewController {
+final class PPMarketplaceDataViewController: UIViewController, UIGestureRecognizerDelegate {
     private let bridge: PPMarketplaceDataViewBridge
     private let store: PPMarketplaceDataViewStore
     private var hostingController: UIHostingController<PPMarketplaceDataViewScreen>?
     private var inheritedNavigationBarHidden: Bool?
-    private var inheritedInteractivePopGestureEnabled: Bool?
+    private lazy var backEdgeGesture: UIScreenEdgePanGestureRecognizer = {
+        let gesture = UIScreenEdgePanGestureRecognizer(
+            target: self,
+            action: #selector(handleBackEdgeGesture(_:))
+        )
+        gesture.maximumNumberOfTouches = 1
+        gesture.delegate = self
+        return gesture
+    }()
 
     @objc(initWithInput:)
     init(input: PPDataViewInput) {
@@ -41,6 +49,7 @@ final class PPMarketplaceDataViewController: UIViewController {
             : .forceLeftToRight
         configureNavigationAppearance()
         installSwiftUIHierarchy()
+        view.addGestureRecognizer(backEdgeGesture)
         store.start()
     }
 
@@ -50,31 +59,20 @@ final class PPMarketplaceDataViewController: UIViewController {
             inheritedNavigationBarHidden = navigationController.isNavigationBarHidden
             navigationController.setNavigationBarHidden(true, animated: animated)
         }
-        if let interactivePopGestureRecognizer =
-            navigationController?.interactivePopGestureRecognizer {
-            inheritedInteractivePopGestureEnabled =
-                interactivePopGestureRecognizer.isEnabled
-            interactivePopGestureRecognizer.isEnabled = true
-        }
+        configureBackNavigation()
         bridge.screenWillAppear()
         store.schedulePresentationStateRefresh()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        configureBackNavigation()
         PPRootLegacyAdapter.applySurface(for: self, animated: animated)
         store.schedulePresentationStateRefresh()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if let interactivePopGestureRecognizer =
-                navigationController?.interactivePopGestureRecognizer,
-           let inheritedInteractivePopGestureEnabled {
-            interactivePopGestureRecognizer.isEnabled =
-                inheritedInteractivePopGestureEnabled
-            self.inheritedInteractivePopGestureEnabled = nil
-        }
         if let navigationController,
            let inheritedNavigationBarHidden {
             navigationController.setNavigationBarHidden(
@@ -84,6 +82,14 @@ final class PPMarketplaceDataViewController: UIViewController {
             self.inheritedNavigationBarHidden = nil
         }
         bridge.screenWillDisappear()
+    }
+
+    override func accessibilityPerformEscape() -> Bool {
+        guard canNavigateBack else {
+            return super.accessibilityPerformEscape()
+        }
+        bridge.goBack()
+        return true
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -170,6 +176,69 @@ final class PPMarketplaceDataViewController: UIViewController {
         ])
         hosting.didMove(toParent: self)
         hostingController = hosting
+    }
+
+    private func configureBackNavigation() {
+        guard let navigationController,
+              navigationController.topViewController === self else { return }
+
+        // UIKit resolves its leading edge and transition direction from the
+        // navigation container, independently of SwiftUI's layout direction.
+        let semantic = PPUniversalCellSwiftUIBridge.isRightToLeft()
+            ? UISemanticContentAttribute.forceRightToLeft
+            : .forceLeftToRight
+        navigationController.view.semanticContentAttribute = semantic
+        navigationController.navigationBar.semanticContentAttribute = semantic
+        backEdgeGesture.edges = semantic == .forceRightToLeft ? .right : .left
+
+        // The hidden navigation bar's system gesture is unreliable on this host.
+        // Keep ownership local and route a completed edge swipe through the same
+        // back action as the visible control, without replacing the nav delegate.
+        navigationController.pp_enableInteractivePopGesture()
+    }
+
+    @objc(pp_disableInteractivePopGesture)
+    func pp_disableInteractivePopGesture() -> Bool {
+        // Prevent two recognizers from popping the same screen.
+        true
+    }
+
+    private var canNavigateBack: Bool {
+        guard let navigationController else { return false }
+        return navigationController.topViewController === self
+            && navigationController.viewControllers.count > 1
+            && navigationController.transitionCoordinator == nil
+            && presentedViewController == nil
+            && !isBeingDismissed
+            && !isMovingFromParent
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer === backEdgeGesture, canNavigateBack else { return false }
+        let velocity = backEdgeGesture.velocity(in: view)
+        let inwardVelocity = backEdgeGesture.edges == .right ? -velocity.x : velocity.x
+        return inwardVelocity > abs(velocity.y)
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        // SwiftUI also installs non-UIPan recognizers for its drag gestures.
+        // Give the edge priority over those as well as the scroll view's pan.
+        gestureRecognizer === backEdgeGesture
+            && otherGestureRecognizer !== navigationController?.interactivePopGestureRecognizer
+    }
+
+    @objc private func handleBackEdgeGesture(_ gesture: UIScreenEdgePanGestureRecognizer) {
+        guard gesture.state == .ended, canNavigateBack else { return }
+        let direction: CGFloat = gesture.edges == .right ? -1 : 1
+        let distance = gesture.translation(in: view).x * direction
+        let velocity = gesture.velocity(in: view).x * direction
+        let crossedThreshold = distance >= max(44, view.bounds.width * 0.16)
+        let deliberateFlick = distance >= 16 && velocity >= 650
+        guard velocity >= 0, crossedThreshold || deliberateFlick else { return }
+        bridge.goBack()
     }
 
     private func configureNavigationAppearance() {

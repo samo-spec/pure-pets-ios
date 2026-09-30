@@ -4414,6 +4414,8 @@ struct PPEcosystemDomainSwitcher: View {
 
 enum PPProvisionsCareLayout {
     static let featuredActionID = "shop"
+    static let row1SecondaryActionID = "food"
+    static let row2ActionIDs = ["pharmacy", "vet", "services"]
     static let gridColumns = [["food", "pharmacy"], ["vet", "services"]]
     static let compactRowCount = 2
     static let compactCardHeight: CGFloat = 112
@@ -4425,6 +4427,22 @@ enum PPProvisionsCareLayout {
     static let featuredToGridSpacing: CGFloat = 8
     static let innerSectionSpacing: CGFloat = 8
     static let rowSpacing: CGFloat = innerSectionSpacing
+
+    // Living Commerce Portal: test suite contract and animation tokens
+    static let featuredLottieResourceName = "LottieAnimations/Shop.json"
+    static let featuredLottieStoragePath = "LottieAnimations/Shop.json"
+    static let featuredLottieFallbackName = "Shop2.json"
+    static let featuredPrefersFirebaseSource = true
+    static let featuredArtworkSide: CGFloat = 80
+
+    static func singleColumnWidth(totalWidth: CGFloat) -> CGFloat {
+        max(0, (totalWidth - (innerSectionSpacing * 2)) / 3)
+    }
+
+    static func twoColumnFeaturedCardWidth(totalWidth: CGFloat) -> CGFloat {
+        let single = singleColumnWidth(totalWidth: totalWidth)
+        return (single * 2) + innerSectionSpacing
+    }
 
     static func preservedFeaturedCardWidth(totalWidth: CGFloat) -> CGFloat {
         max(0, (totalWidth - (baselineColumnSpacing * 2)) / 3)
@@ -4451,23 +4469,24 @@ struct PPCommerceHeroCard: View {
     var fixedHeight: CGFloat? = nil
     let onTap: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
         } label: {
-            VStack(alignment: .leading, spacing: PPSpace.md) {
-                HStack(alignment: .top) {
-                    PPHomeQuickActionIcon(action: action, accent: accent, isFeatured: true)
-                    Spacer(minLength: 0)
-                    PPHomeQuickActionArrow()
-                }
-                Spacer(minLength: 0)
+            HStack(alignment: .center, spacing: PPSpace.sm) {
+                PPHomeQuickActionIcon(action: action, accent: accent, isFeatured: true)
                 PPHomeQuickActionCopy(action: action, isFeatured: true)
+                    .layoutPriority(1)
+                Spacer(minLength: 0)
+                PPHomeQuickActionArrow()
             }
-            .padding(PPSpace.md)
+            .padding(.horizontal, PPSpace.md)
+            .padding(.vertical, PPSpace.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: fixedHeight, alignment: .topLeading)
+            .frame(height: dynamicTypeSize >= .xxLarge ? nil : (fixedHeight ?? PPProvisionsCareLayout.compactCardHeight), alignment: .leading)
             .modifier(PPHomeQuickActionSurface())
         }
         .buttonStyle(HomeCardPressStyle())
@@ -4582,13 +4601,16 @@ private struct PPHomeQuickActionCopy: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.xxs) {
             Text(action.title)
-                .font(HomeFont.bold(isFeatured ? 18 : 14))
+                .font(HomeFont.bold(isFeatured ? 17 : 14))
                 .foregroundStyle(Color.homeTextPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
             Text(action.subtitle)
                 .font(HomeFont.regular(isFeatured ? 12 : 11))
                 .foregroundStyle(Color.homeTextSecondary)
+                .lineLimit(dynamicTypeSize >= .xxLarge ? nil : 2)
+                .minimumScaleFactor(0.85)
         }
-        .lineLimit(dynamicTypeSize >= .xxLarge ? nil : 2)
         .fixedSize(horizontal: false, vertical: true)
         .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -4707,44 +4729,50 @@ struct PPProvisionsCareArchitectureView: View {
 
     private var featuredGrid: some View {
         GeometryReader { proxy in
-            HStack(alignment: .top, spacing: PPProvisionsCareLayout.featuredToGridSpacing) {
-                if let shopAction = action(id: PPProvisionsCareLayout.featuredActionID) {
-                    PPCommerceHeroCard(
-                        action: shopAction,
-                        accent: accent(for: shopAction),
-                        fixedHeight: PPProvisionsCareLayout.featuredCardHeight,
-                        onTap: { onSelect(shopAction) }
-                    )
-                    .frame(width: PPProvisionsCareLayout.preservedFeaturedCardWidth(totalWidth: proxy.size.width))
-                    .accessibilityIdentifier("home_launcher_provisions")
+            let totalWidth = proxy.size.width
+            let singleWidth = PPProvisionsCareLayout.singleColumnWidth(totalWidth: totalWidth)
+            let featuredWidth = PPProvisionsCareLayout.twoColumnFeaturedCardWidth(totalWidth: totalWidth)
+
+            VStack(spacing: PPProvisionsCareLayout.rowSpacing) {
+                HStack(spacing: PPProvisionsCareLayout.innerSectionSpacing) {
+                    if let shopAction = action(id: PPProvisionsCareLayout.featuredActionID) {
+                        PPCommerceHeroCard(
+                            action: shopAction,
+                            accent: accent(for: shopAction),
+                            fixedHeight: PPProvisionsCareLayout.compactCardHeight,
+                            onTap: { onSelect(shopAction) }
+                        )
+                        .frame(width: featuredWidth)
+                        .accessibilityIdentifier("home_launcher_provisions")
+                    }
+
+                    if let foodAction = action(id: PPProvisionsCareLayout.row1SecondaryActionID) {
+                        PPClinicalServiceCard(
+                            action: foodAction,
+                            accent: accent(for: foodAction),
+                            onTap: { onSelect(foodAction) }
+                        )
+                        .frame(width: singleWidth)
+                        .accessibilityIdentifier(accessibilityIdentifier(for: foodAction))
+                    }
                 }
 
-                HStack(alignment: .top, spacing: PPProvisionsCareLayout.innerSectionSpacing) {
-                    compactColumn(ids: PPProvisionsCareLayout.gridColumns[0])
-                        .frame(maxWidth: .infinity)
-
-                    compactColumn(ids: PPProvisionsCareLayout.gridColumns[1])
-                        .frame(maxWidth: .infinity)
+                HStack(spacing: PPProvisionsCareLayout.innerSectionSpacing) {
+                    ForEach(PPProvisionsCareLayout.row2ActionIDs, id: \.self) { id in
+                        if let compactAction = action(id: id) {
+                            PPClinicalServiceCard(
+                                action: compactAction,
+                                accent: accent(for: compactAction),
+                                onTap: { onSelect(compactAction) }
+                            )
+                            .frame(width: singleWidth)
+                            .accessibilityIdentifier(accessibilityIdentifier(for: compactAction))
+                        }
+                    }
                 }
-                .frame(maxWidth: .infinity)
             }
         }
         .frame(height: PPProvisionsCareLayout.featuredCardHeight)
-    }
-
-    private func compactColumn(ids: [String]) -> some View {
-        VStack(spacing: PPProvisionsCareLayout.rowSpacing) {
-            ForEach(ids, id: \.self) { id in
-                if let compactAction = action(id: id) {
-                    PPClinicalServiceCard(
-                        action: compactAction,
-                        accent: accent(for: compactAction),
-                        onTap: { onSelect(compactAction) }
-                    )
-                    .accessibilityIdentifier(accessibilityIdentifier(for: compactAction))
-                }
-            }
-        }
     }
 
     private var accessibilityStack: some View {
@@ -4758,7 +4786,7 @@ struct PPProvisionsCareArchitectureView: View {
                 .accessibilityIdentifier("home_launcher_provisions")
             }
 
-            ForEach(PPProvisionsCareLayout.gridColumns.flatMap { $0 }, id: \.self) { id in
+            ForEach([PPProvisionsCareLayout.row1SecondaryActionID] + PPProvisionsCareLayout.row2ActionIDs, id: \.self) { id in
                 if let compactAction = action(id: id) {
                     PPClinicalServiceCard(
                         action: compactAction,

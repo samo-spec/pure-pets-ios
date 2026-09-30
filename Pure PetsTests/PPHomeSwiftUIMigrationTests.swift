@@ -131,6 +131,22 @@ final class PPHomeSwiftUIMigrationTests: XCTestCase {
         )
     }
 
+    func testProvisionsCareLayoutTwoColumnFeaturedCardGeometry() {
+        let totalWidth: CGFloat = 320
+        let single = PPProvisionsCareLayout.singleColumnWidth(totalWidth: totalWidth)
+        let featured = PPProvisionsCareLayout.twoColumnFeaturedCardWidth(totalWidth: totalWidth)
+        let spacing = PPProvisionsCareLayout.innerSectionSpacing
+
+        // Row 1: 2-column featured card + spacing + single column card == totalWidth
+        XCTAssertEqual(featured + spacing + single, totalWidth, accuracy: 0.001)
+        // Row 2: 3 single column cards + 2 spacings == totalWidth
+        XCTAssertEqual(single * 3 + spacing * 2, totalWidth, accuracy: 0.001)
+        XCTAssertEqual(PPProvisionsCareLayout.row1SecondaryActionID, "food")
+        XCTAssertEqual(PPProvisionsCareLayout.row2ActionIDs, ["pharmacy", "vet", "services"])
+        XCTAssertEqual(PPProvisionsCareLayout.compactCardHeight, 112)
+        XCTAssertEqual(PPProvisionsCareLayout.featuredCardHeight, 232)
+    }
+
     func testFeaturedShopUsesLivingCommercePortalAnimationContract() {
         XCTAssertEqual(
             PPProvisionsCareLayout.featuredLottieResourceName,

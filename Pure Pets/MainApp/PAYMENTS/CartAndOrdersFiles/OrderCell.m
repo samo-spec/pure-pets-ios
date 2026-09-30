@@ -426,6 +426,7 @@
         [_statusPillContainer.layer addAnimation:transition forKey:@"PPOrderStatusChange"];
         [_statusRailView.layer addAnimation:transition forKey:@"PPOrderRailChange"];
     }
+    [self pp_updateAccessibility];
     [self setNeedsLayout];
 }
 
@@ -649,8 +650,33 @@
         _itemImageView.image = [UIImage imageNamed:@"placeholder"];
     }
 
+    [self pp_updateAccessibility];
     [self setNeedsLayout];
     [self layoutIfNeeded];
+}
+
+- (void)pp_updateAccessibility {
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+
+    NSMutableArray<NSString *> *components = [NSMutableArray array];
+    if (_nameLabel.text.length > 0) {
+        [components addObject:_nameLabel.text];
+    }
+    if (_quantityLabel.text.length > 0) {
+        [components addObject:_quantityLabel.text];
+    }
+    if (_priceLabel.text.length > 0) {
+        [components addObject:_priceLabel.text];
+    }
+    if (_currentStatusText.length > 0) {
+        [components addObject:[NSString stringWithFormat:@"%@: %@", kLang(@"order_status"), _currentStatusText]];
+    }
+    if (_currentDateText.length > 0) {
+        [components addObject:_currentDateText];
+    }
+    self.accessibilityLabel = [components componentsJoinedByString:@", "];
+    self.accessibilityHint = kLang(@"order_history_row_accessibility_hint");
 }
 
 @end

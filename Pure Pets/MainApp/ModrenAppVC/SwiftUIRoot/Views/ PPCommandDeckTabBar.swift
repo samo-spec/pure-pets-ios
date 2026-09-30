@@ -363,10 +363,21 @@ public struct PPCommandDeckTabBar: View {
                     .background(theme.createTint, in: Circle())
                     .overlay(alignment: .bottomTrailing) {
                         Image(systemName: "plus")
-                            .font(.system(size: 8, weight: .heavy))
+                            .font(.system(size: 9, weight: .heavy))
                             .foregroundStyle(theme.createTint)
-                            .frame(width: 14, height: 14)
+                            .frame(width: 16, height: 16)
                             .background(theme.surface, in: Circle())
+                            .overlay {
+                                Circle().strokeBorder(
+                                    theme.createTint,
+                                    lineWidth: contrast == .increased ? 2 : 1.25
+                                )
+                            }
+                            .background {
+                                Circle().fill(theme.surface).padding(-1.5)
+                            }
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
                 Text(Language.get("Add", alter: "Add") ?? "Add")
                     .font(PPFont.medium(PPCommandDeckMetrics.labelPointSize))

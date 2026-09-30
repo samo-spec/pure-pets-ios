@@ -63,7 +63,7 @@ static NSString *PPOrderItemsSignature(NSArray<NSDictionary *> *items) {
 
 static BOOL PPOrderMatchesCart(PPOrder *order, NSArray<NSDictionary *> *items, double amount, NSString *addressID) {
     if (!order) return NO;
-    if (fabs(order.amount - amount) > 0.01) return NO;
+    if (fabs([PPOrder roundMoney:order.amount] - [PPOrder roundMoney:amount]) > 0.005) return NO;
     if (addressID.length > 0 && ![order.shippingAddressId isEqualToString:addressID]) return NO;
     NSString *candidateSignature = PPOrderItemsSignature(order.items);
     NSString *targetSignature = PPOrderItemsSignature(items);
@@ -926,9 +926,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             order.userId = userId;
             order.status = PPOrderStatusPending;
             order.rawStatus = @"pending";
-            order.amount = [orderDict[@"amount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"amount"] doubleValue] : amount;
-            order.shippingFee = [orderDict[@"shippingFee"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"shippingFee"] doubleValue] : 0.0;
-            double totalAmount = [orderDict[@"totalAmount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"totalAmount"] doubleValue] : order.amount;
+            order.amount = [orderDict[@"amount"] respondsToSelector:@selector(doubleValue)] ? [PPOrder roundMoney:[orderDict[@"amount"] doubleValue]] : [PPOrder roundMoney:amount];
+            order.shippingFee = [orderDict[@"shippingFee"] respondsToSelector:@selector(doubleValue)] ? [PPOrder roundMoney:[orderDict[@"shippingFee"] doubleValue]] : 0.0;
+            double totalAmount = [orderDict[@"totalAmount"] respondsToSelector:@selector(doubleValue)] ? [PPOrder roundMoney:[orderDict[@"totalAmount"] doubleValue]] : order.amount;
             order.totalAmount = totalAmount > 0 ? totalAmount : order.amount;
             NSString *currency = PPOrderTrimmedString(orderDict[@"currency"]);
             order.currency = currency.length > 0 ? currency : PPOrderResolvedCurrencyCode();
@@ -1294,6 +1294,15 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             return nil;
         }
         return kLang(@"order_action_cancel_unavailable_payment_pending");
+    }
+
+    // For paid or COD orders, direct cancellation is only available before fulfillment begins.
+    // An unknown or unrecognized backend status must fail closed and never trigger cancellation.
+    BOOL isCancellablePreFulfillment = PPOrderStatusMatchesAnyKeyword(statusKey, @[
+        @"pending", @"created", @"placed", @"confirmed", @"paid", @"waiting"
+    ]);
+    if (!isCancellablePreFulfillment) {
+        return kLang(@"order_action_unavailable_generic");
     }
 
     return nil;

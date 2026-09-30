@@ -264,8 +264,47 @@
     BOOL showsSecondaryDetails = expanded;
     self.subtitleLabel.hidden = !showsSecondaryDetails || self.subtitleText.length == 0;
     self.metaLabel.hidden = !showsSecondaryDetails || self.metaText.length == 0;
+    [self pp_updateAccessibility];
     [self setNeedsLayout];
     [self refreshCurrentStatusMotion];
+}
+
+- (void)pp_updateAccessibility
+{
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently |
+        (self.rowState == PPOrderProgressTimelineRowStateCurrent ? UIAccessibilityTraitSelected : 0);
+
+    NSString *stateDescription = @"";
+    switch (self.rowState) {
+        case PPOrderProgressTimelineRowStateCompleted:
+            stateDescription = kLang(@"fulfillment_status_completed");
+            break;
+        case PPOrderProgressTimelineRowStateCurrent:
+            stateDescription = kLang(@"fulfillment_status_unknown");
+            break;
+        case PPOrderProgressTimelineRowStateFailure:
+            stateDescription = kLang(@"fulfillment_status_failed");
+            break;
+        case PPOrderProgressTimelineRowStateUpcoming:
+        default:
+            stateDescription = kLang(@"fulfillment_summary_pending");
+            break;
+    }
+
+    self.accessibilityLabel = self.titleText;
+
+    NSMutableArray<NSString *> *valueComponents = [NSMutableArray array];
+    if (stateDescription.length > 0) {
+        [valueComponents addObject:stateDescription];
+    }
+    if (self.subtitleText.length > 0) {
+        [valueComponents addObject:self.subtitleText];
+    }
+    if (self.metaText.length > 0) {
+        [valueComponents addObject:self.metaText];
+    }
+    self.accessibilityValue = [valueComponents componentsJoinedByString:@", "];
 }
 
 - (CGFloat)preferredHeightForWidth:(CGFloat)width

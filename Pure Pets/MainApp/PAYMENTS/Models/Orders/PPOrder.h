@@ -100,6 +100,11 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 - (NSString *)customerVisibleStatusKey;
 - (NSString *)displayOrderReference;
 
++ (NSString *)deliveryStatusFromFulfillmentSummary:(nullable NSDictionary *)summary;
++ (NSString *)parentStatusFromFulfillmentSummary:(nullable NSDictionary *)summary;
+
++ (double)roundMoney:(double)amount;
+
 @end
 
 NS_ASSUME_NONNULL_END

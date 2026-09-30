@@ -25,6 +25,21 @@ extern NSNotificationName const PPAppDidBecomeActiveNotification;
 /// Validation errors (out-of-stock, invalid address, etc.) never carry this flag.
 extern NSString *const PPCheckoutErrorIsRetryableKey;
 
+typedef NS_ENUM(NSInteger, PPCheckoutState) {
+    PPCheckoutStateIdle = 0,
+    PPCheckoutStateValidating,
+    PPCheckoutStateCreatingOrder,
+    PPCheckoutStateAwaitingPayment,
+    PPCheckoutStateVerifyingPayment,
+    PPCheckoutStatePendingVerification,
+    PPCheckoutStateSucceeded,
+    PPCheckoutStateFailed,
+    PPCheckoutStateCancelled
+};
+
+extern NSString *NSStringFromPPCheckoutState(PPCheckoutState state);
+extern BOOL PPCheckoutCanTransition(PPCheckoutState fromState, PPCheckoutState toState);
+
 typedef NS_ENUM(NSInteger, PPCheckoutResult) {
     PPCheckoutResultSuccess,
     PPCheckoutResultPendingVerification,
@@ -40,6 +55,7 @@ typedef void (^PPCheckoutCompletion)(PPCheckoutResult result, PPOrder * _Nullabl
 @interface PPCheckoutCoordinator : NSObject
 
 @property (nonatomic, strong, readonly) PPOrder *currentOrder;
+@property (nonatomic, assign, readonly) PPCheckoutState state;
 
 - (instancetype)initWithPresentingViewController:(UIViewController *)viewController;
 - (instancetype)initWithPresentingViewController:(UIViewController *)viewController

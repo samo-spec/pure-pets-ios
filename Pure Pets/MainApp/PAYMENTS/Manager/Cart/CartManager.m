@@ -26,6 +26,8 @@
 @property (nonatomic, assign, readwrite) BOOL allowMultiProviderCart;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> cartListener;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> pricingListener;
+@property (nonatomic, strong) NSMutableSet<NSString *> *pendingSyncItemKeys;
+@property (nonatomic, strong) NSMutableSet<NSString *> *pendingDeletedItemKeys;
 
 - (BOOL)pp_addItem:(CartItem *)item
     syncCompletion:(void (^ _Nullable)(BOOL success))syncCompletion;
@@ -86,6 +88,8 @@
         _ooredooMoneyEnabled = YES;
         _napsEnabled = YES;
         _allowMultiProviderCart = NO;
+        _pendingSyncItemKeys = [NSMutableSet set];
+        _pendingDeletedItemKeys = [NSMutableSet set];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(pp_handleAppDidBecomeActiveNotification:)
                                                      name:UIApplicationDidBecomeActiveNotification
@@ -259,6 +263,54 @@ static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
     return self.cartItems.count == 0 ? 0.0 : MAX(0.0, self.deliveryFee);
 }
 
+- (NSString *)pp_cartKeyForItem:(CartItem *)item
+{
+    if (!item || item.itemID.length == 0) return @"";
+    if (item.variantCombinationKey.length > 0) {
+        return [NSString stringWithFormat:@"%@#%@", item.itemID, item.variantCombinationKey];
+    }
+    return item.itemID;
+}
+
+- (BOOL)isSyncPendingForItem:(CartItem *)item
+{
+    if (!item) return NO;
+    NSString *key = [self pp_cartKeyForItem:item];
+    @synchronized (self.pendingSyncItemKeys) {
+        return [self.pendingSyncItemKeys containsObject:key];
+    }
+}
+
+- (BOOL)hasPendingSyncOperations
+{
+    @synchronized (self.pendingSyncItemKeys) {
+        if (self.pendingSyncItemKeys.count > 0) return YES;
+    }
+    @synchronized (self.pendingDeletedItemKeys) {
+        return self.pendingDeletedItemKeys.count > 0;
+    }
+}
+
+- (BOOL)pp_areCartItems:(NSArray<CartItem *> *)first equalTo:(NSArray<CartItem *> *)second
+{
+    if (first == second) return YES;
+    if (first.count != second.count) return NO;
+
+    NSMutableDictionary<NSString *, CartItem *> *map = [NSMutableDictionary dictionaryWithCapacity:first.count];
+    for (CartItem *item in first) {
+        NSString *key = [self pp_cartKeyForItem:item];
+        if (key.length > 0) map[key] = item;
+    }
+    for (CartItem *b in second) {
+        NSString *key = [self pp_cartKeyForItem:b];
+        CartItem *a = map[key];
+        if (!a) return NO;
+        if (a.quantity != b.quantity) return NO;
+        if (fabs(a.price - b.price) > 0.001) return NO;
+    }
+    return YES;
+}
+
 
 + (instancetype)sharedManager {
     static CartManager *shared;
@@ -351,7 +403,7 @@ static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
 }
 
 - (void)pp_syncCartItemToFirestore:(CartItem *)item
-                        completion:(void (^)(BOOL success))completion
+                        completion:(void (^ _Nullable)(BOOL success))completion
 {
     if (!UserManager.sharedManager.isUserLoggedIn) {
         PPCartCompleteSync(completion, NO);
@@ -365,6 +417,11 @@ static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
         return;
     }
 
+    NSString *cartKey = [self pp_cartKeyForItem:item];
+    @synchronized (self.pendingSyncItemKeys) {
+        if (cartKey.length > 0) [self.pendingSyncItemKeys addObject:cartKey];
+    }
+
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *itemRef = [[[[db collectionWithPath:@"UsersCol"]
                                        documentWithPath:userID]
@@ -373,13 +430,22 @@ static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
 
     NSMutableDictionary *payload =
         [self pp_firestorePayloadForItem:item quantity:item.quantity];
+    __weak typeof(self) weakSelf = self;
     [itemRef setData:payload
                merge:YES
           completion:^(NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
         if (error) {
             NSLog(@"❌ Failed to sync cart item %@: %@",
                   item.itemID, error.localizedDescription);
             [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartItemSync];
+            // Leave in pendingSyncItemKeys so remote listener won't silently erase it
+        } else {
+            if (self && cartKey.length > 0) {
+                @synchronized (self.pendingSyncItemKeys) {
+                    [self.pendingSyncItemKeys removeObject:cartKey];
+                }
+            }
         }
         PPCartCompleteSync(completion, error == nil);
     }];
@@ -718,6 +784,14 @@ presentingViewController:(UIViewController *)presentingViewController
 
 - (void)clearCart {
     [self.cartItems removeAllObjects];
+    self.lastRemovedItem = nil;
+    self.lastRemovedIndex = NSNotFound;
+    @synchronized (self.pendingSyncItemKeys) {
+        [self.pendingSyncItemKeys removeAllObjects];
+    }
+    @synchronized (self.pendingDeletedItemKeys) {
+        [self.pendingDeletedItemKeys removeAllObjects];
+    }
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
@@ -740,6 +814,14 @@ presentingViewController:(UIViewController *)presentingViewController
             [self clearCart];
         } else {
             [self.cartItems removeAllObjects];
+            self.lastRemovedItem = nil;
+            self.lastRemovedIndex = NSNotFound;
+            @synchronized (self.pendingSyncItemKeys) {
+                [self.pendingSyncItemKeys removeAllObjects];
+            }
+            @synchronized (self.pendingDeletedItemKeys) {
+                [self.pendingDeletedItemKeys removeAllObjects];
+            }
             [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
             [[NSUserDefaults standardUserDefaults] synchronize];
         }
@@ -756,6 +838,14 @@ presentingViewController:(UIViewController *)presentingViewController
             [self clearCart];
         } else {
             [self.cartItems removeAllObjects];
+            self.lastRemovedItem = nil;
+            self.lastRemovedIndex = NSNotFound;
+            @synchronized (self.pendingSyncItemKeys) {
+                [self.pendingSyncItemKeys removeAllObjects];
+            }
+            @synchronized (self.pendingDeletedItemKeys) {
+                [self.pendingDeletedItemKeys removeAllObjects];
+            }
             [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
             [[NSUserDefaults standardUserDefaults] synchronize];
         }
@@ -782,9 +872,20 @@ presentingViewController:(UIViewController *)presentingViewController
             if (completion) { completion(NO); }
             return;
         }
-        [weakSelf.cartItems removeAllObjects];
-        [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
-        [[NSUserDefaults standardUserDefaults] synchronize];
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+            [strongSelf.cartItems removeAllObjects];
+            strongSelf.lastRemovedItem = nil;
+            strongSelf.lastRemovedIndex = NSNotFound;
+            @synchronized (strongSelf.pendingSyncItemKeys) {
+                [strongSelf.pendingSyncItemKeys removeAllObjects];
+            }
+            @synchronized (strongSelf.pendingDeletedItemKeys) {
+                [strongSelf.pendingDeletedItemKeys removeAllObjects];
+            }
+            [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        }
         if (postNotification) {
             [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
         }
@@ -796,26 +897,132 @@ presentingViewController:(UIViewController *)presentingViewController
 {
     [self clearCartAndSyncToFirestoreWithCompletion:nil];
 }
-/*
-- (void)addItem:(CartItem *)item {
-    [self.cartItems addObject:item];
-    NSLog(@"🛒 Added to cart: %@", item.name);
-    FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *cartRef = [[db collectionWithPath:@"users"] documentWithPath:[UserManager sharedManager].currentUser.ID];
-    [[cartRef collectionWithPath:@"cartItems"] addDocumentWithData:@{
-        @"itemID": item.itemID,
-        @"name": item.name,
-        @"quantity": @(item.quantity),
-        @"price": @(item.price),
-    } completion:^(NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"❌ Failed to save cart item: %@", error.localizedDescription);
-        } else {
-            NSLog(@"✅ Cart item saved to Firestore");
-        }
-    }];
-} */
 
+- (void)removePurchasedItems:(NSArray<CartItem *> *)purchasedItems
+                  completion:(void (^ _Nullable)(BOOL success))completion
+{
+    if (purchasedItems.count == 0) {
+        PPCartCompleteSync(completion, YES);
+        return;
+    }
+
+    NSMutableArray<CartItem *> *itemsToRemoveCompletely = [NSMutableArray array];
+    NSMutableArray<CartItem *> *itemsToUpdateQuantity = [NSMutableArray array];
+    NSMutableArray<NSString *> *keysToDelete = [NSMutableArray array];
+
+    @synchronized (self) {
+        for (CartItem *purchased in purchasedItems) {
+            CartItem *matched = [self pp_existingItemMatching:purchased];
+            if (!matched) {
+                continue;
+            }
+
+            NSString *cartKey = [self pp_cartKeyForItem:matched];
+            if (matched.quantity <= purchased.quantity) {
+                [itemsToRemoveCompletely addObject:matched];
+                if (cartKey.length > 0) {
+                    [keysToDelete addObject:cartKey];
+                }
+            } else {
+                matched.quantity -= purchased.quantity;
+                [itemsToUpdateQuantity addObject:matched];
+            }
+        }
+
+        if (itemsToRemoveCompletely.count == 0 && itemsToUpdateQuantity.count == 0) {
+            // No matching items in cart (e.g. Direct Buy Now of an uncarted product)
+            PPCartCompleteSync(completion, YES);
+            return;
+        }
+
+        // Apply complete removals from in-memory cartItems
+        for (CartItem *item in itemsToRemoveCompletely) {
+            [self.cartItems removeObjectIdenticalTo:item];
+        }
+
+        // Track pending deletes / syncs to prevent resurrection on listener reconnect
+        @synchronized (self.pendingDeletedItemKeys) {
+            for (NSString *k in keysToDelete) {
+                [self.pendingDeletedItemKeys addObject:k];
+            }
+        }
+        @synchronized (self.pendingSyncItemKeys) {
+            for (NSString *k in keysToDelete) {
+                [self.pendingSyncItemKeys removeObject:k];
+            }
+            for (CartItem *item in itemsToUpdateQuantity) {
+                NSString *k = [self pp_cartKeyForItem:item];
+                if (k.length > 0) {
+                    [self.pendingSyncItemKeys addObject:k];
+                }
+            }
+        }
+
+        // Reset undo buffer since this is a confirmed order purchase
+        self.lastRemovedItem = nil;
+        self.lastRemovedIndex = NSNotFound;
+
+        // Persist local cache
+        [self saveCart];
+    }
+
+    // Post exactly ONE notification for the entire purchase cleanup
+    [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+
+    // Synchronize to Firestore
+    NSString *userID = PPCurrentFIRAuthUser.uid;
+    if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
+    if (userID.length == 0) {
+        PPCartCompleteSync(completion, YES);
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRCollectionReference *cartItemsRef =
+    [[[db collectionWithPath:@"UsersCol"]
+      documentWithPath:userID]
+     collectionWithPath:@"cartItems"];
+
+    FIRWriteBatch *batch = [db batch];
+    for (CartItem *removed in itemsToRemoveCompletely) {
+        [batch deleteDocument:[cartItemsRef documentWithPath:removed.itemID]];
+    }
+    for (CartItem *updated in itemsToUpdateQuantity) {
+        FIRDocumentReference *docRef = [cartItemsRef documentWithPath:updated.itemID];
+        NSMutableDictionary *payload = [self pp_firestorePayloadForItem:updated quantity:updated.quantity];
+        [batch setData:payload forDocument:docRef merge:YES];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [batch commitWithCompletion:^(NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (error) {
+            NSLog(@"❌ [CartManager] Failed to sync purchased items cleanup to Firestore: %@",
+                  error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartBatchSync];
+            // Leave in pendingDeletedItemKeys to protect local state from resurrection
+            PPCartCompleteSync(completion, NO);
+            return;
+        }
+
+        if (self) {
+            @synchronized (self.pendingDeletedItemKeys) {
+                for (NSString *k in keysToDelete) {
+                    [self.pendingDeletedItemKeys removeObject:k];
+                }
+            }
+            @synchronized (self.pendingSyncItemKeys) {
+                for (CartItem *item in itemsToUpdateQuantity) {
+                    NSString *k = [self pp_cartKeyForItem:item];
+                    if (k.length > 0) {
+                        [self.pendingSyncItemKeys removeObject:k];
+                    }
+                }
+            }
+        }
+        PPCartCompleteSync(completion, YES);
+    }];
+}
 
 - (void)syncCartToFirestore:(NSArray<CartItem *> *)items {
     
@@ -829,19 +1036,9 @@ presentingViewController:(UIViewController *)presentingViewController
 
     FIRWriteBatch *batch = [db batch];
     for (CartItem *item in items) {
+        if (![item isKindOfClass:CartItem.class] || item.itemID.length == 0) { continue; }
         FIRDocumentReference *ref = [userCartRef documentWithPath:item.itemID];
-        NSMutableDictionary *data = [@{
-            @"itemID": item.itemID ?: @"",
-            @"name": item.name ?: @"",
-            @"quantity": @(item.quantity),
-            @"price": @(item.price),
-            @"originalPrice": @(item.originalPrice),
-            @"imageURL": item.imageURL ?: @"",
-            @"providerID": item.providerID ?: @""
-        } mutableCopy];
-        if (item.stockQuantity != NSNotFound) {
-            data[@"stockQuantity"] = @(MAX(0, item.stockQuantity));
-        }
+        NSMutableDictionary *data = [self pp_firestorePayloadForItem:item quantity:item.quantity];
         [batch setData:data forDocument:ref merge:YES];
     }
     [batch commitWithCompletion:^(NSError * _Nullable error) {
@@ -869,12 +1066,20 @@ presentingViewController:(UIViewController *)presentingViewController
     self.cartListener = nil;
 
     FIRFirestore *db = [FIRFirestore firestore];
+    __weak typeof(self) weakSelf = self;
     self.cartListener =
     [[[[db collectionWithPath:@"UsersCol"] documentWithPath:userID] collectionWithPath:@"cartItems"]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
         if (error) {
             NSLog(@"❌ Cart listener error: %@", error.localizedDescription);
             [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartListener];
+            if (error.code == FIRFirestoreErrorCodePermissionDenied ||
+                error.code == FIRFirestoreErrorCodeUnauthenticated) {
+                [self stopListeningToCartChanges];
+            }
             return;
         }
         if (!snapshot) return;
@@ -891,7 +1096,26 @@ presentingViewController:(UIViewController *)presentingViewController
             }
             item.itemID = itemID;
 
-            CartItem *existing = mergedByItemID[item.itemID];
+            // Malformed check: validate item has non-negative valid price and positive quantity
+            if (item.quantity <= 0 || item.price < 0.01 || isnan(item.price)) {
+                continue;
+            }
+
+            NSString *cartKey = [self pp_cartKeyForItem:item];
+            if (cartKey.length == 0) {
+                continue;
+            }
+
+            // If locally deleted and delete is in flight/retrying, skip to prevent resurrection
+            BOOL isDeletedLocally = NO;
+            @synchronized (self.pendingDeletedItemKeys) {
+                isDeletedLocally = [self.pendingDeletedItemKeys containsObject:cartKey];
+            }
+            if (isDeletedLocally) {
+                continue;
+            }
+
+            CartItem *existing = mergedByItemID[cartKey];
             if (existing) {
                 PPCartMergeVariantMetadata(item, existing);
                 existing.quantity += item.quantity;
@@ -910,16 +1134,16 @@ presentingViewController:(UIViewController *)presentingViewController
                 if (item.providerID.length > 0) { existing.providerID = item.providerID; }
                 if (item.price > 0) { existing.price = item.price; }
             } else {
-                mergedByItemID[item.itemID] = item;
+                mergedByItemID[cartKey] = item;
             }
         }
 
         NSArray<NSString *> *sortedIDs =
             [[mergedByItemID allKeys] sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
         NSMutableArray<CartItem *> *remoteCart = [NSMutableArray arrayWithCapacity:sortedIDs.count];
-        for (NSString *itemID in sortedIDs) {
-            CartItem *item = mergedByItemID[itemID];
-            if (!item || item.quantity <= 0) { continue; }
+        for (NSString *cartKey in sortedIDs) {
+            CartItem *item = mergedByItemID[cartKey];
+            if (!item || item.quantity <= 0 || item.price < 0.01 || isnan(item.price)) { continue; }
 
             NSInteger stockLimit = [self pp_stockLimitForItem:item existingItem:item];
             if (stockLimit != NSNotFound) {
@@ -929,6 +1153,37 @@ presentingViewController:(UIViewController *)presentingViewController
                 item.quantity = MIN(item.quantity, stockLimit);
             }
             [remoteCart addObject:item];
+        }
+
+        // Reconcile items that were added/mutated locally but haven't synced to Firestore yet
+        for (CartItem *localItem in self.cartItems) {
+            NSString *localKey = [self pp_cartKeyForItem:localItem];
+            BOOL isPending = NO;
+            @synchronized (self.pendingSyncItemKeys) {
+                isPending = [self.pendingSyncItemKeys containsObject:localKey];
+            }
+            if (isPending) {
+                BOOL foundInRemote = NO;
+                for (CartItem *remoteItem in remoteCart) {
+                    if ([[self pp_cartKeyForItem:remoteItem] isEqualToString:localKey]) {
+                        foundInRemote = YES;
+                        // Local pending mutation takes precedence over stale remote snapshot
+                        remoteItem.quantity = localItem.quantity;
+                        break;
+                    }
+                }
+                if (!foundInRemote) {
+                    // Local-only pending item: preserve it, never drop it!
+                    [remoteCart addObject:localItem];
+                    // Trigger re-sync so remote reaches parity
+                    [self pp_syncCartItemToFirestore:localItem completion:nil];
+                }
+            }
+        }
+
+        // Duplicate snapshot check: avoid redundant disk write & notification spam
+        if ([self pp_areCartItems:self.cartItems equalTo:remoteCart]) {
+            return;
         }
 
         self.cartItems = remoteCart;
@@ -945,15 +1200,14 @@ presentingViewController:(UIViewController *)presentingViewController
            completion:(void (^ _Nullable)(BOOL success))completion {
 
     if (![item isKindOfClass:CartItem.class] || item.itemID.length == 0) {
-        if (completion) completion(NO);
+        PPCartCompleteSync(completion, NO);
         return;
     }
 
-    BOOL updated = NO;
     NSInteger clampedQuantity = MAX(newQuantity, 1);
     CartItem *existing = [self pp_existingItemMatching:item];
     if (!existing) {
-        if (completion) completion(NO);
+        PPCartCompleteSync(completion, NO);
         return;
     }
 
@@ -962,12 +1216,16 @@ presentingViewController:(UIViewController *)presentingViewController
     // available so customers can correct a line after availability changes.
     if (clampedQuantity > existing.quantity &&
         (stockLimit == NSNotFound || stockLimit <= 0)) {
-        if (completion) completion(NO);
+        PPCartCompleteSync(completion, NO);
         return;
     }
     if (stockLimit != NSNotFound && stockLimit > 0) {
         clampedQuantity = MIN(clampedQuantity, stockLimit);
     }
+
+    // Capture pre-mutation snapshot for rollback on failure
+    NSInteger previousQuantity = existing.quantity;
+    NSInteger previousStock = existing.stockQuantity;
 
     existing.quantity = clampedQuantity;
     if (item.stockQuantity != NSNotFound) {
@@ -975,15 +1233,21 @@ presentingViewController:(UIViewController *)presentingViewController
     } else if (stockLimit != NSNotFound) {
         existing.stockQuantity = stockLimit;
     }
-    updated = YES;
 
     [self saveCart];
     [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
 
+    NSString *cartKey = [self pp_cartKeyForItem:existing];
+    if (cartKey.length > 0) {
+        @synchronized (self.pendingSyncItemKeys) {
+            [self.pendingSyncItemKeys addObject:cartKey];
+        }
+    }
+
     // U8: Use FIRAuth UID as primary, UserManager as fallback
     NSString *userID = PPCurrentFIRAuthUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
-    if (updated && userID.length > 0) {
+    if (userID.length > 0) {
         FIRFirestore *db = [FIRFirestore firestore];
         FIRDocumentReference *itemRef = [[[[db collectionWithPath:@"UsersCol"]
                                            documentWithPath:userID]
@@ -992,19 +1256,47 @@ presentingViewController:(UIViewController *)presentingViewController
 
         NSMutableDictionary *payload =
             [self pp_firestorePayloadForItem:existing quantity:clampedQuantity];
+        __weak typeof(self) weakSelf = self;
         [itemRef setData:payload
                    merge:YES
               completion:^(NSError * _Nullable updateError) {
+            __strong typeof(weakSelf) self = weakSelf;
             if (updateError) {
                 NSLog(@"❌ Failed to update remote quantity: %@",
                       updateError.localizedDescription);
                 [PPFirestoreErrorNotifier postError:updateError context:PPFirestoreContextCartQuantityUpdate];
+                // Rollback local state so local and remote do not drift
+                if (self) {
+                    if (cartKey.length > 0) {
+                        @synchronized (self.pendingSyncItemKeys) {
+                            [self.pendingSyncItemKeys removeObject:cartKey];
+                        }
+                    }
+                    CartItem *current = [self pp_existingItemMatching:item];
+                    if (current) {
+                        current.quantity = previousQuantity;
+                        current.stockQuantity = previousStock;
+                        [self saveCart];
+                        [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+                    }
+                }
+                PPCartCompleteSync(completion, NO);
+            } else {
+                if (self && cartKey.length > 0) {
+                    @synchronized (self.pendingSyncItemKeys) {
+                        [self.pendingSyncItemKeys removeObject:cartKey];
+                    }
+                }
+                PPCartCompleteSync(completion, YES);
             }
         }];
-    }
-
-    if (completion) {
-        completion(updated); // ✅ Call completion with success/failure
+    } else {
+        if (cartKey.length > 0) {
+            @synchronized (self.pendingSyncItemKeys) {
+                [self.pendingSyncItemKeys removeObject:cartKey];
+            }
+        }
+        PPCartCompleteSync(completion, YES);
     }
 }
 
@@ -1019,7 +1311,24 @@ presentingViewController:(UIViewController *)presentingViewController
 }
 
 - (void)removeItem:(CartItem *)item {
-    if (!item || item.itemID.length == 0) return;
+    [self removeItem:item completion:nil];
+}
+
+- (void)removeItem:(CartItem *)item completion:(void (^ _Nullable)(BOOL success))completion {
+    if (!item || item.itemID.length == 0) {
+        PPCartCompleteSync(completion, NO);
+        return;
+    }
+
+    NSString *cartKey = [self pp_cartKeyForItem:item];
+    if (cartKey.length > 0) {
+        @synchronized (self.pendingDeletedItemKeys) {
+            [self.pendingDeletedItemKeys addObject:cartKey];
+        }
+        @synchronized (self.pendingSyncItemKeys) {
+            [self.pendingSyncItemKeys removeObject:cartKey];
+        }
+    }
 
     // 🔁 Remove from local cartItems
     NSUInteger indexToRemove = NSNotFound;
@@ -1036,7 +1345,15 @@ presentingViewController:(UIViewController *)presentingViewController
         }
     }
 
-    if (indexToRemove == NSNotFound) return;
+    if (indexToRemove == NSNotFound) {
+        if (cartKey.length > 0) {
+            @synchronized (self.pendingDeletedItemKeys) {
+                [self.pendingDeletedItemKeys removeObject:cartKey];
+            }
+        }
+        PPCartCompleteSync(completion, NO);
+        return;
+    }
 
     self.lastRemovedItem = item;
     self.lastRemovedIndex = indexToRemove;
@@ -1052,7 +1369,15 @@ presentingViewController:(UIViewController *)presentingViewController
     // U8: Use FIRAuth UID as primary, UserManager as fallback
     NSString *userID = PPCurrentFIRAuthUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
-    if (!userID) return;
+    if (userID.length == 0) {
+        if (cartKey.length > 0) {
+            @synchronized (self.pendingDeletedItemKeys) {
+                [self.pendingDeletedItemKeys removeObject:cartKey];
+            }
+        }
+        PPCartCompleteSync(completion, YES);
+        return;
+    }
 
     FIRFirestore *db = [FIRFirestore firestore];
     FIRCollectionReference *cartItemsRef =
@@ -1060,29 +1385,66 @@ presentingViewController:(UIViewController *)presentingViewController
       documentWithPath:userID]
      collectionWithPath:@"cartItems"];
 
+    __weak typeof(self) weakSelf = self;
     [[cartItemsRef queryWhereField:@"itemID" isEqualTo:item.itemID]
      getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
-
+        __strong typeof(weakSelf) self = weakSelf;
         if (error) {
             NSLog(@"❌ Error querying Firestore for delete: %@",
                   error.localizedDescription);
             [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartDeleteQuery];
+            // Leave in pendingDeletedItemKeys so listener doesn't resurrect it
+            PPCartCompleteSync(completion, NO);
             return;
         }
 
+        NSMutableArray<FIRDocumentSnapshot *> *docsToDelete = [NSMutableArray array];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
-            [[cartItemsRef documentWithPath:doc.documentID]
+            NSString *docVariantKey = [doc[@"variantCombinationKey"] isKindOfClass:NSString.class] ? doc[@"variantCombinationKey"] : @"";
+            if (item.variantCombinationKey.length > 0 && docVariantKey.length > 0) {
+                if (![item.variantCombinationKey isEqualToString:docVariantKey]) {
+                    continue; // Skip different variant of the same product
+                }
+            }
+            [docsToDelete addObject:doc];
+        }
+
+        if (docsToDelete.count == 0) {
+            // Also attempt direct delete on doc with itemID as document ID
+            [[cartItemsRef documentWithPath:item.itemID]
              deleteDocumentWithCompletion:^(NSError * _Nullable err) {
                 if (err) {
-                    NSLog(@"❌ Failed to delete cart item: %@",
-                          err.localizedDescription);
+                    NSLog(@"❌ Failed to delete cart item: %@", err.localizedDescription);
                     [PPFirestoreErrorNotifier postError:err context:PPFirestoreContextCartDeleteItem];
                 } else {
-                    NSLog(@"🗑️ Deleted cart item: %@",
-                          item.itemID);
+                    if (self && cartKey.length > 0) {
+                        @synchronized (self.pendingDeletedItemKeys) {
+                            [self.pendingDeletedItemKeys removeObject:cartKey];
+                        }
+                    }
                 }
+                PPCartCompleteSync(completion, err == nil);
             }];
+            return;
         }
+
+        FIRWriteBatch *batch = [db batch];
+        for (FIRDocumentSnapshot *doc in docsToDelete) {
+            [batch deleteDocument:[cartItemsRef documentWithPath:doc.documentID]];
+        }
+        [batch commitWithCompletion:^(NSError * _Nullable batchErr) {
+            if (batchErr) {
+                NSLog(@"❌ Failed to delete cart item batch: %@", batchErr.localizedDescription);
+                [PPFirestoreErrorNotifier postError:batchErr context:PPFirestoreContextCartDeleteItem];
+            } else {
+                if (self && cartKey.length > 0) {
+                    @synchronized (self.pendingDeletedItemKeys) {
+                        [self.pendingDeletedItemKeys removeObject:cartKey];
+                    }
+                }
+            }
+            PPCartCompleteSync(completion, batchErr == nil);
+        }];
     }];
 }
 
@@ -1129,10 +1491,18 @@ presentingViewController:(UIViewController *)presentingViewController
 {
     if (!self.lastRemovedItem) return NO;
 
+    CartItem *itemToRestore = self.lastRemovedItem;
+    NSString *cartKey = [self pp_cartKeyForItem:itemToRestore];
+    if (cartKey.length > 0) {
+        @synchronized (self.pendingDeletedItemKeys) {
+            [self.pendingDeletedItemKeys removeObject:cartKey];
+        }
+    }
+
     NSInteger insertIndex =
         MIN(self.lastRemovedIndex, self.cartItems.count);
 
-    [self.cartItems insertObject:self.lastRemovedItem
+    [self.cartItems insertObject:itemToRestore
                           atIndex:insertIndex];
 
     // reset snapshot
@@ -1144,6 +1514,9 @@ presentingViewController:(UIViewController *)presentingViewController
     [[NSNotificationCenter defaultCenter]
         postNotificationName:kCartUpdatedNotification
                       object:nil];
+
+    // Re-sync restored item to Firestore
+    [self pp_syncCartItemToFirestore:itemToRestore completion:nil];
 
     return YES;
 }

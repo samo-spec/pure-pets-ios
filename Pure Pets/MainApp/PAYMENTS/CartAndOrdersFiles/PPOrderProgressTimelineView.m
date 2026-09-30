@@ -121,6 +121,17 @@
     }
 }
 
+- (NSArray *)accessibilityElements
+{
+    NSMutableArray *elements = [NSMutableArray array];
+    for (NSInteger index = 0; index < self.stepDescriptors.count; index++) {
+        if (index < self.rowViews.count && !self.rowViews[index].hidden) {
+            [elements addObject:self.rowViews[index]];
+        }
+    }
+    return elements;
+}
+
 - (CGFloat)preferredHeightForWidth:(CGFloat)width
 {
     if (self.stepDescriptors.count == 0) return 0.0;

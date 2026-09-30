@@ -61,6 +61,9 @@ presentingViewController:(UIViewController * _Nullable)presentingViewController
 - (CartItem *)getCartItemForItemID:(NSString *)ItemID;
 
 - (void)removeItem:(CartItem *)item;
+- (void)removeItem:(CartItem *)item completion:(void (^ _Nullable)(BOOL success))completion;
+- (BOOL)isSyncPendingForItem:(CartItem *)item;
+- (BOOL)hasPendingSyncOperations;
 - (NSInteger)totalItemsCount;
 - (double)subtotalAmount;
 - (double)totalAmount;
@@ -71,6 +74,8 @@ presentingViewController:(UIViewController * _Nullable)presentingViewController
 - (nullable PPCartAddProjection *)projectionForAddingItem:(CartItem *)item;
 - (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion;
 - (void)clearCartAndSyncToFirestore;
+- (void)removePurchasedItems:(NSArray<CartItem *> *)purchasedItems
+                  completion:(void (^ _Nullable)(BOOL success))completion;
 - (void)refreshPricingConfiguration;
 @end
 

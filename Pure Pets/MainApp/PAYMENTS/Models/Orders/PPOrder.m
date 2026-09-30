@@ -19,6 +19,11 @@ static NSString *PPOrderTrimmedString(id value)
     return @"";
 }
 
+static double PPOrderRoundMoney(double value)
+{
+    return isfinite(value) ? round(value * 100.0) / 100.0 : 0.0;
+}
+
 static NSString *PPOrderResolvedDefaultCurrencyCode(void)
 {
     return @"QAR";
@@ -94,6 +99,126 @@ static NSString *PPOrderNormalizedDeliveryStatusString(id value)
         return @"ready_for_delivery";
     }
     return @"";
+}
+
+static NSString *PPOrderDeliveryStatusFromFulfillmentSummary(NSDictionary *summary)
+{
+    if (![summary isKindOfClass:NSDictionary.class] || summary.count == 0) {
+        return @"";
+    }
+    NSDictionary *byStatus = [summary[@"byStatus"] isKindOfClass:NSDictionary.class] ? summary[@"byStatus"] : @{};
+    NSInteger total = [summary[@"total"] respondsToSelector:@selector(integerValue)]
+        ? [summary[@"total"] integerValue]
+        : ([summary[@"totalCount"] respondsToSelector:@selector(integerValue)] ? [summary[@"totalCount"] integerValue] : 0);
+
+    NSInteger (^countFor)(NSArray<NSString *> *) = ^NSInteger(NSArray<NSString *> *statuses) {
+        NSInteger sum = 0;
+        for (NSString *s in statuses) {
+            id val = byStatus[s];
+            if ([val respondsToSelector:@selector(integerValue)]) {
+                sum += [val integerValue];
+            } else if ([s isEqualToString:@"new_request"] && [summary[@"pendingCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"pendingCount"] integerValue];
+            } else if ([s isEqualToString:@"accepted"] && [summary[@"acceptedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"acceptedCount"] integerValue];
+            } else if ([s isEqualToString:@"preparing"] && [summary[@"preparingCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"preparingCount"] integerValue];
+            } else if ([s isEqualToString:@"ready_for_pickup"] && [summary[@"readyForDeliveryCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"readyForDeliveryCount"] integerValue];
+            } else if ([s isEqualToString:@"in_transit"] && [summary[@"inDeliveryCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"inDeliveryCount"] integerValue];
+            } else if ([s isEqualToString:@"completed"] && [summary[@"completedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"completedCount"] integerValue];
+            } else if ([s isEqualToString:@"cancelled"] && [summary[@"cancelledCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"cancelledCount"] integerValue];
+            } else if ([s isEqualToString:@"rejected"] && [summary[@"rejectedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"rejectedCount"] integerValue];
+            } else if ([s isEqualToString:@"failed"] && [summary[@"failedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"failedCount"] integerValue];
+            } else if ([s isEqualToString:@"returned"] && [summary[@"returnedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"returnedCount"] integerValue];
+            }
+        }
+        return sum;
+    };
+
+    if (total > 0 && countFor(@[@"completed"]) == total) return @"completed";
+    if (total > 0 && countFor(@[@"cancelled", @"rejected"]) == total) return @"delivery_cancelled";
+    if (countFor(@[@"failed"]) > 0) return @"delivery_failed";
+    if (countFor(@[@"returned"]) > 0) return @"returned_to_store";
+    if (countFor(@[@"payment_pending"]) > 0) return @"payment_pending";
+    if (countFor(@[@"payment_confirmed"]) > 0) return @"payment_confirmed";
+    if (countFor(@[@"delivered"]) > 0) return @"delivered";
+    if (countFor(@[@"in_transit"]) > 0) return @"in_transit";
+    if (countFor(@[@"handed_over"]) > 0) return @"picked_up";
+    if (countFor(@[@"awaiting_handover"]) > 0) return @"awaiting_handover";
+    if (countFor(@[@"delivery_assigned"]) > 0) return @"delivery_assigned";
+    if (countFor(@[@"delivery_requested"]) > 0) return @"delivery_requested";
+    if (countFor(@[@"ready_for_pickup"]) > 0) return @"ready_to_ship";
+
+    return @"";
+}
+
+static NSString *PPOrderParentStatusFromFulfillmentSummary(NSDictionary *summary)
+{
+    if (![summary isKindOfClass:NSDictionary.class] || summary.count == 0) {
+        return @"pending";
+    }
+    NSDictionary *byStatus = [summary[@"byStatus"] isKindOfClass:NSDictionary.class] ? summary[@"byStatus"] : @{};
+    NSInteger total = [summary[@"total"] respondsToSelector:@selector(integerValue)]
+        ? [summary[@"total"] integerValue]
+        : ([summary[@"totalCount"] respondsToSelector:@selector(integerValue)] ? [summary[@"totalCount"] integerValue] : 0);
+    if (total <= 0) return @"pending";
+
+    NSInteger (^countFor)(NSArray<NSString *> *) = ^NSInteger(NSArray<NSString *> *statuses) {
+        NSInteger sum = 0;
+        for (NSString *s in statuses) {
+            id val = byStatus[s];
+            if ([val respondsToSelector:@selector(integerValue)]) {
+                sum += [val integerValue];
+            } else if ([s isEqualToString:@"new_request"] && [summary[@"pendingCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"pendingCount"] integerValue];
+            } else if ([s isEqualToString:@"accepted"] && [summary[@"acceptedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"acceptedCount"] integerValue];
+            } else if ([s isEqualToString:@"preparing"] && [summary[@"preparingCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"preparingCount"] integerValue];
+            } else if ([s isEqualToString:@"ready_for_pickup"] && [summary[@"readyForDeliveryCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"readyForDeliveryCount"] integerValue];
+            } else if ([s isEqualToString:@"in_transit"] && [summary[@"inDeliveryCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"inDeliveryCount"] integerValue];
+            } else if ([s isEqualToString:@"completed"] && [summary[@"completedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"completedCount"] integerValue];
+            } else if ([s isEqualToString:@"cancelled"] && [summary[@"cancelledCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"cancelledCount"] integerValue];
+            } else if ([s isEqualToString:@"rejected"] && [summary[@"rejectedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"rejectedCount"] integerValue];
+            } else if ([s isEqualToString:@"failed"] && [summary[@"failedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"failedCount"] integerValue];
+            } else if ([s isEqualToString:@"returned"] && [summary[@"returnedCount"] respondsToSelector:@selector(integerValue)]) {
+                sum += [summary[@"returnedCount"] integerValue];
+            }
+        }
+        return sum;
+    };
+
+    NSInteger pending = countFor(@[@"new_request"]);
+    NSInteger processing = countFor(@[@"accepted", @"preparing"]);
+    NSInteger ready = countFor(@[@"ready_for_pickup", @"delivery_requested"]);
+    NSInteger delivery = countFor(@[@"delivery_assigned", @"awaiting_handover", @"handed_over", @"in_transit"]);
+    NSInteger delivered = countFor(@[@"delivered", @"payment_pending", @"payment_confirmed"]);
+    NSInteger completed = countFor(@[@"completed"]);
+    NSInteger cancelled = countFor(@[@"cancelled", @"rejected"]);
+    NSInteger failed = countFor(@[@"failed", @"returned"]);
+
+    if (completed == total) return @"completed";
+    if (cancelled == total) return @"cancelled";
+    if (failed > 0) return @"failed";
+    if (delivered > 0) return @"delivered";
+    if (delivery > 0) return @"in_transit";
+    if (ready > 0) return @"ready";
+    if (processing > 0) return @"processing";
+    if (pending == total) return @"pending";
+    return @"processing";
 }
 
 static BOOL PPOrderStatusContainsToken(NSString *status, NSString *token)
@@ -301,10 +426,10 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
         else order.rawStatus = @"pending";
     }
 
-    double amount = [data[@"amount"] respondsToSelector:@selector(doubleValue)] ? [data[@"amount"] doubleValue] : 0.0;
-    double shippingFee = [data[@"shippingFee"] respondsToSelector:@selector(doubleValue)] ? [data[@"shippingFee"] doubleValue] : 0.0;
-    double totalAmount = [data[@"totalAmount"] respondsToSelector:@selector(doubleValue)] ? [data[@"totalAmount"] doubleValue] : 0.0;
-    if (totalAmount <= 0.0 && amount > 0.0) totalAmount = amount + MAX(0.0, shippingFee);
+    double amount = [data[@"amount"] respondsToSelector:@selector(doubleValue)] ? PPOrderRoundMoney([data[@"amount"] doubleValue]) : 0.0;
+    double shippingFee = [data[@"shippingFee"] respondsToSelector:@selector(doubleValue)] ? PPOrderRoundMoney([data[@"shippingFee"] doubleValue]) : 0.0;
+    double totalAmount = [data[@"totalAmount"] respondsToSelector:@selector(doubleValue)] ? PPOrderRoundMoney([data[@"totalAmount"] doubleValue]) : 0.0;
+    if (totalAmount <= 0.0 && amount > 0.0) totalAmount = PPOrderRoundMoney(amount + MAX(0.0, shippingFee));
     if (amount <= 0.0 && totalAmount > 0.0) amount = totalAmount;
     order.amount = MAX(0.0, amount);
     order.shippingFee = MAX(0.0, shippingFee);
@@ -500,6 +625,15 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
         PPOrderStatusContainsToken(raw, @"canceled")) {
         return @"delivery_cancelled";
     }
+
+    if (self.fulfillmentVersion == 1 && [self.fulfillmentSummary isKindOfClass:NSDictionary.class] && self.fulfillmentSummary.count > 0) {
+        NSString *derived = PPOrderDeliveryStatusFromFulfillmentSummary(self.fulfillmentSummary);
+        if (derived.length > 0) {
+            return derived;
+        }
+        return @"preparing_for_shipment";
+    }
+
     if (PPOrderStatusContainsToken(raw, @"returned_to_store")) {
         return @"returned_to_store";
     }
@@ -568,6 +702,13 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
         return @"checkout_card_payment_pending";
     }
 
+    if (self.fulfillmentVersion == 1 && [self.fulfillmentSummary isKindOfClass:NSDictionary.class] && self.fulfillmentSummary.count > 0) {
+        NSString *canonicalParentStatus = PPOrderParentStatusFromFulfillmentSummary(self.fulfillmentSummary);
+        if (canonicalParentStatus.length > 0) {
+            raw = canonicalParentStatus;
+        }
+    }
+
     if ([delivery isEqualToString:@"delivery_cancelled"] ||
         PPOrderStatusContainsToken(raw, @"cancelled") ||
         PPOrderStatusContainsToken(raw, @"canceled")) {
@@ -598,6 +739,11 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
         PPOrderStatusContainsToken(raw, @"delivered")) {
         return @"delivered";
     }
+    if ([delivery isEqualToString:@"delivery_assigned"] ||
+        [delivery isEqualToString:@"awaiting_handover"] ||
+        (self.deliveryAcceptedAt != nil && ![delivery isEqualToString:@"picked_up"] && ![delivery isEqualToString:@"in_transit"])) {
+        return @"delivery_partner_assigned";
+    }
     if ([delivery isEqualToString:@"picked_up"] ||
         [delivery isEqualToString:@"in_transit"] ||
         PPOrderStatusContainsToken(raw, @"shipped") ||
@@ -605,11 +751,6 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
         PPOrderStatusContainsToken(raw, @"out_for_delivery") ||
         PPOrderStatusContainsToken(raw, @"in_transit")) {
         return @"on_the_way";
-    }
-    if ([delivery isEqualToString:@"delivery_assigned"] ||
-        [delivery isEqualToString:@"awaiting_handover"] ||
-        self.deliveryAcceptedAt != nil) {
-        return @"delivery_partner_assigned";
     }
     if ([delivery isEqualToString:@"ready_to_ship"] ||
         [delivery isEqualToString:@"ready_for_pickup"] ||
@@ -707,6 +848,21 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
                                            transaction:(id)transactionId
 {
     return PPOrderNormalizedVerificationStatusString(value, paymentMethod, transactionId);
+}
+
++ (NSString *)deliveryStatusFromFulfillmentSummary:(nullable NSDictionary *)summary
+{
+    return PPOrderDeliveryStatusFromFulfillmentSummary(summary);
+}
+
++ (NSString *)parentStatusFromFulfillmentSummary:(nullable NSDictionary *)summary
+{
+    return PPOrderParentStatusFromFulfillmentSummary(summary);
+}
+
++ (double)roundMoney:(double)amount
+{
+    return PPOrderRoundMoney(amount);
 }
 
 @end

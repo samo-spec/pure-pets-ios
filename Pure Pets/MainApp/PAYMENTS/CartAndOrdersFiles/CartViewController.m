@@ -663,40 +663,6 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
 @end
 
-/*
-@interface PPInsetLabel : UILabel
-@property (nonatomic, assign) UIEdgeInsets textInsets;
-@end
-
-@implementation PPInsetLabel
-
-- (instancetype)init
-{
-    self = [super init];
-    if (self) {
-        _textInsets = UIEdgeInsetsMake(12.0, 14.0, 12.0, 14.0);
-    }
-    return self;
-}
-
-- (CGRect)textRectForBounds:(CGRect)bounds limitedToNumberOfLines:(NSInteger)numberOfLines
-{
-    CGRect insetBounds = UIEdgeInsetsInsetRect(bounds, self.textInsets);
-    CGRect textRect = [super textRectForBounds:insetBounds limitedToNumberOfLines:numberOfLines];
-    textRect.origin.x -= self.textInsets.left;
-    textRect.origin.y -= self.textInsets.top;
-    textRect.size.width += (self.textInsets.left + self.textInsets.right);
-    textRect.size.height += (self.textInsets.top + self.textInsets.bottom);
-    return textRect;
-}
-
-- (void)drawTextInRect:(CGRect)rect
-{
-    [super drawTextInRect:UIEdgeInsetsInsetRect(rect, self.textInsets)];
-}
-
-@end
-*/
 @interface CartViewController ()
 @property (nonatomic, strong) PPSPinnerView *spinner;
 
