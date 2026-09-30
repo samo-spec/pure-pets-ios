@@ -1529,7 +1529,9 @@ final class HomeStore: ObservableObject {
                         ),
                         imageURL: pet.imageURL,
                         localImage: nil,
-                        accentHex: "3D7A76",
+                        accentHex: selectedCategory == nil
+                            ? "3D7A76"
+                            : selectedCategoryHex,
                         action: .editPet(pet.raw)
                     )
                 )
@@ -1561,7 +1563,9 @@ final class HomeStore: ObservableObject {
             let showsSecondary =
                 (presentation["showsSecondary"] as? NSNumber)?.boolValue ?? false
             let imageURL = presentation["imageURL"] as? String ?? ""
-            let accentHex = presentation["accentHex"] as? String ?? ""
+            let accentHex = selectedCategory == nil
+                ? (presentation["accentHex"] as? String ?? "")
+                : selectedCategoryHex
             let rawID = presentation["id"] as? String ?? ""
             let stableID = rawID.isEmpty
                 ? "content:\(title)|\(imageURL)|\(primaryTitle)"
@@ -2558,16 +2562,11 @@ final class HomeStore: ObservableObject {
     }
 
     private var selectedCategoryHex: String {
-        guard usesCategoryAccentColors else { return "CB2654" }
         guard let category = selectedCategory else { return "CB2654" }
-        let presentation =
-            PPHomeDataBridge.categoryPresentation(for: category.raw)
-        let raw = presentation["colorHex"] as? String ?? ""
-        let selectedKindHex =
-            hexString(from: presentation["accent"] as? UIColor)
-            ?? hexString(from: category.accent)
-            ?? "CB2654"
-        return normalizedHex(raw, fallback: selectedKindHex)
+        return normalizedHex(
+            hexString(from: category.accent) ?? "",
+            fallback: "CB2654"
+        )
     }
 
     private func nextReminder(for pet: HomePetModel) -> NSObject? {

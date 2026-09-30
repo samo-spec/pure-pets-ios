@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Pure Pets iOS Commerce — Phase 16 Complete Master Regression Matrix Runner
+Pure Pets iOS Commerce — Phase 16 Selected Regression Suite Runner
 
-Executes and verifies the comprehensive end-to-end commerce lifecycle:
+Runs selected Python model/source checks and backend Node tests for:
 1. Product: Standalone, variant selection, inactive, archived, out-of-stock, and decimal price.
 2. Cart: Add, merge, separate variants, quantity limits, removal, restore, provider switch, local persistence, remote reconciliation.
 3. Checkout: Validation, double-tap prevention, idempotent replay, stale inventory, changed price, network interruption, retry.
@@ -57,7 +57,7 @@ def run_command(cmd, cwd):
 
 def main():
     print("\n" + "=" * 78)
-    print("  PURE PETS iOS COMMERCE — PHASE 16 MASTER REGRESSION MATRIX")
+    print("  PURE PETS iOS COMMERCE — PHASE 16 SELECTED REGRESSION SUITES")
     print("=" * 78 + "\n")
 
     all_passed = True
@@ -94,7 +94,7 @@ def main():
         results.append((title, ok, duration))
 
     print("\n" + "=" * 78)
-    print("  PHASE 16 COMPLETE REGRESSION MATRIX SCORECARD")
+    print("  PHASE 16 SELECTED REGRESSION SUITE RESULTS")
     print("=" * 78)
     passed_count = sum(1 for _, ok, _ in results)
     total_count = len(results)
@@ -103,14 +103,15 @@ def main():
         print(f"  {mark} {title:<64} [{duration:.2f}s]")
 
     print("-" * 78)
-    print(f"  TOTAL SUITES EXECUTED: {passed_count}/{total_count} PASSED (0 FAILURES)")
+    failed_count = total_count - passed_count
+    print(f"  TOTAL SUITES EXECUTED: {passed_count}/{total_count} PASSED ({failed_count} FAILURES)")
     print("=" * 78 + "\n")
 
     if all_passed:
-        print("🎉 COMPLETE REGRESSION MATRIX PASSED WITH 100% GREEN ASSURANCES!\n")
+        print("SELECTED REGRESSION SUITES PASSED. Native build and runtime gates are separate.\n")
         return 0
     else:
-        print("❌ SOME TEST SUITES FAILED IN MASTER MATRIX.\n")
+        print("SOME SELECTED REGRESSION SUITES FAILED.\n")
         return 1
 
 if __name__ == "__main__":

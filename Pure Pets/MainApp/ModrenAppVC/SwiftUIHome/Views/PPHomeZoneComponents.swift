@@ -4476,12 +4476,19 @@ struct PPCommerceHeroCard: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
         } label: {
-            HStack(alignment: .center, spacing: PPSpace.sm) {
-                PPHomeQuickActionIcon(action: action, accent: accent, isFeatured: true)
-                PPHomeQuickActionCopy(action: action, isFeatured: true)
-                    .layoutPriority(1)
-                Spacer(minLength: 0)
-                PPHomeQuickActionArrow()
+            Group {
+                if dynamicTypeSize >= .xxLarge {
+                    VStack(alignment: .leading, spacing: PPSpace.sm) {
+                        iconRow
+                        PPHomeQuickActionCopy(action: action, isFeatured: true)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: PPSpace.xs) {
+                        iconRow
+                        Spacer(minLength: PPSpace.xxs)
+                        PPHomeQuickActionCopy(action: action, isFeatured: true)
+                    }
+                }
             }
             .padding(.horizontal, PPSpace.md)
             .padding(.vertical, PPSpace.sm)
@@ -4493,6 +4500,14 @@ struct PPCommerceHeroCard: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(action.title)
         .accessibilityHint(action.subtitle)
+    }
+
+    private var iconRow: some View {
+        HStack(alignment: .center) {
+            PPHomeQuickActionIcon(action: action, accent: accent, isFeatured: true)
+            Spacer(minLength: 0)
+            PPHomeQuickActionArrow()
+        }
     }
 }
 

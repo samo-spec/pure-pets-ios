@@ -3092,9 +3092,6 @@ struct HomeCategoriesStripView: View {
     }
 
     private var effectiveAccent: Color {
-        guard UserDefaults.standard.bool(forKey: "pp.marketplace.usesMainKindAccentColors") else {
-            return .ppPrimary
-        }
         return accent ?? .ppPrimary
     }
 
@@ -3201,13 +3198,12 @@ struct HomeCategoriesStripView: View {
         isSelected: Bool,
         maximumLabelWidth: CGFloat
     ) -> some View {
-        let categoryColors = UserDefaults.standard.bool(forKey: "pp.marketplace.usesMainKindAccentColors")
-        let itemAccent = categoryColors ? category.map { Color(uiColor: $0.accent) } ?? .ppPrimary : Color.ppPrimary
+        let itemAccent = category.map { Color(uiColor: $0.accent) } ?? .ppPrimary
         return Button {
             // HomeStore owns the selection haptic and the existing delayed route.
             withAnimation(selectionAnimation) { onSelect(category) }
         } label: {
-            HStack(spacing: PPSpace.xs) {
+            HStack(spacing: isSelected ? 6 : PPSpace.xs) {
                 Image(systemName: HomeCategoryModel.indicatorSymbol(for: category))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(itemAccent)
@@ -3215,16 +3211,15 @@ struct HomeCategoriesStripView: View {
                     .frame(width: 18, height: 18)
                     .accessibilityHidden(true)
                 Text(title)
-                    // Selection never changes the measured text or hit-target width.
                     .font(HomeFont.bold(15.5))
                     .foregroundStyle(isSelected ? Color.ppTextPrimary : Color.ppTextSecondary)
                     .lineLimit(2)
                     .frame(maxWidth: maximumLabelWidth, alignment: .leading)
                     .fixedSize(horizontal: true, vertical: true)
             }
-            .padding(.horizontal, PPSpace.sm)
+            .padding(.horizontal, isSelected ? 14 : PPSpace.sm)
             .padding(.vertical, PPSpace.xs)
-            .frame(minWidth: 64, minHeight: railHeight)
+            .frame(minWidth: isSelected ? 78 : 64, minHeight: railHeight)
             .background {
                 if isSelected {
                     selectionSurface(accent: itemAccent)
@@ -3286,17 +3281,11 @@ struct HomeCategoryRail: View {
         static let horizontalCellWidthScale: CGFloat = 0.85
     }
 
-    private var isCategoryAccentEnabled: Bool {
-        UserDefaults.standard.bool(
-            forKey: "pp.marketplace.usesMainKindAccentColors"
-        )
-    }
-
     var body: some View {
         HomeCategoriesStripView(
             categories: categories,
             selectedCategoryID: selectedID,
-            accent: isCategoryAccentEnabled ? selectedCategoryAccent : Color.ppPrimary,
+            accent: selectedCategoryAccent,
             isRightToLeft: layoutDirection == .rightToLeft,
             reduceMotion: reduceMotion,
             onSelect: onSelect
@@ -3505,9 +3494,6 @@ struct HomeCategoryRail: View {
     }
 
     private var selectedCategoryAccent: Color {
-        guard isCategoryAccentEnabled else {
-            return Color.ppPrimary
-        }
         guard let selectedID,
               let category = categories.first(where: {
                   HomeModelAdapter.mainKindID($0.raw) == selectedID

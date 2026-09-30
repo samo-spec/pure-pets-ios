@@ -646,27 +646,31 @@ struct HomeHeroV2View: View {
 
     // MARK: Identity accent
 
-    private var isCategoryAccentEnabled: Bool {
-        UserDefaults.standard.bool(
-            forKey: "pp.marketplace.usesMainKindAccentColors"
-        )
-    }
-
     /// Resolves the page's category color into an accent that is legible in the
     /// roles V2 gives it: eyebrow text on the card surface, a filled CTA behind
-    /// a white label, and the plate's tint. Falls back through the brand ladder
-    /// rather than accepting a low-contrast category value.
+    /// a white label, and the plate's tint. The selected MainKind is the Home
+    /// hero's color authority, independent of marketplace appearance settings.
+    /// Falls back through the brand ladder rather than accepting a low-contrast
+    /// category value.
     private func heroAccent(for page: HomeHeroPage) -> Color {
-        guard isCategoryAccentEnabled else {
-            return Color.ppPrimary
-        }
-        let candidate = UIColor(Color(hex: page.accentHex))
+        let candidate = selectedMainKindAccent
+            ?? UIColor(Color(hex: page.accentHex))
         return Color(
             uiColor: HomeHeroV2Palette.identityAccent(
                 candidate,
                 traits: resolvedTraits
             )
         )
+    }
+
+    private var selectedMainKindAccent: UIColor? {
+        guard let selectedCategoryID,
+              let category = categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
+              }) else {
+            return nil
+        }
+        return category.accent
     }
 
     /// SwiftUI environment is the single source for appearance here; the traits

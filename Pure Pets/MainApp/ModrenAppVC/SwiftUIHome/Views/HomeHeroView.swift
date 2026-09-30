@@ -50,14 +50,10 @@ struct HomeHeroView: View {
         .accessibilityElement(children: .contain)
     }
     
-    private var isCategoryAccentEnabled: Bool {
-        UserDefaults.standard.bool(
-            forKey: "pp.marketplace.usesMainKindAccentColors"
-        )
-    }
-
     private func hero(_ page: HomeHeroPage) -> some View {
-        let accent = isCategoryAccentEnabled ? Color(hex: page.accentHex) : Color.ppPrimary
+        // HomeStore publishes the selected MainKind color in `accentHex`.
+        // Hero identity must not be replaced by the marketplace color setting.
+        let accent = Color(hex: page.accentHex)
         return ZStack {
             HomeHeroField(
                 accent: accent,
